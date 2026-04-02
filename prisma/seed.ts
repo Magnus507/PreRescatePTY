@@ -8,7 +8,7 @@ async function main() {
 
   // 1. Create Admin User
   const adminEmail = "admin@prerescatepty.com";
-  const adminPassword = "admin-password-2024";
+  const adminPassword = "PreRescate2024!";
   const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
   const admin = await prisma.adminUser.upsert({
