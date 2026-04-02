@@ -17,12 +17,9 @@ export default function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
-            <Shield className="h-5 w-5" />
-          </div>
-          <span className="text-lg font-bold tracking-tight">
-            Pre<span className="text-primary">Rescate</span>
-            <span className="text-xs font-medium text-muted-foreground ml-0.5">PTY</span>
+          <img src="/logo.jpeg" alt="PreRescate PTY" className="h-10 w-10 md:h-12 md:w-12 object-contain transition-transform group-hover:scale-105" />
+          <span className="text-xl font-bold tracking-tight text-[#0C2444] dark:text-blue-100 hidden sm:inline-block">
+            PRE<span className="text-[#DA1A21]">RESCATE</span><span className="font-bold text-[#0C2444] dark:text-blue-100">PTY</span>
           </span>
         </Link>
 

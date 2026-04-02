@@ -9,12 +9,9 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Shield className="h-4 w-4" />
-              </div>
-              <span className="text-lg font-bold">
-                Pre<span className="text-primary">Rescate</span>
-                <span className="text-xs font-medium text-muted-foreground ml-0.5">PTY</span>
+              <img src="/logo.jpeg" alt="PreRescate PTY Logo" className="h-8 w-8 object-contain" />
+              <span className="text-xl font-bold tracking-tight text-[#0C2444] dark:text-blue-100 hidden sm:inline-block">
+                PRE<span className="text-[#DA1A21]">RESCATE</span><span className="font-bold text-[#0C2444] dark:text-blue-100">PTY</span>
               </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">

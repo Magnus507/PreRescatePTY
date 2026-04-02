@@ -40,9 +40,9 @@ export default function ComprarPage() {
                   </li>
                 ))}
               </ul>
-              <button className="w-full rounded-lg bg-primary text-primary-foreground py-3 font-semibold hover:bg-primary/90 transition-colors">
-                Comprar Ahora
-              </button>
+              <a href="https://wa.me/50700000000?text=Hola%2C%20estoy%20interesado%20en%20adquirir%20el%20Plan%20PreRescate%20B%C3%A1sico%20por%20%2415.00." target="_blank" rel="noopener noreferrer" className="w-full flex justify-center items-center rounded-lg bg-primary text-primary-foreground py-3 font-semibold hover:bg-primary/90 transition-colors">
+                Comprar Ahora con WhatsApp
+              </a>
             </div>
 
             {/* Premium */}
@@ -70,9 +70,9 @@ export default function ComprarPage() {
                   </li>
                 ))}
               </ul>
-              <button className="w-full rounded-lg bg-primary text-primary-foreground py-3 font-semibold hover:bg-primary/90 transition-colors">
-                Comprar Ahora
-              </button>
+              <a href="https://wa.me/50700000000?text=Hola%2C%20estoy%20interesado%20en%20adquirir%20el%20Plan%20PreRescate%20Familia%20por%20%2435.00." target="_blank" rel="noopener noreferrer" className="w-full flex justify-center items-center rounded-lg bg-primary text-primary-foreground py-3 font-semibold hover:bg-primary/90 transition-colors">
+                Comprar Ahora con WhatsApp
+              </a>
             </div>
           </div>
 

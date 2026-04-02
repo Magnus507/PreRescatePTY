@@ -10,12 +10,18 @@ echo ========================================================
 echo.
 
 if not exist "node_modules" (
-    echo [ERROR] node_modules not found. Running npm install...
+    echo [INFO] node_modules not found. Running npm install...
     call npm install
 )
 
-echo [INFO] Starting Next.js (Localhost:3000)...
-echo [INFO] Press Ctrl+C twice to stop the server anytime.
+echo [INFO] Updating Database schema...
+call npx prisma generate
+call npx prisma db push --accept-data-loss
+call npx tsx prisma/seed-packages.ts
+
+echo [INFO] Abrira el navegador automaticamente en 5 segundos...
+echo [INFO] Iniciando Next.js en Modo Desarrollo (Webpack)...
+echo [INFO] Presione Ctrl+C dos veces para detener el servidor.
 echo.
 
 start "" "http://localhost:3000"

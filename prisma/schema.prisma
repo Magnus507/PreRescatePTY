@@ -3,25 +3,42 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Account {
-  id          String   @id @default(cuid())
-  accountType String   @default("personal") // personal, organization
-  accountName String?
-  ownerUserId String?
-  status      String   @default("active")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(cuid())
+  accountType       String   @default("personal") // personal, organization
+  accountName       String?
+  ownerUserId       String?
+  status            String   @default("active")
+  packageId         String?
+  maxChipsAllocated Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
+  package       Package?       @relation(fields: [packageId], references: [id])
   users         User[]
   profiles      Profile[]
   chips         Chip[]
   organizations Organization[]
   auditLogs     AuditLog[]
   consents      Consent[]
+}
+
+model Package {
+  id           String    @id @default(cuid())
+  name         String    @unique
+  maxChips     Int
+  price        Float
+  description  String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  accounts     Account[]
 }
 
 model User {
