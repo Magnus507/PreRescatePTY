@@ -8,7 +8,7 @@ import {
   Download, ChevronLeft, ExternalLink, Printer, Copy, Check,
   Search, Shield, Activity, Bell, QrCode, Smartphone, Eye,
   LogOut, ArrowLeft, Clock, MapPin, AlertTriangle, TrendingUp,
-  RefreshCw,
+  RefreshCw, Building2,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -82,7 +82,16 @@ interface Stats {
   chipsByService: { active: number; limited: number };
 }
 
-type Tab = "dashboard" | "chips" | "users" | "create";
+interface OrganizationAdmin {
+  id: string;
+  legalName: string;
+  contactEmail: string | null;
+  status: string;
+  createdAt: string;
+  _count: { members: number };
+}
+
+type Tab = "dashboard" | "chips" | "users" | "empresas" | "create";
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
@@ -142,6 +151,10 @@ function AdminDashboard({ session }: { session: any }) {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [copied, setCopied] = useState("");
   const [reactivating, setReactivating] = useState(false);
+  
+  const [organizations, setOrganizations] = useState<OrganizationAdmin[]>([]);
+  const [showOrgModal, setShowOrgModal] = useState(false);
+  const [newOrgData, setNewOrgData] = useState({ legalName: "", displayName: "", contactEmail: "", maxChips: 30 });
 
   const loadStats = useCallback(async () => {
     try {
@@ -178,11 +191,34 @@ function AdminDashboard({ session }: { session: any }) {
     setLoading(false);
   }, [searchQuery]);
 
+  const loadOrganizations = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/organizations");
+    const data = await res.json();
+    setOrganizations(data.organizations || []);
+    setLoading(false);
+  }, []);
+
+  async function handleCreateOrg(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    const res = await fetch("/api/admin/organizations", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newOrgData)
+    });
+    setCreating(false);
+    if (res.ok) {
+      setShowOrgModal(false);
+      setNewOrgData({ legalName: "", displayName: "", contactEmail: "", maxChips: 30 });
+      loadOrganizations();
+    }
+  }
+
   useEffect(() => {
     if (tab === "dashboard") loadStats();
     if (tab === "chips" || tab === "create") loadChips();
     if (tab === "users") loadUsers();
-  }, [tab, loadStats, loadChips, loadUsers]);
+    if (tab === "empresas") loadOrganizations();
+  }, [tab, loadStats, loadChips, loadUsers, loadOrganizations]);
 
   async function loadChipDetail(chipId: string) {
     setLoadingDetail(true);
@@ -527,6 +563,7 @@ function AdminDashboard({ session }: { session: any }) {
             { key: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
             { key: "chips" as const, label: "Chips", icon: Cpu },
             { key: "users" as const, label: "Usuarios", icon: Users },
+            { key: "empresas" as const, label: "Empresas", icon: Building2 },
             { key: "create" as const, label: "Crear Lote", icon: Plus },
           ] as const).map((t) => (
             <button
@@ -818,6 +855,82 @@ function AdminDashboard({ session }: { session: any }) {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Empresas / Organizations Tab ───────────────────────────── */}
+        {tab === "empresas" && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm text-muted-foreground">{organizations.length} empresas</span>
+              <button onClick={() => setShowOrgModal(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90">
+                <Plus className="h-4 w-4" /> Nueva Empresa
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium">Empresa</th>
+                      <th className="px-4 py-3 text-left font-medium">Email</th>
+                      <th className="px-4 py-3 text-left font-medium">Usuarios Asignados</th>
+                      <th className="px-4 py-3 text-left font-medium">Registro</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {organizations.map((org) => (
+                      <tr key={org.id} className="hover:bg-accent/50 transition-colors">
+                        <td className="px-4 py-3 font-semibold">{org.legalName}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{org.contactEmail || "—"}</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">
+                            {org._count?.members || 0}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(org.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {organizations.length === 0 && <p className="p-6 text-center text-muted-foreground">No hay empresas registradas.</p>}
+              </div>
+            )}
+
+            {/* Modal de Creación */}
+            {showOrgModal && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                <div className="bg-card w-full max-w-md rounded-2xl shadow-xl overflow-hidden border border-border flex flex-col">
+                  <div className="px-6 py-4 border-b border-border bg-muted/20 flex items-center justify-between">
+                    <h3 className="font-bold text-lg">Nueva Cuenta Corporativa</h3>
+                    <button onClick={() => setShowOrgModal(false)} className="text-muted-foreground hover:text-foreground"><Check className="h-5 w-5 bg-transparent opacity-0 absolute" /><ChevronLeft className="h-5 w-5 rotate-180" /></button>
+                  </div>
+                  <form onSubmit={handleCreateOrg} className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Nombre Legal</label>
+                      <input required value={newOrgData.legalName} onChange={e => setNewOrgData({...newOrgData, legalName: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm" placeholder="Ej. ACME Corp" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Email de Contacto</label>
+                      <input type="email" value={newOrgData.contactEmail} onChange={e => setNewOrgData({...newOrgData, contactEmail: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm" placeholder="rrhh@acme.com" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Límite de Chips (Paquete)</label>
+                      <input type="number" required min={1} value={newOrgData.maxChips} onChange={e => setNewOrgData({...newOrgData, maxChips: Number(e.target.value)})} className="w-full border border-input rounded-lg px-3 py-2 text-sm" />
+                    </div>
+                    <div className="pt-4 flex gap-3">
+                      <button type="button" onClick={() => setShowOrgModal(false)} className="flex-1 px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-accent">Cancelar</button>
+                      <button type="submit" disabled={creating} className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+                        {creating ? "Creando..." : "Crear Empresa"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}
