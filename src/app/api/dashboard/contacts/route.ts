@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 async function isServiceActive(accountId: string | null) {
-  if (!accountId) return false;
+  if (!accountId) return true;
   const activeChips = await prisma.chip.findMany({
     where: { accountId, status: { in: ["activated", "suspended"] } },
     select: { serviceStatus: true, serviceEndDate: true },

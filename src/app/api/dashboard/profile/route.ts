@@ -39,6 +39,7 @@ export async function GET() {
       where: { accountId: user.accountId, status: { in: ["activated", "suspended"] } },
       select: { serviceStatus: true, serviceEndDate: true },
     });
+    // If they have chips, check if at least one is active. If 0 chips, they just haven't bought yet, so allow edits.
     if (activeChips.length > 0) {
       isServiceActive = activeChips.some(c => 
         c.serviceStatus === "active" && (!c.serviceEndDate || c.serviceEndDate > new Date())

@@ -64,11 +64,18 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold">Dashboard</h1>
         {data.accountType && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card shadow-sm text-sm font-medium text-muted-foreground">
-            {data.accountType === "organization" ? (
-              <><Building2 className="h-4 w-4 text-primary" /> {data.organizationName || "Cuenta Corporativa"}</>
-            ) : (
-              <><User className="h-4 w-4 text-primary" /> Cuenta {data.packageName || "Personal"}</>
-            )}
+            <Building2 className="h-4 w-4 text-primary" />
+            <span>
+              Cuenta: <span className="font-semibold text-primary">
+                {data.accountType === "company" ? "CORPORATIVA" : 
+                 data.accountType === "school" ? "COLEGIO" : "PERSONAL"}
+              </span>
+              {data.packageName && (
+                <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
+                  {data.packageName}
+                </span>
+              )}
+            </span>
           </div>
         )}
       </div>
