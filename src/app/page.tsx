@@ -61,7 +61,7 @@ export default function Home() {
             </div>
             <div className="flex-1 w-full max-w-lg lg:max-w-xl relative perspective-1000">
               <div className="transform-gpu rotate-[-5deg] hover:rotate-0 transition-transform duration-500 hover:scale-105 shadow-2xl rounded-[2.5rem] bg-white p-3 rotate-y-12">
-                <img src="/sticker.jpeg" alt="Sticker Oficial PreRescatePTY" className="w-full h-auto rounded-[2rem] border border-gray-100 shadow-inner" />
+                <img src="/pre_rescate_sticker.png" alt="Sticker Oficial PreRescatePTY" className="w-full h-auto rounded-[2rem] border border-gray-100 shadow-inner" />
               </div>
               {/* Floating decorative elements */}
               <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-xl p-4 flex items-center gap-3 animate-bounce-slow">
