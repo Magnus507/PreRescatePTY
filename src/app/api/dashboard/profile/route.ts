@@ -19,7 +19,18 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, phone: true, accountId: true },
+    select: { 
+      email: true, 
+      phone: true, 
+      accountId: true,
+      account: {
+        select: {
+          accountType: true,
+          package: { select: { name: true } },
+          organizations: { select: { legalName: true } }
+        }
+      }
+    },
   });
 
   let isServiceActive = true;

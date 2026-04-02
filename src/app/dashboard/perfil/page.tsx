@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BLOOD_TYPES } from "@/lib/constants";
-import { Loader2, Save, CheckCircle } from "lucide-react";
+import { Loader2, Save, CheckCircle, AlertCircle } from "lucide-react";
 
 interface ProfileData {
   firstName: string;
@@ -102,11 +102,11 @@ export default function PerfilPage() {
         )}
 
         {!isServiceActive && (
-          <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 text-sm flex items-start gap-4">
-            <svg className="w-5 h-5 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          <div className="mb-8 p-5 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 flex items-start gap-4">
+            <AlertCircle className="w-6 h-6 mt-0.5 shrink-0" />
             <div>
-              <p className="font-semibold mb-1">Servicio de Edición Expirado (Modo Lectura)</p>
-              <p>Tu chip sigue funcionando en caso de emergencia, pero has perdido el acceso para actualizar tus datos. <a href="#" className="underline font-medium hover:text-orange-500">Renueva tu servicio</a> para desbloquear todas las funciones.</p>
+              <p className="font-bold text-lg mb-1">Servicio de Edición Expirado (Modo Lectura)</p>
+              <p>Tu chip sigue funcionando en caso de emergencia, pero has perdido el acceso para actualizar tus datos. <a href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20renovar%20mi%20servicio%20PreRescate." target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-orange-500">Renueva tu servicio</a> para desbloquear todas las funciones.</p>
             </div>
           </div>
         )}

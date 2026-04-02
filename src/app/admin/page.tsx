@@ -84,6 +84,7 @@ interface Stats {
 
 interface OrganizationAdmin {
   id: string;
+  accountId: string;
   legalName: string;
   contactEmail: string | null;
   status: string;
@@ -155,6 +156,9 @@ function AdminDashboard({ session }: { session: any }) {
   const [organizations, setOrganizations] = useState<OrganizationAdmin[]>([]);
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [newOrgData, setNewOrgData] = useState({ legalName: "", displayName: "", contactEmail: "", maxChips: 30 });
+  
+  const [selectedUser, setSelectedUser] = useState<UserAdmin | null>(null);
+  const [accountFilter, setAccountFilter] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
     try {
@@ -173,12 +177,13 @@ function AdminDashboard({ session }: { session: any }) {
     if (statusFilter) url += `&status=${statusFilter}`;
     if (serviceFilter) url += `&serviceStatus=${serviceFilter}`;
     if (searchQuery) url += `&search=${searchQuery}`;
+    if (accountFilter) url += `&accountId=${accountFilter}`;
     const res = await fetch(url);
     const data = await res.json();
     setChips(data.chips || []);
     setTotal(data.total || 0);
     setLoading(false);
-  }, [statusFilter, serviceFilter, searchQuery]);
+  }, [statusFilter, serviceFilter, searchQuery, accountFilter]);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -279,6 +284,68 @@ function AdminDashboard({ session }: { session: any }) {
     } finally {
       setReactivating(false);
     }
+  }
+
+  // ─── User Detail View ───────────────────────────────────────────────────────
+
+  if (selectedUser) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <button
+              onClick={() => setSelectedUser(null)}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" /> Volver a Usuarios
+            </button>
+            <span className="text-xs text-muted-foreground font-mono">{selectedUser.email}</span>
+          </div>
+        </header>
+
+        <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+          <div className="p-6 rounded-2xl border border-border bg-card shadow-sm">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Users className="h-6 w-6 text-primary" /> {selectedUser.profile ? `${selectedUser.profile.firstName} ${selectedUser.profile.lastName}` : "Usuario sin Perfil Médico"}
+                </h2>
+                <p className="text-muted-foreground mt-1">{selectedUser.email}</p>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${selectedUser.status === "active" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                {selectedUser.status}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+              <InfoRow label="Añadido" value={formatDate(selectedUser.createdAt)} />
+              <InfoRow label="Teléfono" value={selectedUser.phone || "—"} />
+              <InfoRow label="Último Ingreso" value={selectedUser.lastLoginAt ? formatDate(selectedUser.lastLoginAt) : "Nunca"} />
+              <InfoRow label="Sangre" value={selectedUser.profile?.bloodType || "Desconocido"} badge={selectedUser.profile?.bloodType ? "bg-red-100 text-red-700" : undefined} />
+              <InfoRow label="Rol" value={selectedUser.role} />
+              <InfoRow label="Chips Asignados" value={String(selectedUser._count.chips)} />
+            </div>
+
+            <div className="flex gap-4 border-t border-border pt-6">
+              <button 
+                onClick={() => {
+                  setSelectedUser(null);
+                  setSearchQuery(selectedUser.email);
+                  setTab("chips");
+                }}
+                className="flex flex-1 justify-center items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+              >
+                <Cpu className="h-4 w-4" /> Ver sus Chips
+              </button>
+
+              <button className="flex flex-1 justify-center items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground font-semibold hover:bg-accent hover:border-border transition-colors shadow-sm">
+                <Shield className="h-4 w-4" /> {selectedUser.status === "active" ? "Suspender Usuario" : "Activar Usuario"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // ─── Chip Detail View ───────────────────────────────────────────────────────
@@ -676,6 +743,14 @@ function AdminDashboard({ session }: { session: any }) {
                 <option value="limited">Limitado</option>
                 <option value="suspended">Suspendido</option>
               </select>
+              {accountFilter && (
+                <button
+                  onClick={() => setAccountFilter(null)}
+                  className="px-3 py-2 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+                >
+                  X Quitar Filtro Empresa
+                </button>
+              )}
               <span className="text-sm text-muted-foreground whitespace-nowrap">{total} chips</span>
             </div>
 
@@ -769,19 +844,21 @@ function AdminDashboard({ session }: { session: any }) {
                       <th className="px-4 py-3 text-left font-medium">Chips</th>
                       <th className="px-4 py-3 text-left font-medium">Estado</th>
                       <th className="px-4 py-3 text-left font-medium">Registro</th>
-                      <th className="px-4 py-3 text-left font-medium">Último Login</th>
+                      <th className="px-4 py-3 text-left font-medium">Últlogin</th>
+                      <th className="px-4 py-3 text-left font-medium"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {users.map((u) => (
-                      <tr key={u.id} className="hover:bg-accent/50 transition-colors">
+                      <tr key={u.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => setSelectedUser(u)}>
                         <td className="px-4 py-3 text-xs">{u.email}</td>
                         <td className="px-4 py-3 text-sm font-medium">{u.profile ? `${u.profile.firstName} ${u.profile.lastName}` : "—"}</td>
                         <td className="px-4 py-3 text-xs font-mono">{u.phone || "—"}</td>
                         <td className="px-4 py-3"><span className="text-xs font-bold text-red-600">{u.profile?.bloodType || "—"}</span></td>
                         <td className="px-4 py-3 text-center text-sm font-semibold">
                           <button 
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSearchQuery(u.email);
                               setTab("chips");
                             }}
@@ -797,6 +874,9 @@ function AdminDashboard({ session }: { session: any }) {
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(u.createdAt)}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "Nunca"}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Eye className="inline-block h-4 w-4 text-muted-foreground hover:text-primary" />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -895,6 +975,17 @@ function AdminDashboard({ session }: { session: any }) {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(org.createdAt)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => {
+                              setAccountFilter(org.accountId as string);
+                              setTab("chips");
+                            }}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors"
+                          >
+                            Ver Chips
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

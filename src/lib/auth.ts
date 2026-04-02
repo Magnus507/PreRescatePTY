@@ -27,7 +27,24 @@ export const authOptions: NextAuthOptions = {
 
         const emailLower = credentials.email.toLowerCase();
 
-        // 1. Try to find a regular user first
+        // 1. Try to find an admin user first
+        const admin = await prisma.adminUser.findUnique({
+          where: { email: emailLower },
+        });
+
+        if (admin && admin.status === "active") {
+          const isValid = await bcrypt.compare(credentials.password, admin.passwordHash);
+          if (isValid) {
+            return {
+              id: admin.id,
+              email: admin.email,
+              name: admin.email,
+              role: admin.role, // "admin" or "superadmin"
+            };
+          }
+        }
+
+        // 2. Try to find a regular user
         const user = await prisma.user.findUnique({
           where: { email: emailLower },
         });
@@ -44,23 +61,6 @@ export const authOptions: NextAuthOptions = {
               email: user.email,
               name: user.email,
               role: "user",
-            };
-          }
-        }
-
-        // 2. Try to find an admin user
-        const admin = await prisma.adminUser.findUnique({
-          where: { email: emailLower },
-        });
-
-        if (admin && admin.status === "active") {
-          const isValid = await bcrypt.compare(credentials.password, admin.passwordHash);
-          if (isValid) {
-            return {
-              id: admin.id,
-              email: admin.email,
-              name: admin.email,
-              role: admin.role, // "admin" or "superadmin"
             };
           }
         }

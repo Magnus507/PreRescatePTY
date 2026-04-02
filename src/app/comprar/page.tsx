@@ -40,7 +40,7 @@ export default function ComprarPage() {
                   </li>
                 ))}
               </ul>
-              <a href="https://wa.me/50700000000?text=Hola%2C%20estoy%20interesado%20en%20adquirir%20el%20Plan%20PreRescate%20B%C3%A1sico%20por%20%2415.00." target="_blank" rel="noopener noreferrer" className="w-full flex justify-center items-center rounded-lg bg-primary text-primary-foreground py-3 font-semibold hover:bg-primary/90 transition-colors">
+              <a href="https://wa.me/50767516171?text=Hola%2C%20estoy%20interesado%20en%20adquirir%20el%20Plan%20PreRescate%20B%C3%A1sico%20por%20%2415.00." target="_blank" rel="noopener noreferrer" className="w-full flex justify-center items-center rounded-lg bg-primary text-primary-foreground py-3 font-semibold hover:bg-primary/90 transition-colors">
                 Comprar Ahora con WhatsApp
               </a>
             </div>
@@ -70,9 +70,72 @@ export default function ComprarPage() {
                   </li>
                 ))}
               </ul>
-              <a href="https://wa.me/50700000000?text=Hola%2C%20estoy%20interesado%20en%20adquirir%20el%20Plan%20PreRescate%20Familia%20por%20%2435.00." target="_blank" rel="noopener noreferrer" className="w-full flex justify-center items-center rounded-lg bg-primary text-primary-foreground py-3 font-semibold hover:bg-primary/90 transition-colors">
+              <a href="https://wa.me/50767516171?text=Hola%2C%20estoy%20interesado%20en%20adquirir%20el%20Plan%20PreRescate%20Familia%20por%20%2435.00." target="_blank" rel="noopener noreferrer" className="w-full flex justify-center items-center rounded-lg bg-primary text-primary-foreground py-3 font-semibold hover:bg-primary/90 transition-colors">
                 Comprar Ahora con WhatsApp
               </a>
+          </div>
+          </div>
+
+          {/* B2B Sections */}
+          <div className="mt-20">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold tracking-tight">Soluciones Corporativas e Institucionales</h2>
+              <p className="mt-4 text-muted-foreground">Administre el bienestar de su equipo, flotilla o estudiantes con una plataforma centralizada</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              
+              {/* Empresas */}
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-8 hover:shadow-lg transition-all relative flex flex-col">
+                <h2 className="text-xl font-bold mb-2">Módulo Empresas</h2>
+                <p className="text-muted-foreground text-sm mb-6">Ideal para flotillas y personal de alto riesgo</p>
+                <div className="mb-6">
+                  <span className="text-4xl font-bold">Cotizar</span>
+                </div>
+                <ul className="space-y-3 mb-8 flex-1">
+                  {[
+                    "Desde 10 chips personalizados",
+                    "Panel administrativo unificado",
+                    "Añadir, remover y asignar chips",
+                    "Análisis de perfiles y reportes",
+                    "Asignación masiva (creación de bache)",
+                    "Soporte prioritario y capacitación",
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20cotizar%20el%20Plan%20Empresarial%20de%20PreRescate." target="_blank" rel="noopener noreferrer" className="w-full flex justify-center items-center rounded-lg border border-primary bg-primary text-primary-foreground py-3 font-semibold hover:bg-primary/90 transition-colors">
+                  Contactar a Ventas
+                </a>
+              </div>
+
+              {/* Colegios */}
+              <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-8 hover:shadow-lg transition-all relative flex flex-col">
+                <h2 className="text-xl font-bold mb-2 text-indigo-700">Módulo Colegios</h2>
+                <p className="text-muted-foreground text-sm mb-6">Para estudiantes y planteles educativos</p>
+                <div className="mb-6">
+                  <span className="text-4xl font-bold">Cotizar</span>
+                </div>
+                <ul className="space-y-3 mb-8 flex-1">
+                  {[
+                    "Perfiles médicos infantiles",
+                    "Permisos de excursiones / salidas",
+                    "Alergias y medicamentos estandarizados",
+                    "Acceso rápido para enfermería escolar",
+                    "Gestión para padres y apoderados",
+                    "Integración al carnet estudiantil",
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-indigo-500 flex-shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20cotizar%20el%20M%c3%b3dulo%20para%20Colegios%20de%20PreRescate." target="_blank" rel="noopener noreferrer" className="w-full flex justify-center items-center rounded-lg bg-indigo-600 text-white py-3 font-semibold hover:bg-indigo-700 transition-colors">
+                  Contactar a Ventas
+                </a>
+              </div>
+
             </div>
           </div>
 

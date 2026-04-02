@@ -37,6 +37,10 @@ export async function GET(req: NextRequest) {
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
   if (serviceStatus) where.serviceStatus = serviceStatus;
+  
+  const accountId = searchParams.get("accountId");
+  if (accountId) where.accountId = accountId;
+
   if (search) {
     where.OR = [
       { serialPublic: { contains: search } },

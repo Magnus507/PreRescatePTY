@@ -92,7 +92,7 @@ export default function ContactosPage() {
           <svg className="w-5 h-5 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
           <div>
             <p className="font-semibold mb-1">Servicio de Edición Expirado (Modo Lectura)</p>
-            <p>Se mantendrán los contactos configurados para emergencias, pero no puedes modificarlos ni eliminarlos. <a href="#" className="underline font-medium hover:text-orange-500">Renueva tu servicio</a>.</p>
+            <p>Se mantendrán los contactos configurados para emergencias, pero no puedes modificarlos ni eliminarlos. <a href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20renovar%20mi%20servicio%20PreRescate." target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-orange-500">Renueva tu servicio</a>.</p>
           </div>
         </div>
       )}

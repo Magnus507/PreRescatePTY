@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Cpu, Users, History, User, AlertCircle, CheckCircle, ChevronRight } from "lucide-react";
+import { Cpu, Users, History, User, AlertCircle, CheckCircle, ChevronRight, Building2 } from "lucide-react";
 
 export default function DashboardPage() {
   const [data, setData] = useState<{
@@ -10,6 +10,9 @@ export default function DashboardPage() {
     chipCount: number;
     contactCount: number;
     recentScans: number;
+    accountType?: string;
+    packageName?: string;
+    organizationName?: string;
   }>({ hasProfile: false, chipCount: 0, contactCount: 0, recentScans: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +37,9 @@ export default function DashboardPage() {
           chipCount: chipsData.chips?.length || 0,
           contactCount: contactsData.contacts?.length || 0,
           recentScans: scansData.scans?.length || 0,
+          accountType: profileData.user?.account?.accountType,
+          packageName: profileData.user?.account?.package?.name,
+          organizationName: profileData.user?.account?.organizations?.[0]?.legalName,
         });
       } catch (e) {
         console.error(e);
@@ -54,7 +60,18 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        {data.accountType && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card shadow-sm text-sm font-medium text-muted-foreground">
+            {data.accountType === "organization" ? (
+              <><Building2 className="h-4 w-4 text-primary" /> {data.organizationName || "Cuenta Corporativa"}</>
+            ) : (
+              <><User className="h-4 w-4 text-primary" /> Cuenta {data.packageName || "Personal"}</>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Setup checklist */}
       {(!data.hasProfile || data.chipCount === 0 || data.contactCount === 0) && (
@@ -95,6 +112,40 @@ export default function DashboardPage() {
           <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
         </Link>
       </div>
+
+      {/* Upsell Logic */}
+      {data.accountType !== "organization" && (
+        <div className="mt-12">
+          <h2 className="text-lg font-bold mb-4">Módulos Extra</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-6 rounded-2xl border border-primary/20 bg-primary/5 flex flex-col items-start gap-3">
+              <Building2 className="h-8 w-8 text-primary" />
+              <div>
+                <h3 className="font-bold text-lg">Módulo Empresas</h3>
+                <p className="text-sm text-muted-foreground mt-1 text-balance">
+                  ¿Tienes una flotilla o una compañía? Administra múltiples chips centralizando todos los perfiles de tu equipo bajo un mismo panel y facturación.
+                </p>
+              </div>
+              <a href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20cotizar%20el%20Plan%20Empresarial%20de%20PreRescate." target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex border border-primary bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition">
+                Cotizar para Empresas
+              </a>
+            </div>
+            
+            <div className="p-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 flex flex-col items-start gap-3">
+              <Users className="h-8 w-8 text-indigo-500" />
+              <div>
+                <h3 className="font-bold text-lg text-indigo-700">Módulo Colegios / Instituciones</h3>
+                <p className="text-sm text-muted-foreground mt-1 text-balance">
+                  Especial para organizaciones con decenas de estudiantes o asociados, permitiendo roles granulares para administradores y representantes.
+                </p>
+              </div>
+              <a href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20cotizar%20el%20M%C3%B3dulo%20para%20Colegios%20de%20PreRescate." target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                Consultar Módulo Colegial
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

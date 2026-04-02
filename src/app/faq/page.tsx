@@ -14,9 +14,10 @@ const faqs = [
   { q: "¿Mis contactos de emergencia reciben notificación?", a: "Sí. Cuando alguien escanea tu chip, el sistema envía automáticamente una notificación por email (y opcionalmente SMS) a los contactos que hayas configurado, con la hora y ubicación aproximada del escaneo." },
   { q: "¿Puedo usar PreRescate si no soy motociclista?", a: "¡Sí! Aunque está diseñado inicialmente para motociclistas, cualquier persona puede usarlo. Es útil para ciclistas, deportistas, personas con condiciones médicas, adultos mayores, etc." },
   { q: "¿Funciona sin internet?", a: "El chip NFC y QR no requieren internet para ser escaneados, pero sí se necesita conexión a internet para cargar el perfil de emergencia desde nuestro servidor." },
-  { q: "¿Cuánto cuesta?", a: "El plan básico con 1 sticker NFC+QR está desde $15 USD. El plan familiar con 3 stickers está desde $35 USD con envío gratis en Panamá." },
+  { q: "¿Cuánto cuesta?", a: "El plan básico con 1 sticker NFC+QR está desde $15 USD. El plan familiar con 3 stickers está desde $35 USD. Para empresas y colegios tenemos precios especiales y licencias por volumen, contáctenos para cotizar." },
   { q: "¿Qué métodos de pago aceptan?", a: "Aceptamos Yappy, Visa, Mastercard y transferencia bancaria. Todos los pagos son procesados de forma segura." },
   { q: "¿Cumplen con las leyes de protección de datos de Panamá?", a: "Sí. PreRescate PTY cumple con la Ley 81 de Panamá sobre protección de datos personales y sigue las guías de ANTAI para el tratamiento de datos sensibles de salud, incluyendo consentimiento expreso y trazable." },
+  { q: "¿Tienen planes para empresas o colegios?", a: "Sí, contamos con Módulos Corporativos e Institucionales. Estos permiten a empresas, colegios, clubes o flotillas administrar múltiples chips desde un panel central de administración, con funciones integradas de creación de baches y control granular." },
 ];
 
 export default function FAQPage() {
