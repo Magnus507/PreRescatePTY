@@ -77,3 +77,38 @@ export async function GET(
 
   return NextResponse.json({ chip });
 }
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ chipId: string }> }
+) {
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const { chipId } = await params;
+  const body = await req.json();
+  const { status, serviceStatus, accountId, delete: shouldDelete } = body;
+
+  try {
+    if (shouldDelete) {
+      await prisma.chip.delete({ where: { id: chipId } });
+      return NextResponse.json({ message: "Chip eliminado" });
+    }
+
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (serviceStatus) updateData.serviceStatus = serviceStatus;
+    if (accountId !== undefined) updateData.accountId = accountId;
+
+    const chip = await prisma.chip.update({
+      where: { id: chipId },
+      data: updateData,
+    });
+
+    return NextResponse.json({ chip });
+  } catch (e: any) {
+    console.error(e);
+    return NextResponse.json({ error: e.message || "Error al actualizar chip" }, { status: 500 });
+  }
+}

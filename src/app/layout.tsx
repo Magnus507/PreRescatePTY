@@ -14,10 +14,10 @@ export const metadata: Metadata = {
     template: "%s | PreRescate PTY",
   },
   description:
-    "Sistema panameño de identificación de emergencia para motociclistas. Chip NFC + QR con perfil médico accesible al instante.",
+    "Sistema panameño de identificación de emergencia con Chip NFC + QR y perfil médico accesible al instante. Protege lo que más importa.",
   keywords: [
-    "emergencia", "motociclista", "NFC", "QR", "Panamá",
-    "identificación médica", "rescate", "seguridad vial",
+    "emergencia", "socorro", "NFC", "QR", "Panamá",
+    "identificación médica", "rescate", "seguridad", "salud",
   ],
 };
 

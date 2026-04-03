@@ -8,9 +8,74 @@ import {
   Download, ChevronLeft, ExternalLink, Printer, Copy, Check,
   Search, Shield, Activity, Bell, QrCode, Smartphone, Eye,
   LogOut, ArrowLeft, Clock, MapPin, AlertTriangle, TrendingUp,
-  RefreshCw, Building2,
+  RefreshCw, Building2, ShieldCheck, ShieldOff, User
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+
+// ─── Utility Components ─────────────────────────────────────────────────────
+
+function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: any; color: string }) {
+  return (
+    <div className="p-5 rounded-2xl border border-border bg-card hover:shadow-sm transition-all">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+        <Icon className={`h-4 w-4 ${color}`} /> {label}
+      </div>
+      <p className={`text-3xl font-bold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function BarRow({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-1">
+        <span>{label}</span>
+        <span className="font-semibold">{value} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value, mono, badge }: { label: string; value: string; mono?: boolean; badge?: string }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+      <span className="text-muted-foreground whitespace-nowrap mr-4">{label}</span>
+      {badge ? (
+        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${badge}`}>{value}</span>
+      ) : (
+        <span className={`text-right font-medium ${mono ? "font-mono text-[11px]" : ""}`}>{value}</span>
+      )}
+    </div>
+  );
+}
+
+function formatDate(d: string) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function statusColor(s: string) {
+  switch (s) {
+    case "activated": return "bg-success/10 text-success";
+    case "inventory": return "bg-blue-500/10 text-blue-600";
+    case "sold": return "bg-amber-500/10 text-amber-600";
+    case "suspended": return "bg-destructive/10 text-destructive";
+    default: return "bg-muted text-muted-foreground";
+  }
+}
+
+function serviceColor(s: string) {
+  switch (s) {
+    case "active": return "bg-success/10 text-success";
+    case "limited": return "bg-orange-500/10 text-orange-600 dark:text-orange-400";
+    case "suspended": return "bg-destructive/10 text-destructive";
+    default: return "bg-muted text-muted-foreground";
+  }
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -68,9 +133,18 @@ interface UserAdmin {
   status: string;
   createdAt: string;
   lastLoginAt: string | null;
+  accountId: string | null;
+  account?: {
+    id: string;
+    packageId: string | null;
+    maxChipsAllocated: number;
+    accountType: string;
+    package: { name: string } | null;
+  } | null;
   profile: { firstName: string; lastName: string; bloodType: string } | null;
   _count: { chips: number };
 }
+
 
 interface Stats {
   totalUsers: number;
@@ -86,13 +160,31 @@ interface OrganizationAdmin {
   id: string;
   accountId: string;
   legalName: string;
+  displayName: string | null;
   contactEmail: string | null;
+  contactPhone: string | null;
+  taxId: string | null;
+  address: string | null;
   status: string;
   createdAt: string;
   _count: { members: number };
+  account?: {
+    maxChipsAllocated: number;
+    package?: { name: string } | null;
+    chips?: ChipAdmin[];
+    users?: UserAdmin[];
+  };
 }
 
-type Tab = "dashboard" | "chips" | "users" | "empresas" | "create";
+interface AdminAccount {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
+}
+
+type Tab = "dashboard" | "chips" | "users" | "empresas" | "admins" | "create";
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
@@ -160,6 +252,24 @@ function AdminDashboard({ session }: { session: any }) {
   const [selectedUser, setSelectedUser] = useState<UserAdmin | null>(null);
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
 
+  // Admin accounts
+  const [admins, setAdmins] = useState<AdminAccount[]>([]);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [newAdminData, setNewAdminData] = useState({ email: "", password: "", role: "admin" });
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [showEditPlanModal, setShowEditPlanModal] = useState(false);
+  const [tempPassword, setTempPassword] = useState("");
+  const [selectedPlanPackage, setSelectedPlanPackage] = useState("");
+  const [manualMaxChips, setManualMaxChips] = useState(1);
+  const [packages, setPackages] = useState<any[]>([]);
+
+  // Organization detail
+  const [selectedOrg, setSelectedOrg] = useState<OrganizationAdmin | null>(null);
+  const [loadingOrgDetail, setLoadingOrgDetail] = useState(false);
+  const [newOrgUser, setNewOrgUser] = useState({ email: "", password: "", phone: "", role: "member" });
+  const [assignShortCode, setAssignShortCode] = useState("");
+
   const loadStats = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/stats");
@@ -204,67 +314,27 @@ function AdminDashboard({ session }: { session: any }) {
     setLoading(false);
   }, []);
 
-  async function handleCreateOrg(e: React.FormEvent) {
-    e.preventDefault();
-    setCreating(true);
-    const res = await fetch("/api/admin/organizations", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newOrgData)
-    });
-    setCreating(false);
-    if (res.ok) {
-      setShowOrgModal(false);
-      setNewOrgData({ legalName: "", displayName: "", contactEmail: "", maxChips: 30 });
-      loadOrganizations();
-    }
-  }
+  const loadAdmins = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/admins");
+      const data = await res.json();
+      setAdmins(data.admins || []);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  }, []);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     if (tab === "dashboard") loadStats();
     if (tab === "chips" || tab === "create") loadChips();
     if (tab === "users") loadUsers();
     if (tab === "empresas") loadOrganizations();
-  }, [tab, loadStats, loadChips, loadUsers, loadOrganizations]);
+    if (tab === "admins") loadAdmins();
+  }, [tab, loadStats, loadChips, loadUsers, loadOrganizations, loadAdmins]);
 
-  async function loadChipDetail(chipId: string) {
-    setLoadingDetail(true);
-    const res = await fetch(`/api/admin/chips/${chipId}`);
-    const data = await res.json();
-    setSelectedChip(data.chip);
-    setLoadingDetail(false);
-  }
-
-  async function createBatch() {
-    setCreating(true);
-    const res = await fetch("/api/admin/chips", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ count: createCount }),
-    });
-    const data = await res.json();
-    setCreating(false);
-    if (res.ok) {
-      setCreatedBatch(data.chips);
-      loadChips();
-    }
-  }
-
-  function exportCSV() {
-    if (!createdBatch) return;
-    const header = "Serial,ShortCode,ActivationCode,QR_URL,NFC_URL\n";
-    const rows = createdBatch.map((c) => `${c.serialPublic},${c.shortCode},${c.activationCode},${c.qrUrl || ""},${c.nfcUrl}`).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `chips_batch_${Date.now()}.csv`;
-    a.click();
-  }
-
-  function copyToClipboard(text: string, label: string) {
-    navigator.clipboard.writeText(text);
-    setCopied(label);
-    setTimeout(() => setCopied(""), 2000);
-  }
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function reactivateChip(chipId: string) {
     if (!confirm("¿Reactivar este chip por 2 años más? El usuario podrá editar su perfil y contactos nuevamente.")) return;
@@ -274,16 +344,252 @@ function AdminDashboard({ session }: { session: any }) {
       const data = await res.json();
       if (res.ok) {
         alert(`✅ Chip reactivado exitosamente. Nuevo vencimiento: ${new Date(data.chip.serviceEndDate).toLocaleDateString("es-PA")}`);
-        // Reload chip detail
-        await loadChipDetail(chipId);
+        if (selectedChip && selectedChip.id === chipId) {
+          setSelectedChip({ ...selectedChip, serviceStatus: "active", serviceEndDate: data.chip.serviceEndDate });
+        }
+        loadChips();
       } else {
-        alert(`❌ Error: ${data.error}`);
+        alert(data.error || "Error al reactivar chip");
       }
-    } catch {
-      alert("Error de conexión");
+    } catch (e) {
+      console.error(e);
+      alert("Error al conectar con el servidor");
     } finally {
       setReactivating(false);
     }
+  }
+
+  async function loadChipDetail(chipId: string) {
+    setLoadingDetail(true);
+    const res = await fetch(`/api/admin/chips/${chipId}`);
+    const data = await res.json();
+    setSelectedChip(data.chip);
+    setLoadingDetail(false);
+  }
+
+  async function loadOrgDetail(orgId: string) {
+    setLoadingOrgDetail(true);
+    const res = await fetch(`/api/admin/organizations/${orgId}`);
+    const data = await res.json();
+    setSelectedOrg(data.organization);
+    setLoadingOrgDetail(false);
+  }
+
+  const loadPackages = async () => {
+    try {
+      const res = await fetch("/api/admin/packages");
+      const data = await res.json();
+      if (res.ok) setPackages(data.packages || []);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleAdminAction = async (userId: string, action: string, data: any) => {
+    setCreating(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, data }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error);
+      alert(result.message || "Acción completada con éxito");
+      
+      // Refresh relevant data
+      if (selectedUser) loadUsers();
+      if (selectedOrg) loadOrgDetail(selectedOrg.id);
+      
+      return true;
+    } catch (e: any) {
+      alert("Error: " + e.message);
+      return false;
+    } finally {
+      setCreating(false);
+    }
+  };
+
+
+  async function handleCreateOrg(e: any) {
+    e.preventDefault();
+    setCreating(true);
+    const res = await fetch("/api/admin/organizations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newOrgData)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert("✅ Organización creada exitosamente");
+      setShowOrgModal(false);
+      loadOrganizations();
+    } else {
+      alert(data.error || "Error al crear organización");
+    }
+    setCreating(false);
+  }
+
+  async function handleAddOrgUser(e: any) {
+    e.preventDefault();
+    if (!selectedOrg) return;
+    setCreating(true);
+    const res = await fetch(`/api/admin/organizations/${selectedOrg.id}/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newOrgUser)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert("✅ Usuario añadido exitosamente");
+      setShowAddUserModal(false);
+      loadOrgDetail(selectedOrg.id);
+    } else {
+      alert(data.error || "Error al añadir usuario");
+    }
+    setCreating(false);
+  }
+
+  async function handleToggleUserStatus(userId: string, currentStatus: string) {
+    const newStatus = currentStatus === "active" ? "blocked" : "active";
+    if (!confirm(`¿Estás seguro de ${newStatus === "active" ? "activar" : "bloquear"} a este usuario?`)) return;
+    const res = await fetch(`/api/admin/users/${userId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (res.ok) {
+      if (selectedUser) setSelectedUser({ ...selectedUser, status: newStatus });
+      if (selectedOrg) loadOrgDetail(selectedOrg.id);
+      loadUsers();
+    }
+  }
+
+  async function handleCreateAdmin(e: any) {
+    e.preventDefault();
+    setCreating(true);
+    const res = await fetch("/api/admin/admins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newAdminData)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert("✅ Cuenta administrativa creada");
+      setShowAdminModal(false);
+      loadAdmins();
+      setNewAdminData({ email: "", password: "", role: "admin" });
+    } else {
+      alert(data.error || "Error al crear administrador");
+    }
+    setCreating(false);
+  }
+
+  async function handleToggleAdmin(adminId: string, currentStatus: string) {
+    const newStatus = currentStatus === "active" ? "blocked" : "active";
+    if (!confirm(`¿${newStatus === "active" ? "Activar" : "Desactivar"} este administrador?`)) return;
+    const res = await fetch(`/api/admin/admins/${adminId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (res.ok) {
+      loadAdmins();
+    }
+  }
+
+  async function handleToggleChipStatus(chipId: string, currentStatus: string) {
+    const newStatus = currentStatus === "activated" ? "suspended" : "activated";
+    if (!confirm(`¿Estás seguro de ${newStatus === "activated" ? "activar" : "suspender"} este chip?`)) return;
+    const res = await fetch(`/api/admin/chips/${chipId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (res.ok) {
+      if (selectedChip && selectedChip.id === chipId) setSelectedChip({ ...selectedChip, status: newStatus });
+      if (selectedOrg) loadOrgDetail(selectedOrg.id);
+      loadChips();
+    }
+  }
+
+  async function handleAssignChip(chipId: string, accountId: string | null) {
+    const res = await fetch(`/api/admin/chips/${chipId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountId })
+    });
+    if (res.ok) {
+      if (selectedOrg) loadOrgDetail(selectedOrg.id);
+      loadChips();
+    }
+  }
+
+  async function assignChipByCode(e: any) {
+    e.preventDefault();
+    if (!selectedOrg || !assignShortCode) return;
+    setCreating(true);
+    try {
+      // Find chip by code first
+      const sRes = await fetch(`/api/admin/chips?search=${assignShortCode}`);
+      const sData = await sRes.json();
+      const chip = sData.chips.find((c: any) => c.shortCode === assignShortCode || c.serialPublic === assignShortCode);
+      
+      if (!chip) { throw new Error("Chip no encontrado"); }
+      if (chip.accountId && !confirm("Questo chip già appartiene a un'altra organizzazione. Spostarlo?")) { return; }
+
+      const res = await fetch(`/api/admin/chips/${chip.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: selectedOrg.accountId })
+      });
+      if (res.ok) {
+        alert("✅ Chip asignado exitosamente");
+        setAssignShortCode("");
+        loadOrgDetail(selectedOrg.id);
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Error al asignar chip");
+      }
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function createBatch(e: any) {
+    e.preventDefault();
+    setCreating(true);
+    const res = await fetch("/api/admin/chips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ count: createCount })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setCreatedBatch(data.chips);
+      loadChips();
+    }
+    setCreating(false);
+  }
+
+  function exportCSV() {
+    if (!createdBatch) return;
+    const headers = ["Serial Public", "Short Code", "Activation Code", "QR URL"];
+    const rows = createdBatch.map(c => [c.serialPublic, c.shortCode, c.activationCode, c.qrUrl]);
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `chips_batch_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text || "");
+    setCopied(text || "");
+    setTimeout(() => setCopied(""), 2000);
   }
 
   // ─── User Detail View ───────────────────────────────────────────────────────
@@ -326,24 +632,244 @@ function AdminDashboard({ session }: { session: any }) {
               <InfoRow label="Chips Asignados" value={String(selectedUser._count.chips)} />
             </div>
 
-            <div className="flex gap-4 border-t border-border pt-6">
-              <button 
-                onClick={() => {
-                  setSelectedUser(null);
-                  setSearchQuery(selectedUser.email);
-                  setTab("chips");
-                }}
-                className="flex flex-1 justify-center items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-sm"
-              >
-                <Cpu className="h-4 w-4" /> Ver sus Chips
-              </button>
+            <div className="flex flex-wrap gap-3">
+                  <button 
+                    onClick={() => {
+                        setTempPassword("");
+                        setShowResetPasswordModal(true);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-100 text-orange-700 font-semibold hover:bg-orange-200 transition-all border border-orange-200"
+                  >
+                    <ShieldCheck className="h-4 w-4" /> Reset Contraseña
+                  </button>
+                  
+                  <button 
+                    onClick={() => {
+                        setSelectedPlanPackage(selectedUser.account?.packageId || "");
+                        setManualMaxChips(selectedUser.account?.maxChipsAllocated || 1);
+                        setShowEditPlanModal(true);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-100 text-blue-700 font-semibold hover:bg-blue-200 transition-all border border-blue-200"
+                  >
+                    <Activity className="h-4 w-4" /> Cambiar Plan / Tope
+                  </button>
 
-              <button className="flex flex-1 justify-center items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground font-semibold hover:bg-accent hover:border-border transition-colors shadow-sm">
-                <Shield className="h-4 w-4" /> {selectedUser.status === "active" ? "Suspender Usuario" : "Activar Usuario"}
-              </button>
-            </div>
+                  <button 
+                    onClick={() => {
+                        if (confirm("¿Estás seguro de convertir esta cuenta personal en una cuenta de Empresa?")) {
+                            // handleAdminAction(selectedUser.id, "convert-to-org", {});
+                        }
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-purple-100 text-purple-700 font-semibold hover:bg-purple-200 transition-all border border-purple-200"
+                  >
+                    <Building2 className="h-4 w-4" /> Convertir a Empresa
+                  </button>
+                </div>
+
+                <div className="pt-2">
+                    <button 
+                    onClick={() => loadUsers()}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-all"
+                    >
+                    <RefreshCw className="h-4 w-4" /> Actualizar Datos
+                    </button>
+                </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // ─── Organization Detail View ────────────────────────────────────────────────
+
+  if (selectedOrg) {
+    const orgChips = selectedOrg.account?.chips || [];
+    const orgUsers = selectedOrg.account?.users || [];
+    const chipsActivated = orgChips.filter(c => c.status === "activated").length;
+    const chipsInventory = orgChips.filter(c => c.status === "inventory").length;
+
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <button onClick={() => setSelectedOrg(null)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronLeft className="h-4 w-4" /> Volver a Empresas
+            </button>
+            <span className="text-xs text-muted-foreground font-mono">{selectedOrg.legalName}</span>
+          </div>
+        </header>
+
+        {loadingOrgDetail ? (
+          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : (
+          <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Org Details */}
+              <div className="md:col-span-1 p-6 rounded-2xl border border-border bg-card shadow-sm">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                      <Building2 className="h-6 w-6 text-primary" /> {selectedOrg.legalName}
+                    </h2>
+                    <p className="text-muted-foreground mt-1">{selectedOrg.displayName || selectedOrg.legalName}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${selectedOrg.status === "active" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                    {selectedOrg.status}
+                  </span>
+                </div>
+
+                <div className="space-y-4 text-sm mb-6">
+                  <InfoRow label="Email Contacto" value={selectedOrg.contactEmail || "—"} />
+                  <InfoRow label="Teléfono" value={selectedOrg.contactPhone || "—"} />
+                  <InfoRow label="RUC / Tax ID" value={selectedOrg.taxId || "—"} />
+                  <InfoRow label="Dirección" value={selectedOrg.address || "—"} />
+                  <InfoRow label="Fecha Registro" value={formatDate(selectedOrg.createdAt)} />
+                  <InfoRow label="Paquete" value={selectedOrg.account?.package?.name || "Sin paquete"} />
+                  <InfoRow label="Chips Máximos" value={String(selectedOrg.account?.maxChipsAllocated || 0)} />
+                </div>
+              </div>
+
+              {/* Org Stats */}
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-5 rounded-2xl border border-border bg-card">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-4">Uso de Chips</h3>
+                  <div className="space-y-4">
+                    <BarRow label="Chips Utilizados" value={chipsActivated} total={orgChips.length} color="bg-primary" />
+                    <BarRow label="Chips en Inventario" value={chipsInventory} total={orgChips.length} color="bg-blue-500" />
+                    <div className="pt-2 flex justify-between text-xs font-bold border-t border-border mt-2">
+                      <span>TOTAL ASIGNADOS:</span>
+                      <span>{orgChips.length} Chips</span>
+                    </div>
+
+                    <h4 className="text-[10px] font-bold uppercase text-muted-foreground mt-4 mb-2">Asignar Nuevo Chip</h4>
+                    <form onSubmit={assignChipByCode} className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="ShortCode o Serial" 
+                        className="flex-1 bg-background border border-border rounded-xl px-3 py-1.5 text-xs focus:ring-1 focus:ring-primary outline-none"
+                        value={assignShortCode}
+                        onChange={(e) => setAssignShortCode(e.target.value)}
+                      />
+                      <button 
+                        type="submit" 
+                        disabled={creating || !assignShortCode}
+                        className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-xs font-bold disabled:opacity-50"
+                      >
+                        {creating ? "..." : "Asignar"}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+                
+                <div className="p-5 rounded-2xl border border-border bg-card">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-4">Administración Interna</h3>
+                  <div className="space-y-4 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span>Usuarios / Miembros</span>
+                      <span className="font-bold">{orgUsers.length}</span>
+                    </div>
+                    <button 
+                      onClick={() => setShowAddUserModal(true)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium"
+                    >
+                      <Plus className="h-4 w-4" /> Añadir Miembro / HR
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabs for chips/users in Org */}
+            <div className="space-y-6">
+              <div className="p-6 rounded-2xl border border-border bg-card shadow-sm">
+                <h3 className="font-bold mb-4 flex items-center gap-2"><Cpu className="h-5 w-5 text-primary" /> Chips de la Organización</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="text-left py-3 font-medium">Serial/Short</th>
+                        <th className="text-left py-3 font-medium">Estado</th>
+                        <th className="text-left py-3 font-medium">Vencimiento</th>
+                        <th className="text-right py-3 font-medium">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orgChips.length > 0 ? orgChips.map(c => (
+                        <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="py-3">
+                            <span className="font-mono text-xs">{c.serialPublic}</span>
+                            <div className="text-[10px] text-muted-foreground">{c.shortCode}</div>
+                          </td>
+                          <td className="py-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusColor(c.status)}`}>{c.status}</span>
+                          </td>
+                          <td className="py-3">{c.serviceEndDate ? formatDate(c.serviceEndDate) : "—"}</td>
+                          <td className="py-3 text-right flex justify-end gap-2">
+                            <button onClick={() => loadChipDetail(c.id)} className="text-primary hover:underline text-xs font-semibold">Perfil</button>
+                            <button 
+                              onClick={() => handleToggleChipStatus(c.id, c.status)} 
+                              className={`${c.status === "activated" ? "text-amber-600" : "text-success"} hover:underline text-xs font-semibold`}
+                            >
+                              {c.status === "activated" ? "Suspender" : "Activar"}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if(confirm("¿Quitar este chip de la organización? Se volverá un chip individual.")) {
+                                  handleAssignChip(c.id, null);
+                                }
+                              }} 
+                              className="text-destructive hover:underline text-xs font-semibold"
+                            >
+                              Quitar
+                            </button>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={4} className="py-8 text-center text-muted-foreground italic">No hay chips asignados a esta organización todavía.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl border border-border bg-card shadow-sm">
+                <h3 className="font-bold mb-4 flex items-center gap-2"><Users className="h-5 w-5 text-primary" /> Miembros con Acceso al Panel</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="text-left py-3 font-medium">Usuario</th>
+                        <th className="text-left py-3 font-medium">Rol</th>
+                        <th className="text-left py-3 font-medium">Estado</th>
+                        <th className="text-right py-3 font-medium">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orgUsers.length > 0 ? orgUsers.map(u => (
+                        <tr key={u.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="py-3 font-medium">{u.email}</td>
+                          <td className="py-3 text-xs uppercase text-muted-foreground">{u.role}</td>
+                          <td className="py-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${u.status === "active" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                              {u.status}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right flex justify-end gap-3">
+                            <button onClick={() => handleToggleUserStatus(u.id, u.status)} className={`${u.status === "active" ? "text-destructive" : "text-success"} hover:underline font-medium`}>
+                              {u.status === "active" ? "Bloquear" : "Activar"}
+                            </button>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={4} className="py-8 text-center text-muted-foreground italic">No hay miembros registrados.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -366,9 +892,7 @@ function AdminDashboard({ session }: { session: any }) {
         </header>
 
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-          {/* Chip Header */}
           <div className="flex flex-col md:flex-row md:items-start gap-6">
-            {/* QR Code Section */}
             <div className="bg-white rounded-2xl border border-border p-6 text-center space-y-3 flex-shrink-0">
               <div className="w-48 h-48 mx-auto bg-white rounded-xl p-2 border-2 border-dashed border-gray-200 flex items-center justify-center">
                 <img
@@ -378,46 +902,8 @@ function AdminDashboard({ session }: { session: any }) {
                 />
               </div>
               <p className="font-mono text-lg font-bold tracking-wider text-gray-900">{selectedChip.shortCode}</p>
-              <p className="text-xs text-gray-500">{selectedChip.serialPublic}</p>
-              <div className="flex gap-2 justify-center">
-                <button
-                  onClick={() => {
-                    const printWindow = window.open("", "_blank");
-                    if (printWindow) {
-                      printWindow.document.write(`
-                        <html><head><title>QR - ${selectedChip.shortCode}</title>
-                        <style>
-                          body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: monospace; margin: 0; }
-                          img { width: 300px; height: 300px; }
-                          .code { font-size: 28px; font-weight: bold; letter-spacing: 4px; margin-top: 16px; }
-                          .serial { font-size: 12px; color: #888; margin-top: 4px; }
-                          .brand { font-size: 10px; color: #aaa; margin-top: 12px; }
-                        </style></head><body>
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(selectedChip.qrUrl)}&bgcolor=fff&color=000&margin=10" />
-                        <div class="code">${selectedChip.shortCode}</div>
-                        <div class="serial">${selectedChip.serialPublic}</div>
-                        <div class="brand">PreRescate PTY — Panamá</div>
-                        </body></html>
-                      `);
-                      printWindow.document.close();
-                      printWindow.print();
-                    }
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-                >
-                  <Printer className="h-4 w-4" /> Imprimir QR
-                </button>
-                <button
-                  onClick={() => copyToClipboard(selectedChip.qrUrl, "qr")}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm hover:bg-accent transition-colors"
-                >
-                  {copied === "qr" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-                  URL
-                </button>
-              </div>
             </div>
 
-            {/* Chip Info */}
             <div className="flex-1 space-y-4">
               <div className="p-5 rounded-2xl border border-border bg-card">
                 <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
@@ -425,124 +911,39 @@ function AdminDashboard({ session }: { session: any }) {
                 </h2>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <InfoRow label="Serial" value={selectedChip.serialPublic} mono />
-                  <InfoRow label="ShortCode" value={selectedChip.shortCode} mono />
                   <InfoRow label="Estado" value={selectedChip.status} badge={statusColor(selectedChip.status)} />
                   <InfoRow label="Servicio" value={selectedChip.serviceStatus} badge={serviceColor(selectedChip.serviceStatus)} />
-                  <InfoRow label="Tipo" value={selectedChip.productType} />
-                  <InfoRow label="Nicho" value={selectedChip.nicheType} />
-                  <InfoRow label="Lote" value={selectedChip.batchId || "—"} />
-                  <InfoRow label="Creado" value={formatDate(selectedChip.createdAt)} />
-                  <InfoRow label="Activado" value={selectedChip.activatedAt ? formatDate(selectedChip.activatedAt) : "—"} />
                   <InfoRow label="Vencimiento" value={selectedChip.serviceEndDate ? formatDate(selectedChip.serviceEndDate) : "—"} />
-                  <InfoRow label="Último escaneo" value={selectedChip.lastScanAt ? formatDate(selectedChip.lastScanAt) : "—"} />
-                  <InfoRow label="Total escaneos" value={String(selectedChip._count?.scanEvents || 0)} />
                 </div>
-
-                {/* Reactivation Button */}
-                {selectedChip.status === "activated" && (selectedChip.serviceStatus === "limited" || selectedChip.serviceStatus === "suspended") && (
-                  <div className="mt-4 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-orange-700 dark:text-orange-400">Servicio {selectedChip.serviceStatus === "limited" ? "Expirado — Modo Lectura" : "Suspendido"}</p>
-                        <p className="text-xs text-orange-600/80 dark:text-orange-400/70 mt-1">
-                          El sticker sigue funcionando y mostrando la info médica al escanearlo, pero el usuario no puede editar datos ni contactos.
-                          Reactivar otorgará 2 años adicionales de servicio completo.
-                        </p>
-                        <button
-                          onClick={() => reactivateChip(selectedChip.id)}
-                          disabled={reactivating}
-                          className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-md"
-                        >
-                          {reactivating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                          {reactivating ? "Reactivando..." : "Reactivar Servicio (+2 años)"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Activation Code */}
-              {selectedChip.claimTokens?.[0] && (
+              <div className="space-y-4">
+                <button 
+                  onClick={() => reactivateChip(selectedChip.id)}
+                  disabled={reactivating}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-success text-white font-semibold hover:bg-success/90 transition-all shadow-sm disabled:opacity-50"
+                >
+                  {reactivating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Renovar / Reactivar Chip (2 Años)
+                </button>
+                
                 <div className="p-5 rounded-2xl border border-border bg-card">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-amber-500" /> Código de Activación
-                  </h3>
-                  <div className="flex items-center gap-3">
-                    <code className="text-lg font-bold font-mono tracking-widest bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 px-4 py-2 rounded-lg border border-amber-200 dark:border-amber-500/20">
-                      {selectedChip.claimTokens[0].activationCode}
-                    </code>
-                    <button
-                      onClick={() => copyToClipboard(selectedChip.claimTokens[0].activationCode, "code")}
-                      className="p-2 rounded-lg hover:bg-accent transition-colors"
-                    >
-                      {copied === "code" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-                    </button>
-                    {selectedChip.claimTokens[0].usedAt && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-success/10 text-success font-medium">✓ Usado</span>
-                    )}
-                  </div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Perfil Médico</h3>
+                  {selectedChip.assignedProfile ? (
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-muted-foreground">Nombre:</span> {selectedChip.assignedProfile.firstName} {selectedChip.assignedProfile.lastName}</p>
+                      <p><span className="text-muted-foreground">Sangre:</span> <span className="font-bold text-red-600">{selectedChip.assignedProfile.bloodType}</span></p>
+                      <p><span className="text-muted-foreground">Alergias:</span> {selectedChip.assignedProfile.allergies || "—"}</p>
+                      <p><span className="text-muted-foreground">Condiciones:</span> {selectedChip.assignedProfile.chronicConditions || "—"}</p>
+                      <p><span className="text-muted-foreground">Medicamentos:</span> {selectedChip.assignedProfile.medications || "—"}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Sin perfil asignado</p>
+                  )}
                 </div>
-              )}
-
-              {/* URLs */}
-              <div className="p-5 rounded-2xl border border-border bg-card">
-                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4 text-primary" /> URLs
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">QR:</span>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs font-mono bg-muted px-2 py-1 rounded">{selectedChip.qrUrl}</code>
-                      <button onClick={() => copyToClipboard(selectedChip.qrUrl, "qrUrl")} className="p-1 hover:bg-accent rounded">
-                        {copied === "qrUrl" ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">NFC:</span>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs font-mono bg-muted px-2 py-1 rounded">{selectedChip.nfcUrl}</code>
-                      <button onClick={() => copyToClipboard(selectedChip.nfcUrl, "nfcUrl")} className="p-1 hover:bg-accent rounded">
-                        {copied === "nfcUrl" ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Owner / Profile Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl border border-border bg-card">
-              <h3 className="font-semibold mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Dueño</h3>
-              {selectedChip.owner ? (
-                <div className="space-y-1 text-sm">
-                  <p><span className="text-muted-foreground">Email:</span> {selectedChip.owner.email}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sin dueño asignado</p>
-              )}
-            </div>
-
-            <div className="p-5 rounded-2xl border border-border bg-card">
-              <h3 className="font-semibold mb-3 flex items-center gap-2"><Activity className="h-4 w-4 text-red-500" /> Perfil Médico</h3>
-              {selectedChip.assignedProfile ? (
-                <div className="space-y-1 text-sm">
-                  <p><span className="text-muted-foreground">Nombre:</span> {selectedChip.assignedProfile.firstName} {selectedChip.assignedProfile.lastName}</p>
-                  <p><span className="text-muted-foreground">Sangre:</span> <span className="font-bold text-red-600">{selectedChip.assignedProfile.bloodType}</span></p>
-                  <p><span className="text-muted-foreground">Alergias:</span> {selectedChip.assignedProfile.allergies || "—"}</p>
-                  <p><span className="text-muted-foreground">Condiciones:</span> {selectedChip.assignedProfile.chronicConditions || "—"}</p>
-                  <p><span className="text-muted-foreground">Medicamentos:</span> {selectedChip.assignedProfile.medications || "—"}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sin perfil asignado</p>
-              )}
-            </div>
-          </div>
 
           {/* Emergency Contacts */}
           {selectedChip.assignedProfile?.emergencyContacts && selectedChip.assignedProfile.emergencyContacts.length > 0 && (
@@ -631,6 +1032,7 @@ function AdminDashboard({ session }: { session: any }) {
             { key: "chips" as const, label: "Chips", icon: Cpu },
             { key: "users" as const, label: "Usuarios", icon: Users },
             { key: "empresas" as const, label: "Empresas", icon: Building2 },
+            { key: "admins" as const, label: "Admins", icon: Shield },
             { key: "create" as const, label: "Crear Lote", icon: Plus },
           ] as const).map((t) => (
             <button
@@ -960,14 +1362,19 @@ function AdminDashboard({ session }: { session: any }) {
                     <tr>
                       <th className="px-4 py-3 text-left font-medium">Empresa</th>
                       <th className="px-4 py-3 text-left font-medium">Email</th>
-                      <th className="px-4 py-3 text-left font-medium">Usuarios Asignados</th>
+                      <th className="px-4 py-3 text-left font-medium">Miembros</th>
                       <th className="px-4 py-3 text-left font-medium">Registro</th>
+                      <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {organizations.map((org) => (
-                      <tr key={org.id} className="hover:bg-accent/50 transition-colors">
-                        <td className="px-4 py-3 font-semibold">{org.legalName}</td>
+                      <tr 
+                        key={org.id} 
+                        onClick={() => loadOrgDetail(org.id)}
+                        className="hover:bg-accent/50 transition-colors cursor-pointer group"
+                      >
+                        <td className="px-4 py-3 font-semibold group-hover:text-primary transition-colors">{org.legalName}</td>
                         <td className="px-4 py-3 text-muted-foreground">{org.contactEmail || "—"}</td>
                         <td className="px-4 py-3">
                           <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">
@@ -976,15 +1383,17 @@ function AdminDashboard({ session }: { session: any }) {
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(org.createdAt)}</td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => {
-                              setAccountFilter(org.accountId as string);
-                              setTab("chips");
-                            }}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors"
-                          >
-                            Ver Chips
-                          </button>
+                          <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => {
+                                setAccountFilter(org.accountId as string);
+                                setTab("chips");
+                              }}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors"
+                            >
+                              Ver Chips
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1027,73 +1436,234 @@ function AdminDashboard({ session }: { session: any }) {
             )}
           </div>
         )}
+
+        {/* ─── Admins Tab ─────────────────────────────────────────────────── */}
+        {tab === "admins" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Cuentas Administrativas</h2>
+                <p className="text-sm text-muted-foreground">Gestiona los accesos al panel de control</p>
+              </div>
+              <button 
+                onClick={() => setShowAdminModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all shadow-sm"
+              >
+                <Plus className="h-4 w-4" /> Nuevo Administrador
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : (
+              <div className="grid gap-4">
+                {admins.map((admin) => (
+                  <div key={admin.id} className="p-4 rounded-xl border border-border bg-card hover:shadow-md transition-all flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <Shield className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">{admin.email}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md ${
+                            admin.role === "superadmin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                          }`}>
+                            {admin.role}
+                          </span>
+                          <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md ${
+                            admin.status === "active" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                          }`}>
+                            {admin.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => handleToggleAdmin(admin.id, admin.status)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          admin.status === "active" ? "hover:bg-destructive/10 text-destructive" : "hover:bg-success/10 text-success"
+                        }`}
+                        title={admin.status === "active" ? "Suspender" : "Activar"}
+                      >
+                        {admin.status === "active" ? <ShieldOff className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {admins.length === 0 && (
+                  <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl text-muted-foreground">
+                    <Shield className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p>No hay otros administradores registrados</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* ─── MODALS ─── */}
+
+        {/* Reset Password Modal */}
+        {showResetPasswordModal && selectedUser && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-orange-600">
+                <ShieldCheck className="h-6 w-6" /> Resetear Contraseña
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">Asigne una contraseña temporal para <strong>{(selectedUser as UserAdmin).email}</strong></p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Nueva Contraseña</label>
+                  <input 
+                    type="text" 
+                    value={tempPassword} 
+                    onChange={e => setTempPassword(e.target.value)}
+                    placeholder="ContraseñaTemporal123"
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                  />
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setShowResetPasswordModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
+                  <button 
+                    onClick={async () => {
+                      if (await handleAdminAction((selectedUser as UserAdmin).id, "reset-password", { password: tempPassword })) {
+                        setShowResetPasswordModal(false);
+                      }
+                    }}
+                    disabled={!tempPassword || creating}
+                    className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-200 disabled:opacity-50"
+                  >
+                    Actualizar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Plan Modal */}
+        {showEditPlanModal && selectedUser && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-blue-600">
+                <Activity className="h-6 w-6" /> Editar Plan y Límites
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">Modifique las capacidades de la cuenta de <strong>{(selectedUser as UserAdmin).email}</strong></p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Paquete Sugerido</label>
+                  <select 
+                    value={selectedPlanPackage} 
+                    onChange={e => setSelectedPlanPackage(e.target.value)}
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                  >
+                    <option value="">(Sin Paquete Específico)</option>
+                    {packages.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.maxChips} chips)</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Tope Máximo de Chips (Manual)</label>
+                  <input 
+                    type="number" 
+                    value={manualMaxChips} 
+                    onChange={e => setManualMaxChips(parseInt(e.target.value))}
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">Este valor sobrescribe el tope del paquete para cobros adicionales.</p>
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setShowEditPlanModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
+                  <button 
+                    onClick={async () => {
+                      if (await handleAdminAction((selectedUser as UserAdmin).id, "update-plan", { packageId: selectedPlanPackage, maxChips: manualMaxChips })) {
+                        setShowEditPlanModal(false);
+                      }
+                    }}
+                    disabled={creating}
+                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-50"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Org Member Modal */}
+        {showAddUserModal && selectedOrg && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-primary">
+                <Users className="h-6 w-6" /> Añadir Miembro / HR
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">Nuevo acceso para <strong>{(selectedOrg as OrganizationAdmin).legalName}</strong></p>
+              
+              <div className="space-y-4">
+                <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Email</label>
+                    <input 
+                    type="email"
+                    value={newOrgUser.email}
+                    onChange={e => setNewOrgUser({...newOrgUser, email: e.target.value})}
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                    placeholder="empleado@empresa.com"
+                    />
+                </div>
+                <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Contraseña Temporal</label>
+                    <input 
+                    type="text"
+                    value={newOrgUser.password}
+                    onChange={e => setNewOrgUser({...newOrgUser, password: e.target.value})}
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                    placeholder="Pre12345"
+                    />
+                </div>
+                <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Rol Corporativo</label>
+                    <select 
+                    value={newOrgUser.role}
+                    onChange={e => setNewOrgUser({...newOrgUser, role: e.target.value})}
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                    >
+                        <option value="member">Miembro / Empleado</option>
+                        <option value="owner">Admin de Empresa (HR)</option>
+                    </select>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setShowAddUserModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
+                  <button 
+                    onClick={async () => {
+                      if (await handleAdminAction((selectedOrg as OrganizationAdmin).id, "add-member", newOrgUser)) {
+                        setShowAddUserModal(false);
+                      }
+                    }}
+                    disabled={!newOrgUser.email || !newOrgUser.password || creating}
+                    className="flex-1 py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 disabled:opacity-50"
+                  >
+                    Crear Miembro
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Utility Components ─────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: typeof Cpu; color: string }) {
-  return (
-    <div className="p-5 rounded-2xl border border-border bg-card hover:shadow-sm transition-all">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-        <Icon className={`h-4 w-4 ${color}`} /> {label}
-      </div>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-    </div>
-  );
-}
-
-function BarRow({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-  return (
-    <div>
-      <div className="flex justify-between text-sm mb-1">
-        <span>{label}</span>
-        <span className="font-semibold">{value} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
-      </div>
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value, mono, badge }: { label: string; value: string; mono?: boolean; badge?: string }) {
-  return (
-    <div className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-      <span className="text-muted-foreground">{label}</span>
-      {badge ? (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge}`}>{value}</span>
-      ) : (
-        <span className={mono ? "font-mono text-xs" : ""}>{value}</span>
-      )}
-    </div>
-  );
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function statusColor(s: string) {
-  switch (s) {
-    case "activated": return "bg-success/10 text-success";
-    case "inventory": return "bg-blue-500/10 text-blue-600";
-    case "sold": return "bg-amber-500/10 text-amber-600";
-    case "suspended": return "bg-destructive/10 text-destructive";
-    default: return "bg-muted text-muted-foreground";
-  }
-}
-
-function serviceColor(s: string) {
-  switch (s) {
-    case "active": return "bg-success/10 text-success";
-    case "limited": return "bg-orange-500/10 text-orange-600 dark:text-orange-400";
-    case "suspended": return "bg-destructive/10 text-destructive";
-    default: return "bg-muted text-muted-foreground";
-  }
-}

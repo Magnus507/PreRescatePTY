@@ -46,6 +46,19 @@ export async function GET(req: NextRequest) {
         createdAt: true,
         lastLoginAt: true,
         accountId: true,
+        account: {
+          select: {
+            id: true,
+            packageId: true,
+            maxChipsAllocated: true,
+            accountType: true,
+            package: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
         profile: {
           select: {
             firstName: true,
@@ -58,10 +71,33 @@ export async function GET(req: NextRequest) {
             chips: true,
           },
         },
+
       },
     }),
     prisma.user.count({ where }),
   ]);
 
   return NextResponse.json({ users, total, page, limit });
+}
+
+// PATCH - toggle user status
+export async function PATCH(req: NextRequest) {
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const { id, status } = body;
+
+  if (!id || !["active", "suspended"].includes(status)) {
+    return NextResponse.json({ error: "ID y estado válido requeridos" }, { status: 400 });
+  }
+
+  const user = await prisma.user.update({
+    where: { id },
+    data: { status },
+    select: { id: true, email: true, status: true },
+  });
+
+  return NextResponse.json({ user });
 }

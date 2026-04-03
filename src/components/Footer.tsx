@@ -15,7 +15,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Sistema panameño de identificación de emergencia para motociclistas. Tu información vital, siempre accesible.
+              Sistema panameño de identificación de emergencia con NFC y QR. Tu información vital, siempre accesible en un sticker oficial.
             </p>
           </div>
 

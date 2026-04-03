@@ -62,22 +62,21 @@ export default function DashboardPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        {data.accountType && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card shadow-sm text-sm font-medium text-muted-foreground">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card shadow-sm text-sm font-medium text-muted-foreground">
             <Building2 className="h-4 w-4 text-primary" />
             <span>
               Cuenta: <span className="font-semibold text-primary">
-                {data.accountType === "company" ? "CORPORATIVA" : 
-                 data.accountType === "school" ? "COLEGIO" : "PERSONAL"}
+                {(data.accountType === "company" || data.accountType === "organization") ? "CORPORATIVA" : 
+                 data.accountType === "school" ? "COLEGIO" :
+                 (data.packageName?.toLowerCase().includes("duo") || data.packageName?.toLowerCase().includes("family")) ? "FAMILIAR" : "PERSONAL"}
               </span>
               {data.packageName && (
                 <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
-                  {data.packageName}
+                  Plan {data.packageName}
                 </span>
               )}
             </span>
           </div>
-        )}
       </div>
 
       {/* Setup checklist */}

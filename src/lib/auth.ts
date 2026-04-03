@@ -60,7 +60,8 @@ export const authOptions: NextAuthOptions = {
               id: user.id,
               email: user.email,
               name: user.email,
-              role: "user",
+              role: user.role || "user",
+              accountId: user.accountId,
             };
           }
         }
@@ -73,16 +74,19 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as { role?: string }).role || "user";
+        token.role = (user as any).role || "user";
+        token.accountId = (user as any).accountId;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string; role?: string }).id = token.id as string;
-        (session.user as { id?: string; role?: string }).role = token.role as string;
+        (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
+        (session.user as any).accountId = token.accountId;
       }
       return session;
     },
   },
+
 };

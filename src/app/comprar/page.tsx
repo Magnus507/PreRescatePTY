@@ -6,60 +6,63 @@ export const metadata = { title: "Comprar" };
 
 const packages = [
   {
-    name: "Básico",
-    price: 20,
-    emoji: "🧩",
+    name: "Plan Estándar",
+    price: 25,
+    emoji: "🛡️",
     features: [
-      "1 Stickers Oficiales NFC/QR",
-      "Panel Administrativo de Cuenta",
-      "Gestión de hasta 1 Perfiles Médicos",
-      "Alertas a Contactos de Emergencia"
+      "1 Sticker Oficial NFC/QR",
+      "Panel de Usuario Personal",
+      "Perfil Médico de Emergencia",
+      "Alertas a Contactos Ilimitadas",
+      "Vigencia por 2 Años"
     ],
     className: "border-border bg-card text-card-foreground",
     buttonClass: "bg-[#0b1b36] hover:bg-[#0b1b36]/90 text-white",
     checkClass: "text-[#E63946]"
   },
   {
-    name: "Familiar",
+    name: "Plan Dúo",
     price: 45,
-    savings: 15,
-    emoji: "🔥",
+    savings: 5,
+    emoji: "👥",
     features: [
-      "3 Stickers Oficiales NFC/QR",
-      "Panel Administrativo de Cuenta",
-      "Gestión de hasta 3 Perfiles Médicos",
-      "Alertas a Contactos de Emergencia"
+      "2 Stickers Oficiales NFC/QR",
+      "Panel de Usuario Personal",
+      "Gestión de 2 Perfiles Médicos",
+      "Alertas a Contactos Ilimitadas",
+      "Vigencia por 2 Años"
     ],
     className: "bg-[#fffaf0] border-amber-100 text-card-foreground",
     buttonClass: "bg-[#0b1b36] hover:bg-[#0b1b36]/90 text-white",
     checkClass: "text-[#E63946]"
   },
   {
-    name: "Hogar",
-    price: 70,
-    savings: 30,
+    name: "Family Club",
+    price: 65,
+    savings: 10,
     emoji: "🏠",
     isPopular: true,
     features: [
-      "5 Stickers Oficiales NFC/QR",
-      "Panel Administrativo de Cuenta",
-      "Gestión de hasta 5 Perfiles Médicos",
-      "Alertas a Contactos de Emergencia"
+      "3 Stickers Oficiales NFC/QR",
+      "Panel Familiar Centralizado",
+      "Varios Perfiles Médicos",
+      "Alertas a Contactos Ilimitadas",
+      "Vigencia por 2 Años"
     ],
     className: "border-[#E63946] border-2 bg-card text-card-foreground relative",
     buttonClass: "bg-[#E63946] hover:bg-[#cc333f] text-white",
     checkClass: "text-[#E63946]"
   },
   {
-    name: "Pro",
-    price: 140,
-    savings: 60,
-    emoji: "🚀",
+    name: "Hogar",
+    price: 95,
+    savings: 25,
+    emoji: "🔥",
     features: [
-      "10 Stickers Oficiales NFC/QR",
-      "Panel Administrativo de Cuenta",
-      "Gestión de hasta 10 Perfiles Médicos",
-      "Alertas a Contactos de Emergencia"
+      "5 Stickers Oficiales NFC/QR",
+      "Panel Familiar de Control",
+      "Hasta 5 Perfiles Médicos",
+      "Vigencia por 2 Años"
     ],
     className: "bg-[#f8faff] border-blue-100 text-card-foreground",
     buttonClass: "bg-[#0b1b36] hover:bg-[#0b1b36]/90 text-white",
@@ -67,14 +70,14 @@ const packages = [
   },
   {
     name: "Empresa",
-    price: 320,
-    savings: 80,
+    price: 250,
+    savings: 50,
     emoji: "🏢",
     features: [
-      "20 Stickers Oficiales NFC/QR",
-      "Panel Administrativo de Cuenta",
-      "Gestión de hasta 20 Perfiles Médicos",
-      "Alertas a Contactos de Emergencia"
+      "20 Stickers Corporativos",
+      "Panel Administrativo HR",
+      "Gestión Centralizada de Miembros",
+      "Vigencia por 2 Años"
     ],
     className: "bg-[#fcfdff] border-gray-100 text-card-foreground",
     buttonClass: "bg-[#0b1b36] hover:bg-[#0b1b36]/90 text-white",
@@ -86,10 +89,10 @@ const packages = [
     savings: 150,
     emoji: "👔",
     features: [
-      "30 Stickers Oficiales NFC/QR",
-      "Panel Administrativo de Cuenta",
-      "Gestión de hasta 30 Perfiles Médicos",
-      "Alertas a Contactos de Emergencia"
+      "50 Stickers Corporativos",
+      "Panel Administrativo Full",
+      "Soporte Prioritario VIP",
+      "Vigencia por 2 Años"
     ],
     className: "bg-[#0b1b36] border-[#0b1b36] text-white",
     buttonClass: "bg-white hover:bg-neutral-100 text-[#0b1b36]",

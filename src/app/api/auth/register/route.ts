@@ -33,13 +33,42 @@ export async function POST(req: NextRequest) {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email: emailLower,
-        phone: phone || null,
-        passwordHash,
-      },
+    // Find or create the "Básico" package
+    let pkg = await prisma.package.findUnique({ where: { name: "Básico" } });
+    if (!pkg) {
+      pkg = await prisma.package.create({
+        data: { name: "Básico", maxChips: 1, price: 20, isActive: true },
+      });
+    }
+
+    // Create account + user in transaction
+    const user = await prisma.$transaction(async (tx) => {
+      const account = await tx.account.create({
+        data: {
+          accountType: "personal",
+          accountName: emailLower,
+          status: "active",
+          packageId: pkg!.id,
+          maxChipsAllocated: pkg!.maxChips,
+        },
+      });
+
+      const newUser = await tx.user.create({
+        data: {
+          email: emailLower,
+          phone: phone || null,
+          passwordHash,
+          accountId: account.id,
+        },
+      });
+
+      // Set account owner
+      await tx.account.update({
+        where: { id: account.id },
+        data: { ownerUserId: newUser.id },
+      });
+
+      return newUser;
     });
 
     // Create audit log

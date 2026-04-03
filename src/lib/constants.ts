@@ -1,6 +1,6 @@
 export const SITE_NAME = "PreRescate PTY";
 export const SITE_DESCRIPTION =
-  "Sistema panameño de identificación de emergencia para motociclistas con NFC y QR.";
+  "Sistema panameño de identificación de emergencia con NFC y QR. Tu información vital, siempre accesible en un sticker oficial.";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const BLOOD_TYPES = [
