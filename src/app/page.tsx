@@ -10,12 +10,12 @@ import {
 
 export default function Home() {
   const plans = [
-    { name: "Básico", limit: 1, price: 20, ahorra: null, icon: "🧩", color: "bg-slate-100 dark:bg-slate-800" },
-    { name: "Familiar", limit: 3, price: 45, ahorra: 15, icon: "🔥", color: "bg-orange-50 dark:bg-orange-900/30" },
-    { name: "Hogar", limit: 5, price: 70, ahorra: 30, icon: "🏠", color: "bg-blue-50 dark:bg-blue-900/30", popular: true },
-    { name: "Pro", limit: 10, price: 140, ahorra: 60, icon: "🚀", color: "bg-indigo-50 dark:bg-indigo-900/30" },
-    { name: "Empresa", limit: 20, price: 320, ahorra: 80, icon: "🏢", color: "bg-slate-100 dark:bg-slate-800" },
-    { name: "Corporativo", limit: 30, price: 450, ahorra: 150, icon: "👔", color: "bg-slate-900 text-white dark:bg-black" },
+    { name: "Plan Estándar", limit: 1, price: 25, ahorra: null, icon: "🛡️", color: "bg-slate-100 dark:bg-slate-800" },
+    { name: "Plan Dúo", limit: 2, price: 45, ahorra: 5, icon: "👥", color: "bg-orange-50 dark:bg-orange-900/30" },
+    { name: "Family Club", limit: 3, price: 65, ahorra: 10, icon: "🏠", color: "bg-blue-50 dark:bg-blue-900/30", popular: true },
+    { name: "Hogar", limit: 5, price: 95, ahorra: 25, icon: "🔥", color: "bg-indigo-50 dark:bg-indigo-900/30" },
+    { name: "Empresa", limit: 20, price: 250, ahorra: 50, icon: "🏢", color: "bg-slate-100 dark:bg-slate-800" },
+    { name: "Corporativo", limit: 50, price: 450, ahorra: 150, icon: "👔", color: "bg-slate-900 text-white dark:bg-black" },
   ];
 
   return (

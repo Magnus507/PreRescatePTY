@@ -657,7 +657,7 @@ function AdminDashboard({ session }: { session: any }) {
                   <button 
                     onClick={() => {
                         if (confirm("¿Estás seguro de convertir esta cuenta personal en una cuenta de Empresa?")) {
-                            // handleAdminAction(selectedUser.id, "convert-to-org", {});
+                            handleAdminAction(selectedUser.id, "convert-to-org", {});
                         }
                     }}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-purple-100 text-purple-700 font-semibold hover:bg-purple-200 transition-all border border-purple-200"
@@ -788,6 +788,7 @@ function AdminDashboard({ session }: { session: any }) {
                     <thead>
                       <tr className="border-b border-border text-muted-foreground">
                         <th className="text-left py-3 font-medium">Serial/Short</th>
+                        <th className="text-left py-3 font-medium">Código/QR</th>
                         <th className="text-left py-3 font-medium">Estado</th>
                         <th className="text-left py-3 font-medium">Vencimiento</th>
                         <th className="text-right py-3 font-medium">Acción</th>
@@ -799,6 +800,24 @@ function AdminDashboard({ session }: { session: any }) {
                           <td className="py-3">
                             <span className="font-mono text-xs">{c.serialPublic}</span>
                             <div className="text-[10px] text-muted-foreground">{c.shortCode}</div>
+                          </td>
+                          <td className="py-3">
+                            <div className="flex flex-col gap-1 items-start">
+                              {c.claimTokens && c.claimTokens.length > 0 ? (
+                                <span className="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 border border-slate-200">
+                                  {c.claimTokens[0].activationCode}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground">Sin Código</span>
+                              )}
+                              <button
+                                onClick={() => window.open(`/qr/${c.shortCode}`, "_blank")}
+                                className="flex items-center gap-1 text-[10px] text-primary hover:underline hover:text-primary/80 mt-1"
+                                title="Ver código QR"
+                              >
+                                <QrCode className="h-3 w-3" /> Imprimir QR
+                              </button>
+                            </div>
                           </td>
                           <td className="py-3">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusColor(c.status)}`}>{c.status}</span>
@@ -825,7 +844,7 @@ function AdminDashboard({ session }: { session: any }) {
                           </td>
                         </tr>
                       )) : (
-                        <tr><td colSpan={4} className="py-8 text-center text-muted-foreground italic">No hay chips asignados a esta organización todavía.</td></tr>
+                        <tr><td colSpan={5} className="py-8 text-center text-muted-foreground italic">No hay chips asignados a esta organización todavía.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -1655,6 +1674,97 @@ function AdminDashboard({ session }: { session: any }) {
                     className="flex-1 py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 disabled:opacity-50"
                   >
                     Crear Miembro
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reset Password Modal */}
+        {showResetPasswordModal && selectedUser && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-orange-600">
+                <ShieldCheck className="h-6 w-6" /> Reset Contraseña
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">Nueva contraseña para <strong>{(selectedUser as any).email}</strong></p>
+              
+              <div className="space-y-4">
+                <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Nueva Contraseña</label>
+                    <input 
+                    type="text"
+                    value={tempPassword}
+                    onChange={e => setTempPassword(e.target.value)}
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                    placeholder="Escribe la nueva contraseña"
+                    />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setShowResetPasswordModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
+                  <button 
+                    onClick={async () => {
+                      if (await handleAdminAction((selectedUser as any).id, "reset-password", { password: tempPassword })) {
+                        setShowResetPasswordModal(false);
+                      }
+                    }}
+                    disabled={!tempPassword || creating}
+                    className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-600/20 disabled:opacity-50"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Plan Modal */}
+        {showEditPlanModal && selectedUser && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-blue-600">
+                <Activity className="h-6 w-6" /> Modificar Plan
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">Plan y límites para <strong>{(selectedUser as any).email}</strong></p>
+              
+              <div className="space-y-4">
+                <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Package ID (Opcional)</label>
+                    <input 
+                    type="text"
+                    value={selectedPlanPackage}
+                    onChange={e => setSelectedPlanPackage(e.target.value)}
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                    placeholder="Ej. pkg_duo, pkg_family"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">Dejar en blanco asume sin plan formal.</p>
+                </div>
+                <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Máximo Chips Permitidos</label>
+                    <input 
+                    type="number"
+                    min="1"
+                    value={manualMaxChips}
+                    onChange={e => setManualMaxChips(parseInt(e.target.value) || 1)}
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                    />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setShowEditPlanModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
+                  <button 
+                    onClick={async () => {
+                      if (await handleAdminAction((selectedUser as any).id, "update-plan", { packageId: selectedPlanPackage, maxChips: manualMaxChips })) {
+                        setShowEditPlanModal(false);
+                      }
+                    }}
+                    disabled={creating}
+                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 disabled:opacity-50"
+                  >
+                    Guardar
                   </button>
                 </div>
               </div>
