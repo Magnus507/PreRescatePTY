@@ -184,7 +184,7 @@ interface AdminAccount {
   createdAt: string;
 }
 
-type Tab = "dashboard" | "chips" | "users" | "empresas" | "admins" | "create";
+type Tab = "dashboard" | "chips" | "users" | "empresas" | "admins" | "create" | "inventory";
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
@@ -234,6 +234,9 @@ function AdminDashboard({ session }: { session: any }) {
   const [total, setTotal] = useState(0);
   const [usersTotal, setUsersTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [inventoryChips, setInventoryChips] = useState<ChipAdmin[]>([]);
+  const [inventoryTotal, setInventoryTotal] = useState(0);
+  const [bulkAssignCount, setBulkAssignCount] = useState(10);
   const [createCount, setCreateCount] = useState(5);
   const [creating, setCreating] = useState(false);
   const [createdBatch, setCreatedBatch] = useState<{ id: string; serialPublic: string; shortCode: string; activationCode: string; nfcUrl: string; qrUrl: string }[] | null>(null);
@@ -324,13 +327,23 @@ function AdminDashboard({ session }: { session: any }) {
     finally { setLoading(false); }
   }, []);
 
+  const loadInventory = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`/api/admin/inventory?limit=200`);
+    const data = await res.json();
+    setInventoryChips(data.chips || []);
+    setInventoryTotal(data.total || 0);
+    setLoading(false);
+  }, []);
+
   const loadData = useCallback(() => {
     if (tab === "dashboard") loadStats();
     if (tab === "chips" || tab === "create") loadChips();
     if (tab === "users") loadUsers();
     if (tab === "empresas") loadOrganizations();
     if (tab === "admins") loadAdmins();
-  }, [tab, loadStats, loadChips, loadUsers, loadOrganizations, loadAdmins]);
+    if (tab === "inventory") loadInventory();
+  }, [tab, loadStats, loadChips, loadUsers, loadOrganizations, loadAdmins, loadInventory]);
 
   useEffect(() => {
     loadData();
@@ -444,6 +457,26 @@ function AdminDashboard({ session }: { session: any }) {
       loadOrgDetail(selectedOrg.id);
     } else {
       alert(data.error || "Error al añadir usuario");
+    }
+    setCreating(false);
+  }
+
+  async function handleBulkAssign(e: any) {
+    e.preventDefault();
+    if (!selectedOrg) return;
+    if (!confirm(`¿Transferir ${bulkAssignCount} chips desde el inventario vírgen a ${selectedOrg.legalName}?`)) return;
+    setCreating(true);
+    const res = await fetch(`/api/admin/organizations/${selectedOrg.id}/assign-bulk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ count: parseInt(bulkAssignCount as unknown as string, 10) })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.message);
+      loadOrgDetail(selectedOrg.id);
+    } else {
+      alert(data.error || "Error al transferir chips masivamente");
     }
     setCreating(false);
   }
@@ -741,7 +774,7 @@ function AdminDashboard({ session }: { session: any }) {
                       <span>{orgChips.length} Chips</span>
                     </div>
 
-                    <h4 className="text-[10px] font-bold uppercase text-muted-foreground mt-4 mb-2">Asignar Nuevo Chip</h4>
+                    <h4 className="text-[10px] font-bold uppercase text-muted-foreground mt-4 mb-2">Asignar Nuevo Chip Individual</h4>
                     <form onSubmit={assignChipByCode} className="flex gap-2">
                       <input 
                         type="text" 
@@ -756,6 +789,25 @@ function AdminDashboard({ session }: { session: any }) {
                         className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-xs font-bold disabled:opacity-50"
                       >
                         {creating ? "..." : "Asignar"}
+                      </button>
+                    </form>
+
+                    <h4 className="text-[10px] font-bold uppercase text-muted-foreground mt-4 mb-2">Asignar Lote Aleatorio Masivo</h4>
+                    <form onSubmit={handleBulkAssign} className="flex gap-2">
+                      <input 
+                        type="number" 
+                        min="1"
+                        placeholder="Cant." 
+                        className="w-20 bg-background border border-border rounded-xl px-3 py-1.5 text-xs focus:ring-1 focus:ring-primary outline-none"
+                        value={bulkAssignCount}
+                        onChange={(e) => setBulkAssignCount(Number(e.target.value))}
+                      />
+                      <button 
+                        type="submit" 
+                        disabled={creating || bulkAssignCount < 1}
+                        className="flex-1 px-3 py-1.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors text-xs font-bold disabled:opacity-50"
+                      >
+                        {creating ? "..." : "Transferir Chips Vírgenes"}
                       </button>
                     </form>
                   </div>
@@ -1051,6 +1103,7 @@ function AdminDashboard({ session }: { session: any }) {
             { key: "chips" as const, label: "Chips", icon: Cpu },
             { key: "users" as const, label: "Usuarios", icon: Users },
             { key: "empresas" as const, label: "Empresas", icon: Building2 },
+            { key: "inventory" as const, label: "Inventario Vírgen", icon: Activity },
             { key: "admins" as const, label: "Admins", icon: Shield },
             { key: "create" as const, label: "Crear Lote", icon: Plus },
           ] as const).map((t) => (
@@ -1521,6 +1574,81 @@ function AdminDashboard({ session }: { session: any }) {
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* ─── Inventario Vírgen ─── */}
+        {tab === "inventory" && (
+          <div className="space-y-6">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-6">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Activity className="h-6 w-6 text-primary" /> Inventario Global
+                </h2>
+                <p className="text-muted-foreground mt-1 text-sm bg-blue-500/10 text-blue-600 px-3 py-1.5 rounded-lg inline-block border border-blue-500/20">
+                  Total de Chips Vírgenes Disponibles: <strong>{inventoryTotal}</strong>
+                </p>
+              </div>
+            </header>
+
+            {loading ? (
+              <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium">Lote / Creación</th>
+                      <th className="px-4 py-3 text-left font-medium">Serial</th>
+                      <th className="px-4 py-3 text-left font-medium">ShortCode</th>
+                      <th className="px-4 py-3 text-left font-medium">PIN (Activación)</th>
+                      <th className="px-4 py-3 text-right font-medium">Acciones Rápidas</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {inventoryChips.map((chip) => (
+                      <tr key={chip.id} className="hover:bg-accent/50 transition-colors">
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {formatDate(chip.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs">{chip.serialPublic}</td>
+                        <td className="px-4 py-3 font-mono text-xs font-bold">{chip.shortCode}</td>
+                        <td className="px-4 py-3 font-mono text-xs bg-muted/50 rounded inline-block mt-2">
+                          {chip.claimTokens?.[0]?.activationCode || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 text-right space-x-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyToClipboard(`https://pre-rescate-pty.vercel.app/qr/${chip.shortCode}`); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground rounded-lg transition-colors text-xs font-semibold"
+                            title="Copiar link para grabar con el NFC blanco"
+                          >
+                            <Copy className="h-3.5 w-3.5" /> {copied === `https://pre-rescate-pty.vercel.app/qr/${chip.shortCode}` ? "Copiado!" : "NFC"}
+                          </button>
+                          <a
+                            href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https://pre-rescate-pty.vercel.app/qr/${chip.shortCode}`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted text-muted-foreground hover:bg-blue-600 hover:text-white rounded-lg transition-colors text-xs font-semibold"
+                            title="Abrir imagen QR para imprimir"
+                          >
+                            <Printer className="h-3.5 w-3.5" /> Ver QR
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                    {inventoryChips.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12 text-muted-foreground">
+                          <div className="flex flex-col items-center justify-center">
+                            <Activity className="h-10 w-10 opacity-20 mb-3" />
+                            <p>Has agotado el inventario.<br />¡Ve a "Crear Lote" para fabricar más chips vírgenes!</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
