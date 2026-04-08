@@ -140,6 +140,7 @@ interface UserAdmin {
     maxChipsAllocated: number;
     accountType: string;
     package: { name: string } | null;
+    chips?: ChipAdmin[];
   } | null;
   profile: { firstName: string; lastName: string; bloodType: string } | null;
   _count: { chips: number };
@@ -708,7 +709,96 @@ function AdminDashboard({ session }: { session: any }) {
                     </button>
                 </div>
           </div>
+
+          <div className="pt-6">
+            <h3 className="font-bold mb-4 flex items-center gap-2"><Cpu className="h-5 w-5 text-primary" /> Chips Asignados</h3>
+            <div className="p-4 rounded-2xl border border-border bg-card shadow-sm">
+                {selectedUser.account?.chips && selectedUser.account.chips.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm shrink-0">
+                            <thead className="border-b border-border text-muted-foreground bg-muted/50">
+                                <tr>
+                                    <th className="text-left py-2 px-3 font-medium">Serial / ShortCode</th>
+                                    <th className="text-left py-2 px-3 font-medium">Estado</th>
+                                    <th className="text-left py-2 px-3 font-medium">Asignado</th>
+                                    <th className="text-right py-2 px-3 font-medium">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {selectedUser.account.chips.map((chip: any) => (
+                                    <tr key={chip.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
+                                        <td className="py-2 px-3">
+                                            <span className="font-mono">{chip.serialPublic}</span><br />
+                                            <span className="font-bold">{chip.shortCode}</span>
+                                        </td>
+                                        <td className="py-2 px-3">
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${chip.status === 'activated' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{chip.status}</span>
+                                        </td>
+                                        <td className="py-2 px-3">{formatDate(chip.assignedAt || chip.createdAt)}</td>
+                                        <td className="py-2 px-3 text-right">
+                                            <button onClick={() => { setSelectedUser(null); loadChipDetail(chip.id); }} className="text-primary text-xs hover:underline font-semibold">Ver detalle</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <p className="text-center text-muted-foreground py-6 italic text-sm">No tiene chips asignados actualmente.</p>
+                )}
+            </div>
+          </div>
         </div>
+
+        {showResetPasswordModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-orange-600">
+                <ShieldCheck className="h-6 w-6" /> Resetear Contraseña
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">Nueva contraseña en texto plano para <strong>{selectedUser.email}</strong></p>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Nueva Contraseña</label>
+                  <input type="text" value={tempPassword} onChange={e => setTempPassword(e.target.value)} placeholder="ContraseñaTemporal123" className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none" />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setShowResetPasswordModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
+                  <button onClick={async () => { if (await handleAdminAction(selectedUser.id, "reset-password", { password: tempPassword })) setShowResetPasswordModal(false); }} disabled={!tempPassword || creating} className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-200 disabled:opacity-50">Guardar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showEditPlanModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-blue-600">
+                <Activity className="h-6 w-6" /> Modificar Plan
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">Modificar plan asignado a <strong>{selectedUser.email}</strong></p>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Paquete Sugerido</label>
+                  <select value={selectedPlanPackage} onChange={e => setSelectedPlanPackage(e.target.value)} className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none">
+                    <option value="">(Sin Paquete Específico)</option>
+                    {packages.map(p => <option key={p.id} value={p.id}>{p.name} ({p.maxChips} chips)</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Tope de Chips</label>
+                  <input type="number" value={manualMaxChips} onChange={e => setManualMaxChips(parseInt(e.target.value))} className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none" />
+                  <p className="text-[10px] text-muted-foreground mt-1">Límite absoluto para su contenedor.</p>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setShowEditPlanModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
+                  <button onClick={async () => { if (await handleAdminAction(selectedUser.id, "update-plan", { packageId: selectedPlanPackage, maxChips: manualMaxChips })) setShowEditPlanModal(false); }} disabled={creating} className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-50">Guardar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -936,6 +1026,66 @@ function AdminDashboard({ session }: { session: any }) {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showAddUserModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-indigo-600">
+                <Users className="h-6 w-6" /> Añadir Miembro / HR
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">Nuevo miembro para <strong>{selectedOrg.legalName}</strong></p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Email Nuevo Usuario</label>
+                  <input 
+                    type="email" 
+                    value={newOrgUser.email} 
+                    onChange={e => setNewOrgUser({...newOrgUser, email: e.target.value})}
+                    placeholder="correo@empresa.com"
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Contraseña Temporal</label>
+                  <input 
+                    type="text" 
+                    value={newOrgUser.password} 
+                    onChange={e => setNewOrgUser({...newOrgUser, password: e.target.value})}
+                    placeholder="ContraseñaTemporal123"
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                  />
+                </div>
+                <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Rol Corporativo</label>
+                    <select 
+                    value={newOrgUser.role}
+                    onChange={e => setNewOrgUser({...newOrgUser, role: e.target.value})}
+                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
+                    >
+                        <option value="member">Miembro / Empleado</option>
+                        <option value="owner">Admin de Empresa (HR)</option>
+                    </select>
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setShowAddUserModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
+                  <button 
+                    onClick={async () => {
+                      if (await handleAdminAction(selectedOrg.id, "add-member", newOrgUser)) {
+                        setShowAddUserModal(false);
+                      }
+                    }}
+                    disabled={!newOrgUser.email || !newOrgUser.password || creating}
+                    className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-200 disabled:opacity-50"
+                  >
+                    Invitar
+                  </button>
                 </div>
               </div>
             </div>
@@ -1652,256 +1802,7 @@ function AdminDashboard({ session }: { session: any }) {
           </div>
         )}
 
-        {/* ─── MODALS ─── */}
-
-        {/* Reset Password Modal */}
-        {showResetPasswordModal && selectedUser && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
-              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-orange-600">
-                <ShieldCheck className="h-6 w-6" /> Resetear Contraseña
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">Asigne una contraseña temporal para <strong>{(selectedUser as UserAdmin).email}</strong></p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Nueva Contraseña</label>
-                  <input 
-                    type="text" 
-                    value={tempPassword} 
-                    onChange={e => setTempPassword(e.target.value)}
-                    placeholder="ContraseñaTemporal123"
-                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                  />
-                </div>
-                
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => setShowResetPasswordModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
-                  <button 
-                    onClick={async () => {
-                      if (await handleAdminAction((selectedUser as UserAdmin).id, "reset-password", { password: tempPassword })) {
-                        setShowResetPasswordModal(false);
-                      }
-                    }}
-                    disabled={!tempPassword || creating}
-                    className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-200 disabled:opacity-50"
-                  >
-                    Actualizar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Edit Plan Modal */}
-        {showEditPlanModal && selectedUser && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
-              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-blue-600">
-                <Activity className="h-6 w-6" /> Editar Plan y Límites
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">Modifique las capacidades de la cuenta de <strong>{(selectedUser as UserAdmin).email}</strong></p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Paquete Sugerido</label>
-                  <select 
-                    value={selectedPlanPackage} 
-                    onChange={e => setSelectedPlanPackage(e.target.value)}
-                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
-                  >
-                    <option value="">(Sin Paquete Específico)</option>
-                    {packages.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.maxChips} chips)</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Tope Máximo de Chips (Manual)</label>
-                  <input 
-                    type="number" 
-                    value={manualMaxChips} 
-                    onChange={e => setManualMaxChips(parseInt(e.target.value))}
-                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-1">Este valor sobrescribe el tope del paquete para cobros adicionales.</p>
-                </div>
-                
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => setShowEditPlanModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
-                  <button 
-                    onClick={async () => {
-                      if (await handleAdminAction((selectedUser as UserAdmin).id, "update-plan", { packageId: selectedPlanPackage, maxChips: manualMaxChips })) {
-                        setShowEditPlanModal(false);
-                      }
-                    }}
-                    disabled={creating}
-                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-50"
-                  >
-                    Guardar Cambios
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Add Org Member Modal */}
-        {showAddUserModal && selectedOrg && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
-              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-primary">
-                <Users className="h-6 w-6" /> Añadir Miembro / HR
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">Nuevo acceso para <strong>{(selectedOrg as OrganizationAdmin).legalName}</strong></p>
-              
-              <div className="space-y-4">
-                <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Email</label>
-                    <input 
-                    type="email"
-                    value={newOrgUser.email}
-                    onChange={e => setNewOrgUser({...newOrgUser, email: e.target.value})}
-                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
-                    placeholder="empleado@empresa.com"
-                    />
-                </div>
-                <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Contraseña Temporal</label>
-                    <input 
-                    type="text"
-                    value={newOrgUser.password}
-                    onChange={e => setNewOrgUser({...newOrgUser, password: e.target.value})}
-                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
-                    placeholder="Pre12345"
-                    />
-                </div>
-                <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Rol Corporativo</label>
-                    <select 
-                    value={newOrgUser.role}
-                    onChange={e => setNewOrgUser({...newOrgUser, role: e.target.value})}
-                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
-                    >
-                        <option value="member">Miembro / Empleado</option>
-                        <option value="owner">Admin de Empresa (HR)</option>
-                    </select>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => setShowAddUserModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
-                  <button 
-                    onClick={async () => {
-                      if (await handleAdminAction((selectedOrg as OrganizationAdmin).id, "add-member", newOrgUser)) {
-                        setShowAddUserModal(false);
-                      }
-                    }}
-                    disabled={!newOrgUser.email || !newOrgUser.password || creating}
-                    className="flex-1 py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 disabled:opacity-50"
-                  >
-                    Crear Miembro
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Reset Password Modal */}
-        {showResetPasswordModal && selectedUser && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
-              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-orange-600">
-                <ShieldCheck className="h-6 w-6" /> Reset Contraseña
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">Nueva contraseña para <strong>{(selectedUser as any).email}</strong></p>
-              
-              <div className="space-y-4">
-                <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Nueva Contraseña</label>
-                    <input 
-                    type="text"
-                    value={tempPassword}
-                    onChange={e => setTempPassword(e.target.value)}
-                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
-                    placeholder="Escribe la nueva contraseña"
-                    />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => setShowResetPasswordModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
-                  <button 
-                    onClick={async () => {
-                      if (await handleAdminAction((selectedUser as any).id, "reset-password", { password: tempPassword })) {
-                        setShowResetPasswordModal(false);
-                      }
-                    }}
-                    disabled={!tempPassword || creating}
-                    className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-600/20 disabled:opacity-50"
-                  >
-                    Confirmar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Edit Plan Modal */}
-        {showEditPlanModal && selectedUser && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-card w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border border-border">
-              <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-blue-600">
-                <Activity className="h-6 w-6" /> Modificar Plan
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">Plan y límites para <strong>{(selectedUser as any).email}</strong></p>
-              
-              <div className="space-y-4">
-                <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Package ID (Opcional)</label>
-                    <input 
-                    type="text"
-                    value={selectedPlanPackage}
-                    onChange={e => setSelectedPlanPackage(e.target.value)}
-                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
-                    placeholder="Ej. pkg_duo, pkg_family"
-                    />
-                    <p className="text-[10px] text-muted-foreground mt-1">Dejar en blanco asume sin plan formal.</p>
-                </div>
-                <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Máximo Chips Permitidos</label>
-                    <input 
-                    type="number"
-                    min="1"
-                    value={manualMaxChips}
-                    onChange={e => setManualMaxChips(parseInt(e.target.value) || 1)}
-                    className="w-full bg-muted/50 border border-border rounded-2xl px-5 py-3 focus:outline-none"
-                    />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => setShowEditPlanModal(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-2xl">Cancelar</button>
-                  <button 
-                    onClick={async () => {
-                      if (await handleAdminAction((selectedUser as any).id, "update-plan", { packageId: selectedPlanPackage, maxChips: manualMaxChips })) {
-                        setShowEditPlanModal(false);
-                      }
-                    }}
-                    disabled={creating}
-                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 disabled:opacity-50"
-                  >
-                    Guardar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
 }
-
-

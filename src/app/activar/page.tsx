@@ -69,7 +69,7 @@ export default function ActivarPage() {
                 Tu perfil de emergencia estará disponible en:
               </p>
               <code className="block px-4 py-2 rounded-lg bg-muted font-mono text-sm">
-                localhost:3000/e/{success.shortCode}
+                pre-rescate-pty.vercel.app/e/{success.shortCode}
               </code>
               <div className="pt-4 space-y-2">
                 <Link href="/dashboard/perfil" className="block w-full rounded-lg bg-primary text-primary-foreground py-2.5 font-semibold hover:bg-primary/90 transition-colors text-center">
