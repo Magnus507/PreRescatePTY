@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import {
   LayoutDashboard, User, Cpu, Users, History, UsersRound,
+  Building2, School,
 } from "lucide-react";
 
 const navItems = [
@@ -17,6 +17,24 @@ const navItems = [
   { href: "/dashboard/contactos", label: "Contactos", icon: Users },
   { href: "/dashboard/historial", label: "Historial", icon: History },
 ];
+
+const ORG_ROLES = new Set(["owner", "manager"]);
+
+function NavLink({ href, label, icon: Icon, active }: {
+  href: string; label: string; icon: React.ElementType; active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      {label}
+    </Link>
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -34,6 +52,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     redirect("/login");
   }
 
+  const role = (session.user as any)?.role as string | undefined;
+  const isOrgManager = !!role && ORG_ROLES.has(role);
+
   return (
     <>
       <Navbar />
@@ -41,47 +62,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Sidebar */}
         <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card/50 p-4">
           <nav className="space-y-1 flex-1">
-            {navItems.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-                >
-                  <item.icon className="h-4.5 w-4.5" />
-                  {item.label}
-                </Link>
-              );
-            })}
+            {navItems.map((item) => (
+              <NavLink key={item.href} {...item} active={pathname === item.href} />
+            ))}
 
             <div className="pt-6 pb-2">
               <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Mi Familia</p>
             </div>
-            <Link href="/dashboard/familia" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === "/dashboard/familia" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}>
-              <UsersRound className="h-4.5 w-4.5" />
-              Perfiles Familiares
-            </Link>
+            <NavLink href="/dashboard/familia" label="Perfiles Familiares" icon={UsersRound} active={pathname === "/dashboard/familia"} />
 
-            <div className="pt-6 pb-2">
-              <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Módulos Extra</p>
-            </div>
-            
-            <Link href="/dashboard/empresas" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === "/dashboard/empresas" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M9 8h1"/><path d="M9 12h1"/><path d="M9 16h1"/><path d="M14 8h1"/><path d="M14 12h1"/><path d="M14 16h1"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/></svg>
-              Empresas
-            </Link>
-            <Link href="/dashboard/colegios" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === "/dashboard/colegios" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 22v-4a2 2 0 1 0-4 0v4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M18 5v17"/><path d="m4 6 8-4 8 4"/><path d="M6 5v17"/><circle cx="12" cy="9" r="2"/></svg>
-              Colegios
-            </Link>
+            {isOrgManager && (
+              <>
+                <div className="pt-6 pb-2">
+                  <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Módulos Extra</p>
+                </div>
+                <NavLink href="/dashboard/empresas" label="Empresas" icon={Building2} active={pathname === "/dashboard/empresas"} />
+                <NavLink href="/dashboard/colegios" label="Colegios" icon={School} active={pathname === "/dashboard/colegios"} />
+              </>
+            )}
           </nav>
           <div className="pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground truncate px-3">{session.user?.email}</p>
+            {role && role !== "owner" && (
+              <p className="text-[10px] text-muted-foreground/60 px-3 mt-0.5 capitalize">{role}</p>
+            )}
           </div>
         </aside>
 

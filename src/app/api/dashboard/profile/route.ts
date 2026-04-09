@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateProfilePatch } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -57,8 +58,12 @@ export async function PATCH(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id;
-  const body = await req.json();
-
+  const raw = await req.json();
+  const validation = validateProfilePatch(raw);
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
+  }
+  const body = validation.data;
   const {
     firstName, lastName, displayNamePublic, birthDate, sex,
     bloodType, allergies, chronicConditions, medications,

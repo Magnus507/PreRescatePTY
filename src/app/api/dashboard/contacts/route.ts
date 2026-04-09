@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateContact } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -65,16 +66,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Servicio expirado. Renueva para modificar contactos." }, { status: 403 });
   }
 
-  const body = await req.json();
-
-  const { fullName, relationship, phone, email, priorityOrder, notifySms, notifyEmail, notifyWhatsapp } = body;
-
-  if (!fullName || !relationship || !phone) {
-    return NextResponse.json(
-      { error: "Nombre, parentesco y teléfono son requeridos" },
-      { status: 400 }
-    );
+  const raw = await req.json();
+  const validation = validateContact(raw);
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
+  const { fullName, relationship, phone, email, priorityOrder, notifySms, notifyEmail, notifyWhatsapp } = validation.data;
 
   const contact = await prisma.emergencyContact.create({
     data: {
@@ -84,10 +81,10 @@ export async function POST(req: NextRequest) {
       relationship,
       phone,
       email: email || null,
-      priorityOrder: priorityOrder || 1,
-      notifySms: notifySms || false,
-      notifyEmail: notifyEmail || true,
-      notifyWhatsapp: notifyWhatsapp || false,
+      priorityOrder: priorityOrder ?? 1,
+      notifySms: notifySms ?? false,
+      notifyEmail: notifyEmail ?? true,
+      notifyWhatsapp: notifyWhatsapp ?? false,
     },
   });
 

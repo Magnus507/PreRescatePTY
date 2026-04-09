@@ -16,7 +16,8 @@ async function isAdmin() {
 // Legacy support: also allow header-based auth for backward compatibility
 function isAdminRequest(req: NextRequest): boolean {
   const adminKey = req.headers.get("x-admin-key");
-  return adminKey === (process.env.ADMIN_API_KEY || "admin-dev-key-2024");
+  const envKey = process.env.ADMIN_API_KEY;
+  return !!envKey && adminKey === envKey;
 }
 
 export async function GET(req: NextRequest) {

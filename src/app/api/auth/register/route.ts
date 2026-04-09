@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { validateRegister } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password, phone } = body;
-
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: "Email y contraseña son requeridos" },
-        { status: 400 }
-      );
+    const validation = validateRegister(body);
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
-
-    const emailLower = email.toLowerCase().trim();
+    const { email: emailLower, password, phone } = validation.data;
 
     // Check if user exists
     const existing = await prisma.user.findUnique({
@@ -59,6 +55,7 @@ export async function POST(req: NextRequest) {
           phone: phone || null,
           passwordHash,
           accountId: account.id,
+          role: "owner",
         },
       });
 
@@ -66,6 +63,17 @@ export async function POST(req: NextRequest) {
       await tx.account.update({
         where: { id: account.id },
         data: { ownerUserId: newUser.id },
+      });
+
+      // Create blank profile so the user can activate chips immediately
+      await tx.profile.create({
+        data: {
+          userId: newUser.id,
+          accountId: account.id,
+          firstName: "",
+          lastName: "",
+          bloodType: "Pendiente",
+        },
       });
 
       return newUser;
