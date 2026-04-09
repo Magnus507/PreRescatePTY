@@ -95,11 +95,12 @@ export async function POST(req: Request) {
 
         if (!member.profile) return NextResponse.json({ error: "El miembro no tiene perfil médico" }, { status: 400 });
 
-        // Assign chip to profile
+        // Assign chip to profile and set ownership so emergency notifications fire
         await prisma.chip.update({
           where: { id: chipId },
           data: {
             assignedProfileId: member.profile.id,
+            ownerUserId: member.id,
             status: "activated",
             activatedAt: chip.activatedAt || new Date(),
             serviceStartDate: chip.serviceStartDate || new Date(),

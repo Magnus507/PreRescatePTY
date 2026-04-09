@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { generateShortCode, generateActivationCode, generateSerialPublic, SITE_URL } from "@/lib/constants";
+import bcrypt from "bcryptjs";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -39,8 +40,25 @@ export async function POST(req: Request) {
 
   try {
     const data = await req.json();
-    const { legalName, displayName, contactEmail, maxChips } = data;
+    const { legalName, displayName, contactEmail, maxChips, ownerEmail, ownerPassword } = data;
     const chipCount = maxChips || 30;
+
+    if (!ownerEmail || !ownerPassword) {
+      return NextResponse.json(
+        { error: "Email y contraseña del administrador son requeridos" },
+        { status: 400 }
+      );
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email: ownerEmail } });
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "Ya existe un usuario con ese email" },
+        { status: 400 }
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(ownerPassword, 10);
 
     // Default corporate package or active package logic
     let pkg = await prisma.package.findFirst({ where: { name: 'Corporativo' }});
@@ -63,7 +81,35 @@ export async function POST(req: Request) {
           maxChipsAllocated: chipCount,
         }
       });
-      
+
+      // Create the organization owner user
+      const ownerUser = await tx.user.create({
+        data: {
+          email: ownerEmail,
+          passwordHash: hashedPassword,
+          accountId: account.id,
+          role: "owner",
+          status: "active",
+        }
+      });
+
+      // Link account owner
+      await tx.account.update({
+        where: { id: account.id },
+        data: { ownerUserId: ownerUser.id },
+      });
+
+      // Create a blank profile for the owner
+      await tx.profile.create({
+        data: {
+          userId: ownerUser.id,
+          accountId: account.id,
+          firstName: displayName || legalName,
+          lastName: "",
+          bloodType: "Pendiente",
+        }
+      });
+
       const org = await tx.organization.create({
         data: {
           accountId: account.id,
@@ -107,7 +153,7 @@ export async function POST(req: Request) {
       return org;
     });
 
-    return NextResponse.json({ organization: newOrg, batchId, chipCount }, { status: 201 });
+    return NextResponse.json({ organization: newOrg, batchId, chipCount, ownerEmail }, { status: 201 });
   } catch (error) {
     console.error("Error creating org", error);
     return NextResponse.json({ error: "Error creating organization" }, { status: 500 });

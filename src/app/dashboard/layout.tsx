@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import {
-  LayoutDashboard, User, Cpu, Users, History, Settings,
+  LayoutDashboard, User, Cpu, Users, History, UsersRound,
 } from "lucide-react";
 
 const navItems = [
@@ -58,6 +58,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
               );
             })}
+
+            <div className="pt-6 pb-2">
+              <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Mi Familia</p>
+            </div>
+            <Link href="/dashboard/familia" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === "/dashboard/familia" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}>
+              <UsersRound className="h-4.5 w-4.5" />
+              Perfiles Familiares
+            </Link>
 
             <div className="pt-6 pb-2">
               <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Módulos Extra</p>

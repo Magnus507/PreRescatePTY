@@ -251,7 +251,7 @@ function AdminDashboard({ session }: { session: any }) {
   
   const [organizations, setOrganizations] = useState<OrganizationAdmin[]>([]);
   const [showOrgModal, setShowOrgModal] = useState(false);
-  const [newOrgData, setNewOrgData] = useState({ legalName: "", displayName: "", contactEmail: "", maxChips: 30 });
+  const [newOrgData, setNewOrgData] = useState({ legalName: "", displayName: "", contactEmail: "", maxChips: 30, ownerEmail: "", ownerPassword: "" });
   
   const [selectedUser, setSelectedUser] = useState<UserAdmin | null>(null);
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
@@ -433,8 +433,9 @@ function AdminDashboard({ session }: { session: any }) {
     });
     const data = await res.json();
     if (res.ok) {
-      alert("✅ Organización creada exitosamente");
+      alert(`✅ Organización creada exitosamente\n\nCredenciales del administrador:\nEmail: ${newOrgData.ownerEmail}\nContraseña: ${newOrgData.ownerPassword}`);
       setShowOrgModal(false);
+      setNewOrgData({ legalName: "", displayName: "", contactEmail: "", maxChips: 30, ownerEmail: "", ownerPassword: "" });
       loadOrganizations();
     } else {
       alert(data.error || "Error al crear organización");
@@ -1645,6 +1646,19 @@ function AdminDashboard({ session }: { session: any }) {
                     <div>
                       <label className="block text-sm font-medium mb-1">Límite de Chips (Paquete)</label>
                       <input type="number" required min={1} value={newOrgData.maxChips} onChange={e => setNewOrgData({...newOrgData, maxChips: Number(e.target.value)})} className="w-full border border-input rounded-lg px-3 py-2 text-sm" />
+                    </div>
+                    <div className="pt-2 border-t border-border">
+                      <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wide">Acceso del Administrador de la Empresa</p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Email del Administrador *</label>
+                          <input required type="email" value={newOrgData.ownerEmail} onChange={e => setNewOrgData({...newOrgData, ownerEmail: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm" placeholder="admin@empresa.com" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Contraseña *</label>
+                          <input required type="password" minLength={8} value={newOrgData.ownerPassword} onChange={e => setNewOrgData({...newOrgData, ownerPassword: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm" placeholder="Mínimo 8 caracteres" />
+                        </div>
+                      </div>
                     </div>
                     <div className="pt-4 flex gap-3">
                       <button type="button" onClick={() => setShowOrgModal(false)} className="flex-1 px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-accent">Cancelar</button>
