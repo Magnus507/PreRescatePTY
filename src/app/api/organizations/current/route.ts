@@ -13,39 +13,55 @@ export async function GET() {
   const accountId = (session.user as any).accountId;
 
   try {
-    // 1. Fetch Organization and its associated Account limits
     const organization = await prisma.organization.findFirst({
       where: { accountId },
       include: {
         account: {
           include: {
-            package: true
-          }
-        }
-      }
+            package: true,
+          },
+        },
+      },
     });
 
     if (!organization) {
       return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
     }
 
-    // 2. Fetch Members (all users linked to this account)
-    const members = await prisma.user.findMany({
+    // Fetch members with profile + org member data (department, position)
+    const users = await prisma.user.findMany({
       where: { accountId },
       include: {
         profile: {
           include: {
-            assignedChips: true
-          }
-        }
+            assignedChips: {
+              select: { id: true, shortCode: true, serialPublic: true, status: true },
+            },
+            organizationMembers: {
+              where: { organizationId: organization.id },
+              select: { department: true, position: true, memberStatus: true, internalCode: true },
+            },
+          },
+        },
       },
-      orderBy: { createdAt: "asc" }
+      orderBy: { createdAt: "asc" },
     });
 
-    // 3. Fetch Chips assigned to this account
+    // Flatten org member data to the top level for easier access in the UI
+    const members = users.map((u) => {
+      const orgMember = u.profile?.organizationMembers?.[0];
+      return {
+        ...u,
+        department: orgMember?.department ?? null,
+        position: orgMember?.position ?? null,
+        memberStatus: orgMember?.memberStatus ?? "active",
+        internalCode: orgMember?.internalCode ?? null,
+      };
+    });
+
     const chips = await prisma.chip.findMany({
       where: { accountId },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json({
@@ -55,9 +71,9 @@ export async function GET() {
       stats: {
         totalMembers: members.length,
         totalChips: chips.length,
-        chipsActivated: chips.filter(c => c.status === "activated").length,
-        chipsInventory: chips.filter(c => c.status === "inventory").length,
-      }
+        chipsActivated: chips.filter((c) => c.status === "activated").length,
+        chipsInventory: chips.filter((c) => c.status === "inventory").length,
+      },
     });
   } catch (error) {
     console.error("Error fetching organization data:", error);

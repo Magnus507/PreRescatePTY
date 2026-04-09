@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Cpu, Users, History, User, AlertCircle, CheckCircle, ChevronRight, Building2 } from "lucide-react";
+import { Cpu, Users, History, User, AlertCircle, CheckCircle, ChevronRight, Building2, Shield } from "lucide-react";
 
 export default function DashboardPage() {
   const [data, setData] = useState<{
@@ -13,6 +13,7 @@ export default function DashboardPage() {
     accountType?: string;
     packageName?: string;
     organizationName?: string;
+    userRole?: string;
   }>({ hasProfile: false, chipCount: 0, contactCount: 0, recentScans: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +41,7 @@ export default function DashboardPage() {
           accountType: profileData.user?.account?.accountType,
           packageName: profileData.user?.account?.package?.name,
           organizationName: profileData.user?.account?.organizations?.[0]?.legalName,
+          userRole: profileData.user?.role,
         });
       } catch (e) {
         console.error(e);
@@ -58,26 +60,54 @@ export default function DashboardPage() {
     );
   }
 
+  const isEmployee = data.userRole === "member" || data.userRole === "employee";
+  const isOrg = data.accountType === "company" || data.accountType === "organization";
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card shadow-sm text-sm font-medium text-muted-foreground">
-            <Building2 className="h-4 w-4 text-primary" />
-            <span>
-              Cuenta: <span className="font-semibold text-primary">
-                {(data.accountType === "company" || data.accountType === "organization") ? "CORPORATIVA" : 
-                 data.accountType === "school" ? "COLEGIO" :
-                 (data.packageName?.toLowerCase().includes("duo") || data.packageName?.toLowerCase().includes("family")) ? "FAMILIAR" : "PERSONAL"}
-              </span>
-              {data.packageName && (
-                <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
-                  Plan {data.packageName}
-                </span>
-              )}
+          <Building2 className="h-4 w-4 text-primary" />
+          <span>
+            Cuenta:{" "}
+            <span className="font-semibold text-primary">
+              {isOrg
+                ? "CORPORATIVA"
+                : data.accountType === "school"
+                ? "COLEGIO"
+                : data.packageName?.toLowerCase().includes("duo") ||
+                  data.packageName?.toLowerCase().includes("family")
+                ? "FAMILIAR"
+                : "PERSONAL"}
             </span>
-          </div>
+            {data.packageName && (
+              <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
+                Plan {data.packageName}
+              </span>
+            )}
+          </span>
+        </div>
       </div>
+
+      {/* Institutional banner for employees */}
+      {isEmployee && (
+        <div className="mb-6 p-5 rounded-2xl border border-primary/30 bg-primary/5 flex items-start gap-4">
+          <Shield className="h-6 w-6 text-primary mt-0.5 shrink-0" />
+          <div>
+            <p className="font-bold text-primary">
+              Cuenta Institucional
+              {data.organizationName && (
+                <span className="text-foreground font-semibold"> — {data.organizationName}</span>
+              )}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Tu acceso fue provisto por tu organización. Completa tu ficha médica para que tu chip esté
+              activo en caso de emergencia.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Setup checklist */}
       {(!data.hasProfile || data.chipCount === 0 || data.contactCount === 0) && (
@@ -87,40 +117,78 @@ export default function DashboardPage() {
           </h2>
           <div className="space-y-2">
             <SetupItem done={data.hasProfile} label="Completar perfil médico" href="/dashboard/perfil" />
-            <SetupItem done={data.chipCount > 0} label="Activar un chip" href="/activar" />
-            <SetupItem done={data.contactCount > 0} label="Agregar contacto de emergencia" href="/dashboard/contactos" />
+            {!isEmployee && (
+              <SetupItem done={data.chipCount > 0} label="Activar un chip" href="/activar" />
+            )}
+            <SetupItem
+              done={data.contactCount > 0}
+              label="Agregar contacto de emergencia"
+              href="/dashboard/contactos"
+            />
           </div>
         </div>
       )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={User} label="Perfil Médico" value={data.hasProfile ? "Completo" : "Pendiente"} color={data.hasProfile ? "text-success" : "text-warning"} href="/dashboard/perfil" />
-        <StatCard icon={Cpu} label="Chips Activos" value={String(data.chipCount)} color="text-primary" href="/dashboard/chips" />
-        <StatCard icon={Users} label="Contactos" value={String(data.contactCount)} color="text-primary" href="/dashboard/contactos" />
-        <StatCard icon={History} label="Escaneos" value={String(data.recentScans)} color="text-primary" href="/dashboard/historial" />
+        <StatCard
+          icon={User}
+          label="Perfil Médico"
+          value={data.hasProfile ? "Completo" : "Pendiente"}
+          color={data.hasProfile ? "text-success" : "text-warning"}
+          href="/dashboard/perfil"
+        />
+        <StatCard
+          icon={Cpu}
+          label="Chips Activos"
+          value={String(data.chipCount)}
+          color="text-primary"
+          href="/dashboard/chips"
+        />
+        <StatCard
+          icon={Users}
+          label="Contactos"
+          value={String(data.contactCount)}
+          color="text-primary"
+          href="/dashboard/contactos"
+        />
+        <StatCard
+          icon={History}
+          label="Escaneos"
+          value={String(data.recentScans)}
+          color="text-primary"
+          href="/dashboard/historial"
+        />
       </div>
 
       {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link href="/dashboard/perfil" className="flex items-center justify-between p-5 rounded-xl border border-border hover:border-primary/30 hover:bg-accent/50 transition-all group">
+        <Link
+          href="/dashboard/perfil"
+          className="flex items-center justify-between p-5 rounded-xl border border-border hover:border-primary/30 hover:bg-accent/50 transition-all group"
+        >
           <div className="flex items-center gap-3">
             <User className="h-5 w-5 text-primary" />
             <span className="font-medium">Editar Mi Perfil Médico</span>
           </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
         </Link>
-        <Link href="/activar" className="flex items-center justify-between p-5 rounded-xl border border-border hover:border-primary/30 hover:bg-accent/50 transition-all group">
-          <div className="flex items-center gap-3">
-            <Cpu className="h-5 w-5 text-primary" />
-            <span className="font-medium">Activar Nuevo Chip</span>
-          </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-        </Link>
+        {!isEmployee && (
+          <Link
+            href="/activar"
+            className="flex items-center justify-between p-5 rounded-xl border border-border hover:border-primary/30 hover:bg-accent/50 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <Cpu className="h-5 w-5 text-primary" />
+              <span className="font-medium">Activar Nuevo Chip</span>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+          </Link>
+        )}
       </div>
 
-      {/* Upsell Logic */}
-      {data.accountType !== "organization" && (
+      {/* Upsell — only for non-org, non-employee accounts */}
+      {!isOrg && !isEmployee && (
         <div className="mt-12">
           <h2 className="text-lg font-bold mb-4">Módulos Extra</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -129,23 +197,35 @@ export default function DashboardPage() {
               <div>
                 <h3 className="font-bold text-lg">Módulo Empresas</h3>
                 <p className="text-sm text-muted-foreground mt-1 text-balance">
-                  ¿Tienes una flotilla o una compañía? Administra múltiples chips centralizando todos los perfiles de tu equipo bajo un mismo panel y facturación.
+                  ¿Tienes una flotilla o una compañía? Administra múltiples chips centralizando todos los
+                  perfiles de tu equipo bajo un mismo panel y facturación.
                 </p>
               </div>
-              <a href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20cotizar%20el%20Plan%20Empresarial%20de%20PreRescate." target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex border border-primary bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition">
+              <a
+                href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20cotizar%20el%20Plan%20Empresarial%20de%20PreRescate."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex border border-primary bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition"
+              >
                 Cotizar para Empresas
               </a>
             </div>
-            
+
             <div className="p-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 flex flex-col items-start gap-3">
               <Users className="h-8 w-8 text-indigo-500" />
               <div>
                 <h3 className="font-bold text-lg text-indigo-700">Módulo Colegios / Instituciones</h3>
                 <p className="text-sm text-muted-foreground mt-1 text-balance">
-                  Especial para organizaciones con decenas de estudiantes o asociados, permitiendo roles granulares para administradores y representantes.
+                  Especial para organizaciones con decenas de estudiantes o asociados, permitiendo roles
+                  granulares para administradores y representantes.
                 </p>
               </div>
-              <a href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20cotizar%20el%20M%C3%B3dulo%20para%20Colegios%20de%20PreRescate." target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+              <a
+                href="https://wa.me/50767516171?text=Hola%2C%20quisiera%20cotizar%20el%20M%C3%B3dulo%20para%20Colegios%20de%20PreRescate."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+              >
                 Consultar Módulo Colegial
               </a>
             </div>
@@ -159,13 +239,29 @@ export default function DashboardPage() {
 function SetupItem({ done, label, href }: { done: boolean; label: string; href: string }) {
   return (
     <Link href={href} className="flex items-center gap-2 text-sm hover:text-primary transition-colors">
-      {done ? <CheckCircle className="h-4 w-4 text-success" /> : <AlertCircle className="h-4 w-4 text-warning" />}
+      {done ? (
+        <CheckCircle className="h-4 w-4 text-success" />
+      ) : (
+        <AlertCircle className="h-4 w-4 text-warning" />
+      )}
       <span className={done ? "line-through text-muted-foreground" : ""}>{label}</span>
     </Link>
   );
 }
 
-function StatCard({ icon: Icon, label, value, color, href }: { icon: typeof User; label: string; value: string; color: string; href: string }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+  href,
+}: {
+  icon: typeof User;
+  label: string;
+  value: string;
+  color: string;
+  href: string;
+}) {
   return (
     <Link href={href} className="p-5 rounded-xl border border-border bg-card hover:shadow-sm transition-all">
       <div className="flex items-center gap-3 mb-2">

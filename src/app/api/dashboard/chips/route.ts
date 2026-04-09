@@ -24,6 +24,9 @@ export async function GET() {
       _count: {
         select: { scanEvents: true },
       },
+      assignedProfile: {
+        select: { id: true, firstName: true, lastName: true },
+      },
     },
   });
 
@@ -45,7 +48,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { accountId: true } });
-  
+
   if (!user || !user.accountId) {
     return NextResponse.json({ error: "Cuenta no configurada" }, { status: 400 });
   }
@@ -56,6 +59,42 @@ export async function PATCH(req: NextRequest) {
 
   if (!chip) {
     return NextResponse.json({ error: "Chip no encontrado" }, { status: 404 });
+  }
+
+  if (action === "assign-profile") {
+    const { profileId } = body;
+    if (profileId) {
+      const profile = await prisma.profile.findFirst({
+        where: { id: profileId, accountId: user.accountId },
+      });
+      if (!profile) {
+        return NextResponse.json({ error: "Perfil no encontrado en esta cuenta" }, { status: 404 });
+      }
+    }
+    await prisma.chip.update({
+      where: { id: chipId },
+      data: { assignedProfileId: profileId || null },
+    });
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: userId,
+        entityType: "chip",
+        entityId: chipId,
+        action: "assign-profile",
+        oldValuesJson: JSON.stringify({ assignedProfileId: chip.assignedProfileId }),
+        newValuesJson: JSON.stringify({ assignedProfileId: profileId || null }),
+      },
+    });
+    return NextResponse.json({ message: "Perfil asignado al chip" });
+  }
+
+  if (action === "update-alias") {
+    const { alias } = body;
+    await prisma.chip.update({
+      where: { id: chipId },
+      data: { chipAlias: alias ? String(alias).slice(0, 50) : null },
+    });
+    return NextResponse.json({ message: "Alias actualizado" });
   }
 
   let newStatus = chip.status;

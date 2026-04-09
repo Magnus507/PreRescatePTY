@@ -110,6 +110,7 @@ model Chip {
   batchId           String?
   productType       String    @default("sticker_nfc_qr")
   nicheType         String    @default("motorcycle")
+  chipAlias         String?
   status            String    @default("inventory")
   ownerUserId       String?
   activatedAt       DateTime?
