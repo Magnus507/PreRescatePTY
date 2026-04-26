@@ -5,7 +5,7 @@ import { z } from "zod";
 // ──────────────────────────────────────────────
 
 export const VALID_BLOOD_TYPES = [
-  "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"
+  "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Pendiente"
 ] as const;
 
 export const VALID_ADMIN_ROLES = ["admin", "superadmin", "imprenta"] as const;

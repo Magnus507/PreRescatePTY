@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest) {
   const userId = session.user.id;
   try {
     const raw = await req.json();
-    const validation = profileUpdateSchema.safeParse(raw);
+    const validation = profileUpdateSchema.partial().safeParse(raw);
     if (!validation.success) {
       return ApiResponse.error(validation.error.issues[0].message, { status: 400 });
     }

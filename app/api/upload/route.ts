@@ -56,9 +56,16 @@ export async function POST(req: NextRequest) {
           }
         } else {
           // Default to current user's profile
-          await prisma.profile.update({
+          await prisma.profile.upsert({
             where: { userId: userId },
-            data: { photoUrl: publicUrl }
+            update: { photoUrl: publicUrl },
+            create: {
+              userId: userId,
+              photoUrl: publicUrl,
+              firstName: "",
+              lastName: "",
+              bloodType: "Pendiente"
+            }
           });
         }
       } catch (prismaError: unknown) {
