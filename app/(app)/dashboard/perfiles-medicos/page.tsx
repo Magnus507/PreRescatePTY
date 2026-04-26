@@ -113,7 +113,7 @@ export default function FamiliaPage() {
     setLoading(true);
     try {
       const [profilesRes, chipsRes] = await Promise.all([
-        fetch(`/api/users/familia?t=${Date.now()}`),
+        fetch(`/api/users/perfiles-medicos?t=${Date.now()}`),
         fetch("/api/chips/dashboard")
       ]);
       
@@ -131,7 +131,7 @@ export default function FamiliaPage() {
       loadPool();
     } catch (e) {
       console.error("Error loading family profiles:", e);
-      toast.error("Error al cargar los perfiles familiares");
+      toast.error("Error al cargar los perfiles médicos");
     } finally {
       setLoading(false);
     }
@@ -196,7 +196,7 @@ export default function FamiliaPage() {
     setAddError("");
     setAddSaving(true);
     try {
-      const res = await fetch("/api/users/familia", {
+      const res = await fetch("/api/users/perfiles-medicos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(addForm),
@@ -205,7 +205,7 @@ export default function FamiliaPage() {
       if (res.ok) {
         setShowAdd(false);
         setAddForm({ ...emptyForm });
-        toast.success("Perfil familiar creado con éxito");
+        toast.success("Perfil médico creado con éxito");
         loadProfiles();
       } else {
         const data = await res.json();
@@ -223,7 +223,7 @@ export default function FamiliaPage() {
     setEditError("");
     setEditSaving(true);
     try {
-      const res = await fetch(`/api/users/familia/${editProfile.id}`, {
+      const res = await fetch(`/api/users/perfiles-medicos/${editProfile.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editForm),
@@ -247,7 +247,7 @@ export default function FamiliaPage() {
     if (!confirm(`¿Eliminar el perfil de ${name}? Esta acción no se puede deshacer.`)) return;
     setDeleting(profileId);
     try {
-      const res = await fetch(`/api/users/familia/${profileId}`, { method: "DELETE" });
+      const res = await fetch(`/api/users/perfiles-medicos/${profileId}`, { method: "DELETE" });
       setDeleting(null);
       if (res.ok) {
         toast.success("Perfil eliminado");
@@ -271,7 +271,7 @@ export default function FamiliaPage() {
     if (!contacts[profileId]) {
       setContactsLoading(profileId);
       try {
-        const res = await fetch(`/api/users/familia/${profileId}/contacts`);
+        const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts`);
         const data = await res.json();
         const fetchedContacts = data.contacts || [];
         setContacts((prev) => ({ ...prev, [profileId]: fetchedContacts }));
@@ -295,7 +295,7 @@ export default function FamiliaPage() {
     setContactError("");
     setContactSaving(true);
     try {
-      const res = await fetch(`/api/users/familia/${profileId}/contacts`, {
+      const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(contactForm),
@@ -323,7 +323,7 @@ export default function FamiliaPage() {
     if (!confirm("¿Deseas desvincular a este guardián de este perfil?")) return;
     setDeletingContact(contactId);
     try {
-      const res = await fetch(`/api/users/familia/${profileId}/contacts?id=${contactId}`, {
+      const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts?id=${contactId}`, {
         method: "DELETE",
       });
       setDeletingContact(null);
@@ -349,7 +349,7 @@ export default function FamiliaPage() {
     // Link it
     setDeletingContact(contactId); // Reuse state for spinner
     try {
-      const res = await fetch(`/api/users/familia/${profileId}/contacts`, {
+      const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contactId }),
@@ -373,7 +373,7 @@ export default function FamiliaPage() {
 
   async function handleUpdateLink(profileId: string, contactId: string, data: any) {
      try {
-       const res = await fetch(`/api/users/familia/${profileId}/contacts`, {
+       const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts`, {
          method: "PATCH",
          headers: { "Content-Type": "application/json" },
          body: JSON.stringify({ id: contactId, ...data }),

@@ -125,7 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <div className="space-y-2">
               <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Protección Vital</p>
-              <NavLink href="/dashboard/familia" label="Perfiles Médicos" icon={UsersRound} active={pathname === "/dashboard/familia"} />
+              <NavLink href="/dashboard/perfiles-medicos" label="Perfiles Médicos" icon={UsersRound} active={pathname === "/dashboard/perfiles-medicos"} />
               <NavLink href="/dashboard/historial" label="Historial de Rescate" icon={History} active={pathname === "/dashboard/historial"} />
               <NavLink href="/dashboard/contactos" label="Contactos de Auxilio" icon={Users} active={pathname === "/dashboard/contactos"} />
             </div>
@@ -191,9 +191,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Mobile bottom nav */}
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/80 backdrop-blur-xl border-t border-slate-200 flex justify-around items-center px-4 py-3 safe-area-bottom">
-          {[...filteredNavItems, ...filteredSecondaryItems.slice(0, 1), { href: "/dashboard/familia", label: "Fam", icon: UsersRound }].map((item) => {
+          {[...filteredNavItems, ...filteredSecondaryItems.slice(0, 1), { href: "/dashboard/perfiles-medicos", label: "Perfiles", icon: UsersRound }].map((item) => {
             const active = pathname === item.href;
-            if (item.href === "/dashboard/familia" && !state?.canManageFamilyProfiles) return null;
+            if (item.href === "/dashboard/perfiles-medicos" && !state?.canManageFamilyProfiles) return null;
             
             return (
               <Link

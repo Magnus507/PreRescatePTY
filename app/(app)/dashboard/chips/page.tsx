@@ -49,7 +49,7 @@ export default function ChipsPage() {
       setLoading(true);
       const [chipRes, familyRes] = await Promise.all([
         fetch("/api/chips/dashboard"),
-        fetch("/api/users/familia")
+        fetch("/api/users/perfiles-medicos")
       ]);
 
       const chipData = await chipRes.json();

@@ -31,7 +31,7 @@ export async function GET() {
     return ApiResponse.success({ ownProfile, familyProfiles, state });
   } catch (error: unknown) {
     const err = error as Error & { message?: string };
-    console.error("GET /api/users/familia critical error:", error);
+    console.error("GET /api/users/perfiles-medicos critical error:", error);
     
     if (err.message === "USER_NOT_FOUND") {
       return ApiResponse.error("Usuario no encontrado", { status: 404, details: err.message });

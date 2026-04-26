@@ -67,7 +67,7 @@ export default function DashboardPage() {
   const refreshData = async () => {
     try {
       const [familiaRes, notifyRes] = await Promise.all([
-        fetch("/api/users/familia"),
+        fetch("/api/users/perfiles-medicos"),
         fetch("/api/users/notifications")
       ]);
 
@@ -348,7 +348,7 @@ export default function DashboardPage() {
           
           {(state.isFamily || state.isOrganization) && (
              <Link 
-              href={state.isOrganization ? "/dashboard/empresas" : "/dashboard/familia"} 
+              href={state.isOrganization ? "/dashboard/empresas" : "/dashboard/perfiles-medicos"} 
               className="text-primary font-black text-sm flex items-center gap-1.5 hover:bg-primary/5 px-4 py-2 rounded-xl transition-all"
              >
                 {state.isOrganization ? "Ver Mi Empresa" : "Gestionar Familia"} <ChevronRight className="h-4 w-4" />
@@ -378,13 +378,13 @@ export default function DashboardPage() {
                  <p className="text-xs font-medium text-muted-foreground italic">
                     Tienes {familyProfiles.length} perfiles adicionales.
                  </p>
-                 <Link href="/dashboard/familia" className="text-[10px] font-black uppercase text-primary hover:underline">Ver todos</Link>
+                 <Link href="/dashboard/perfiles-medicos" className="text-[10px] font-black uppercase text-primary hover:underline">Ver todos</Link>
               </div>
            )}
 
            {(state.isFamily || state.isOrganization) && state.familyProfilesCount < (state.maxProfilesAllocated - 1) && (
               <Link
-                href={state.isOrganization ? "/dashboard/empresas" : "/dashboard/familia"}
+                href={state.isOrganization ? "/dashboard/empresas" : "/dashboard/perfiles-medicos"}
                 className="flex flex-col items-center justify-center gap-3 p-8 rounded-[2rem] border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/50 transition-all text-muted-foreground hover:text-primary group"
               >
                 <div className="h-12 w-12 rounded-2xl bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
@@ -508,7 +508,7 @@ function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, 
 
   return (
     <Link 
-      href={isOrganization ? "/dashboard/empresas" : "/dashboard/familia"} 
+      href={isOrganization ? "/dashboard/empresas" : "/dashboard/perfiles-medicos"} 
       className={`p-6 rounded-[2rem] border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group active:scale-[0.98] ${color}`}
     >
       <div className="flex items-start justify-between mb-4">

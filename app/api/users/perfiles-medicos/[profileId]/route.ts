@@ -87,6 +87,14 @@ export async function PATCH(
     },
   });
 
+  // Sync phone number to User table if this profile is the main user's profile
+  if (existing.userId && phone !== undefined) {
+    await prisma.user.update({
+      where: { id: existing.userId },
+      data: { phone }
+    });
+  }
+
   await prisma.auditLog.create({
     data: {
       actorUserId: userId,
