@@ -1,0 +1,91 @@
+import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
+
+const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://browser.sentry-cdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.stripe.com https://chart.googleapis.com https://api.qrserver.com https://fikidmfquaxhlayxctsa.supabase.co; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.stripe.com https://*.sentry.io https://nominatim.openstreetmap.org; frame-src 'self' https://js.stripe.com; upgrade-insecure-requests;",
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(self), browsing-topics=()',
+          },
+        ],
+      },
+    ];
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "fikidmfquaxhlayxctsa.supabase.co",
+        port: "",
+        pathname: "/**",
+      },
+    ],
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true, 
+  },
+};
+
+export default withSentryConfig(nextConfig, {
+  // For all available options, see:
+  // https://github.com/getsentry/sentry-webpack-plugin#options
+
+  // Suppresses source map uploading logs during build
+  silent: true,
+  org: "prerescate-pty",
+  project: "javascript-nextjs",
+}, {
+  // For all available options, see:
+  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+
+  // Upload a larger set of source maps for prettier stack traces (increases build time)
+  widenClientFileUpload: true,
+
+  // Transpiles SDK to be compatible with IE11 (increases bundle size)
+  transpileClientSDK: false,
+
+  // Routes browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers (increases server load)
+  tunnelRoute: "/monitoring",
+
+  // Hides source maps from visitors
+  hideSourceMaps: true,
+
+  // Automatically tree-shake Sentry logger statements to reduce bundle size
+  disableLogger: true,
+
+  // Enables automatic instrumentation of Vercel Cron Monitors.
+  // See the following for more information:
+  // https://docs.sentry.io/product/crons/
+  automaticVercelMonitors: true,
+});

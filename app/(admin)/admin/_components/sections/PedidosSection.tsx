@@ -1,0 +1,565 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, X, QrCode, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import Link from "next/link";
+import Image from "next/image";
+
+interface Order {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerDocument: string;
+  amount: number;
+  orderStatus: string;
+  paymentStatus: string;
+  paymentProofUrl: string | null;
+  shippingAddress: string | null;
+  shippingCity: string | null;
+  shippingNotes: string | null;
+  createdAt: string;
+  items: {
+    id: string;
+    productType: string;
+    quantity: number;
+    totalPrice: number;
+  }[];
+  chipClaimTokens: {
+    id: string;
+    activationCode: string;
+    chip: {
+      serialPublic: string;
+      shortCode: string;
+      internalLabel: string | null;
+    }
+  }[];
+}
+
+interface InventoryChip {
+  id: string;
+  serialPublic: string;
+  shortCode: string;
+  internalLabel: string | null;
+  isPhysical: boolean;
+}
+
+export function PedidosSection() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [inventory, setInventory] = useState<InventoryChip[]>([]);
+  const [assignedChipIds, setAssignedChipIds] = useState<string[]>([]);
+  const [loadingInventory, setLoadingInventory] = useState(false);
+  const [searchInventory, setSearchInventory] = useState("");
+  const [activeTab, setActiveTab] = useState<'all' | 'new' | 'shipped' | 'completed'>('all');
+
+  useEffect(() => {
+    loadOrders();
+    loadInventory();
+  }, []);
+
+  async function loadInventory() {
+    setLoadingInventory(true);
+    try {
+      const res = await fetch("/api/admin/chips/inventory");
+      const data = await res.json();
+      setInventory(data.chips || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingInventory(false);
+    }
+  }
+
+  async function loadOrders() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/orders");
+      const data = await res.json();
+      setOrders(data.orders || []);
+    } catch (e) {
+      toast.error("Error al cargar pedidos");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const calculateNeededChips = (order: Order) => {
+    let chips = 0;
+    order.items.forEach(item => {
+      const type = item.productType.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (type.includes("CHIP_EXTRA")) chips += item.quantity;
+      if (type.includes("ESTANDAR")) chips += 1 * item.quantity;
+      if (type.includes("DUO")) chips += 2 * item.quantity;
+      if (type.includes("FAMILIAR")) chips += 3 * item.quantity;
+      if (type.includes("HOGAR")) chips += 5 * item.quantity;
+    });
+    return chips;
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string, actionText: string) => {
+    const isCompleted = newStatus === "completed";
+    const needed = selectedOrder ? calculateNeededChips(selectedOrder) : 0;
+
+    if (isCompleted && assignedChipIds.length !== needed && needed > 0) {
+       if (!confirm(`Has seleccionado ${assignedChipIds.length} chips, pero el pedido requiere aproximadamente ${needed}. ¿Deseas continuar de todos modos?`)) return;
+    } else {
+       if (!confirm(`¿Estás seguro de marcar esta orden como '${actionText}'?`)) return;
+    }
+    
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/admin/orders`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+           id, 
+           orderStatus: newStatus,
+           paymentStatus: isCompleted ? "paid" : undefined,
+           generateTokens: isCompleted,
+           assignedChipIds: isCompleted ? assignedChipIds : undefined
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(`Orden actualizada a '${actionText}'`);
+        setSelectedOrder(null);
+        setAssignedChipIds([]);
+        loadOrders();
+        loadInventory();
+      } else {
+        toast.error("Error al actualizar la orden");
+      }
+    } catch (e) {
+      toast.error("Error de conexión");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const clearCancelledOrders = async () => {
+    if (!confirm("¿Deseas eliminar permanentemente TODAS las órdenes canceladas? Esta acción no se puede deshacer.")) return;
+    
+    setUpdating(true);
+    try {
+      const res = await fetch("/api/admin/orders?bulk=cancelled", { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Órdenes canceladas eliminadas correctamente");
+        loadOrders();
+      } else {
+        toast.error("Error al eliminar órdenes");
+      }
+    } catch (e) {
+      toast.error("Error de conexión");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case "pending": return <span className="px-2 py-1 bg-amber-500/10 text-amber-600 rounded-lg text-xs font-bold uppercase">Pendiente</span>;
+      case "processing": return <span className="px-2 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-xs font-bold uppercase">Revisión Pagos</span>;
+      case "shipped": return <span className="px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg text-xs font-bold uppercase">Enviado</span>;
+      case "completed": return <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-lg text-xs font-bold uppercase">Completado</span>;
+      case "cancelled": return <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase">Cancelada</span>;
+      default: return <span className="px-2 py-1 bg-slate-500/10 text-slate-600 rounded-lg text-xs font-bold uppercase">{status}</span>;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-muted-foreground font-black uppercase text-xs tracking-widest animate-pulse">Cargando Pedidos...</p>
+      </div>
+    );
+  }
+
+  if (selectedOrder) {
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-500 blur-none">
+         {/* Integrated Admin Dashboard Header */}
+         <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+               <button 
+                 onClick={() => setSelectedOrder(null)}
+                 className="h-12 w-12 flex items-center justify-center bg-white border border-border rounded-2xl hover:bg-slate-50 transition-all group"
+               >
+                  <RefreshCw className="h-5 w-5 text-muted-foreground group-hover:rotate-180 transition-transform duration-500" />
+               </button>
+               <div>
+                  <div className="flex items-center gap-3">
+                     <h2 className="text-3xl font-black uppercase tracking-tighter">Pedido #{selectedOrder.orderNumber}</h2>
+                     {getStatusBadge(selectedOrder.orderStatus)}
+                  </div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">Logística de Despacho & CRM</p>
+               </div>
+            </div>
+
+            <button 
+              onClick={() => setSelectedOrder(null)}
+              className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+            >
+               Volver al Listado
+            </button>
+         </div>
+
+         <div className="bg-card w-full overflow-hidden rounded-[3rem] border border-border shadow-xl min-h-[70vh] flex flex-col">
+            <div className="flex-1 p-10 lg:p-14">
+               <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                  
+                  {/* COL 1: Logistics & Delivery */}
+                  <div className="lg:col-span-4 space-y-10">
+                     <section className="space-y-6">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Destinatario
+                        </h3>
+                        <div className="bg-muted/30 p-8 rounded-[3rem] border border-border/50 relative overflow-hidden group">
+                           <p className="text-3xl font-black tracking-tight mb-2 leading-none">{selectedOrder.customerName || "—"}</p>
+                           <p className="text-sm font-medium text-muted-foreground">{selectedOrder.customerEmail}</p>
+                           <div className="mt-8 flex flex-col gap-3">
+                              {selectedOrder.customerPhone && (
+                                 <Link href={`https://wa.me/${selectedOrder.customerPhone.replace(/\D/g, '')}`} target="_blank" className="bg-emerald-500 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/10">
+                                    Abrir WhatsApp
+                                 </Link>
+                              )}
+                              <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center justify-between text-[11px] font-black uppercase">
+                                 <span className="text-muted-foreground tracking-widest">Documento:</span>
+                                 <span>{selectedOrder.customerDocument || "—"}</span>
+                              </div>
+                           </div>
+                        </div>
+                     </section>
+
+                     <section className="space-y-6">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Dirección de Envío
+                        </h3>
+                        <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-border shadow-sm">
+                           <div className="flex items-start gap-4 mb-6">
+                              <div className="h-12 w-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 flex-shrink-0">
+                                 <Truck className="h-6 w-6" />
+                              </div>
+                              <div>
+                                 <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-1">{selectedOrder.shippingCity || "Panamá"}</p>
+                                 <p className="text-lg font-bold leading-tight tracking-tight">{selectedOrder.shippingAddress || "Recojo en sucursal"}</p>
+                              </div>
+                           </div>
+                           {selectedOrder.shippingNotes && (
+                              <div className="p-4 bg-muted/50 rounded-2xl border border-dashed border-border">
+                                 <p className="text-[10px] font-bold text-muted-foreground italic leading-relaxed">"{selectedOrder.shippingNotes}"</p>
+                              </div>
+                           )}
+                        </div>
+                     </section>
+                  </div>
+
+                  {/* COL 2: Fulfillment & Picking */}
+                  <div className="lg:col-span-4 space-y-10 bg-slate-50 dark:bg-slate-900/40 p-10 rounded-[4rem] border border-border/60">
+                     <section className="space-y-6">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Picking Físico
+                        </h3>
+                        
+                        {selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "shipped" ? (
+                           <div className="space-y-6">
+                              <div className="relative group">
+                                 <PackageSearch className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                 <input 
+                                   type="text" 
+                                   placeholder="Escanea o busca sticker..." 
+                                   className="w-full bg-white dark:bg-slate-800 border-border rounded-[2rem] pl-14 pr-6 py-5 text-sm font-bold shadow-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                   value={searchInventory}
+                                   onChange={(e) => setSearchInventory(e.target.value)}
+                                 />
+                              </div>
+                              
+                              <div className="max-h-[380px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                                 {inventory.filter(c => 
+                                    c.isPhysical && (
+                                      c.serialPublic.toLowerCase().includes(searchInventory.toLowerCase()) || 
+                                      (c.internalLabel?.toLowerCase().includes(searchInventory.toLowerCase()))
+                                    )
+                                 ).map(chip => {
+                                    const isAssigned = assignedChipIds.includes(chip.id);
+                                    const neededCount = calculateNeededChips(selectedOrder);
+                                    const canAddMore = assignedChipIds.length < neededCount;
+
+                                    return (
+                                       <button 
+                                         key={chip.id}
+                                         disabled={!isAssigned && !canAddMore}
+                                         onClick={() => {
+                                           if(isAssigned) setAssignedChipIds(prev => prev.filter(id => id !== chip.id));
+                                           else if(canAddMore) setAssignedChipIds(prev => [...prev, chip.id]);
+                                         }}
+                                         className={`w-full p-5 rounded-[2rem] text-left flex items-center justify-between transition-all border-2 ${isAssigned ? 'bg-primary text-white border-primary shadow-2xl shadow-primary/30 scale-[1.03] z-10' : 'bg-white border-transparent hover:border-border hover:scale-[1.01]'} ${(!isAssigned && !canAddMore) ? 'opacity-20 grayscale cursor-not-allowed' : ''}`}
+                                       >
+                                          <div className="flex items-center gap-4">
+                                             <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isAssigned ? 'bg-white/20' : 'bg-slate-100'}`}>
+                                                <QrCode className="h-5 w-5" />
+                                             </div>
+                                             <div>
+                                                <p className="text-xs font-black uppercase tracking-widest">{chip.internalLabel || "Sin Etiqueta"}</p>
+                                                <p className="text-[10px] font-mono opacity-60 mt-0.5">{chip.serialPublic}</p>
+                                             </div>
+                                          </div>
+                                          {isAssigned && <CheckCircle2 className="h-5 w-5" />}
+                                       </button>
+                                    );
+                                 })}
+                              </div>
+
+                              <div className="p-8 bg-indigo-600 dark:bg-indigo-700 text-white rounded-[3rem] shadow-2xl shadow-indigo-600/30 flex items-center justify-between">
+                                 <div className="flex items-baseline gap-1">
+                                    <span className="text-5xl font-black">{assignedChipIds.length}</span>
+                                    <span className="text-xl opacity-40 font-bold">/ {calculateNeededChips(selectedOrder)}</span>
+                                 </div>
+                                 <p className="text-[11px] font-bold text-right">Chips<br/>Asignados</p>
+                              </div>
+                           </div>
+                        ) : (
+                           <div className="space-y-4">
+                              <div className="p-8 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-[3rem] text-center mb-6">
+                                 <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto mb-4" />
+                                 <h4 className="text-xl font-black uppercase tracking-tight text-emerald-700">Completado</h4>
+                                 <p className="text-xs font-bold text-emerald-600/60 uppercase tracking-widest mt-1">Los chips ya están vinculados.</p>
+                              </div>
+                              <div className="space-y-3">
+                                 {selectedOrder.chipClaimTokens.map(token => (
+                                    <div key={token.id} className="p-6 bg-white border border-border rounded-[2rem] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+                                       <div className="space-y-1">
+                                          <div className="flex flex-col">
+                                             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">{token.chip.internalLabel || 'ID INTERNO'}</span>
+                                             <span className="font-mono text-sm font-bold tracking-tighter text-indigo-600">{token.chip.shortCode || '—'}</span>
+                                          </div>
+                                          <div className="flex flex-col mt-2">
+                                             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">SERIAL PÚBLICO</span>
+                                             <span className="font-mono text-[11px] font-bold text-slate-500">{token.chip.serialPublic}</span>
+                                          </div>
+                                       </div>
+                                       <div className="w-full sm:w-auto p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-center sm:text-right">
+                                          <p className="text-[9px] font-black text-indigo-900/60 uppercase tracking-[0.2em] mb-1">Cód. Activación</p>
+                                          <p className="font-mono text-xl font-black text-indigo-600 tracking-[0.2em]">{token.activationCode}</p>
+                                       </div>
+                                    </div>
+                                 ))}
+                              </div>
+                           </div>
+                        )}
+                     </section>
+                  </div>
+
+                  {/* COL 3: Summary & Evidence */}
+                  <div className="lg:col-span-4 space-y-10">
+                     <section className="space-y-6">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Monto Total
+                        </h3>
+                        <div className="bg-slate-900 dark:bg-black p-10 rounded-[3rem] text-white shadow-2xl">
+                           <p className="text-6xl font-black tracking-tighter text-primary mb-2">${selectedOrder.amount.toFixed(2)}</p>
+                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Dólares Americanos (USD)</p>
+                        </div>
+                     </section>
+
+                     <section className="space-y-6">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Comprobante
+                        </h3>
+                        {selectedOrder.paymentProofUrl ? (
+                           <div className="aspect-video w-full rounded-[3rem] border border-border overflow-hidden bg-slate-100 shadow-lg cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
+                              <img 
+                                src={selectedOrder.paymentProofUrl} 
+                                alt="Pago" 
+                                className="object-contain w-full h-full p-2" 
+                              />
+                           </div>
+                        ) : (
+                           <div className="p-10 rounded-[3rem] border-2 border-dashed border-border text-center text-muted-foreground">
+                              <p className="text-xs font-black uppercase tracking-widest">Sin Comprobante</p>
+                           </div>
+                        )}
+                     </section>
+                  </div>
+
+               </div>
+            </div>
+
+            {/* Action Bar */}
+            <div className="px-10 py-10 border-t border-border bg-muted/30 flex justify-between items-center gap-6">
+               <div className="flex gap-4">
+                  {selectedOrder.orderStatus === "cancelled" && (
+                     <button onClick={async () => {
+                        if(!confirm("¿Eliminar de forma permanente? No se puede deshacer.")) return;
+                        setUpdating(true);
+                        try {
+                          const res = await fetch(`/api/admin/orders?id=${selectedOrder.id}`, { method: "DELETE" });
+                          if (res.ok) { toast.success("Orden borrada"); setSelectedOrder(null); loadOrders(); }
+                        } finally { setUpdating(false); }
+                     }} disabled={updating} className="px-10 py-5 bg-red-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:bg-red-700 transition-all">
+                        Eliminar Permanente
+                     </button>
+                  )}
+                  {selectedOrder.orderStatus !== "cancelled" && selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && (
+                     <button onClick={() => handleStatusChange(selectedOrder.id, "cancelled", "Cancelado")} disabled={updating} className="px-10 py-5 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest transition-all">
+                        Declinar Orden
+                     </button>
+                  )}
+               </div>
+               
+               <div className="flex gap-4">
+                  {selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "cancelled" && (
+                     <>
+                        <button 
+                          onClick={() => handleStatusChange(selectedOrder.id, "shipped", "Enviado")} 
+                          disabled={updating || assignedChipIds.length < calculateNeededChips(selectedOrder)} 
+                          className="px-10 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/20 hover:scale-[1.03] active:scale-95 transition-all disabled:opacity-40"
+                        >
+                           Marcar como Enviado
+                        </button>
+                        
+                        <button 
+                          onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")} 
+                          disabled={updating || assignedChipIds.length < calculateNeededChips(selectedOrder)} 
+                          className="px-10 py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-2xl shadow-emerald-600/20 hover:scale-[1.03] active:scale-95 transition-all disabled:opacity-40"
+                        >
+                           Finalizar Pedido
+                        </button>
+                     </>
+                  )}
+                  {selectedOrder.orderStatus === "shipped" && (
+                     <button 
+                        onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")} 
+                        disabled={updating} 
+                        className="px-14 py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest shadow-2xl hover:scale-[1.03] transition-all"
+                      >
+                        Confirmar Entrega Manual
+                     </button>
+                  )}
+               </div>
+            </div>
+         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-end justify-between">
+         <div>
+            <h1 className="text-2xl font-black uppercase tracking-tighter">Gestión de Pedidos</h1>
+            <p className="text-muted-foreground text-sm font-medium">CRM manual para validación de compras y pagos.</p>
+         </div>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+         <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-fit">
+            {[
+              { id: 'all', label: 'Todos' },
+              { id: 'new', label: 'Por Revisar' },
+              { id: 'shipped', label: 'Enviados' },
+              { id: 'completed', label: 'Completados' }
+            ].map(tab => (
+              <button 
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                 {tab.label}
+              </button>
+            ))}
+         </div>
+         <div className="flex items-center gap-2">
+            <button 
+              onClick={clearCancelledOrders} 
+              disabled={updating || loading}
+              className="p-3 border border-red-100 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+              title="Limpiar Cancelados"
+            >
+               <Trash2 className="h-4 w-4" />
+               <span className="hidden sm:inline">Limpiar Cancelados</span>
+            </button>
+            <button onClick={loadOrders} disabled={loading} className="p-3 border border-border rounded-xl hover:bg-accent transition-all">
+               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+         </div>
+      </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-[2rem] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left font-sans">
+             <thead className="bg-muted/50 border-b border-border">
+                <tr>
+                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest pl-8">ID / Fecha</th>
+                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest">Cliente</th>
+                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest">Contacto</th>
+                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest">Monto (Items)</th>
+                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest">Estado</th>
+                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest pr-8">Acciones</th>
+                </tr>
+             </thead>
+             <tbody className="divide-y divide-border">
+                {orders.filter(o => {
+                  if (activeTab === 'new') return o.orderStatus === 'pending' || o.orderStatus === 'processing';
+                  if (activeTab === 'shipped') return o.orderStatus === 'shipped';
+                  if (activeTab === 'completed') return o.orderStatus === 'completed';
+                  return true;
+                }).map(o => (
+                   <tr key={o.id} className="hover:bg-accent/30 transition-all">
+                      <td className="p-4 pl-8">
+                         <p className="font-mono font-bold text-sm">#{o.orderNumber.substring(0,8)}</p>
+                         <p className="text-[10px] uppercase text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
+                      </td>
+                      <td className="p-4">
+                         <p className="font-black text-sm">{o.customerName || "—"}</p>
+                         {o.customerDocument && <p className="text-xs text-muted-foreground">{o.customerDocument}</p>}
+                      </td>
+                      <td className="p-4 space-y-1">
+                         {o.customerEmail && <p className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded max-w-fit truncate">{o.customerEmail}</p>}
+                         {o.customerPhone && (
+                            <Link href={`https://wa.me/${o.customerPhone.replace(/\D/g, '')}`} target="_blank" className="text-[10px] font-bold bg-green-500/10 text-green-700 px-2 py-0.5 rounded max-w-fit block hover:bg-green-500/20">
+                               WA: {o.customerPhone}
+                            </Link>
+                         )}
+                      </td>
+                      <td className="p-4">
+                         <p className="font-black text-lg text-primary">${o.amount.toFixed(2)}</p>
+                         <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items.length} items</p>
+                      </td>
+                      <td className="p-4">
+                         {getStatusBadge(o.orderStatus)}
+                         {o.paymentProofUrl && <p className="text-[9px] font-black text-emerald-600 uppercase mt-1">✓ Pago Subido</p>}
+                      </td>
+                      <td className="p-4 pr-8">
+                         <button 
+                           onClick={() => setSelectedOrder(o)}
+                           className="p-2 border border-border rounded-lg hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-center"
+                         >
+                            <View className="h-4 w-4" />
+                         </button>
+                      </td>
+                   </tr>
+                ))}
+                {orders.length === 0 && (
+                   <tr>
+                      <td colSpan={6} className="p-12 text-center text-muted-foreground font-bold">
+                         No hay pedidos registrados
+                      </td>
+                   </tr>
+                )}
+             </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}

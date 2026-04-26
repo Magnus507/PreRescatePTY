@@ -1,0 +1,147 @@
+import { z } from "zod";
+
+// ──────────────────────────────────────────────
+// ENUMS & CONSTANTS
+// ──────────────────────────────────────────────
+
+export const VALID_BLOOD_TYPES = [
+  "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"
+] as const;
+
+export const VALID_ADMIN_ROLES = ["admin", "superadmin", "imprenta"] as const;
+export const VALID_USER_ROLES = ["owner", "member"] as const;
+export const VALID_CHIP_STATUSES = ["inventory", "sold", "activated", "suspended", "deactivated", "lost"] as const;
+export const VALID_SEX_OPTIONS = ["M", "F", "Otro"] as const;
+
+export const VALID_ACCOUNT_TYPES = ["personal", "company", "school"] as const;
+
+// ──────────────────────────────────────────────
+// AUTH SCHEMAS
+// ──────────────────────────────────────────────
+
+export const loginSchema = z.object({
+  email: z.string().email("Email inválido").transform(v => v.toLowerCase().trim()),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+});
+
+export const registerSchema = z.object({
+  email: z.string().email("Email inválido").transform(v => v.toLowerCase().trim()),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  phone: z.string().optional(),
+  accountType: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase() : v), z.enum(VALID_ACCOUNT_TYPES)).default("personal"),
+});
+
+
+
+// ──────────────────────────────────────────────
+// CONTACT SCHEMAS
+// ──────────────────────────────────────────────
+
+export const contactSchema = z.object({
+  fullName: z.string().min(2, "Nombre completado requerido (mín. 2 caracteres)").transform(s => s.trim()),
+  relationship: z.string().min(1, "Parentesco requerido").transform(s => s.trim()),
+  phone: z.string().min(7, "Teléfono inválido (mín. 7 dígitos)").transform(s => s.trim()),
+  email: z.string().email("Email inválido").optional().or(z.literal('')),
+  priorityOrder: z.number().int().optional().default(1),
+  notifySms: z.boolean().default(false).optional(),
+  notifyEmail: z.boolean().default(true).optional(),
+  notifyWhatsapp: z.boolean().default(false).optional(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token requerido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+});
+
+// ──────────────────────────────────────────────
+// PROFILE SCHEMAS
+// ──────────────────────────────────────────────
+
+export const profileUpdateSchema = z.object({
+  firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres").max(100),
+  lastName: z.string().min(2, "El apellido debe tener al menos 2 caracteres").max(100),
+  displayNamePublic: z.string().max(100).optional().nullable(),
+  birthDate: z.string().optional().nullable().transform(v => {
+    if (!v) return null;
+    const date = new Date(v);
+    if (isNaN(date.getTime())) return null;
+    return date;
+  }),
+  sex: z.enum(VALID_SEX_OPTIONS).optional().nullable(),
+  bloodType: z.enum(VALID_BLOOD_TYPES, { message: "Tipo de sangre inválido" }),
+  allergies: z.string().max(1000).optional().default(""),
+  chronicConditions: z.string().max(1000).optional().default(""),
+  medications: z.string().max(1000).optional().default(""),
+  additionalNotes: z.string().max(2000).optional().default(""),
+  phone: z.string().max(20).optional().nullable(),
+  nationalId: z.string().max(50).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  city: z.string().max(100).optional().nullable(),
+});
+
+export const familyProfileCreateSchema = profileUpdateSchema.extend({
+  accountId: z.string().cuid("ID de cuenta inválido"),
+});
+
+// ──────────────────────────────────────────────
+// CHIP SCHEMAS
+// ──────────────────────────────────────────────
+
+export const chipActivationSchema = z.object({
+  activationCode: z.string().min(1, "Código de activación requerido").transform(v => v.toUpperCase().trim()),
+});
+
+// ──────────────────────────────────────────────
+// ADMIN USER SCHEMAS
+// ──────────────────────────────────────────────
+
+export const adminCreateSchema = z.object({
+  email: z.string().email("Email inválido").transform(v => v.toLowerCase().trim()),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  role: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase() : v), z.enum(VALID_ADMIN_ROLES)).default("admin"),
+});
+
+export const adminUpdateSchema = z.object({
+  id: z.string().cuid("ID inválido"),
+  status: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase() : v), z.enum(["active", "suspended"])).optional(),
+  role: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase() : v), z.enum(VALID_ADMIN_ROLES)).optional(),
+});
+
+// ──────────────────────────────────────────────
+// ORDER SCHEMAS
+// ──────────────────────────────────────────────
+
+export const orderCreateSchema = z.object({
+  customerName: z.string().min(2, "Nombre requerido").max(200),
+  customerEmail: z.string().email("Email inválido"),
+  customerPhone: z.string().optional(),
+  shippingNotes: z.string().optional(),
+  providerReference: z.string().optional().nullable(),
+  customerDocument: z.string().optional().nullable(),
+  items: z.array(z.object({
+    productType: z.string(),
+    quantity: z.number().int().positive(),
+    unitPrice: z.number().positive(),
+  })).min(1, "Debe incluir al menos un producto"),
+});
+
+// ──────────────────────────────────────────────
+// HELPER: Safe parse with formatted error messages
+// ──────────────────────────────────────────────
+
+export function validateOrThrow<T>(schema: z.ZodSchema<T>, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const firstError = result.error.errors[0];
+    throw new Error(firstError.message);
+  }
+  return result.data;
+}
+
+export function validateOrNull<T>(schema: z.ZodSchema<T>, data: unknown): { data: T | null; error: string | null } {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    return { data: null, error: result.error.errors[0].message };
+  }
+  return { data: result.data, error: null };
+}
