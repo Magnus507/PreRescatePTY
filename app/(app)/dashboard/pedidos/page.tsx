@@ -68,7 +68,7 @@ function PedidosContent() {
 
   async function loadOrders() {
     try {
-      const res = await fetch("/api/orders");
+      const res = await fetch(`/api/orders?_t=${Date.now()}`);
       const data = await res.json();
       setOrders(data.orders || []);
     } catch (e) {

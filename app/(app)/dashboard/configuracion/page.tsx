@@ -34,7 +34,7 @@ export default function ConfiguracionPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await fetch("/api/users/profile");
+        const res = await fetch(`/api/users/profile?_t=${Date.now()}`);
         const data = await res.json();
         if (data.user) {
           setPhone(data.user.phone || "");

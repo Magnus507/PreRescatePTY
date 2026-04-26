@@ -66,7 +66,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ url: publicUrl });
+    const urlWithBuster = `${publicUrl}?_t=${Date.now()}`;
+    return NextResponse.json({ url: urlWithBuster });
   } catch (err: unknown) {
     const error = err as Error;
     console.error("Upload handler error:", error);

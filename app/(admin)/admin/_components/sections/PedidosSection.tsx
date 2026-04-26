@@ -78,7 +78,7 @@ export function PedidosSection() {
   async function loadOrders() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/orders");
+      const res = await fetch(`/api/admin/orders?_t=${Date.now()}`);
       const data = await res.json();
       setOrders(data.orders || []);
     } catch (e) {
