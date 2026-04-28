@@ -379,9 +379,10 @@ export function PedidosSection() {
                         {selectedOrder.paymentProofUrl ? (
                            <div className="aspect-video w-full rounded-[3rem] border border-border overflow-hidden bg-slate-100 shadow-lg cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
                               <img 
-                                src={selectedOrder.paymentProofUrl} 
+                                src={`/api/image-proxy?bucket=payment-proofs&path=${encodeURIComponent(selectedOrder.paymentProofUrl!.split('/').slice(-2).join('/'))}`} 
                                 alt="Pago" 
                                 className="object-contain w-full h-full p-2" 
+                                onError={(e) => { e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
                               />
                            </div>
                         ) : (

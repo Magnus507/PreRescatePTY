@@ -148,7 +148,7 @@ export default function TiendaPage() {
                  </div>
                  {p.image ? (
                    // eslint-disable-next-line @next/next/no-img-element
-                   <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                   <img src={`/api/image-proxy?bucket=general&path=${encodeURIComponent(p.image.split('/').slice(-2).join('/'))}`} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" onError={(e) => { e.currentTarget.src = p.image; }} />
                  ) : (
                    <Store className="h-24 w-24 text-slate-200 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700" />
                  )}

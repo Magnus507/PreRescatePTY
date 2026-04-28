@@ -66,9 +66,10 @@ export async function optimizeAndUploadImage(
     if (error) throw error;
     logger.debug(`File uploaded successfully: ${data.path}`);
 
-    // 3. Get Public URL
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
-    return urlData.publicUrl;
+    // 3. Get Public URL (use proxy endpoint for better compatibility)
+    // Format: /api/image-proxy?bucket=bucket-name&path=fileName
+    const proxyUrl = `/api/image-proxy?bucket=${bucket}&path=${encodeURIComponent(fileName)}`;
+    return proxyUrl;
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     logger.error("Storage Optimization Error:", errorMessage);

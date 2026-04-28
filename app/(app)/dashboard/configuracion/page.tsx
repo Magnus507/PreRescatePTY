@@ -220,7 +220,7 @@ export default function ConfiguracionPage() {
                   <div className="relative group">
                     <div className="h-32 w-32 rounded-[2.5rem] bg-indigo-50 border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden">
                       {photoUrl ? (
-                         <img src={photoUrl} alt="Perfil" className="h-full w-full object-cover" />
+                         <img src={`/api/image-proxy?bucket=profile-photos&path=${encodeURIComponent(photoUrl.split('/').slice(-2).join('/'))}`} alt="Perfil" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.src = photoUrl; }} />
                       ) : (
                          <User className="h-12 w-12 text-indigo-300" />
                       )}
