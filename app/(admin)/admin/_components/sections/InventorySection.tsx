@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Package, Search, CheckCircle2, Circle, Loader2, Printer, Cpu, Plus, QrCode, Trash2, Copy, Link as LinkIcon, Check, X, Download } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Package, Search, CheckCircle2, Circle, Loader2, Printer, Cpu, Plus, QrCode, Trash2, Copy, Link as LinkIcon, X, Download } from 'lucide-react';
 import { ChipAdmin } from '../../_types/admin';
 import { chipsService } from '../../_services/domains/chips.service';
 import { toast } from 'sonner';
@@ -43,6 +43,21 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   const [filter, setFilter] = useState('');
   const [selectedQR, setSelectedQR] = useState<ChipAdmin | null>(null);
   const qrRef = useRef<HTMLCanvasElement>(null);
+  const loadChipsRef = useRef(loadChips);
+
+  useEffect(() => {
+    loadChipsRef.current = loadChips;
+  }, [loadChips]);
+
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      loadChipsRef.current();
+      setSelectedIds([]);
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    return () => window.removeEventListener('focus', handleWindowFocus);
+  }, []);
 
   const inventoryChips = chips.filter(c => {
     const matchesFilter = (
@@ -59,6 +74,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     try {
       await chipsService.updatePhysicalStatus(id, !currentState);
       toast.success(currentState ? "Movido a Entrega Digital" : "Movido a Stock Físico");
+      setSelectedIds([]);
       loadChips();
     } catch (e: any) {
       toast.error("Error al actualizar estado físico");
@@ -289,6 +305,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                               try {
                                  await fetch("/api/admin/chips/inventory", {
                                     method: "PATCH",
+                                    cache: "no-store",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({ id: c.id, internalLabel: newVal })
                                  });

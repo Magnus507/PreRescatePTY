@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, X, QrCode, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import Image from "next/image";
 
 interface Order {
   id: string;
@@ -53,32 +52,35 @@ export function PedidosSection() {
   const [updating, setUpdating] = useState(false);
   const [inventory, setInventory] = useState<InventoryChip[]>([]);
   const [assignedChipIds, setAssignedChipIds] = useState<string[]>([]);
-  const [loadingInventory, setLoadingInventory] = useState(false);
   const [searchInventory, setSearchInventory] = useState("");
   const [activeTab, setActiveTab] = useState<'all' | 'new' | 'shipped' | 'completed'>('all');
+  const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const loadInventoryRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   useEffect(() => {
     loadOrders();
     loadInventory();
   }, []);
 
+  useEffect(() => {
+    loadOrdersRef.current = loadOrders;
+    loadInventoryRef.current = loadInventory;
+  }, [loadOrders, loadInventory]);
+
   async function loadInventory() {
-    setLoadingInventory(true);
     try {
-      const res = await fetch(`/api/admin/chips/inventory?_t=${Date.now()}`);
+      const res = await fetch(`/api/admin/chips/inventory?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       setInventory(data.chips || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingInventory(false);
+    } catch (error) {
+      console.error(error);
     }
   }
 
   async function loadOrders() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/orders?_t=${Date.now()}`);
+      const res = await fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       setOrders(data.orders || []);
     } catch (e) {
@@ -90,14 +92,14 @@ export function PedidosSection() {
 
   useEffect(() => {
     if (selectedOrder) {
-      loadInventory();
+      loadInventoryRef.current();
     }
   }, [selectedOrder?.id]);
 
   useEffect(() => {
     const handleWindowFocus = () => {
-      loadOrders();
-      loadInventory();
+      loadOrdersRef.current();
+      loadInventoryRef.current();
     };
 
     window.addEventListener("focus", handleWindowFocus);
@@ -140,6 +142,7 @@ export function PedidosSection() {
     try {
       const res = await fetch(`/api/admin/orders`, {
         method: "PATCH",
+        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
            id, 
@@ -171,7 +174,7 @@ export function PedidosSection() {
     
     setUpdating(true);
     try {
-      const res = await fetch("/api/admin/orders?bulk=cancelled", { method: "DELETE" });
+      const res = await fetch("/api/admin/orders?bulk=cancelled", { method: "DELETE", cache: "no-store" });
       if (res.ok) {
         toast.success("Órdenes canceladas eliminadas correctamente");
         loadOrders();
@@ -429,7 +432,7 @@ export function PedidosSection() {
                         if(!confirm("¿Eliminar de forma permanente? No se puede deshacer.")) return;
                         setUpdating(true);
                         try {
-                          const res = await fetch(`/api/admin/orders?id=${selectedOrder.id}`, { method: "DELETE" });
+                          const res = await fetch(`/api/admin/orders?id=${selectedOrder.id}`, { method: "DELETE", cache: "no-store" });
                           if (res.ok) { toast.success("Orden borrada"); setSelectedOrder(null); loadOrders(); }
                         } finally { setUpdating(false); }
                      }} disabled={updating} className="px-10 py-5 bg-red-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:bg-red-700 transition-all">
