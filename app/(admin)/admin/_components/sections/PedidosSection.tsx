@@ -65,7 +65,7 @@ export function PedidosSection() {
   async function loadInventory() {
     setLoadingInventory(true);
     try {
-      const res = await fetch("/api/admin/chips/inventory");
+      const res = await fetch(`/api/admin/chips/inventory?_t=${Date.now()}`);
       const data = await res.json();
       setInventory(data.chips || []);
     } catch (e) {
@@ -87,6 +87,31 @@ export function PedidosSection() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (selectedOrder) {
+      loadInventory();
+    }
+  }, [selectedOrder?.id]);
+
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      loadOrders();
+      loadInventory();
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    return () => window.removeEventListener("focus", handleWindowFocus);
+  }, []);
+
+  useEffect(() => {
+    if (selectedOrder) return;
+    const interval = window.setInterval(() => {
+      loadOrders();
+    }, 30000);
+
+    return () => window.clearInterval(interval);
+  }, [selectedOrder]);
 
   const calculateNeededChips = (order: Order) => {
     let chips = 0;
