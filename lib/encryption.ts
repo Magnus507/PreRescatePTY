@@ -1,7 +1,19 @@
 import crypto from "crypto";
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "your-fallback-32-chars-long-key-!!!!"; // Must be 32 chars
 const IV_LENGTH = 16; // For AES-256-CBC
+
+function getEncryptionKey(): Buffer {
+  const configuredKey = process.env.ENCRYPTION_KEY;
+
+  if (!configuredKey && process.env.NODE_ENV === "production") {
+    throw new Error("ENCRYPTION_KEY is required in production");
+  }
+
+  const source = configuredKey || "dev-only-pre-rescue-id-encryption-key";
+  return Buffer.byteLength(source) === 32
+    ? Buffer.from(source)
+    : crypto.createHash("sha256").update(source).digest();
+}
 
 /**
  * Encrypts a string using AES-256-CBC.
@@ -10,7 +22,7 @@ export function encrypt(text: string): string {
   if (!text) return "";
   
   const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+  const cipher = crypto.createCipheriv("aes-256-cbc", getEncryptionKey(), iv);
   let encrypted = cipher.update(text);
   encrypted = Buffer.concat([encrypted, cipher.final()]);
   
@@ -28,7 +40,7 @@ export function decrypt(text: string): string {
     const textParts = text.split(":");
     const iv = Buffer.from(textParts.shift()!, "hex");
     const encryptedText = Buffer.from(textParts.join(":"), "hex");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+    const decipher = crypto.createDecipheriv("aes-256-cbc", getEncryptionKey(), iv);
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     

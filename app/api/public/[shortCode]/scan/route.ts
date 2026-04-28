@@ -41,18 +41,24 @@ export async function POST(
       return NextResponse.json({ error: "Chip no encontrado" }, { status: 404 });
     }
 
+    if (chip.status !== "activated" || !chip.assignedProfileId) {
+      return NextResponse.json({ error: "Chip no activo" }, { status: 409 });
+    }
+
     // Create scan event
     const scanEvent = await prisma.scanEvent.create({
       data: {
         chipId: chip.id,
+        profileId: chip.assignedProfileId,
+        accountId: chip.accountId,
         sourceType: body.sourceType || "qr",
         ipAddress: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
         userAgent: req.headers.get("user-agent") || "unknown",
-        geoLat: body.geoLat || null,
-        geoLng: body.geoLng || null,
-        geoAccuracy: body.geoAccuracy || null,
-        country: body.country || null,
-        city: body.city || null,
+        geoLat: Number.isFinite(Number(body.geoLat)) ? Number(body.geoLat) : null,
+        geoLng: Number.isFinite(Number(body.geoLng)) ? Number(body.geoLng) : null,
+        geoAccuracy: Number.isFinite(Number(body.geoAccuracy)) ? Number(body.geoAccuracy) : null,
+        country: typeof body.country === "string" ? body.country.slice(0, 100) : null,
+        city: typeof body.city === "string" ? body.city.slice(0, 100) : null,
         address: null, 
         emergencyMode: true,
         notificationStatus: "pending",
@@ -233,4 +239,3 @@ export async function POST(
     );
   }
 }
-

@@ -351,7 +351,7 @@ export default function DashboardPage() {
               href={state.isOrganization ? "/dashboard/empresas" : "/dashboard/perfiles-medicos"} 
               className="text-primary font-black text-sm flex items-center gap-1.5 hover:bg-primary/5 px-4 py-2 rounded-xl transition-all"
              >
-                {state.isOrganization ? "Ver Mi Empresa" : "Gestionar Familia"} <ChevronRight className="h-4 w-4" />
+                {state.isOrganization ? "Ver Mi Empresa" : "Perfiles Médicos"} <ChevronRight className="h-4 w-4" />
              </Link>
           )}
         </div>
@@ -392,7 +392,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-center">
                   <p className="font-black text-sm uppercase tracking-widest">
-                    {state.isOrganization ? "Añadir Colaborador" : "Añadir Familiar"}
+                    {state.isOrganization ? "Añadir Colaborador" : "Nuevo Perfil Médico"}
                   </p>
                   <p className="text-[10px] mt-1 opacity-60">Cupo: {state.familyProfilesCount + 1}/{state.maxProfilesAllocated}</p>
                 </div>
@@ -411,11 +411,11 @@ export default function DashboardPage() {
               <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-indigo-500/20 opacity-50" />
               <div className="relative z-10 flex flex-col justify-between h-full">
                 <div>
-                   <h3 className="text-2xl font-black tracking-tight mb-3">¿Proteges a toda tu familia?</h3>
+                   <h3 className="text-2xl font-black tracking-tight mb-3">¿Proteges a más personas?</h3>
                    <p className="text-slate-300 text-sm mb-6 italic">Adquiere un paquete de chips y protege a tus seres queridos fácilmente.</p>
                 </div>
                 <Link href="/dashboard/upgrade" className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all w-fit">
-                  Ver combos familiares <ArrowUpRight className="h-4 w-4" />
+                  Ver combos multi-perfil <ArrowUpRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -501,7 +501,7 @@ function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, 
 
   const fullName = firstName && lastName 
     ? `${firstName} ${lastName}`
-    : (isOwn ? "Completa tu Perfil" : (isOrganization ? "Pendiente" : "Familiar por configurar"));
+    : (isOwn ? "Completa tu Perfil" : (isOrganization ? "Pendiente" : "Perfil por configurar"));
 
   const chipCount = profile?.assignedChips?.length || 0;
   const isComplete = !!(profile?.firstName && profile?.lastName && profile?.bloodType && profile?.bloodType !== "Pendiente");
@@ -544,7 +544,7 @@ function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, 
           <div>
             <h4 className="font-black text-lg tracking-tight leading-none group-hover:text-primary transition-colors">{fullName}</h4>
             <span className={`inline-block mt-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${badge}`}>
-              {isOwn ? "Principal" : (isOrganization ? "Colaborador" : "Familiar")}
+              {isOwn ? "Principal" : (isOrganization ? "Colaborador" : "Perfil Adicional")}
             </span>
           </div>
         </div>

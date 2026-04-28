@@ -25,8 +25,8 @@ export async function GET() {
 
     const allProfiles = await ProfileRepository.findAllByAccount(state.accountId);
 
-    const ownProfile = allProfiles.find((p) => p.userId === userId) ?? null;
-    const familyProfiles = allProfiles.filter((p) => p.userId !== userId);
+    const ownProfile = allProfiles.find((p) => p?.userId === userId) ?? null;
+    const familyProfiles = allProfiles.filter((p) => p && p.userId !== userId);
 
     return ApiResponse.success({ ownProfile, familyProfiles, state });
   } catch (error: unknown) {
@@ -73,9 +73,11 @@ export async function POST(req: NextRequest) {
       allergies, chronicConditions, medications, additionalNotes
     } = body;
 
-    if (!firstName || !lastName || !bloodType) {
-      return ApiResponse.error("Datos obligatorios incompletos (nombre, apellido, tipo de sangre).", { status: 400 });
+    if (!firstName || !lastName) {
+      return ApiResponse.error("Datos obligatorios incompletos (nombre y apellido).", { status: 400 });
     }
+
+    const finalBloodType = bloodType || "Pendiente";
 
     // Parse birthDate string to Date (schema now uses DateTime)
     const birthDate = rawBirthDate ? new Date(rawBirthDate) : null;
@@ -87,7 +89,7 @@ export async function POST(req: NextRequest) {
       displayNamePublic,
       birthDate,
       sex,
-      bloodType,
+      bloodType: finalBloodType,
       phone,
       allergies,
       chronicConditions,
@@ -96,14 +98,16 @@ export async function POST(req: NextRequest) {
     });
 
     // Record audit log
-    await AuditLogRepository.record({
-      actorUserId: userId,
-      accountId: state.accountId,
-      entityType: "profile",
-      entityId: profile.id,
-      action: "create_family_profile",
-      newValuesJson: JSON.stringify({ firstName, lastName, bloodType }),
-    });
+    if (profile) {
+      await AuditLogRepository.record({
+        actorUserId: userId,
+        accountId: state.accountId,
+        entityType: "profile",
+        entityId: profile.id,
+        action: "create_family_profile",
+        newValuesJson: JSON.stringify({ firstName, lastName, bloodType: finalBloodType }),
+      });
+    }
 
     return ApiResponse.success({ profile }, { status: 201 });
   } catch (error: unknown) {

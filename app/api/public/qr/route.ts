@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     console.log("[QR_GENERATOR] Successfully generated locally for:", data.substring(0, 30) + "...");
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=31536000, immutable",

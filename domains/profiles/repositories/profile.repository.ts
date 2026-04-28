@@ -84,7 +84,7 @@ export class ProfileRepository {
     const profile = await prisma.profile.create({
       data: {
         ...data,
-        bloodType: encrypt(data.bloodType || "O+"),
+        bloodType: encrypt(data.bloodType || "Pendiente"),
         allergies: encrypt(data.allergies || ""),
         chronicConditions: encrypt(data.chronicConditions || ""),
         medications: encrypt(data.medications || ""),
@@ -132,13 +132,13 @@ export class ProfileRepository {
   static async update(id: string, data: Partial<Profile>) {
     const updateData: any = { ...data };
     
-    if (data.bloodType) updateData.bloodType = encrypt(data.bloodType);
-    if (data.allergies) updateData.allergies = encrypt(data.allergies);
-    if (data.chronicConditions) updateData.chronicConditions = encrypt(data.chronicConditions);
-    if (data.medications) updateData.medications = encrypt(data.medications);
-    if (data.additionalNotes) updateData.additionalNotes = encrypt(data.additionalNotes);
-    if (data.nationalId) updateData.nationalId = encrypt(data.nationalId);
-    if (data.address) updateData.address = encrypt(data.address);
+    if ("bloodType" in data) updateData.bloodType = encrypt(data.bloodType || "");
+    if ("allergies" in data) updateData.allergies = encrypt(data.allergies || "");
+    if ("chronicConditions" in data) updateData.chronicConditions = encrypt(data.chronicConditions || "");
+    if ("medications" in data) updateData.medications = encrypt(data.medications || "");
+    if ("additionalNotes" in data) updateData.additionalNotes = encrypt(data.additionalNotes || "");
+    if ("nationalId" in data) updateData.nationalId = encrypt(data.nationalId || "");
+    if ("address" in data) updateData.address = encrypt(data.address || "");
 
     const profile = await prisma.profile.update({
       where: { id },

@@ -15,7 +15,7 @@ export const usersService = {
   },
 
   async updateUserStatus(userId: string, status: string) {
-    return adminClient.patch(`/api/admin/users/${userId}/status`, { status });
+    return adminClient.patch("/api/admin/users", { id: userId, status });
   },
 
   async getAdminAccounts(signal?: AbortSignal) {

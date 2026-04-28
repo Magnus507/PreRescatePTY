@@ -81,7 +81,7 @@ export class AccountStateService {
     const cacheKey = `account_state_v3:${userId}`;
 
     // 1. Try Distributed Cache first
-    if (isRedisConfigured()) {
+    if (redis && isRedisConfigured()) {
       try {
         const cached = await redis.get<AccountState>(cacheKey);
         if (cached) return cached;
@@ -212,7 +212,7 @@ export class AccountStateService {
     };
 
     // 7. Store in Cache for 5 minutes (reduced from 1 hour to minimize stale data)
-    if (isRedisConfigured()) {
+    if (redis && isRedisConfigured()) {
       try {
         await redis.set(cacheKey, state, { ex: 300 });
       } catch (e) {
@@ -227,7 +227,7 @@ export class AccountStateService {
    * Manual Cache Invalidation
    */
   static async invalidateCache(userId: string): Promise<void> {
-    if (!isRedisConfigured()) return;
+    if (!redis || !isRedisConfigured()) return;
     try {
       await redis.del(`account_state_v3:${userId}`);
     } catch (e) {
@@ -235,4 +235,3 @@ export class AccountStateService {
     }
   }
 }
-

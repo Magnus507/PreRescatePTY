@@ -18,9 +18,11 @@ export async function register() {
   }
 }
 
-export async function onRequestError(error: unknown) {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    const Sentry = await import("@sentry/nextjs");
-    Sentry.captureRequestError(error);
-  }
-}
+export const onRequestError = async (
+  error: unknown,
+  request: { path: string; method: string; headers: Record<string, string | string[] | undefined> },
+  errorContext: { routerKind: string; routePath: string; routeType: string }
+) => {
+  const Sentry = await import("@sentry/nextjs");
+  Sentry.captureRequestError(error, request, errorContext);
+};

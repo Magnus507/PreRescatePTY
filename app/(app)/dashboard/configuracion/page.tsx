@@ -128,7 +128,7 @@ export default function ConfiguracionPage() {
 
     setIsDeleting(true);
     try {
-      const res = await fetch("/api/user/account/delete", {
+      const res = await fetch("/api/users/account/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirmation })

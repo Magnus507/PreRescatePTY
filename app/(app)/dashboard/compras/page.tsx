@@ -201,7 +201,7 @@ function ComprasContent() {
 
         <div className="w-full xl:w-96 space-y-6">
           <div className="px-2">
-            <h3 className="text-xl font-black tracking-tight mb-2">Combos Familiares</h3>
+            <h3 className="text-xl font-black tracking-tight mb-2">Combos Multi-perfil</h3>
             <p className="text-xs font-bold text-muted-foreground leading-relaxed">Protege a todo tu entorno con un solo paquete.</p>
           </div>
           

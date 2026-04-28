@@ -22,7 +22,7 @@ export class ConfigRepository {
     const redisKey = `${REDIS_PREFIX}${key}`;
 
     // 1. Try Redis for cross-instance caching
-    if (isRedisConfigured()) {
+    if (redis && isRedisConfigured()) {
       try {
         const cached = await redis.get<string>(redisKey);
         if (cached) return cached;
@@ -39,7 +39,7 @@ export class ConfigRepository {
       const value = config?.value ?? defaultValue;
       
       // 3. Save to Redis for next time
-      if (isRedisConfigured() && value) {
+      if (redis && isRedisConfigured() && value) {
         await redis.set(redisKey, value, { ex: CACHE_TTL });
       }
       

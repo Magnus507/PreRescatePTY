@@ -97,7 +97,7 @@ export default function TiendaPage() {
       {/* Hero Section */}
       <div className="relative h-[300px] rounded-[3rem] overflow-hidden bg-slate-900 group shadow-2xl shadow-slate-900/20">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/60 to-transparent z-10" />
-        <div className="absolute inset-0 opacity-30 bg-[url('https://images.unsplash.com/photo-1557821552-17105176677c?auto=format&fit=crop&q=80')] bg-cover bg-center group-hover:scale-105 transition-transform duration-[3s]" />
+        <div className="absolute inset-0 opacity-30 bg-[url('https://images.unsplash.com/photo-1557821552-17105176677c?auto=format&fit=crop&q=80')] bg-cover bg-center group-hover:scale-105 transition-transform [transition-duration:3000ms]" />
         
         <div className="relative h-full flex flex-col justify-center px-12 z-20 space-y-4">
           <div className="bg-white/10 backdrop-blur-md border border-white/20 w-fit px-4 py-1.5 rounded-full">

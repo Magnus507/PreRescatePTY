@@ -217,7 +217,7 @@ export default function Home() {
           <VisualHowItWorks />
         </div>
 
-        {/* ===== SEGMENT: FAMILY & KIDS ===== */}
+        {/* ===== SEGMENT: MULTI-PROFILE & SAFETY ===== */}
         <section className="py-32 bg-background">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
@@ -227,7 +227,7 @@ export default function Home() {
                  viewport={{ once: true }}
                  className="order-2 lg:order-1 space-y-8"
                >
-                 <span className="text-brand font-black tracking-widest uppercase text-xs">Protección Familiar</span>
+                 <span className="text-brand font-black tracking-widest uppercase text-xs">Protección Multi-perfil</span>
                  <h2 className="text-4xl sm:text-5xl font-black tracking-tighter text-foreground leading-tight">
                     Cuidamos a quienes <span className="text-brand">más amas</span>.
                  </h2>
@@ -236,7 +236,7 @@ export default function Home() {
                  </p>
                  
                  <ul className="space-y-4">
-                    {["Identificación para niños", "Seguridad para adultos mayores", "Perfil médico especializado"].map((item, i) => (
+                    {["Identificación para niños", "Seguridad para adultos mayores", "Perfiles médicos adicionales"].map((item, i) => (
                       <li key={i} className="flex items-center gap-3 font-bold text-foreground">
                         <CheckCircle className="h-5 w-5 text-emerald-500" /> {item}
                       </li>
@@ -245,7 +245,7 @@ export default function Home() {
                  
                  <div className="pt-8">
                     <Link href="#pricing" className="inline-flex items-center gap-2 text-brand font-black text-lg hover:underline">
-                       Ver planes familiares <ChevronRight className="h-5 w-5" />
+                       Ver planes multi-perfil <ChevronRight className="h-5 w-5" />
                     </Link>
                  </div>
                </motion.div>

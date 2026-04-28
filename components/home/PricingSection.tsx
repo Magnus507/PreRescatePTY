@@ -135,7 +135,7 @@ export default function PricingSection() {
                     <div className={`h-6 w-6 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-[#DA1A21]/10 text-[#DA1A21]'} shrink-0 mt-0.5`}>
                         <Check className="h-3.5 w-3.5 font-bold" />
                     </div>
-                    <span className="text-sm font-semibold opacity-90">Cuentas Familiares Vinculadas</span>
+                    <span className="text-sm font-semibold opacity-90">Cuentas Multi-perfil Vinculadas</span>
                   </li>
                 )}
                 <li className="flex items-start gap-4">

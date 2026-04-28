@@ -101,52 +101,52 @@ function AdminDashboard() {
 
   const dynamicLabels: Record<string, { title: string; subtitle: string; placeholder: string }> = {
     dashboard: { 
-      title: isFounder ? "Inteligencia Raíz" : "Panel de Inteligencia", 
+      title: "Dashboard de Control", 
       subtitle: "Métricas críticas y monitoreo de salud del ecosistema",
       placeholder: "Analizar métricas..." 
     },
     users: { 
-      title: isFounder ? "Comunidad PreRescate" : "Comunidad PreRescate", 
+      title: "Usuarios & Perfiles", 
       subtitle: "Gestión de perfiles vitales y cuentas de usuario",
       placeholder: "Buscar por nombre o correo..." 
     },
     chips: { 
-      title: isFounder ? "Red de Identificadores" : "Red de Identificadores", 
+      title: "Identificadores (Chips)", 
       subtitle: "Control maestro de chips digitales y estado de servicio",
       placeholder: "Buscar por código serial..." 
     },
     empresas: { 
-      title: isFounder ? "Nodos Corporativos" : "Cuentas Corporativas", 
+      title: "Cuentas Corporativas", 
       subtitle: "Administración de entidades, colegios y flotas",
       placeholder: "Buscar organización..." 
     },
     inventory: { 
-      title: isFounder ? "Logística Raíz" : "Suministro & Fábrica", 
+      title: "Stock & Fábrica", 
       subtitle: "Logística de hardware, stock físico y producción industrial",
       placeholder: "Buscar en stock..." 
     },
     admins: { 
-      title: isFounder ? "Gobernanza Maestra" : "Gobernanza Superior", 
-      subtitle: isFounder ? "Control supremo de privilegios y operadores" : "Control de acceso y auditoría administrativa",
-      placeholder: isFounder ? "Buscar en la infraestructura..." : "Buscar administradores..." 
+      title: "Administradores", 
+      subtitle: "Control de acceso y auditoría administrativa",
+      placeholder: "Buscar administradores..." 
     },
     pedidos: {
-      title: isFounder ? "Flujo de Operaciones" : "Ventas & Pedidos",
+      title: "Ventas & Pedidos",
       subtitle: "Gestión de compras, chips+ y validaciones de pago",
       placeholder: "Buscar pedidos..."
     },
     tienda: {
-      title: isFounder ? "Almacén Central" : "Tienda PTY Management",
+      title: "Tienda PTY Management",
       subtitle: "Gestión de productos adicionales, stock y ventas de la tienda",
       placeholder: "Buscar productos..."
     },
     governance: {
-      title: isFounder ? "Gobernanza Raíz" : "Gobernanza del Sistema",
+      title: "Auditoría & Salud",
       subtitle: "Centro de control de integridad, alertas críticas y salud operativa",
       placeholder: "Analizar infraestructura..."
     },
     roadmap: {
-      title: "Ruta Futura (Labs)",
+      title: "Labs / Roadmap",
       subtitle: "Próximas actualizaciones y experimentos en desarrollo (PreRescate v4.0)",
       placeholder: "Explorar planes..."
     },
@@ -156,7 +156,7 @@ function AdminDashboard() {
       placeholder: "Buscar ajuste..."
     },
     showcase: {
-      title: "Perfil Showcase (V.I.P.)",
+      title: "Perfil VIP Showcase",
       subtitle: "Gestión de la identidad médica pública que sirve de ejemplo al mundo",
       placeholder: "Buscar en demo..."
     }

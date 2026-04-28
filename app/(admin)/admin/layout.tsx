@@ -28,18 +28,18 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
       : { title: "Admin", sub: "CORE ENGINE", icon: Shield, color: "bg-primary shadow-primary/40" };
 
   const nav = [
-    { label: "Inteligencia", id: "dashboard", icon: LayoutDashboard },
-    { label: "Comunidad", id: "users", icon: Users },
-    { label: "Identificadores", id: "chips", icon: Cpu },
+    { label: "Dashboard", id: "dashboard", icon: LayoutDashboard },
+    { label: "Usuarios", id: "users", icon: Users },
+    { label: "Gestión de Chips", id: "chips", icon: Cpu },
     { label: "Tienda Admin", id: "tienda", icon: Store },
-    { label: "Corporativo", id: "empresas", icon: Building2 },
-    { label: "Suministro", id: "inventory", icon: Package },
+    { label: "Cuentas Corporativas", id: "empresas", icon: Building2 },
+    { label: "Stock & Fábrica", id: "inventory", icon: Package },
     { label: "Ventas & Pedidos", id: "pedidos", icon: Activity },
-    { label: "Perfil Showcase", id: "showcase", icon: Sparkles },
-    { label: "Ajustes", id: "settings", icon: Settings },
-    { label: "Gobernanza", id: "governance", icon: Shield },
-    { label: "Soberanía", id: "admins", icon: Shield },
-    { label: "Ruta Futura", id: "roadmap", icon: Rocket, isFuture: true },
+    { label: "Perfil VIP", id: "showcase", icon: Sparkles },
+    { label: "Ajustes Sistema", id: "settings", icon: Settings },
+    { label: "Auditoría", id: "governance", icon: Shield },
+    { label: "Administradores", id: "admins", icon: Shield },
+    { label: "Labs / Roadmap", id: "roadmap", icon: Rocket, isFuture: true },
   ].filter(item => !isPrintRole || item.id === 'inventory');
 
   return (

@@ -23,7 +23,7 @@ export async function GET() {
     const CACHE_TTL = 60; // 60 seconds
 
     // Try to get from cache first
-    if (isRedisConfigured()) {
+    if (redis && isRedisConfigured()) {
       try {
         const cached = await redis.get(CACHE_KEY);
         if (cached) {
@@ -55,7 +55,7 @@ export async function GET() {
     };
 
     // Cache the response
-    if (isRedisConfigured()) {
+    if (redis && isRedisConfigured()) {
       try {
         await redis.set(CACHE_KEY, response, { ex: CACHE_TTL });
       } catch (e) {
@@ -73,4 +73,3 @@ export async function GET() {
     );
   }
 }
-

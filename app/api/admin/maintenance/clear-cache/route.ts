@@ -13,7 +13,7 @@ export async function POST() {
   }
 
   try {
-    if (isRedisConfigured()) {
+    if (redis && isRedisConfigured()) {
       // Flush all keys (or specific patterns)
       // Since it's Upstash, we can use flushdb or keys + del
       await redis.flushdb();

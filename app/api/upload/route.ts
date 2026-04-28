@@ -4,6 +4,10 @@ import { authOptions } from "@/lib/auth";
 import { optimizeAndUploadImage } from "@/lib/storage-utils";
 import { prisma } from "@/lib/prisma";
 
+const ALLOWED_BUCKETS = new Set(["general", "profile-photos", "payment-proofs"]);
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -21,6 +25,18 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: "No se proporcionó ningún archivo" }, { status: 400 });
+    }
+
+    if (!ALLOWED_BUCKETS.has(bucketName)) {
+      return NextResponse.json({ error: "Destino de carga invalido" }, { status: 400 });
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      return NextResponse.json({ error: "Solo se permiten imagenes JPG, PNG o WebP" }, { status: 400 });
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: "El archivo supera el limite de 5MB" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

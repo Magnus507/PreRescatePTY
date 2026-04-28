@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { orderCreateSchema, validateOrThrow } from "@/lib/validations";
+import { BUSINESS_RULES } from "@/domains/shared/constants";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -43,7 +44,36 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const totalPrice = validatedData.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+      const pricedItems = await Promise.all(validatedData.items.map(async (item) => {
+        const productType = item.productType.toUpperCase().replace(/\s+/g, "_");
+
+        if (productType === "CHIP_EXTRA") {
+          return {
+            ...item,
+            productType,
+            unitPrice: BUSINESS_RULES.EXTRA_CHIP_PRICE,
+          };
+        }
+
+        if (productType.startsWith("COMBO_") && validatedData.providerReference) {
+          const pkg = await tx.package.findUnique({
+            where: { id: validatedData.providerReference },
+            select: { price: true },
+          });
+
+          if (pkg) {
+            return {
+              ...item,
+              productType,
+              unitPrice: pkg.price,
+            };
+          }
+        }
+
+        throw new Error("Producto invalido o no disponible");
+      }));
+
+      const totalPrice = pricedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
       return await tx.order.create({
         data: {
@@ -61,8 +91,8 @@ export async function POST(req: NextRequest) {
           customerDocument: (validatedData as any).customerDocument || null,
           providerReference: (validatedData as any).providerReference || null,
           items: {
-            create: validatedData.items.map(item => ({
-              productType: item.productType.toUpperCase().replace(' ', '_'),
+            create: pricedItems.map(item => ({
+              productType: item.productType,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               totalPrice: item.unitPrice * item.quantity

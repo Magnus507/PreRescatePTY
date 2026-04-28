@@ -523,7 +523,7 @@ export default function FamiliaPage() {
               <div className="h-14 w-14 rounded-2xl bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-all">
                 <Plus className="h-6 w-6" />
               </div>
-              <p className="font-black text-lg tracking-tight uppercase">Añadir Nuevo Familiar</p>
+              <p className="font-black text-lg tracking-tight uppercase">Añadir Nuevo Perfil</p>
             </button>
           )}
         </div>
@@ -531,7 +531,7 @@ export default function FamiliaPage() {
 
       {/* Modals */}
       {showAdd && (
-        <Modal title="Añadir Familiar" onClose={() => setShowAdd(false)}>
+        <Modal title="Añadir Perfil Médico" onClose={() => setShowAdd(false)}>
           <form onSubmit={handleAdd} className="space-y-6">
             {addError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{addError}</p>}
             <MedicalProfileForm 
@@ -542,7 +542,7 @@ export default function FamiliaPage() {
               <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
               <button type="submit" disabled={addSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
                 {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Guardar Familiar
+                Guardar Perfil Médico
               </button>
             </div>
           </form>
@@ -647,7 +647,7 @@ function ProfileCard({
                {initials}
             </div>
             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
-               {isOwn ? 'Tú — Principal' : 'Familiar'}
+               {isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
             </span>
          </div>
 

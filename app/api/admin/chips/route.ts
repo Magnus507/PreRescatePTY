@@ -4,9 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-import { generateShortCode, generateActivationCode, generateSerialPublic, SITE_URL } from "@/lib/constants";
+import { SITE_URL } from "@/lib/constants";
 import { 
-  getUniqueShortCode, getUniqueSerialPublic, getUniqueActivationCode,
   getBatchUniqueShortCodes, getBatchUniqueSerialPublics, getBatchUniqueActivationCodes 
 } from "@/lib/identifiers";
 
@@ -108,8 +107,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { count = 1, batchId, productType = "sticker_nfc_qr", labelBase = "Caja", labelStart = 1 } = body;
+  const chipCount = Number(count);
 
-  if (count > 100) {
+  if (!Number.isInteger(chipCount) || chipCount < 1 || chipCount > 100) {
     return NextResponse.json(
       { error: "Máximo 100 chips por lote" },
       { status: 400 }
@@ -120,9 +120,9 @@ export async function POST(req: NextRequest) {
 
   // 1. Generate all unique codes in batches (3 DB roundtrips instead of 3 * count)
   const [shortCodes, serials, activationCodes] = await Promise.all([
-    getBatchUniqueShortCodes(count),
-    getBatchUniqueSerialPublics(count),
-    getBatchUniqueActivationCodes(count),
+    getBatchUniqueShortCodes(chipCount),
+    getBatchUniqueSerialPublics(chipCount),
+    getBatchUniqueActivationCodes(chipCount),
   ]);
 
   // 2. Find last internal label to continue sequence
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
   const createdChips = await prisma.$transaction(async (tx) => {
     const results = [];
     
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < chipCount; i++) {
         const shortCode = shortCodes[i];
         const serialPublic = serials[i];
         const activationCode = activationCodes[i];
@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json(
-    { message: `${count} chips creados`, batch, chips: createdChips },
+    { message: `${chipCount} chips creados`, batch, chips: createdChips },
     { status: 201 }
   );
 }

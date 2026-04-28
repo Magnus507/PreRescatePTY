@@ -115,6 +115,8 @@ export const orderCreateSchema = z.object({
   customerName: z.string().min(2, "Nombre requerido").max(200),
   customerEmail: z.string().email("Email inválido"),
   customerPhone: z.string().optional(),
+  shippingAddress: z.string().max(500).optional().nullable(),
+  shippingCity: z.string().max(100).optional().nullable(),
   shippingNotes: z.string().optional(),
   providerReference: z.string().optional().nullable(),
   customerDocument: z.string().optional().nullable(),
