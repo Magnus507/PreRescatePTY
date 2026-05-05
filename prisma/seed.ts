@@ -151,13 +151,15 @@ async function main() {
   }
   console.log('✅ Official packages synced.');
 
-  // 3. Cleanup: Remove any old names or "Paquetes" to avoid duplicates
+  // 3. Cleanup: Remove any old names or legacy plans to ensure SSOT
   await prisma.package.deleteMany({
     where: {
       name: {
         in: [
           'Kit Inicial', 'Plan Básico', 'Básico', 'Plan Familiar', 'Plan Residencial', 'Plan Empresarial',
-          'Paquete Estándar', 'Paquete Dúo', 'Paquete Empresa', 'Paquete Colegio / Escolar'
+          'Paquete Estándar', 'Paquete Dúo', 'Paquete Empresa', 'Paquete Colegio / Escolar',
+          'Plan Estándar', 'Plan Dúo', 'Family Club', 'Hogar Full', 'Hogar', 'Personal Básico', 
+          'Personal Pro', 'Familiar Estándar', 'Familiar Premium', 'Empresa Pyme', 'Corporativo Plus'
         ]
       }
     }

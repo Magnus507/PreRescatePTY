@@ -60,11 +60,24 @@ export async function GET(
       },
     });
 
-    if (!chip || chip.status !== "activated" || !chip.assignedProfile) {
+    if (!chip) {
       return NextResponse.json(
-        { error: "Perfil no disponible", status: "not_found" },
+        { error: "Código no encontrado en el sistema.", status: "not_found" },
         { status: 404 }
       );
+    }
+
+    if (chip.status !== "activated" || !chip.assignedProfile) {
+      return NextResponse.json({ 
+        status: "inactive",
+        chip: {
+          shortCode: chip.shortCode,
+          serialPublic: chip.serialPublic,
+          internalLabel: chip.internalLabel || chip.chipUidInternal,
+          productType: chip.productType,
+          batchId: chip.batchId
+        }
+      });
     }
 
     const profile = chip.assignedProfile;

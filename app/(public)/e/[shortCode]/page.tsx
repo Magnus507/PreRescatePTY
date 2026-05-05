@@ -29,12 +29,22 @@ interface EmergencyProfile {
   }[];
 }
 
+interface ChipMetadata {
+  shortCode: string;
+  serialPublic: string;
+  internalLabel: string;
+  productType: string;
+  batchId?: string;
+}
+
 export default function EmergencyPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const shortCode = params.shortCode as string;
   const source = searchParams.get("source") || "qr";
   const [profile, setProfile] = useState<EmergencyProfile | null>(null);
+  const [chipMetadata, setChipMetadata] = useState<ChipMetadata | null>(null);
+  const [isInactive, setIsInactive] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [isParamedic, setIsParamedic] = useState<boolean | null>(null);
@@ -85,7 +95,10 @@ export default function EmergencyPage() {
         const res = await fetch(`/api/public/${shortCode}?t=${Date.now()}`);
         const data = await res.json();
 
-        if (!res.ok) {
+        if (data.status === "inactive") {
+          setIsInactive(true);
+          setChipMetadata(data.chip);
+        } else if (!res.ok) {
           setError(data.error || "Perfil no disponible");
         } else {
           setProfile(data.profile);
@@ -112,6 +125,88 @@ export default function EmergencyPage() {
     );
   }
 
+  if (isInactive && chipMetadata) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="max-w-xl w-full">
+          <div className="bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden relative">
+            {/* Header Aesthetic */}
+            <div className="h-3 bg-red-600 w-full" />
+            
+            <div className="p-10 md:p-14 text-center">
+              <div className="bg-red-50 h-28 w-28 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 border border-red-100 shadow-xl shadow-red-100/50">
+                <AlertTriangle className="h-12 w-12 text-red-600 animate-bounce" />
+              </div>
+
+              <div className="space-y-4 mb-12">
+                <h1 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter italic leading-none">
+                  Vínculo No Activado
+                </h1>
+                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">
+                  Suministro Verificado | Inventario PreRescate
+                </p>
+              </div>
+
+              <div className="bg-slate-50 rounded-[2.5rem] p-8 space-y-6 border border-slate-100 mb-12">
+                <div className="flex flex-col md:flex-row gap-6 md:gap-10 justify-center">
+                  <div className="text-center md:text-left space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Etiqueta Interna</p>
+                    <p className="text-2xl font-black text-slate-900 tracking-tighter">{chipMetadata.internalLabel}</p>
+                  </div>
+                  <div className="h-px md:h-12 w-full md:w-px bg-slate-200" />
+                  <div className="text-center md:text-left space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">ID Público</p>
+                    <p className="text-2xl font-black text-slate-900 tracking-tighter">{chipMetadata.serialPublic}</p>
+                  </div>
+                </div>
+                
+                <div className="pt-6 border-t border-slate-200 flex flex-wrap justify-center gap-4">
+                  <div className="px-4 py-1.5 bg-white rounded-full border border-slate-200 flex items-center gap-2 shadow-sm">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{chipMetadata.productType}</span>
+                  </div>
+                  {chipMetadata.batchId && (
+                    <div className="px-4 py-1.5 bg-white rounded-full border border-slate-200 flex items-center gap-2 shadow-sm">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">LOTE: {chipMetadata.batchId}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <p className="text-slate-500 text-lg font-medium leading-relaxed max-w-sm mx-auto">
+                  Este dispositivo funciona correctamente, pero aún no tiene un perfil médico asignado.
+                </p>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <a
+                    href="/activar"
+                    className="group relative inline-flex items-center justify-center gap-3 w-full py-6 bg-red-600 text-white rounded-[2rem] font-black text-2xl transition-all hover:bg-black active:scale-95 shadow-2xl shadow-red-200"
+                  >
+                    Activar Ahora <ShieldCheck className="h-7 w-7" />
+                  </a>
+                  <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">
+                    Requiere Código de Activación de 12 dígitos
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Background elements */}
+            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none rotate-12">
+              <Activity className="h-64 w-64" />
+            </div>
+          </div>
+          
+          <div className="mt-12 text-center">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-2">PreRescate Panamá</p>
+            <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Soporte Técnico: +507 66XX-XXXX</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 font-sans">
@@ -119,15 +214,15 @@ export default function EmergencyPage() {
           <div className="bg-amber-50 h-24 w-24 rounded-full flex items-center justify-center mx-auto mb-8 border-2 border-amber-100">
             <AlertTriangle className="h-12 w-12 text-amber-500" />
           </div>
-          <h1 className="text-3xl font-black text-gray-900 mb-4 uppercase tracking-tighter italic leading-none">Vínculo Inactivo</h1>
+          <h1 className="text-3xl font-black text-gray-900 mb-4 uppercase tracking-tighter italic leading-none">Vínculo Inválido</h1>
           <p className="text-gray-500 mb-10 text-lg leading-relaxed font-medium">
-            Este código aún no ha sido activado. Si ya tienes tu empaque, activa el código físico para habilitar tu perfil de emergencia.
+            El código escaneado no existe o ha sido retirado del sistema. Por favor verifica tu dispositivo.
           </p>
           <a
-            href="/activar"
-            className="group relative inline-flex items-center justify-center gap-2 w-full py-5 bg-red-600 text-white rounded-2xl font-black text-xl overflow-hidden transition-all hover:bg-black active:scale-95 shadow-xl shadow-red-100"
+            href="/"
+            className="group relative inline-flex items-center justify-center gap-2 w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-xl overflow-hidden transition-all hover:bg-black active:scale-95 shadow-xl"
           >
-            Activar Código <ShieldCheck className="h-6 w-6" />
+            Volver al Inicio <ArrowLeft className="h-6 w-6" />
           </a>
         </div>
       </div>
