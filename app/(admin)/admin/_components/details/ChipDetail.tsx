@@ -47,7 +47,7 @@ export const ChipDetailView: React.FC<ChipDetailProps> = ({
           <div className="bg-white rounded-[2.5rem] border border-border p-8 text-center space-y-4 flex-shrink-0 shadow-sm">
             <div className="w-56 h-56 mx-auto bg-white rounded-3xl p-4 border-2 border-dashed border-slate-200 flex items-center justify-center relative group">
               <Image
-                src={`/api/public/qr?data=${encodeURIComponent(chip.qrUrl)}`}
+                src={chip.qrUrl}
                 alt={`QR ${chip.shortCode}`}
                 width={200}
                 height={200}

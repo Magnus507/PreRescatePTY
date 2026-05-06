@@ -445,7 +445,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                     <QRCodeCanvas 
                       id="qr-canvas"
                       ref={qrRef}
-                      value={selectedQR.qrUrl} 
+                      value={selectedQR.qrUrl.includes('/api/public/qr?data=') ? decodeURIComponent(selectedQR.qrUrl.split('data=')[1]) : selectedQR.qrUrl} 
                       size={256}
                       level="H"
                       includeMargin={false}
