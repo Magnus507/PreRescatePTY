@@ -35,6 +35,7 @@ interface ChipMetadata {
   internalLabel: string;
   productType: string;
   batchId?: string;
+  originalStatus?: string;
 }
 
 export default function EmergencyPage() {
@@ -140,10 +141,10 @@ export default function EmergencyPage() {
 
               <div className="space-y-4 mb-12">
                 <h1 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter italic leading-none">
-                  Vínculo No Activado
+                  {chipMetadata.originalStatus === 'inventory' ? 'ALMACÉN CENTRAL' : 'Vínculo No Activado'}
                 </h1>
                 <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">
-                  Suministro Verificado | Inventario PreRescate
+                  {chipMetadata.originalStatus === 'inventory' ? 'Stock de Fábrica | Inventario PreRescate' : 'Suministro Verificado | Inventario PreRescate'}
                 </p>
               </div>
 

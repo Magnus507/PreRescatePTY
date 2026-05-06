@@ -75,7 +75,8 @@ export async function GET(
           serialPublic: chip.serialPublic,
           internalLabel: chip.internalLabel || chip.chipUidInternal,
           productType: chip.productType,
-          batchId: chip.batchId
+          batchId: chip.batchId,
+          originalStatus: chip.status
         }
       });
     }
