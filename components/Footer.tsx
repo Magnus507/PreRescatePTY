@@ -61,7 +61,14 @@ export default function Footer() {
           
           <div className="flex items-center gap-6">
             <Link 
-              href="https://www.instagram.com/prerescatepty/" 
+              href="https://www.tiktok.com/@pre_rescate_pty" 
+              target="_blank"
+              className="text-xs font-black uppercase tracking-widest text-foreground hover:opacity-80 transition-all flex items-center gap-2"
+            >
+              TikTok
+            </Link>
+            <Link 
+              href="https://www.instagram.com/prerescueid" 
               target="_blank"
               className="text-xs font-black uppercase tracking-widest text-[#E1306C] hover:opacity-80 transition-all flex items-center gap-2"
             >
