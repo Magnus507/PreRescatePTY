@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmergencyNotification } from "@/lib/notifications";
 import { rateLimit } from "@/lib/rateLimit";
 import { getReverseGeocoding } from "@/lib/geocoding";
+import { processPendingEmergencyNotifications } from "@/lib/emergency-notification-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -45,13 +45,15 @@ export async function POST(
       return NextResponse.json({ error: "Chip no activo" }, { status: 409 });
     }
 
+    const sourceType = body.sourceType === "nfc" ? "nfc" : "qr";
+
     // Create scan event
     const scanEvent = await prisma.scanEvent.create({
       data: {
         chipId: chip.id,
         profileId: chip.assignedProfileId,
         accountId: chip.accountId,
-        sourceType: body.sourceType || "qr",
+        sourceType,
         ipAddress: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
         userAgent: req.headers.get("user-agent") || "unknown",
         geoLat: Number.isFinite(Number(body.geoLat)) ? Number(body.geoLat) : null,
@@ -107,121 +109,61 @@ export async function POST(
       }
     });
 
-    // 1. Queue Background Notifications if owner exists
+    // 1. Queue emergency notifications before responding, then process them in background.
     if (chip.ownerUserId || chip.assignedProfileId) {
-      // backgroundNotifications will be executed AFTER responding to the user
-      const backgroundNotifications = async () => {
-        try {
-          if (!chip.assignedProfileId) return;
+      const profileContacts = await prisma.profileContact.findMany({
+        where: {
+          profileId: chip.assignedProfileId,
+          active: true
+        },
+        include: { contact: true },
+        orderBy: { priorityOrder: "asc" },
+      });
 
-          const profileContacts = await prisma.profileContact.findMany({
-            where: {
-              profileId: chip.assignedProfileId,
-              active: true
-            },
-            include: { contact: true },
-            orderBy: { priorityOrder: "asc" },
-          });
-
-          // Map ProfileContact + Contact into the shape expected by the task list creator
-          const contacts = profileContacts.map(pc => ({
-             ...pc.contact,
-             relationship: pc.relationship,
-             notifyEmail: pc.notifyEmail,
-             notifySms: pc.notifySms,
-             notifyWhatsapp: pc.notifyWhatsapp,
-          }));
-
-          if (contacts.length === 0) {
-            await prisma.scanEvent.update({
-              where: { id: scanEvent.id },
-              data: { notificationStatus: "skipped" }
-            });
-            return;
-          }
-
-          const profile = await prisma.profile.findUnique({
-            where: { id: chip.assignedProfileId },
-            select: { firstName: true, lastName: true, displayNamePublic: true },
-          });
-          const profileName = profile
-            ? (profile.displayNamePublic || `${profile.firstName} ${profile.lastName}`.trim())
-            : "Usuario PreRescate";
-
-          const location =
-            scanEvent.geoLat && scanEvent.geoLng
-              ? { lat: scanEvent.geoLat, lng: scanEvent.geoLng }
-              : undefined;
-
-          // Process each contact concurrently
-          const tasks = contacts.flatMap(contact => {
-            const list = [];
-            if (contact.notifyEmail && contact.email) list.push({ channel: "email", recipient: contact.email });
-            if (contact.notifySms && contact.phone) list.push({ channel: "sms", recipient: contact.phone });
-            if (contact.notifyWhatsapp && contact.phone) list.push({ channel: "whatsapp", recipient: contact.phone });
-            return list;
-          }) as { channel: "email"| "sms" | "whatsapp", recipient: string }[];
-
-          const results = await Promise.allSettled(tasks.map(async (task) => {
-            const { channel, recipient } = task;
-            
-            // Create record
-            const notif = await prisma.notification.create({
-              data: { 
-                chipId: chip.id, 
-                eventId: scanEvent.id, 
-                channel, 
-                recipient, 
-                status: "processing" 
-              },
-            });
-
-            try {
-              const res = await sendEmergencyNotification({
-                recipient,
-                type: channel,
-                profileName,
-                location,
-                shortCode: chip.shortCode,
-                notificationId: notif.id,
-              });
-
-              await prisma.notification.update({
-                where: { id: notif.id },
-                data: {
-                  status: res.success ? "sent" : "failed",
-                  providerResponse: res.providerResponse ?? null,
-                  sentAt: res.success ? new Date() : null,
-                },
-              });
-              return res.success;
-            } catch (err: unknown) {
-              const error = err as Error;
-              await prisma.notification.update({
-                where: { id: notif.id },
-                data: { status: "failed", providerResponse: error.message || "Unknown error" },
-              });
-              return false;
-            }
-          }));
-
-          const successes = results.filter(r => r.status === 'fulfilled' && r.value).length;
-          await prisma.scanEvent.update({
-            where: { id: scanEvent.id },
-            data: { 
-              notificationStatus: successes === tasks.length ? "sent" : (successes > 0 ? "partial_failure" : "failed") 
-            },
-          });
-        } catch (bgError) {
-          console.error("[BG Scan Notifications] Error:", bgError);
+      const notifications = profileContacts.flatMap((profileContact) => {
+        const tasks: { channel: "email" | "sms" | "whatsapp"; recipient: string }[] = [];
+        const { contact } = profileContact;
+        if (profileContact.notifyEmail && contact.email) {
+          tasks.push({ channel: "email", recipient: contact.email });
         }
-      };
+        if (profileContact.notifySms && contact.phone) {
+          tasks.push({ channel: "sms", recipient: contact.phone });
+        }
+        if (profileContact.notifyWhatsapp && contact.phone) {
+          tasks.push({ channel: "whatsapp", recipient: contact.phone });
+        }
+        return tasks;
+      });
 
-      // Tigger as background task (Next.js 15+ after)
-      after(backgroundNotifications);
+      if (notifications.length === 0) {
+        await prisma.scanEvent.update({
+          where: { id: scanEvent.id },
+          data: { notificationStatus: "skipped" }
+        });
+      } else {
+        await prisma.notification.createMany({
+          data: notifications.map((notification) => ({
+            chipId: chip.id,
+            eventId: scanEvent.id,
+            channel: notification.channel,
+            recipient: notification.recipient,
+            status: "pending",
+          })),
+        });
+
+        after(async () => {
+          await processPendingEmergencyNotifications({
+            eventId: scanEvent.id,
+            take: notifications.length,
+            includeStaleProcessing: true,
+          });
+        });
+      }
       
       return NextResponse.json({
-        message: "Escaneo registrado - Notificaciones en proceso",
+        message: notifications.length > 0
+          ? "Escaneo registrado - Notificaciones en proceso"
+          : "Escaneo registrado (sin contactos notificables)",
         scanId: scanEvent.id,
       }, { status: 201 });
     }

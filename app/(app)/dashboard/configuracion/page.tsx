@@ -1,18 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import { 
-  Settings, Shield, Lock, Bell, CreditCard, 
-  Trash2, Save, Loader2, User, KeyRound, Smartphone, Camera, Upload
+  Shield, Lock, Bell, CreditCard,
+  Trash2, Save, Loader2, User, Smartphone, Camera, Upload
 } from "lucide-react";
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+
+interface AccountState {
+  isExpired?: boolean;
+  isInactive?: boolean;
+  packageName?: string;
+  serviceEndDate?: string;
+}
 
 export default function ConfiguracionPage() {
-  const router = useRouter();
-  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("perfil");
   const [saving, setSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -29,7 +35,7 @@ export default function ConfiguracionPage() {
   const [city, setCity] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [accountState, setAccountState] = useState<any>(null);
+  const [accountState, setAccountState] = useState<AccountState | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -79,8 +85,8 @@ export default function ConfiguracionPage() {
       }
 
       toast.success("Configuración actualizada correctamente");
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error al guardar");
     } finally {
       setSaving(false);
     }
@@ -126,12 +132,18 @@ export default function ConfiguracionPage() {
       return;
     }
 
+    const password = window.prompt("Por seguridad, escribe tu contrasena actual para confirmar el borrado.");
+    if (!password) {
+      toast.error("Contrasena requerida.");
+      return;
+    }
+
     setIsDeleting(true);
     try {
       const res = await fetch("/api/users/account/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmation })
+        body: JSON.stringify({ confirmation, password })
       });
 
       if (!res.ok) {
@@ -146,8 +158,8 @@ export default function ConfiguracionPage() {
         signOut({ callbackUrl: "/" });
       }, 2000);
 
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error al borrar la cuenta");
       setIsDeleting(false);
     }
   }
@@ -412,7 +424,17 @@ export default function ConfiguracionPage() {
   );
 }
 
-function Section({ title, icon: Icon, color, children }: any) {
+function Section({
+  title,
+  icon: Icon,
+  color,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  color: string;
+  children: ReactNode;
+}) {
   return (
     <div className="p-10 rounded-[3.5rem] bg-white border border-border shadow-sm space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="flex items-center gap-4">
@@ -426,7 +448,17 @@ function Section({ title, icon: Icon, color, children }: any) {
   );
 }
 
-function SettingsTab({ icon: Icon, label, active, onClick }: any) {
+function SettingsTab({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <div 
       onClick={onClick}
@@ -441,7 +473,15 @@ function SettingsTab({ icon: Icon, label, active, onClick }: any) {
   );
 }
 
-function Toggle({ label, description, defaultChecked }: any) {
+function Toggle({
+  label,
+  description,
+  defaultChecked,
+}: {
+  label: string;
+  description: string;
+  defaultChecked?: boolean;
+}) {
   const [checked, setChecked] = useState(defaultChecked);
   return (
     <div 

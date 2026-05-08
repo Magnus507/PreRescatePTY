@@ -70,6 +70,25 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        const storeProduct = await tx.product.findFirst({
+          where: {
+            isActive: true,
+            OR: [
+              { id: item.productType },
+              { name: item.productType },
+            ],
+          },
+          select: { name: true, price: true },
+        });
+
+        if (storeProduct) {
+          return {
+            ...item,
+            productType: storeProduct.name,
+            unitPrice: storeProduct.price,
+          };
+        }
+
         throw new Error("Producto invalido o no disponible");
       }));
 
@@ -88,8 +107,8 @@ export async function POST(req: NextRequest) {
           customerName: validatedData.customerName,
           customerEmail: validatedData.customerEmail,
           customerPhone: validatedData.customerPhone || null,
-          customerDocument: (validatedData as any).customerDocument || null,
-          providerReference: (validatedData as any).providerReference || null,
+          customerDocument: validatedData.customerDocument || null,
+          providerReference: validatedData.providerReference || null,
           items: {
             create: pricedItems.map(item => ({
               productType: item.productType,
@@ -103,13 +122,14 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ order });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("ORDER_CREATE_ERROR", error);
-    return NextResponse.json({ error: error.message || "Error al procesar el pedido" }, { status: 400 });
+    const message = error instanceof Error ? error.message : "Error al procesar el pedido";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 

@@ -177,7 +177,7 @@ export async function POST(req: NextRequest) {
           action: "activate",
           newValuesJson: JSON.stringify({
             shortCode: chip.shortCode,
-            activationCode,
+            activationCodeSuffix: activationCode.slice(-4),
           }),
         },
       });
@@ -185,11 +185,15 @@ export async function POST(req: NextRequest) {
 
     // Invalidate cache after successful activation (outside transaction)
     await AccountStateService.invalidateCache(userId);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[chips/activate] Error:", error);
+    const message = error instanceof Error ? error.message : "Error al activar el chip";
+    const status = typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: unknown }).status) || 500
+      : 500;
     return NextResponse.json(
-      { error: error.message || "Error al activar el chip" },
-      { status: error.status || 500 }
+      { error: message },
+      { status }
     );
   }
 

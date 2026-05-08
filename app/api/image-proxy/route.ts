@@ -55,6 +55,20 @@ export async function GET(req: NextRequest) {
           { status: 401 }
         );
       }
+
+      const role = session.user.role;
+      const isAdmin = role === "admin" || role === "superadmin" || role === "imprenta";
+      const userId = session.user.id;
+      const isOwnPaymentProof =
+        bucket === "payment-proofs" &&
+        (path.startsWith(`payments/${userId}/`) || path.startsWith(`payments/${userId}_`));
+
+      if (!isAdmin && !isOwnPaymentProof) {
+        return NextResponse.json(
+          { error: "No autorizado" },
+          { status: 403 }
+        );
+      }
     }
 
     if (!supabaseUrl || !supabaseKey) {

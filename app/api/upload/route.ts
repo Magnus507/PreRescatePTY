@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { optimizeAndUploadImage } from "@/lib/storage-utils";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 
 const ALLOWED_BUCKETS = new Set(["general", "profile-photos", "payment-proofs"]);
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -18,6 +19,18 @@ export async function POST(req: NextRequest) {
   let bucketName = "general";
   
   try {
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+      req.headers.get("x-real-ip") ||
+      userId;
+    const limiter = await rateLimit("upload", `${userId}:${ip}`, {
+      limit: 20,
+      windowMs: 60_000 * 15,
+    });
+    if (!limiter.allowed) {
+      return NextResponse.json({ error: "Demasiadas cargas. Intenta mas tarde." }, { status: 429 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
     bucketName = formData.get("bucket") as string || "general";
@@ -25,6 +38,12 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: "No se proporcionó ningún archivo" }, { status: 400 });
+    }
+
+    if (type === "profile") {
+      bucketName = "profile-photos";
+    } else if (type === "payment") {
+      bucketName = "payment-proofs";
     }
 
     if (!ALLOWED_BUCKETS.has(bucketName)) {
@@ -49,7 +68,7 @@ export async function POST(req: NextRequest) {
       path = `${userId}/profile_${Date.now()}`;
       options = { width: 400, height: 400, quality: 80 }; // Square and smaller for avatars
     } else if (type === "payment") {
-      path = `payments/${userId}_${Date.now()}`;
+      path = `payments/${userId}/${Date.now()}`;
       options = { width: 1200, quality: 70 }; // Legibility is more important for proofs
     }
 

@@ -20,7 +20,7 @@ export class WhatsappService {
     code?: string;
   }> {
     const client = this.getClient();
-    const from = process.env.TWILIO_WHATSAPP_NUMBER;
+    const from = process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_WHATSAPP_FROM;
 
     if (!client || !from) {
       const error = "WhatsApp provider not configured (missing TWILIO_ACCOUNT_SID, AUTH_TOKEN or WHATSAPP_NUMBER)";

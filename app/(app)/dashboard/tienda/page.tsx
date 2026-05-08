@@ -70,9 +70,11 @@ export default function TiendaPage() {
       const res = await fetch("/api/orders", {
         method: "POST",
         body: JSON.stringify({
-          quantity: 1,
-          totalPrice: selectedProduct.price,
-          productType: selectedProduct.name,
+          items: [{
+            productType: selectedProduct.id,
+            quantity: 1,
+            unitPrice: selectedProduct.price,
+          }],
           shippingAddress: shippingData.address,
           shippingCity: shippingData.city,
           shippingNotes: shippingData.notes
