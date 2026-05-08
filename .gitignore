@@ -13,6 +13,7 @@ yarn-error.log*
 # Prisma
 # Environment
 .env*
+!.env.example
 .env.local
 .env.production
 .env.development

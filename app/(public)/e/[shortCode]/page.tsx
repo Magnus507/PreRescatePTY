@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { 
   Heart, Phone, AlertTriangle, Droplets, Pill, 
   Activity, User, MessageCircle, Loader2, Calendar,
@@ -219,12 +220,12 @@ export default function EmergencyPage() {
           <p className="text-gray-500 mb-10 text-lg leading-relaxed font-medium">
             El código escaneado no existe o ha sido retirado del sistema. Por favor verifica tu dispositivo.
           </p>
-          <a
+          <Link
             href="/"
             className="group relative inline-flex items-center justify-center gap-2 w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-xl overflow-hidden transition-all hover:bg-black active:scale-95 shadow-xl"
           >
             Volver al Inicio <ArrowLeft className="h-6 w-6" />
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -259,12 +260,14 @@ export default function EmergencyPage() {
           <div className="grid grid-cols-1 gap-5">
             <button
               onClick={() => setIsParamedic(true)}
+              aria-label="Ver ficha medica completa como personal de primera respuesta"
               className="group relative w-full bg-white text-[#DA1A21] py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3"
             >
               SÍ, soy Paramédico <ShieldCheck className="h-8 w-8" />
             </button>
             <button
               onClick={() => setIsParamedic(false)}
+              aria-label="Ver protocolo ciudadano sin datos medicos tecnicos"
               className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest"
             >
               No, soy un Ciudadano
@@ -288,13 +291,13 @@ export default function EmergencyPage() {
         <div className="max-w-4xl mx-auto p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {profile.isVerifiedAdmin && (
-               <a 
+               <Link 
                  href="/" 
                  className="group h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm"
                  title="Volver al Inicio"
                >
                   <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-               </a>
+               </Link>
             )}
             <div className="flex items-center gap-3">
                <div className="h-8 w-8 bg-[#DA1A21] rounded-lg flex items-center justify-center shadow-lg shadow-red-100">
@@ -377,7 +380,8 @@ export default function EmergencyPage() {
                 </div>
                 <button 
                     onClick={() => setIsParamedic(true)}
-                    className="flex items-center gap-2 group text-xs font-black text-[#DA1A21] bg-red-50 px-6 py-3 rounded-xl hover:bg-[#DA1A21] hover:text-white transition-all uppercase tracking-tighter"
+                    aria-label="Cambiar a vista para personal medico"
+                    className="flex min-h-11 items-center gap-2 group text-xs font-black text-[#A11218] bg-red-50 px-6 py-3 rounded-xl hover:bg-[#DA1A21] hover:text-white transition-all uppercase tracking-tighter"
                 >
                     Soy personal médico <ShieldCheck className="h-4 w-4" />
                 </button>
@@ -454,7 +458,7 @@ export default function EmergencyPage() {
                             <span className="text-xl font-black uppercase tracking-tighter leading-none">Edad: {profile.age}</span>
                           </div>
                         )}
-                        <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-100 text-slate-800 rounded-2xl border border-slate-200">
+                        <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 text-slate-950 rounded-2xl border border-slate-300 shadow-sm">
                           <span className="text-xl font-black uppercase tracking-tighter leading-none">SEXO: {profile.sex === 'M' ? 'MASCULINO' : profile.sex === 'F' ? 'FEMENINO' : 'NO REPORTADO'}</span>
                         </div>
                       </div>
@@ -657,7 +661,7 @@ const InstructionItem = ({ number, title, desc }: { number: string; title: strin
     </div>
 );
 
-const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }: { icon: any; title: string; content: string; critical?: boolean; color?: string }) => {
+const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }: { icon: ReactNode; title: string; content: string; critical?: boolean; color?: string }) => {
     
     const colorMap: Record<string, string> = {
         amber: "bg-amber-50 group-hover:bg-amber-100/50 border-amber-100",
@@ -666,8 +670,10 @@ const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }
         slate: "bg-slate-50 group-hover:bg-slate-100/50 border-slate-100"
     };
 
+    const cardTone = colorMap[color] || colorMap.slate;
+
     return (
-        <div className={`group relative p-8 rounded-[3rem] border transition-all duration-500 ${critical ? "bg-red-50 border-red-200 shadow-xl shadow-red-100/50" : "bg-white border-slate-100 shadow-sm hover:shadow-xl"}`}>
+        <div className={`group relative p-8 rounded-[3rem] border transition-all duration-500 ${critical ? "bg-red-50 border-red-200 shadow-xl shadow-red-100/50" : `${cardTone} shadow-sm hover:shadow-xl`}`}>
             <div className="flex items-center gap-4 mb-6">
                 <div className={`p-3 rounded-2xl shadow-sm ${critical ? 'bg-white text-red-600' : 'bg-slate-50 text-slate-600'} group-hover:scale-110 transition-transform`}>
                     {icon}

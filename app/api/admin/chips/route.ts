@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 import { SITE_URL } from "@/lib/constants";
@@ -16,18 +17,10 @@ async function isAdmin() {
   return role === "admin" || role === "superadmin" || role === "imprenta";
 }
 
-// Legacy support: also allow header-based auth for backward compatibility
-function isAdminRequest(req: NextRequest): boolean {
-  const adminKey = req.headers.get("x-admin-key");
-  const envKey = process.env.ADMIN_API_KEY;
-  return !!envKey && adminKey === envKey;
-}
-
 export async function GET(req: NextRequest) {
   const sessionAdmin = await isAdmin();
-  const headerAdmin = isAdminRequest(req);
   
-  if (!sessionAdmin && !headerAdmin) {
+  if (!sessionAdmin) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -39,7 +32,7 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
 
-  const where: any = {};
+  const where: Prisma.ChipWhereInput = {};
   if (status) {
     where.status = status;
   } else if (excludeStatus) {
@@ -99,9 +92,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const sessionAdmin = await isAdmin();
-  const headerAdmin = isAdminRequest(req);
   
-  if (!sessionAdmin && !headerAdmin) {
+  if (!sessionAdmin) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -125,19 +117,7 @@ export async function POST(req: NextRequest) {
     getBatchUniqueActivationCodes(chipCount),
   ]);
 
-  // 2. Find last internal label to continue sequence
-  const lastChipWithLabel = await prisma.chip.findFirst({
-    where: { 
-       internalLabel: { 
-          startsWith: 'Caja',
-          not: null 
-       } 
-    },
-    orderBy: { internalLabel: 'desc' },
-    select: { internalLabel: true }
-  });
-
-  let nextSequence = Number(labelStart) || 1;
+  const nextSequence = Number(labelStart) || 1;
 
   // 3. Perform everything in a single transaction
   const createdChips = await prisma.$transaction(async (tx) => {

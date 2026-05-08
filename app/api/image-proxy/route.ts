@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const PUBLIC_BUCKETS = new Set(["general", "profile-photos"]);
+const AUTHENTICATED_BUCKETS = new Set(["payment-proofs"]);
+const SAFE_PATH_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9/_.,=-]{0,240}\.(?:jpg|jpeg|png|webp)$/i;
 
 /**
  * PROXY ENDPOINT: Sirve imágenes de Supabase Storage
@@ -20,6 +25,42 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         { error: "Missing bucket or path parameter" },
         { status: 400 }
+      );
+    }
+
+    if (!PUBLIC_BUCKETS.has(bucket) && !AUTHENTICATED_BUCKETS.has(bucket)) {
+      return NextResponse.json(
+        { error: "Bucket not allowed" },
+        { status: 403 }
+      );
+    }
+
+    if (
+      path.includes("..") ||
+      path.startsWith("/") ||
+      path.includes("\\") ||
+      !SAFE_PATH_PATTERN.test(path)
+    ) {
+      return NextResponse.json(
+        { error: "Invalid path" },
+        { status: 400 }
+      );
+    }
+
+    if (AUTHENTICATED_BUCKETS.has(bucket)) {
+      const session = await getServerSession(authOptions);
+      if (!session?.user) {
+        return NextResponse.json(
+          { error: "No autorizado" },
+          { status: 401 }
+        );
+      }
+    }
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { error: "Storage configuration missing" },
+        { status: 500 }
       );
     }
 

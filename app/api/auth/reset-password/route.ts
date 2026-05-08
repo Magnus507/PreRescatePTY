@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   try {
     const { token, password } = await req.json();
+    const forwardedFor = req.headers.get("x-forwarded-for")?.split(",")[0].trim();
+    const ip = forwardedFor || req.headers.get("x-real-ip") || "anonymous";
+    const limiter = await rateLimit("reset-password:ip", ip, { limit: 10, windowMs: 60_000 * 15 });
+
+    if (!limiter.allowed) {
+      return NextResponse.json(
+        { error: "Demasiados intentos. Intenta de nuevo mas tarde." },
+        { status: 429 }
+      );
+    }
 
     if (!token || !password) {
       return NextResponse.json({ error: "Token y contraseña son requeridos" }, { status: 400 });

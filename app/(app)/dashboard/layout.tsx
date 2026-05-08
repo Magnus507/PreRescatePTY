@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import {
   LayoutDashboard, Cpu, Users, History, UsersRound,
   Building2, ChevronRight, Settings, CreditCard,
-  LogOut, ShieldCheck, Home, ShoppingCart, Store, Package,
+  LogOut, Home, ShoppingCart, Store, Package,
   Loader2
 } from "lucide-react";
 import { AccountState } from "@/domains/accounts/account.types";
@@ -190,7 +190,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* Mobile bottom nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/80 backdrop-blur-xl border-t border-slate-200 flex justify-around items-center px-4 py-3 safe-area-bottom">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur-xl border-t border-slate-200 flex items-center gap-2 overflow-x-auto px-3 py-2 safe-area-bottom">
           {[...filteredNavItems, ...filteredSecondaryItems.slice(0, 1), { href: "/dashboard/perfiles-medicos", label: "Perfiles", icon: UsersRound }].map((item) => {
             const active = pathname === item.href;
             if (item.href === "/dashboard/perfiles-medicos" && !state?.canManageFamilyProfiles) return null;
@@ -199,9 +199,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 transition-all duration-300 ${
-                  active ? "text-primary scale-110" : "text-slate-400"
+                className={`flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition-all duration-300 ${
+                  active ? "bg-primary/10 text-primary" : "text-slate-500"
                 }`}
+                aria-current={active ? "page" : undefined}
               >
                 <item.icon className={`h-6 w-6 ${active ? "fill-primary/10" : ""}`} />
                 <span className="text-[9px] font-black uppercase tracking-tighter leading-none">{item.label.split(' ')[0]}</span>

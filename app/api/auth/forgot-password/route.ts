@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { Resend } from "resend";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +12,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "El email es requerido" }, { status: 400 });
     }
 
-    const emailLower = email.toLowerCase();
+    const emailLower = String(email).toLowerCase().trim();
+    const forwardedFor = req.headers.get("x-forwarded-for")?.split(",")[0].trim();
+    const ip = forwardedFor || req.headers.get("x-real-ip") || "anonymous";
+    const [ipLimit, emailLimit] = await Promise.all([
+      rateLimit("forgot-password:ip", ip, { limit: 5, windowMs: 60_000 * 15 }),
+      rateLimit("forgot-password:email", emailLower, { limit: 3, windowMs: 60_000 * 60 }),
+    ]);
+
+    if (!ipLimit.allowed || !emailLimit.allowed) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intenta de nuevo mas tarde." },
+        { status: 429 }
+      );
+    }
     
     // Unified user lookup
     const user = await prisma.user.findUnique({ where: { email: emailLower } });
@@ -25,13 +39,16 @@ export async function POST(req: Request) {
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
-    await prisma.passwordResetToken.create({
-      data: {
-        email: emailLower,
-        token,
-        expiresAt,
-      },
-    });
+    await prisma.$transaction([
+      prisma.passwordResetToken.deleteMany({ where: { email: emailLower } }),
+      prisma.passwordResetToken.create({
+        data: {
+          email: emailLower,
+          token,
+          expiresAt,
+        },
+      }),
+    ]);
 
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${token}`;
 

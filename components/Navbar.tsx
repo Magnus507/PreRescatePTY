@@ -99,7 +99,7 @@ export default function Navbar() {
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-expanded={mobileOpen}
           aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
-          className="md:hidden p-2 rounded-md hover:bg-accent transition-colors"
+          className="md:hidden min-h-11 min-w-11 p-2 rounded-md hover:bg-accent transition-colors"
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -109,20 +109,20 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl animate-in slide-in-from-top-2 duration-300">
           <div className="px-4 py-4 space-y-1">
-            <Link href="/como-funciona" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Cómo Funciona</Link>
-            <Link href="/comprar" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Comprar</Link>
-            <Link href="/faq" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">FAQ</Link>
-            <Link href="/contacto" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Contacto</Link>
+            <Link href="/como-funciona" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Cómo Funciona</Link>
+            <Link href="/comprar" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Comprar</Link>
+            <Link href="/faq" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">FAQ</Link>
+            <Link href="/contacto" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Contacto</Link>
             <hr className="my-2 border-border" />
             {session ? (
               <>
-                <Link href={isAdmin ? "/admin" : "/dashboard"} onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-md text-sm font-medium text-primary hover:bg-accent">{isAdmin ? "Panel Admin" : "Dashboard"}</Link>
-                <button onClick={() => signOut({ callbackUrl: "/" })} className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-accent">Cerrar Sesión</button>
+                <Link href={isAdmin ? "/admin" : "/dashboard"} onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium text-primary hover:bg-accent">{isAdmin ? "Panel Admin" : "Dashboard"}</Link>
+                <button onClick={() => signOut({ callbackUrl: "/" })} className="flex min-h-11 w-full items-center text-left px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-accent">Cerrar Sesión</button>
               </>
             ) : (
               <>
-                <Link href="/login" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Iniciar Sesión</Link>
-                <Link href="/activar" onClick={() => setMobileOpen(false)} className="block px-3 py-2 mt-1 rounded-lg text-sm font-semibold bg-primary text-primary-foreground text-center">Activar Chip</Link>
+                <Link href="/login" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Iniciar Sesión</Link>
+                <Link href="/activar" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center justify-center px-3 py-2 mt-1 rounded-lg text-sm font-semibold bg-primary text-primary-foreground text-center">Activar Chip</Link>
               </>
             )}
           </div>

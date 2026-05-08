@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShoppingCart, Store, Package, Star, ArrowRight, Activity, Loader2, X, MapPin, Phone, User, CreditCard, CheckCircle2, QrCode } from "lucide-react";
+import { ShoppingCart, Store, Package, Star, ArrowRight, Activity, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -21,6 +21,14 @@ interface Product {
   image: string | null;
 }
 
+interface PaymentConfig {
+  yappy_qr_url?: string;
+  yappy_handle?: string;
+  bank_name?: string;
+  bank_account_type?: string;
+  bank_account_number?: string;
+}
+
 export default function TiendaPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +36,7 @@ export default function TiendaPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [paymentConfig, setPaymentConfig] = useState<any>(null);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
   const router = useRouter();
 
   const [shippingData, setShippingData] = useState({
@@ -78,7 +86,7 @@ export default function TiendaPage() {
       } else {
         toast.error("Error al procesar el pedido");
       }
-    } catch (e) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setCreatingOrder(false);
@@ -148,7 +156,7 @@ export default function TiendaPage() {
                  </div>
                  {p.image ? (
                    // eslint-disable-next-line @next/next/no-img-element
-                   <img src={`/api/image-proxy?bucket=general&path=${encodeURIComponent(p.image.split('/').slice(-2).join('/'))}`} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" onError={(e) => { e.currentTarget.src = p.image; }} />
+                   <img src={`/api/image-proxy?bucket=general&path=${encodeURIComponent(p.image.split('/').slice(-2).join('/'))}`} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" onError={(e) => { if (p.image) e.currentTarget.src = p.image; }} />
                  ) : (
                    <Store className="h-24 w-24 text-slate-200 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700" />
                  )}
@@ -325,7 +333,7 @@ export default function TiendaPage() {
 
               <div className="p-6 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/50 mb-10">
                  <p className="text-[9px] font-black text-amber-700 dark:text-amber-500 uppercase tracking-widest leading-relaxed">
-                    IMPORTANTE: Sube una foto del comprobante en la sección "Mis Pedidos" después de pagar para validar tu compra.
+                    IMPORTANTE: Sube una foto del comprobante en la sección &quot;Mis Pedidos&quot; después de pagar para validar tu compra.
                  </p>
               </div>
 
