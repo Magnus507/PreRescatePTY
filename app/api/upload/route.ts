@@ -108,7 +108,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const urlWithBuster = `${publicUrl}?_t=${Date.now()}`;
+    const urlWithBuster = publicUrl.includes("?") 
+      ? `${publicUrl}&_t=${Date.now()}`
+      : `${publicUrl}?_t=${Date.now()}`;
     return NextResponse.json({ url: urlWithBuster });
   } catch (err: unknown) {
     const error = err as Error;
