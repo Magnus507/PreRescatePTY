@@ -17,7 +17,7 @@ export default function Navbar() {
   const isAdmin = session?.user?.role === "admin" || session?.user?.role === "superadmin";
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
+    <nav aria-label="Navegación principal" className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">

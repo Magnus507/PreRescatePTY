@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { ConfigRepository } from "@/domains/shared/repositories/config.repository";
 import { decrypt } from "@/lib/encryption";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,21 @@ export async function GET(
 ) {
   try {
     const { shortCode } = await params;
+
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+      req.headers.get("x-real-ip") ||
+      "anonymous";
+    const rl = await rateLimit("profile_view", ip, { limit: 30, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intenta más tarde." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+        }
+      );
+    }
 
     // ----- FAST TRACK FOR DEMO PROFILES -----
     const isDemoCode = ["DEMO-ADMIN-VIP", "44R6DBNQ", "demo", "DEMO", "showcase"].includes(shortCode);

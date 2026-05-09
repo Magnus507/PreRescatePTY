@@ -227,7 +227,7 @@ export default function ChipsPage() {
                              <span className="bg-amber-100 text-amber-600 text-[10px] font-black px-3 py-1 rounded-xl uppercase tracking-widest border border-amber-200">Solo Lectura</span>
                           )}
                        </div>
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center justify-center md:justify-start gap-3">
+                       <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] flex items-center justify-center md:justify-start gap-3">
                          Código ID: <span className="text-slate-900">{chip.shortCode}</span>
                          <span className="h-1 w-1 rounded-full bg-slate-300" />
                          Escaneos: <span className="text-primary">{chip._count.scanEvents}</span>
@@ -255,7 +255,7 @@ export default function ChipsPage() {
                              <UserRound className="h-5 w-5" />
                           </div>
                           <div className="text-left">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vincular con:</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">Vincular con:</p>
                             <p className="text-[11px] font-bold text-slate-900 leading-none">Perfil Médico</p>
                           </div>
                        </div>
@@ -346,7 +346,7 @@ export default function ChipsPage() {
                   )}
 
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-6 block">Código de Activación (12 dígitos)</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-6 block">Código de Activación (12 dígitos)</label>
                     <input 
                       required
                       type="text" 

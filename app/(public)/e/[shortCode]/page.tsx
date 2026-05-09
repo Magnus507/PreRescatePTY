@@ -679,7 +679,7 @@ const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }
                     {icon}
                 </div>
                 <div>
-                     <p className="text-[10px] font-black tracking-widest text-slate-400 uppercase leading-none">{title}</p>
+                     <p className="text-[10px] font-black tracking-widest text-slate-600 uppercase leading-none">{title}</p>
                 </div>
             </div>
             <p className={`text-xl leading-tight uppercase tracking-tighter ${critical ? "font-black text-red-600" : "font-black text-slate-900"}`}>
