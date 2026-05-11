@@ -18,9 +18,7 @@ import { InventorySection } from "./_components/sections/InventorySection";
 import { AdminsSection } from "./_components/sections/AdminsSection";
 import { PedidosSection } from "./_components/sections/PedidosSection";
 import { TiendaSection } from "./_components/sections/TiendaSection";
-import { GovernanceSection } from "./_components/sections/GovernanceSection";
 import { SettingsSection } from "./_components/sections/SettingsSection";
-import { ShowcaseProfileSection } from "./_components/sections/ShowcaseProfileSection";
 
 // Details
 import { ChipDetailView } from "./_components/details/ChipDetail";
@@ -140,25 +138,10 @@ function AdminDashboard() {
       subtitle: "Gestión de productos adicionales, stock y ventas de la tienda",
       placeholder: "Buscar productos..."
     },
-    governance: {
-      title: "Auditoría & Salud",
-      subtitle: "Centro de control de integridad, alertas críticas y salud operativa",
-      placeholder: "Analizar infraestructura..."
-    },
-    roadmap: {
-      title: "Labs / Roadmap",
-      subtitle: "Próximas actualizaciones y experimentos en desarrollo (PreRescate v4.0)",
-      placeholder: "Explorar planes..."
-    },
     settings: {
       title: "Ajustes del Sistema",
       subtitle: "Configuración global de la plataforma, pagos y comunicaciones",
       placeholder: "Buscar ajuste..."
-    },
-    showcase: {
-      title: "Perfil VIP Showcase",
-      subtitle: "Gestión de la identidad médica pública que sirve de ejemplo al mundo",
-      placeholder: "Buscar en demo..."
     }
   };
 
@@ -401,129 +384,11 @@ function AdminDashboard() {
             />
           )}
 
-          {admin.tab === "governance" && (
-            <GovernanceSection 
-               stats={admin.stats.stats}
-               loading={admin.stats.loading}
-               loadStats={admin.stats.loadStats}
-            />
-          )}
-
-          {admin.tab === "admins" && (
-            <AdminsSection 
-               admins={admin.users.adminUsers}
-               loading={admin.users.loading}
-               creating={admin.users.creating}
-               loadAdmins={() => admin.users.loadAdminAccounts()}
-               onCreateAdmin={admin.users.createAdmin}
-               onUpdateAdmin={admin.users.updateAdmin}
-               onDeleteAdmin={admin.users.deleteAdmin}
-            />
-          )}
-
-          {admin.tab === "pedidos" && (
-            <PedidosSection />
-          )}
-
-          {admin.tab === "tienda" && (
-            <TiendaSection />
-          )}
-
           {admin.tab === "settings" && (
             <SettingsSection />
           )}
 
-          {admin.tab === "showcase" && (
-            <ShowcaseProfileSection />
-          )}
-
-          {admin.tab === "roadmap" && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Apple Wallet Card */}
-                  <div className="bg-card border border-border/50 rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-primary/30 transition-all shadow-sm">
-                     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                        <Wallet className="h-24 w-24" />
-                     </div>
-                     <div className="h-12 w-12 rounded-2xl bg-slate-900 flex items-center justify-center mb-6">
-                        <Smartphone className="h-6 w-6 text-white" />
-                     </div>
-                     <h3 className="text-xl font-black tracking-tighter mb-2">Apple & Google Wallet</h3>
-                     <p className="text-xs text-muted-foreground font-bold leading-relaxed mb-6">
-                        Integración nativa para descargar el Carnet Médico Digital como un pase de abordar. Acceso vital sin internet.
-                     </p>
-                     <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-full">Cimientos Listos</span>
-                        <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-full">Sorpresa v4.0</span>
-                     </div>
-                  </div>
-
-                  {/* PWA Card */}
-                  <div className="bg-card border border-border/50 rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-primary/30 transition-all shadow-sm">
-                     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                        <Zap className="h-24 w-24" />
-                     </div>
-                     <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center mb-6">
-                        <Rocket className="h-6 w-6 text-white" />
-                     </div>
-                     <h3 className="text-xl font-black tracking-tighter mb-2">PWA Offline (App Lite)</h3>
-                     <p className="text-xs text-muted-foreground font-bold leading-relaxed mb-6">
-                        Convertir la web en una App instalable que funcione en zonas remotas de Panamá sin señal de datos estable.
-                     </p>
-                     <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full">Design Ready</span>
-                     </div>
-                  </div>
-
-                  {/* Local Payments Card */}
-                  <div className="bg-card border border-border/50 rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-primary/30 transition-all shadow-sm">
-                     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                        <Store className="h-24 w-24" />
-                     </div>
-                     <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center mb-6">
-                        <Activity className="h-6 w-6 text-white" />
-                     </div>
-                     <h3 className="text-xl font-black tracking-tighter mb-2">Yappy & ACH Local</h3>
-                     <p className="text-xs text-muted-foreground font-bold leading-relaxed mb-6">
-                        Módulo de carga de comprobantes y validación manual optimizada para el mercado Panameño.
-                     </p>
-                      <div className="flex items-center gap-2">
-                         <span className="px-3 py-1 bg-indigo-500/10 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-full">Integrado</span>
-                      </div>
-                   </div>
-
-                   {/* Authentication / Google Auth */}
-                  <div className="bg-card border border-border/50 rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-primary/30 transition-all shadow-sm">
-                     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                        <Fingerprint className="h-24 w-24 text-blue-500" />
-                     </div>
-                     <div className="h-12 w-12 rounded-2xl bg-blue-500 flex items-center justify-center mb-6">
-                        <Fingerprint className="h-6 w-6 text-white" />
-                     </div>
-                     <h3 className="text-xl font-black tracking-tighter mb-2">Google Sign-In & Biometría</h3>
-                     <p className="text-xs text-muted-foreground font-bold leading-relaxed mb-6">
-                        Fricción cero. Implementación de NextAuth JWT para delegar el ingreso a Google sin dañar la integridad de facturación comercial actual.
-                     </p>
-                     <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-blue-500/10 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-full">Investigado</span>
-                        <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-full">Próximamente</span>
-                     </div>
-                  </div>
-                </div>
-
-               <div className="bg-primary/5 rounded-[3rem] p-12 border border-primary/10 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-12 opacity-5">
-                     <Sparkles className="h-32 w-32" />
-                  </div>
-                  <h2 className="text-3xl font-black tracking-tighter mb-4 text-primary">PreRescate Labs</h2>
-                  <p className="text-sm font-bold text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-                     Estas funcionalidades están siendo construidas en paralelo a la estabilidad del núcleo actual. No están habilitadas para el público todavía para asegurar un lanzamiento impecable, pero el código base ya está preparado.
-                  </p>
-               </div>
-            </div>
-          )}
-
-          {!["dashboard", "chips", "users", "empresas", "inventory", "admins", "pedidos", "tienda", "governance", "settings", "showcase"].includes(admin.tab) && (
+          {!["dashboard", "chips", "users", "empresas", "inventory", "admins", "pedidos", "tienda", "settings"].includes(admin.tab) && (
             <div className="flex flex-col items-center justify-center py-20 text-slate-300">
                <Activity className="h-10 w-10 opacity-20 mb-4" />
                <p className="text-xs font-black uppercase tracking-widest">Módulo en mantenimiento.</p>

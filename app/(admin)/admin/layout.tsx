@@ -35,11 +35,8 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
     { label: "Cuentas Corporativas", id: "empresas", icon: Building2 },
     { label: "Stock & Fábrica", id: "inventory", icon: Package },
     { label: "Ventas & Pedidos", id: "pedidos", icon: Activity },
-    { label: "Perfil VIP", id: "showcase", icon: Sparkles },
     { label: "Ajustes Sistema", id: "settings", icon: Settings },
-    { label: "Auditoría", id: "governance", icon: Shield },
     { label: "Administradores", id: "admins", icon: Shield },
-    { label: "Labs / Roadmap", id: "roadmap", icon: Rocket, isFuture: true },
   ].filter(item => !isPrintRole || item.id === 'inventory');
 
   return (
