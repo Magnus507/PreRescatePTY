@@ -117,9 +117,30 @@ export function DashboardSection({
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard label="Usuarios Totales" value={stats.totalUsers} icon={Users} color="text-indigo-600" trend={p.newUsersToday > 0 ? p.newUsersToday.toString() : undefined} />
-        <StatCard label="Chips en Red" value={stats.totalChips} icon={Cpu} color="text-blue-600" />
-        <StatCard label="Salud del Sistema" value={stats.chipsByStatus.activated} icon={Zap} color="text-emerald-600" />
+        <StatCard label="Chips Activos (En Red)" value={stats.chipsByStatus.activated} icon={Cpu} color="text-emerald-500" />
+        <StatCard label="Perfiles Médicos" value={stats.totalProfiles} icon={ShieldCheck} color="text-blue-600" />
         <StatCard label="Impacto (Escaneos)" value={stats.totalScans} icon={ScanIcon} color="text-orange-500" />
+      </div>
+
+      {/* Hardware Distribution Bar */}
+      <div className="p-8 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-border shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
+         <div className="w-full md:w-1/3">
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Distribución de Hardware</p>
+            <p className="text-2xl font-black tracking-tighter">{stats.totalChips.toLocaleString()} <span className="text-sm font-bold text-slate-400">Chips Totales</span></p>
+         </div>
+         <div className="w-full md:w-2/3 flex flex-col gap-3">
+            <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full flex overflow-hidden">
+               <div className="bg-emerald-500 h-full" style={{ width: `${(stats.chipsByStatus.activated / stats.totalChips) * 100}%` }} title="Activos" />
+               <div className="bg-amber-500 h-full" style={{ width: `${(stats.chipsByStatus.sold / stats.totalChips) * 100}%` }} title="Vendidos" />
+               <div className="bg-blue-500 h-full" style={{ width: `${(stats.chipsByStatus.inventory / stats.totalChips) * 100}%` }} title="Inventario" />
+               <div className="bg-destructive h-full" style={{ width: `${(stats.chipsByStatus.suspended / stats.totalChips) * 100}%` }} title="Suspendidos" />
+            </div>
+            <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"/> <span className="text-emerald-700">{stats.chipsByStatus.activated} Activos</span></div>
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"/> <span className="text-amber-700">{stats.chipsByStatus.sold} Vendidos</span></div>
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"/> <span className="text-blue-700">{stats.chipsByStatus.inventory} Inventario</span></div>
+            </div>
+         </div>
       </div>
 
       {/* Main Analysis Area */}
