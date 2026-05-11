@@ -384,6 +384,26 @@ function AdminDashboard() {
             />
           )}
 
+          {admin.tab === "admins" && (
+            <AdminsSection 
+               admins={admin.users.adminUsers}
+               loading={admin.users.loading}
+               creating={admin.users.creating}
+               loadAdmins={() => admin.users.loadAdminAccounts()}
+               onCreateAdmin={admin.users.createAdmin}
+               onUpdateAdmin={admin.users.updateAdmin}
+               onDeleteAdmin={admin.users.deleteAdmin}
+            />
+          )}
+
+          {admin.tab === "pedidos" && (
+            <PedidosSection />
+          )}
+
+          {admin.tab === "tienda" && (
+            <TiendaSection />
+          )}
+
           {admin.tab === "settings" && (
             <SettingsSection />
           )}
