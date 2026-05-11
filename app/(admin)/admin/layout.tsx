@@ -107,9 +107,10 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
         </div>
         <button
           disabled={isLoggingOut}
-          onClick={() => {
+          onClick={async () => {
             setIsLoggingOut(true);
-            signOut({ callbackUrl: "/login" });
+            await signOut({ redirect: false });
+            window.location.href = "/login";
           }}
           className="flex items-center justify-center gap-3 px-4 py-3.5 w-full rounded-2xl text-sm font-black text-white bg-slate-950 dark:bg-white dark:text-slate-950 hover:opacity-90 active:scale-[0.98] transition-all shadow-lg disabled:opacity-50"
         >
@@ -247,9 +248,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
             <button
               disabled={isLoggingOut}
-              onClick={() => {
+              onClick={async () => {
                 setIsLoggingOut(true);
-                signOut({ callbackUrl: "/login" });
+                await signOut({ redirect: false });
+                window.location.href = "/login";
               }}
               title="Cerrar Sesión"
               className="h-10 w-10 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center hover:opacity-90 active:scale-90 transition-all shadow-lg disabled:opacity-50"

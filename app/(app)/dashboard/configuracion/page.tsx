@@ -154,8 +154,9 @@ export default function ConfiguracionPage() {
       toast.success("Tu cuenta ha sido eliminada. Cerrando sesión...");
       
       // Give time for the toast to be seen
-      setTimeout(() => {
-        signOut({ callbackUrl: "/" });
+      setTimeout(async () => {
+        await signOut({ redirect: false });
+        window.location.href = "/login";
       }, 2000);
 
     } catch (err: unknown) {

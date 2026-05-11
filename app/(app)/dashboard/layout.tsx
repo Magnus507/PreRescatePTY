@@ -176,9 +176,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
                 <button 
                   disabled={isLoggingOut}
-                  onClick={() => {
+                  onClick={async () => {
                     setIsLoggingOut(true);
-                    signOut({ callbackUrl: "/" });
+                    await signOut({ redirect: false });
+                    window.location.href = "/login";
                   }}
                   className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-red-50 text-red-600 font-extrabold text-[10px] uppercase tracking-widest hover:bg-red-100 transition-all disabled:opacity-50"
                 >
