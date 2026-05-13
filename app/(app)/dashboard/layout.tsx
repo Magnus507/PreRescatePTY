@@ -24,7 +24,6 @@ const navItems = [
 
 const secondaryItems = [
   { href: "/dashboard/historial", label: "Alertas Recientes", icon: History },
-  { href: "/dashboard/contactos", label: "Contactos", icon: Users },
   { href: "/dashboard/pedidos", label: "Mis Pedidos", icon: Package },
 ];
 
@@ -127,7 +126,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Protección Vital</p>
               <NavLink href="/dashboard/perfiles-medicos" label="Perfiles Médicos" icon={UsersRound} active={pathname === "/dashboard/perfiles-medicos"} />
               <NavLink href="/dashboard/historial" label="Historial de Rescate" icon={History} active={pathname === "/dashboard/historial"} />
-              <NavLink href="/dashboard/contactos" label="Contactos de Auxilio" icon={Users} active={pathname === "/dashboard/contactos"} />
             </div>
 
             {state?.isOrganization && (

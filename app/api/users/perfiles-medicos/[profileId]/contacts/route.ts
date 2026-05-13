@@ -236,21 +236,21 @@ export async function DELETE(
   
   if (!link) return NextResponse.json({ error: "Vínculo no encontrado" }, { status: 404 });
 
-  // IMPORTANT: We only delete the relation, preserving the Contact record in the account
-  await prisma.profileContact.delete({ where: { id: link.id } });
+  // We delete the Contact record completely, which cascades to delete the profile link
+  await prisma.contact.delete({ where: { id: contactId } });
 
   await prisma.auditLog.create({
     data: {
       actorUserId: userId,
       accountId: profile?.accountId || null,
-      entityType: "profileContact",
-      entityId: link.id,
-      action: "unlink_guardian",
+      entityType: "contact",
+      entityId: contactId,
+      action: "delete_contact",
       oldValuesJson: JSON.stringify(link),
     },
   });
 
-  return NextResponse.json({ message: "Vínculo eliminado (el contacto permanece en tu red general)" });
+  return NextResponse.json({ message: "Contacto eliminado permanentemente" });
 }
 
 // PATCH: Update specific link preferences and contact info

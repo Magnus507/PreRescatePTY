@@ -29,13 +29,6 @@ interface EmergencyContact {
 
 const RELATIONSHIPS = ["Madre", "Padre", "Cónyuge", "Hermano/a", "Hijo/a", "Abuelo/a", "Amigo/a", "Otro"];
 
-interface Guardian {
-  id: string;
-  fullName: string;
-  phone: string;
-  email: string | null;
-}
-
 interface FamilyProfile {
   id: string;
   firstName: string;
@@ -76,9 +69,6 @@ export default function FamiliaPage() {
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<FamilyState | null>(null);
 
-  // Check if data is stale (5 minutes)
-  const isProfilesStale = (maxAgeMs = 300000) => !profilesLoadedAt || Date.now() - profilesLoadedAt > maxAgeMs;
-
   // Modals
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ ...emptyForm });
@@ -102,8 +92,7 @@ export default function FamiliaPage() {
   const [deletingContact, setDeletingContact] = useState<string | null>(null);
   const [availableChips, setAvailableChips] = useState<AssignedChip[]>([]);
   const [assigningChip, setAssigningChip] = useState<string | null>(null);
-  const [contactPool, setContactPool] = useState<Guardian[]>([]);
-  const [poolLoading, setPoolLoading] = useState(false);
+  const [addingContactToProfile, setAddingContactToProfile] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfiles();
@@ -122,31 +111,16 @@ export default function FamiliaPage() {
 
       setOwnProfile(pData.ownProfile);
       setFamilyProfiles(pData.familyProfiles || []);
-      setProfilesLoadedAt(Date.now()); // Track when data was loaded
+      setProfilesLoadedAt(Date.now());
       setState(pData.state);
 
-      // Only chips that are not assigned to anyone or are assigned to this profile are "available" (but keep it simple: just unassigned ones)
       setAvailableChips((cData.chips || []).filter((c: any) => !c.assignedProfileId && c.status === "activated"));
       
-      loadPool();
     } catch (e) {
       console.error("Error loading family profiles:", e);
       toast.error("Error al cargar los perfiles médicos");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function loadPool() {
-    setPoolLoading(true);
-    try {
-      const res = await fetch("/api/contacts/account");
-      const data = await res.json();
-      setContactPool(data.contacts || []);
-    } catch (e) {
-      console.error("Error loading contact pool:", e);
-    } finally {
-      setPoolLoading(false);
     }
   }
 
@@ -275,11 +249,6 @@ export default function FamiliaPage() {
         const data = await res.json();
         const fetchedContacts = data.contacts || [];
         setContacts((prev) => ({ ...prev, [profileId]: fetchedContacts }));
-        
-        // AUTO-LINK first guardian if empty and pool has contacts
-        if (fetchedContacts.length === 0 && contactPool.length > 0) {
-           handleToggleLink(profileId, contactPool[0].id, false);
-        }
       } catch (e) {
         console.error("Error loading contacts:", e);
       } finally {
@@ -309,18 +278,21 @@ export default function FamiliaPage() {
         }));
         setContactForm({ ...emptyContactForm });
         toast.success("Contacto añadido");
+        return true;
       } else {
         const data = await res.json();
         setContactError(data.error || "Error al añadir contacto");
+        return false;
       }
     } catch (error) {
       setContactSaving(false);
       setContactError("Error de conexión");
+      return false;
     }
   }
 
   async function handleDeleteContact(profileId: string, contactId: string) {
-    if (!confirm("¿Deseas desvincular a este guardián de este perfil?")) return;
+    if (!confirm("¿Deseas eliminar permanentemente a este guardián?")) return;
     setDeletingContact(contactId);
     try {
       const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts?id=${contactId}`, {
@@ -332,42 +304,11 @@ export default function FamiliaPage() {
           ...prev,
           [profileId]: (prev[profileId] || []).filter((c) => c.id !== contactId),
         }));
-        toast.success("Contacto desvinculado");
+        toast.success("Guardián eliminado permanentemente");
       }
     } catch (error) {
       setDeletingContact(null);
       toast.error("Error de conexión");
-    }
-  }
-
-  async function handleToggleLink(profileId: string, contactId: string, isLinked: boolean) {
-    if (isLinked) {
-      handleDeleteContact(profileId, contactId);
-      return;
-    }
-
-    // Link it
-    setDeletingContact(contactId); // Reuse state for spinner
-    try {
-      const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactId }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setContacts((prev) => ({
-          ...prev,
-          [profileId]: [...(prev[profileId] || []), data.contact],
-        }));
-        toast.success("Guardián vinculado");
-      } else {
-        toast.error(data.error || "Error al vincular");
-      }
-    } catch (e) {
-      toast.error("Error de conexión");
-    } finally {
-      setDeletingContact(null);
     }
   }
 
@@ -457,7 +398,6 @@ export default function FamiliaPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
-          {/* Main User Profile (You) */}
           {ownProfile && (
             <ProfileCard
               key={ownProfile.id}
@@ -469,21 +409,15 @@ export default function FamiliaPage() {
               onToggleContacts={() => toggleContacts(ownProfile.id)}
               contacts={contacts[ownProfile.id] || []}
               contactsLoading={contactsLoading === ownProfile.id}
-              contactForm={contactForm}
-              onContactFormChange={setContactForm}
-              onAddContact={(e: React.FormEvent) => handleAddContact(e, ownProfile.id)}
-              contactSaving={contactSaving}
-              contactError={contactError}
-              onDeleteContact={(contactId: string) => handleDeleteContact(ownProfile.id, contactId)}
+              onDeleteContact={(contactId) => handleDeleteContact(ownProfile.id, contactId)}
               deletingContact={deletingContact}
               availableChips={availableChips}
               onAssignChip={(chipId) => handleAssignChip(ownProfile.id, chipId)}
               isAssigning={assigningChip === ownProfile.id}
-              contactPool={contactPool}
-              onToggleLink={(contactId, linked) => handleToggleLink(ownProfile.id, contactId, linked)}
               onUpdateLink={(contactId, data) => handleUpdateLink(ownProfile.id, contactId, data)}
               isOwn
               profileId={ownProfile.id}
+              onStartAddContact={() => { setAddingContactToProfile(ownProfile.id); setContactError(""); setContactForm({...emptyContactForm}); }}
             />
           )}
 
@@ -498,34 +432,16 @@ export default function FamiliaPage() {
               onToggleContacts={() => toggleContacts(profile.id)}
               contacts={contacts[profile.id] || []}
               contactsLoading={contactsLoading === profile.id}
-              contactForm={contactForm}
-              onContactFormChange={setContactForm}
-              onAddContact={(e: React.FormEvent) => handleAddContact(e, profile.id)}
-              contactSaving={contactSaving}
-              contactError={contactError}
-              onDeleteContact={(contactId: string) => handleDeleteContact(profile.id, contactId)}
+              onDeleteContact={(contactId) => handleDeleteContact(profile.id, contactId)}
               deletingContact={deletingContact}
               availableChips={availableChips}
               onAssignChip={(chipId) => handleAssignChip(profile.id, chipId)}
               isAssigning={assigningChip === profile.id}
-              contactPool={contactPool}
-              onToggleLink={(contactId, linked) => handleToggleLink(profile.id, contactId, linked)}
               onUpdateLink={(contactId, data) => handleUpdateLink(profile.id, contactId, data)}
               profileId={profile.id}
+              onStartAddContact={() => { setAddingContactToProfile(profile.id); setContactError(""); setContactForm({...emptyContactForm}); }}
             />
           ))}
-          
-          {state?.canAddFamilyMember && (
-            <button
-              onClick={() => setShowAdd(true)}
-              className="flex flex-col items-center justify-center gap-3 p-10 rounded-[2.5rem] border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:bg-primary/5 hover:text-primary transition-all group"
-            >
-              <div className="h-14 w-14 rounded-2xl bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-all">
-                <Plus className="h-6 w-6" />
-              </div>
-              <p className="font-black text-lg tracking-tight uppercase">Añadir Nuevo Perfil</p>
-            </button>
-          )}
         </div>
       )}
 
@@ -557,28 +473,6 @@ export default function FamiliaPage() {
                form={editForm} 
                onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val }))} 
             />
-            {editProfile.assignedChips?.[0] ? (
-               <div className="flex justify-center -mt-4 mb-4">
-                  <Link 
-                    href={`/e/${editProfile.assignedChips[0].shortCode}`} 
-                    target="_blank"
-                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-all text-xs uppercase tracking-widest"
-                  >
-                    <ExternalLink className="h-4 w-4" /> Ver Pantallazo del Chip
-                  </Link>
-               </div>
-            ) : (
-              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
-                <p className="text-xs font-black uppercase tracking-widest text-primary mb-3">Vincular Chip Disponible</p>
-                <select 
-                  onChange={(e) => handleAssignChip(editProfile.id, e.target.value)}
-                  className="w-full p-3 rounded-xl border border-border bg-white font-bold text-sm"
-                >
-                  <option value="">Seleccionar chip...</option>
-                  {availableChips.map(c => <option key={c.id} value={c.id}>{c.serialPublic}</option>)}
-                </select>
-              </div>
-            )}
             <div className="flex gap-6 pt-8 border-t border-border/50">
               <button type="button" onClick={() => setEditProfile(null)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
               <button type="submit" disabled={editSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
@@ -589,14 +483,103 @@ export default function FamiliaPage() {
           </form>
         </Modal>
       )}
+
+      {addingContactToProfile && (
+        <Modal title="Añadir Guardián de Emergencia" onClose={() => setAddingContactToProfile(null)}>
+           <form onSubmit={(e) => { 
+             handleAddContact(e, addingContactToProfile).then(success => {
+               if(success) setAddingContactToProfile(null);
+             });
+           }} className="space-y-6">
+              {contactError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{contactError}</p>}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre Completo</label>
+                  <input 
+                    type="text" required
+                    value={contactForm.fullName}
+                    onChange={(e) => setContactForm({...contactForm, fullName: e.target.value})}
+                    className="w-full p-4 rounded-2xl bg-muted/30 border border-border focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium italic"
+                    placeholder="Ej: María Rodríguez"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Parentesco / Vínculo</label>
+                  <select 
+                    required
+                    value={contactForm.relationship}
+                    onChange={(e) => setContactForm({...contactForm, relationship: e.target.value})}
+                    className="w-full p-4 rounded-2xl bg-muted/30 border border-border focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium italic"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {RELATIONSHIPS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Teléfono (con WhatsApp si es posible)</label>
+                  <input 
+                    type="tel" required
+                    value={contactForm.phone}
+                    onChange={(e) => setContactForm({...contactForm, phone: e.target.value})}
+                    className="w-full p-4 rounded-2xl bg-muted/30 border border-border focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium italic"
+                    placeholder="Ej: 6677-8899"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Correo Electrónico (Opcional)</label>
+                  <input 
+                    type="email"
+                    value={contactForm.email || ""}
+                    onChange={(e) => setContactForm({...contactForm, email: e.target.value})}
+                    className="w-full p-4 rounded-2xl bg-muted/30 border border-border focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium italic"
+                    placeholder="ejemplo@correo.com"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-border">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">Canales de Notificación en Emergencia</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   <button 
+                    type="button"
+                    onClick={() => setContactForm({...contactForm, notifyEmail: !contactForm.notifyEmail})}
+                    className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${contactForm.notifyEmail ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-muted/10 border-border opacity-60'}`}
+                   >
+                     <span className="text-xs font-black uppercase">Email</span>
+                     <div className={`h-2 w-2 rounded-full ${contactForm.notifyEmail ? 'bg-primary' : 'bg-slate-300'}`} />
+                   </button>
+                   <button 
+                    type="button"
+                    className="p-4 rounded-2xl border flex items-center justify-between transition-all opacity-40 grayscale cursor-not-allowed bg-muted/10 border-border"
+                    title="Próximamente"
+                   >
+                     <span className="text-xs font-black uppercase">SMS (Próximamente)</span>
+                     <div className="h-2 w-2 rounded-full bg-slate-300" />
+                   </button>
+                   <button 
+                    type="button"
+                    className="p-4 rounded-2xl border flex items-center justify-between transition-all opacity-40 grayscale cursor-not-allowed bg-muted/10 border-border"
+                    title="Próximamente"
+                   >
+                     <span className="text-xs font-black uppercase">WhatsApp (Próximamente)</span>
+                     <div className="h-2 w-2 rounded-full bg-slate-300" />
+                   </button>
+                </div>
+              </div>
+
+              <div className="flex gap-6 pt-8 border-t border-border/50">
+                <button type="button" onClick={() => setAddingContactToProfile(null)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
+                <button type="submit" disabled={contactSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
+                  {contactSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Guardar Guardián
+                </button>
+              </div>
+           </form>
+        </Modal>
+      )}
     </div>
   );
-}
-
-interface AssignedChip {
-  id: string;
-  shortCode: string;
-  serialPublic: string;
 }
 
 interface ProfileCardProps {
@@ -608,32 +591,24 @@ interface ProfileCardProps {
   onToggleContacts: () => void;
   contacts: EmergencyContact[];
   contactsLoading: boolean;
-  contactForm: typeof emptyContactForm;
-  onContactFormChange: (form: typeof emptyContactForm) => void;
-  onAddContact: (e: React.FormEvent) => void;
-  contactSaving: boolean;
-  contactError: string;
   onDeleteContact: (id: string) => void;
   deletingContact: string | null;
   availableChips: AssignedChip[];
   onAssignChip: (chipId: string) => void;
   isAssigning: boolean;
-  contactPool: Guardian[];
-  onToggleLink: (id: string, linked: boolean) => void;
   onUpdateLink: (id: string, data: any) => void;
   isOwn?: boolean;
   profileId: string;
+  onStartAddContact: () => void;
 }
 
 function ProfileCard({
    profile, onEdit, onDelete, isDeleting,
    contactsExpanded, onToggleContacts,
-   contacts, contactForm, onContactFormChange,
-   onAddContact, contactSaving, contactError,
-   onDeleteContact, deletingContact,
+   contacts, onDeleteContact, deletingContact,
    availableChips, onAssignChip, isAssigning,
-   contactPool, onToggleLink, onUpdateLink,
-   isOwn, profileId
+   onUpdateLink, isOwn, profileId,
+   onStartAddContact
 }: ProfileCardProps) {
   const initials = profile.firstName && profile.lastName 
     ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
@@ -745,7 +720,7 @@ function ProfileCard({
                  <h4 className="text-xl font-black tracking-tight flex items-center gap-3">
                     <ShieldCheck className="h-6 w-6 text-primary" /> Guardianes del Perfil
                  </h4>
-                 <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Escoge hasta 3 contactos de tu red de auxilio</p>
+                 <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Configura los contactos de emergencia exclusivos para este perfil</p>
               </div>
               <p className="text-[10px] font-black text-muted-foreground uppercase bg-white dark:bg-slate-900 border border-border px-4 py-2 rounded-full shadow-sm">
                  Prioridad Automática de Alerta
@@ -753,25 +728,28 @@ function ProfileCard({
            </div>
  
            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-              {/* CURRENT GUARDIANS */}
               <div className="lg:col-span-12 space-y-4">
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[0, 1, 2].map((idx) => {
                        const c = contacts[idx];
                        if (!c) {
                           return (
-                             <div key={idx} className="h-32 border-2 border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-muted-foreground/30 bg-muted/20">
-                                <PlusCircle className="h-8 w-8 mb-2" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Espacio {idx + 1} Vacío</span>
-                             </div>
+                             <button 
+                                key={idx} 
+                                onClick={onStartAddContact}
+                                className="h-32 border-2 border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-muted-foreground/40 bg-muted/20 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all group"
+                             >
+                                <PlusCircle className="h-8 w-8 mb-2 group-hover:scale-110 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Añadir Guardián {idx + 1}</span>
+                             </button>
                           );
                        }
                        return (
                           <div key={c.id} className="p-6 rounded-[2rem] bg-white dark:bg-slate-950 border-2 border-primary/20 shadow-xl shadow-primary/5 flex flex-col gap-4 relative group">
                              <button 
-                               onClick={() => onToggleLink(c.id, true)} 
+                               onClick={() => onDeleteContact(c.id)} 
                                className="absolute -top-2 -right-2 h-8 w-8 bg-white border border-border shadow-md rounded-full flex items-center justify-center text-destructive hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
-                               title="Quitar Guardián"
+                               title="Eliminar Guardián"
                              >
                                 <Trash2 className="h-4 w-4" />
                              </button>
@@ -800,71 +778,21 @@ function ProfileCard({
                                    <StatusBadge active={c.notifySms} label="SMS" />
                                    <StatusBadge active={c.notifyWhatsapp} label="WhatsApp" />
                                 </div>
-                                <p className="text-[8px] font-bold text-muted-foreground italic mt-2">* Edita estos valores en el panel "Contactos de Auxilio"</p>
+                                <button 
+                                  onClick={() => onDeleteContact(c.id)}
+                                  className="text-[9px] font-black text-destructive uppercase tracking-widest mt-2 hover:underline"
+                                >
+                                  Eliminar permanentemente
+                                </button>
                              </div>
                           </div>
                        );
                     })}
                  </div>
               </div>
-
-              {/* GUARDIAN POOL */}
-              <div className="lg:col-span-12">
-                 <div className="p-10 rounded-[3rem] bg-slate-50 dark:bg-slate-900/50 border border-border">
-                    <div className="flex items-center justify-between mb-8">
-                       <h5 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                          <Users className="h-5 w-5 text-slate-400" /> Tu Red de Auxilio General
-                       </h5>
-                       <Link href="/dashboard/contactos" className="text-xs font-black text-primary flex items-center gap-1 hover:underline">
-                          Gestionar Red <ExternalLink className="h-3 w-3" />
-                       </Link>
-                    </div>
-
-                    {contactPool.length === 0 ? (
-                       <div className="text-center py-6">
-                          <p className="text-xs font-bold text-muted-foreground uppercase italic underline underline-offset-4 decoration-border mb-4">No has creado contactos de emergencia generales.</p>
-                          <Link href="/dashboard/contactos" className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest">
-                             <Plus className="h-3 w-3" /> Crear Guardianes Ahora
-                          </Link>
-                       </div>
-                    ) : (
-                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          {contactPool.map(poolC => {
-                             const isLinked = contacts.some((c: any) => c.id === poolC.id);
-                             const atLimit = (contacts?.length || 0) >= 3;
-                             return (
-                                <button 
-                                  key={poolC.id}
-                                  disabled={isLinked || atLimit}
-                                  onClick={() => onToggleLink(poolC.id, false)}
-                                  className={`p-4 rounded-2xl border transition-all text-left flex items-start gap-3 group relative ${
-                                    isLinked 
-                                      ? 'bg-primary/5 border-primary/20 cursor-default ring-1 ring-primary/30' 
-                                      : 'bg-white hover:border-primary hover:shadow-lg active:scale-95'
-                                  } ${atLimit && !isLinked ? 'opacity-40 grayscale cursor-not-allowed' : ''}`}
-                                >
-                                   <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black shrink-0 ${isLinked ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-primary group-hover:text-white'}`}>
-                                      {isLinked ? <ShieldCheck className="h-5 w-5" /> : poolC.fullName[0].toUpperCase()}
-                                   </div>
-                                   <div className="overflow-hidden">
-                                      <p className={`font-black text-xs truncate ${isLinked ? 'text-primary font-black' : 'text-slate-900'}`}>{poolC.fullName}</p>
-                                      <p className="text-[10px] font-bold text-slate-400 truncate">{poolC.phone}</p>
-                                   </div>
-                                   {!isLinked && !atLimit && (
-                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-primary/10 text-primary p-1 rounded-md transition-all">
-                                        <Plus className="h-3 w-3" />
-                                     </div>
-                                   )}
-                                </button>
-                             );
-                          })}
-                       </div>
-                    )}
-                 </div>
-              </div>
            </div>
         </div>
-      )}
+       )}
     </div>
   );
 }
@@ -901,8 +829,4 @@ function StatusBadge({ label, active }: { label: string, active: boolean }) {
        {label}
     </div>
   );
-}
-
-function ToggleSmall() {
-  return null; // No longer used as we made it read-only
 }
