@@ -93,11 +93,19 @@ export default function DashboardPage() {
     }
   }, [status]);
 
-  if (loading) {
+  useEffect(() => {
+    if (data?.state?.isOrganization) {
+      router.push("/dashboard/empresas");
+    }
+  }, [data, router]);
+
+  if (loading || data?.state?.isOrganization) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Loader2 className="animate-spin w-10 h-10 text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium tracking-tight">Sincronizando con PreRescue ID Control...</p>
+        <p className="text-muted-foreground animate-pulse font-medium tracking-tight">
+          {data?.state?.isOrganization ? "Cargando Panel Corporativo..." : "Sincronizando con PreRescue ID Control..."}
+        </p>
       </div>
     );
   }
