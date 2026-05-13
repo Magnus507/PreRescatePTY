@@ -28,6 +28,7 @@ import { OrgDetailView } from "./_components/details/OrgDetail";
 // Modals
 import { OrgCreateModal } from "./_components/modals/OrgCreateModal";
 import { ComboSelectorModal } from "./_components/modals/ComboSelectorModal";
+import { BatchCreateModal } from "./_components/modals/BatchCreateModal";
 
 // Types & Utils
 import { ChipAdmin } from "./_types/admin";
@@ -160,6 +161,7 @@ function AdminDashboard() {
   // -- UI States --
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [showComboModal, setShowComboModal] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
   
   // -- Assign States (Domain Specific Action State) --
   const [assignShortCode, setAssignShortCode] = useState("");
@@ -216,23 +218,33 @@ function AdminDashboard() {
   if (admin.orgs.selectedOrg) {
     const org = admin.orgs.selectedOrg;
     return (
-      <OrgDetailView 
-        org={org}
-        onBack={() => admin.orgs.setSelectedOrg(null)}
-        onAction={admin.users.handleAdminAction}
-        onAddUser={() => {}} // Placeholder for future refined modal
-        onDeleteOrg={admin.orgs.deleteOrg}
-        onDeleteMember={(userId: string) => admin.users.handleAdminAction(userId, "delete-user", {})}
-        onLoadChip={admin.chips.loadChipDetail}
-        onAssignChip={(e) => { e.preventDefault(); admin.orgs.assignChipByShortCode(org.id, assignShortCode); }}
-        assignShortCode={assignShortCode}
-        setAssignShortCode={setAssignShortCode}
-        bulkAssignCount={bulkAssignCount}
-        setBulkAssignCount={setBulkAssignCount}
-        onBulkAssign={(e) => { e.preventDefault(); admin.orgs.assignBulkChips(org.id, bulkAssignCount); }}
-        formatDate={formatDate}
-        statusColor={statusColor}
-      />
+      <>
+        <OrgDetailView 
+          org={org}
+          onBack={() => admin.orgs.setSelectedOrg(null)}
+          onAction={admin.users.handleAdminAction}
+          onAddUser={() => {}} // Placeholder for future refined modal
+          onCreateBatch={() => setShowBatchModal(true)}
+          onDeleteOrg={admin.orgs.deleteOrg}
+          onDeleteMember={(userId: string) => admin.users.handleAdminAction(userId, "delete-user", {})}
+          onLoadChip={admin.chips.loadChipDetail}
+          onAssignChip={(e) => { e.preventDefault(); admin.orgs.assignChipByShortCode(org.id, assignShortCode); }}
+          assignShortCode={assignShortCode}
+          setAssignShortCode={setAssignShortCode}
+          bulkAssignCount={bulkAssignCount}
+          setBulkAssignCount={setBulkAssignCount}
+          onBulkAssign={(e) => { e.preventDefault(); admin.orgs.assignBulkChips(org.id, bulkAssignCount); }}
+          formatDate={formatDate}
+          statusColor={statusColor}
+        />
+        <BatchCreateModal
+          isOpen={showBatchModal}
+          onClose={() => setShowBatchModal(false)}
+          orgId={org.id}
+          orgName={org.legalName}
+          onSuccess={() => { admin.orgs.loadOrgDetail(org.id); }}
+        />
+      </>
     );
   }
 

@@ -10,6 +10,7 @@ interface OrgDetailProps {
   onBack: () => void;
   onAction: (userId: string, action: string, data: any) => void;
   onAddUser: () => void;
+  onCreateBatch: () => void;
   onDeleteOrg: (id: string, name: string) => void;
   onDeleteMember: (id: string, email: string) => void;
   onLoadChip: (id: string) => void;
@@ -24,7 +25,7 @@ interface OrgDetailProps {
 }
 
 export const OrgDetailView: React.FC<OrgDetailProps> = ({ 
-  org, onBack, onAction, onAddUser, onDeleteOrg, onDeleteMember,
+  org, onBack, onAction, onAddUser, onCreateBatch, onDeleteOrg, onDeleteMember,
   onLoadChip, onAssignChip, assignShortCode, setAssignShortCode,
   bulkAssignCount, setBulkAssignCount, onBulkAssign,
   formatDate, statusColor
@@ -152,9 +153,14 @@ export const OrgDetailView: React.FC<OrgDetailProps> = ({
                        <h3 className="font-black text-xs uppercase tracking-widest text-slate-400">Equipo de Trabajo</h3>
                        <p className="text-xs text-slate-400 mt-0.5">{members.length} Miembros Registrados</p>
                     </div>
-                    <button onClick={onAddUser} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center gap-2 shadow-lg shadow-slate-200 active:scale-95">
-                       <Plus className="h-3.5 w-3.5" /> Invitar Miembro
-                    </button>
+                     <div className="flex items-center gap-2">
+                       <button onClick={onCreateBatch} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-200 active:scale-95">
+                          <Plus className="h-3.5 w-3.5" /> Crear Lote
+                       </button>
+                       <button onClick={onAddUser} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center gap-2 shadow-lg shadow-slate-200 active:scale-95">
+                          <Plus className="h-3.5 w-3.5" /> Invitar Miembro
+                       </button>
+                     </div>
                  </div>
                  <div className="overflow-x-auto">
                     <table className="w-full text-sm">

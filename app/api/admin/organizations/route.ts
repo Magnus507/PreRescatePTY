@@ -42,9 +42,9 @@ export async function POST(req: Request) {
 
   try {
     const data = await req.json();
-    const { legalName, displayName, contactEmail, maxChips, ownerPassword } = data;
+    const { legalName, displayName, contactEmail, maxChips, ownerPassword, organizationType, contactPhone } = data;
     const ownerEmail = (data.ownerEmail as string || "").toLowerCase().trim();
-    const chipCount = maxChips || 30;
+    const chipCount = Number(maxChips) || 30;
 
     if (!ownerEmail || !ownerPassword) {
       return NextResponse.json(
@@ -147,7 +147,8 @@ export async function POST(req: Request) {
           legalName,
           displayName: displayName || legalName,
           contactEmail,
-          organizationType: data.organizationType || "company",
+          contactPhone: contactPhone || null,
+          organizationType: organizationType || "industrial",
           status: "active"
         }
       });

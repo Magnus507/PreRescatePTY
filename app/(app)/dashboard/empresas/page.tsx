@@ -9,7 +9,8 @@ import {
   Search, ShieldCheck, Mail, Phone, AlertCircle,
   MoreVertical, Calendar, UserCheck, UserX,
   CreditCard, LayoutDashboard, Loader2,
-  Trash2, Edit2, CheckCircle2, MoreHorizontal
+  Trash2, Edit2, CheckCircle2, MoreHorizontal,
+  HeartPulse
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -60,6 +61,13 @@ export default function OrganizationDashboard() {
   const [newPass, setNewPass] = useState("");
   const [assignChipId, setAssignChipId] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editProfileData, setEditProfileData] = useState({
+    firstName: "", lastName: "", bloodType: "Pendiente",
+    allergies: "", chronicConditions: "", medications: "",
+    additionalNotes: "", phone: "",
+    shift: "", occupationalRisks: "", medicalRestrictions: "", emergencyProtocol: ""
+  });
 
   useEffect(() => {
     loadData();
@@ -112,6 +120,7 @@ export default function OrganizationDashboard() {
       setShowAddMember(false);
       setShowAssignChip(false);
       setShowResetPassword(false);
+      setShowEditProfile(false);
       loadData();
     } catch (e: any) {
       toast.error("Error: " + e.message);
@@ -271,6 +280,29 @@ export default function OrganizationDashboard() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedUser(member);
+                                  setEditProfileData({
+                                    firstName: member.profile?.firstName || "",
+                                    lastName: member.profile?.lastName || "",
+                                    bloodType: member.profile?.bloodType || "Pendiente",
+                                    allergies: member.profile?.allergies || "",
+                                    chronicConditions: member.profile?.chronicConditions || "",
+                                    medications: member.profile?.medications || "",
+                                    additionalNotes: member.profile?.additionalNotes || "",
+                                    phone: member.profile?.phone || "",
+                                    shift: member.shift || "",
+                                    occupationalRisks: Array.isArray(member.occupationalRisks) ? member.occupationalRisks.join(", ") : (member.occupationalRisks || ""),
+                                    medicalRestrictions: member.medicalRestrictions || "",
+                                    emergencyProtocol: member.emergencyProtocol || ""
+                                  });
+                                  setShowEditProfile(true);
+                                }}
+                                className="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors" title="Editar Ficha Médica"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
                               <button
                                 onClick={() => {
                                   setSelectedUser(member);
@@ -707,6 +739,111 @@ export default function OrganizationDashboard() {
                   className="flex-1 py-3 rounded-xl bg-primary text-white font-bold"
                 >
                   Actualizar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Edit Profile Modal */}
+      {showEditProfile && selectedUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <div className="w-full max-w-2xl bg-card border border-border shadow-2xl rounded-[2rem] p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                <HeartPulse className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black">Editar Ficha Médica</h2>
+                <p className="text-xs text-muted-foreground">{selectedUser.email}</p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Datos Personales */}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Datos Personales</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Nombre</label>
+                    <input className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm" value={editProfileData.firstName} onChange={e => setEditProfileData({...editProfileData, firstName: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Apellido</label>
+                    <input className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm" value={editProfileData.lastName} onChange={e => setEditProfileData({...editProfileData, lastName: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Tipo de Sangre</label>
+                    <select className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm" value={editProfileData.bloodType} onChange={e => setEditProfileData({...editProfileData, bloodType: e.target.value})}>
+                      <option value="Pendiente">Pendiente</option>
+                      <option value="A+">A+</option><option value="A-">A-</option>
+                      <option value="B+">B+</option><option value="B-">B-</option>
+                      <option value="AB+">AB+</option><option value="AB-">AB-</option>
+                      <option value="O+">O+</option><option value="O-">O-</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Teléfono</label>
+                    <input className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm" value={editProfileData.phone} onChange={e => setEditProfileData({...editProfileData, phone: e.target.value})} placeholder="+507 0000-0000" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Datos Médicos */}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-3">🟥 Datos Médicos Críticos</p>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Alergias</label>
+                    <textarea className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm resize-none" rows={2} value={editProfileData.allergies} onChange={e => setEditProfileData({...editProfileData, allergies: e.target.value})} placeholder="Penicilina, Mariscos..." />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Condiciones Crónicas</label>
+                    <textarea className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm resize-none" rows={2} value={editProfileData.chronicConditions} onChange={e => setEditProfileData({...editProfileData, chronicConditions: e.target.value})} placeholder="Diabetes, Hipertensión..." />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Medicamentos Actuales</label>
+                    <textarea className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm resize-none" rows={2} value={editProfileData.medications} onChange={e => setEditProfileData({...editProfileData, medications: e.target.value})} placeholder="Metformina 850mg..." />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Notas Adicionales</label>
+                    <textarea className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm resize-none" rows={2} value={editProfileData.additionalNotes} onChange={e => setEditProfileData({...editProfileData, additionalNotes: e.target.value})} placeholder="Observaciones relevantes..." />
+                  </div>
+                </div>
+              </div>
+
+              {/* Datos Laborales */}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-3">🟨 Datos Ocupacionales</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Turno</label>
+                    <input className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm" value={editProfileData.shift} onChange={e => setEditProfileData({...editProfileData, shift: e.target.value})} placeholder="Diurno / Nocturno / Rotativo" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Riesgos Ocupacionales</label>
+                    <input className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm" value={editProfileData.occupationalRisks} onChange={e => setEditProfileData({...editProfileData, occupationalRisks: e.target.value})} placeholder="Altura, Químicos..." />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Restricciones Médicas</label>
+                    <input className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm" value={editProfileData.medicalRestrictions} onChange={e => setEditProfileData({...editProfileData, medicalRestrictions: e.target.value})} placeholder="No puede trabajar en alturas" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground ml-1">Protocolo de Emergencia</label>
+                    <input className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm" value={editProfileData.emergencyProtocol} onChange={e => setEditProfileData({...editProfileData, emergencyProtocol: e.target.value})} placeholder="Llamar brigada interna" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button onClick={() => setShowEditProfile(false)} className="flex-1 py-3 font-bold text-muted-foreground hover:bg-muted rounded-xl transition-all">Cancelar</button>
+                <button
+                  onClick={() => handleAction("update-member-profile", { memberId: selectedUser.id, ...editProfileData })}
+                  disabled={processing}
+                  className="flex-1 py-3 rounded-xl bg-primary text-white font-black hover:bg-primary/90 transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
+                >
+                  {processing ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Guardar Cambios"}
                 </button>
               </div>
             </div>

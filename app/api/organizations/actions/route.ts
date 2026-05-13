@@ -195,6 +195,61 @@ export async function POST(req: Request) {
         return NextResponse.json({ message: `Estado actualizado a ${status}` });
       }
 
+      case "update-member-profile": {
+        const { memberId, firstName, lastName, bloodType, allergies, chronicConditions, 
+                medications, additionalNotes, phone,
+                shift, occupationalRisks, medicalRestrictions, emergencyProtocol } = data;
+
+        // Verify member belongs to same account
+        const member = await prisma.user.findUnique({ 
+          where: { id: memberId },
+          include: { profile: { include: { organizationMembers: true } } }
+        });
+        if (!member || member.accountId !== accountId) {
+          return NextResponse.json({ error: "Permiso denegado" }, { status: 403 });
+        }
+
+        if (!member.profile) {
+          return NextResponse.json({ error: "El miembro no tiene perfil médico" }, { status: 400 });
+        }
+
+        // Update medical profile
+        await prisma.profile.update({
+          where: { id: member.profile.id },
+          data: {
+            firstName: firstName || member.profile.firstName,
+            lastName: lastName || member.profile.lastName,
+            bloodType: bloodType || member.profile.bloodType,
+            allergies: allergies ?? member.profile.allergies,
+            chronicConditions: chronicConditions ?? member.profile.chronicConditions,
+            medications: medications ?? member.profile.medications,
+            additionalNotes: additionalNotes ?? member.profile.additionalNotes,
+            phone: phone || member.profile.phone,
+          }
+        });
+
+        // Update organization member data if exists
+        const orgMember = member.profile.organizationMembers?.[0];
+        if (orgMember) {
+          await prisma.organizationMember.update({
+            where: { id: orgMember.id },
+            data: {
+              shift: shift || orgMember.shift,
+              occupationalRisks: occupationalRisks 
+                ? (typeof occupationalRisks === 'string' 
+                    ? occupationalRisks.split(',').map((r: string) => r.trim()).filter(Boolean) 
+                    : occupationalRisks)
+                : orgMember.occupationalRisks,
+              medicalRestrictions: medicalRestrictions ?? orgMember.medicalRestrictions,
+              emergencyProtocol: emergencyProtocol ?? orgMember.emergencyProtocol,
+            }
+          });
+        }
+
+        // Close the edit modal
+        return NextResponse.json({ message: "Ficha médica actualizada exitosamente" });
+      }
+
       default:
         return NextResponse.json({ error: "Acción no reconocida" }, { status: 400 });
     }

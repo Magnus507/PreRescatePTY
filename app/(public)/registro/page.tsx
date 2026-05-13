@@ -7,7 +7,7 @@ import Link from "next/link";
 import { 
   Shield, Eye, EyeOff, Loader2, ArrowRight, 
   Lock, Mail, HeartPulse, CheckCircle2, ShieldAlert,
-  User, Building2, Phone
+  User, Phone
 } from "lucide-react";
 
 export default function RegistroPage() {
@@ -28,8 +28,7 @@ function RegistroForm() {
     email: "", 
     phone: "", 
     password: "", 
-    confirm: "",
-    accountType: "personal" as "personal" | "company"
+    confirm: ""
   });
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
@@ -42,11 +41,7 @@ function RegistroForm() {
         .then(res => res.json())
         .then(data => {
           const pkg = data.packages?.find((p: any) => p.id === packageId);
-          if (pkg) {
-            setSelectedPkg(pkg);
-            // Pre-select account type based on package
-            if (pkg.accountType === 'company') update('accountType', 'company');
-          }
+          if (pkg) setSelectedPkg(pkg);
         })
         .catch(err => console.error("Error loading package summary:", err));
     }
@@ -85,7 +80,7 @@ function RegistroForm() {
           email: form.email,
           phone: form.phone,
           password: form.password,
-          accountType: form.accountType,
+          accountType: "personal",
           packageId: packageId,
         }),
       });
@@ -168,35 +163,20 @@ function RegistroForm() {
             </h2>
             
             <div className="space-y-6">
-              <p className="text-slate-400 text-sm font-bold uppercase tracking-widest px-1">Tipos de Protección</p>
-              
               <div className="space-y-4">
-                <div className={`p-4 rounded-2xl border transition-all duration-300 ${form.accountType === 'personal' ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-white/10 opacity-60'}`}>
+                <div className="p-4 rounded-2xl border bg-blue-500/10 border-blue-500/30">
                   <div className="flex gap-4">
                     <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
                       <User className="h-5 w-5 text-blue-400" />
                     </div>
                     <div>
-                      <p className="font-black text-sm uppercase">Individual / Familiar</p>
-                      <p className="text-xs text-slate-500 mt-1">Protege a tus seres queridos y gestiona sus perfiles médicos.</p>
+                      <p className="font-black text-sm uppercase">Protección Personal</p>
+                      <p className="text-xs text-slate-500 mt-1">Protege a tus seres queridos con identificación médica de emergencia.</p>
                     </div>
                   </div>
-                </div>
-
-                <div className={`p-4 rounded-2xl border transition-all duration-300 ${form.accountType === 'company' ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-white/5 border-white/10 opacity-60'}`}>
-                  <div className="flex gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
-                      <Building2 className="h-5 w-5 text-indigo-400" />
-                    </div>
-                    <div>
-                      <p className="font-black text-sm uppercase">Corporativo / Flotas</p>
-                      <p className="text-xs text-slate-500 mt-1">Seguridad laboral y protección para tu equipo de trabajo.</p>
-                    </div>
-                  </div>
-                </div>
-
                 </div>
               </div>
+            </div>
             </div>
 
           <div className="relative z-10 pt-8">
@@ -246,32 +226,7 @@ function RegistroForm() {
                 </div>
               )}
 
-              {/* Account Type Selector for Mobile */}
-              <div className="md:hidden grid grid-cols-2 gap-2">
-                {(['personal', 'company'] as const).map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => update('accountType', type)}
-                    className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${form.accountType === type ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'}`}
-                  >
-                    {type === 'personal' && <User className="h-5 w-5" />}
-                    {type === 'company' && <Building2 className="h-5 w-5" />}
-                  </button>
-                ))}
-              </div>
 
-              {/* Account Type Desktop Choice */}
-              <div className="hidden md:grid grid-cols-2 gap-3">
-                 <button type="button" onClick={() => update('accountType', 'personal')} className={`flex-1 p-4 rounded-2xl border text-center transition-all ${form.accountType === 'personal' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 ring-2 ring-blue-500/20' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-60'}`}>
-                    <User className={`h-6 w-6 mx-auto mb-2 ${form.accountType === 'personal' ? 'text-blue-500' : 'text-slate-400'}`} />
-                    <span className="text-[10px] font-black uppercase tracking-widest block">Personal</span>
-                 </button>
-                 <button type="button" onClick={() => update('accountType', 'company')} className={`flex-1 p-4 rounded-2xl border text-center transition-all ${form.accountType === 'company' ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 ring-2 ring-indigo-500/20' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-60'}`}>
-                    <Building2 className={`h-6 w-6 mx-auto mb-2 ${form.accountType === 'company' ? 'text-indigo-500' : 'text-slate-400'}`} />
-                    <span className="text-[10px] font-black uppercase tracking-widest block">Empresa</span>
-                 </button>
-              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5 md:col-span-2">
