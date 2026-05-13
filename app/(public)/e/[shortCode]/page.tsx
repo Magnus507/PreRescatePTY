@@ -508,36 +508,57 @@ export default function EmergencyPage() {
                     </div>
                     <div>
                         <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Contactos de Rescate</h2>
-                        <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1">Alertar Familiares inmediatamente</p>
+                        <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1">Configura los contactos de emergencia exclusivos para este perfil</p>
                     </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-6">
                 {profile.emergencyContacts.length > 0 ? (
-                    profile.emergencyContacts.map((contact, idx) => (
-                    <a
-                        key={idx}
-                        href={`tel:${contact.phone}`}
-                        className="flex items-center justify-between p-6 rounded-[2.2rem] bg-emerald-50/40 border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all group active:scale-95 shadow-sm"
-                    >
-                        <div className="flex-1">
-                            <p className="font-black text-slate-900 group-hover:text-white transition-colors uppercase tracking-tight text-xl leading-none mb-1">
-                                {contact.fullName}
-                            </p>
-                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-100 rounded-lg group-hover:bg-white/20">
-                                <span className="text-[10px] text-emerald-700 font-black uppercase tracking-widest group-hover:text-white">
-                                    {contact.relationship}
-                                </span>
+                    profile.emergencyContacts.map((contact, idx) => {
+                      const cleanPhone = contact.phone.replace(/\D/g, "");
+                      const whatsappPhone = cleanPhone.startsWith("507") ? cleanPhone : `507${cleanPhone}`;
+                      
+                      return (
+                        <div key={idx} className="p-8 rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm">
+                            <div className="flex items-center gap-6 text-center md:text-left flex-col md:flex-row">
+                                <div className="h-16 w-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-2xl shadow-lg shadow-emerald-100">
+                                   {contact.fullName[0].toUpperCase()}
+                                </div>
+                                <div>
+                                    <p className="font-black text-slate-900 uppercase tracking-tight text-2xl leading-none mb-1">
+                                        {contact.fullName}
+                                    </p>
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full border border-emerald-200">
+                                        <ShieldCheck className="h-3 w-3 text-emerald-700" />
+                                        <span className="text-[10px] text-emerald-700 font-black uppercase tracking-widest">
+                                            {contact.relationship}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                                <a
+                                    href={`tel:${contact.phone}`}
+                                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-3 px-8 py-4 bg-[#DA1A21] text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all active:scale-95 shadow-xl shadow-red-100 w-full sm:w-auto"
+                                >
+                                    <Phone className="h-4 w-4 fill-white" /> Llamar
+                                </a>
+                                <a
+                                    href={`https://wa.me/${whatsappPhone}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-3 px-8 py-4 bg-[#25D366] text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all active:scale-95 shadow-xl shadow-emerald-100 w-full sm:w-auto"
+                                >
+                                    <MessageCircle className="h-4 w-4 fill-white" /> WhatsApp
+                                </a>
                             </div>
                         </div>
-                        <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-xl shadow-emerald-100 group-hover:bg-white group-hover:text-emerald-700 transition-all flex items-center justify-center">
-                            <Phone className="h-6 w-6 fill-current" />
-                        </div>
-                    </a>
-                    ))
+                      );
+                    })
                 ) : (
-                    <div className="col-span-full p-10 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
+                    <div className="p-10 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
                          <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">No hay contactos registrados</p>
                     </div>
                 )}

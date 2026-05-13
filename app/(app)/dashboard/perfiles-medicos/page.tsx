@@ -538,36 +538,6 @@ export default function FamiliaPage() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-border">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">Canales de Notificación en Emergencia</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   <button 
-                    type="button"
-                    onClick={() => setContactForm({...contactForm, notifyEmail: !contactForm.notifyEmail})}
-                    className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${contactForm.notifyEmail ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-muted/10 border-border opacity-60'}`}
-                   >
-                     <span className="text-xs font-black uppercase">Email</span>
-                     <div className={`h-2 w-2 rounded-full ${contactForm.notifyEmail ? 'bg-primary' : 'bg-slate-300'}`} />
-                   </button>
-                   <button 
-                    type="button"
-                    className="p-4 rounded-2xl border flex items-center justify-between transition-all opacity-40 grayscale cursor-not-allowed bg-muted/10 border-border"
-                    title="Próximamente"
-                   >
-                     <span className="text-xs font-black uppercase">SMS (Próximamente)</span>
-                     <div className="h-2 w-2 rounded-full bg-slate-300" />
-                   </button>
-                   <button 
-                    type="button"
-                    className="p-4 rounded-2xl border flex items-center justify-between transition-all opacity-40 grayscale cursor-not-allowed bg-muted/10 border-border"
-                    title="Próximamente"
-                   >
-                     <span className="text-xs font-black uppercase">WhatsApp (Próximamente)</span>
-                     <div className="h-2 w-2 rounded-full bg-slate-300" />
-                   </button>
-                </div>
-              </div>
-
               <div className="flex gap-6 pt-8 border-t border-border/50">
                 <button type="button" onClick={() => setAddingContactToProfile(null)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
                 <button type="submit" disabled={contactSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
@@ -772,12 +742,6 @@ function ProfileCard({
                              </div>
                              
                              <div className="space-y-3">
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-50 mb-1">Canales de Alerta:</p>
-                                <div className="flex flex-wrap gap-2">
-                                   <StatusBadge active={c.notifyEmail} label="Email" />
-                                   <StatusBadge active={c.notifySms} label="SMS" />
-                                   <StatusBadge active={c.notifyWhatsapp} label="WhatsApp" />
-                                </div>
                                 <button 
                                   onClick={() => onDeleteContact(c.id)}
                                   className="text-[9px] font-black text-destructive uppercase tracking-widest mt-2 hover:underline"
@@ -822,11 +786,4 @@ function Modal({ title, onClose, children }: ModalProps) {
   );
 }
 
-function StatusBadge({ label, active }: { label: string, active: boolean }) {
-  return (
-    <div className={`px-3 py-2 rounded-xl border text-[9px] font-black tracking-widest uppercase transition-all flex items-center gap-2 ${active ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-slate-100 border-transparent text-slate-400 opacity-50'}`}>
-       <div className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-primary' : 'bg-slate-300'}`} />
-       {label}
-    </div>
-  );
-}
+
