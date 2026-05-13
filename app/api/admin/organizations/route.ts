@@ -73,7 +73,18 @@ export async function POST(req: Request) {
     let pkg = await prisma.package.findFirst({ where: { name: 'Corporativo' }});
     if (!pkg) {
       pkg = await prisma.package.create({
-        data: { name: 'Corporativo', maxChips: chipCount, price: 450, isActive: true }
+        data: { 
+          name: 'Corporativo', 
+          slug: 'corporativo',
+          maxChips: chipCount, 
+          maxProfiles: chipCount,
+          price: 450, 
+          isActive: true,
+          accountType: 'company',
+          allowsOrganizationModule: true,
+          serviceDurationMonths: 24,
+          description: 'Plan Corporativo con gestión HSE'
+        }
       });
     }
 
@@ -89,7 +100,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Transaction for Account and Organization
+    // Transaction for Account and Organization (extended timeout for batch chip creation)
     const newOrg = await prisma.$transaction(async (tx) => {
       const account = await tx.account.create({
         data: {
@@ -98,6 +109,7 @@ export async function POST(req: Request) {
           status: "active",
           packageId: pkg.id,
           maxChipsAllocated: chipCount,
+          maxProfilesAllocated: chipCount,
         }
       });
 
@@ -168,11 +180,14 @@ export async function POST(req: Request) {
       }
 
       return org;
-    });
+    }, { timeout: 30000 }); // 30s timeout for batch chip creation
 
     return NextResponse.json({ organization: newOrg, batchId, chipCount, ownerEmail }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating org", error);
-    return NextResponse.json({ error: "Error creating organization" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Error creating organization", 
+      details: error?.message || String(error)
+    }, { status: 500 });
   }
 }

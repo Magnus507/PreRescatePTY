@@ -9,12 +9,13 @@ import {
   LayoutDashboard, Cpu, Users, History, UsersRound,
   Building2, ChevronRight, Settings, CreditCard,
   LogOut, Home, ShoppingCart, Store, Package,
-  Loader2
+  Loader2, ShieldCheck, Scan
 } from "lucide-react";
 import { AccountState } from "@/domains/accounts/account.types";
 import { ScanMonitor } from "./_components/ScanMonitor";
 
-const navItems = [
+// === CONSUMER Navigation ===
+const consumerNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
   { href: "/dashboard/compras", label: "Tienda de Chips", icon: ShoppingCart },
@@ -22,9 +23,16 @@ const navItems = [
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];
 
-const secondaryItems = [
+const consumerSecondaryItems = [
   { href: "/dashboard/historial", label: "Alertas Recientes", icon: History },
   { href: "/dashboard/pedidos", label: "Mis Pedidos", icon: Package },
+];
+
+// === CORPORATE Navigation ===
+const corporateNavItems = [
+  { href: "/dashboard/empresas", label: "Panel de Empresa", icon: Building2 },
+  { href: "/dashboard/historial", label: "Historial de Escaneos", icon: Scan },
+  { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];
 
 function NavLink({ href, label, icon: Icon, active }: {
@@ -102,10 +110,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return null;
   }
 
-  const filteredNavItems = navItems;
-  const filteredSecondaryItems = state?.canManageFamilyProfiles
-    ? secondaryItems.filter(item => item.label !== "Contactos")
-    : secondaryItems;
+  const isCorporate = state?.isOrganization === true;
 
   return (
     <div className="min-h-screen bg-white selection:bg-primary selection:text-white">
@@ -115,31 +120,53 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <aside className="hidden lg:flex w-80 flex-col bg-slate-50/80 border-r border-slate-200/60 p-6 z-10 transition-colors duration-1000">
           <div className="space-y-8 flex-1 overflow-y-auto pr-2 custom-scrollbar">
             
-            <div className="space-y-2">
-              <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Menú Principal</p>
-              {filteredNavItems.map((item) => (
-                <NavLink key={item.href} {...item} active={pathname === item.href} />
-              ))}
-            </div>
+            {isCorporate ? (
+              /* ========== CORPORATE SIDEBAR ========== */
+              <>
+                <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Cuenta Corporativa</p>
+                      <p className="text-sm font-black text-indigo-900 tracking-tight">Gestión Industrial</p>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Protección Vital</p>
-              <NavLink href="/dashboard/perfiles-medicos" label="Perfiles Médicos" icon={UsersRound} active={pathname === "/dashboard/perfiles-medicos"} />
-              <NavLink href="/dashboard/historial" label="Historial de Rescate" icon={History} active={pathname === "/dashboard/historial"} />
-            </div>
+                <div className="space-y-2">
+                  <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Gestión Corporativa</p>
+                  {corporateNavItems.map((item) => (
+                    <NavLink key={item.href} {...item} active={pathname === item.href} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              /* ========== CONSUMER SIDEBAR ========== */
+              <>
+                <div className="space-y-2">
+                  <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Menú Principal</p>
+                  {consumerNavItems.map((item) => (
+                    <NavLink key={item.href} {...item} active={pathname === item.href} />
+                  ))}
+                </div>
 
-            {state?.isOrganization && (
-              <div className="space-y-2">
-                <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Gestión Corporativa</p>
-                <NavLink href="/dashboard/empresas" label="Panel de Empresa" icon={Building2} active={pathname === "/dashboard/empresas"} />
-              </div>
-            )}
+                <div className="space-y-2">
+                  <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Protección Vital</p>
+                  <NavLink href="/dashboard/perfiles-medicos" label="Perfiles Médicos" icon={UsersRound} active={pathname === "/dashboard/perfiles-medicos"} />
+                  <NavLink href="/dashboard/historial" label="Historial de Rescate" icon={History} active={pathname === "/dashboard/historial"} />
+                </div>
 
-            {state?.canAccessOrganizationModule && !state?.isOrganization && (
-              <div className="space-y-2">
-                <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Módulos Especiales</p>
-                <NavLink href="/dashboard/empresas" label="Empresas" icon={Building2} active={pathname === "/dashboard/empresas"} />
-              </div>
+                {consumerSecondaryItems.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Compras</p>
+                    {consumerSecondaryItems.map((item) => (
+                      <NavLink key={item.href} {...item} active={pathname === item.href} />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -159,14 +186,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                    </div>
                 </div>
              </div>
-              <div className="flex gap-2 w-full mt-3">
-                <Link href="/dashboard/pedidos" className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-indigo-600 text-white font-black text-xs hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-indigo-600/20">
-                   <Package className="h-3.5 w-3.5" /> Pedidos
-                </Link>
-                <Link href="/dashboard/upgrade" className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-slate-950 text-white font-black text-xs hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-slate-200">
-                   <CreditCard className="h-3.5 w-3.5" /> Combos
-                </Link>
-              </div>
+              {!isCorporate && (
+                <div className="flex gap-2 w-full mt-3">
+                  <Link href="/dashboard/pedidos" className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-indigo-600 text-white font-black text-xs hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-indigo-600/20">
+                     <Package className="h-3.5 w-3.5" /> Pedidos
+                  </Link>
+                  <Link href="/dashboard/upgrade" className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-slate-950 text-white font-black text-xs hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-slate-200">
+                     <CreditCard className="h-3.5 w-3.5" /> Combos
+                  </Link>
+                </div>
+              )}
              
              <div className="grid grid-cols-2 gap-2 mt-3">
                 <Link href="/" className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-600 font-extrabold text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all">
@@ -190,7 +219,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Mobile bottom nav */}
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur-xl border-t border-slate-200 flex items-center gap-2 overflow-x-auto px-3 py-2 safe-area-bottom">
-          {[...filteredNavItems, ...filteredSecondaryItems.slice(0, 1), { href: "/dashboard/perfiles-medicos", label: "Perfiles", icon: UsersRound }].map((item) => {
+          {(isCorporate ? corporateNavItems : [...consumerNavItems.slice(0, 3), { href: "/dashboard/perfiles-medicos", label: "Perfiles", icon: UsersRound }]).map((item) => {
             const active = pathname === item.href;
             if (item.href === "/dashboard/perfiles-medicos" && !state?.canManageFamilyProfiles) return null;
             

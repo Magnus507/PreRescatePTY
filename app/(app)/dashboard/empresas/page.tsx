@@ -131,10 +131,22 @@ export default function OrganizationDashboard() {
 
   if (!data?.organization) {
     return (
-      <div className="p-12 text-center rounded-3xl border border-dashed border-border bg-card">
-        <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-bold mb-2">Cuenta Personal</h2>
-        <p className="text-muted-foreground">Esta sección es para organizaciones. Si desea migrar a una cuenta corporativa, contáctenos.</p>
+      <div className="flex flex-col items-center justify-center py-20 gap-6 text-center max-w-md mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="h-20 w-20 bg-indigo-100 text-indigo-600 rounded-[2rem] flex items-center justify-center shadow-xl shadow-indigo-500/10 mb-2">
+          <Building2 className="h-10 w-10" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-3xl font-black tracking-tight">Configurando tu Empresa</h2>
+          <p className="text-muted-foreground font-medium leading-relaxed px-4">
+            Tu cuenta corporativa está siendo preparada por nuestro equipo. Si este mensaje persiste, contacta a soporte.
+          </p>
+        </div>
+        <button
+          onClick={loadData}
+          className="w-full max-w-xs py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+        >
+          Reintentar
+        </button>
       </div>
     );
   }
