@@ -21,6 +21,11 @@ export async function GET() {
             package: true,
           },
         },
+        locations: {
+          include: {
+            departments: true
+          }
+        }
       },
     });
 
@@ -28,7 +33,7 @@ export async function GET() {
       return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
     }
 
-    // Fetch members with profile + org member data (department, position)
+    // Fetch members with profile + org member data
     const users = await prisma.user.findMany({
       where: { accountId },
       include: {
@@ -39,7 +44,10 @@ export async function GET() {
             },
             organizationMembers: {
               where: { organizationId: organization.id },
-              select: { department: true, position: true, memberStatus: true, internalCode: true },
+              include: {
+                location: true,
+                department: true
+              }
             },
           },
         },
@@ -47,25 +55,21 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
     });
 
-    // Flatten org member data to the top level for easier access in the UI
+    // Flatten org member data for the UI
     const members = users.map((u) => {
-      const uTyped = u as unknown as { 
-        profile?: { 
-          organizationMembers?: { 
-            department?: string;
-            position?: string;
-            memberStatus?: string;
-            internalCode?: string;
-          }[] 
-        } 
-      };
-      const orgMember = uTyped.profile?.organizationMembers?.[0];
+      const orgMember = u.profile?.organizationMembers?.[0];
       return {
         ...u,
-        department: orgMember?.department ?? null,
+        department: orgMember?.department?.name || orgMember?.departmentId || null,
+        location: orgMember?.location?.name || orgMember?.locationId || null,
         position: orgMember?.position ?? null,
         memberStatus: orgMember?.memberStatus ?? "active",
+        employeeId: orgMember?.employeeId ?? null,
         internalCode: orgMember?.internalCode ?? null,
+        shift: orgMember?.shift ?? null,
+        occupationalRisks: orgMember?.occupationalRisks ?? [],
+        medicalRestrictions: orgMember?.medicalRestrictions ?? null,
+        emergencyProtocol: orgMember?.emergencyProtocol ?? null,
       };
     });
 
@@ -81,8 +85,9 @@ export async function GET() {
       stats: {
         totalMembers: members.length,
         totalChips: chips.length,
-        chipsActivated: (chips as { status: string }[]).filter((c) => c.status === "activated").length,
-        chipsInventory: (chips as { status: string }[]).filter((c) => c.status === "inventory").length,
+        chipsActivated: chips.filter((c) => c.status === "activated").length,
+        chipsInventory: chips.filter((c) => c.status === "inventory").length,
+        incompleteProfiles: members.filter(m => !m.profile?.firstName || !m.profile?.bloodType || m.profile?.bloodType === "Pendiente").length
       },
     });
   } catch (error) {

@@ -19,7 +19,11 @@ export async function POST(req: Request) {
   try {
     switch (action) {
       case "add-member": {
-        const { email, password, firstName, lastName, position, department } = data;
+        const { 
+          email, password, firstName, lastName, position, 
+          departmentId, locationId, employeeId, shift,
+          occupationalRisks, medicalRestrictions, emergencyProtocol 
+        } = data;
 
         // Quota check
         const state = await AccountStateService.getAccountState(userId);
@@ -61,12 +65,39 @@ export async function POST(req: Request) {
               organizationId: org.id,
               profileId: newUser.profile.id,
               position,
-              department,
+              departmentId: departmentId || null,
+              locationId: locationId || null,
+              employeeId,
+              shift,
+              occupationalRisks: occupationalRisks || [],
+              medicalRestrictions,
+              emergencyProtocol
             }
           });
         }
 
         return NextResponse.json({ message: "Miembro añadido correctamente", userId: newUser.id });
+      }
+
+      case "update-organization": {
+        const org = await prisma.organization.findFirst({ where: { accountId } });
+        if (!org) return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
+
+        await prisma.organization.update({
+          where: { id: org.id },
+          data: {
+            displayName: data.displayName,
+            organizationType: data.organizationType,
+            emergencyButton1Label: data.emergencyButton1Label,
+            emergencyButton1Phone: data.emergencyButton1Phone,
+            emergencyButton2Label: data.emergencyButton2Label,
+            emergencyButton2Phone: data.emergencyButton2Phone,
+            emergencyButton3Label: data.emergencyButton3Label,
+            emergencyButton3Phone: data.emergencyButton3Phone,
+          }
+        });
+
+        return NextResponse.json({ message: "Configuración de empresa actualizada" });
       }
 
       case "reset-password": {

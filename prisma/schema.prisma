@@ -220,30 +220,83 @@ model Organization {
   accountId        String
   legalName        String
   displayName      String?
-  organizationType String   @default("company")
+  organizationType String   @default("company") // "company", "school", "port", etc.
   taxId            String?
   contactEmail     String?
   contactPhone     String?
   address          String?
   status           String   @default("active")
+  
+  // Custom Emergency Buttons (Global for the org)
+  emergencyButton1Label String?  @default("Brigada Interna")
+  emergencyButton1Phone String?
+  emergencyButton2Label String?  @default("Seguridad Control")
+  emergencyButton2Phone String?
+  emergencyButton3Label String?  @default("Ambulancia / Clínica")
+  emergencyButton3Phone String?
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  
   account          Account  @relation(fields: [accountId], references: [id])
   members          OrganizationMember[]
+  locations        OrganizationLocation[]
+}
+
+model OrganizationLocation {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  address        String?
+  city           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  departments    OrganizationDepartment[]
+  members        OrganizationMember[]
+}
+
+model OrganizationDepartment {
+  id             String   @id @default(cuid())
+  locationId     String
+  name           String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  location       OrganizationLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  members        OrganizationMember[]
 }
 
 model OrganizationMember {
   id             String   @id @default(cuid())
   organizationId String
   profileId      String
-  internalCode   String?
-  department     String?
-  position       String?
-  memberStatus   String   @default("active")
+  locationId     String?
+  departmentId   String?
+  
+  employeeId     String?   // ID de empleado o carnet
+  internalCode   String?   // Código interno adicional
+  position       String?   // Cargo o Puesto
+  shift          String?   // Turno (Diurno, Nocturno, Rotativo)
+  
+  // Occupational / Industrial Data
+  occupationalRisks    String[] @default([]) // ["Trabajo en alturas", "Alta tensión"]
+  medicalRestrictions  String?  @db.Text    // "No levantar >15kg"
+  emergencyProtocol    String?  @db.Text    // "Asma severa -> administrar inhalador"
+  
+  // Corporate Contacts (Specific per member if needed)
+  supervisorName       String?
+  supervisorPhone      String?
+  
+  memberStatus   String   @default("active") // "active", "visitor", "contractor", "suspended"
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   profile        Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  location       OrganizationLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  department     OrganizationDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 }
 
 model ChipClaimToken {

@@ -9,6 +9,7 @@ import {
   Activity, User, MessageCircle, Loader2, Calendar,
   ShieldCheck, MapPin, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick
 } from "lucide-react";
+import { IndustrialProfileView } from "./_components/IndustrialProfileView";
 
 interface EmergencyProfile {
   firstName: string;
@@ -28,6 +29,18 @@ interface EmergencyProfile {
     relationship: string;
     phone: string;
   }[];
+  organization?: {
+    name: string;
+    location: string | null;
+    department: string | null;
+    employeeId: string | null;
+    position: string | null;
+    shift: string | null;
+    occupationalRisks: string[];
+    medicalRestrictions: string | null;
+    emergencyProtocol: string | null;
+    emergencyButtons: { label: string; phone: string }[];
+  } | null;
 }
 
 interface ChipMetadata {
@@ -282,6 +295,10 @@ export default function EmergencyPage() {
         </div>
       </div>
     );
+  }
+
+  if (profile.organization) {
+    return <IndustrialProfileView profile={profile} />;
   }
 
   return (

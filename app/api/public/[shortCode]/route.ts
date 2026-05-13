@@ -66,9 +66,9 @@ export async function GET(
             organizationMembers: {
               where: { memberStatus: "active" },
               include: {
-                organization: {
-                  select: { legalName: true }
-                }
+                organization: true,
+                location: true,
+                department: true
               }
             }
           },
@@ -98,6 +98,7 @@ export async function GET(
     }
 
     const profile = chip.assignedProfile;
+    const orgMember = profile.organizationMembers?.[0] || null;
 
     // Decrypt sensitive fields
     const decryptedAllergies = decrypt(profile.allergies || "");
@@ -156,8 +157,26 @@ export async function GET(
       medications: decrypt(profile.medications || "") || "No reportados",
       additionalNotes: decryptedNote || "",
       photoUrl: profile.photoUrl || null,
-      workplace: profile.organizationMembers?.[0]?.organization?.legalName || null,
-      isVerifiedAdmin: isDemo, // Flag for the frontend badge
+      isVerifiedAdmin: isDemo, 
+      
+      // Organization / Industrial Data
+      organization: orgMember ? {
+        name: orgMember.organization.legalName,
+        location: orgMember.location?.name || null,
+        department: orgMember.department?.name || null,
+        employeeId: orgMember.employeeId,
+        position: orgMember.position,
+        shift: orgMember.shift,
+        occupationalRisks: orgMember.occupationalRisks,
+        medicalRestrictions: orgMember.medicalRestrictions,
+        emergencyProtocol: orgMember.emergencyProtocol,
+        emergencyButtons: [
+          { label: orgMember.organization.emergencyButton1Label, phone: orgMember.organization.emergencyButton1Phone },
+          { label: orgMember.organization.emergencyButton2Label, phone: orgMember.organization.emergencyButton2Phone },
+          { label: orgMember.organization.emergencyButton3Label, phone: orgMember.organization.emergencyButton3Phone },
+        ].filter(b => b.phone)
+      } : null,
+
       emergencyContacts: profile.contacts.map((pc) => ({
         fullName: pc.contact.fullName,
         relationship: pc.relationship,
