@@ -39,6 +39,21 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/e/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'pre-rescate-pty.vercel.app',
+          },
+        ],
+        destination: 'https://www.prerescatepty.com/e/:path*',
+        permanent: true,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
