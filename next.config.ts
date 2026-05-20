@@ -35,25 +35,6 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(self), browsing-topics=()',
           },
-        ],
-      },
-    ];
-  },
-  async redirects() {
-    return [
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'host',
-            value: 'pre-rescate-pty.vercel.app',
-          },
-        ],
-        destination: 'https://www.prerescatepty.com/:path*',
-        permanent: true,
-      },
-    ];
-  },
   images: {
     remotePatterns: [
       {

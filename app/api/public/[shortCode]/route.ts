@@ -12,7 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ shortCode: string }> }
 ) {
   try {
-    const { shortCode } = await params;
+    const paramsAwaited = await params;
+    const shortCode = paramsAwaited.shortCode.toUpperCase().trim();
 
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
@@ -77,14 +78,16 @@ export async function GET(
     });
 
     if (!chip) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: "Código no encontrado en el sistema.", status: "not_found" },
         { status: 404 }
       );
+      response.headers.set("Access-Control-Allow-Origin", "*");
+      return response;
     }
 
     if (chip.status !== "activated" || !chip.assignedProfile) {
-      return NextResponse.json({ 
+      const response = NextResponse.json({ 
         status: "inactive",
         chip: {
           shortCode: chip.shortCode,
@@ -95,6 +98,8 @@ export async function GET(
           originalStatus: chip.status
         }
       });
+      response.headers.set("Access-Control-Allow-Origin", "*");
+      return response;
     }
 
     const profile = chip.assignedProfile;
@@ -184,13 +189,25 @@ export async function GET(
       })),
     };
 
-    return NextResponse.json({ profile: publicProfile });
+    const response = NextResponse.json({ profile: publicProfile });
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    return response;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Public profile error:", errorMessage);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: "Error interno" },
       { status: 500 }
     );
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    return response;
   }
+}
+
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 204 });
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  return response;
 }
