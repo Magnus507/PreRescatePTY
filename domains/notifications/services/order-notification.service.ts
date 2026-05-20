@@ -30,7 +30,7 @@ export class OrderNotificationService {
           </div>
 
           <p>Ya puedes ver tus códigos de activación (si aplica) en tu tablero de pedidos:</p>
-          <a href="https://pre-rescate-pty.vercel.app/dashboard/pedidos" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">Ir a mis pedidos</a>
+          <a href="https://www.prerescatepty.com/dashboard/pedidos" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">Ir a mis pedidos</a>
           
           <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;" />
           <p style="font-size: 12px; color: #6b7280;">Gracias por confiar en PreRescate PTY.<br/>Este es un correo automático, por favor no respondas a este mensaje.</p>
@@ -63,7 +63,7 @@ export class OrderNotificationService {
 
           <p>Recuerda que si tu paquete incluye chips físicos, podrás activarlos usando los códigos que aparecen en tu cuenta.</p>
           
-          <a href="https://pre-rescate-pty.vercel.app/dashboard/pedidos" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">Seguir mi pedido</a>
+          <a href="https://www.prerescatepty.com/dashboard/pedidos" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">Seguir mi pedido</a>
           
           <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;" />
           <p style="font-size: 12px; color: #6b7280;">Saludos,<br/>El Equipo de Logística de PreRescate PTY</p>

@@ -89,39 +89,11 @@ export async function POST(req: NextRequest) {
         where: { accountId: account.id, status: { in: ["activated", "suspended", "sold"] } }
       });
 
-      // Enforce plan chip limit or Auto-Upgrade to Personalizado
-      let targetAccountId = state.accountId;
+      // Enforce plan chip limit
       if (currentActiveCount >= account.maxChipsAllocated) {
-        // If they have a code, it means they already got/bought the chip.
-        // Instead of blocking, we transition them to 'Plan Personalizado'
-        // to allow unlimited growth as requested by the user.
-        const customPkg = await tx.package.findFirst({
-          where: { name: "Plan Personalizado" }
-        });
-
-        if (customPkg) {
-          // Update account with incremented limit (atomically within transaction)
-          const updated = await tx.account.update({
-            where: { id: account.id },
-            data: {
-              packageId: customPkg.id,
-              maxChipsAllocated: { increment: 1 },
-              maxProfilesAllocated: { increment: 1 }
-            }
-          });
-          targetAccountId = updated.id;
-        } else {
-          // If no custom package exists, we just forcibly increment it anyway
-          const updated = await tx.account.update({
-             where: { id: account.id },
-             data: {
-                maxChipsAllocated: { increment: 1 },
-                maxProfilesAllocated: { increment: 1 }
-             }
-          });
-          targetAccountId = updated.id;
-        }
+        throw new Error(`Has alcanzado el límite de ${account.maxChipsAllocated} chip(s) en tu plan actual. Adquiere chips adicionales para activar más.`);
       }
+      const targetAccountId = account.id;
 
       // Find profile ID (we know it exists because hasCompletedMedicalProfile is true)
       const profile = await tx.profile.findFirst({

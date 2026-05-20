@@ -31,7 +31,7 @@ async function main() {
     console.log(`   Created: ${chip.createdAt.toISOString()}`);
     console.log(`   Owner: ${chip.owner?.email || 'UNASSIGNED (Ready to sell)'}`);
     console.log(`   Linked Profile: ${chip.assignedProfile ? `${chip.assignedProfile.firstName} ${chip.assignedProfile.lastName}` : 'NONE'}`);
-    console.log(`   Public URL: https://pre-rescate-pty.vercel.app/public/${chip.shortCode}`);
+    console.log(`   Public URL: https://www.prerescatepty.com/public/${chip.shortCode}`);
     console.log(`   Activation Status: ${chip.status === 'activated' ? '✅ Activated' : '❌ Pending'}`);
     console.log('---');
   });

@@ -138,8 +138,8 @@ export async function PATCH(req: NextRequest) {
                   data: {
                      serialPublic: `PR-${Math.floor(Date.now() / 1000).toString(16).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
                      shortCode: Math.random().toString(36).substring(2, 7).toUpperCase(),
-                     nfcUrl: "https://pre-rescate-pty.vercel.app/e/NEW",
-                     qrUrl: "https://pre-rescate-pty.vercel.app/e/NEW",
+                     nfcUrl: "https://www.prerescatepty.com/e/NEW",
+                     qrUrl: "https://www.prerescatepty.com/e/NEW",
                      status: "inventory"
                   }
                });

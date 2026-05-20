@@ -310,7 +310,7 @@ export default function Home() {
                          <div className="flex-1 w-full flex items-center justify-center p-4 md:p-6">
                             <div className="w-full h-full bg-white rounded-2xl flex items-center justify-center relative group/qr">
                                <img 
-                                 src="/api/public/qr?data=https://pre-rescate-pty.vercel.app/e/DEMO-ADMIN-VIP?demo=true" 
+                                 src="/api/public/qr?data=https://www.prerescatepty.com/e/DEMO-ADMIN-VIP?demo=true" 
                                  alt="Demo QR" 
                                  className="max-w-[85%] max-h-[85%] object-contain group-hover:scale-110 transition-transform duration-700" 
                                />
