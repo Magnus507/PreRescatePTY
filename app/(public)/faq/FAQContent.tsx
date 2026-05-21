@@ -57,12 +57,12 @@ export default function FAQContent() {
 
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-24">
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {faqs.map((faq, i) => (
-              <div key={i} className="group overflow-hidden rounded-3xl border border-border bg-card hover:border-primary/50 transition-all shadow-sm">
+              <div key={i} className="group overflow-hidden rounded-[2.5rem] bg-card/90 border border-white/10 glass-card glass-card-hover shadow-premium transition-all duration-300">
                 <div className="p-8">
                   <h3 className="text-xl font-black mb-3 flex items-start gap-4">
-                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-foreground flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                    <span className="flex-shrink-0 w-10 h-10 rounded-3xl bg-brand/10 text-brand flex items-center justify-center text-sm font-black">{i + 1}</span>
                     <span className="leading-tight mt-1">{faq.q}</span>
                   </h3>
                   <p className="text-muted-foreground font-medium text-base leading-relaxed pl-12">{faq.a}</p>
@@ -71,11 +71,11 @@ export default function FAQContent() {
             ))}
           </div>
 
-          <div className="mt-16 bg-slate-50 dark:bg-slate-900 border border-border p-10 rounded-[3rem] text-center">
+          <div className="mt-16 bg-white/5 border border-white/10 p-10 rounded-[3rem] text-center glass-card shadow-premium">
              <Heart className="h-10 w-10 mx-auto text-[#DA1A21] mb-4" />
              <h4 className="text-2xl font-black tracking-tighter mb-2">¿Aún con dudas?</h4>
              <p className="text-muted-foreground font-medium mb-6">Nuestro equipo corporativo en Panamá está a tu disposición en cualquier momento para guiarte en una compra corporativa o familiar.</p>
-             <Link href="/contacto" className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-foreground text-background font-bold hover:scale-105 transition-all">
+             <Link href="/contacto" className="btn-premium inline-flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-brand to-red-700 text-white font-black hover:shadow-button-hover transition-all">
                Hablar con un asesor
              </Link>
           </div>

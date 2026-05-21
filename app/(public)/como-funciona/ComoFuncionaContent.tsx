@@ -59,30 +59,30 @@ export default function ComoFuncionaContent() {
                 step: 1, icon: QrCode, title: "1. Adquisición e Instalación",
                 desc: "Recibirás tu sticker PreRescue ID físico. Cada chip cuenta con tecnología NFC inyectada invisiblemente y un código QR serializado. Está diseñado para ser adherido a tu casco, tu motocicleta o tu identificación principal.",
                 details: ["Chip NFC NTAG213 interno super-rápido", "Vinilo vehicular de alta durabilidad", "Resistencia total a clima severo", "URL criptográfica única"],
-                color: "bg-blue-600/10 text-blue-600"
+                color: "from-blue-500 to-cyan-500"
               },
               {
                 step: 2, icon: UserCheck, title: "2. Activación Cero-Fricciones",
                 desc: "Al recibirlo, solo necesitas tocarlo con tu celular. El chip te llevará al panel seguro donde crearás tu perfil. Completarás tus datos de vital importancia: Alergias, padecimientos, y contactos ICE.",
                 details: ["Señalización Segura sin APP", "Ingreso de Tipo Sanguíneo", "Gestión de Contactos Ilimitada", "Consentimiento según Ley 81"],
-                color: "bg-emerald-600/10 text-emerald-600"
+                color: "from-emerald-500 to-teal-400"
               },
               {
                 step: 3, icon: Scan, title: "3. Guardia Silenciosa",
                 desc: "El entorno está listo. Tu chip entra en estado de guardia pasiva. Si sufres un percance vial, cualquier transeúnte o paramédico solo tiene que acercar su celular moderno al sticker y este destellará tu perfil médico público.",
                 details: ["Respuesta NFC en 0.4s", "Visual sin barreras de autenticación locales", "Compatible con iPhone/Android", "Lectura QR como respaldo"],
-                color: "bg-indigo-600/10 text-indigo-600"
+                color: "from-indigo-500 to-violet-500"
               },
               {
                 step: 4, icon: Bell, title: "4. Alertas Masivas Inmediatas",
                 desc: "El simple hecho de escanear el tag en el asfalto dispara inmediatamente un protocolo de alerta a todos los teléfonos y correos que configuraste, enviando tu última posición GPS calculada al momento del escaneo.",
                 details: ["Push Notifications Internas", "Disparo SMS Externo", "Localización aproximada", "Bitácora en vivo"],
-                color: "bg-[#DA1A21]/10 text-[#DA1A21]"
+                color: "from-brand to-red-700"
               },
             ].map((item) => (
-              <div key={item.step} className="group relative flex flex-col sm:flex-row gap-8 items-start bg-card rounded-[2.5rem] p-8 border border-border shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-                <div className={`flex-shrink-0 w-20 h-20 rounded-3xl ${item.color} flex items-center justify-center`}>
-                   <item.icon className="h-10 w-10" />
+              <div key={item.step} className="group relative flex flex-col sm:flex-row gap-8 items-start glass-card glass-card-hover p-8 rounded-[2.5rem] border border-white/10 shadow-premium transition-all duration-300">
+                <div className={`flex-shrink-0 w-20 h-20 rounded-3xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-glow`}>
+                   <item.icon className="h-10 w-10 text-white" />
                 </div>
                 <div className="flex-1">
                   <h2 className="text-3xl font-black mb-4 tracking-tight">
@@ -92,7 +92,7 @@ export default function ComoFuncionaContent() {
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {item.details.map((d, i) => (
                       <li key={i} className="flex items-center gap-3 text-sm font-semibold opacity-90">
-                        <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                        <CheckCircle className="h-5 w-5 text-white/80 flex-shrink-0" />
                         {d}
                       </li>
                     ))}

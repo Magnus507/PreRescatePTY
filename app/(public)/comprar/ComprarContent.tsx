@@ -47,15 +47,45 @@ export default function ComprarContent() {
         </section>
 
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 relative z-10">
+          <div className="grid gap-6 xl:grid-cols-3 mb-16">
+            {[
+              {
+                title: "Activación instantánea",
+                desc: "Desbloquea el perfil de cada usuario con un solo toque. La respuesta es inmediata y segura.",
+                icon: ShieldAlert,
+                accent: "from-blue-500 to-cyan-500"
+              },
+              {
+                title: "Cobertura total",
+                desc: "Un mismo kit protege tu casco, tu motocicleta y a tu grupo familiar con registro centralizado.",
+                icon: Zap,
+                accent: "from-emerald-500 to-teal-400"
+              },
+              {
+                title: "Soporte corporativo",
+                desc: "Esquemas de compra institucional con precios especiales y atención prioritaria en Panamá.",
+                icon: Check,
+                accent: "from-brand to-red-700"
+              },
+            ].map((card) => (
+              <div key={card.title} className="glass-card glass-card-hover border border-white/10 p-8 rounded-[2.5rem] shadow-premium transition-all duration-300">
+                <div className={`mb-6 inline-flex rounded-3xl bg-gradient-to-br ${card.accent} px-4 py-3 text-white shadow-glow`}>
+                  <card.icon className="h-6 w-6" />
+                </div>
+                <h2 className="text-2xl font-black mb-3">{card.title}</h2>
+                <p className="text-muted-foreground leading-relaxed">{card.desc}</p>
+              </div>
+            ))}
+          </div>
 
           <PricingSection />
           
-          <div className="mt-20 max-w-4xl mx-auto rounded-[3rem] bg-[#0C2444] text-white p-12 text-center relative overflow-hidden">
+          <div className="mt-20 max-w-4xl mx-auto rounded-[3rem] bg-[#0C2444]/95 text-white p-12 text-center relative overflow-hidden glass-card border border-white/10 shadow-premium">
                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05] filter mix-blend-overlay"></div>
                <ShieldAlert className="h-16 w-16 mx-auto mb-6 text-[#DA1A21] relative z-10" />
                <h3 className="text-3xl font-black tracking-tight mb-4 relative z-10">Descuentos Gubernamentales y Colegiales</h3>
                <p className="text-slate-300 font-medium mb-8 relative z-10">Si perteneces a una institución del Estado, bomberos, SINAPROC o requieres licenciar a gran escala a tu alumnado en un colegio, disponemos de subsidios y esquemas API específicos.</p>
-               <Link href="/contacto" className="inline-block relative z-10 bg-white text-black font-black px-10 py-4 rounded-full hover:scale-105 transition-all outline-none focus:ring-4 focus:ring-white/30">Agendar Llamada Institucional</Link>
+               <Link href="/contacto" className="btn-premium inline-block relative z-10 px-10 py-4 text-sm font-black text-white rounded-full bg-gradient-to-r from-brand to-red-700 hover:scale-105 transition-all focus:ring-4 focus:ring-white/30">Agendar Llamada Institucional</Link>
             </div>
         </div>
 
