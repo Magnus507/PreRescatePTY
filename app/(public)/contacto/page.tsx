@@ -94,17 +94,17 @@ export default function ContactoPage() {
               <form onSubmit={handleSubmit} className="space-y-5 relative z-10 w-full flex flex-col">
                 <div className="space-y-2">
                   <label htmlFor="contact-name" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-2">Identidad</label>
-                  <input required value={formData.name} onChange={e => setFormData(f => ({...f, name: e.target.value}))} id="contact-name" type="text" className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm" placeholder="Sr. Admin / Representante Empresarial" />
+                  <input required value={formData.name} onChange={e => setFormData(f => ({...f, name: e.target.value}))} id="contact-name" type="text" className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm input-premium" placeholder="Sr. Admin / Representante Empresarial" />
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="contact-email" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-2">Punto de Contacto (Email)</label>
-                  <input required value={formData.email} onChange={e => setFormData(f => ({...f, email: e.target.value}))} id="contact-email" type="email" className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm" placeholder="negocio@empresa.com" />
+                  <input required value={formData.email} onChange={e => setFormData(f => ({...f, email: e.target.value}))} id="contact-email" type="email" className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm input-premium" placeholder="negocio@empresa.com" />
                 </div>
                 <div className="space-y-2 flex-grow">
                   <label htmlFor="contact-msg" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-2">Razón de la solicitud</label>
-                  <textarea required value={formData.message} onChange={e => setFormData(f => ({...f, message: e.target.value}))} id="contact-msg" rows={5} className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm resize-none" placeholder="Explícanos tu requerimiento en detalle..." />
+                  <textarea required value={formData.message} onChange={e => setFormData(f => ({...f, message: e.target.value}))} id="contact-msg" rows={5} className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm resize-none input-premium" placeholder="Explícanos tu requerimiento en detalle..." />
                 </div>
-                <button disabled={loading} type="submit" className="w-full rounded-2xl bg-foreground text-background py-4 font-black hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center mt-4 shadow-xl">
+                <button disabled={loading} type="submit" className="w-full rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white py-4 font-black hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 flex items-center justify-center mt-4 shadow-button hover:shadow-button-hover active:scale-[0.98]">
                   {loading ? "Despachando Ticket..." : "Enviar a Central"}
                 </button>
               </form>
