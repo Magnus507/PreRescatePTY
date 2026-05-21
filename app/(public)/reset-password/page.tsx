@@ -55,50 +55,50 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="text-center space-y-4">
-        <p className="text-sm text-destructive">Enlace inválido o incompleto.</p>
-        <Link href="/forgot-password" className="text-sm hover:underline text-primary">Volver a intentar</Link>
+      <div className="space-y-4 text-center">
+        <p className="text-sm font-semibold text-destructive">Enlace inválido o incompleto.</p>
+        <Link href="/forgot-password" className="text-sm font-semibold text-primary hover:text-white transition-colors">Volver a intentar</Link>
       </div>
     );
   }
 
   return done ? (
-    <div className="text-center space-y-6">
-      <div className="mx-auto w-12 h-12 bg-success/10 rounded-full flex items-center justify-center mb-4 text-success">
+    <div className="space-y-6 text-center">
+      <div className="mx-auto w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4 text-success shadow-glow">
         <Shield className="w-6 h-6" />
       </div>
-      <p className="text-sm">Tu contraseña ha sido restablecida con éxito.</p>
-      <Link 
-        href="/login" 
-        className="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all gap-2"
+      <p className="text-sm text-slate-200">Tu contraseña ha sido restablecida con éxito.</p>
+      <Link
+        href="/login"
+        className="btn-premium inline-flex w-full items-center justify-center rounded-[1.75rem] bg-gradient-to-r from-brand to-red-700 px-5 py-4 text-sm font-black text-white shadow-button hover:shadow-button-hover transition-all gap-2"
       >
-        Ir a Iniciar Sesión <ArrowRight className="w-4 h-4"/>
+        Ir a Iniciar Sesión <ArrowRight className="w-4 h-4" />
       </Link>
     </div>
   ) : (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
-        <label htmlFor="pass" className="text-sm font-medium">Nueva Contraseña</label>
+        <label htmlFor="pass" className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">Nueva Contraseña</label>
         <input
           id="pass"
           type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-xl border border-input bg-background/50 px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+          className="input-premium w-full rounded-[1.5rem] border border-input bg-background/60 px-5 py-4 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           placeholder="Min 8 caracteres"
         />
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="cpass" className="text-sm font-medium">Confirmar Contraseña</label>
+        <label htmlFor="cpass" className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">Confirmar Contraseña</label>
         <input
           id="cpass"
           type="password"
           required
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full rounded-xl border border-input bg-background/50 px-4 py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+          className="input-premium w-full rounded-[1.5rem] border border-input bg-background/60 px-5 py-4 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
           placeholder="Min 8 caracteres"
         />
       </div>
@@ -106,7 +106,7 @@ function ResetPasswordForm() {
       <button
         type="submit"
         disabled={loading || !password || !confirmPassword}
-        className="w-full relative flex items-center justify-center py-3 px-4 rounded-xl font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none overflow-hidden"
+        className="btn-premium w-full rounded-[1.75rem] bg-gradient-to-r from-brand to-red-700 px-5 py-4 text-sm font-black text-white shadow-button hover:shadow-button-hover transition-all disabled:opacity-60 disabled:pointer-events-none"
       >
         {loading ? "Restableciendo..." : "Guardar Contraseña"}
       </button>
@@ -116,20 +116,27 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md bg-card p-8 rounded-3xl border border-border/50 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-blue-500" />
-        
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold tracking-tight">Crear nueva contraseña</h2>
-          <p className="text-sm text-muted-foreground mt-2">
-            Ingresa tu nueva contraseña segura
-          </p>
-        </div>
+    <div className="min-h-screen relative overflow-hidden bg-[#050812] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(234,179,8,0.1),_transparent_24%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
 
-        <Suspense fallback={<p className="text-center text-sm">Cargando...</p>}>
-          <ResetPasswordForm />
-        </Suspense>
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md glass-premium border border-white/10 shadow-premium backdrop-blur-3xl p-8 rounded-[2.5rem] overflow-hidden">
+          <div className="absolute -top-10 left-6 w-36 h-36 rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="relative z-10 text-center mb-10">
+            <div className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-black uppercase tracking-[0.25em] text-white/80 mb-6">
+              Cambio seguro
+            </div>
+            <h2 className="text-3xl font-black tracking-tight">Crear nueva contraseña</h2>
+            <p className="mt-3 text-sm text-slate-300">
+              Establece una contraseña segura para proteger tu cuenta y datos médicos.
+            </p>
+          </div>
+
+          <Suspense fallback={<p className="text-center text-sm text-slate-300">Cargando...</p>}>
+            <ResetPasswordForm />
+          </Suspense>
+        </div>
       </div>
     </div>
   );
