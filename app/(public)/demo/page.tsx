@@ -25,21 +25,32 @@ export default function DemoPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#050812] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.16),_transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(218,26,33,0.12),_transparent_28%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-12">
-        <div className="w-full max-w-lg glass-premium border border-white/10 shadow-premium backdrop-blur-3xl p-10 rounded-[2.5rem] text-center">
-          <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center text-primary shadow-glow">
-            <Loader2 className="h-10 w-10 animate-spin" />
-          </div>
-          <h1 className="text-3xl font-black tracking-tight mb-3">Cargando tu demo interactiva</h1>
-          <p className="text-sm text-slate-300 max-w-xl mx-auto">Un momento por favor, estamos preparando el recorrido de PreRescate PTY para que lo explores sin interrupciones.</p>
-          <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-[0.25em] text-white/80">
-            Preparando la experiencia premium
+    <main className="min-h-screen relative overflow-hidden bg-[#030416] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(218,26,33,0.10),_transparent_30%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-18 pointer-events-none" />
+
+      <div className="relative z-10 mx-auto max-w-4xl px-4 py-24 sm:px-6 lg:px-8">
+        <div className="rounded-[2.5rem] border border-white/8 bg-gradient-to-b from-slate-900/80 to-slate-950/70 p-10 shadow-2xl backdrop-blur-xl">
+          <div className="grid gap-8 md:grid-cols-2 md:items-center">
+            <div>
+              <h1 className="text-4xl font-black tracking-tight">Explora la demo de PreRescate PTY</h1>
+              <p className="mt-4 text-slate-300 max-w-lg">Estamos preparando una experiencia interactiva que muestra cómo funciona la app para primeros respondedores y usuarios. Esto solo toma unos segundos.</p>
+
+              <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
+                <a href="/" className="inline-flex items-center gap-3 rounded-2xl bg-white/5 px-5 py-3 text-sm font-black text-white hover:bg-white/10 transition">Ir al inicio</a>
+                <a href="/registro" className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand to-red-700 px-5 py-3 text-sm font-black text-white shadow-button hover:shadow-button-hover transition">Crear cuenta</a>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="mx-auto mb-6 h-28 w-28 rounded-full bg-primary/8 flex items-center justify-center text-primary shadow-glow">
+                <Loader2 className="h-12 w-12 animate-spin" />
+              </div>
+              <p className="text-sm text-slate-400">Carga en progreso — si tarda más de 10 segundos, intenta recargar la página o vuelve al inicio.</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
