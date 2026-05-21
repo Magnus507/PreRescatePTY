@@ -334,7 +334,26 @@ export default function EmergencyPage() {
       </div>
 
       <main className="max-w-4xl mx-auto p-4 space-y-6">
-        
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="glass-card border border-white/10 bg-white/5 p-6 rounded-[2.5rem] shadow-premium transition-all hover:-translate-y-1">
+            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Acceso Verificado</p>
+            <p className="mt-4 text-2xl font-black text-white uppercase tracking-tight">{source === "nfc" ? "NFC Seguro" : "QR Seguro"}</p>
+            <p className="mt-3 text-sm text-slate-300 leading-relaxed">Lectura registrada con prioridad de emergencia.</p>
+          </div>
+
+          <div className="glass-card border border-white/10 bg-white/5 p-6 rounded-[2.5rem] shadow-premium transition-all hover:-translate-y-1">
+            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Última Actualización</p>
+            <p className="mt-4 text-2xl font-black text-white uppercase tracking-tight">{scanTime}</p>
+            <p className="mt-3 text-sm text-slate-300 leading-relaxed">El evento de escaneo fue transmitido al servidor de emergencia.</p>
+          </div>
+
+          <div className="glass-card border border-white/10 bg-white/5 p-6 rounded-[2.5rem] shadow-premium transition-all hover:-translate-y-1">
+            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Estado del Perfil</p>
+            <p className="mt-4 text-2xl font-black text-white uppercase tracking-tight">{profile.allergies ? "Alerta Médica" : "Sin Alertas Críticas"}</p>
+            <p className="mt-3 text-sm text-slate-300 leading-relaxed">Información prioritaria disponible para el equipo de respuesta.</p>
+          </div>
+        </div>
+
         {/* PANIC CALL 911 (Always Priority) */}
         <a
           href="tel:911"
