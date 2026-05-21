@@ -17,7 +17,7 @@ export default function Navbar() {
   const isAdmin = session?.user?.role === "admin" || session?.user?.role === "superadmin";
 
   return (
-    <nav aria-label="Navegación principal" className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
+    <nav aria-label="Navegación principal" className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/70 backdrop-blur-2xl shadow-[0_15px_40px_rgba(0,0,0,0.12)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
@@ -28,23 +28,23 @@ export default function Navbar() {
             height={48} 
             className="h-10 w-10 md:h-12 md:w-12 object-contain transition-transform group-hover:scale-105" 
           />
-          <span className="text-xl font-bold tracking-tight text-[#0C2444] dark:text-blue-100 hidden sm:inline-block">
+          <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white hidden sm:inline-block">
             PreRescue <span className="text-brand">ID</span>
           </span>
         </Link>
 
         {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-1">
-          <Link href="/como-funciona" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent">
+        <div className="hidden md:flex items-center gap-2">
+          <Link href="/como-funciona" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl hover:bg-white/10 transition-all">
             Cómo Funciona
           </Link>
-          <Link href="/comprar" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent">
+          <Link href="/comprar" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl hover:bg-white/10 transition-all">
             Comprar
           </Link>
-          <Link href="/faq" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent">
+          <Link href="/faq" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl hover:bg-white/10 transition-all">
             FAQ
           </Link>
-          <Link href="/contacto" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-accent">
+          <Link href="/contacto" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl hover:bg-white/10 transition-all">
             Contacto
           </Link>
         </div>
@@ -84,10 +84,10 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/login" className="px-4 py-2 text-sm font-medium rounded-2xl text-muted-foreground hover:text-foreground hover:bg-accent transition-all duration-300">
+              <Link href="/login" className="px-4 py-2 text-sm font-medium rounded-2xl text-slate-200 hover:text-white hover:bg-white/10 transition-all duration-300">
                 Iniciar Sesión
               </Link>
-              <Link href="/activar" className="px-4 py-2 text-sm font-semibold rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white hover:shadow-button hover:shadow-red-500/20 transition-all duration-300 active:scale-[0.98]">
+              <Link href="/activar" className="btn-premium px-4 py-2 text-sm font-semibold rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white hover:shadow-button hover:shadow-red-500/20 transition-all duration-300 active:scale-[0.98]">
                 Activar Chip
               </Link>
             </>
@@ -109,10 +109,10 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl animate-in slide-in-from-top-2 duration-300">
           <div className="px-4 py-4 space-y-1">
-            <Link href="/como-funciona" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Cómo Funciona</Link>
-            <Link href="/comprar" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Comprar</Link>
-            <Link href="/faq" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">FAQ</Link>
-            <Link href="/contacto" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Contacto</Link>
+            <Link href="/como-funciona" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-2xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all">Cómo Funciona</Link>
+            <Link href="/comprar" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-2xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all">Comprar</Link>
+            <Link href="/faq" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-2xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all">FAQ</Link>
+            <Link href="/contacto" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-2xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all">Contacto</Link>
             <hr className="my-2 border-border" />
             {session ? (
               <>

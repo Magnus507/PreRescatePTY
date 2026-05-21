@@ -273,6 +273,38 @@ export default function Home() {
         {/* ===== TRUST SECTION ===== */}
         <TrustSection />
 
+        {/* ===== IMPACT METRICS ===== */}
+        <section className="py-24 bg-[#050814] text-white">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-12">
+              <div className="max-w-2xl">
+                <span className="text-brand font-black tracking-[0.35em] uppercase text-xs">Impacto Real</span>
+                <h2 className="mt-4 text-4xl sm:text-5xl font-black tracking-tighter text-white leading-tight">
+                  Cifras que muestran por qué confían en PreRescue ID.
+                </h2>
+              </div>
+              <Link href="/demo" className="btn-premium inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand to-red-700 px-6 py-4 text-sm font-black text-white shadow-button hover:shadow-button-hover transition-all">
+                Ver demo en vivo
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+              {[
+                { value: "+12k", label: "Usuarios protegidos", color: "from-blue-600 to-cyan-500" },
+                { value: "99.9%", label: "Disponibilidad de lectura", color: "from-emerald-500 to-teal-400" },
+                { value: "2 años", label: "Cobertura sin suscripción", color: "from-brand to-red-700" },
+                { value: "+1k", label: "Escaneos de emergencia activados", color: "from-violet-500 to-indigo-500" },
+              ].map((stat) => (
+                <div key={stat.label} className="glass-card border border-white/10 bg-white/5 p-8 rounded-[2.5rem] shadow-premium transition-all hover:-translate-y-2 hover:shadow-premium-hover">
+                  <div className={`mb-4 inline-flex rounded-3xl bg-gradient-to-br ${stat.color} px-4 py-3 text-white shadow-glow`}>#</div>
+                  <p className="text-4xl font-black tracking-tight text-white mb-3">{stat.value}</p>
+                  <p className="text-sm text-slate-300 font-medium leading-relaxed">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* ===== MASTERPIECE SHOWCASE: SCAN ME QR ===== */}
         <section className="py-24 bg-[#050814] relative overflow-hidden">
           <div className="absolute inset-0 z-0">
