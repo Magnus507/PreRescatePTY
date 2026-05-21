@@ -81,155 +81,120 @@ function LoginContent() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#020617] p-4 md:p-8 relative overflow-hidden">
-      {/* Background Orbs */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full" />
-        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-red-500/5 blur-[120px] rounded-full" />
-      </div>
+    <main className="min-h-screen relative overflow-hidden bg-[#050812] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.14),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(218,26,33,0.12),_transparent_28%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
 
-      <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 border border-slate-200/60 dark:border-slate-800/60 flex flex-col md:flex-row overflow-hidden relative z-10">
-        
-        {/* Left Side: Branding & Info */}
-        <div className="hidden md:flex md:w-[45%] bg-slate-950 p-12 text-white flex-col justify-between relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-transparent to-red-600/10"></div>
-          
-          <div className="relative z-10">
-            <Link href="/" className="flex items-center gap-2 mb-16 group w-fit">
-              <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform duration-300">
-                <Shield className="h-6 w-6 text-slate-950" />
-              </div>
-              <span className="text-xl font-black tracking-tighter">PreRescate<span className="text-blue-400">PTY</span></span>
-            </Link>
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] items-center">
+          <section className="rounded-[3rem] border border-white/10 bg-white/5 p-10 shadow-2xl shadow-blue-500/10 backdrop-blur-xl">
+            <span className="inline-flex rounded-full bg-brand/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] text-brand">Acceso seguro</span>
+            <h1 className="mt-8 text-5xl font-black tracking-tight max-w-2xl">Vuelve a tu panel médico en segundos.</h1>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">Inicia sesión para gestionar tu perfil médico, revisar tus dispositivos NFC/QR y mantener a tus primeros respondedores informados cuando más te necesitan.</p>
 
-            <h2 className="text-4xl font-black tracking-tight leading-tight mb-6">
-              Cada segundo <br />
-              <span className="text-blue-400">cuenta en una</span> <br />
-              emergencia.
-            </h2>
-            
-            <p className="text-slate-400 text-lg font-medium max-w-xs leading-relaxed">
-              Inicia sesión para gestionar tus perfiles médicos y dispositivos NFC.
-            </p>
-          </div>
-
-          <div className="relative z-10 space-y-6">
-            <div className="flex items-center gap-4 group">
-              <div className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-                <HeartPulse className="h-6 w-6 text-blue-400" />
-              </div>
-              <div>
-                <p className="font-bold text-sm">Vital Sinc</p>
-                <p className="text-xs text-slate-500">Datos médicos siempre listos</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side: Form */}
-        <div className="flex-1 p-8 md:p-16 flex flex-col justify-center">
-          <div className="max-w-md mx-auto w-full">
-            <div className="md:hidden flex items-center gap-2 mb-8 justify-center">
-              <Shield className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-black tracking-tighter">PreRescate<span className="text-primary">PTY</span></span>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2">
+              {[
+                { label: "Acceso rápido", detail: "Haz login y accede a tu perfil desde cualquier dispositivo." },
+                { label: "Protección Ley 81", detail: "Tus datos médicos se almacenan con el máximo cumplimiento." },
+                { label: "Información de emergencia", detail: "Comparte detalles críticos con un solo click." },
+                { label: "Soporte prioritario", detail: "Recibe ayuda rápida cuando lo necesites." },
+              ].map((item) => (
+                <div key={item.label} className="rounded-3xl border border-white/10 bg-slate-950/60 p-6">
+                  <p className="text-xs uppercase tracking-[0.35em] text-slate-400 font-black mb-2">{item.label}</p>
+                  <p className="text-base leading-relaxed text-slate-200">{item.detail}</p>
+                </div>
+              ))}
             </div>
 
-            <div className="mb-10 text-center md:text-left">
-              <h1 className="text-3xl font-black tracking-tight mb-2">Bienvenido de nuevo</h1>
-              <p className="text-muted-foreground font-medium">Ingresa tus credenciales para continuar</p>
+            <div className="mt-10 rounded-[2rem] border border-white/10 bg-slate-950/80 p-6">
+              <p className="text-sm uppercase tracking-[0.35em] text-slate-400 font-black">Accede con confianza</p>
+              <p className="mt-4 text-slate-300 leading-relaxed">Si tienes MFA activado, el sistema te pedirá tu código de seguridad después de tus credenciales.</p>
+            </div>
+          </section>
+
+          <section className="rounded-[3rem] border border-white/10 bg-slate-950/90 p-10 shadow-2xl">
+            <div className="mb-10">
+              <p className="text-sm uppercase tracking-[0.35em] text-slate-400 font-black">Inicia sesión</p>
+              <h2 className="mt-4 text-4xl font-black tracking-tight">Recupera tu acceso a PreRescate PTY</h2>
+              <p className="mt-3 text-slate-400 leading-relaxed">Usa tu email y contraseña para entrar, o recupera tu cuenta si olvidaste tus datos.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 text-red-600 dark:text-red-400 text-sm font-semibold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                <div className="p-4 rounded-2xl bg-red-50/90 text-red-600 text-sm font-semibold border border-red-200 dark:border-red-900/40 flex items-center gap-3">
                   <ShieldAlert className="h-5 w-5 shrink-0" />
                   {error}
                 </div>
               )}
 
               {isSuccess && (
-                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400 text-sm font-semibold flex items-center gap-3 animate-in zoom-in-95">
+                <div className="p-4 rounded-2xl bg-emerald-50/90 text-emerald-700 text-sm font-semibold border border-emerald-200 dark:border-emerald-900/40 flex items-center gap-3">
                   <CheckCircle2 className="h-5 w-5 shrink-0" />
-                  ¡Autenticación exitosa! Iniciando...
+                  ¡Autenticación exitosa! Redirigiendo...
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400 px-1">Correo Electrónico</label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
-                  </div>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading || isSuccess}
-                    className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm input-premium"
-                    placeholder="nombre@ejemplo.com"
-                  />
-                </div>
+              <div className="space-y-3">
+                <label htmlFor="login-email" className="text-xs uppercase tracking-[0.35em] text-slate-400 font-black">Correo electrónico</label>
+                <input
+                  id="login-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading || isSuccess}
+                  className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
+                  placeholder="nombre@ejemplo.com"
+                />
               </div>
 
               {!requiresMfa ? (
-                <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2">
-                  <div className="flex items-center justify-between px-1">
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Contraseña</label>
-                    <Link href="/forgot-password" title="Recuperar contraseña" className="text-xs font-bold text-primary hover:underline">¿La olvidaste?</Link>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <label htmlFor="login-password" className="text-xs uppercase tracking-[0.35em] text-slate-400 font-black">Contraseña</label>
+                    <Link href="/forgot-password" className="text-xs font-bold text-brand hover:text-white transition-colors">¿La olvidaste?</Link>
                   </div>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
-                    </div>
+                  <div className="relative">
                     <input
+                      id="login-password"
                       type={showPw ? "text" : "password"}
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={loading || isSuccess}
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-12 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm input-premium"
+                      className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-5 py-4 pr-12 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
                       placeholder="••••••••"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPw(!showPw)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
                     >
                       {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4 animate-in zoom-in-95 duration-300">
-                  <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
-                      <Shield className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div>
-                        <p className="text-xs font-black uppercase tracking-widest text-blue-700 dark:text-blue-400">Paso de Seguridad</p>
-                        <p className="text-[11px] font-medium text-blue-600 dark:text-blue-300">Ingresa el código de 6 dígitos de tu App Autenticadora.</p>
-                    </div>
+                <div className="space-y-4">
+                  <div className="rounded-3xl border border-blue-400/10 bg-blue-500/10 p-4">
+                    <p className="text-xs uppercase tracking-[0.35em] text-blue-200 font-black">Paso extra</p>
+                    <p className="mt-2 text-sm text-blue-100 leading-relaxed">Ingresa tu código de 6 dígitos para completar el acceso seguro.</p>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 px-1">Código de Verificación</label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      required
-                      autoFocus
-                      value={mfaCode}
-                      onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
-                      disabled={loading || isSuccess}
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-6 py-5 text-center text-3xl font-black tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                      placeholder="000000"
-                    />
-                  </div>
-                  <button 
-                    type="button" 
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    autoFocus
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                    disabled={loading || isSuccess}
+                    className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-6 py-4 text-center text-3xl font-black tracking-[0.5em] text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
+                    placeholder="000000"
+                  />
+                  <button
+                    type="button"
                     onClick={() => setRequiresMfa(false)}
-                    className="text-xs font-bold text-slate-400 hover:text-primary transition-colors text-center w-full"
+                    className="w-full text-sm font-black uppercase tracking-[0.25em] text-slate-400 hover:text-white transition"
                   >
                     Volver a contraseña
                   </button>
@@ -239,23 +204,16 @@ function LoginContent() {
               <button
                 type="submit"
                 disabled={loading || isSuccess}
-                className="w-full rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white font-black py-4 flex items-center justify-center gap-2 transition-all duration-300 shadow-button hover:shadow-button-hover active:scale-[0.98] disabled:opacity-70"
+                className="w-full rounded-[2rem] bg-gradient-to-r from-brand to-red-700 px-6 py-4 text-sm font-black uppercase tracking-[0.25em] text-white shadow-button hover:shadow-button-hover transition-all disabled:opacity-60"
               >
-                {loading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>Iniciar Sesión <ArrowRight className="h-5 w-5" /></>
-                )}
+                {loading ? "Iniciando sesión..." : "Iniciar sesión seguro"}
               </button>
             </form>
 
-            <div className="mt-12 text-center">
-              <p className="text-slate-500 font-medium">
-                ¿Aún no proteges tu vida?{" "}
-                <Link href="/registro" className="text-primary font-black hover:underline ml-1">Crea una cuenta</Link>
-              </p>
-            </div>
-          </div>
+            <p className="mt-10 text-center text-sm text-slate-400">
+              ¿Nuevo en PreRescate PTY? <Link href="/registro" className="text-brand font-black hover:underline">Crea tu cuenta</Link>
+            </p>
+          </section>
         </div>
       </div>
     </main>

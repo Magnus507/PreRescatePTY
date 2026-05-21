@@ -134,17 +134,15 @@ function RegistroForm() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#020617] p-4 md:p-8 relative overflow-hidden">
-      {/* Background Orbs */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full" />
-        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-emerald-500/5 blur-[120px] rounded-full" />
-      </div>
+    <main className="min-h-screen bg-[#050812] text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.14),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(218,26,33,0.12),_transparent_28%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
+      <div className="relative z-10">
 
-      <div className="w-full max-w-6xl bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 border border-slate-200/60 dark:border-slate-800/60 flex flex-col md:flex-row overflow-hidden relative z-10 min-h-[85vh]">
+      <div className="mx-auto w-full max-w-7xl rounded-[3rem] border border-white/10 bg-white/5 shadow-2xl shadow-blue-500/20 backdrop-blur-xl overflow-hidden flex flex-col md:flex-row min-h-[85vh]">
         
         {/* Left Side: Branding & Account Types */}
-        <div className="hidden md:flex md:w-[40%] bg-slate-950 p-12 text-white flex-col justify-between relative overflow-hidden">
+        <div className="hidden md:flex md:w-[40%] bg-slate-950/95 p-12 text-white flex-col justify-between relative overflow-hidden">
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-transparent to-emerald-600/10"></div>
           
@@ -193,7 +191,7 @@ function RegistroForm() {
         </div>
 
         {/* Right Side: Step-by-Step Form */}
-        <div className="flex-1 p-8 md:p-12 lg:p-16 flex flex-col justify-center bg-white dark:bg-slate-900 scrollbar-hide overflow-y-auto max-h-[90vh]">
+        <div className="flex-1 p-8 md:p-12 lg:p-16 flex flex-col justify-center bg-slate-950/95 scrollbar-hide overflow-y-auto max-h-[90vh]">
           <div className="max-w-md mx-auto w-full">
             <div className="md:hidden flex items-center gap-2 mb-8 justify-center">
               <Shield className="h-8 w-8 text-primary" />
@@ -337,6 +335,7 @@ function RegistroForm() {
           </div>
         </div>
       </div>
+    </div>
     </main>
   );
 }
