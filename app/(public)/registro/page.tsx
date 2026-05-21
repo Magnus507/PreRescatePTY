@@ -241,7 +241,7 @@ function RegistroForm() {
                       value={form.email}
                       onChange={(e) => update("email", e.target.value)}
                       disabled={loading}
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm input-premium"
                       placeholder="nombre@ejemplo.com"
                     />
                   </div>
@@ -258,7 +258,7 @@ function RegistroForm() {
                       value={form.phone}
                       onChange={(e) => update("phone", e.target.value)}
                       disabled={loading}
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm input-premium"
                       placeholder="+507 0000-0000"
                     />
                   </div>
@@ -276,7 +276,7 @@ function RegistroForm() {
                       value={form.password}
                       onChange={(e) => update("password", e.target.value)}
                       disabled={loading}
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm input-premium"
                       placeholder="••••••••"
                     />
                   </div>
@@ -294,7 +294,7 @@ function RegistroForm() {
                       value={form.confirm}
                       onChange={(e) => update("confirm", e.target.value)}
                       disabled={loading}
-                      className={`w-full bg-slate-50 dark:bg-slate-800/50 border ${form.confirm && form.password !== form.confirm ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
+                      className={`w-full bg-slate-50 dark:bg-slate-800/50 border ${form.confirm && form.password !== form.confirm ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm input-premium`}
                       placeholder="Repite..."
                     />
                   </div>
@@ -318,7 +318,7 @@ function RegistroForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary hover:bg-primary/90 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-xl shadow-primary/20 active:scale-[0.98] disabled:opacity-70 group"
+                className="w-full rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white font-black py-4 flex items-center justify-center gap-2 transition-all duration-300 shadow-button hover:shadow-button-hover active:scale-[0.98] disabled:opacity-70 group"
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />

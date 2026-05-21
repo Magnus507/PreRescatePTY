@@ -86,7 +86,7 @@ export default function PricingSection() {
               key={pkg.id}
               className={`relative flex flex-col rounded-[2.5rem] p-10 border ${
                 pkg.recommended ? 'shadow-2xl shadow-indigo-500/20 md:-translate-y-4' : 'shadow-lg'
-              } ${styles.color} ${styles.border} transition-all duration-300 hover:-translate-y-2 hover:shadow-xl`}
+              } ${styles.color} ${styles.border} transition-all duration-500 hover:-translate-y-2 hover:shadow-card-hover card-hover`}
             >
               {pkg.recommended && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-full shadow-lg">
@@ -162,7 +162,7 @@ export default function PricingSection() {
 
               <Link
                 href={pkg.accountType === 'company' ? `/contacto?subject=Me%20interesa%20el%20${pkg.name}` : `/registro?package=${pkg.id}`}
-                className={`w-full py-4 rounded-2xl text-center font-black transition-all flex items-center justify-center gap-2 ${styles.buttonColor}`}
+                className={`w-full py-4 rounded-2xl text-center font-black transition-all duration-300 flex items-center justify-center gap-2 btn-premium ${styles.buttonColor}`}
               >
                 Adquirir {pkg.name} <ArrowUpRight className="h-4 w-4" />
               </Link>
@@ -182,7 +182,7 @@ export default function PricingSection() {
         </div>
         <Link
           href="/dashboard"
-          className="px-6 py-3 font-bold bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl transition-colors"
+          className="px-6 py-3 font-bold rounded-2xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-300 shadow-button hover:shadow-button-hover"
         >
           Agrega extra en tu Panel
         </Link>

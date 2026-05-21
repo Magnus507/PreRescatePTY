@@ -58,7 +58,7 @@ export default function Navbar() {
                 aria-expanded={userMenuOpen}
                 aria-haspopup="true"
                 aria-label="Abrir menú de usuario"
-                className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+                className="flex items-center gap-2 rounded-2xl border border-border bg-background/80 px-3 py-1.5 text-sm font-medium hover:bg-accent transition-all duration-300 shadow-sm hover:shadow-button"
               >
                 <User className="h-4 w-4" />
                 <span className="max-w-[120px] truncate">{session.user?.email}</span>
@@ -75,7 +75,7 @@ export default function Navbar() {
                   </Link>
                   <button
                     onClick={() => signOut({ callbackUrl: "/" })}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-accent transition-colors"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-accent transition-all duration-300 hover:shadow-button"
                   >
                     <LogOut className="h-4 w-4" /> Cerrar Sesión
                   </button>
@@ -84,10 +84,10 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/login" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/login" className="px-4 py-2 text-sm font-medium rounded-2xl text-muted-foreground hover:text-foreground hover:bg-accent transition-all duration-300">
                 Iniciar Sesión
               </Link>
-              <Link href="/activar" className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm hover:shadow-md">
+              <Link href="/activar" className="px-4 py-2 text-sm font-semibold rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white hover:shadow-button hover:shadow-red-500/20 transition-all duration-300 active:scale-[0.98]">
                 Activar Chip
               </Link>
             </>
@@ -121,8 +121,8 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link href="/login" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-md text-sm font-medium hover:bg-accent">Iniciar Sesión</Link>
-                <Link href="/activar" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center justify-center px-3 py-2 mt-1 rounded-lg text-sm font-semibold bg-primary text-primary-foreground text-center">Activar Chip</Link>
+                <Link href="/login" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center px-3 py-2 rounded-2xl text-sm font-medium hover:bg-accent transition-all duration-300">Iniciar Sesión</Link>
+                <Link href="/activar" onClick={() => setMobileOpen(false)} className="flex min-h-11 items-center justify-center px-3 py-2 mt-1 rounded-2xl text-sm font-semibold bg-gradient-to-r from-brand to-red-700 text-white transition-all duration-300 hover:shadow-button hover:shadow-red-500/20 active:scale-[0.98]">Activar Chip</Link>
               </>
             )}
           </div>

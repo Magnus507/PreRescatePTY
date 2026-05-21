@@ -167,7 +167,7 @@ function LoginContent() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading || isSuccess}
-                    className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm input-premium"
                     placeholder="nombre@ejemplo.com"
                   />
                 </div>
@@ -189,7 +189,7 @@ function LoginContent() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={loading || isSuccess}
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-12 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-12 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm input-premium"
                       placeholder="••••••••"
                     />
                     <button
@@ -239,7 +239,7 @@ function LoginContent() {
               <button
                 type="submit"
                 disabled={loading || isSuccess}
-                className="w-full bg-primary hover:bg-primary/90 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-xl shadow-primary/20 active:scale-[0.98] disabled:opacity-70"
+                className="w-full rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white font-black py-4 flex items-center justify-center gap-2 transition-all duration-300 shadow-button hover:shadow-button-hover active:scale-[0.98] disabled:opacity-70"
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
