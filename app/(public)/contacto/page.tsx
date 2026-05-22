@@ -1,7 +1,7 @@
 "use client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Mail, MapPin, Phone, Clock, Send, ShieldAlert } from "lucide-react";
+import { Mail, MapPin, Phone, Clock, Send, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import Link from "next/link";
 export default function ContactoPage() {
   const [formData, setFormData] = useState({ name: "", email: "", message: "" });
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +24,7 @@ export default function ContactoPage() {
       if (res.ok) {
         toast.success(data.message || "Mensaje enviado exitosamente");
         setFormData({ name: "", email: "", message: "" });
+        setSent(true);
       } else {
         toast.error(data.error || "Error al enviar mensaje");
       }
@@ -106,24 +108,41 @@ export default function ContactoPage() {
                 <h2 className="mt-6 text-3xl font-black">Escríbenos y te contactamos</h2>
                 <p className="mt-3 text-sm text-muted-foreground leading-relaxed">Completa el formulario y un agente se comunicará contigo antes de que termine el día.</p>
               </div>
-
-              <form onSubmit={handleSubmit} className="space-y-5 relative z-10 w-full flex flex-col">
-                <div className="space-y-2">
-                  <label htmlFor="contact-name" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-2">Identidad</label>
-                  <input required value={formData.name} onChange={e => setFormData(f => ({...f, name: e.target.value}))} id="contact-name" type="text" className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm input-premium" placeholder="Sr. Admin / Representante Empresarial" />
+              {sent ? (
+                <div className="relative z-10 p-6 rounded-2xl bg-emerald-900/40 border border-emerald-700/20">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-emerald-600/10 border border-emerald-600/20">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="font-black text-white">Mensaje enviado</p>
+                      <p className="text-sm text-slate-300">Nuestro equipo te contactará antes de que termine el día hábil.</p>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex gap-3">
+                    <Link href="/" className="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-5 py-3 text-sm font-black text-white hover:bg-white/10 transition">Volver al inicio</Link>
+                    <button onClick={() => setSent(false)} className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand to-red-700 px-5 py-3 text-sm font-black text-white shadow-button hover:shadow-button-hover transition">Enviar otro</button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="contact-email" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-2">Punto de Contacto (Email)</label>
-                  <input required value={formData.email} onChange={e => setFormData(f => ({...f, email: e.target.value}))} id="contact-email" type="email" className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm input-premium" placeholder="negocio@empresa.com" />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="contact-msg" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-2">Razón de la solicitud</label>
-                  <textarea required value={formData.message} onChange={e => setFormData(f => ({...f, message: e.target.value}))} id="contact-msg" rows={5} className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm resize-none input-premium" placeholder="Explícanos tu requerimiento en detalle..." />
-                </div>
-                <button disabled={loading} type="submit" className="w-full rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white py-4 font-black hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center mt-4 shadow-button hover:shadow-button-hover active:scale-[0.98]">
-                  {loading ? "Despachando Ticket..." : "Enviar a Central"}
-                </button>
-              </form>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5 relative z-10 w-full flex flex-col">
+                  <div className="space-y-2">
+                    <label htmlFor="contact-name" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-2">Identidad</label>
+                    <input required value={formData.name} onChange={e => setFormData(f => ({...f, name: e.target.value}))} id="contact-name" type="text" className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm input-premium" placeholder="Sr. Admin / Representante Empresarial" />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="contact-email" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-2">Punto de Contacto (Email)</label>
+                    <input required value={formData.email} onChange={e => setFormData(f => ({...f, email: e.target.value}))} id="contact-email" type="email" className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm input-premium" placeholder="negocio@empresa.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="contact-msg" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-2">Razón de la solicitud</label>
+                    <textarea required value={formData.message} onChange={e => setFormData(f => ({...f, message: e.target.value}))} id="contact-msg" rows={5} className="w-full rounded-2xl border border-input bg-background/50 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm resize-none input-premium" placeholder="Explícanos tu requerimiento en detalle..." />
+                  </div>
+                  <button disabled={loading} type="submit" className="w-full rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white py-4 font-black hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center mt-4 shadow-button hover:shadow-button-hover active:scale-[0.98]">
+                    {loading ? "Despachando Ticket..." : "Enviar a Central"}
+                  </button>
+                </form>
+              )}
 
               <div className="mt-8 rounded-[2rem] bg-slate-950/80 border border-white/10 p-6 text-sm text-slate-300">
                 <p className="uppercase tracking-[0.2em] text-slate-500 font-black">¿Te apuras?</p>
