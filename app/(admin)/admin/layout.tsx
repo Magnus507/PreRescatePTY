@@ -40,9 +40,9 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
   ].filter(item => !isPrintRole || item.id === 'inventory');
 
   return (
-    <aside className="w-full h-full bg-white dark:bg-slate-950 flex flex-col z-40">
+    <aside className="w-full h-full bg-white dark:bg-[#0f1419] flex flex-col z-40">
       <div className="p-10 flex items-center justify-between">
-        <div className="flex items-center gap-4 font-black text-3xl tracking-tighter text-slate-900 dark:text-white">
+        <div className="flex items-center gap-4 font-black text-3xl tracking-tighter text-slate-900 dark:text-white animate-in fade-in duration-500">
           <div className={`h-12 w-12 ${branding.color} rounded-[1.25rem] flex items-center justify-center shadow-2xl -rotate-6 group`}>
             <branding.icon className="h-6 w-6 text-white group-hover:scale-110 group-hover:rotate-6 transition-all duration-500" />
           </div>
@@ -68,11 +68,11 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
               key={item.id}
               href={`/admin?tab=${item.id}`}
               onClick={closeMobileMenu}
-              className={`flex items-center justify-between group px-5 py-4 rounded-[1.5rem] text-[11px] uppercase tracking-[0.2em] font-black transition-all duration-500 ${isActive
-                  ? "bg-slate-900 text-white shadow-2xl shadow-slate-900/20 translate-x-1"
+              className={`flex items-center justify-between group px-5 py-4 rounded-2xl text-[11px] uppercase tracking-[0.2em] font-black transition-all duration-500 ${isActive
+                  ? "bg-gradient-to-r from-primary to-primary/80 text-white shadow-xl shadow-primary/20 translate-x-1"
                   : isFuture
                     ? "text-primary/60 hover:bg-primary/5 hover:text-primary border border-dashed border-primary/20"
-                    : "text-slate-400 dark:text-slate-500 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                    : "text-slate-400 dark:text-slate-500 hover:bg-slate-100/50 dark:hover:bg-[#1a2333] hover:text-slate-900 dark:hover:text-white"
                 }`}
             >
               <div className="flex items-center gap-3">
@@ -90,9 +90,9 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
         })}
       </nav>
 
-      <div className="p-6 mt-auto border-t border-slate-100 dark:border-slate-800 space-y-4">
+      <div className="p-6 mt-auto border-t border-slate-100 dark:border-[#1a2333] space-y-4">
         <div className="flex items-center gap-3 px-2">
-          <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold border border-slate-200 dark:border-slate-700 uppercase">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/20 dark:to-primary/10 flex items-center justify-center text-primary font-black border border-primary/20 dark:border-primary/20 uppercase">
             {session.user?.email?.[0]}
           </div>
           <div className="overflow-hidden">
@@ -109,7 +109,7 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
             await signOut({ redirect: false });
             window.location.href = "/login";
           }}
-          className="flex items-center justify-center gap-3 px-4 py-3.5 w-full rounded-2xl text-sm font-black text-white bg-slate-950 dark:bg-white dark:text-slate-950 hover:opacity-90 active:scale-[0.98] transition-all shadow-lg disabled:opacity-50"
+          className="flex items-center justify-center gap-3 px-4 py-3.5 w-full rounded-2xl text-sm font-black text-white bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.98] transition-all shadow-lg disabled:opacity-50"
         >
           {isLoggingOut ? <Activity className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
           {isLoggingOut ? "Saliendo..." : "Cerrar Sesión"}
@@ -142,7 +142,7 @@ function GlobalSearchBar() {
         type="text"
         placeholder="Búsqueda rápida..."
         autoComplete="off"
-        className="bg-slate-100 dark:bg-slate-800 border-none rounded-2xl pl-10 pr-4 py-2 text-xs font-bold focus:ring-2 focus:ring-primary/20 w-64 transition-all hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+        className="bg-slate-100 dark:bg-[#1a2333] border-none rounded-2xl pl-10 pr-4 py-2 text-xs font-bold focus:ring-2 focus:ring-primary/20 w-64 transition-all hover:bg-slate-200/50 dark:hover:bg-[#2a3a4f] text-slate-900 dark:text-white"
       />
     </form>
   );
@@ -189,14 +189,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans selection:bg-primary selection:text-white flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#050812] font-sans selection:bg-primary selection:text-white flex flex-col">
       {/* Unified Global Header */}
-      <header className="sticky top-0 z-[100] h-20 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-b border-slate-200/60 dark:border-slate-800/60 px-6 sm:px-10 flex items-center justify-between transition-all duration-300">
+      <header className="sticky top-0 z-[100] h-20 bg-white/70 dark:bg-[#0f1419]/70 backdrop-blur-2xl border-b border-slate-200/60 dark:border-[#1a2333]/60 px-6 sm:px-10 flex items-center justify-between transition-all duration-300">
         <div className="flex items-center gap-8">
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="md:hidden p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+            className="md:hidden p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#1a2333] rounded-xl transition-all"
           >
             <Menu className="h-6 w-6" />
           </button>
@@ -220,11 +220,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <div className="flex items-center gap-4 sm:gap-6">
           {/* User Profile Info */}
-          <div className="hidden sm:flex items-center gap-4 pr-4 border-r border-slate-200 dark:border-slate-800">
+          <div className="hidden sm:flex items-center gap-4 pr-4 border-r border-slate-200 dark:border-[#1a2333]">
             <div className="flex flex-col text-right">
               <p className="text-xs font-black text-slate-900 dark:text-white leading-none mb-1">{session.user?.email}</p>
               <div className="flex items-center justify-end gap-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
                 <span className={`text-[10px] font-bold uppercase tracking-tighter ${isFounder ? 'text-amber-600' : 'text-slate-500'}`}>
                   {isFounder ? "Fundador Supremo" : role === "superadmin" ? "Super Admin" : role === "imprenta" ? "Gestor Imprenta" : "Gestor Admin"}
                 </span>
@@ -240,7 +240,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Global Actions */}
           <div className="flex items-center gap-2">
-            <Link href="/" title="Ir al Sitio" className="h-10 w-10 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary/30 transition-all shadow-sm">
+            <Link href="/" title="Ir al Sitio" className="h-10 w-10 rounded-2xl bg-white dark:bg-[#1a2333] border border-slate-200 dark:border-[#2a3a4f] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary hover:border-primary/30 transition-all shadow-sm hover:shadow-primary/10">
               <Package className="h-4 w-4" />
             </Link>
             <button
@@ -251,7 +251,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 window.location.href = "/login";
               }}
               title="Cerrar Sesión"
-              className="h-10 w-10 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center hover:opacity-90 active:scale-90 transition-all shadow-lg disabled:opacity-50"
+              className="h-10 w-10 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 text-white flex items-center justify-center hover:shadow-lg hover:shadow-primary/10 active:scale-90 transition-all shadow-lg disabled:opacity-50"
             >
               {isLoggingOut ? <Activity className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
             </button>
@@ -270,7 +270,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Mobile Sidebar Drawer */}
         <div className={`
-          fixed inset-y-0 left-0 z-[120] w-80 bg-white dark:bg-slate-950 shadow-2xl transition-transform duration-500 md:hidden
+          fixed inset-y-0 left-0 z-[120] w-80 bg-white dark:bg-[#0f1419] shadow-2xl shadow-slate-900/40 transition-transform duration-500 md:hidden
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
         `}>
           <Suspense fallback={<div className="w-full h-full bg-white dark:bg-slate-900" />}>
@@ -284,8 +284,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Desktop Sidebar */}
-        <div className="hidden md:flex md:w-80 border-r border-slate-200 dark:border-slate-800">
-          <Suspense fallback={<div className="w-full bg-white dark:bg-slate-900" />}>
+        <div className="hidden md:flex md:w-80 border-r border-slate-200 dark:border-[#1a2333]">
+          <Suspense fallback={<div className="w-full bg-white dark:bg-[#0f1419]" />}>
             <AdminSidebar 
               session={session as Session} 
               isLoggingOut={isLoggingOut} 
@@ -302,7 +302,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </main>
       </div>
 
-      <footer className="h-12 border-t border-slate-200/50 dark:border-slate-800/50 bg-white/30 dark:bg-slate-900/30 px-10 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+      <footer className="h-12 border-t border-slate-200/50 dark:border-[#1a2333]/50 bg-white/30 dark:bg-[#0f1419]/30 px-10 flex items-center justify-between text-[10px] text-slate-400 font-medium">
         <div className="flex gap-4 uppercase tracking-widest">
           <span>© 2026 PreRescate PTY</span>
         </div>
