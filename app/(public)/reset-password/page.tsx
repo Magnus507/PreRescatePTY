@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Shield, ArrowRight } from "lucide-react";
+import { Shield, ArrowRight, AlertTriangle } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 function ResetPasswordForm() {
@@ -55,60 +55,71 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="space-y-4 text-center">
-        <p className="text-sm font-semibold text-destructive">Enlace inválido o incompleto.</p>
-        <Link href="/forgot-password" className="text-sm font-semibold text-primary hover:text-white transition-colors">Volver a intentar</Link>
+      <div className="space-y-6 text-center">
+        <div className="h-16 w-16 rounded-full bg-red-600/20 flex items-center justify-center mx-auto border border-red-500/30">
+          <AlertTriangle className="w-8 h-8 text-red-400" />
+        </div>
+        <div className="space-y-2">
+          <p className="text-xl font-black text-white">Enlace Inválido</p>
+          <p className="text-sm text-slate-400">El enlace para cambiar tu contraseña expiró o no es válido.</p>
+        </div>
+        <Link href="/forgot-password" className="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-6 py-3 text-sm font-black text-white border border-white/10 hover:bg-white/10 transition-all">Solicitar nuevo enlace</Link>
       </div>
     );
   }
 
   return done ? (
-    <div className="space-y-6 text-center">
-      <div className="mx-auto w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4 text-success shadow-glow">
-        <Shield className="w-6 h-6" />
+    <div className="space-y-8 text-center">
+      <div className="space-y-4">
+        <div className="mx-auto w-16 h-16 rounded-full bg-emerald-600/20 flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/20">
+          <Shield className="w-8 h-8 text-emerald-400" />
+        </div>
+        <div>
+          <p className="text-2xl font-black text-white mb-2">Contraseña Actualizada</p>
+          <p className="text-sm text-slate-400">Tu contraseña ha sido restablecida con éxito. Ya puedes iniciar sesión.</p>
+        </div>
       </div>
-      <p className="text-sm text-slate-200">Tu contraseña ha sido restablecida con éxito.</p>
       <Link
         href="/login"
-        className="btn-premium inline-flex w-full items-center justify-center rounded-[1.75rem] bg-gradient-to-r from-brand to-red-700 px-5 py-4 text-sm font-black text-white shadow-button hover:shadow-button-hover transition-all gap-2"
+        className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand to-red-700 px-6 py-4 text-sm font-black text-white shadow-button hover:shadow-button-hover transition-all gap-2"
       >
         Ir a Iniciar Sesión <ArrowRight className="w-4 h-4" />
       </Link>
     </div>
   ) : (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        <label htmlFor="pass" className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">Nueva Contraseña</label>
+        <label htmlFor="pass" className="text-xs font-black uppercase tracking-[0.35em] text-slate-400">Nueva Contraseña</label>
         <input
           id="pass"
           type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="input-premium w-full rounded-[1.5rem] border border-input bg-background/60 px-5 py-4 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          placeholder="Min 8 caracteres"
+          className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
+          placeholder="Mínimo 8 caracteres"
         />
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="cpass" className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">Confirmar Contraseña</label>
+        <label htmlFor="cpass" className="text-xs font-black uppercase tracking-[0.35em] text-slate-400">Confirmar Contraseña</label>
         <input
           id="cpass"
           type="password"
           required
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="input-premium w-full rounded-[1.5rem] border border-input bg-background/60 px-5 py-4 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          placeholder="Min 8 caracteres"
+          className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
+          placeholder="Debe coincidir con la anterior"
         />
       </div>
 
       <button
         type="submit"
         disabled={loading || !password || !confirmPassword}
-        className="btn-premium w-full rounded-[1.75rem] bg-gradient-to-r from-brand to-red-700 px-5 py-4 text-sm font-black text-white shadow-button hover:shadow-button-hover transition-all disabled:opacity-60 disabled:pointer-events-none"
+        className="w-full rounded-2xl bg-gradient-to-r from-brand to-red-700 px-6 py-4 text-sm font-black text-white shadow-button hover:shadow-button-hover transition-all disabled:opacity-60 disabled:pointer-events-none"
       >
-        {loading ? "Restableciendo..." : "Guardar Contraseña"}
+        {loading ? "Guardando..." : "Guardar Contraseña"}
       </button>
     </form>
   );
@@ -116,28 +127,59 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#050812] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(234,179,8,0.1),_transparent_24%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+    <main className="min-h-screen relative overflow-hidden bg-[#050812] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(234,179,8,0.1),_transparent_24%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
 
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md glass-premium border border-white/10 shadow-premium backdrop-blur-3xl p-8 rounded-[2.5rem] overflow-hidden">
-          <div className="absolute -top-10 left-6 w-36 h-36 rounded-full bg-blue-500/10 blur-3xl" />
-          <div className="relative z-10 text-center mb-10">
-            <div className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-black uppercase tracking-[0.25em] text-white/80 mb-6">
-              Cambio seguro
+      <div className="relative z-10 mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:px-8">
+        <div className="rounded-[3rem] border border-white/10 bg-white/5 shadow-2xl shadow-blue-500/10 backdrop-blur-xl overflow-hidden flex flex-col md:flex-row">
+          
+          <div className="hidden md:flex md:w-[45%] bg-slate-950/80 p-12 text-white flex-col justify-between relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-transparent to-yellow-600/10"></div>
+            
+            <div className="relative z-10">
+              <div className="inline-flex rounded-full bg-brand/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] text-brand mb-8">Cambio seguro</div>
+              <h1 className="text-4xl font-black tracking-tight leading-tight mb-6">
+                Recupera el <br />
+                <span className="text-blue-400">acceso</span> <br />
+                a tu cuenta.
+              </h1>
+              <p className="text-slate-300 text-lg leading-relaxed max-w-xs">
+                Establezcamos una contraseña nueva y segura para proteger tus datos médicos.
+              </p>
             </div>
-            <h2 className="text-3xl font-black tracking-tight">Crear nueva contraseña</h2>
-            <p className="mt-3 text-sm text-slate-300">
-              Establece una contraseña segura para proteger tu cuenta y datos médicos.
-            </p>
+
+            <div className="relative z-10 space-y-3">
+              <div className="flex items-center gap-3 text-slate-300">
+                <div className="h-2 w-2 rounded-full bg-blue-400" />
+                <span className="text-sm">Cambio cifrado y seguro</span>
+              </div>
+              <div className="flex items-center gap-3 text-slate-300">
+                <div className="h-2 w-2 rounded-full bg-blue-400" />
+                <span className="text-sm">Valida con Ley 81 de Panamá</span>
+              </div>
+              <div className="flex items-center gap-3 text-slate-300">
+                <div className="h-2 w-2 rounded-full bg-blue-400" />
+                <span className="text-sm">Acceso inmediato tras confirmación</span>
+              </div>
+            </div>
           </div>
 
-          <Suspense fallback={<p className="text-center text-sm text-slate-300">Cargando...</p>}>
-            <ResetPasswordForm />
-          </Suspense>
+          <div className="flex-1 p-8 md:p-16 flex flex-col justify-center bg-slate-950/60">
+            <div className="max-w-md mx-auto w-full">
+              <div className="md:hidden inline-flex rounded-full bg-brand/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] text-brand mb-8">Cambio seguro</div>
+              
+              <h2 className="text-3xl font-black tracking-tight mb-2">Nueva contraseña</h2>
+              <p className="text-slate-400 leading-relaxed mb-10">Crea una contraseña fuerte para proteger tu perfil médico. Mínimo 8 caracteres.</p>
+
+              <Suspense fallback={<p className="text-center text-sm text-slate-300">Cargando...</p>}>
+                <ResetPasswordForm />
+              </Suspense>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
