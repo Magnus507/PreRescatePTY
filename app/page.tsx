@@ -78,14 +78,14 @@ export default function Home() {
                 >
                   <Link
                     href="#pricing"
-                    className="group relative inline-flex items-center justify-center gap-2 px-10 py-5 rounded-2xl bg-brand text-white font-black text-xl overflow-hidden transition-all hover:scale-105 hover:shadow-brand"
+                    className="group relative inline-flex items-center justify-center gap-2 px-10 py-5 rounded-2xl bg-gradient-to-r from-brand to-red-700 text-white font-black text-xl overflow-hidden transition-all hover:scale-105 hover:shadow-glow-md btn-premium"
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:animate-shimmer" />
                     Protegerse Hoy <ArrowUpRight className="h-5 w-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                   </Link>
                   <Link
                     href="#how-it-works"
-                    className="inline-flex items-center justify-center gap-2 px-10 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all backdrop-blur-sm"
+                    className="inline-flex items-center justify-center gap-2 px-10 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all backdrop-blur-sm hover:shadow-inner-glow"
                   >
                     Cómo Funciona
                   </Link>
@@ -283,7 +283,7 @@ export default function Home() {
                   Cifras que muestran por qué confían en PreRescue ID.
                 </h2>
               </div>
-              <Link href="/demo" className="btn-premium inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand to-red-700 px-6 py-4 text-sm font-black text-white shadow-button hover:shadow-button-hover transition-all">
+              <Link href="/demo" className="btn-premium inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand to-red-700 px-6 py-4 text-sm font-black text-white shadow-button hover:shadow-glow-md transition-all">
                 Ver demo en vivo
               </Link>
             </div>
@@ -399,7 +399,7 @@ export default function Home() {
              
              <Link
                 href="#pricing"
-                className="inline-flex items-center gap-3 px-12 py-6 rounded-3xl bg-brand text-white font-black text-2xl hover:bg-red-600 hover:scale-105 transition-all shadow-brand"
+                className="inline-flex items-center gap-3 px-12 py-6 rounded-3xl bg-gradient-to-r from-brand to-red-700 text-white font-black text-2xl hover:scale-105 transition-all shadow-brand hover:shadow-glow-md btn-premium"
               >
                 Inicia tu Protección <ArrowUpRight className="h-7 w-7" />
              </Link>

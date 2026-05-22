@@ -56,7 +56,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 id="sex-select"
                 value={form.sex} 
                 onChange={(e) => update("sex", e.target.value)} 
-                className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 appearance-none shadow-sm transition-all"
+                className="w-full rounded-2xl border-2 border-input bg-background px-4 py-3 text-sm font-bold appearance-none shadow-sm input-premium outline-none"
               >
                 <option value="">No Definido</option>
                 <option value="M">Masculino</option>
@@ -109,7 +109,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 required 
                 value={form.bloodType} 
                 onChange={(e) => update("bloodType", e.target.value)} 
-                className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm font-black focus:ring-2 focus:ring-primary/20 appearance-none text-primary shadow-sm transition-all"
+                className="w-full rounded-2xl border-2 border-input bg-background px-4 py-3 text-sm font-black appearance-none text-primary shadow-sm input-premium outline-none"
               >
                 {BLOOD_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
               </select>
@@ -147,7 +147,7 @@ function Field({ label, value, onChange, required, placeholder }: FieldProps) {
         value={value} 
         onChange={(e) => onChange(e.target.value)} 
         placeholder={placeholder} 
-        className="w-full rounded-2xl border border-input bg-background px-5 py-4 text-base font-bold focus:ring-4 focus:ring-primary/10 shadow-sm transition-all outline-none" 
+        className="w-full rounded-2xl border-2 border-input bg-background px-5 py-4 text-base font-bold shadow-sm input-premium outline-none" 
       />
     </div>
   );
@@ -175,7 +175,7 @@ function TextAreaField({ icon, label, value, onChange, placeholder, color }: Tex
         value={value} 
         onChange={(e) => onChange(e.target.value)} 
         rows={1} 
-        className="w-full rounded-2xl border border-input bg-card/50 px-5 py-4 text-sm font-semibold focus:ring-4 focus:ring-primary/10 resize-none shadow-sm italic hover:bg-background transition-all outline-none" 
+        className="w-full rounded-2xl border-2 border-input bg-card/50 px-5 py-4 text-sm font-semibold resize-none shadow-sm italic hover:bg-background input-premium outline-none" 
         placeholder={placeholder} 
       />
     </div>

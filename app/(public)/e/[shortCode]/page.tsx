@@ -357,7 +357,7 @@ export default function EmergencyPage() {
         {/* PANIC CALL 911 (Always Priority) */}
         <a
           href="tel:911"
-          className="flex items-center justify-between gap-4 w-full bg-[#DA1A21] text-white p-6 rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(218,26,33,0.4)] hover:bg-black transition-all active:scale-95 group relative overflow-hidden"
+          className="flex items-center justify-between gap-4 w-full bg-gradient-to-r from-brand to-red-700 text-white p-6 rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(218,26,33,0.4)] hover:shadow-glow-md transition-all active:scale-95 group relative overflow-hidden btn-premium animate-pulse-subtle"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-[#DA1A21]/20" />
           <div className="flex items-center gap-5 relative z-10">
@@ -577,7 +577,7 @@ export default function EmergencyPage() {
                             <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                                 <a
                                     href={`tel:${contact.phone}`}
-                                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-3 px-8 py-4 bg-[#DA1A21] text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all active:scale-95 shadow-xl shadow-red-100 w-full sm:w-auto"
+                                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-glow-sm transition-all active:scale-95 shadow-xl shadow-emerald-100/50 w-full sm:w-auto btn-premium"
                                 >
                                     <Phone className="h-4 w-4 fill-white" /> Llamar
                                 </a>
@@ -730,7 +730,8 @@ const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }
     const cardTone = colorMap[color] || colorMap.slate;
 
     return (
-        <div className={`group relative p-8 rounded-[3rem] border transition-all duration-500 ${critical ? "bg-red-50 border-red-200 shadow-xl shadow-red-100/50" : `${cardTone} shadow-sm hover:shadow-xl`}`}>
+        <div className={`group relative overflow-hidden p-8 rounded-[3rem] border transition-all duration-500 ${critical ? "bg-red-50 border-red-200 shadow-xl shadow-red-100/50" : `${cardTone} shadow-sm hover:shadow-xl`}`}>
+            <div className={`absolute -right-10 -bottom-10 w-32 h-32 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40 pointer-events-none ${colorMap[color] ? colorMap[color].split(' ')[0].replace('bg-', 'bg-').replace('50', '400') : 'bg-slate-400'}`} />
             <div className="flex items-center gap-4 mb-6">
                 <div className={`p-3 rounded-2xl shadow-sm ${critical ? 'bg-white text-red-600' : 'bg-slate-50 text-slate-600'} group-hover:scale-110 transition-transform`}>
                     {icon}

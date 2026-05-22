@@ -11,7 +11,14 @@ import {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 animate-in fade-in duration-500 bg-[#050812]">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+          <div className="h-10 w-10 rounded-full border-4 border-brand/20 border-b-brand animate-spin-slow absolute top-3 left-3" />
+        </div>
+      </div>
+    }>
       <LoginContent />
     </Suspense>
   );
@@ -121,14 +128,14 @@ function LoginContent() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="p-4 rounded-2xl bg-red-50/90 text-red-600 text-sm font-semibold border border-red-200 dark:border-red-900/40 flex items-center gap-3">
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-900/10 text-red-600 dark:text-red-400 text-sm font-semibold border border-red-200 dark:border-red-900/40 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
                   <ShieldAlert className="h-5 w-5 shrink-0" />
                   {error}
                 </div>
               )}
 
               {isSuccess && (
-                <div className="p-4 rounded-2xl bg-emerald-50/90 text-emerald-700 text-sm font-semibold border border-emerald-200 dark:border-emerald-900/40 flex items-center gap-3">
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-900/10 text-emerald-700 dark:text-emerald-400 text-sm font-semibold border border-emerald-200 dark:border-emerald-900/40 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
                   <CheckCircle2 className="h-5 w-5 shrink-0" />
                   ¡Autenticación exitosa! Redirigiendo...
                 </div>
@@ -143,7 +150,7 @@ function LoginContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading || isSuccess}
-                  className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
+                  className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none input-premium"
                   placeholder="nombre@ejemplo.com"
                 />
               </div>
@@ -162,7 +169,7 @@ function LoginContent() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={loading || isSuccess}
-                      className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-5 py-4 pr-12 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
+                      className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-5 py-4 pr-12 text-sm text-white placeholder:text-slate-500 focus:outline-none input-premium"
                       placeholder="••••••••"
                     />
                     <button
@@ -188,7 +195,7 @@ function LoginContent() {
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
                     disabled={loading || isSuccess}
-                    className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-6 py-4 text-center text-3xl font-black tracking-[0.5em] text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
+                    className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-6 py-4 text-center text-3xl font-black tracking-[0.5em] text-white placeholder:text-slate-500 focus:outline-none input-premium"
                     placeholder="000000"
                   />
                   <button

@@ -13,7 +13,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon: Icon, color, trend }: StatCardProps) {
   return (
-    <div className="p-6 rounded-[2rem] border border-border bg-card hover:shadow-xl hover:shadow-slate-200/50 transition-all group overflow-hidden relative">
+    <div className="p-6 rounded-[2rem] border border-border bg-card card-hover group overflow-hidden relative">
       <div className="absolute top-0 right-0 w-24 h-24 bg-current opacity-[0.03] -mr-12 -mt-12 rounded-full group-hover:scale-110 transition-transform" />
       <div className="flex items-center justify-between mb-4">
         <div className={`h-10 w-10 rounded-xl ${color.replace('text-', 'bg-')}/10 flex items-center justify-center`}>
@@ -84,9 +84,12 @@ export function DashboardSection({
 }: DashboardSectionProps) {
   if (!stats) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm font-medium text-muted-foreground">Analizando Inteligencia...</p>
+      <div className="flex flex-col items-center justify-center py-32 gap-6 animate-in fade-in duration-500">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+          <div className="h-10 w-10 rounded-full border-4 border-brand/20 border-b-brand animate-spin-slow absolute top-3 left-3" />
+        </div>
+        <p className="text-xs font-black uppercase tracking-[0.3em] text-primary animate-pulse">Procesando Inteligencia...</p>
       </div>
     );
   }
@@ -147,7 +150,7 @@ export function DashboardSection({
         {/* Productivity & Pending Tasks (Center/Left) */}
         <div className="space-y-10">
           {/* TASKS CARD */}
-          <div className="p-10 rounded-[3rem] bg-slate-900 text-white relative overflow-hidden shadow-2xl">
+          <div className="p-10 rounded-[3rem] bg-slate-900 text-white relative overflow-hidden shadow-2xl card-hover">
              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl -mr-16 -mt-16" />
              <h3 className="text-xl font-black uppercase tracking-tighter italic mb-8 flex items-center gap-3">
                 <AlertCircle className="h-6 w-6 text-primary" /> Pendientes Críticos
@@ -187,7 +190,7 @@ export function DashboardSection({
         <div className="space-y-10">
           
           {/* USERS LIST CARD */}
-          <div className="p-8 rounded-[3rem] border border-border bg-white dark:bg-slate-900 shadow-xl overflow-hidden relative">
+          <div className="p-8 rounded-[3rem] border border-border bg-white dark:bg-slate-900 shadow-xl overflow-hidden relative card-hover">
              <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12" />
              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-8 px-2 flex items-center justify-between">
                 <span>Nuevos Miembros</span>
@@ -195,7 +198,7 @@ export function DashboardSection({
              </h3>
              <div className="space-y-4">
                {recentUsers?.map((u) => (
-                 <div key={u.id} onClick={() => { setSelectedUser(u); loadUsers(); }} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group flex items-center justify-between">
+                 <div key={u.id} onClick={() => { setSelectedUser(u); loadUsers(); }} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-transparent hover:border-primary/30 hover:bg-gradient-to-r hover:from-white hover:to-slate-50 dark:hover:from-slate-800 dark:hover:to-slate-800/80 transition-all duration-300 cursor-pointer group flex items-center justify-between hover:shadow-glow-sm">
                    <div className="flex items-center gap-4">
                       <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center font-black text-xs text-primary group-hover:bg-primary group-hover:text-white transition-all">
                         {u.email[0].toUpperCase()}

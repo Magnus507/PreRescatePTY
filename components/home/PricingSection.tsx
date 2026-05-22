@@ -85,8 +85,8 @@ export default function PricingSection() {
             <div
               key={pkg.id}
               className={`relative flex flex-col rounded-[2.5rem] p-10 border ${
-                pkg.recommended ? 'shadow-2xl shadow-indigo-500/20 md:-translate-y-4' : 'shadow-lg'
-              } ${styles.color} ${styles.border} transition-all duration-500 hover:-translate-y-2 hover:shadow-card-hover card-hover`}
+                pkg.recommended ? 'shadow-2xl shadow-indigo-500/20 md:-translate-y-4 animate-border-glow glass-premium' : 'shadow-lg card-hover'
+              } ${styles.color} ${styles.border} transition-all duration-500 hover:-translate-y-2`}
             >
               {pkg.recommended && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-full shadow-lg">

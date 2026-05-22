@@ -31,26 +31,26 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold mb-4 uppercase tracking-[0.3em] text-slate-400">Producto</h3>
             <ul className="space-y-3">
-              <li><Link href="/como-funciona" className="text-sm text-slate-300 hover:text-white transition-colors">Cómo Funciona</Link></li>
-              <li><Link href="/comprar" className="text-sm text-slate-300 hover:text-white transition-colors">Comprar</Link></li>
-              <li><Link href="/activar" className="text-sm text-slate-300 hover:text-white transition-colors">Activar Mi Chip</Link></li>
-              <li><Link href="/faq" className="text-sm text-slate-300 hover:text-white transition-colors">Preguntas Frecuentes</Link></li>
+              <li><Link href="/como-funciona" className="text-sm text-slate-300 hover:text-white transition-all inline-block hover:translate-x-1">Cómo Funciona</Link></li>
+              <li><Link href="/comprar" className="text-sm text-slate-300 hover:text-white transition-all inline-block hover:translate-x-1">Comprar</Link></li>
+              <li><Link href="/activar" className="text-sm text-slate-300 hover:text-white transition-all inline-block hover:translate-x-1">Activar Mi Chip</Link></li>
+              <li><Link href="/faq" className="text-sm text-slate-300 hover:text-white transition-all inline-block hover:translate-x-1">Preguntas Frecuentes</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold mb-4 uppercase tracking-[0.3em] text-slate-400">Soporte</h3>
             <ul className="space-y-3">
-              <li><Link href="/contacto" className="text-sm text-slate-300 hover:text-white transition-colors">Contacto</Link></li>
-              <li><Link href="/faq" className="text-sm text-slate-300 hover:text-white transition-colors">Ayuda</Link></li>
+              <li><Link href="/contacto" className="text-sm text-slate-300 hover:text-white transition-all inline-block hover:translate-x-1">Contacto</Link></li>
+              <li><Link href="/faq" className="text-sm text-slate-300 hover:text-white transition-all inline-block hover:translate-x-1">Ayuda</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold mb-4 uppercase tracking-[0.3em] text-slate-400">Legal</h3>
             <ul className="space-y-3">
-              <li><Link href="/legal/terminos" className="text-sm text-slate-300 hover:text-white transition-colors">Términos y Condiciones</Link></li>
-              <li><Link href="/legal/privacidad" className="text-sm text-slate-300 hover:text-white transition-colors">Política de Privacidad</Link></li>
+              <li><Link href="/legal/terminos" className="text-sm text-slate-300 hover:text-white transition-all inline-block hover:translate-x-1">Términos y Condiciones</Link></li>
+              <li><Link href="/legal/privacidad" className="text-sm text-slate-300 hover:text-white transition-all inline-block hover:translate-x-1">Política de Privacidad</Link></li>
             </ul>
           </div>
         </div>
@@ -61,13 +61,14 @@ export default function Footer() {
               <p className="text-sm uppercase tracking-[0.3em] text-brand font-black mb-3">¿Listo para proteger tu familia?</p>
               <h4 className="text-2xl font-black text-white">Obtén tu sticker oficial y viaja tranquilo.</h4>
             </div>
-            <Link href="/comprar" className="btn-premium inline-flex items-center justify-center rounded-full bg-gradient-to-r from-brand to-red-700 px-6 py-4 text-sm font-black text-white shadow-button hover:shadow-button-hover transition-all">
+            <Link href="/comprar" className="btn-premium inline-flex items-center justify-center rounded-full bg-gradient-to-r from-brand to-red-700 px-6 py-4 text-sm font-black text-white shadow-button hover:shadow-glow-md transition-all">
               Comprar Ahora
             </Link>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-400 text-xs">
+        <div className="mt-10 h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-400 text-xs">
           <p>© {new Date().getFullYear()} PreRescue ID. Todos los derechos reservados. Panamá.</p>
           <div className="flex flex-wrap items-center gap-4">
             <Link href="https://www.tiktok.com/@pre_rescate_pty" target="_blank" className="uppercase tracking-[0.3em] font-black text-slate-300 hover:text-white transition-colors">TikTok</Link>

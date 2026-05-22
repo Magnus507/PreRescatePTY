@@ -70,7 +70,7 @@ export const BentoBenefits = () => {
               className={`group relative rounded-[2rem] p-8 overflow-hidden flex flex-col justify-end border border-border/50 shadow-sm hover:shadow-xl transition-all duration-500 ${benefit.className}`}
             >
               {/* Decorative elements */}
-              <div className="absolute top-6 right-6 p-3 rounded-2xl bg-white/10 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+              <div className="absolute top-6 right-6 p-3 rounded-2xl bg-white/10 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-500 transform group-hover:rotate-12 group-hover:scale-110 group-hover:-translate-y-1">
                 {benefit.icon}
               </div>
               

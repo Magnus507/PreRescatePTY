@@ -35,16 +35,16 @@ export default function Navbar() {
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-2">
-          <Link href="/como-funciona" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl hover:bg-white/10 transition-all">
+          <Link href="/como-funciona" className="relative px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl transition-all after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-0 after:-translate-x-1/2 after:bg-brand after:transition-all hover:after:w-1/2">
             Cómo Funciona
           </Link>
-          <Link href="/comprar" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl hover:bg-white/10 transition-all">
+          <Link href="/comprar" className="relative px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl transition-all after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-0 after:-translate-x-1/2 after:bg-brand after:transition-all hover:after:w-1/2">
             Comprar
           </Link>
-          <Link href="/faq" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl hover:bg-white/10 transition-all">
+          <Link href="/faq" className="relative px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl transition-all after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-0 after:-translate-x-1/2 after:bg-brand after:transition-all hover:after:w-1/2">
             FAQ
           </Link>
-          <Link href="/contacto" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl hover:bg-white/10 transition-all">
+          <Link href="/contacto" className="relative px-4 py-2 text-sm font-medium text-slate-300 hover:text-white rounded-2xl transition-all after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-0 after:-translate-x-1/2 after:bg-brand after:transition-all hover:after:w-1/2">
             Contacto
           </Link>
         </div>
@@ -58,24 +58,24 @@ export default function Navbar() {
                 aria-expanded={userMenuOpen}
                 aria-haspopup="true"
                 aria-label="Abrir menú de usuario"
-                className="flex items-center gap-2 rounded-2xl border border-border bg-background/80 px-3 py-1.5 text-sm font-medium hover:bg-accent transition-all duration-300 shadow-sm hover:shadow-button"
+                className="flex items-center gap-2 rounded-2xl border border-white/10 bg-background/80 px-3 py-1.5 text-sm font-medium hover:bg-white/10 transition-all duration-300 shadow-sm hover:shadow-glow-sm"
               >
                 <User className="h-4 w-4" />
                 <span className="max-w-[120px] truncate">{session.user?.email}</span>
                 <ChevronDown className={`h-3 w-3 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-lg border border-border bg-card shadow-lg py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute right-0 mt-2 w-48 rounded-[1.5rem] border border-white/10 bg-slate-900/90 backdrop-blur-xl shadow-premium py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
                   <Link
                     href={isAdmin ? "/admin" : "/dashboard"}
                     onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/10 transition-colors rounded-xl mx-1"
                   >
                     <LayoutDashboard className="h-4 w-4" /> {isAdmin ? "Panel Admin" : "Dashboard"}
                   </Link>
                   <button
                     onClick={() => signOut({ callbackUrl: "/" })}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-accent transition-all duration-300 hover:shadow-button"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-white/10 transition-all duration-300 hover:shadow-glow-sm rounded-xl mx-1 mt-1"
                   >
                     <LogOut className="h-4 w-4" /> Cerrar Sesión
                   </button>
