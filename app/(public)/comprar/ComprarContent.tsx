@@ -81,7 +81,7 @@ export default function ComprarContent() {
 
           <PricingSection />
           
-          <div className="mt-20 max-w-4xl mx-auto rounded-[3rem] bg-[#0C2444]/95 text-white p-12 text-center relative overflow-hidden glass-card border border-white/10 shadow-premium">
+          <div className="mt-20 max-w-4xl mx-auto rounded-[3rem] bg-slate-900 text-white p-12 text-center relative overflow-hidden shadow-premium">
                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05] filter mix-blend-overlay"></div>
                <ShieldAlert className="h-16 w-16 mx-auto mb-6 text-[#DA1A21] relative z-10" />
                <h3 className="text-3xl font-black tracking-tight mb-4 relative z-10">Descuentos Gubernamentales y Colegiales</h3>

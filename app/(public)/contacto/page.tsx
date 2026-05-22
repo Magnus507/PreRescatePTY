@@ -151,7 +151,7 @@ export default function ContactoPage() {
             </div>
           </div>
 
-          <div className="mt-16 rounded-[3rem] border border-white/10 bg-white/5 p-10 shadow-premium">
+          <div className="mt-16 rounded-[3rem] border border-white/10 bg-slate-900 p-10 shadow-premium">
              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                <div className="space-y-2">
                    <p className="text-sm uppercase tracking-[0.3em] text-brand font-black">¿Quieres una atención más rápida?</p>

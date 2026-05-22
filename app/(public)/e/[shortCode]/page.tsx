@@ -335,22 +335,22 @@ export default function EmergencyPage() {
 
       <main className="max-w-4xl mx-auto p-4 space-y-6">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <div className="glass-card border border-white/10 bg-white/5 p-6 rounded-[2.5rem] shadow-premium transition-all hover:-translate-y-1">
-            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Acceso Verificado</p>
-            <p className="mt-4 text-2xl font-black text-white uppercase tracking-tight">{source === "nfc" ? "NFC Seguro" : "QR Seguro"}</p>
-            <p className="mt-3 text-sm text-slate-300 leading-relaxed">Lectura registrada con prioridad de emergencia.</p>
+          <div className="bg-white border border-slate-200 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Acceso Verificado</p>
+            <p className="mt-4 text-2xl font-black text-slate-900 uppercase tracking-tight">{source === "nfc" ? "NFC Seguro" : "QR Seguro"}</p>
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">Lectura registrada con prioridad de emergencia.</p>
           </div>
 
-          <div className="glass-card border border-white/10 bg-white/5 p-6 rounded-[2.5rem] shadow-premium transition-all hover:-translate-y-1">
-            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Última Actualización</p>
-            <p className="mt-4 text-2xl font-black text-white uppercase tracking-tight">{scanTime}</p>
-            <p className="mt-3 text-sm text-slate-300 leading-relaxed">El evento de escaneo fue transmitido al servidor de emergencia.</p>
+          <div className="bg-white border border-slate-200 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Última Actualización</p>
+            <p className="mt-4 text-2xl font-black text-slate-900 uppercase tracking-tight">{scanTime}</p>
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">El evento de escaneo fue transmitido al servidor de emergencia.</p>
           </div>
 
-          <div className="glass-card border border-white/10 bg-white/5 p-6 rounded-[2.5rem] shadow-premium transition-all hover:-translate-y-1">
-            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Estado del Perfil</p>
-            <p className="mt-4 text-2xl font-black text-white uppercase tracking-tight">{profile.allergies ? "Alerta Médica" : "Sin Alertas Críticas"}</p>
-            <p className="mt-3 text-sm text-slate-300 leading-relaxed">Información prioritaria disponible para el equipo de respuesta.</p>
+          <div className="bg-white border border-slate-200 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Estado del Perfil</p>
+            <p className="mt-4 text-2xl font-black text-slate-900 uppercase tracking-tight">{profile.allergies ? "Alerta Médica" : "Sin Alertas Críticas"}</p>
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">Información prioritaria disponible para el equipo de respuesta.</p>
           </div>
         </div>
 
@@ -434,21 +434,19 @@ export default function EmergencyPage() {
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#DA1A21] to-red-600 rounded-[3.5rem] blur opacity-15 group-hover:opacity-25 transition duration-1000"></div>
                 <div className="relative bg-white p-8 rounded-[3rem] border border-white shadow-2xl flex flex-col md:flex-row items-center gap-8 overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 space-y-2 text-right hidden md:block">
-                         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">Vínculo Seguro</p>
-                         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">Verificado</p>
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Vínculo Seguro</p>
+                         <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none">Verificado</p>
                     </div>
 
                     {profile.photoUrl ? (
                       <div className="w-40 h-40 rounded-[2.5rem] overflow-hidden border-[6px] border-slate-50 shadow-2xl flex-shrink-0 relative group-hover:scale-105 transition-transform duration-500">
-                        <Image 
+                        <img 
                           src={profile.photoUrl} 
                           alt={`Foto de ${profile.firstName}`} 
-                          width={160}
-                          height={160}
-                          className="w-full h-full object-cover" 
-                          priority
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.src = "https://ui-avatars.com/api/?name=" + profile.firstName + "&background=DA1A21&color=fff&size=200"; }}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
                       </div>
                     ) : (
                       <div className="w-40 h-40 rounded-[2.5rem] bg-slate-100 flex items-center justify-center text-slate-300 flex-shrink-0 border-2 border-dashed border-slate-200">
