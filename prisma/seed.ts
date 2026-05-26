@@ -142,6 +142,13 @@ async function main() {
   const packageMap: Record<string, string> = {};
 
   for (const pkg of packages) {
+    // Clear slug from any other record that already owns it to avoid unique conflicts
+    if (pkg.slug) {
+      await prisma.package.updateMany({
+        where: { slug: pkg.slug, name: { not: pkg.name } },
+        data: { slug: null },
+      });
+    }
     const p = await prisma.package.upsert({
       where: { name: pkg.name },
       update: { ...pkg },
