@@ -147,9 +147,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           finalMaxChips = currentMaxChips + newPlanChips;
           finalMaxProfiles = currentMaxProfiles + newPlanProfiles;
         }
-
         const finalPackageId = dbPackage ? dbPackage.id : null;
-        
+
         const finalAccountType = dbPackage?.accountType || (
           accountType === ACCOUNT_TYPES.COMPANY ? ACCOUNT_TYPES.COMPANY : ACCOUNT_TYPES.PERSONAL
         );
