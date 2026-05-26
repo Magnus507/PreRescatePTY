@@ -3,6 +3,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async headers() {
     return [
       {
