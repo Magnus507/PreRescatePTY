@@ -143,7 +143,7 @@ async function main() {
 
   for (const pkg of packages) {
     const p = await prisma.package.upsert({
-      where: { slug: pkg.slug },
+      where: { name: pkg.name },
       update: { ...pkg },
       create: pkg,
     });
