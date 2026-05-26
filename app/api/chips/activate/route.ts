@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
         where: { userId }
       });
 
-      if (!AccountStateService.isMedicalProfileComplete(profile)) {
+      if (!profile || !AccountStateService.isMedicalProfileComplete(profile)) {
         throw Object.assign(
           new Error("Debes completar tu perfil médico (nombre, apellido y tipo de sangre) antes de activar un chip"),
           { status: 400 }
