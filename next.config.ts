@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import path from "path";
 
 const nextConfig: NextConfig = {
   async headers() {
@@ -63,6 +64,14 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
+  },
+  webpack: (config, { _buildId, dev, isServer, defaultLoaders, webpack }) => {
+    config.resolve = config.resolve || {};
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@': path.resolve(__dirname),
+    } as Record<string, string>;
+    return config;
   },
 };
 
