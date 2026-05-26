@@ -1,4 +1,5 @@
 {
+  "buildCommand": "npm run prisma:generate && npx prisma db seed && next build",
   "crons": [
     { "path": "/api/cron/expire-chips", "schedule": "0 6 * * *" }
   ]
