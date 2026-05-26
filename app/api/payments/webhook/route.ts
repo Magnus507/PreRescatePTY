@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
         if (existingOrder) return;
 
         await tx.account.update({
-          where: { id: user.accountId },
+          where: { id: user.accountId ?? undefined },
           data: {
             packageId: pkg.id,
             accountType: pkg.accountType,
