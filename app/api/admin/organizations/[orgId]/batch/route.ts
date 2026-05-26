@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
-export async function POST(req: Request, { params }: { params: { orgId: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "admin" && session.user.role !== "superadmin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -12,7 +12,7 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
 
   try {
     const { departmentName, quantity, emailPrefix, tempPassword } = await req.json();
-    const orgId = params.orgId;
+    const { orgId } = await params;
 
     if (!departmentName || !quantity || quantity < 1 || quantity > 200) {
       return NextResponse.json({ error: "Departamento y cantidad válida (1-200) son requeridos" }, { status: 400 });
