@@ -1,18 +1,34 @@
 "use client";
 
 import { 
-  Phone, ShieldAlert, AlertTriangle, Activity, 
+  Phone, ShieldAlert, Activity, 
   User, ShieldCheck, Building2, MapPin, 
-  Clock, HardHat, Pill, Droplets, Info,
-  MessageCircle, Zap, Construction, Shield
+  Droplets, MessageCircle, Zap
 } from "lucide-react";
 
 interface IndustrialProfileViewProps {
   profile: any;
+  scanLocation?: string;
 }
 
-export function IndustrialProfileView({ profile }: IndustrialProfileViewProps) {
+function sanitizeTelPhone(phone: string) {
+  return phone.replace(/[^\d+]/g, "");
+}
+
+function normalizeWhatsAppPhone(phone: string) {
+  const trimmed = phone.trim();
+  const withoutInternationalPrefix = trimmed.startsWith("+")
+    ? trimmed.slice(1)
+    : trimmed.startsWith("00")
+      ? trimmed.slice(2)
+      : trimmed;
+  const digits = withoutInternationalPrefix.replace(/\D/g, "");
+  return digits.length === 8 ? `507${digits}` : digits;
+}
+
+export function IndustrialProfileView({ profile, scanLocation = "" }: IndustrialProfileViewProps) {
   const org = profile.organization;
+  const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white">
@@ -52,27 +68,15 @@ export function IndustrialProfileView({ profile }: IndustrialProfileViewProps) {
               </h1>
               <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-2">
                 <div className="flex items-center gap-2 text-slate-400">
-                  <Clock className="h-4 w-4" />
-                  <span className="text-xs font-bold uppercase tracking-widest">{org.shift || "Turno Rotativo"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-400">
                   <MapPin className="h-4 w-4" />
                   <span className="text-xs font-bold uppercase tracking-widest">{org.location || "Sede Central"}</span>
                 </div>
               </div>
             </div>
           </div>
-          
-          {/* Employee ID Badge */}
-          <div className="mt-8 pt-6 border-t border-slate-700 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">ID Empleado</p>
-              <p className="font-mono text-xl font-black text-slate-300">{org.employeeId || "—"}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Área / Dept</p>
-              <p className="font-black text-sm uppercase text-slate-300">{org.department || "Operaciones"}</p>
-            </div>
+          <div className="mt-8 pt-6 border-t border-slate-700">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Área / Dept</p>
+            <p className="font-black text-sm uppercase text-slate-300">{org.department || "Operaciones"}</p>
           </div>
         </div>
 
@@ -113,91 +117,72 @@ export function IndustrialProfileView({ profile }: IndustrialProfileViewProps) {
             </div>
           </div>
 
-          {/* YELLOW: RIESGO OPERACIONAL */}
-          <div className="bg-amber-500/10 border-2 border-amber-500/20 rounded-[2.5rem] p-8 overflow-hidden relative group transition-all hover:bg-amber-500/20">
-             <div className="absolute top-4 right-6 opacity-20 group-hover:scale-110 transition-transform">
-              <Construction className="h-12 w-12 text-amber-500" />
-            </div>
-            <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-              <AlertTriangle className="h-3 w-3 fill-current" /> Riesgo Operacional (HSE)
-            </p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {org.occupationalRisks && org.occupationalRisks.length > 0 ? (
-                org.occupationalRisks.map((risk: string, i: number) => (
-                  <span key={i} className="px-4 py-2 bg-amber-500 text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                    ⚠️ {risk}
-                  </span>
-                ))
-              ) : (
-                <span className="px-4 py-2 bg-slate-700 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                  Sin riesgos declarados
-                </span>
-              )}
-            </div>
-            <p className="text-xs font-bold text-amber-400/80 uppercase tracking-widest leading-relaxed">
-              RESTRICCIÓN: <span className="text-white">{org.medicalRestrictions || "Ninguna"}</span>
-            </p>
-          </div>
-
-          {/* GREEN: PROTOCOLO DE RESPUESTA */}
-          <div className="bg-emerald-500/10 border-2 border-emerald-500/20 rounded-[2.5rem] p-8 overflow-hidden relative group transition-all hover:bg-emerald-500/20">
-             <div className="absolute top-4 right-6 opacity-20 group-hover:scale-110 transition-transform">
-              <Shield className="h-12 w-12 text-emerald-500" />
-            </div>
-            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-              <ShieldCheck className="h-3 w-3 fill-current" /> Protocolo de Respuesta
-            </p>
-            <p className="text-lg font-black text-white uppercase italic leading-tight">
-              {org.emergencyProtocol || "En caso de accidente → activar brigada interna inmediatamente."}
-            </p>
-          </div>
-
         </div>
 
-        {/* Corporate Emergency Buttons */}
+        {/* Manual Emergency Actions */}
         <div className="space-y-4">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center mb-6">Contactos de Respuesta Interna</p>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center mb-6">Acciones Manuales de Emergencia</p>
           <div className="grid grid-cols-1 gap-3">
-            {org.emergencyButtons && org.emergencyButtons.map((btn: any, i: number) => (
-              <a
-                key={i}
-                href={`tel:${btn.phone}`}
-                className="w-full flex items-center justify-between p-6 rounded-3xl bg-slate-800 border border-slate-700 hover:border-emerald-500/50 hover:bg-slate-700/50 transition-all active:scale-[0.98] group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
-                    <Phone className="h-6 w-6 fill-current" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Personal Autorizado</p>
-                    <p className="text-xl font-black text-white uppercase tracking-tighter">{btn.label}</p>
-                  </div>
+            <a
+              href="tel:911"
+              className="w-full flex items-center justify-between p-6 rounded-3xl bg-red-600 border border-red-500 hover:bg-red-700 transition-all active:scale-[0.98] group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-white/20 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <Phone className="h-6 w-6 fill-current" />
                 </div>
-                <div className="text-slate-500 group-hover:text-emerald-500 transition-colors">
-                   <Phone className="h-5 w-5" />
+                <div>
+                  <p className="text-[10px] font-black text-red-100 uppercase tracking-widest mb-1">Central de Urgencias</p>
+                  <p className="text-xl font-black text-white uppercase tracking-tighter">Llamar al 911</p>
                 </div>
-              </a>
-            ))}
+              </div>
+              <Phone className="h-5 w-5 text-white/60" />
+            </a>
             
-            {/* Direct Personal Contacts Toggle or List */}
             <div className="pt-6">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center mb-6">Familiares / Contactos Personales</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {profile.emergencyContacts.map((contact: any, i: number) => (
-                  <a
-                    key={i}
-                    href={`tel:${contact.phone}`}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800 transition-all"
-                  >
-                    <div className="h-10 w-10 rounded-xl bg-slate-700 text-slate-400 flex items-center justify-center">
-                      <User className="h-5 w-5" />
+                {profile.emergencyContacts.map((contact: any, i: number) => {
+                  const contactPhone = sanitizeTelPhone(contact.phone);
+                  const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
+                  const whatsappMessage = scanLocation
+                    ? `Hola ${contact.fullName}, ${personName} tuvo un accidente. Fue escaneado en ${scanLocation}.`
+                    : `Hola ${contact.fullName}, ${personName} tuvo un accidente. Fue escaneado desde su perfil de emergencia.`;
+                  const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+
+                  return (
+                    <div
+                      key={i}
+                      className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/50 space-y-4"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-slate-700 text-slate-400 flex items-center justify-center">
+                          <User className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-white uppercase leading-none mb-1">{contact.fullName}</p>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{contact.relationship}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <a
+                          href={`tel:${contactPhone}`}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                        >
+                          <Phone className="h-4 w-4" /> Llamar
+                        </a>
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                        >
+                          <MessageCircle className="h-4 w-4" /> WhatsApp
+                        </a>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-black text-white uppercase leading-none mb-1">{contact.fullName}</p>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{contact.relationship}</p>
-                    </div>
-                  </a>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

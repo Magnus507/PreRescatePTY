@@ -8,6 +8,10 @@ export { type SetupChecklist };
 
 const CHIP_CAPACITY_STATUSES = ["activated", "suspended", "sold"];
 const CHIP_SERVICE_STATUSES = ["activated", "suspended"];
+export const ACCOUNT_STATE_ERRORS = {
+  USER_NOT_FOUND: "USER_NOT_FOUND",
+  ADMIN_ACCESS_CLIENT_DASHBOARD: "ADMIN_ACCESS_CLIENT_DASHBOARD",
+} as const;
 
 type UserWithAccount = User & {
   profile: Profile | null;
@@ -106,8 +110,8 @@ export class AccountStateService {
     if (!user) {
       // Check if the userId might belong to an admin account that has no client-side data
       const adminCheck = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } });
-      if (adminCheck?.isAdmin) throw new Error("ADMIN_ACCESS_CLIENT_DASHBOARD");
-      throw new Error("USER_NOT_FOUND");
+      if (adminCheck?.isAdmin) throw new Error(ACCOUNT_STATE_ERRORS.ADMIN_ACCESS_CLIENT_DASHBOARD);
+      throw new Error(ACCOUNT_STATE_ERRORS.USER_NOT_FOUND);
     }
 
     const { account, profile } = user;
@@ -144,24 +148,7 @@ export class AccountStateService {
     const { serviceStatus, serviceEndDate, isExpired, isInactive } = this.calculateServiceStatus(activeChipsCount, latestChip, maxChipsLimit);
 
     // 6. Checklist & Permission resolution
-    // Logic fix: Consider medical profile complete if own profile is complete 
-    // OR if there is at least one complete profile in the account (fallback for reset/migration cases)
-    let isMedicalComplete = this.isMedicalProfileComplete(profile);
-    
-    if (!isMedicalComplete && account?.id) {
-       // Search for any complete profile in the account that satisfies the requirements
-       const anyComplete = await prisma.profile.findFirst({
-         where: {
-           accountId: account.id,
-           firstName: { not: "" },
-           lastName: { not: "" },
-           bloodType: { 
-             not: { in: ["", "Pendiente"] } 
-           }
-         }
-       });
-       if (anyComplete) isMedicalComplete = true;
-    }
+    const isMedicalComplete = this.isMedicalProfileComplete(profile);
 
     const setupChecklist: SetupChecklist = {
       medicalProfileComplete: isMedicalComplete,

@@ -415,6 +415,8 @@ model Order {
   @@index([userId])
   @@index([orderStatus])
   @@index([paymentStatus])
+  // Stripe idempotency is enforced by a partial unique index on
+  // (provider, providerReference) where provider='stripe' in the SQL migration.
 }
 
 model OrderItem {

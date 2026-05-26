@@ -1,22 +1,23 @@
 import Stripe from "stripe";
 import { logger } from "@/lib/logger";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock_fallback", {
-  apiVersion: "2026-03-25.dahlia", // Matches latest stripe package type
-});
+function getStripeClient() {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+
+  return new Stripe(secretKey, {
+    apiVersion: "2026-03-25.dahlia", // Matches latest stripe package type
+  });
+}
 
 export class PaymentService {
   /**
    * Create Stripe Checkout Session
    */
   static async createCheckoutSession(userId: string, planName: string, priceAmount: number, successUrl: string, cancelUrl: string, packageId: string) {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      if (process.env.NODE_ENV === "production") {
-        throw new Error("Stripe provider not configured in production");
-      }
-      logger.warn("PaymentService createCheckoutSession => Mocking due to missing STRIPE_SECRET_KEY");
-      return { url: `${successUrl}?mock_session_id=123` };
-    }
+    const stripe = getStripeClient();
 
     try {
       const session = await stripe.checkout.sessions.create({
@@ -59,6 +60,7 @@ export class PaymentService {
     }
 
     try {
+      const stripe = getStripeClient();
       const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
       logger.info("Stripe Event Success:", event.type);
       return event;
@@ -69,4 +71,3 @@ export class PaymentService {
     }
   }
 }
-

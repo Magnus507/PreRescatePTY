@@ -5,6 +5,14 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+const ACTIVE_PACKAGE_ACCOUNT_TYPES = ["personal", "company"] as const;
+
+function isValidActivePackageAccountType(accountType: string) {
+  return ACTIVE_PACKAGE_ACCOUNT_TYPES.includes(
+    accountType as (typeof ACTIVE_PACKAGE_ACCOUNT_TYPES)[number]
+  );
+}
+
 async function isAdmin() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return false;
@@ -31,6 +39,16 @@ export async function POST(req: Request) {
 
   try {
     const data = await req.json();
+    const accountType = data.accountType || "personal";
+    const isActive = data.isActive ?? true;
+
+    if (isActive && !isValidActivePackageAccountType(accountType)) {
+      return NextResponse.json(
+        { error: 'Los paquetes activos solo pueden usar accountType "personal" o "company".' },
+        { status: 400 }
+      );
+    }
+
     const pkg = await prisma.package.create({
       data: {
         name: data.name,
@@ -39,8 +57,8 @@ export async function POST(req: Request) {
         maxProfiles: data.maxProfiles || 1,
         price: data.price,
         description: data.description,
-        isActive: data.isActive ?? true,
-        accountType: data.accountType || "personal",
+        isActive,
+        accountType,
         icon: data.icon,
         color: data.color || "standard",
         recommended: data.recommended ?? false,
@@ -64,6 +82,22 @@ export async function PATCH(req: Request) {
 
   try {
     const { id, ...data } = await req.json();
+    const current = await prisma.package.findUnique({ where: { id } });
+
+    if (!current) {
+      return NextResponse.json({ error: "Paquete no encontrado" }, { status: 404 });
+    }
+
+    const nextAccountType = data.accountType ?? current.accountType;
+    const nextIsActive = data.isActive ?? current.isActive;
+
+    if (nextIsActive && !isValidActivePackageAccountType(nextAccountType)) {
+      return NextResponse.json(
+        { error: 'Los paquetes activos solo pueden usar accountType "personal" o "company".' },
+        { status: 400 }
+      );
+    }
+
     const pkg = await prisma.package.update({
       where: { id },
       data

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { rateLimit } from "@/lib/rateLimit";
+import { getClientIp } from "@/lib/request-ip";
 
 let resend: Resend | null = null;
 if (process.env.RESEND_API_KEY) {
@@ -18,8 +19,7 @@ function escapeHtml(value: unknown) {
 
 export async function POST(req: Request) {
   try {
-    const forwardedFor = req.headers.get("x-forwarded-for") || "unknown";
-    const ip = forwardedFor.split(",")[0].trim();
+    const ip = getClientIp(req, "contact-public");
     const limiter = await rateLimit("contact", ip, { limit: 5, windowMs: 60_000 * 15 });
     if (!limiter.allowed) {
       return NextResponse.json(

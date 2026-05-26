@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { SafeDeleteService } from "@/domains/users/services/safe-delete.service";
+import { getClientIp } from "@/lib/request-ip";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,10 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id;
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-      req.headers.get("x-real-ip") ||
-      userId;
+    const ip = getClientIp(req, `account-delete:${userId}`);
     const limiter = await rateLimit("account-delete", `${userId}:${ip}`, {
       limit: 5,
       windowMs: 60_000 * 15,

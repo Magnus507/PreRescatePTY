@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { optimizeAndUploadImage } from "@/lib/storage-utils";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
+import { getClientIp } from "@/lib/request-ip";
 
 const ALLOWED_BUCKETS = new Set(["general", "profile-photos", "payment-proofs"]);
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -19,10 +20,7 @@ export async function POST(req: NextRequest) {
   let bucketName = "general";
   
   try {
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-      req.headers.get("x-real-ip") ||
-      userId;
+    const ip = getClientIp(req, `upload:${userId}`);
     const limiter = await rateLimit("upload", `${userId}:${ip}`, {
       limit: 20,
       windowMs: 60_000 * 15,

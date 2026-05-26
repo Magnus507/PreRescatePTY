@@ -3,9 +3,11 @@ import { ACCOUNT_TYPES } from "@/domains/shared/constants";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { generateShortCode, generateActivationCode, generateSerialPublic, SITE_URL } from "@/lib/constants";
+import { SITE_URL } from "@/lib/constants";
 import { getUniqueShortCode, getUniqueSerialPublic, getUniqueActivationCode } from "@/lib/identifiers";
 import bcrypt from "bcryptjs";
+
+const CORPORATE_PACKAGE_SLUG = "combo-corporativo";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -69,23 +71,19 @@ export async function POST(req: Request) {
 
     const hashedPassword = await bcrypt.hash(ownerPassword, 10);
 
-    // Default corporate package or active package logic
-    let pkg = await prisma.package.findFirst({ where: { name: 'Corporativo' }});
-    if (!pkg) {
-      pkg = await prisma.package.create({
-        data: { 
-          name: 'Corporativo', 
-          slug: 'corporativo',
-          maxChips: chipCount, 
-          maxProfiles: chipCount,
-          price: 450, 
-          isActive: true,
-          accountType: 'company',
-          allowsOrganizationModule: true,
-          serviceDurationMonths: 24,
-          description: 'Plan Corporativo con gestión HSE'
-        }
-      });
+    // Determine the corporate package by explicit packageId or the canonical seed slug.
+    let pkg = null;
+    if (data.packageId) {
+      pkg = await prisma.package.findUnique({ where: { id: data.packageId } });
+    } else {
+      pkg = await prisma.package.findUnique({ where: { slug: CORPORATE_PACKAGE_SLUG } });
+    }
+
+    if (!pkg || !pkg.isActive || pkg.accountType !== ACCOUNT_TYPES.COMPANY) {
+      return NextResponse.json(
+        { error: 'Paquete corporativo no encontrado, inactivo o no válido. Debe tener accountType "company".' },
+        { status: 400 }
+      );
     }
 
     const batchId = `ORG-${Date.now().toString(36).toUpperCase()}`;

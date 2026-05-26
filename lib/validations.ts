@@ -13,7 +13,7 @@ export const VALID_USER_ROLES = ["owner", "member"] as const;
 export const VALID_CHIP_STATUSES = ["inventory", "sold", "activated", "suspended", "deactivated", "lost"] as const;
 export const VALID_SEX_OPTIONS = ["M", "F", "Otro"] as const;
 
-export const VALID_ACCOUNT_TYPES = ["personal", "company", "school"] as const;
+export const VALID_ACCOUNT_TYPES = ["personal", "company"] as const;
 
 // ──────────────────────────────────────────────
 // AUTH SCHEMAS
@@ -89,6 +89,15 @@ export const familyProfileCreateSchema = profileUpdateSchema.extend({
 
 export const chipActivationSchema = z.object({
   activationCode: z.string().min(1, "Código de activación requerido").transform(v => v.toUpperCase().trim()),
+});
+
+export const publicScanSchema = z.object({
+  sourceType: z.enum(["qr", "nfc"]).default("qr"),
+  geoLat: z.coerce.number().finite().min(-90).max(90).optional().nullable(),
+  geoLng: z.coerce.number().finite().min(-180).max(180).optional().nullable(),
+  geoAccuracy: z.coerce.number().finite().nonnegative().optional().nullable(),
+  country: z.string().trim().max(100).optional().nullable(),
+  city: z.string().trim().max(100).optional().nullable(),
 });
 
 // ──────────────────────────────────────────────

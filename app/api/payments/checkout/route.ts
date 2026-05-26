@@ -3,6 +3,7 @@ import { PaymentService } from "@/domains/shared/services/payment.service";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { ACCOUNT_TYPES } from "@/domains/shared/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -23,12 +24,14 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id;
 
     // 1. Validate the package and get the REAL price from DB (SSOT)
-    const pkg = await prisma.package.findUnique({
-      where: { id: packageId, isActive: true }
-    });
+    const pkg = await prisma.package.findUnique({ where: { id: packageId } });
 
-    if (!pkg) {
+    if (!pkg || !pkg.isActive) {
       return NextResponse.json({ error: "Plan no encontrado o inactivo" }, { status: 404 });
+    }
+
+    if (![ACCOUNT_TYPES.PERSONAL, ACCOUNT_TYPES.COMPANY].includes(pkg.accountType as "personal" | "company")) {
+      return NextResponse.json({ error: "Plan con accountType inválido" }, { status: 400 });
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

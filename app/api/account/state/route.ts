@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import { AccountStateService, ACCOUNT_STATE_ERRORS } from "@/domains/accounts/services/account-state.service";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,10 @@ export async function GET() {
     
     return NextResponse.json(state);
   } catch (error: any) {
-    if (error.message === "User not found") {
+    if (
+      error?.message === ACCOUNT_STATE_ERRORS.USER_NOT_FOUND ||
+      error?.message === ACCOUNT_STATE_ERRORS.ADMIN_ACCESS_CLIENT_DASHBOARD
+    ) {
       return NextResponse.json({ error: "Sesión inválida o usuario eliminado" }, { status: 401 });
     }
     console.error("Error fetching account state:", error);

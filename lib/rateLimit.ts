@@ -1,16 +1,12 @@
-/**
- * In-memory rate limiter — works per server instance.
- * For multi-instance deployments, replace with Upstash Redis rate limiting.
- *
- * Usage:
- *   const result = rateLimit("scan", ip, { limit: 5, windowMs: 60_000 });
- *   if (!result.allowed) return 429;
- */
-
 import { Redis } from "@upstash/redis";
 
+const isProduction = process.env.NODE_ENV === "production";
+const hasUpstashConfig = Boolean(
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+);
+
 let redis: Redis | null = null;
-if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+if (hasUpstashConfig) {
   redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
@@ -35,6 +31,12 @@ export async function rateLimit(
   identifier: string,
   options: { limit: number; windowMs: number }
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  if (isProduction && !redis) {
+    throw new Error(
+      "Rate limit misconfigured: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required in production."
+    );
+  }
+
   const key = `${namespace}:${identifier}`;
   const now = Date.now();
   const { limit, windowMs } = options;
@@ -54,11 +56,14 @@ export async function rateLimit(
       };
     } catch (e) {
       console.error("Upstash Redis error:", e);
-      // Fallback to memory if Redis fails
+      if (isProduction) {
+        throw new Error("Rate limit unavailable: Upstash Redis request failed.");
+      }
     }
   }
 
-  // Memory fallback
+  // Development/test only fallback. In production, per-instance memory limits
+  // are unsafe because serverless instances do not share state.
   let win = store.get(key);
   if (!win || win.resetAt < now) {
     win = { count: 0, resetAt: now + windowMs };

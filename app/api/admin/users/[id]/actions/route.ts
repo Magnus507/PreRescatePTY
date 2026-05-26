@@ -115,6 +115,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           dbPackage = await prisma.package.findUnique({
             where: { id: packageId }
           });
+
+          if (!dbPackage || !dbPackage.isActive) {
+            return NextResponse.json({ error: "Package inválido o inactivo" }, { status: 400 });
+          }
+
+          if (![ACCOUNT_TYPES.PERSONAL, ACCOUNT_TYPES.COMPANY].includes(dbPackage.accountType as "personal" | "company")) {
+            return NextResponse.json({ error: "Package con accountType inválido" }, { status: 400 });
+          }
         }
 
         // 2. Map values — ACUMULATIVO: si el usuario ya tiene chips de un plan previo,
@@ -142,8 +150,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         const finalPackageId = dbPackage ? dbPackage.id : null;
         
-        // Use database package for mapping account types or fallback to direct data input
-        const finalAccountType = accountType || dbPackage?.accountType || (dbPackage ? (dbPackage.name.toLowerCase().includes('empresa') ? ACCOUNT_TYPES.COMPANY : ACCOUNT_TYPES.FAMILY) : ACCOUNT_TYPES.PERSONAL);
+        const finalAccountType = dbPackage?.accountType || (
+          accountType === ACCOUNT_TYPES.COMPANY ? ACCOUNT_TYPES.COMPANY : ACCOUNT_TYPES.PERSONAL
+        );
 
         await prisma.account.update({
           where: { id: user.accountId },
@@ -497,4 +506,3 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }, { status: 500 });
   }
 }
-

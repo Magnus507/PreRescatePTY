@@ -2,7 +2,8 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { getReverseGeocoding } from "@/lib/geocoding";
-import { processPendingEmergencyNotifications } from "@/lib/emergency-notification-queue";
+import { getClientIp } from "@/lib/request-ip";
+import { publicScanSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +14,19 @@ export async function POST(
   try {
     const { shortCode } = await params;
     const body = await req.json().catch(() => ({}));
+    const parsedBody = publicScanSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: parsedBody.error.errors[0]?.message || "Datos de escaneo inválidos" },
+        { status: 400 }
+      );
+    }
+
+    const scanInput = parsedBody.data;
 
     // Rate limit: max 10 scans per IP per minute
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-      req.headers.get("x-real-ip") ||
-      "anonymous";
+    const ip = getClientIp(req, "public-scan");
     const rl = await rateLimit("scan", ip, { limit: 10, windowMs: 60_000 });
     if (!rl.allowed) {
       return NextResponse.json(
@@ -45,25 +53,23 @@ export async function POST(
       return NextResponse.json({ error: "Chip no activo" }, { status: 409 });
     }
 
-    const sourceType = body.sourceType === "nfc" ? "nfc" : "qr";
-
     // Create scan event
     const scanEvent = await prisma.scanEvent.create({
       data: {
         chipId: chip.id,
         profileId: chip.assignedProfileId,
         accountId: chip.accountId,
-        sourceType,
-        ipAddress: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
+        sourceType: scanInput.sourceType,
+        ipAddress: ip,
         userAgent: req.headers.get("user-agent") || "unknown",
-        geoLat: Number.isFinite(Number(body.geoLat)) ? Number(body.geoLat) : null,
-        geoLng: Number.isFinite(Number(body.geoLng)) ? Number(body.geoLng) : null,
-        geoAccuracy: Number.isFinite(Number(body.geoAccuracy)) ? Number(body.geoAccuracy) : null,
-        country: typeof body.country === "string" ? body.country.slice(0, 100) : null,
-        city: typeof body.city === "string" ? body.city.slice(0, 100) : null,
+        geoLat: scanInput.geoLat ?? null,
+        geoLng: scanInput.geoLng ?? null,
+        geoAccuracy: scanInput.geoAccuracy ?? null,
+        country: scanInput.country || null,
+        city: scanInput.city || null,
         address: null, 
         emergencyMode: true,
-        notificationStatus: "pending",
+        notificationStatus: "disabled",
       },
     });
 
@@ -76,8 +82,8 @@ export async function POST(
     // 0. Background Reverse Geocoding & Profile/Chip Sync
     after(async () => {
       let geoAddress = null;
-      if (body.geoLat && body.geoLng) {
-        const result = await getReverseGeocoding(body.geoLat, body.geoLng);
+      if (scanInput.geoLat != null && scanInput.geoLng != null) {
+        const result = await getReverseGeocoding(scanInput.geoLat, scanInput.geoLng);
         geoAddress = result.address;
         
         await prisma.scanEvent.update({
@@ -93,7 +99,7 @@ export async function POST(
       // Sync Bidirectionally with Chip and Profile
       const updateData = {
         lastScanAt: new Date(),
-        lastScanLocation: geoAddress || body.city || body.country || "Ubicación detectada"
+        lastScanLocation: geoAddress || scanInput.city || scanInput.country || "Ubicación detectada"
       };
 
       await prisma.chip.update({
@@ -109,70 +115,10 @@ export async function POST(
       }
     });
 
-    // 1. Queue emergency notifications before responding, then process them in background.
-    if (chip.ownerUserId || chip.assignedProfileId) {
-      const profileContacts = await prisma.profileContact.findMany({
-        where: {
-          profileId: chip.assignedProfileId,
-          active: true
-        },
-        include: { contact: true },
-        orderBy: { priorityOrder: "asc" },
-      });
-
-      const notifications = profileContacts.flatMap((profileContact) => {
-        const tasks: { channel: "email" | "sms" | "whatsapp"; recipient: string }[] = [];
-        const { contact } = profileContact;
-        if (profileContact.notifyEmail && contact.email) {
-          tasks.push({ channel: "email", recipient: contact.email });
-        }
-        if (profileContact.notifySms && contact.phone) {
-          tasks.push({ channel: "sms", recipient: contact.phone });
-        }
-        if (profileContact.notifyWhatsapp && contact.phone) {
-          tasks.push({ channel: "whatsapp", recipient: contact.phone });
-        }
-        return tasks;
-      });
-
-      if (notifications.length === 0) {
-        await prisma.scanEvent.update({
-          where: { id: scanEvent.id },
-          data: { notificationStatus: "skipped" }
-        });
-      } else {
-        await prisma.notification.createMany({
-          data: notifications.map((notification) => ({
-            chipId: chip.id,
-            eventId: scanEvent.id,
-            channel: notification.channel,
-            recipient: notification.recipient,
-            status: "pending",
-          })),
-        });
-
-        after(async () => {
-          await processPendingEmergencyNotifications({
-            eventId: scanEvent.id,
-            take: notifications.length,
-            includeStaleProcessing: true,
-          });
-        });
-      }
-      
-      return NextResponse.json({
-        message: notifications.length > 0
-          ? "Escaneo registrado - Notificaciones en proceso"
-          : "Escaneo registrado (sin contactos notificables)",
-        scanId: scanEvent.id,
-      }, { status: 201 });
-    }
-
-
     return NextResponse.json({
-      message: "Escaneo registrado (sin contactos)",
+      message: "Escaneo registrado. Notificaciones automáticas deshabilitadas.",
       scanId: scanEvent.id,
-    });
+    }, { status: 201 });
   } catch (error) {
     console.error("Scan API Error:", error);
     return NextResponse.json(

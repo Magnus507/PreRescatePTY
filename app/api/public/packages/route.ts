@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getPublicPackages } from '@/domains/shared/repositories/package.repository';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const packages = await prisma.package.findMany({
-      where: { isActive: true },
-      orderBy: { displayOrder: 'asc' },
-    });
+    const packages = await getPublicPackages();
 
     return NextResponse.json({ packages });
   } catch (error) {

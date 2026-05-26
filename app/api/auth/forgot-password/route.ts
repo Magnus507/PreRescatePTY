@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { rateLimit } from "@/lib/rateLimit";
+import { getClientIp } from "@/lib/request-ip";
 
 export async function POST(req: Request) {
   try {
@@ -13,8 +14,7 @@ export async function POST(req: Request) {
     }
 
     const emailLower = String(email).toLowerCase().trim();
-    const forwardedFor = req.headers.get("x-forwarded-for")?.split(",")[0].trim();
-    const ip = forwardedFor || req.headers.get("x-real-ip") || "anonymous";
+    const ip = getClientIp(req, "forgot-password");
     const [ipLimit, emailLimit] = await Promise.all([
       rateLimit("forgot-password:ip", ip, { limit: 5, windowMs: 60_000 * 15 }),
       rateLimit("forgot-password:email", emailLower, { limit: 3, windowMs: 60_000 * 60 }),

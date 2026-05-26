@@ -1,6 +1,5 @@
 {
   "crons": [
-    { "path": "/api/cron/expire-chips", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/notify", "schedule": "0 7 * * *" }
+    { "path": "/api/cron/expire-chips", "schedule": "0 6 * * *" }
   ]
 }

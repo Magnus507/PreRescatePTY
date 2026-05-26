@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ACCOUNT_TYPES } from "@/domains/shared/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -102,10 +103,22 @@ export async function PATCH(
 
   // If plan data is provided, update the associated account
   if (packageId !== undefined || maxChips !== undefined) {
+    const pkg = packageId
+      ? await prisma.package.findUnique({ where: { id: packageId } })
+      : null;
+
+    if (packageId && (!pkg || !pkg.isActive || pkg.accountType !== ACCOUNT_TYPES.COMPANY)) {
+      return NextResponse.json(
+        { error: 'Package inválido, inactivo o no corporativo. Debe tener accountType "company".' },
+        { status: 400 }
+      );
+    }
+
     await prisma.account.update({
       where: { id: org.accountId },
       data: {
-        packageId: packageId || undefined,
+        packageId: pkg?.id,
+        accountType: pkg?.accountType,
         maxChipsAllocated: maxChips ? parseInt(maxChips) : undefined,
       }
     });

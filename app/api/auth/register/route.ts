@@ -4,12 +4,15 @@ import bcrypt from "bcryptjs";
 import { registerSchema } from "@/lib/validations";
 import { ACCOUNT_TYPES, USER_ROLES } from "@/domains/shared/constants";
 import { rateLimit } from "@/lib/rateLimit";
+import { getClientIp } from "@/lib/request-ip";
 
 export const dynamic = "force-dynamic";
 
+const ACTIVE_ACCOUNT_TYPES = new Set<string>([ACCOUNT_TYPES.PERSONAL, ACCOUNT_TYPES.COMPANY]);
+
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get("x-forwarded-for") || "unknown";
+    const ip = getClientIp(req, "auth-register");
     const limiter = await rateLimit("register", ip, { limit: 5, windowMs: 60_000 * 15 }); // 5 per 15 min
     if (!limiter.allowed) {
       return NextResponse.json({ error: "Demasiados intentos. Intenta de nuevo más tarde." }, { status: 429 });
@@ -21,7 +24,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
     }
     const { email: emailLower, password, phone, accountType } = validation.data;
-    const packageId = (body as any).packageId;
+    const packageId = typeof (body as { packageId?: unknown }).packageId === "string"
+      ? (body as { packageId: string }).packageId
+      : null;
+
+    let selectedPackage = null;
+    if (packageId) {
+      selectedPackage = await prisma.package.findUnique({ where: { id: packageId } });
+      if (!selectedPackage || !selectedPackage.isActive) {
+        return NextResponse.json(
+          { error: "Package inválido o inactivo" },
+          { status: 400 }
+        );
+      }
+
+      if (!ACTIVE_ACCOUNT_TYPES.has(selectedPackage.accountType)) {
+        return NextResponse.json(
+          { error: "Package con accountType inválido" },
+          { status: 400 }
+        );
+      }
+
+      if (body.accountType && accountType !== selectedPackage.accountType) {
+        return NextResponse.json(
+          { error: "accountType no coincide con el Package seleccionado" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const resolvedAccountType = selectedPackage?.accountType || accountType || ACCOUNT_TYPES.PERSONAL;
 
     // Check if user exists
     const existing = await prisma.user.findUnique({
@@ -41,10 +73,10 @@ export async function POST(req: NextRequest) {
     // Create account + user in transaction
     const user = await prisma.$transaction(async (tx) => {
       const accountData = {
-        accountType: accountType || ACCOUNT_TYPES.PERSONAL,
+        accountType: resolvedAccountType,
         accountName: emailLower,
         status: "active",
-        packageId: packageId || null,
+        packageId: selectedPackage?.id || null,
         maxChipsAllocated: 0, // Still 0 until paid
       };
 

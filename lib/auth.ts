@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { rateLimit } from "@/lib/rateLimit";
+import { getClientIp } from "@/lib/request-ip";
 import { decrypt } from "@/lib/encryption";
 import { User } from "@prisma/client";
 
@@ -26,8 +27,8 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials, req) {
         // Rate limiting
-        const ip = req?.headers?.["x-forwarded-for"] || "unknown";
-        const limiter = await rateLimit("login", Array.isArray(ip) ? ip[0] : ip, { limit: 10, windowMs: 60_000 * 15 });
+        const ip = getClientIp(req ?? {}, "auth-login");
+        const limiter = await rateLimit("login", ip, { limit: 10, windowMs: 60_000 * 15 });
         if (!limiter.allowed) {
           throw new Error("Demasiados intentos. Intenta de nuevo más tarde.");
         }

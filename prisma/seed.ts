@@ -71,7 +71,7 @@ async function main() {
       price: 65.00, 
       description: '3 Chips Inteligentes NFC + 3 Perfiles Médicos', 
       isActive: true,
-      accountType: 'family',
+      accountType: 'personal',
       displayOrder: 3,
       recommended: true,
       icon: '🏠',
@@ -90,7 +90,7 @@ async function main() {
       price: 95.00, 
       description: '5 Chips Inteligentes NFC + 5 Perfiles Médicos', 
       isActive: true,
-      accountType: 'family',
+      accountType: 'personal',
       displayOrder: 4,
       icon: '🔥',
       color: 'hogar',
@@ -119,14 +119,14 @@ async function main() {
       serviceDurationMonths: 24,
     },
     { 
-      name: 'Combo Corporativo', 
+      name: 'Corporativo',
       slug: 'combo-corporativo',
       maxChips: 50, 
       maxProfiles: 50,
       price: 450.00, 
       description: '50 Chips Inteligentes NFC + 50 Perfiles', 
       isActive: true,
-      accountType: 'school',
+      accountType: 'company',
       displayOrder: 6,
       icon: '👔',
       color: 'corporativo',
@@ -143,7 +143,7 @@ async function main() {
 
   for (const pkg of packages) {
     const p = await prisma.package.upsert({
-      where: { name: pkg.name },
+      where: { slug: pkg.slug },
       update: { ...pkg },
       create: pkg,
     });
@@ -159,14 +159,23 @@ async function main() {
           'Kit Inicial', 'Plan Básico', 'Básico', 'Plan Familiar', 'Plan Residencial', 'Plan Empresarial',
           'Paquete Estándar', 'Paquete Dúo', 'Paquete Empresa', 'Paquete Colegio / Escolar',
           'Plan Estándar', 'Plan Dúo', 'Family Club', 'Hogar Full', 'Hogar', 'Personal Básico', 
-          'Personal Pro', 'Familiar Estándar', 'Familiar Premium', 'Empresa Pyme', 'Corporativo Plus'
+          'Personal Pro', 'Familiar Estándar', 'Familiar Premium', 'Empresa Pyme', 'Corporativo Plus',
+          'Combo Corporativo'
         ]
       }
     }
   });
 
+  await prisma.package.updateMany({
+    where: {
+      isActive: true,
+      accountType: { in: ['family', 'school', 'usuario'] },
+    },
+    data: { isActive: false },
+  });
+
   // 4. Sample Organization
-  const corpPkgId = packageMap['corporativo'];
+  const corpPkgId = packageMap['combo-corporativo'];
   if (corpPkgId) {
     const orgEmail = 'contacto@empresa-demo.com';
     let orgAccount = await prisma.account.findFirst({

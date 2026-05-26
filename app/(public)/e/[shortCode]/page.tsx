@@ -21,7 +21,6 @@ interface EmergencyProfile {
   allergies: string;
   chronicConditions: string;
   medications: string;
-  additionalNotes: string;
   photoUrl: string | null;
   isVerifiedAdmin?: boolean; // New flag
   emergencyContacts: {
@@ -33,13 +32,6 @@ interface EmergencyProfile {
     name: string;
     location: string | null;
     department: string | null;
-    employeeId: string | null;
-    position: string | null;
-    shift: string | null;
-    occupationalRisks: string[];
-    medicalRestrictions: string | null;
-    emergencyProtocol: string | null;
-    emergencyButtons: { label: string; phone: string }[];
   } | null;
 }
 
@@ -52,17 +44,34 @@ interface ChipMetadata {
   originalStatus?: string;
 }
 
+function sanitizeTelPhone(phone: string) {
+  return phone.replace(/[^\d+]/g, "");
+}
+
+function normalizeWhatsAppPhone(phone: string) {
+  const trimmed = phone.trim();
+  const withoutInternationalPrefix = trimmed.startsWith("+")
+    ? trimmed.slice(1)
+    : trimmed.startsWith("00")
+      ? trimmed.slice(2)
+      : trimmed;
+  const digits = withoutInternationalPrefix.replace(/\D/g, "");
+  return digits.length === 8 ? `507${digits}` : digits;
+}
+
 export default function EmergencyPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const shortCode = params.shortCode as string;
   const source = searchParams.get("source") || "qr";
+  const normalizedSource = source === "nfc" ? "nfc" : "qr";
   const [profile, setProfile] = useState<EmergencyProfile | null>(null);
   const [chipMetadata, setChipMetadata] = useState<ChipMetadata | null>(null);
   const [isInactive, setIsInactive] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [isParamedic, setIsParamedic] = useState<boolean | null>(null);
+  const [scanLocation, setScanLocation] = useState("");
   const [scanTime] = useState(new Date().toLocaleString("es-PA", { 
     timeZone: "America/Panama",
     hour: '2-digit', 
@@ -74,11 +83,13 @@ export default function EmergencyPage() {
   useEffect(() => {
     async function load() {
       try {
-        const scanBody: Record<string, unknown> = { sourceType: source };
+        const scanBody: Record<string, unknown> = { sourceType: normalizedSource };
 
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
+              const locationLabel = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+              setScanLocation(locationLabel);
               fetch(`/api/public/${shortCode}/scan`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -126,7 +137,7 @@ export default function EmergencyPage() {
     }
 
     load();
-  }, [shortCode, source]);
+  }, [shortCode, normalizedSource]);
 
   if (loading) {
     return (
@@ -298,7 +309,7 @@ export default function EmergencyPage() {
   }
 
   if (profile.organization) {
-    return <IndustrialProfileView profile={profile} />;
+    return <IndustrialProfileView profile={profile} scanLocation={scanLocation} />;
   }
 
   return (
@@ -394,7 +405,7 @@ export default function EmergencyPage() {
               <div className="pt-8 border-t border-slate-50 flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div className="flex items-center gap-3">
                     <div className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-                    <p className="text-sm font-black text-slate-400 uppercase">Equipos de Rescate Alertados</p>
+                    <p className="text-sm font-black text-slate-400 uppercase">Usa las acciones manuales de emergencia</p>
                 </div>
                 <button 
                     onClick={() => setIsParamedic(true)}
@@ -503,12 +514,6 @@ export default function EmergencyPage() {
                 content={profile.medications}
                 color="emerald"
               />
-              <MedicalCard
-                icon={<MessageCircle className="h-7 w-7 text-slate-500" />}
-                title="INSTRUCCIONES"
-                content={profile.additionalNotes || "Sin notas adicionales reportadas por el usuario."}
-                color="slate"
-              />
             </div>
           </div>
         )}
@@ -532,8 +537,13 @@ export default function EmergencyPage() {
               <div className="grid grid-cols-1 gap-6">
                 {profile.emergencyContacts.length > 0 ? (
                     profile.emergencyContacts.map((contact, idx) => {
-                      const cleanPhone = contact.phone.replace(/\D/g, "");
-                      const whatsappPhone = cleanPhone.startsWith("507") ? cleanPhone : `507${cleanPhone}`;
+                      const contactPhone = sanitizeTelPhone(contact.phone);
+                      const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
+                      const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
+                      const whatsappMessage = scanLocation
+                        ? `Hola ${contact.fullName}, ${personName} tuvo un accidente. Fue escaneado en ${scanLocation}.`
+                        : `Hola ${contact.fullName}, ${personName} tuvo un accidente. Fue escaneado desde su perfil de emergencia.`;
+                      const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`;
                       
                       return (
                         <div key={idx} className="p-8 rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm">
@@ -556,13 +566,13 @@ export default function EmergencyPage() {
 
                             <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                                 <a
-                                    href={`tel:${contact.phone}`}
+                                    href={`tel:${contactPhone}`}
                                     className="flex-1 sm:flex-none inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-glow-sm transition-all active:scale-95 shadow-xl shadow-emerald-100/50 w-full sm:w-auto btn-premium"
                                 >
                                     <Phone className="h-4 w-4 fill-white" /> Llamar
                                 </a>
                                 <a
-                                    href={`https://wa.me/${whatsappPhone}`}
+                                    href={whatsappUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex-1 sm:flex-none inline-flex items-center justify-center gap-3 px-8 py-4 bg-[#25D366] text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all active:scale-95 shadow-xl shadow-emerald-100 w-full sm:w-auto"
@@ -603,7 +613,7 @@ export default function EmergencyPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mt-8">
           <div className="bg-white border border-slate-200 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
             <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Acceso Verificado</p>
-            <p className="mt-4 text-2xl font-black text-slate-900 uppercase tracking-tight">{source === "nfc" ? "NFC Seguro" : "QR Seguro"}</p>
+            <p className="mt-4 text-2xl font-black text-slate-900 uppercase tracking-tight">{normalizedSource === "nfc" ? "NFC Seguro" : "QR Seguro"}</p>
             <p className="mt-3 text-sm text-slate-600 leading-relaxed">Lectura registrada con prioridad de emergencia.</p>
           </div>
 
@@ -642,7 +652,7 @@ export default function EmergencyPage() {
                    {[
                      "Identificación vital en segundos.",
                      "Ahorra minutos de oro en accidentes.",
-                     "Protege a tu familia con alertas GPS."
+                     "Contacta a tu familia con llamadas y WhatsApp manual."
                    ].map((t, i) => (
                       <div key={i} className="flex gap-3 text-[11px] font-bold text-slate-500 leading-snug items-start">
                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
@@ -671,7 +681,7 @@ export default function EmergencyPage() {
                    {[
                      "Escanea el NFC o QR del chip.",
                      "Valida alergias y ficha médica.",
-                     "Notifica a la red de emergencia."
+                     "Usa llamada o WhatsApp desde el perfil."
                    ].map((t, i) => (
                       <div key={i} className="flex gap-3 text-[11px] font-bold text-slate-500 leading-snug items-start">
                          <div className="h-4 w-4 rounded-lg bg-slate-100 flex-shrink-0 flex items-center justify-center text-[10px] text-slate-400 group-hover:bg-red-50 group-hover:text-red-600 transition-colors">{i+1}</div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PaymentService } from "@/domains/shared/services/payment.service";
 import { prisma } from "@/lib/prisma";
 import Stripe from "stripe";
+import { ACCOUNT_TYPES } from "@/domains/shared/constants";
 
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
@@ -30,15 +31,31 @@ export async function POST(req: NextRequest) {
         prisma.package.findUnique({ where: { id: packageId } }),
       ]);
 
-      if (!user?.accountId || !pkg) {
+      if (
+        !user?.accountId ||
+        !pkg ||
+        !pkg.isActive ||
+        ![ACCOUNT_TYPES.PERSONAL, ACCOUNT_TYPES.COMPANY].includes(pkg.accountType as "personal" | "company")
+      ) {
         console.error("[Webhook] User or Package not found for payment:", { userId, packageId });
-        return NextResponse.json({ received: true, error: "User or Package not found" });
+        return NextResponse.json({ received: true, error: "User or Package invalid" });
       }
 
-      // 2. Perform updates in a single transaction
-      await prisma.$transaction([
-        // Update the account: assign the purchased package
-        prisma.account.update({
+      const providerReference =
+        typeof session.payment_intent === "string" ? session.payment_intent : session.id;
+
+      await prisma.$transaction(async (tx) => {
+        const existingOrder = await tx.order.findFirst({
+          where: {
+            provider: "stripe",
+            providerReference,
+          },
+          select: { id: true },
+        });
+
+        if (existingOrder) return;
+
+        await tx.account.update({
           where: { id: user.accountId },
           data: {
             packageId: pkg.id,
@@ -47,19 +64,19 @@ export async function POST(req: NextRequest) {
             maxProfilesAllocated: pkg.maxProfiles,
             status: "active",
           },
-        }),
-        // Record the order in the DB for audit trail
-        prisma.order.create({
+        });
+
+        await tx.order.create({
           data: {
             userId,
             amount: (session.amount_total ?? 0) / 100, // Stripe uses cents
             currency: session.currency ?? "usd",
             paymentStatus: "paid",
             provider: "stripe",
-            providerReference: (session.payment_intent as string) ?? session.id,
+            providerReference,
           },
-        }),
-      ]);
+        });
+      });
 
       console.log(`[Webhook] ✅ Package '${pkg.name}' activated for user ${userId} on account ${user.accountId}`);
     }

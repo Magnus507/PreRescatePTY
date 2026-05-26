@@ -4,8 +4,20 @@ import { logger } from "@/lib/logger";
 import { ConfigRepository } from "@/domains/shared/repositories/config.repository";
 import { decrypt } from "@/lib/encryption";
 import { rateLimit } from "@/lib/rateLimit";
+import { getClientIp } from "@/lib/request-ip";
 
 export const dynamic = "force-dynamic";
+
+function publicJson(
+  body: unknown,
+  init?: ResponseInit
+) {
+  const response = NextResponse.json(body, init);
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  return response;
+}
 
 export async function GET(
   req: NextRequest,
@@ -15,13 +27,10 @@ export async function GET(
     const paramsAwaited = await params;
     const shortCode = paramsAwaited.shortCode.toUpperCase().trim();
 
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-      req.headers.get("x-real-ip") ||
-      "anonymous";
+    const ip = getClientIp(req, "public-profile-view");
     const rl = await rateLimit("profile_view", ip, { limit: 30, windowMs: 60_000 });
     if (!rl.allowed) {
-      return NextResponse.json(
+      return publicJson(
         { error: "Demasiadas solicitudes. Intenta más tarde." },
         {
           status: 429,
@@ -43,7 +52,6 @@ export async function GET(
         allergies: "PENICILINA (CRÍTICO), Nueces",
         chronicConditions: "Hipertensión controlada",
         medications: "Lisinopril 10mg",
-        additionalNotes: "Porta marcapasos medtronic (v.2024). Paramedicos: Acceder a historial via PreRescate Protocol.",
         photoUrl: "https://fikidmfquaxhlayxctsa.supabase.co/storage/v1/object/public/profile-photos/demo-admin.png",
         isVerifiedAdmin: true,
         emergencyContacts: [
@@ -51,7 +59,7 @@ export async function GET(
           { fullName: "Dr. Mendoza (Cardiólogo)", relationship: "Médico Cabecera", phone: "+507 6677-8899" }
         ],
       };
-      return NextResponse.json({ profile: demoProfile });
+      return publicJson({ profile: demoProfile });
     }
 
     const chip = await prisma.chip.findUnique({
@@ -78,16 +86,14 @@ export async function GET(
     });
 
     if (!chip) {
-      const response = NextResponse.json(
+      return publicJson(
         { error: "Código no encontrado en el sistema.", status: "not_found" },
         { status: 404 }
       );
-      response.headers.set("Access-Control-Allow-Origin", "*");
-      return response;
     }
 
     if (chip.status !== "activated" || !chip.assignedProfile) {
-      const response = NextResponse.json({ 
+      return publicJson({ 
         status: "inactive",
         chip: {
           shortCode: chip.shortCode,
@@ -98,8 +104,6 @@ export async function GET(
           originalStatus: chip.status
         }
       });
-      response.headers.set("Access-Control-Allow-Origin", "*");
-      return response;
     }
 
     const profile = chip.assignedProfile;
@@ -109,8 +113,6 @@ export async function GET(
     const decryptedAllergies = decrypt(profile.allergies || "");
     const decryptedConditions = decrypt(profile.chronicConditions || "");
     const decryptedBloodType = decrypt(profile.bloodType || "");
-    const decryptedNote = decrypt(profile.additionalNotes || "");
-
     // Humanitarian Overwrite Logic
     const hasCriticalData = 
       (decryptedAllergies && !decryptedAllergies.toLowerCase().includes("no report")) ||
@@ -120,14 +122,14 @@ export async function GET(
     const isServiceInactive = chip.serviceStatus === "expired" || chip.serviceStatus === "inactive";
 
     if (isServiceInactive && !hasCriticalData) {
-      return NextResponse.json(
+      return publicJson(
         { error: "Protocolo inactivo por falta de renovación.", status: "expired" },
         { status: 403 }
       );
     }
 
     if (profile.profileVisibilityStatus !== "active") {
-      return NextResponse.json(
+      return publicJson(
         { error: "Perfil desactivado temporalmente", status: "hidden" },
         { status: 403 }
       );
@@ -160,26 +162,16 @@ export async function GET(
       allergies: decryptedAllergies || "No reportadas",
       chronicConditions: decryptedConditions || "No reportadas",
       medications: decrypt(profile.medications || "") || "No reportados",
-      additionalNotes: decryptedNote || "",
       photoUrl: profile.photoUrl || null,
       isVerifiedAdmin: isDemo, 
       
-      // Organization / Industrial Data
+      // Public-safe organization context. Internal protocols, employee IDs,
+      // occupational risks and corporate response buttons are intentionally
+      // not exposed from the public emergency profile.
       organization: orgMember ? {
         name: orgMember.organization.legalName,
         location: orgMember.location?.name || null,
         department: orgMember.department?.name || null,
-        employeeId: orgMember.employeeId,
-        position: orgMember.position,
-        shift: orgMember.shift,
-        occupationalRisks: orgMember.occupationalRisks,
-        medicalRestrictions: orgMember.medicalRestrictions,
-        emergencyProtocol: orgMember.emergencyProtocol,
-        emergencyButtons: [
-          { label: orgMember.organization.emergencyButton1Label, phone: orgMember.organization.emergencyButton1Phone },
-          { label: orgMember.organization.emergencyButton2Label, phone: orgMember.organization.emergencyButton2Phone },
-          { label: orgMember.organization.emergencyButton3Label, phone: orgMember.organization.emergencyButton3Phone },
-        ].filter(b => b.phone)
       } : null,
 
       emergencyContacts: profile.contacts.map((pc) => ({
@@ -189,18 +181,14 @@ export async function GET(
       })),
     };
 
-    const response = NextResponse.json({ profile: publicProfile });
-    response.headers.set("Access-Control-Allow-Origin", "*");
-    return response;
+    return publicJson({ profile: publicProfile });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Public profile error:", errorMessage);
-    const response = NextResponse.json(
+    return publicJson(
       { error: "Error interno" },
       { status: 500 }
     );
-    response.headers.set("Access-Control-Allow-Origin", "*");
-    return response;
   }
 }
 

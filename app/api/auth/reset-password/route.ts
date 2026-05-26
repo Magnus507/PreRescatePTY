@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { rateLimit } from "@/lib/rateLimit";
+import { getClientIp } from "@/lib/request-ip";
 
 export async function POST(req: Request) {
   try {
     const { token, password } = await req.json();
-    const forwardedFor = req.headers.get("x-forwarded-for")?.split(",")[0].trim();
-    const ip = forwardedFor || req.headers.get("x-real-ip") || "anonymous";
+    const ip = getClientIp(req, "reset-password");
     const limiter = await rateLimit("reset-password:ip", ip, { limit: 10, windowMs: 60_000 * 15 });
 
     if (!limiter.allowed) {

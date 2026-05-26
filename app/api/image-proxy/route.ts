@@ -9,6 +9,18 @@ const PUBLIC_BUCKETS = new Set(["general", "profile-photos"]);
 const AUTHENTICATED_BUCKETS = new Set(["payment-proofs"]);
 const SAFE_PATH_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9/_.,=-]{0,240}\.(?:jpg|jpeg|png|webp)$/i;
 
+function getFrontendCorsOrigin(req: NextRequest) {
+  const requestOrigin = req.headers.get("origin");
+  const appOrigin = process.env.NEXT_PUBLIC_APP_URL;
+  const currentOrigin = req.nextUrl.origin;
+
+  if (requestOrigin && (requestOrigin === appOrigin || requestOrigin === currentOrigin)) {
+    return requestOrigin;
+  }
+
+  return appOrigin || currentOrigin;
+}
+
 /**
  * PROXY ENDPOINT: Sirve imágenes de Supabase Storage
  * Evita problemas de CORS y cachea correctamente
@@ -101,14 +113,21 @@ export async function GET(req: NextRequest) {
     if (path.endsWith(".png")) contentType = "image/png";
     if (path.endsWith(".jpg") || path.endsWith(".jpeg")) contentType = "image/jpeg";
     if (path.endsWith(".webp")) contentType = "image/webp";
+    const headers: Record<string, string> = {
+      "Content-Type": contentType,
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff",
+    };
+
+    if (AUTHENTICATED_BUCKETS.has(bucket)) {
+      headers["Access-Control-Allow-Origin"] = getFrontendCorsOrigin(req);
+      headers["Vary"] = "Origin";
+    } else {
+      headers["Access-Control-Allow-Origin"] = "*";
+    }
 
     return new NextResponse(buffer, {
-      headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "X-Content-Type-Options": "nosniff",
-        "Access-Control-Allow-Origin": "*", // CORS
-      },
+      headers,
     });
   } catch (err: unknown) {
     const error = err as Error;

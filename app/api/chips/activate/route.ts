@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import { chipActivationSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 
@@ -13,19 +14,21 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id;
-  const body = await req.json();
-  const { activationCode } = body;
+  const body = await req.json().catch(() => ({}));
+  const parsedBody = chipActivationSchema.safeParse(body);
 
-  if (!activationCode) {
+  if (!parsedBody.success) {
     return NextResponse.json(
-      { error: "Código de activación requerido" },
+      { error: parsedBody.error.errors[0]?.message || "Código de activación inválido" },
       { status: 400 }
     );
   }
 
+  const { activationCode } = parsedBody.data;
+
   // Find the claim token
   const claimToken = await prisma.chipClaimToken.findUnique({
-    where: { activationCode: activationCode.toUpperCase().trim() },
+    where: { activationCode },
     include: { chip: true },
   });
 
@@ -62,7 +65,11 @@ export async function POST(req: NextRequest) {
   // Use Centralized Account State
   const state = await AccountStateService.getAccountState(userId);
 
-  if (!state.hasCompletedMedicalProfile) {
+  const currentUserProfile = await prisma.profile.findUnique({
+    where: { userId },
+  });
+
+  if (!AccountStateService.isMedicalProfileComplete(currentUserProfile)) {
     return NextResponse.json({ error: "Debes completar tu perfil médico (nombre, apellido y tipo de sangre) antes de activar un chip" }, { status: 400 });
   }
 
@@ -95,13 +102,17 @@ export async function POST(req: NextRequest) {
       }
       const targetAccountId = account.id;
 
-      // Find profile ID (we know it exists because hasCompletedMedicalProfile is true)
+      // Find the current user's own profile. Another complete profile in the same
+      // account must not unlock activation for this chip.
       const profile = await tx.profile.findFirst({
         where: { userId }
       });
 
-      if (!profile) {
-        throw new Error("No se encontró el perfil o cuenta asociada");
+      if (!AccountStateService.isMedicalProfileComplete(profile)) {
+        throw Object.assign(
+          new Error("Debes completar tu perfil médico (nombre, apellido y tipo de sangre) antes de activar un chip"),
+          { status: 400 }
+        );
       }
 
       // Activate the chip within transaction

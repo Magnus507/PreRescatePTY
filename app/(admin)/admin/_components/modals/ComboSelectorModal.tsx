@@ -1,23 +1,26 @@
-import React, { useState } from 'react';
-import { X, Zap, Plus, CreditCard, Shield, ChevronRight, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Zap, Plus, CreditCard, ChevronRight, Loader2 } from 'lucide-react';
+import { PACKAGE_THEMES } from '@/domains/shared/constants';
 
-interface Combo {
+interface PackageOption {
   id: string;
   name: string;
-  chips: number;
+  slug: string | null;
+  maxChips: number;
+  maxProfiles: number;
   price: number;
-  description: string;
-  color: string;
+  description: string | null;
+  isActive: boolean;
+  accountType: string;
+  icon: string | null;
+  color: string | null;
+  recommended: boolean;
+  displayOrder: number;
+  savings: string | null;
+  allowsFamilyProfiles: boolean;
+  allowsOrganizationModule: boolean;
+  serviceDurationMonths: number;
 }
-
-const COMBOS: Combo[] = [
-  { id: 'estandar', name: 'Combo Estándar', chips: 1, price: 25, description: 'Añade 1 chip de protección individual', color: 'bg-slate-500' },
-  { id: 'duo', name: 'Combo Duo', chips: 2, price: 45, description: 'Añade 2 chips de protección', color: 'bg-blue-500' },
-  { id: 'familiar', name: 'Combo Familiar', chips: 3, price: 65, description: 'Añade 3 chips (Multi-Perfil)', color: 'bg-indigo-500' },
-  { id: 'hogar-full', name: 'Hogar Full', chips: 5, price: 95, description: 'Añade 5 chips de protección total', color: 'bg-rose-500' },
-  { id: 'empresa', name: 'Empresa', chips: 20, price: 250, description: 'Añade 20 chips para grupos o pymes', color: 'bg-slate-900' },
-  { id: 'corporativo', name: 'Corporativo', chips: 50, price: 450, description: 'Añade 50 chips corporativos/colegiales', color: 'bg-slate-900' },
-];
 
 interface ComboSelectorModalProps {
   isOpen: boolean;
@@ -27,11 +30,36 @@ interface ComboSelectorModalProps {
   loading: boolean;
 }
 
-export const ComboSelectorModal: React.FC<ComboSelectorModalProps> = ({ 
-  isOpen, onClose, onSubmit, currentCapacity, loading 
+export const ComboSelectorModal: React.FC<ComboSelectorModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  currentCapacity,
+  loading,
 }) => {
-  const [selectedCombo, setSelectedCombo] = useState<Combo | null>(null);
+  const [packages, setPackages] = useState<PackageOption[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<PackageOption | null>(null);
   const [customChips, setCustomChips] = useState<string>('');
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setPackagesLoading(true);
+    setFetchError(null);
+
+    fetch('/api/public/packages')
+      .then((res) => res.json())
+      .then((data) => {
+        setPackages((data?.packages || []) as PackageOption[]);
+      })
+      .catch((err) => {
+        console.error('Error loading package options:', err);
+        setFetchError('No se pudieron cargar los paquetes de la tienda. Intenta de nuevo.');
+      })
+      .finally(() => setPackagesLoading(false));
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -56,38 +84,54 @@ export const ComboSelectorModal: React.FC<ComboSelectorModalProps> = ({
         </header>
 
         <div className="p-8 max-h-[60vh] overflow-y-auto space-y-6">
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {COMBOS.map((combo) => (
-                 <button
-                   key={combo.id}
-                   onClick={() => {
-                      setSelectedCombo(combo);
-                      setCustomChips('');
-                   }}
-                   className={`
-                    p-6 rounded-3xl border-2 transition-all text-left relative group
-                    ${selectedCombo?.id === combo.id 
-                        ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5' 
-                        : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50'}
-                   `}
-                 >
-                    <div className="flex justify-between items-start mb-4">
-                        <div className={`h-8 w-8 ${combo.color} rounded-xl flex items-center justify-center text-white shadow-lg`}>
-                            <Plus className="h-4 w-4" />
-                        </div>
-                        <span className="text-lg font-black text-slate-900 dark:text-white">${combo.price}</span>
-                    </div>
-                    <p className="font-black text-slate-900 dark:text-white mb-1">{combo.name}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">{combo.description}</p>
-                    <div className="mt-4 flex items-center justify-between">
-                        <span className="text-xs font-black text-primary">+{combo.chips} Chips</span>
-                        <ChevronRight className={`h-4 w-4 text-primary transition-transform ${selectedCombo?.id === combo.id ? 'translate-x-1' : 'opacity-0'}`} />
-                    </div>
-                 </button>
-              ))}
-           </div>
+          {packagesLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : fetchError ? (
+            <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-rose-700">
+              {fetchError}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {packages.map((pkg) => {
+                const styles = PACKAGE_THEMES[pkg.color || 'standard']?.styles || PACKAGE_THEMES.standard.styles;
+                const isSelected = selectedPackage?.id === pkg.id;
 
-           <div className="pt-6 border-t border-slate-50 dark:border-slate-800">
+                return (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPackage(pkg);
+                      setCustomChips('');
+                    }}
+                    className={`p-6 rounded-3xl border-2 transition-all text-left relative group ${isSelected ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5' : `${styles.color} ${styles.border} hover:shadow-lg`}`}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-white shadow-lg ${styles.bg}`}>
+                        <Plus className="h-4 w-4" />
+                      </div>
+                      <span className="text-lg font-black text-slate-900 dark:text-white">${pkg.price}</span>
+                    </div>
+                    <p className="font-black text-slate-900 dark:text-white mb-1">{pkg.name}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">{pkg.description || 'Avanza tu seguridad con un paquete validado'}</p>
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="text-xs font-black text-primary">+{pkg.maxChips} Chips</span>
+                      <ChevronRight className={`h-4 w-4 text-primary transition-transform ${isSelected ? 'translate-x-1' : 'opacity-0'}`} />
+                    </div>
+                  </button>
+                );
+              })}
+              {packages.length === 0 && (
+                <div className="col-span-full rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                  No hay paquetes disponibles en este momento.
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="pt-6 border-t border-slate-50 dark:border-slate-800">
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Ajuste Manual Personalizado</p>
               <div className="flex items-center gap-3">
                  <input 
@@ -95,7 +139,7 @@ export const ComboSelectorModal: React.FC<ComboSelectorModalProps> = ({
                    value={customChips}
                    onChange={(e) => {
                       setCustomChips(e.target.value);
-                      setSelectedCombo(null);
+                      setSelectedPackage(null);
                    }}
                    placeholder="Cantidad de chips (ej: 30)" 
                    className="flex-1 px-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none" 
@@ -111,18 +155,18 @@ export const ComboSelectorModal: React.FC<ComboSelectorModalProps> = ({
            <div>
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Capacidad Final</p>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
-                 {selectedCombo ? currentCapacity + selectedCombo.chips : customChips ? parseInt(customChips) : currentCapacity} Chips
+                 {selectedPackage ? currentCapacity + selectedPackage.maxChips : customChips ? parseInt(customChips) : currentCapacity} Chips
               </p>
            </div>
            <button 
              onClick={() => {
-                if (selectedCombo) {
-                   onSubmit({ maxChips: currentCapacity + selectedCombo.chips });
+                if (selectedPackage) {
+                   onSubmit({ packageId: selectedPackage.id });
                 } else if (customChips) {
                    onSubmit({ maxChips: parseInt(customChips) });
                 }
              }}
-             disabled={loading || (!selectedCombo && !customChips)}
+             disabled={loading || (!selectedPackage && !customChips)}
              className="px-10 py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
            >
               {loading ? (
