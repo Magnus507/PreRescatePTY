@@ -32,9 +32,7 @@ export async function rateLimit(
   options: { limit: number; windowMs: number }
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
   if (isProduction && !redis) {
-    throw new Error(
-      "Rate limit misconfigured: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required in production."
-    );
+    console.warn("Rate limit: Upstash Redis not configured. Falling back to in-memory store (single-instance only).");
   }
 
   const key = `${namespace}:${identifier}`;
@@ -56,9 +54,7 @@ export async function rateLimit(
       };
     } catch (e) {
       console.error("Upstash Redis error:", e);
-      if (isProduction) {
-        throw new Error("Rate limit unavailable: Upstash Redis request failed.");
-      }
+      // Fall through to in-memory store instead of breaking the request
     }
   }
 
