@@ -68,7 +68,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { _buildId, dev, isServer, defaultLoaders, webpack }) => {
+  webpack: (config, { dev, isServer, defaultLoaders, webpack }) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
