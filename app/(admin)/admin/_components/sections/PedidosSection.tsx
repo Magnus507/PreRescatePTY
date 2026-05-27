@@ -133,16 +133,7 @@ export function PedidosSection() {
   }, [selectedOrder]);
 
   const calculateNeededChips = (order: Order) => {
-    let chips = 0;
-    order.items.forEach(item => {
-      const type = item.productType.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (type.includes("CHIP_EXTRA")) chips += item.quantity;
-      if (type.includes("ESTANDAR")) chips += 1 * item.quantity;
-      if (type.includes("DUO")) chips += 2 * item.quantity;
-      if (type.includes("FAMILIAR")) chips += 3 * item.quantity;
-      if (type.includes("HOGAR")) chips += 5 * item.quantity;
-    });
-    return chips;
+    return order.items.reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
   };
 
   const handleStatusChange = async (id: string, newStatus: string, actionText: string) => {
@@ -402,8 +393,13 @@ export function PedidosSection() {
                                          key={chip.id}
                                          disabled={!isAssigned && !canAddMore}
                                          onClick={() => {
-                                           if(isAssigned) setAssignedChipIds(prev => prev.filter(id => id !== chip.id));
-                                           else if(canAddMore) setAssignedChipIds(prev => [...prev, chip.id]);
+                                           if(isAssigned) {
+                                             setAssignedChipIds(prev => prev.filter(id => id !== chip.id));
+                                           } else if(canAddMore) {
+                                             setAssignedChipIds(prev => [...prev, chip.id]);
+                                           } else {
+                                             toast.error(`Este pedido solo incluye ${neededCount} chips.`);
+                                           }
                                          }}
                                          className={`w-full p-3 rounded-xl text-left flex items-center justify-between transition-all border ${isAssigned ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-white border-transparent hover:border-border'} ${(!isAssigned && !canAddMore) ? 'opacity-20 grayscale cursor-not-allowed' : ''}`}
                                        >
@@ -427,8 +423,11 @@ export function PedidosSection() {
                                     <span className="text-3xl font-black">{assignedChipIds.length}</span>
                                     <span className="text-base opacity-50 font-bold">/ {calculateNeededChips(selectedOrder)}</span>
                                  </div>
-                                 <p className="text-[11px] font-bold text-right">Chips<br/>Asignados</p>
+                                 <p className="text-[11px] font-bold text-right">Seleccionados<br/>{assignedChipIds.length} / {calculateNeededChips(selectedOrder)}</p>
                               </div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">
+                                Chips comprados: {calculateNeededChips(selectedOrder)}
+                              </p>
                            </div>
                         ) : (
                            <div className="space-y-4">

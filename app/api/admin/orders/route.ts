@@ -68,6 +68,8 @@ export async function PATCH(req: NextRequest) {
 
     if (!order) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
 
+    const purchasedChipLimit = order.items.reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
+
     if (
       order.provider === "manual" &&
       ((typeof orderStatus === "string" && orderStatus !== order.orderStatus) ||
@@ -75,6 +77,17 @@ export async function PATCH(req: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "Órdenes manuales: usa /api/admin/orders/{id}/approve o /reject para cambios de estado." },
+        { status: 400 }
+      );
+    }
+
+    const requestedChipCount = Array.isArray(assignedChipIds)
+      ? assignedChipIds.length
+      : (generateTokens ? purchasedChipLimit : 0);
+
+    if (requestedChipCount > purchasedChipLimit) {
+      return NextResponse.json(
+        { error: `Este pedido solo permite ${purchasedChipLimit} chips.` },
         { status: 400 }
       );
     }
@@ -113,6 +126,12 @@ export async function PATCH(req: NextRequest) {
         
         if (neededChips > 0) {
           if (assignedChipIds && Array.isArray(assignedChipIds) && assignedChipIds.length > 0) {
+            if (assignedChipIds.length > purchasedChipLimit) {
+              return NextResponse.json(
+                { error: `Este pedido solo permite ${purchasedChipLimit} chips.` },
+                { status: 400 }
+              );
+            }
             // Manual Linkage logic
           for (const chipId of assignedChipIds) {
              const chip = await prisma.chip.findUnique({ where: { id: chipId } });

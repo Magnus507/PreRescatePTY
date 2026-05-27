@@ -67,13 +67,22 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }
     });
     // Actualizar cuenta
+    const currentAccount = await tx.account.findUnique({
+      where: { id: user.accountId! },
+      select: { maxChipsAllocated: true, maxProfilesAllocated: true }
+    });
+
+    if (!currentAccount) {
+      throw new Error("Cuenta no encontrada");
+    }
+
     const account = await tx.account.update({
       where: { id: user.accountId! },
       data: {
         packageId: pkg.id,
         accountType: pkg.accountType,
-        maxChipsAllocated: pkg.maxChips,
-        maxProfilesAllocated: pkg.maxProfiles,
+        maxChipsAllocated: Math.max(currentAccount.maxChipsAllocated, pkg.maxChips),
+        maxProfilesAllocated: Math.max(currentAccount.maxProfilesAllocated, pkg.maxProfiles),
         status: "active",
       }
     });
