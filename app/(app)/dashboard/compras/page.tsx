@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Plus, Minus, ShoppingCart, Truck, Package } from "lucide-react";
+import { Loader2, ShoppingCart, Truck, Package } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { BUSINESS_RULES } from "@/domains/shared/constants";
@@ -20,7 +20,6 @@ function ComprasContent() {
     isCombo: false,
     packageId: null as string | null
   });
-  const [quantity, setQuantity] = useState(1);
   const [isOrdering, setIsOrdering] = useState(false);
   
   const [shippingAddress, setShippingAddress] = useState("");
@@ -31,7 +30,7 @@ function ComprasContent() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"yappy" | "bank_transfer">("yappy");
 
-  const totalPrice = quantity * selectedProduct.price;
+  const totalPrice = selectedProduct.price;
 
   useEffect(() => {
     loadPackages();
@@ -48,7 +47,6 @@ function ComprasContent() {
             isCombo: true,
             packageId: pkg.id
          });
-         setQuantity(1);
          window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
@@ -87,7 +85,6 @@ function ComprasContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           packageId: selectedProduct.packageId,
-          quantity,
           customerName,
           customerEmail,
           customerPhone,
@@ -145,16 +142,16 @@ function ComprasContent() {
              <p className="text-muted-foreground text-sm font-medium mb-12 max-w-md leading-relaxed">Stickers originales de alta resistencia. Vinculación vitalicia a nuestra red de asistencia nacional.</p>
              
              <div className="flex items-center justify-between p-6 rounded-[2.5rem] bg-muted/50 border border-border mb-12">
-                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="h-16 w-16 rounded-2xl bg-white border border-border flex items-center justify-center hover:bg-slate-50 hover:text-primary transition-all active:scale-90 shadow-sm">
-                  <Minus className="h-6 w-6" />
-                </button>
-                <div className="text-center">
-                   <p className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-1">Unidades</p>
-                   <p className="text-5xl font-black tracking-tighter">{quantity}</p>
-                </div>
-                <button onClick={() => setQuantity(q => q + 1)} className="h-16 w-16 rounded-2xl bg-white border border-border flex items-center justify-center hover:bg-slate-50 hover:text-primary transition-all active:scale-90 shadow-sm">
-                  <Plus className="h-6 w-6" />
-                </button>
+               <div>
+                 <p className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-1">Combo Seleccionado</p>
+                 <p className="text-2xl font-black tracking-tighter">{selectedProduct.name}</p>
+               </div>
+               <div className="text-right">
+                 <p className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-1">Chips Incluidos</p>
+                 <p className="text-3xl font-black tracking-tighter">
+                   {(packages.find(p => p.id === selectedProduct.packageId)?.maxChips ?? 1)}
+                 </p>
+               </div>
              </div>
 
              <div className="space-y-6 mb-12 border-t border-border pt-10">
@@ -295,7 +292,6 @@ function ComprasContent() {
                        isCombo: true,
                        packageId: pkg.id
                      });
-                     setQuantity(1);
                      window.scrollTo({ top: 0, behavior: 'smooth' });
                    }}
                    className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
