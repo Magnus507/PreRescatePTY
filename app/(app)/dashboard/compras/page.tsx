@@ -103,7 +103,9 @@ function ComprasContent() {
           window.location.href = "/dashboard/pedidos";
         }, 1500);
       } else {
-        toast.error("Error al crear el pedido");
+        const data = await res.json().catch(() => ({}));
+        console.error("Manual order create failed", data);
+        toast.error(data.error || "Error al crear el pedido");
       }
     } catch (e) {
       toast.error("Error de conexión");

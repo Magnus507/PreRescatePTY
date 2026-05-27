@@ -324,9 +324,18 @@ function PedidosContent() {
                              onClick={async () => {
                                if(!confirm("¿Cancelar pedido?")) return;
                                setUploadingFor(order.id);
-                               await fetch(`/api/orders/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }), headers: { "Content-Type": "application/json" } });
-                               toast.success("Cancelado"); loadOrders();
-                               setUploadingFor(null);
+                                try {
+                                  const res = await fetch(`/api/orders/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }), headers: { "Content-Type": "application/json" } });
+                                  if (res.ok) {
+                                    toast.success("Cancelado");
+                                    loadOrders();
+                                  } else {
+                                    const data = await res.json().catch(() => ({}));
+                                    toast.error(data.error || "Error al cancelar pedido");
+                                  }
+                                } finally {
+                                  setUploadingFor(null);
+                                }
                              }}
                              className="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all min-w-[150px]"
                           >
