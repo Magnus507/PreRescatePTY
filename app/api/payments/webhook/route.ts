@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PaymentService } from "@/domains/shared/services/payment.service";
 import { prisma } from "@/lib/prisma";
 import Stripe from "stripe";
+import { Prisma } from "@prisma/client";
 import { ACCOUNT_TYPES } from "@/domains/shared/constants";
 
 export async function POST(req: NextRequest) {
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
       const providerReference =
         typeof session.payment_intent === "string" ? session.payment_intent : session.id;
 
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const existingOrder = await tx.order.findFirst({
           where: {
             provider: "stripe",
@@ -71,7 +72,9 @@ export async function POST(req: NextRequest) {
             userId,
             amount: (session.amount_total ?? 0) / 100, // Stripe uses cents
             currency: session.currency ?? "usd",
+            paymentMethod: "stripe",
             paymentStatus: "paid",
+            orderStatus: "completed",
             provider: "stripe",
             providerReference,
           },

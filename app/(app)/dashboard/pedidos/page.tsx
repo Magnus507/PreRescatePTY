@@ -27,8 +27,12 @@ interface Order {
   id: string;
   orderNumber: string;
   amount: number;
+  provider: string;
   orderStatus: string;
   paymentStatus: string;
+  paymentMethod: string | null;
+  manualPaymentReference: string | null;
+  adminReviewStatus: string | null;
   paymentProofUrl: string | null;
   createdAt: string;
   items: OrderItem[];
@@ -42,6 +46,8 @@ function PedidosContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const [paymentProofDraft, setPaymentProofDraft] = useState<Record<string, string>>({});
+  const [paymentRefDraft, setPaymentRefDraft] = useState<Record<string, string>>({});
   
   // Shipping states for updates
   const [shippingAddress, setShippingAddress] = useState("");
@@ -104,20 +110,18 @@ function PedidosContent() {
       if (!uploadRes.ok) throw new Error("Error al procesar imagen");
       const { url } = await uploadRes.json();
 
-      // 2. Update Order with URL
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: "PATCH",
+      // 2. Register payment proof in manual flow endpoint
+      const res = await fetch(`/api/orders/${orderId}/payment-proof`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           paymentProofUrl: url,
-          shippingAddress: shippingAddress || undefined,
-          shippingCity: shippingCity || undefined,
-          shippingNotes: shippingNotes || undefined
+          manualPaymentReference: paymentRefDraft[orderId] || undefined,
         }),
       });
       
       if (res.ok) {
-        toast.success("Comprobante enviado exitosamente");
+        toast.success("Comprobante enviado. Tu pago está bajo revisión.");
         loadOrders();
       } else {
         toast.error("Error al actualizar el pedido");
@@ -130,7 +134,43 @@ function PedidosContent() {
     }
   };
 
-  const getStatusDisplay = (status: string) => {
+  const handleSubmitReference = async (orderId: string) => {
+    const manualPaymentReference = paymentRefDraft[orderId];
+    const paymentProofUrl = paymentProofDraft[orderId];
+    if (!manualPaymentReference && !paymentProofUrl) {
+      toast.error("Ingresa referencia Yappy o URL de comprobante");
+      return;
+    }
+    setUploadingFor(orderId);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/payment-proof`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manualPaymentReference, paymentProofUrl }),
+      });
+      if (res.ok) {
+        toast.success("Referencia/comprobante enviado. Pago bajo revisión.");
+        loadOrders();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "No se pudo enviar la referencia");
+      }
+    } finally {
+      setUploadingFor(null);
+    }
+  };
+
+  const getStatusDisplay = (status: string, paymentStatus?: string) => {
+    if (paymentStatus === "rejected") {
+      return { label: "Pago Rechazado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
+    }
+    if (paymentStatus === "under_review") {
+      return { label: "Pago en Revisión", icon: Clock, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
+    }
+    if (paymentStatus === "paid") {
+      return { label: "Pago Aprobado", icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" };
+    }
+
     switch(status) {
       case "pending": return { label: "Esperando Pago", icon: Clock, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" };
       case "processing": return { label: "Trabajando en tu pedido", icon: ShoppingBag, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
@@ -166,7 +206,7 @@ function PedidosContent() {
         ) : (
           <div className="space-y-8">
             {orders.map(order => {
-              const status = getStatusDisplay(order.orderStatus);
+              const status = getStatusDisplay(order.orderStatus, order.paymentStatus);
               const StatusIcon = status.icon;
               
               return (
@@ -176,6 +216,7 @@ function PedidosContent() {
                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2">Pedido #{order.orderNumber.substring(0, 10)}</p>
                       <h3 className="text-3xl font-black tracking-tighter">${order.amount.toFixed(2)}</h3>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString()}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">Pago: {(order.paymentMethod || "manual").replace("_", " ")}</p>
                     </div>
                     <div className={`flex items-center gap-3 px-6 py-3 rounded-2xl border ${status.color}`}>
                       <StatusIcon className="h-5 w-5" />
@@ -183,7 +224,8 @@ function PedidosContent() {
                     </div>
                   </div>
                   
-                  {order.orderStatus === "pending" && !order.paymentProofUrl && (
+                  {/* MANUAL FLOW P0 HARDENING */}
+                  {order.provider === "manual" && (order.paymentStatus === "pending" || order.paymentStatus === "under_review" || order.paymentStatus === "rejected") && (
                     <div className="p-8 rounded-[2.5rem] bg-slate-50 border border-border flex flex-col items-center gap-8 text-center">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                         <div className="p-6 rounded-3xl bg-white border border-border flex flex-col items-center gap-3 shadow-sm transition-all hover:scale-[1.02]">
@@ -247,13 +289,36 @@ function PedidosContent() {
                       </div>
 
                       <div className="flex flex-col items-center gap-4 w-full">
-                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Sube tu comprobante para procesar</p>
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Referencia / comprobante de pago</p>
+                        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <input
+                            type="text"
+                            placeholder="Referencia Yappy / transferencia"
+                            className="w-full bg-white border border-border rounded-xl px-4 py-3 text-xs font-bold"
+                            value={paymentRefDraft[order.id] ?? order.manualPaymentReference ?? ""}
+                            onChange={(e) => setPaymentRefDraft((prev) => ({ ...prev, [order.id]: e.target.value }))}
+                          />
+                          <input
+                            type="text"
+                            placeholder="URL comprobante (opcional)"
+                            className="w-full bg-white border border-border rounded-xl px-4 py-3 text-xs font-bold"
+                            value={paymentProofDraft[order.id] ?? order.paymentProofUrl ?? ""}
+                            onChange={(e) => setPaymentProofDraft((prev) => ({ ...prev, [order.id]: e.target.value }))}
+                          />
+                        </div>
                         <div className="flex flex-wrap items-center justify-center gap-3 w-full">
                           <label className="relative cursor-pointer bg-primary text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex-1">
                             {uploadingFor === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                             {uploadingFor === order.id ? 'Subiendo...' : 'Subir Comprobante'}
                             <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => handleFileUpload(e, order.id)} disabled={uploadingFor === order.id} />
                           </label>
+                          <button 
+                             onClick={() => handleSubmitReference(order.id)}
+                             disabled={uploadingFor === order.id}
+                             className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all min-w-[170px] disabled:opacity-50"
+                          >
+                             Enviar Referencia
+                          </button>
                           <button 
                              onClick={async () => {
                                if(!confirm("¿Cancelar pedido?")) return;

@@ -99,8 +99,12 @@ export async function POST(req: NextRequest) {
           userId,
           orderNumber: nextNumber,
           amount: totalPrice,
+          // MANUAL FLOW P1 DOMAIN CONSISTENCY
+          // Legacy /api/orders must not look like manual-payment workflow orders.
+          provider: "legacy",
           orderStatus: "pending",
           paymentStatus: "pending",
+          paymentMethod: (validatedData.paymentMethod as "manual" | "yappy" | "bank_transfer" | undefined) || "manual",
           shippingAddress: validatedData.shippingAddress || null,
           shippingCity: validatedData.shippingCity || null,
           shippingNotes: validatedData.shippingNotes || null,
@@ -129,13 +133,22 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  // MANUAL FLOW P0 HARDENING
   const userId = session.user.id;
+  const providerFilter = new URL(req.url).searchParams.get("provider");
+  const safeProvider = ["manual", "stripe", "admin"].includes(String(providerFilter))
+    ? String(providerFilter)
+    : null;
+
   const orders = await prisma.order.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(safeProvider ? { provider: safeProvider } : {}),
+    },
     orderBy: { createdAt: "desc" },
     include: { 
       items: true, 

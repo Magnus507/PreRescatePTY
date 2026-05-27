@@ -26,6 +26,10 @@ function ComprasContent() {
   const [shippingAddress, setShippingAddress] = useState("");
   const [shippingCity, setShippingCity] = useState("");
   const [shippingNotes, setShippingNotes] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"yappy" | "bank_transfer">("yappy");
 
   const totalPrice = quantity * selectedProduct.price;
 
@@ -63,6 +67,14 @@ function ComprasContent() {
   }
 
   async function handleCreateOrder() {
+    if (!selectedProduct.packageId) {
+      toast.error("Selecciona un paquete para continuar");
+      return;
+    }
+    if (!customerName || !customerEmail) {
+      toast.error("Nombre y email son requeridos");
+      return;
+    }
     if (!shippingAddress || !shippingCity) {
       toast.error("Por favor completa la dirección de envío");
       return;
@@ -70,24 +82,23 @@ function ComprasContent() {
 
     setIsOrdering(true);
     try {
-      const res = await fetch("/api/orders", {
+      const res = await fetch("/api/orders/manual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          packageId: selectedProduct.packageId,
+          customerName,
+          customerEmail,
+          customerPhone,
           shippingAddress,
           shippingCity,
           shippingNotes,
-          providerReference: selectedProduct.packageId,
-          items: [{
-            productType: selectedProduct.isCombo ? `COMBO_${selectedProduct.name.split(' ')[1].toUpperCase()}` : "CHIP_EXTRA",
-            quantity,
-            unitPrice: selectedProduct.price
-          }]
+          paymentMethod,
         }),
       });
       
       if (res.ok) {
-        toast.success("Pedido procesado exitosamente. Sube tu comprobante en la sección de pedidos.");
+        toast.success("Orden manual creada. Continúa con el pago y sube tu comprobante en Pedidos.");
         setTimeout(() => {
           window.location.href = "/dashboard/pedidos";
         }, 1500);
@@ -148,6 +159,45 @@ function ComprasContent() {
              <div className="space-y-6 mb-12 border-t border-border pt-10">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-6 flex items-center gap-3">
                   <div className="h-1.5 w-6 bg-primary rounded-full" />
+                  Datos del Cliente
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1 sm:col-span-2">
+                    <p className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nombre completo</p>
+                    <input
+                      type="text"
+                      placeholder="Tu nombre"
+                      className="w-full bg-slate-50 border border-border rounded-2xl px-6 py-4 text-sm font-bold focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-muted-foreground ml-1">Email</p>
+                    <input
+                      type="email"
+                      placeholder="tu@email.com"
+                      className="w-full bg-slate-50 border border-border rounded-2xl px-6 py-4 text-sm font-bold focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-muted-foreground ml-1">Teléfono</p>
+                    <input
+                      type="text"
+                      placeholder="+507 ..."
+                      className="w-full bg-slate-50 border border-border rounded-2xl px-6 py-4 text-sm font-bold focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6 mb-12 border-t border-border pt-10">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-6 flex items-center gap-3">
+                  <div className="h-1.5 w-6 bg-primary rounded-full" />
                   Información para el Envío
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -180,6 +230,26 @@ function ComprasContent() {
                     value={shippingNotes}
                     onChange={(e) => setShippingNotes(e.target.value)}
                   />
+                </div>
+             </div>
+
+             <div className="space-y-6 mb-10">
+                <p className="text-[10px] font-black uppercase text-muted-foreground mb-3 tracking-[0.2em]">Método de Pago</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: 'yappy', label: 'Yappy' },
+                    { key: 'bank_transfer', label: 'Transferencia Bancaria' }
+                  ].map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setPaymentMethod(option.key as "yappy" | "bank_transfer")}
+                      className={`w-full rounded-3xl border p-4 text-left transition-all ${paymentMethod === option.key ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-white hover:border-primary/20'}`}
+                    >
+                      <p className="text-sm font-black uppercase tracking-[0.2em]">{option.label}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Selecciona la opción para tu comprobante.</p>
+                    </button>
+                  ))}
                 </div>
              </div>
 

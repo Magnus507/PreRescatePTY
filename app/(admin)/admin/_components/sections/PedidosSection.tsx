@@ -7,6 +7,7 @@ import Link from "next/link";
 
 interface Order {
   id: string;
+  provider: string;
   orderNumber: string;
   customerName: string;
   customerEmail: string;
@@ -15,6 +16,10 @@ interface Order {
   amount: number;
   orderStatus: string;
   paymentStatus: string;
+  paymentMethod: string | null;
+  manualPaymentReference: string | null;
+  adminReviewStatus: string | null;
+  adminReviewNotes: string | null;
   paymentProofUrl: string | null;
   shippingAddress: string | null;
   shippingCity: string | null;
@@ -49,11 +54,12 @@ export function PedidosSection() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [reviewNote, setReviewNote] = useState("");
   const [updating, setUpdating] = useState(false);
   const [inventory, setInventory] = useState<InventoryChip[]>([]);
   const [assignedChipIds, setAssignedChipIds] = useState<string[]>([]);
   const [searchInventory, setSearchInventory] = useState("");
-  const [activeTab, setActiveTab] = useState<'all' | 'new' | 'shipped' | 'completed'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'paid' | 'rejected' | 'completed'>('all');
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const loadInventoryRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
@@ -95,6 +101,12 @@ export function PedidosSection() {
       loadInventoryRef.current();
     }
   }, [selectedOrder?.id]);
+
+  useEffect(() => {
+    if (selectedOrder) {
+      setReviewNote(selectedOrder.adminReviewNotes || "");
+    }
+  }, [selectedOrder?.id, selectedOrder?.adminReviewNotes]);
 
   useEffect(() => {
     const handleWindowFocus = () => {
@@ -169,6 +181,42 @@ export function PedidosSection() {
     }
   };
 
+  const handleReviewAction = async (id: string, action: "approve" | "reject") => {
+    if (selectedOrder?.provider !== "manual") {
+      toast.error("La revisión manual solo aplica a órdenes con provider manual.");
+      return;
+    }
+
+    const confirmMessage = action === "approve"
+      ? "¿Aprobar el pago y marcar esta orden como pagada?"
+      : "¿Rechazar el pago y devolver la orden a pendiente?";
+
+    if (!confirm(confirmMessage)) return;
+    setUpdating(true);
+
+    try {
+      const res = await fetch(`/api/admin/orders/${id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminReviewNotes: reviewNote }),
+      });
+
+      if (res.ok) {
+        toast.success(action === "approve" ? "Pago aprobado" : "Pago rechazado");
+        setSelectedOrder(null);
+        setAssignedChipIds([]);
+        loadOrders();
+        loadInventory();
+      } else {
+        toast.error("Error al actualizar la revisión");
+      }
+    } catch (e) {
+      toast.error("Error de conexión");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const clearCancelledOrders = async () => {
     if (!confirm("¿Deseas eliminar permanentemente TODAS las órdenes canceladas? Esta acción no se puede deshacer.")) return;
     
@@ -188,7 +236,11 @@ export function PedidosSection() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, paymentStatus?: string) => {
+    if (paymentStatus === "rejected") {
+      return <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase">Pago Rechazado</span>;
+    }
+
     switch(status) {
       case "pending": return <span className="px-2 py-1 bg-amber-500/10 text-amber-600 rounded-lg text-xs font-bold uppercase">Pendiente</span>;
       case "processing": return <span className="px-2 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-xs font-bold uppercase">Revisión Pagos</span>;
@@ -223,7 +275,7 @@ export function PedidosSection() {
                <div>
                   <div className="flex items-center gap-3">
                      <h2 className="text-3xl font-black uppercase tracking-tighter">Pedido #{selectedOrder.orderNumber}</h2>
-                     {getStatusBadge(selectedOrder.orderStatus)}
+                     {getStatusBadge(selectedOrder.orderStatus, selectedOrder.paymentStatus)}
                   </div>
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">Logística de Despacho & CRM</p>
                </div>
@@ -239,7 +291,7 @@ export function PedidosSection() {
 
          <div className="bg-card w-full overflow-hidden rounded-[3rem] border border-border shadow-xl min-h-[70vh] flex flex-col">
             <div className="flex-1 p-10 lg:p-14">
-               <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+               <div className="grid grid-cols-1 lg:grid-cols-16 gap-12">
                   
                   {/* COL 1: Logistics & Delivery */}
                   <div className="lg:col-span-4 space-y-10">
@@ -386,6 +438,62 @@ export function PedidosSection() {
                      </section>
                   </div>
 
+                  <div className="lg:col-span-4 space-y-10">
+                     <section className="space-y-6">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Revisión de Pago
+                        </h3>
+                        <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-border shadow-sm space-y-4">
+                           <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Método de Pago</p>
+                              <p className="text-lg font-black text-slate-900 dark:text-white">{selectedOrder.paymentMethod ? selectedOrder.paymentMethod.replace("_", " ").toUpperCase() : "Manual"}</p>
+                           </div>
+                           <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Referencia Manual</p>
+                              <p className="text-sm font-bold text-slate-900 dark:text-white break-all">{selectedOrder.manualPaymentReference || "—"}</p>
+                           </div>
+                           <div className="grid grid-cols-2 gap-3">
+                              <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
+                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de orden</p>
+                                 <p className="text-sm font-bold uppercase mt-2">{selectedOrder.orderStatus}</p>
+                              </div>
+                              <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
+                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de pago</p>
+                                 <p className="text-sm font-bold uppercase mt-2">{selectedOrder.paymentStatus}</p>
+                              </div>
+                           </div>
+                           <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Notas de revisión</p>
+                              <textarea
+                                value={reviewNote}
+                                onChange={(e) => setReviewNote(e.target.value)}
+                                className="w-full min-h-[120px] rounded-[2rem] border border-border bg-slate-50 dark:bg-slate-950 p-4 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10"
+                                placeholder="Agrega una observación para la aprobación o rechazo..."
+                              />
+                           </div>
+                           {selectedOrder.provider === "manual" && selectedOrder.paymentStatus === "under_review" && (
+                              <div className="flex flex-col gap-3 sm:flex-row">
+                                 <button
+                                   disabled={updating}
+                                   onClick={() => handleReviewAction(selectedOrder.id, "approve")}
+                                   className="flex-1 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
+                                 >
+                                   Aprobar Pago
+                                 </button>
+                                 <button
+                                   disabled={updating}
+                                   onClick={() => handleReviewAction(selectedOrder.id, "reject")}
+                                   className="flex-1 px-6 py-4 bg-red-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
+                                 >
+                                   Rechazar Pago
+                                 </button>
+                              </div>
+                           )}
+                        </div>
+                     </section>
+                  </div>
+
                   {/* COL 3: Summary & Evidence */}
                   <div className="lg:col-span-4 space-y-10">
                      <section className="space-y-6">
@@ -493,8 +601,10 @@ export function PedidosSection() {
          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-fit">
             {[
               { id: 'all', label: 'Todos' },
-              { id: 'new', label: 'Por Revisar' },
-              { id: 'shipped', label: 'Enviados' },
+              { id: 'pending', label: 'Pending' },
+              { id: 'under_review', label: 'Under Review' },
+              { id: 'paid', label: 'Paid' },
+              { id: 'rejected', label: 'Rejected' },
               { id: 'completed', label: 'Completados' }
             ].map(tab => (
               <button 
@@ -538,8 +648,10 @@ export function PedidosSection() {
              </thead>
              <tbody className="divide-y divide-border">
                 {orders.filter(o => {
-                  if (activeTab === 'new') return o.orderStatus === 'pending' || o.orderStatus === 'processing';
-                  if (activeTab === 'shipped') return o.orderStatus === 'shipped';
+                  if (activeTab === 'pending') return o.paymentStatus === 'pending';
+                  if (activeTab === 'under_review') return o.paymentStatus === 'under_review';
+                  if (activeTab === 'paid') return o.paymentStatus === 'paid';
+                  if (activeTab === 'rejected') return o.paymentStatus === 'rejected';
                   if (activeTab === 'completed') return o.orderStatus === 'completed';
                   return true;
                 }).map(o => (
@@ -565,7 +677,7 @@ export function PedidosSection() {
                          <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items.length} items</p>
                       </td>
                       <td className="p-4">
-                         {getStatusBadge(o.orderStatus)}
+                         {getStatusBadge(o.orderStatus, o.paymentStatus)}
                          {o.paymentProofUrl && <p className="text-[9px] font-black text-emerald-600 uppercase mt-1">✓ Pago Subido</p>}
                       </td>
                       <td className="p-4 pr-8">

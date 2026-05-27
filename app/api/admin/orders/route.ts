@@ -54,6 +54,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  // MANUAL FLOW P0 HARDENING
   const { id, orderStatus, paymentStatus, generateTokens, assignedChipIds } = await req.json();
 
   try {
@@ -66,6 +67,17 @@ export async function PATCH(req: NextRequest) {
     });
 
     if (!order) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
+
+    if (
+      order.provider === "manual" &&
+      ((typeof orderStatus === "string" && orderStatus !== order.orderStatus) ||
+        (typeof paymentStatus === "string" && paymentStatus !== order.paymentStatus))
+    ) {
+      return NextResponse.json(
+        { error: "Órdenes manuales: usa /api/admin/orders/{id}/approve o /reject para cambios de estado." },
+        { status: 400 }
+      );
+    }
 
     const updatedOrder = await prisma.order.update({
       where: { id },
@@ -177,7 +189,7 @@ export async function PATCH(req: NextRequest) {
         where: { orderId: id },
         select: { chipId: true }
       });
-      const chipIdsToUpdate = orderTokens.map(t => t.chipId);
+      const chipIdsToUpdate = orderTokens.map((t: { chipId: string }) => t.chipId);
       
       if (chipIdsToUpdate.length > 0) {
         await prisma.chip.updateMany({

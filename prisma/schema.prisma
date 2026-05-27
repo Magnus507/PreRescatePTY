@@ -22,75 +22,77 @@ model Product {
 }
 
 model Account {
-  id                String    @id @default(cuid())
-  accountType       String    @default("personal")
-  accountName       String?
-  ownerUserId       String?
-  status            String    @default("active")
-  packageId         String?
-  maxChipsAllocated Int       @default(1)
-  maxProfilesAllocated Int    @default(1)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                   String   @id @default(cuid())
+  accountType          String   @default("personal")
+  accountName          String?
+  ownerUserId          String?
+  status               String   @default("active")
+  packageId            String?
+  maxChipsAllocated    Int      @default(1)
+  maxProfilesAllocated Int      @default(1)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  package           Package?  @relation(fields: [packageId], references: [id])
-  profiles          Profile[]
-  users             User[]
-  chips             Chip[]
-  organizations     Organization[]
+  package       Package?       @relation(fields: [packageId], references: [id])
+  profiles      Profile[]
+  users         User[]
+  chips         Chip[]
+  organizations Organization[]
 }
 
 model Package {
-  id                    String    @id @default(cuid())
-  name                  String    @unique
-  slug                  String?   @unique
-  maxChips              Int
-  maxProfiles           Int       @default(1)
-  price                 Float
-  description           String?
-  isActive              Boolean   @default(true)
-  accountType           String    @default("personal")
-  icon                  String?
-  color                 String?
-  recommended           Boolean   @default(false)
-  displayOrder          Int       @default(0)
-  savings               String?
-  allowsFamilyProfiles  Boolean   @default(false)
-  allowsOrganizationModule Boolean @default(false)
-  allowsSchoolModule    Boolean   @default(false)
-  serviceDurationMonths Int       @default(24)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  accounts              Account[]
+  id                       String    @id @default(cuid())
+  name                     String    @unique
+  slug                     String?   @unique
+  maxChips                 Int
+  maxProfiles              Int       @default(1)
+  price                    Float
+  description              String?
+  isActive                 Boolean   @default(true)
+  accountType              String    @default("personal")
+  icon                     String?
+  color                    String?
+  recommended              Boolean   @default(false)
+  displayOrder             Int       @default(0)
+  savings                  String?
+  allowsFamilyProfiles     Boolean   @default(false)
+  allowsOrganizationModule Boolean   @default(false)
+  allowsSchoolModule       Boolean   @default(false)
+  serviceDurationMonths    Int       @default(24)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  accounts                 Account[]
+  orders                   Order[]
 }
 
 model User {
-  id           String    @id @default(cuid())
-  accountId    String?
-  email        String    @unique
-  phone        String?
-  passwordHash String
-  role         String    @default("owner")
-  isAdmin      Boolean   @default(false)
-  adminRole    String?   // "admin", "superadmin", "imprenta" — only set when isAdmin=true
-  status       String    @default("active")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastLoginAt  DateTime?
-  mfaSecret    String?   // TOTP Secret
-  mfaEnabled   Boolean   @default(false)
-  deletedAt    DateTime? // Soft delete for compliance
-  account      Account?  @relation(fields: [accountId], references: [id])
-  profile      Profile?
-  chips        Chip[]
-  orders       Order[]
-  consent      Consent[]
+  id               String            @id @default(cuid())
+  accountId        String?
+  email            String            @unique
+  phone            String?
+  passwordHash     String
+  role             String            @default("owner")
+  isAdmin          Boolean           @default(false)
+  adminRole        String? // "admin", "superadmin", "imprenta" — only set when isAdmin=true
+  status           String            @default("active")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  lastLoginAt      DateTime?
+  mfaSecret        String? // TOTP Secret
+  mfaEnabled       Boolean           @default(false)
+  deletedAt        DateTime? // Soft delete for compliance
+  account          Account?          @relation(fields: [accountId], references: [id])
+  profile          Profile?
+  chips            Chip[]
+  orders           Order[]
+  reviewedOrders   Order[]           @relation("OrderAdminReview")
+  consent          Consent[]
   appNotifications AppNotification[]
-  contacts     Contact[]
+  contacts         Contact[]
 
-  @@index([isAdmin])  // Fast admin filtering
-  @@index([phone])    // Support lookup
-  @@index([email])    // Login/Audit
+  @@index([isAdmin]) // Fast admin filtering
+  @@index([phone]) // Support lookup
+  @@index([email]) // Login/Audit
 }
 
 model PasswordResetToken {
@@ -104,38 +106,38 @@ model PasswordResetToken {
 }
 
 model Profile {
-  id                      String             @id @default(cuid())
+  id                      String               @id @default(cuid())
   accountId               String?
-  userId                  String?            @unique
+  userId                  String?              @unique
   firstName               String
   lastName                String
   displayNamePublic       String?
   birthDate               DateTime?
   sex                     String?
   bloodType               String
-  allergies               String             @default("")
-  chronicConditions       String             @default("")
-  medications             String             @default("")
-  additionalNotes         String             @default("")
+  allergies               String               @default("")
+  chronicConditions       String               @default("")
+  medications             String               @default("")
+  additionalNotes         String               @default("")
   phone                   String?
-  nationalId              String?            @default("")
-  address                 String?            @db.Text
+  nationalId              String?              @default("")
+  address                 String?              @db.Text
   city                    String?
-  profileVisibilityStatus String             @default("active")
+  profileVisibilityStatus String               @default("active")
   photoUrl                String?
   lastScanAt              DateTime?
-  lastScanLocation        String? 
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
-  account                 Account?           @relation(fields: [accountId], references: [id])
+  lastScanLocation        String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  account                 Account?             @relation(fields: [accountId], references: [id])
   contacts                ProfileContact[]
-  user                    User?              @relation(fields: [userId], references: [id])
+  user                    User?                @relation(fields: [userId], references: [id])
   assignedChips           Chip[]
   organizationMembers     OrganizationMember[]
   digitalPass             DigitalPass?
 
   @@index([accountId]) // Dashboard: list profiles per account
-  @@index([userId])    // Already unique, but explicit for clarity in joins
+  @@index([userId]) // Already unique, but explicit for clarity in joins
   @@index([nationalId]) // Support/Emergency: search by Cedula/ID
 }
 
@@ -151,9 +153,9 @@ model Contact {
   notifyWhatsapp Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  
-  profiles  ProfileContact[]
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  profiles ProfileContact[]
+  user     User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ProfileContact {
@@ -170,77 +172,77 @@ model ProfileContact {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  contact        Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   @@unique([profileId, contactId])
 }
 
 model Chip {
-  id                String    @id @default(cuid())
+  id                String           @id @default(cuid())
   accountId         String?
   assignedProfileId String?
-  chipUidInternal   String    @unique @default(cuid())
-  serialPublic      String    @unique
-  shortCode         String    @unique
+  chipUidInternal   String           @unique @default(cuid())
+  serialPublic      String           @unique
+  shortCode         String           @unique
   nfcUrl            String
   qrUrl             String
   batchId           String?
-  productType       String    @default("sticker_nfc_qr")
-  nicheType         String    @default("motorcycle")
-  internalLabel     String?   @unique
+  productType       String           @default("sticker_nfc_qr")
+  nicheType         String           @default("motorcycle")
+  internalLabel     String?          @unique
   chipAlias         String?
-  status            String    @default("inventory")
+  status            String           @default("inventory")
   ownerUserId       String?
   activatedAt       DateTime?
   lastScanAt        DateTime?
   lastScanLocation  String?
-  transferLock      Boolean   @default(false)
+  transferLock      Boolean          @default(false)
   serviceStartDate  DateTime?
   serviceEndDate    DateTime?
-  serviceStatus     String    @default("active")
-  isPhysical        Boolean   @default(false)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  serviceStatus     String           @default("active")
+  isPhysical        Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
   claimTokens       ChipClaimToken[]
   scanEvents        ScanEvent[]
   notifications     Notification[]
-  owner             User?     @relation(fields: [ownerUserId], references: [id])
-  assignedProfile   Profile?  @relation(fields: [assignedProfileId], references: [id])
-  account           Account?  @relation(fields: [accountId], references: [id])
+  owner             User?            @relation(fields: [ownerUserId], references: [id])
+  assignedProfile   Profile?         @relation(fields: [assignedProfileId], references: [id])
+  account           Account?         @relation(fields: [accountId], references: [id])
 
-  @@index([accountId])      // Dashboard: count active chips per account
-  @@index([ownerUserId])    // Activation: find chips by owner
-  @@index([status])         // Cron: filter chips by status for expiry job
+  @@index([accountId]) // Dashboard: count active chips per account
+  @@index([ownerUserId]) // Activation: find chips by owner
+  @@index([status]) // Cron: filter chips by status for expiry job
   @@index([serviceEndDate]) // Cron: filter chips near expiry
 }
 
 model Organization {
-  id               String   @id @default(cuid())
+  id               String  @id @default(cuid())
   accountId        String
   legalName        String
   displayName      String?
-  organizationType String   @default("company") // "company", "school", "port", etc.
+  organizationType String  @default("company") // "company", "school", "port", etc.
   taxId            String?
   contactEmail     String?
   contactPhone     String?
   address          String?
-  status           String   @default("active")
-  
+  status           String  @default("active")
+
   // Custom Emergency Buttons (Global for the org)
-  emergencyButton1Label String?  @default("Brigada Interna")
+  emergencyButton1Label String? @default("Brigada Interna")
   emergencyButton1Phone String?
-  emergencyButton2Label String?  @default("Seguridad Control")
+  emergencyButton2Label String? @default("Seguridad Control")
   emergencyButton2Phone String?
-  emergencyButton3Label String?  @default("Ambulancia / Clínica")
+  emergencyButton3Label String? @default("Ambulancia / Clínica")
   emergencyButton3Phone String?
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
-  account          Account  @relation(fields: [accountId], references: [id])
-  members          OrganizationMember[]
-  locations        OrganizationLocation[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account   Account                @relation(fields: [accountId], references: [id])
+  members   OrganizationMember[]
+  locations OrganizationLocation[]
 }
 
 model OrganizationLocation {
@@ -252,51 +254,51 @@ model OrganizationLocation {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  departments    OrganizationDepartment[]
-  members        OrganizationMember[]
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  departments  OrganizationDepartment[]
+  members      OrganizationMember[]
 }
 
 model OrganizationDepartment {
-  id             String   @id @default(cuid())
-  locationId     String
-  name           String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id         String   @id @default(cuid())
+  locationId String
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  location       OrganizationLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  members        OrganizationMember[]
+  location OrganizationLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  members  OrganizationMember[]
 }
 
 model OrganizationMember {
-  id             String   @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   profileId      String
   locationId     String?
   departmentId   String?
-  
-  employeeId     String?   // ID de empleado o carnet
-  internalCode   String?   // Código interno adicional
-  position       String?   // Cargo o Puesto
-  shift          String?   // Turno (Diurno, Nocturno, Rotativo)
-  
-  // Occupational / Industrial Data
-  occupationalRisks    String[] @default([]) // ["Trabajo en alturas", "Alta tensión"]
-  medicalRestrictions  String?  @db.Text    // "No levantar >15kg"
-  emergencyProtocol    String?  @db.Text    // "Asma severa -> administrar inhalador"
-  
-  // Corporate Contacts (Specific per member if needed)
-  supervisorName       String?
-  supervisorPhone      String?
-  
-  memberStatus   String   @default("active") // "active", "visitor", "contractor", "suspended"
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  profile        Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  location       OrganizationLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  department     OrganizationDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  employeeId   String? // ID de empleado o carnet
+  internalCode String? // Código interno adicional
+  position     String? // Cargo o Puesto
+  shift        String? // Turno (Diurno, Nocturno, Rotativo)
+
+  // Occupational / Industrial Data
+  occupationalRisks   String[] @default([]) // ["Trabajo en alturas", "Alta tensión"]
+  medicalRestrictions String?  @db.Text // "No levantar >15kg"
+  emergencyProtocol   String?  @db.Text // "Asma severa -> administrar inhalador"
+
+  // Corporate Contacts (Specific per member if needed)
+  supervisorName  String?
+  supervisorPhone String?
+
+  memberStatus String   @default("active") // "active", "visitor", "contractor", "suspended"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  profile      Profile                 @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  location     OrganizationLocation?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  department   OrganizationDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 }
 
 model ChipClaimToken {
@@ -331,11 +333,11 @@ model ScanEvent {
   rawMetadataJson    String?
   chip               Chip     @relation(fields: [chipId], references: [id], onDelete: Cascade)
 
-  @@index([accountId])   // Dashboard: count total scans per account (AccountStateService)
-  @@index([chipId])      // History: list scans per chip
-  @@index([scannedAt])   // Analytics: time-range queries
-  @@index([country])     // Analytics: geographic distribution
-  @@index([city])        // Analytics: city-level insights
+  @@index([accountId]) // Dashboard: count total scans per account (AccountStateService)
+  @@index([chipId]) // History: list scans per chip
+  @@index([scannedAt]) // Analytics: time-range queries
+  @@index([country]) // Analytics: geographic distribution
+  @@index([city]) // Analytics: city-level insights
 }
 
 model Consent {
@@ -383,40 +385,51 @@ model Notification {
   createdAt        DateTime  @default(now())
   chip             Chip      @relation(fields: [chipId], references: [id], onDelete: Cascade)
 
-  @@index([chipId])  // Notification history per chip
-  @@index([status])  // Filter pending/failed notifications
+  @@index([chipId]) // Notification history per chip
+  @@index([status]) // Filter pending/failed notifications
 }
 
 model Order {
-  id                String   @id @default(cuid())
-  orderNumber       String   @unique @default(cuid())
-  userId            String?
-  amount            Float
-  currency          String   @default("USD")
-  orderStatus       String   @default("pending")
-  paymentStatus     String   @default("pending")
-  provider          String   @default("manual")
-  providerReference String?
-  paymentProofUrl   String?
-  customerName      String?
-  customerEmail     String?
-  customerPhone     String?
-  customerDocument  String?
-  shippingAddress   String?  @db.Text
-  shippingCity      String?
-  shippingNotes     String?  @db.Text
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  orderNumber            String    @unique @default(cuid())
+  userId                 String?
+  amount                 Float
+  currency               String    @default("USD")
+  orderStatus            String    @default("pending")
+  paymentStatus          String    @default("pending")
+  paymentMethod          String    @default("manual")
+  adminReviewStatus      String    @default("pending")
+  adminReviewedAt        DateTime?
+  adminReviewedById      String?
+  adminReviewNotes       String?   @db.Text
+  provider               String    @default("manual")
+  providerReference      String?
+  paymentProofUrl        String?
+  customerName           String?
+  customerEmail          String?
+  customerPhone          String?
+  customerDocument       String?
+  shippingAddress        String?   @db.Text
+  shippingCity           String?
+  shippingNotes          String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  manualPaymentReference String?
 
-  user              User?    @relation(fields: [userId], references: [id])
-  items             OrderItem[]
-  chipClaimTokens   ChipClaimToken[]
-
-  @@index([userId])
-  @@index([orderStatus])
-  @@index([paymentStatus])
+  packageId       String?
+  package         Package?         @relation(fields: [packageId], references: [id])
+  user            User?            @relation(fields: [userId], references: [id])
+  adminReviewedBy User?            @relation("OrderAdminReview", fields: [adminReviewedById], references: [id])
+  items           OrderItem[]
+  chipClaimTokens ChipClaimToken[]
   // Stripe idempotency is enforced by a partial unique index on
   // (provider, providerReference) where provider='stripe' in the SQL migration.
+
+  @@index([userId])
+  @@index([adminReviewedById])
+  @@index([orderStatus])
+  @@index([paymentStatus])
+  @@index([packageId])
 }
 
 model OrderItem {
@@ -429,24 +442,22 @@ model OrderItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
 }
 
-
-
 model DigitalPass {
   id           String   @id @default(cuid())
   profileId    String   @unique
-  passType     String   // "apple" or "google"
+  passType     String // "apple" or "google"
   passUrl      String?
   serialNumber String?  @unique
   authToken    String?
   lastUpdate   DateTime @default(now())
   createdAt    DateTime @default(now())
 
-  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
 }
@@ -460,7 +471,7 @@ model AppNotification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
