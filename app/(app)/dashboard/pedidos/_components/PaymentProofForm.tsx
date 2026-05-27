@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Upload, Loader2 } from "lucide-react";
 import { Truck } from "lucide-react";
 
@@ -49,6 +50,14 @@ export function PaymentProofForm({
   onShippingChange,
   paymentInstructions,
 }: PaymentProofFormProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileButtonClick = () => {
+    if (uploadingFor !== order.id && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div className="p-8 rounded-[2.5rem] bg-slate-50 border border-border flex flex-col items-center gap-8 text-center">
       {/* Payment methods */}
@@ -116,22 +125,29 @@ export function PaymentProofForm({
           />
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3 w-full">
-          <label className="relative cursor-pointer bg-primary text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex-1">
+          <button
+            type="button"
+            onClick={handleFileButtonClick}
+            disabled={uploadingFor === order.id}
+            className="bg-primary text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex-1 disabled:opacity-50"
+            aria-label="Seleccionar archivo de comprobante"
+          >
             {uploadingFor === order.id ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Upload className="h-4 w-4" />
             )}
             {uploadingFor === order.id ? "Subiendo..." : "Subir Comprobante"}
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              className="hidden"
-              onChange={(e) => onUpload(e, order.id)}
-              disabled={uploadingFor === order.id}
-              aria-label="Seleccionar archivo de comprobante"
-            />
-          </label>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => onUpload(e, order.id)}
+            disabled={uploadingFor === order.id}
+            aria-label="Seleccionar archivo de comprobante"
+          />
           <button
             onClick={() => onSubmitReference(order.id)}
             disabled={uploadingFor === order.id}
