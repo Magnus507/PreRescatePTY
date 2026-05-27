@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2 } from "lucide-react";
+import { Loader2, View, CheckCircle2, Truck, RefreshCw, Trash2 } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
+import { ManualPaymentReview } from "@/app/(admin)/admin/_components/orders/ManualPaymentReview";
+import { ChipAssignmentPanel } from "@/app/(admin)/admin/_components/orders/ChipAssignmentPanel";
 import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
@@ -357,173 +359,35 @@ export function PedidosSection() {
 
                   {/* COL 2: Fulfillment & Picking */}
                   <div className="lg:col-span-4 space-y-6 bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[2rem] border border-border/60">
-                     <section className="space-y-4">
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
-                           <div className="h-1.5 w-6 bg-primary rounded-full" />
-                           Picking Físico
-                        </h3>
-                        
-                        {selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "shipped" ? (
-                           <div className="space-y-4">
-                              <div className="relative group">
-                                 <PackageSearch className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                 <input 
-                                   type="text" 
-                                   placeholder="Escanea o busca sticker..." 
-                                   className="w-full bg-white dark:bg-slate-800 border-border rounded-xl pl-12 pr-4 py-3 text-sm font-bold shadow-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                   value={searchInventory}
-                                   onChange={(e) => setSearchInventory(e.target.value)}
-                                 />
-                              </div>
-                              
-                               <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-                                 {inventory.filter(c => 
-                                    c.isPhysical && (
-                                      c.serialPublic.toLowerCase().includes(searchInventory.toLowerCase()) || 
-                                      (c.internalLabel?.toLowerCase().includes(searchInventory.toLowerCase()))
-                                    )
-                                 ).map(chip => {
-                                    const isAssigned = assignedChipIds.includes(chip.id);
-                                    const neededCount = calculateNeededChips(selectedOrder);
-                                    const canAddMore = assignedChipIds.length < neededCount;
-
-                                    return (
-                                       <button 
-                                         key={chip.id}
-                                         disabled={!isAssigned && !canAddMore}
-                                         onClick={() => {
-                                           if(isAssigned) {
-                                             setAssignedChipIds(prev => prev.filter(id => id !== chip.id));
-                                           } else if(canAddMore) {
-                                             setAssignedChipIds(prev => [...prev, chip.id]);
-                                           } else {
-                                             toast.error(`Este pedido solo incluye ${neededCount} chips.`);
-                                           }
-                                         }}
-                                         className={`w-full p-3 rounded-xl text-left flex items-center justify-between transition-all border ${isAssigned ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-white border-transparent hover:border-border'} ${(!isAssigned && !canAddMore) ? 'opacity-20 grayscale cursor-not-allowed' : ''}`}
-                                       >
-                                          <div className="flex items-center gap-4">
-                                             <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isAssigned ? 'bg-white/20' : 'bg-slate-100'}`}>
-                                                <QrCode className="h-5 w-5" />
-                                             </div>
-                                             <div>
-                                                <p className="text-xs font-black uppercase tracking-widest">{chip.internalLabel || "Sin Etiqueta"}</p>
-                                                <p className="text-[10px] font-mono opacity-60 mt-0.5">{chip.serialPublic}</p>
-                                             </div>
-                                          </div>
-                                          {isAssigned && <CheckCircle2 className="h-5 w-5" />}
-                                       </button>
-                                    );
-                                 })}
-                              </div>
-
-                              <div className="p-5 bg-indigo-600 dark:bg-indigo-700 text-white rounded-[1.5rem] shadow-lg shadow-indigo-600/30 flex items-center justify-between">
-                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-black">{assignedChipIds.length}</span>
-                                    <span className="text-base opacity-50 font-bold">/ {calculateNeededChips(selectedOrder)}</span>
-                                 </div>
-                                 <p className="text-[11px] font-bold text-right">Seleccionados<br/>{assignedChipIds.length} / {calculateNeededChips(selectedOrder)}</p>
-                              </div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">
-                                Chips comprados: {calculateNeededChips(selectedOrder)}
-                              </p>
-                           </div>
-                        ) : (
-                           <div className="space-y-4">
-                               <div className="p-5 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-[1.5rem] text-center mb-4">
-                                 <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto mb-4" />
-                                 <h4 className="text-xl font-black uppercase tracking-tight text-emerald-700">Completado</h4>
-                                 <p className="text-xs font-bold text-emerald-600/60 uppercase tracking-widest mt-1">Los chips ya están vinculados.</p>
-                              </div>
-                              <div className="space-y-3">
-                                 {selectedOrder.chipClaimTokens.map(token => (
-                                    <div key={token.id} className="p-4 bg-white border border-border rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
-                                       <div className="space-y-1">
-                                          <div className="flex flex-col">
-                                             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">{token.chip.internalLabel || 'ID INTERNO'}</span>
-                                             <span className="font-mono text-sm font-bold tracking-tighter text-indigo-600">{token.chip.shortCode || '—'}</span>
-                                          </div>
-                                          <div className="flex flex-col mt-2">
-                                             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">SERIAL PÚBLICO</span>
-                                             <span className="font-mono text-[11px] font-bold text-slate-500">{token.chip.serialPublic}</span>
-                                          </div>
-                                       </div>
-                                        <div className="w-full sm:w-auto p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-center sm:text-right">
-                                          <p className="text-[9px] font-black text-indigo-900/60 uppercase tracking-[0.2em] mb-1">Cód. Activación</p>
-                                          <p className="font-mono text-xl font-black text-indigo-600 tracking-[0.2em]">{token.activationCode}</p>
-                                       </div>
-                                    </div>
-                                 ))}
-                              </div>
-                           </div>
-                        )}
-                     </section>
+                    <ChipAssignmentPanel
+                      orderStatus={selectedOrder.orderStatus}
+                      purchasedChips={calculateNeededChips(selectedOrder)}
+                      chipClaimTokens={selectedOrder.chipClaimTokens}
+                      inventory={inventory}
+                      assignedChipIds={assignedChipIds}
+                      searchInventory={searchInventory}
+                      onSearchChange={setSearchInventory}
+                      onToggleChip={(chipId) => {
+                        if (assignedChipIds.includes(chipId)) {
+                          setAssignedChipIds((prev) => prev.filter((id) => id !== chipId));
+                        } else if (assignedChipIds.length < calculateNeededChips(selectedOrder)) {
+                          setAssignedChipIds((prev) => [...prev, chipId]);
+                        } else {
+                          toast.error(`Este pedido solo incluye ${calculateNeededChips(selectedOrder)} chips.`);
+                        }
+                      }}
+                    />
                   </div>
 
                   <div className="lg:col-span-4 space-y-6">
-                     <section className="space-y-4">
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
-                           <div className="h-1.5 w-6 bg-primary rounded-full" />
-                           Revisión de Pago
-                        </h3>
-                        <div className="bg-white dark:bg-slate-900 p-5 rounded-[1.75rem] border border-border shadow-sm space-y-3">
-                           <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Método de Pago</p>
-                              <p className="text-base font-black text-slate-900 dark:text-white">{selectedOrder.paymentMethod ? selectedOrder.paymentMethod.replace("_", " ").toUpperCase() : "Manual"}</p>
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Referencia Manual</p>
-                              <p className="text-sm font-bold text-slate-900 dark:text-white break-all">{selectedOrder.manualPaymentReference || "—"}</p>
-                           </div>
-                           <div className="grid grid-cols-2 gap-3">
-                              <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
-                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de orden</p>
-                                 <p className="text-sm font-bold uppercase mt-2">{selectedOrder.orderStatus}</p>
-                              </div>
-                              <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
-                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de pago</p>
-                                 <p className="text-sm font-bold uppercase mt-2">{selectedOrder.paymentStatus}</p>
-                              </div>
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Notas de revisión</p>
-                              <textarea
-                                value={reviewNote}
-                                onChange={(e) => setReviewNote(e.target.value)}
-                                className="w-full min-h-[90px] rounded-xl border border-border bg-slate-50 dark:bg-slate-950 p-3 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10"
-                                placeholder="Agrega una observación para la aprobación o rechazo..."
-                              />
-                           </div>
-                           {selectedOrder.adminReviewStatus === "rejected" && (
-                             <div className="p-3 rounded-xl border border-red-200 bg-red-50">
-                               <p className="text-[10px] font-black uppercase tracking-widest text-red-700">
-                                 Motivo de rechazo: {selectedOrder.adminReviewNotes?.trim() || "No especificado"}
-                               </p>
-                             </div>
-                           )}
-                           {selectedOrder.provider === "manual" && canAdminApproveManual(selectedOrder) && (
-                              <>
-                               <p className="text-[10px] text-amber-700 font-semibold">Recomendado: indique el motivo del rechazo.</p>
-                               <div className="flex flex-col gap-2 sm:flex-row">
-                                 <button
-                                    disabled={updating || !canAdminApproveManual(selectedOrder)}
-                                   onClick={() => handleReviewAction(selectedOrder.id, "approve")}
-                                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
-                                 >
-                                   Aprobar Pago
-                                 </button>
-                                 <button
-                                    disabled={updating || !canAdminRejectManual(selectedOrder)}
-                                   onClick={() => handleReviewAction(selectedOrder.id, "reject")}
-                                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
-                                 >
-                                   Rechazar Pago
-                                 </button>
-                              </div>
-                              </>
-                           )}
-                        </div>
-                     </section>
+                    <ManualPaymentReview
+                      order={selectedOrder}
+                      reviewNote={reviewNote}
+                      updating={updating}
+                      onReviewNoteChange={setReviewNote}
+                      onApprove={() => handleReviewAction(selectedOrder.id, "approve")}
+                      onReject={() => handleReviewAction(selectedOrder.id, "reject")}
+                    />
                   </div>
 
                   {/* COL 3: Summary & Evidence */}
