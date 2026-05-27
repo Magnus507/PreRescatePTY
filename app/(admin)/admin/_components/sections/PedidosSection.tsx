@@ -142,6 +142,7 @@ export function PedidosSection() {
 
   const handleStatusChange = async (id: string, newStatus: string, actionText: string) => {
     const isCompleted = newStatus === "completed";
+    const isManualOrder = selectedOrder?.provider === "manual";
     const needed = selectedOrder ? calculateNeededChips(selectedOrder) : 0;
 
     if (isCompleted && assignedChipIds.length !== needed && needed > 0) {
@@ -152,18 +153,24 @@ export function PedidosSection() {
     
     setUpdating(true);
     try {
-      const res = await fetch(`/api/admin/orders`, {
-        method: "PATCH",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-           id, 
-           orderStatus: newStatus,
-           paymentStatus: isCompleted ? "paid" : undefined,
-           generateTokens: isCompleted,
-           assignedChipIds: isCompleted ? assignedChipIds : undefined
-        }),
-      });
+      const res = isManualOrder && newStatus === "cancelled"
+        ? await fetch(`/api/admin/orders/${id}/reject`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ adminReviewNotes: reviewNote }),
+          })
+        : await fetch(`/api/admin/orders`, {
+            method: "PATCH",
+            cache: "no-store",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              id, 
+              orderStatus: newStatus,
+              paymentStatus: isCompleted ? "paid" : undefined,
+              generateTokens: isCompleted,
+              assignedChipIds: isCompleted ? assignedChipIds : undefined
+            }),
+          });
 
       if (res.ok) {
         toast.success(`Orden actualizada a '${actionText}'`);
@@ -172,7 +179,8 @@ export function PedidosSection() {
         loadOrders();
         loadInventory();
       } else {
-        toast.error("Error al actualizar la orden");
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Error al actualizar la orden");
       }
     } catch (e) {
       toast.error("Error de conexión");

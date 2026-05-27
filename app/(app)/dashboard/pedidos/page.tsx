@@ -161,6 +161,9 @@ function PedidosContent() {
   };
 
   const getStatusDisplay = (status: string, paymentStatus?: string) => {
+    if (status === "cancelled") {
+      return { label: "Cancelado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
+    }
     if (paymentStatus === "rejected") {
       return { label: "Pago Rechazado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
     }
@@ -176,7 +179,6 @@ function PedidosContent() {
       case "processing": return { label: "Trabajando en tu pedido", icon: ShoppingBag, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
       case "shipped": return { label: "En camino", icon: Truck, color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20" };
       case "completed": return { label: "Completado", icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" };
-      case "cancelled": return { label: "Cancelado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
       default: return { label: "Desconocido", icon: AlertCircle, color: "text-slate-500 bg-slate-500/10 border-slate-500/20" };
     }
   };
