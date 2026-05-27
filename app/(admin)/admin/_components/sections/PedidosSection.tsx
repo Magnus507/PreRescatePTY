@@ -216,7 +216,8 @@ export function PedidosSection() {
         loadOrders();
         loadInventory();
       } else {
-        toast.error("Error al actualizar la revisión");
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Error al actualizar la revisión");
       }
     } catch (e) {
       toast.error("Error de conexión");

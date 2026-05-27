@@ -10,7 +10,7 @@ const SAFE_PATH_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9/_.,=-]{0,240}\.(?:jpg|jpeg|png
 function normalizePaymentProofUrl(value: string) {
   let url: URL;
   try {
-    url = new URL(value);
+    url = new URL(value, "https://local.prerescue");
   } catch {
     return null;
   }
@@ -53,7 +53,7 @@ function normalizePaymentProofUrl(value: string) {
 
 
 const PaymentProofSchema = z.object({
-  paymentProofUrl: z.string().url().optional(),
+  paymentProofUrl: z.string().min(1).optional(),
   manualPaymentReference: z.string().min(2).max(100).optional(),
 }).refine(
   (data) => data.paymentProofUrl || data.manualPaymentReference,
