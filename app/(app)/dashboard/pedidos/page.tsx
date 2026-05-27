@@ -161,9 +161,6 @@ function PedidosContent() {
   };
 
   const getStatusDisplay = (status: string, paymentStatus?: string) => {
-    if (status === "cancelled") {
-      return { label: "Cancelado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
-    }
     if (paymentStatus === "rejected") {
       return { label: "Pago Rechazado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
     }
@@ -179,6 +176,7 @@ function PedidosContent() {
       case "processing": return { label: "Trabajando en tu pedido", icon: ShoppingBag, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
       case "shipped": return { label: "En camino", icon: Truck, color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20" };
       case "completed": return { label: "Completado", icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" };
+      case "cancelled": return { label: "Cancelado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
       default: return { label: "Desconocido", icon: AlertCircle, color: "text-slate-500 bg-slate-500/10 border-slate-500/20" };
     }
   };
@@ -211,13 +209,22 @@ function PedidosContent() {
               const status = getStatusDisplay(order.orderStatus, order.paymentStatus);
               const StatusIcon = status.icon;
               const items = order.items ?? [];
+              const isFinalCompactState =
+                order.orderStatus === "cancelled" ||
+                order.paymentStatus === "cancelled" ||
+                order.paymentStatus === "rejected" ||
+                order.adminReviewStatus === "rejected";
+              const showManualPaymentBlock =
+                order.provider === "manual" &&
+                !isFinalCompactState &&
+                (order.paymentStatus === "pending" || order.paymentStatus === "under_review");
               
               return (
-                <div key={order.id} className="p-8 sm:p-10 rounded-[3.5rem] border border-border bg-white shadow-xl shadow-black/[0.02] flex flex-col gap-8 transition-all hover:shadow-2xl hover:shadow-black/[0.1]">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div key={order.id} className={`border border-border bg-white shadow-xl shadow-black/[0.02] flex flex-col transition-all hover:shadow-2xl hover:shadow-black/[0.1] ${isFinalCompactState ? "p-6 sm:p-7 rounded-[2rem] gap-4" : "p-8 sm:p-10 rounded-[3.5rem] gap-8"}`}>
+                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between ${isFinalCompactState ? "gap-3" : "gap-6"}`}>
                     <div>
                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2">Pedido #{order.orderNumber.substring(0, 10)}</p>
-                      <h3 className="text-3xl font-black tracking-tighter">${order.amount.toFixed(2)}</h3>
+                      <h3 className={`${isFinalCompactState ? "text-2xl" : "text-3xl"} font-black tracking-tighter`}>${order.amount.toFixed(2)}</h3>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString()}</p>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">Pago: {(order.paymentMethod || "manual").replace("_", " ")}</p>
                     </div>
@@ -228,7 +235,7 @@ function PedidosContent() {
                   </div>
                   
                   {/* MANUAL FLOW P0 HARDENING */}
-                  {order.provider === "manual" && (order.paymentStatus === "pending" || order.paymentStatus === "under_review" || order.paymentStatus === "rejected") && (
+                  {showManualPaymentBlock && (
                     <div className="p-8 rounded-[2.5rem] bg-slate-50 border border-border flex flex-col items-center gap-8 text-center">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                         <div className="p-6 rounded-3xl bg-white border border-border flex flex-col items-center gap-3 shadow-sm transition-all hover:scale-[1.02]">
@@ -326,18 +333,9 @@ function PedidosContent() {
                              onClick={async () => {
                                if(!confirm("¿Cancelar pedido?")) return;
                                setUploadingFor(order.id);
-                                try {
-                                  const res = await fetch(`/api/orders/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }), headers: { "Content-Type": "application/json" } });
-                                  if (res.ok) {
-                                    toast.success("Cancelado");
-                                    loadOrders();
-                                  } else {
-                                    const data = await res.json().catch(() => ({}));
-                                    toast.error(data.error || "Error al cancelar pedido");
-                                  }
-                                } finally {
-                                  setUploadingFor(null);
-                                }
+                               await fetch(`/api/orders/${order.id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }), headers: { "Content-Type": "application/json" } });
+                               toast.success("Cancelado"); loadOrders();
+                               setUploadingFor(null);
                              }}
                              className="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all min-w-[150px]"
                           >

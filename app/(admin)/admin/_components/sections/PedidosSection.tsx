@@ -142,7 +142,6 @@ export function PedidosSection() {
 
   const handleStatusChange = async (id: string, newStatus: string, actionText: string) => {
     const isCompleted = newStatus === "completed";
-    const isManualOrder = selectedOrder?.provider === "manual";
     const needed = selectedOrder ? calculateNeededChips(selectedOrder) : 0;
 
     if (isCompleted && assignedChipIds.length !== needed && needed > 0) {
@@ -153,24 +152,18 @@ export function PedidosSection() {
     
     setUpdating(true);
     try {
-      const res = isManualOrder && newStatus === "cancelled"
-        ? await fetch(`/api/admin/orders/${id}/reject`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ adminReviewNotes: reviewNote }),
-          })
-        : await fetch(`/api/admin/orders`, {
-            method: "PATCH",
-            cache: "no-store",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              id, 
-              orderStatus: newStatus,
-              paymentStatus: isCompleted ? "paid" : undefined,
-              generateTokens: isCompleted,
-              assignedChipIds: isCompleted ? assignedChipIds : undefined
-            }),
-          });
+      const res = await fetch(`/api/admin/orders`, {
+        method: "PATCH",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+           id, 
+           orderStatus: newStatus,
+           paymentStatus: isCompleted ? "paid" : undefined,
+           generateTokens: isCompleted,
+           assignedChipIds: isCompleted ? assignedChipIds : undefined
+        }),
+      });
 
       if (res.ok) {
         toast.success(`Orden actualizada a '${actionText}'`);
@@ -179,8 +172,7 @@ export function PedidosSection() {
         loadOrders();
         loadInventory();
       } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Error al actualizar la orden");
+        toast.error("Error al actualizar la orden");
       }
     } catch (e) {
       toast.error("Error de conexión");
@@ -216,8 +208,7 @@ export function PedidosSection() {
         loadOrders();
         loadInventory();
       } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Error al actualizar la revisión");
+        toast.error("Error al actualizar la revisión");
       }
     } catch (e) {
       toast.error("Error de conexión");
@@ -271,19 +262,19 @@ export function PedidosSection() {
 
   if (selectedOrder) {
     return (
-      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-500 blur-none">
+      <div className="space-y-5 animate-in fade-in slide-in-from-bottom-5 duration-500 blur-none">
          {/* Integrated Admin Dashboard Header */}
          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
                <button 
                  onClick={() => setSelectedOrder(null)}
-                 className="h-12 w-12 flex items-center justify-center bg-white border border-border rounded-2xl hover:bg-slate-50 transition-all group"
+               className="h-10 w-10 flex items-center justify-center bg-white border border-border rounded-xl hover:bg-slate-50 transition-all group"
                >
                   <RefreshCw className="h-5 w-5 text-muted-foreground group-hover:rotate-180 transition-transform duration-500" />
                </button>
                <div>
                   <div className="flex items-center gap-3">
-                     <h2 className="text-3xl font-black uppercase tracking-tighter">Pedido #{selectedOrder.orderNumber}</h2>
+                     <h2 className="text-2xl font-black uppercase tracking-tighter">Pedido #{selectedOrder.orderNumber}</h2>
                      {getStatusBadge(selectedOrder.orderStatus, selectedOrder.paymentStatus)}
                   </div>
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">Logística de Despacho & CRM</p>
@@ -292,33 +283,33 @@ export function PedidosSection() {
 
             <button 
               onClick={() => setSelectedOrder(null)}
-              className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+              className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
             >
                Volver al Listado
             </button>
          </div>
 
-         <div className="bg-card w-full overflow-hidden rounded-[3rem] border border-border shadow-xl min-h-[70vh] flex flex-col">
-            <div className="flex-1 p-10 lg:p-14">
-               <div className="grid grid-cols-1 lg:grid-cols-16 gap-12">
+         <div className="bg-card w-full overflow-hidden rounded-[2rem] border border-border shadow-lg min-h-[70vh] flex flex-col">
+            <div className="flex-1 p-6 lg:p-8">
+               <div className="grid grid-cols-1 lg:grid-cols-16 gap-6">
                   
                   {/* COL 1: Logistics & Delivery */}
-                  <div className="lg:col-span-4 space-y-10">
-                     <section className="space-y-6">
+                  <div className="lg:col-span-4 space-y-6">
+                     <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                            <div className="h-1.5 w-6 bg-primary rounded-full" />
                            Destinatario
                         </h3>
-                        <div className="bg-muted/30 p-8 rounded-[3rem] border border-border/50 relative overflow-hidden group">
-                           <p className="text-3xl font-black tracking-tight mb-2 leading-none">{selectedOrder.customerName || "—"}</p>
+                        <div className="bg-muted/30 p-5 rounded-[1.75rem] border border-border/50 relative overflow-hidden group">
+                           <p className="text-2xl font-black tracking-tight mb-1 leading-none">{selectedOrder.customerName || "—"}</p>
                            <p className="text-sm font-medium text-muted-foreground">{selectedOrder.customerEmail}</p>
-                           <div className="mt-8 flex flex-col gap-3">
+                           <div className="mt-4 flex flex-col gap-2">
                               {selectedOrder.customerPhone && (
-                                 <Link href={`https://wa.me/${selectedOrder.customerPhone.replace(/\D/g, '')}`} target="_blank" className="bg-emerald-500 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/10">
+                                 <Link href={`https://wa.me/${selectedOrder.customerPhone.replace(/\D/g, '')}`} target="_blank" className="bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/10">
                                     Abrir WhatsApp
                                  </Link>
                               )}
-                              <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center justify-between text-[11px] font-black uppercase">
+                              <div className="p-3 bg-primary/5 border border-primary/10 rounded-xl flex items-center justify-between text-[10px] font-black uppercase">
                                  <span className="text-muted-foreground tracking-widest">Documento:</span>
                                  <span>{selectedOrder.customerDocument || "—"}</span>
                               </div>
@@ -326,23 +317,23 @@ export function PedidosSection() {
                         </div>
                      </section>
 
-                     <section className="space-y-6">
+                     <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                            <div className="h-1.5 w-6 bg-primary rounded-full" />
                            Dirección de Envío
                         </h3>
-                        <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-border shadow-sm">
-                           <div className="flex items-start gap-4 mb-6">
-                              <div className="h-12 w-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 flex-shrink-0">
+                        <div className="bg-white dark:bg-slate-900 p-5 rounded-[1.75rem] border border-border shadow-sm">
+                           <div className="flex items-start gap-3 mb-4">
+                              <div className="h-10 w-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500 flex-shrink-0">
                                  <Truck className="h-6 w-6" />
                               </div>
                               <div>
                                  <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-1">{selectedOrder.shippingCity || "Panamá"}</p>
-                                 <p className="text-lg font-bold leading-tight tracking-tight">{selectedOrder.shippingAddress || "Recojo en sucursal"}</p>
+                                 <p className="text-base font-bold leading-tight tracking-tight">{selectedOrder.shippingAddress || "Recojo en sucursal"}</p>
                               </div>
                            </div>
                            {selectedOrder.shippingNotes && (
-                              <div className="p-4 bg-muted/50 rounded-2xl border border-dashed border-border">
+                              <div className="p-3 bg-muted/50 rounded-xl border border-dashed border-border">
                                  <p className="text-[10px] font-bold text-muted-foreground italic leading-relaxed">"{selectedOrder.shippingNotes}"</p>
                               </div>
                            )}
@@ -351,27 +342,27 @@ export function PedidosSection() {
                   </div>
 
                   {/* COL 2: Fulfillment & Picking */}
-                  <div className="lg:col-span-4 space-y-10 bg-slate-50 dark:bg-slate-900/40 p-10 rounded-[4rem] border border-border/60">
-                     <section className="space-y-6">
+                  <div className="lg:col-span-4 space-y-6 bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[2rem] border border-border/60">
+                     <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                            <div className="h-1.5 w-6 bg-primary rounded-full" />
                            Picking Físico
                         </h3>
                         
                         {selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "shipped" ? (
-                           <div className="space-y-6">
+                           <div className="space-y-4">
                               <div className="relative group">
                                  <PackageSearch className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                  <input 
                                    type="text" 
                                    placeholder="Escanea o busca sticker..." 
-                                   className="w-full bg-white dark:bg-slate-800 border-border rounded-[2rem] pl-14 pr-6 py-5 text-sm font-bold shadow-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                   className="w-full bg-white dark:bg-slate-800 border-border rounded-xl pl-12 pr-4 py-3 text-sm font-bold shadow-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                    value={searchInventory}
                                    onChange={(e) => setSearchInventory(e.target.value)}
                                  />
                               </div>
                               
-                              <div className="max-h-[380px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                               <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
                                  {inventory.filter(c => 
                                     c.isPhysical && (
                                       c.serialPublic.toLowerCase().includes(searchInventory.toLowerCase()) || 
@@ -390,7 +381,7 @@ export function PedidosSection() {
                                            if(isAssigned) setAssignedChipIds(prev => prev.filter(id => id !== chip.id));
                                            else if(canAddMore) setAssignedChipIds(prev => [...prev, chip.id]);
                                          }}
-                                         className={`w-full p-5 rounded-[2rem] text-left flex items-center justify-between transition-all border-2 ${isAssigned ? 'bg-primary text-white border-primary shadow-2xl shadow-primary/30 scale-[1.03] z-10' : 'bg-white border-transparent hover:border-border hover:scale-[1.01]'} ${(!isAssigned && !canAddMore) ? 'opacity-20 grayscale cursor-not-allowed' : ''}`}
+                                         className={`w-full p-3 rounded-xl text-left flex items-center justify-between transition-all border ${isAssigned ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-white border-transparent hover:border-border'} ${(!isAssigned && !canAddMore) ? 'opacity-20 grayscale cursor-not-allowed' : ''}`}
                                        >
                                           <div className="flex items-center gap-4">
                                              <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isAssigned ? 'bg-white/20' : 'bg-slate-100'}`}>
@@ -407,24 +398,24 @@ export function PedidosSection() {
                                  })}
                               </div>
 
-                              <div className="p-8 bg-indigo-600 dark:bg-indigo-700 text-white rounded-[3rem] shadow-2xl shadow-indigo-600/30 flex items-center justify-between">
+                              <div className="p-5 bg-indigo-600 dark:bg-indigo-700 text-white rounded-[1.5rem] shadow-lg shadow-indigo-600/30 flex items-center justify-between">
                                  <div className="flex items-baseline gap-1">
-                                    <span className="text-5xl font-black">{assignedChipIds.length}</span>
-                                    <span className="text-xl opacity-40 font-bold">/ {calculateNeededChips(selectedOrder)}</span>
+                                    <span className="text-3xl font-black">{assignedChipIds.length}</span>
+                                    <span className="text-base opacity-50 font-bold">/ {calculateNeededChips(selectedOrder)}</span>
                                  </div>
                                  <p className="text-[11px] font-bold text-right">Chips<br/>Asignados</p>
                               </div>
                            </div>
                         ) : (
                            <div className="space-y-4">
-                              <div className="p-8 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-[3rem] text-center mb-6">
+                               <div className="p-5 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-[1.5rem] text-center mb-4">
                                  <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto mb-4" />
                                  <h4 className="text-xl font-black uppercase tracking-tight text-emerald-700">Completado</h4>
                                  <p className="text-xs font-bold text-emerald-600/60 uppercase tracking-widest mt-1">Los chips ya están vinculados.</p>
                               </div>
                               <div className="space-y-3">
                                  {selectedOrder.chipClaimTokens.map(token => (
-                                    <div key={token.id} className="p-6 bg-white border border-border rounded-[2rem] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+                                    <div key={token.id} className="p-4 bg-white border border-border rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
                                        <div className="space-y-1">
                                           <div className="flex flex-col">
                                              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">{token.chip.internalLabel || 'ID INTERNO'}</span>
@@ -435,7 +426,7 @@ export function PedidosSection() {
                                              <span className="font-mono text-[11px] font-bold text-slate-500">{token.chip.serialPublic}</span>
                                           </div>
                                        </div>
-                                       <div className="w-full sm:w-auto p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-center sm:text-right">
+                                        <div className="w-full sm:w-auto p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-center sm:text-right">
                                           <p className="text-[9px] font-black text-indigo-900/60 uppercase tracking-[0.2em] mb-1">Cód. Activación</p>
                                           <p className="font-mono text-xl font-black text-indigo-600 tracking-[0.2em]">{token.activationCode}</p>
                                        </div>
@@ -447,16 +438,16 @@ export function PedidosSection() {
                      </section>
                   </div>
 
-                  <div className="lg:col-span-4 space-y-10">
-                     <section className="space-y-6">
+                  <div className="lg:col-span-4 space-y-6">
+                     <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                            <div className="h-1.5 w-6 bg-primary rounded-full" />
                            Revisión de Pago
                         </h3>
-                        <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-border shadow-sm space-y-4">
+                        <div className="bg-white dark:bg-slate-900 p-5 rounded-[1.75rem] border border-border shadow-sm space-y-3">
                            <div>
                               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Método de Pago</p>
-                              <p className="text-lg font-black text-slate-900 dark:text-white">{selectedOrder.paymentMethod ? selectedOrder.paymentMethod.replace("_", " ").toUpperCase() : "Manual"}</p>
+                              <p className="text-base font-black text-slate-900 dark:text-white">{selectedOrder.paymentMethod ? selectedOrder.paymentMethod.replace("_", " ").toUpperCase() : "Manual"}</p>
                            </div>
                            <div>
                               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Referencia Manual</p>
@@ -477,23 +468,23 @@ export function PedidosSection() {
                               <textarea
                                 value={reviewNote}
                                 onChange={(e) => setReviewNote(e.target.value)}
-                                className="w-full min-h-[120px] rounded-[2rem] border border-border bg-slate-50 dark:bg-slate-950 p-4 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10"
+                                className="w-full min-h-[90px] rounded-xl border border-border bg-slate-50 dark:bg-slate-950 p-3 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10"
                                 placeholder="Agrega una observación para la aprobación o rechazo..."
                               />
                            </div>
                            {selectedOrder.provider === "manual" && selectedOrder.paymentStatus === "under_review" && (
-                              <div className="flex flex-col gap-3 sm:flex-row">
+                               <div className="flex flex-col gap-2 sm:flex-row">
                                  <button
                                    disabled={updating}
                                    onClick={() => handleReviewAction(selectedOrder.id, "approve")}
-                                   className="flex-1 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
+                                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                                  >
                                    Aprobar Pago
                                  </button>
                                  <button
                                    disabled={updating}
                                    onClick={() => handleReviewAction(selectedOrder.id, "reject")}
-                                   className="flex-1 px-6 py-4 bg-red-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
+                                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
                                  >
                                    Rechazar Pago
                                  </button>
@@ -504,25 +495,25 @@ export function PedidosSection() {
                   </div>
 
                   {/* COL 3: Summary & Evidence */}
-                  <div className="lg:col-span-4 space-y-10">
-                     <section className="space-y-6">
+                  <div className="lg:col-span-4 space-y-6">
+                     <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                            <div className="h-1.5 w-6 bg-primary rounded-full" />
                            Monto Total
                         </h3>
-                        <div className="bg-slate-900 dark:bg-black p-10 rounded-[3rem] text-white shadow-2xl">
-                           <p className="text-6xl font-black tracking-tighter text-primary mb-2">${selectedOrder.amount.toFixed(2)}</p>
+                        <div className="bg-slate-900 dark:bg-black p-6 rounded-[1.75rem] text-white shadow-lg">
+                           <p className="text-4xl font-black tracking-tighter text-primary mb-1">${selectedOrder.amount.toFixed(2)}</p>
                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Dólares Americanos (USD)</p>
                         </div>
                      </section>
 
-                     <section className="space-y-6">
+                     <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                            <div className="h-1.5 w-6 bg-primary rounded-full" />
                            Comprobante
                         </h3>
                         {selectedOrder.paymentProofUrl ? (
-                           <div className="aspect-video w-full rounded-[3rem] border border-border overflow-hidden bg-slate-100 shadow-lg cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
+                           <div className="aspect-video w-full rounded-[1.5rem] border border-border overflow-hidden bg-slate-100 shadow-sm cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
                               <img 
                                 src={`/api/image-proxy?bucket=payment-proofs&path=${encodeURIComponent(selectedOrder.paymentProofUrl!.split('/').slice(-2).join('/'))}`} 
                                 alt="Pago" 
@@ -531,7 +522,7 @@ export function PedidosSection() {
                               />
                            </div>
                         ) : (
-                           <div className="p-10 rounded-[3rem] border-2 border-dashed border-border text-center text-muted-foreground">
+                           <div className="p-6 rounded-[1.5rem] border-2 border-dashed border-border text-center text-muted-foreground">
                               <p className="text-xs font-black uppercase tracking-widest">Sin Comprobante</p>
                            </div>
                         )}
@@ -542,7 +533,7 @@ export function PedidosSection() {
             </div>
 
             {/* Action Bar */}
-            <div className="px-10 py-10 border-t border-border bg-muted/30 flex justify-between items-center gap-6">
+            <div className="px-6 py-5 border-t border-border bg-muted/30 flex justify-between items-center gap-4">
                <div className="flex gap-4">
                   {selectedOrder.orderStatus === "cancelled" && (
                      <button onClick={async () => {
@@ -552,15 +543,19 @@ export function PedidosSection() {
                           const res = await fetch(`/api/admin/orders?id=${selectedOrder.id}`, { method: "DELETE", cache: "no-store" });
                           if (res.ok) { toast.success("Orden borrada"); setSelectedOrder(null); loadOrders(); }
                         } finally { setUpdating(false); }
-                     }} disabled={updating} className="px-10 py-5 bg-red-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:bg-red-700 transition-all">
+                     }} disabled={updating} className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all">
                         Eliminar Permanente
                      </button>
                   )}
-                  {selectedOrder.orderStatus !== "cancelled" && selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && (
-                     <button onClick={() => handleStatusChange(selectedOrder.id, "cancelled", "Cancelado")} disabled={updating} className="px-10 py-5 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest transition-all">
-                        Declinar Orden
-                     </button>
-                  )}
+{selectedOrder.orderStatus !== "cancelled"
+  && selectedOrder.orderStatus !== "shipped"
+  && selectedOrder.orderStatus !== "completed"
+  // OCULTAR botón PATCH para órdenes manuales
+  && selectedOrder.provider !== "manual" && (
+    <button onClick={() => handleStatusChange(selectedOrder.id, "cancelled", "Cancelado")} disabled={updating} className="px-6 py-3 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">
+      Declinar Orden
+    </button>
+)}
                </div>
                
                <div className="flex gap-4">
@@ -569,7 +564,7 @@ export function PedidosSection() {
                         <button 
                           onClick={() => handleStatusChange(selectedOrder.id, "shipped", "Enviado")} 
                           disabled={updating || assignedChipIds.length < calculateNeededChips(selectedOrder)} 
-                          className="px-10 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/20 hover:scale-[1.03] active:scale-95 transition-all disabled:opacity-40"
+                          className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40"
                         >
                            Marcar como Enviado
                         </button>
@@ -577,7 +572,7 @@ export function PedidosSection() {
                         <button 
                           onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")} 
                           disabled={updating || assignedChipIds.length < calculateNeededChips(selectedOrder)} 
-                          className="px-10 py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-2xl shadow-emerald-600/20 hover:scale-[1.03] active:scale-95 transition-all disabled:opacity-40"
+                          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-lg shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40"
                         >
                            Finalizar Pedido
                         </button>
@@ -587,7 +582,7 @@ export function PedidosSection() {
                      <button 
                         onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")} 
                         disabled={updating} 
-                        className="px-14 py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest shadow-2xl hover:scale-[1.03] transition-all"
+                        className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all"
                       >
                         Confirmar Entrega Manual
                      </button>
@@ -600,13 +595,13 @@ export function PedidosSection() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-end justify-between">
          <div>
             <h1 className="text-2xl font-black uppercase tracking-tighter">Gestión de Pedidos</h1>
             <p className="text-muted-foreground text-sm font-medium">CRM manual para validación de compras y pagos.</p>
          </div>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-fit">
             {[
               { id: 'all', label: 'Todos' },
@@ -619,7 +614,7 @@ export function PedidosSection() {
               <button 
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                  {tab.label}
               </button>
@@ -642,17 +637,17 @@ export function PedidosSection() {
       </div>
       </div>
 
-      <div className="bg-card border border-border rounded-[2rem] overflow-hidden">
+      <div className="bg-card border border-border rounded-[1.25rem] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left font-sans">
              <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest pl-8">ID / Fecha</th>
-                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest">Cliente</th>
-                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest">Contacto</th>
-                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest">Monto (Items)</th>
-                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest">Estado</th>
-                   <th className="p-4 text-xs font-black uppercase text-muted-foreground tracking-widest pr-8">Acciones</th>
+                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest pl-5">ID / Fecha</th>
+                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest">Cliente</th>
+                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest">Contacto</th>
+                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest">Monto (Items)</th>
+                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest">Estado</th>
+                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest pr-5">Acciones</th>
                 </tr>
              </thead>
              <tbody className="divide-y divide-border">
@@ -665,15 +660,15 @@ export function PedidosSection() {
                   return true;
                 }).map(o => (
                    <tr key={o.id} className="hover:bg-accent/30 transition-all">
-                      <td className="p-4 pl-8">
+                      <td className="p-3 pl-5">
                          <p className="font-mono font-bold text-sm">#{o.orderNumber.substring(0,8)}</p>
                          <p className="text-[10px] uppercase text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
                       </td>
-                      <td className="p-4">
+                      <td className="p-3">
                          <p className="font-black text-sm">{o.customerName || "—"}</p>
                          {o.customerDocument && <p className="text-xs text-muted-foreground">{o.customerDocument}</p>}
                       </td>
-                      <td className="p-4 space-y-1">
+                      <td className="p-3 space-y-1">
                          {o.customerEmail && <p className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded max-w-fit truncate">{o.customerEmail}</p>}
                          {o.customerPhone && (
                             <Link href={`https://wa.me/${o.customerPhone.replace(/\D/g, '')}`} target="_blank" className="text-[10px] font-bold bg-green-500/10 text-green-700 px-2 py-0.5 rounded max-w-fit block hover:bg-green-500/20">
@@ -681,15 +676,15 @@ export function PedidosSection() {
                             </Link>
                          )}
                       </td>
-                      <td className="p-4">
-                         <p className="font-black text-lg text-primary">${o.amount.toFixed(2)}</p>
+                      <td className="p-3">
+                         <p className="font-black text-base text-primary">${o.amount.toFixed(2)}</p>
                          <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items.length} items</p>
                       </td>
-                      <td className="p-4">
+                      <td className="p-3">
                          {getStatusBadge(o.orderStatus, o.paymentStatus)}
                          {o.paymentProofUrl && <p className="text-[9px] font-black text-emerald-600 uppercase mt-1">✓ Pago Subido</p>}
                       </td>
-                      <td className="p-4 pr-8">
+                      <td className="p-3 pr-5">
                          <button 
                            onClick={() => setSelectedOrder(o)}
                            className="p-2 border border-border rounded-lg hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-center"
