@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "prisma:generate": "prisma generate",
+    "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
     "build": "npm run prisma:generate && next build",
     "start": "next start",
