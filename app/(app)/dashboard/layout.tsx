@@ -288,7 +288,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="grid grid-cols-1 gap-2">
                 {[
                   { href: "/dashboard/pedidos", label: "Mis Pedidos", icon: Package },
-                  ...(state?.canManageFamilyProfiles ? [{ href: "/dashboard/perfiles-medicos", label: "Perfiles Médicos", icon: UsersRound }] : []),
+                  { href: "/dashboard/perfiles-medicos", label: "Perfiles Médicos", icon: UsersRound },
                   { href: "/dashboard/historial", label: "Historial de Rescate", icon: History },
                   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
                   { href: "/dashboard/compras", label: "Tienda de Chips", icon: ShoppingCart },
