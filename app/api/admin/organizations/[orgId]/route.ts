@@ -1,26 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ACCOUNT_TYPES } from "@/domains/shared/constants";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
-
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = (session.user as { role?: string }).role;
-  return role === "admin" || role === "superadmin";
-}
 
 // GET organization detail with chips, members, account
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ orgId: string }> }
 ) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { orgId } = await params;
 
@@ -79,9 +70,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ orgId: string }> }
 ) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { orgId } = await params;
   const body = await req.json();
@@ -132,9 +122,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ orgId: string }> }
 ) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { orgId } = await params;
 

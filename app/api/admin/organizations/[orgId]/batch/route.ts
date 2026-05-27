@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import bcrypt from "bcryptjs";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export async function POST(req: Request, { params }: { params: Promise<{ orgId: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "admin" && session.user.role !== "superadmin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const { departmentName, quantity, emailPrefix, tempPassword } = await req.json();

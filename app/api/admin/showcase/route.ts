@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isAdmin } from "@/lib/guards";
 import { ConfigRepository } from "@/domains/shared/repositories/config.repository";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export async function GET() {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const user = await prisma.user.findFirst({
@@ -64,9 +63,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const body = await req.json();
 

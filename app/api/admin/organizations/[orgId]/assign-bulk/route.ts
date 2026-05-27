@@ -1,26 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { generateShortCode, generateActivationCode, generateSerialPublic, SITE_URL } from "@/lib/constants";
+import { SITE_URL } from "@/lib/constants";
 import { getUniqueShortCode, getUniqueSerialPublic, getUniqueActivationCode } from "@/lib/identifiers";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
-
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = session.user.role;
-  return role === "admin" || role === "superadmin";
-}
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ orgId: string }> }
 ) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { orgId } = await params;
   const body = await req.json();

@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import { ACCOUNT_TYPES } from "@/domains/shared/constants";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { SITE_URL } from "@/lib/constants";
 import { getUniqueShortCode, getUniqueSerialPublic, getUniqueActivationCode } from "@/lib/identifiers";
 import bcrypt from "bcryptjs";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 const CORPORATE_PACKAGE_SLUG = "combo-corporativo";
 
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "admin" && session.user.role !== "superadmin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const orgs = await prisma.organization.findMany({
@@ -37,10 +34,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "admin" && session.user.role !== "superadmin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const data = await req.json();
