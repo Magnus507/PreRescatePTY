@@ -1,34 +1,54 @@
+export type PaymentStatus = "pending" | "under_review" | "paid" | "rejected" | "cancelled";
+export type OrderStatus = "pending" | "processing" | "shipped" | "completed" | "cancelled";
+export type AdminReviewStatus = "pending" | "approved" | "rejected";
+export type OrderProvider = "manual" | "stripe" | "legacy" | "admin";
+
 type OrderLike = {
-  provider?: string | null;
-  paymentStatus?: string | null;
-  orderStatus?: string | null;
-  adminReviewStatus?: string | null;
+  provider?: OrderProvider | string | null;
+  paymentStatus?: PaymentStatus | string | null;
+  orderStatus?: OrderStatus | string | null;
+  adminReviewStatus?: AdminReviewStatus | string | null;
 };
+
+const MANUAL_FINAL_PAYMENT_STATUSES: ReadonlySet<PaymentStatus> = new Set([
+  "paid",
+  "rejected",
+  "cancelled",
+]);
+
+const MANUAL_FINAL_ORDER_STATUSES: ReadonlySet<OrderStatus> = new Set([
+  "completed",
+  "cancelled",
+]);
+
+const MANUAL_FINAL_REVIEW_STATUSES: ReadonlySet<AdminReviewStatus> = new Set([
+  "approved",
+  "rejected",
+]);
 
 export function isManualOrderFinal(order: OrderLike): boolean {
   if (order.provider !== "manual") return false;
   return (
-    order.paymentStatus === "paid" ||
-    order.paymentStatus === "rejected" ||
-    order.paymentStatus === "cancelled" ||
-    order.orderStatus === "completed" ||
-    order.orderStatus === "cancelled" ||
-    order.adminReviewStatus === "approved" ||
-    order.adminReviewStatus === "rejected"
+    MANUAL_FINAL_PAYMENT_STATUSES.has(order.paymentStatus as PaymentStatus) ||
+    MANUAL_FINAL_ORDER_STATUSES.has(order.orderStatus as OrderStatus) ||
+    MANUAL_FINAL_REVIEW_STATUSES.has(order.adminReviewStatus as AdminReviewStatus)
   );
 }
 
 export function canSubmitManualProof(order: OrderLike): boolean {
   if (order.provider !== "manual") return false;
-  return !isManualOrderFinal(order) && (order.paymentStatus === "pending" || order.paymentStatus === "under_review");
+  const paymentStatus = order.paymentStatus as PaymentStatus | undefined;
+  return !isManualOrderFinal(order) && (paymentStatus === "pending" || paymentStatus === "under_review");
 }
 
 export function canAdminApproveManual(order: OrderLike): boolean {
+  const paymentStatus = order.paymentStatus as PaymentStatus | undefined;
+  const adminReviewStatus = order.adminReviewStatus as AdminReviewStatus | undefined;
   return (
     order.provider === "manual" &&
-    order.paymentStatus === "under_review" &&
-    order.adminReviewStatus !== "approved" &&
-    order.adminReviewStatus !== "rejected"
+    paymentStatus === "under_review" &&
+    adminReviewStatus !== "approved" &&
+    adminReviewStatus !== "rejected"
   );
 }
 
