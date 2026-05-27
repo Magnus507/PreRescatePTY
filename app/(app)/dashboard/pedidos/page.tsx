@@ -208,6 +208,7 @@ function PedidosContent() {
             {orders.map(order => {
               const status = getStatusDisplay(order.orderStatus, order.paymentStatus);
               const StatusIcon = status.icon;
+              const items = order.items ?? [];
               
               return (
                 <div key={order.id} className="p-8 sm:p-10 rounded-[3.5rem] border border-border bg-white shadow-xl shadow-black/[0.02] flex flex-col gap-8 transition-all hover:shadow-2xl hover:shadow-black/[0.1]">
@@ -357,7 +358,7 @@ function PedidosContent() {
 
                   <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                       {order.items.length} {order.items.length === 1 ? 'artículo' : 'artículos'} • {order.items.map(i => i.productType.replace('COMBO_', '')).join(', ')}
+                       {items.length} {items.length === 1 ? 'artículo' : 'artículos'} • {items.map(i => i.productType.replace('COMBO_', '')).join(', ')}
                     </p>
                   </div>
                 </div>
