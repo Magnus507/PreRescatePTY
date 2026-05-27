@@ -31,3 +31,7 @@ _OLD_LEGACY_SRC/
 ops/
 .obsidian/
 *.tsbuildinfo
+
+# Local dev/protección multiplataforma
+scratch/
+desktop.ini
