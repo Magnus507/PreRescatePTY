@@ -169,6 +169,19 @@ export function PaymentProofForm({
         <p className="text-[10px] font-semibold text-muted-foreground/80">
           Formatos permitidos: JPG, PNG o WEBP
         </p>
+        <div className="w-full max-w-md text-left space-y-2">
+          <p className="text-[10px] font-semibold text-muted-foreground">
+            Si el botón no abre, selecciona el archivo aquí
+          </p>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => onUpload(e, order.id)}
+            disabled={uploadingFor === order.id}
+            className="block w-full text-xs font-semibold text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-bold file:text-slate-700 hover:file:bg-slate-200 disabled:opacity-50"
+            aria-label="Seleccionar archivo de comprobante (fallback)"
+          />
+        </div>
       </div>
     </div>
   );
