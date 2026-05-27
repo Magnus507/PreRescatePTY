@@ -3,55 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canSubmitManualProof } from "@/lib/order-status";
+import { normalizePaymentProofUrl } from "@/lib/payment-proof";
 import { z } from "zod";
-
-// MANUAL FLOW P0 HARDENING
-const SAFE_PATH_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9/_.,=-]{0,240}\.(?:jpg|jpeg|png|webp)$/i;
-
-function normalizePaymentProofUrl(value: string) {
-  let url: URL;
-  try {
-    url = new URL(value, "https://local.prerescue");
-  } catch {
-    return null;
-  }
-
-  // Allow internal image-proxy URLs generated/used by our own upload/display flow.
-  if (url.pathname === "/api/image-proxy") {
-    const bucket = url.searchParams.get("bucket");
-    const path = url.searchParams.get("path");
-    if (bucket !== "payment-proofs" || !path || !SAFE_PATH_PATTERN.test(path)) {
-      return null;
-    }
-    const normalized = new URL("/api/image-proxy", "https://local.prerescue");
-    normalized.searchParams.set("bucket", "payment-proofs");
-    normalized.searchParams.set("path", path);
-    return `${normalized.pathname}?${normalized.searchParams.toString()}`;
-  }
-
-  // Allow direct public Supabase storage URL for payment-proofs only.
-  const supabaseBase = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseBase) return null;
-
-  let supabaseOrigin: string;
-  try {
-    supabaseOrigin = new URL(supabaseBase).origin;
-  } catch {
-    return null;
-  }
-
-  if (url.origin !== supabaseOrigin) return null;
-
-  const marker = "/storage/v1/object/public/payment-proofs/";
-  const idx = url.pathname.indexOf(marker);
-  if (idx === -1) return null;
-
-  const relativePath = decodeURIComponent(url.pathname.slice(idx + marker.length));
-  if (!SAFE_PATH_PATTERN.test(relativePath)) return null;
-
-  return `${supabaseOrigin}${marker}${relativePath}`;
-}
-
 
 const PaymentProofSchema = z.object({
   paymentProofUrl: z.string().min(1).optional(),

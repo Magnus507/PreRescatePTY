@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canCustomerCancelManual, canSubmitManualProof } from "@/lib/order-status";
 import { Prisma } from "@prisma/client";
+import { normalizePaymentProofUrl } from "@/lib/payment-proof";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -32,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     };
   } else {
     const validatedProofUrl = paymentProofUrl
-      ? normalizePaymentProofUrl(paymentProofUrl, userId)
+      ? normalizePaymentProofUrl(paymentProofUrl)
       : null;
 
     if (paymentProofUrl && !validatedProofUrl) {
@@ -61,34 +62,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 
   return NextResponse.json({ order: updated });
-}
-
-function normalizePaymentProofUrl(value: unknown, userId: string) {
-  if (typeof value !== "string" || value.length > 500) return null;
-
-  let url: URL;
-  try {
-    url = new URL(value, "https://local.prerescue");
-  } catch {
-    return null;
-  }
-
-  if (url.pathname !== "/api/image-proxy") return null;
-  if (url.searchParams.get("bucket") !== "payment-proofs") return null;
-
-  const path = url.searchParams.get("path");
-  if (!path) return null;
-
-  const userPaymentPrefix = `payments/${userId}/`;
-  const legacyUserPaymentPrefix = `payments/${userId}_`;
-  const isOwnedPath =
-    (path.startsWith(userPaymentPrefix) || path.startsWith(legacyUserPaymentPrefix)) &&
-    /^[a-zA-Z0-9][a-zA-Z0-9/_.,=-]{0,240}\.webp$/i.test(path);
-
-  if (!isOwnedPath) return null;
-
-  const normalized = new URL("/api/image-proxy", "https://local.prerescue");
-  normalized.searchParams.set("bucket", "payment-proofs");
-  normalized.searchParams.set("path", path);
-  return `${normalized.pathname}?${normalized.searchParams.toString()}`;
 }
