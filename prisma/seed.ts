@@ -7,23 +7,28 @@ async function main() {
   console.log('--- START SEEDING ---');
 
   // 1. Admin User (unified into User table)
-  const adminEmail = 'admin@prerescatepty.com';
-  const adminPassword = 'PreRescateID2024!';
-  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
+  const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
 
-  await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: { isAdmin: true, adminRole: 'superadmin', status: 'active' },
-    create: {
-      email: adminEmail,
-      passwordHash: adminPasswordHash,
-      role: 'owner',
-      isAdmin: true,
-      adminRole: 'superadmin',
-      status: 'active'
-    }
-  });
-  console.log('✅ Admin user synced (unified).');
+  if (!adminEmail || !adminPassword) {
+    console.warn('⚠️  SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD no definidos. Se omite creación de admin.');
+  } else {
+    const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
+
+    await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: { isAdmin: true, adminRole: 'superadmin', status: 'active' },
+      create: {
+        email: adminEmail,
+        passwordHash: adminPasswordHash,
+        role: 'owner',
+        isAdmin: true,
+        adminRole: 'superadmin',
+        status: 'active'
+      }
+    });
+    console.log('✅ Admin user synced (from env).');
+  }
 
   // 2. Official Sales Packages (Paquetes de Venta) 
   // We use "Plan" in the name as it's the commercial term, but they behave as cumulative packs.
