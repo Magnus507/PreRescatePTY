@@ -1,81 +1,110 @@
-# Account Capacity Policy (Fase 1)
+# Account Capacity Policy
 
 ## Objetivo
-Definir una política clara para capacidad de cuenta (`maxChipsAllocated`, `maxProfilesAllocated`) mientras conviven flujos `manual`, `stripe` y `legacy`.
+Definir la política oficial de capacidad de cuenta para futuras compras, upgrades y top-ups en PreRescatePTY, sin cambiar aún schema ni lógica productiva.
 
 ---
 
-## Principios
+## Estado actual del código (resumen funcional)
 
-1. **No downgrade accidental**
-   - Una compra no debe reducir capacidad ya otorgada por error.
+Hoy conviven dos rutas principales de aplicación de paquetes:
 
-2. **Plan base como piso mínimo**
-   - Al aplicar un plan base, la capacidad efectiva se calcula como:
-   - `max(capacidadActual, capacidadDelPlan)`
+- **Manual**: aprobación admin (`app/api/admin/orders/[id]/approve/route.ts`)
+- **Stripe legacy**: webhook (`app/api/payments/webhook/route.ts`)
 
-3. **Top-up como fase futura**
-   - Las compras de expansión (top-up) serán acumulativas (`+N`).
-   - **No implementado en esta fase**: solo documentado para diseño futuro.
+En ambos flujos, la cuenta se actualiza con datos del paquete comprado (package/accountType/capacidades), pero el comportamiento deseado a consolidar es:
 
-4. **Compatibilidad con producción actual**
-   - No se cambia Prisma schema ni migraciones en esta etapa.
-   - No se altera lógica de Stripe ni flujo de emergencia en esta fase documental.
+- evitar downgrade accidental,
+- tratar la compra de combo como **plan base**,
+- dejar top-ups acumulativos para una fase posterior.
 
 ---
 
-## Reglas por tipo de compra
+## Política recomendada (oficial) — Modelo Mixto
 
-## A) Plan base (actual y recomendado)
+### 1) Compra de combo como plan base
 
-- Campos funcionales:
-  - `account.packageId`
-  - `account.accountType`
-  - `account.maxChipsAllocated`
-  - `account.maxProfilesAllocated`
+- La capacidad resultante de la cuenta debe ser el **máximo** entre la capacidad actual y la capacidad del combo comprado.
+- Regla:
+  - `maxChipsAllocated = max(actual, plan.maxChips)`
+  - `maxProfilesAllocated = max(actual, plan.maxProfiles)`
+- **Nunca hacer downgrade automático** por comprar un combo menor.
 
-- Aplicación recomendada:
-  - actualizar `packageId` al plan comprado
-  - actualizar `accountType` según plan
-  - asignar capacidad con:
-    - `maxChipsAllocated = max(actual, plan.maxChips)`
-    - `maxProfilesAllocated = max(actual, plan.maxProfiles)`
+Ejemplo:
 
-Esto evita pérdida de capacidad por recompras o cambios operativos.
+- Cuenta con 5 chips disponibles.
+- Compra “Combo Dúo” (2 chips).
+- Resultado: mantiene 5 (no baja a 2).
 
-## B) Top-up (futuro)
+### 2) Top-up futuro (acumulativo)
 
-- Caso objetivo: aumentar capacidad sin reemplazar plan base.
-- Regla futura:
+- Si se crea un producto tipo **“chip adicional”**, ese producto sí debe operar en modo acumulativo.
+- Regla futura esperada:
   - `maxChipsAllocated += chipsTopUp`
-  - `maxProfilesAllocated += profilesTopUp` (si aplica)
-- Estado: pendiente de decisión de negocio y diseño de catálogo/top-up.
+- Aún no mezclar lógica de combos con top-ups en esta etapa.
+
+### 3) Renovación futura
+
+- Renovar debe extender vigencia del servicio.
+- Renovación **no implica automáticamente** sumar capacidad de chips.
+- Definición exacta de renovación queda pendiente de diseño comercial/financiero.
 
 ---
 
-## Casos de negocio pendientes
+## Ejemplos de negocio
 
-1. ¿Compra futura reemplaza plan o acumula?
-2. ¿Se permite downgrade comercial con capacidad histórica preservada?
-3. ¿Cómo se modela top-up en catálogo y facturación?
-4. ¿Qué política aplica por provider (`manual`, `stripe`, `legacy`) si difieren?
+1. **Compra inicial**
+   - Cliente nuevo compra combo 1 chip.
+   - Cuenta queda con capacidad base de 1.
+
+2. **Upgrade natural**
+   - Cliente con 2 chips compra combo 5 chips.
+   - Capacidad sube a 5.
+
+3. **Compra de combo menor posterior**
+   - Cliente con 5 chips compra combo 2 chips.
+   - Capacidad se mantiene en 5.
+
+4. **Top-up futuro (cuando exista)**
+   - Cliente con base 5 compra top-up +1.
+   - Capacidad pasa a 6.
 
 ---
 
-## Recomendación operativa inmediata
+## Riesgos a controlar
 
-- Mantener política conservadora:
-  - **nunca reducir capacidad automáticamente**
-  - usar `max(actual, plan)` en activaciones de plan base
-- Posponer acumulación explícita hasta cerrar diseño de top-up.
+1. **Doble conteo de capacidad**
+   - Mezclar lógica de combo base y top-up sin separación clara puede inflar cupos.
+
+2. **Downgrade accidental**
+   - Reemplazar capacidad con valor menor rompe expectativa del cliente.
+
+3. **Compras duplicadas / idempotencia**
+   - Especialmente en webhooks Stripe: prevenir aplicación doble del mismo pago.
+
+4. **Vigencia de 24 meses y expiración**
+   - Alinear capacidad con ciclo de servicio para evitar cuentas “con cupo” pero con servicio vencido.
+
+5. **Renovación futura ambigua**
+   - Si no se define pronto, habrá inconsistencias entre manual/stripe y soporte operativo.
 
 ---
 
-## Próximo paso (fase implementación)
+## Decisiones pendientes de negocio
 
-1. Unificar la política en `OrderService` para todos los providers.
-2. Evitar divergencia entre approve manual y webhook stripe.
-3. Añadir pruebas de regresión para:
-   - no downgrade
-   - idempotencia
-   - consistencia entre providers
+1. Definir catálogo formal de top-ups (SKU, precio, límites).
+2. Definir reglas de renovación (solo tiempo vs tiempo + capacidad opcional).
+3. Definir política para cuentas empresa con múltiples perfiles y lotes.
+4. Unificar implementación final en una sola capa de dominio para manual + stripe.
+
+---
+
+## Conclusión
+
+Para PreRescatePTY, se adopta **modelo mixto**:
+
+- **Combo = plan base con regla `max(actual, plan)`**
+- **Top-up futuro = acumulativo**
+- **Renovación = extensión de vigencia (capacidad por definir aparte)**
+
+Esta política minimiza riesgo comercial y técnico mientras se prepara una fase posterior de implementación formal.
