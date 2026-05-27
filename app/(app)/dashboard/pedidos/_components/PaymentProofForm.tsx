@@ -1,0 +1,155 @@
+"use client";
+
+import { Upload, Loader2 } from "lucide-react";
+import { Truck } from "lucide-react";
+
+interface Order {
+  id: string;
+  manualPaymentReference: string | null;
+  paymentProofUrl: string | null;
+  shippingAddress: string | null;
+  shippingCity: string | null;
+  shippingNotes: string | null;
+  canCancel: boolean;
+}
+
+interface PaymentProofFormProps {
+  order: Order;
+  uploadingFor: string | null;
+  paymentRefDraft: Record<string, string>;
+  paymentProofDraft: Record<string, string>;
+  onRefChange: (orderId: string, value: string) => void;
+  onProofUrlChange: (orderId: string, value: string) => void;
+  onUpload: (e: React.ChangeEvent<HTMLInputElement>, orderId: string) => void;
+  onSubmitReference: (orderId: string) => void;
+  onCancel: (orderId: string) => void;
+  onShippingChange: {
+    address: (val: string) => void;
+    city: (val: string) => void;
+    notes: (val: string) => void;
+  };
+  /** Element injected in place of payment instructions (Yappy / bank) */
+  paymentInstructions: React.ReactNode;
+}
+
+/**
+ * Payment proof upload / reference form for manual orders.
+ * Handlers remain in the parent page – this component only receives props & callbacks.
+ */
+export function PaymentProofForm({
+  order,
+  uploadingFor,
+  paymentRefDraft,
+  paymentProofDraft,
+  onRefChange,
+  onProofUrlChange,
+  onUpload,
+  onSubmitReference,
+  onCancel,
+  onShippingChange,
+  paymentInstructions,
+}: PaymentProofFormProps) {
+  return (
+    <div className="p-8 rounded-[2.5rem] bg-slate-50 border border-border flex flex-col items-center gap-8 text-center">
+      {/* Payment methods */}
+      {paymentInstructions}
+
+      {/* Shipping info */}
+      <div className="w-full space-y-4 px-4 py-2 border-y border-border/50 pt-6 text-left">
+        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4 flex items-center gap-2">
+          <Truck className="h-3.5 w-3.5" /> Información de Envío
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <p className="text-[9px] font-black uppercase text-muted-foreground ml-1">Ciudad / Área</p>
+            <input
+              type="text"
+              placeholder="Ej: David, Chiriquí"
+              className="w-full bg-white border border-border rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+              defaultValue={order.shippingCity || ""}
+              onChange={(e) => onShippingChange.city(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[9px] font-black uppercase text-muted-foreground ml-1">Dirección Detallada</p>
+            <input
+              type="text"
+              placeholder="Calle, Edificio/Piso, # de Casa"
+              className="w-full bg-white border border-border rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+              defaultValue={order.shippingAddress || ""}
+              onChange={(e) => onShippingChange.address(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="mt-4 space-y-1">
+          <p className="text-[9px] font-black uppercase text-muted-foreground ml-1">Referencias de entrega (Opcional)</p>
+          <textarea
+            placeholder="Ej: Portón blanco, frente al parque..."
+            className="w-full bg-white border border-border rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none min-h-[90px] resize-none"
+            defaultValue={order.shippingNotes || ""}
+            onChange={(e) => onShippingChange.notes(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Reference / proof fields */}
+      <div className="flex flex-col items-center gap-4 w-full">
+        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+          Referencia / comprobante de pago
+        </p>
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input
+            type="text"
+            placeholder="Referencia Yappy / transferencia"
+            className="w-full bg-white border border-border rounded-xl px-4 py-3 text-xs font-bold"
+            value={paymentRefDraft[order.id] ?? order.manualPaymentReference ?? ""}
+            onChange={(e) => onRefChange(order.id, e.target.value)}
+            aria-label="Referencia de pago Yappy o transferencia"
+          />
+          <input
+            type="text"
+            placeholder="URL comprobante (opcional)"
+            className="w-full bg-white border border-border rounded-xl px-4 py-3 text-xs font-bold"
+            value={paymentProofDraft[order.id] ?? order.paymentProofUrl ?? ""}
+            onChange={(e) => onProofUrlChange(order.id, e.target.value)}
+            aria-label="URL del comprobante de pago"
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 w-full">
+          <label className="relative cursor-pointer bg-primary text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex-1">
+            {uploadingFor === order.id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            {uploadingFor === order.id ? "Subiendo..." : "Subir Comprobante"}
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              className="hidden"
+              onChange={(e) => onUpload(e, order.id)}
+              disabled={uploadingFor === order.id}
+              aria-label="Seleccionar archivo de comprobante"
+            />
+          </label>
+          <button
+            onClick={() => onSubmitReference(order.id)}
+            disabled={uploadingFor === order.id}
+            className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all min-w-[170px] disabled:opacity-50"
+            aria-label="Enviar referencia de pago"
+          >
+            Enviar Referencia
+          </button>
+          <button
+            onClick={() => onCancel(order.id)}
+            disabled={!order.canCancel}
+            className="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all min-w-[150px]"
+            aria-label="Cancelar pedido"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
