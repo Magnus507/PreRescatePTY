@@ -252,7 +252,8 @@ export function PedidosSection() {
             <div className="flex items-center gap-4">
                <button 
                  onClick={() => setSelectedOrder(null)}
-               className="h-10 w-10 flex items-center justify-center bg-white border border-border rounded-xl hover:bg-slate-50 transition-all group"
+                 className="h-10 w-10 flex items-center justify-center bg-white border border-border rounded-xl hover:bg-slate-50 transition-all group"
+                 aria-label="Volver al listado de pedidos"
                >
                   <RefreshCw className="h-5 w-5 text-muted-foreground group-hover:rotate-180 transition-transform duration-500" />
                </button>
@@ -509,7 +510,7 @@ export function PedidosSection() {
                <Trash2 className="h-4 w-4" />
                <span className="hidden sm:inline">Limpiar Cancelados</span>
             </button>
-            <button onClick={() => loadOrders({ silent: true })} disabled={refreshing} className="p-3 border border-border rounded-xl hover:bg-accent transition-all">
+            <button onClick={() => loadOrders({ silent: true })} disabled={refreshing} className="p-3 border border-border rounded-xl hover:bg-accent transition-all" aria-label="Actualizar pedidos">
                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
          </div>
@@ -542,12 +543,13 @@ export function PedidosSection() {
                       <td className="p-3 pl-5">
                          <div className="flex items-center gap-2">
                            <p className="font-mono font-bold text-sm break-all" title={o.orderNumber}>#{o.orderNumber}</p>
-                           <button
-                             type="button"
-                             onClick={() => copyOrderNumber(o.orderNumber)}
-                             className="text-[9px] px-2 py-0.5 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
-                             title="Copiar número de pedido"
-                           >
+                         <button
+                           type="button"
+                           onClick={() => copyOrderNumber(o.orderNumber)}
+                           className="text-[9px] px-2 py-0.5 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
+                           title="Copiar número de pedido"
+                           aria-label={`Copiar número de pedido ${o.orderNumber}`}
+                         >
                              Copiar
                            </button>
                          </div>
@@ -583,6 +585,7 @@ export function PedidosSection() {
                          <button 
                            onClick={() => setSelectedOrder(o)}
                            className="p-2 border border-border rounded-lg hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-center"
+                           aria-label={`Ver detalle del pedido ${o.orderNumber}`}
                          >
                             <View className="h-4 w-4" />
                          </button>

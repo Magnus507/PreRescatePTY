@@ -228,6 +228,7 @@ function PedidosContent() {
                           onClick={() => copyOrderNumber(order.orderNumber)}
                           className="text-[9px] px-2 py-1 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
                           title="Copiar número de pedido"
+                          aria-label={`Copiar número de pedido ${order.orderNumber}`}
                         >
                           Copiar
                         </button>
