@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (order.adminReviewStatus === "rejected") {
     return NextResponse.json({ error: "Ya rechazada" }, { status: 400 });
   }
-  if (order.paymentStatus !== "under_review") {
+  if (order.paymentStatus !== "under_review" && order.paymentStatus !== "pending") {
     return NextResponse.json({ error: "La orden no está bajo revisión" }, { status: 400 });
   }
 
