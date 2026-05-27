@@ -22,7 +22,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   let updateData: Prisma.OrderUpdateInput = {};
   
   if (status === "cancelled") {
-    updateData = { orderStatus: "cancelled", paymentStatus: "cancelled" };
+    updateData = {
+      orderStatus: "cancelled",
+      paymentStatus: "cancelled"
+    };
   } else {
     const validatedProofUrl = paymentProofUrl
       ? normalizePaymentProofUrl(paymentProofUrl, userId)

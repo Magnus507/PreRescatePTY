@@ -477,6 +477,8 @@ export function PedidosSection() {
                               />
                            </div>
                            {selectedOrder.provider === "manual" && selectedOrder.paymentStatus === "under_review" && (
+                              <>
+                               <p className="text-[10px] text-amber-700 font-semibold">Recomendado: indique el motivo del rechazo.</p>
                                <div className="flex flex-col gap-2 sm:flex-row">
                                  <button
                                    disabled={updating}
@@ -493,6 +495,7 @@ export function PedidosSection() {
                                    Rechazar Pago
                                  </button>
                               </div>
+                              </>
                            )}
                         </div>
                      </section>
@@ -665,7 +668,7 @@ export function PedidosSection() {
                 }).map(o => (
                    <tr key={o.id} className="hover:bg-accent/30 transition-all">
                       <td className="p-3 pl-5">
-                         <p className="font-mono font-bold text-sm">#{o.orderNumber}</p>
+                         <p className="font-mono font-bold text-sm break-all" title={o.orderNumber}>#{o.orderNumber}</p>
                          <p className="text-[10px] uppercase text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
                       </td>
                       <td className="p-3">
