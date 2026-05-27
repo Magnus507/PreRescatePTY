@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import { canAdminApproveManual } from "@/lib/order-status";
 import { z } from "zod";
 
 const ApproveSchema = z.object({
@@ -31,11 +32,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (!order || order.provider !== "manual") {
     return NextResponse.json({ error: "Orden manual no encontrada" }, { status: 404 });
   }
-  if (order.adminReviewStatus === "approved") {
-    return NextResponse.json({ error: "Ya aprobada" }, { status: 400 });
-  }
-  if (order.paymentStatus !== "under_review") {
-    return NextResponse.json({ error: "La orden no está bajo revisión" }, { status: 400 });
+  if (!canAdminApproveManual(order)) {
+    return NextResponse.json({ error: "La orden manual no puede aprobarse en su estado actual" }, { status: 400 });
   }
 
   // Buscar usuario y accountId

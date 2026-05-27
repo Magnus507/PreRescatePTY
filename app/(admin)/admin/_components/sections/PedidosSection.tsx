@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
 
 interface Order {
   id: string;
@@ -476,19 +477,19 @@ export function PedidosSection() {
                                 placeholder="Agrega una observación para la aprobación o rechazo..."
                               />
                            </div>
-                           {selectedOrder.provider === "manual" && selectedOrder.paymentStatus === "under_review" && (
+                           {selectedOrder.provider === "manual" && canAdminApproveManual(selectedOrder) && (
                               <>
                                <p className="text-[10px] text-amber-700 font-semibold">Recomendado: indique el motivo del rechazo.</p>
                                <div className="flex flex-col gap-2 sm:flex-row">
                                  <button
-                                   disabled={updating}
+                                    disabled={updating || !canAdminApproveManual(selectedOrder)}
                                    onClick={() => handleReviewAction(selectedOrder.id, "approve")}
                                     className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                                  >
                                    Aprobar Pago
                                  </button>
                                  <button
-                                   disabled={updating}
+                                    disabled={updating || !canAdminRejectManual(selectedOrder)}
                                    onClick={() => handleReviewAction(selectedOrder.id, "reject")}
                                     className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
                                  >

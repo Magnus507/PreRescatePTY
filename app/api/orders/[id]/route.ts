@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canCustomerCancelManual, canSubmitManualProof } from "@/lib/order-status";
 import { Prisma } from "@prisma/client";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +23,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   let updateData: Prisma.OrderUpdateInput = {};
   
   if (status === "cancelled") {
+    if (!canCustomerCancelManual(order)) {
+      return NextResponse.json({ error: "No puedes cancelar esta orden" }, { status: 400 });
+    }
     updateData = {
       orderStatus: "cancelled",
       paymentStatus: "cancelled"
@@ -42,6 +46,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     };
 
     if (validatedProofUrl || order.paymentProofUrl) {
+      if (!canSubmitManualProof(order)) {
+        return NextResponse.json({ error: "La orden no permite actualizar comprobante" }, { status: 400 });
+      }
       updateData.paymentProofUrl = validatedProofUrl || order.paymentProofUrl;
       updateData.orderStatus = "processing";
       updateData.paymentStatus = "under_review";

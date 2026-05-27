@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canSubmitManualProof } from "@/lib/order-status";
 import { z } from "zod";
 
 // MANUAL FLOW P0 HARDENING
@@ -10,7 +11,7 @@ const SAFE_PATH_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9/_.,=-]{0,240}\.(?:jpg|jpeg|png
 function normalizePaymentProofUrl(value: string) {
   let url: URL;
   try {
-    url = new URL(value, "https://local.prerescue");
+    url = new URL(value);
   } catch {
     return null;
   }
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (order.provider !== "manual") {
     return NextResponse.json({ error: "Solo órdenes manuales" }, { status: 400 });
   }
-  if (order.paymentStatus !== "pending" && order.paymentStatus !== "under_review") {
+  if (!canSubmitManualProof(order)) {
     return NextResponse.json({ error: "La orden no está pendiente de comprobante" }, { status: 400 });
   }
 

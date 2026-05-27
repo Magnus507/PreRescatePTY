@@ -6,6 +6,7 @@ import {
   ShoppingBag, QrCode, Banknote, Upload, Loader2 
 } from "lucide-react";
 import { toast } from "sonner";
+import { canCustomerCancelManual, canSubmitManualProof, getOrderStatusLabel, isManualOrderFinal } from "@/lib/order-status";
 
 interface OrderItem {
   id: string;
@@ -162,13 +163,14 @@ function PedidosContent() {
   };
 
   const getStatusDisplay = (status: string, paymentStatus?: string) => {
-    if (paymentStatus === "rejected") {
+    const label = getOrderStatusLabel(status, paymentStatus);
+    if (label === "Pago Rechazado") {
       return { label: "Pago Rechazado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
     }
-    if (paymentStatus === "under_review") {
+    if (label === "Pago en Revisión") {
       return { label: "Pago en Revisión", icon: Clock, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
     }
-    if (paymentStatus === "paid") {
+    if (label === "Pago Aprobado") {
       return { label: "Pago Aprobado", icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" };
     }
 
@@ -210,15 +212,8 @@ function PedidosContent() {
               const status = getStatusDisplay(order.orderStatus, order.paymentStatus);
               const StatusIcon = status.icon;
               const items = order.items ?? [];
-              const isFinalCompactState =
-                order.orderStatus === "cancelled" ||
-                order.paymentStatus === "cancelled" ||
-                order.paymentStatus === "rejected" ||
-                order.adminReviewStatus === "rejected";
-              const showManualPaymentBlock =
-                order.provider === "manual" &&
-                !isFinalCompactState &&
-                (order.paymentStatus === "pending" || order.paymentStatus === "under_review");
+              const isFinalCompactState = isManualOrderFinal(order) || order.orderStatus === "cancelled";
+              const showManualPaymentBlock = canSubmitManualProof(order);
               
               return (
                 <div key={order.id} className={`border border-border bg-white shadow-xl shadow-black/[0.02] flex flex-col transition-all hover:shadow-2xl hover:shadow-black/[0.1] ${isFinalCompactState ? "p-6 sm:p-7 rounded-[2rem] gap-4" : "p-8 sm:p-10 rounded-[3.5rem] gap-8"}`}>
@@ -346,6 +341,7 @@ function PedidosContent() {
                                toast.success("Cancelado"); loadOrders();
                                setUploadingFor(null);
                              }}
+                             disabled={!canCustomerCancelManual(order)}
                              className="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all min-w-[150px]"
                           >
                              Cancelar
