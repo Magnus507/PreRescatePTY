@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -13,17 +12,9 @@ function isValidActivePackageAccountType(accountType: string) {
   );
 }
 
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = (session.user as { role?: string }).role;
-  return role === "admin" || role === "superadmin";
-}
-
 export async function GET() {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const packages = await prisma.package.findMany({
     orderBy: { displayOrder: "asc" },
@@ -33,9 +24,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const data = await req.json();
@@ -76,9 +66,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const { id, ...data } = await req.json();

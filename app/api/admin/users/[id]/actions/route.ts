@@ -1,28 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { ACCOUNT_TYPES, USER_ROLES, ORGANIZATION_TYPES, BUSINESS_RULES } from "@/domains/shared/constants";
+import { ACCOUNT_TYPES, ORGANIZATION_TYPES, BUSINESS_RULES } from "@/domains/shared/constants";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
-
-// Check if the current session is an admin
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.role) return false;
-  const role = session.user.role;
-  return role === USER_ROLES.ADMIN || role === USER_ROLES.SUPERADMIN;
-}
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
+  const session = auth.session;
+  const adminId = session.user.id;
   const { id: userId } = await params;
-  
-  const session = await getServerSession(authOptions);
-  const adminId = (session?.user as any)?.id;
-
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
 
   const body = await req.json();
   const { action, data } = body;

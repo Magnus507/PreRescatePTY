@@ -1,24 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRole, SUPERADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
-
-async function isSuperAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = (session.user as { role?: string }).role;
-  return role === "superadmin";
-}
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isSuperAdmin())) {
-    return NextResponse.json({ error: "Solo superadmin puede modificar administradores" }, { status: 403 });
-  }
+  const auth = await requireRole(SUPERADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { id } = await params;
   const body = await req.json();
@@ -64,9 +55,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isSuperAdmin())) {
-    return NextResponse.json({ error: "Solo superadmin puede eliminar administradores" }, { status: 403 });
-  }
+  const auth = await requireRole(SUPERADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { id } = await params;
 

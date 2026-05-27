@@ -14,6 +14,11 @@ export const ORDER_ADMIN_ROLES = ["admin", "superadmin", "imprenta"];
 export const GENERAL_ADMIN_ROLES = ["admin", "superadmin"];
 
 /**
+ * Roles exclusivos de superadmin
+ */
+export const SUPERADMIN_ROLES = ["superadmin"];
+
+/**
  * Verifica si el rol de sesión está incluido en la lista de roles permitidos.
  */
 export function hasRole(

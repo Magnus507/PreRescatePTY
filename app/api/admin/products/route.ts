@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { USER_ROLES } from "@/domains/shared/constants";
-
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  return session?.user?.role === "admin" || session?.user?.role === "superadmin";
-}
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export async function GET() {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const products = await prisma.product.findMany({
@@ -25,9 +17,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const body = await req.json();

@@ -1,22 +1,13 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { AdminStatsService } from "@/domains/admin/services/admin-stats.service";
 import { redis, isRedisConfigured } from "@/lib/redis";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = (session.user as { role?: string }).role;
-  return role === "admin" || role === "superadmin";
-}
-
 export async function GET() {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const CACHE_KEY = "admin_stats_v1";

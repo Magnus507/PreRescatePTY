@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UserRepository } from "@/domains/users/repositories/user.repository";
 import { z } from "zod";
-import { withAdminAuth } from "@/lib/guards";
+import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,9 @@ const updateStatusSchema = z.object({
   status: z.enum(["active", "suspended"]),
 });
 
-export const GET = withAdminAuth(async (req: any) => {
+export async function GET(req: NextRequest) {
+  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
   const { searchParams } = new URL(req.url);
   
   // Sanitize pagination
@@ -34,9 +36,11 @@ export const GET = withAdminAuth(async (req: any) => {
     console.error("Admin Users GET Error:", error);
     return NextResponse.json({ error: "Error al cargar usuarios" }, { status: 500 });
   }
-});
+}
 
-export const PATCH = withAdminAuth(async (req: any) => {
+export async function PATCH(req: NextRequest) {
+  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
   try {
     const body = await req.json();
     const result = updateStatusSchema.safeParse(body);
@@ -59,5 +63,5 @@ export const PATCH = withAdminAuth(async (req: any) => {
     console.error("Admin Users PATCH Error:", error);
     return NextResponse.json({ error: "Error al actualizar usuario" }, { status: 500 });
   }
-});
+}
 
