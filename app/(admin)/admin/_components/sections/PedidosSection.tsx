@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2 } from "lucide-react";
+import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
@@ -248,20 +249,6 @@ export function PedidosSection() {
     }
   };
 
-  const getStatusBadge = (status: string, paymentStatus?: string) => {
-    if (paymentStatus === "rejected") {
-      return <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase">Pago Rechazado</span>;
-    }
-
-    switch(status) {
-      case "pending": return <span className="px-2 py-1 bg-amber-500/10 text-amber-600 rounded-lg text-xs font-bold uppercase">Pendiente</span>;
-      case "processing": return <span className="px-2 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-xs font-bold uppercase">Revisión Pagos</span>;
-      case "shipped": return <span className="px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg text-xs font-bold uppercase">Enviado</span>;
-      case "completed": return <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-lg text-xs font-bold uppercase">Completado</span>;
-      case "cancelled": return <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase">Cancelada</span>;
-      default: return <span className="px-2 py-1 bg-slate-500/10 text-slate-600 rounded-lg text-xs font-bold uppercase">{status}</span>;
-    }
-  };
 
   if (loading && orders.length === 0) {
     return (
@@ -297,7 +284,12 @@ export function PedidosSection() {
                          Copiar
                        </button>
                      </div>
-                     {getStatusBadge(selectedOrder.orderStatus, selectedOrder.paymentStatus)}
+                     <OrderStatusBadge
+                       orderStatus={selectedOrder.orderStatus}
+                       paymentStatus={selectedOrder.paymentStatus}
+                       adminReviewStatus={selectedOrder.adminReviewStatus}
+                       variant="admin"
+                     />
                   </div>
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">Logística de Despacho & CRM</p>
                </div>
@@ -732,7 +724,12 @@ export function PedidosSection() {
                          <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${o.items[0].quantity} chip${o.items[0].quantity === 1 ? "" : "s"} incluido${o.items[0].quantity === 1 ? "" : "s"}` : "0 chips incluidos"}</p>
                       </td>
                       <td className="p-3">
-                         {getStatusBadge(o.orderStatus, o.paymentStatus)}
+                          <OrderStatusBadge
+                            orderStatus={o.orderStatus}
+                            paymentStatus={o.paymentStatus}
+                            adminReviewStatus={o.adminReviewStatus}
+                            variant="admin"
+                          />
                          {o.paymentProofUrl && <p className="text-[9px] font-black text-emerald-600 uppercase mt-1">✓ Pago Subido</p>}
                       </td>
                       <td className="p-3 pr-5">

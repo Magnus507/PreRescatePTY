@@ -2,9 +2,9 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { 
-  Package, Truck, CheckCircle2, AlertCircle, Clock, 
-  ShoppingBag, QrCode, Banknote, Upload, Loader2 
+  Package, Truck, CheckCircle2, QrCode, Banknote, Upload, Loader2 
 } from "lucide-react";
+import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { toast } from "sonner";
 import { canCustomerCancelManual, canSubmitManualProof, getOrderStatusLabel, isManualOrderFinal } from "@/lib/order-status";
 
@@ -174,24 +174,7 @@ function PedidosContent() {
 
   const getStatusDisplay = (status: string, paymentStatus?: string) => {
     const label = getOrderStatusLabel(status, paymentStatus);
-    if (label === "Pago Rechazado") {
-      return { label: "Pago Rechazado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
-    }
-    if (label === "Pago en Revisión") {
-      return { label: "Pago en Revisión", icon: Clock, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
-    }
-    if (label === "Pago Aprobado") {
-      return { label: "Pago Aprobado", icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" };
-    }
-
-    switch(status) {
-      case "pending": return { label: "Esperando Pago", icon: Clock, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" };
-      case "processing": return { label: "Trabajando en tu pedido", icon: ShoppingBag, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
-      case "shipped": return { label: "En camino", icon: Truck, color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20" };
-      case "completed": return { label: "Completado", icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" };
-      case "cancelled": return { label: "Cancelado", icon: AlertCircle, color: "text-red-500 bg-red-500/10 border-red-500/20" };
-      default: return { label: "Desconocido", icon: AlertCircle, color: "text-slate-500 bg-slate-500/10 border-slate-500/20" };
-    }
+    return { label };
   };
 
   if (loading) {
@@ -219,8 +202,6 @@ function PedidosContent() {
         ) : (
           <div className="space-y-8">
             {orders.map(order => {
-              const status = getStatusDisplay(order.orderStatus, order.paymentStatus);
-              const StatusIcon = status.icon;
               const items = order.items ?? [];
               const isFinalCompactState = isManualOrderFinal(order) || order.orderStatus === "cancelled";
               const showManualPaymentBlock = canSubmitManualProof(order);
@@ -244,10 +225,11 @@ function PedidosContent() {
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString()}</p>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">Pago: {(order.paymentMethod || "manual").replace("_", " ")}</p>
                     </div>
-                    <div className={`flex items-center gap-3 px-6 py-3 rounded-2xl border ${status.color}`}>
-                      <StatusIcon className="h-5 w-5" />
-                      <span className="text-xs font-black uppercase tracking-widest">{status.label}</span>
-                    </div>
+                    <OrderStatusBadge
+                      orderStatus={order.orderStatus}
+                      paymentStatus={order.paymentStatus}
+                      variant="customer"
+                    />
                   </div>
 
                   {(order.paymentStatus === "rejected" || order.adminReviewStatus === "rejected") && (
