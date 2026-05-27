@@ -86,6 +86,15 @@ function PedidosContent() {
     }
   }
 
+  const copyOrderNumber = async (orderNumber: string) => {
+    try {
+      await navigator.clipboard.writeText(orderNumber);
+      toast.success("Número de pedido copiado");
+    } catch {
+      toast.error("No se pudo copiar el número");
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, orderId: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -219,7 +228,17 @@ function PedidosContent() {
                 <div key={order.id} className={`border border-border bg-white shadow-xl shadow-black/[0.02] flex flex-col transition-all hover:shadow-2xl hover:shadow-black/[0.1] ${isFinalCompactState ? "p-6 sm:p-7 rounded-[2rem] gap-4" : "p-8 sm:p-10 rounded-[3.5rem] gap-8"}`}>
                   <div className={`flex flex-col sm:flex-row sm:items-center justify-between ${isFinalCompactState ? "gap-3" : "gap-6"}`}>
                     <div>
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2 break-all" title={order.orderNumber}>Pedido #{order.orderNumber}</p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] break-all" title={order.orderNumber}>Pedido #{order.orderNumber}</p>
+                        <button
+                          type="button"
+                          onClick={() => copyOrderNumber(order.orderNumber)}
+                          className="text-[9px] px-2 py-1 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
+                          title="Copiar número de pedido"
+                        >
+                          Copiar
+                        </button>
+                      </div>
                       <h3 className={`${isFinalCompactState ? "text-2xl" : "text-3xl"} font-black tracking-tighter`}>${order.amount.toFixed(2)}</h3>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString()}</p>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">Pago: {(order.paymentMethod || "manual").replace("_", " ")}</p>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PaymentService } from "@/domains/shared/services/payment.service";
 import { prisma } from "@/lib/prisma";
+import { generateOrderNumber } from "@/lib/order-number";
 import Stripe from "stripe";
 import { Prisma } from "@prisma/client";
 import { ACCOUNT_TYPES } from "@/domains/shared/constants";
@@ -67,8 +68,11 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        const orderNumber = await generateOrderNumber("stripe");
+
         await tx.order.create({
           data: {
+            orderNumber,
             userId,
             amount: (session.amount_total ?? 0) / 100, // Stripe uses cents
             currency: session.currency ?? "usd",

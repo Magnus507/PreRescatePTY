@@ -241,6 +241,15 @@ export function PedidosSection() {
     }
   };
 
+  const copyOrderNumber = async (orderNumber: string) => {
+    try {
+      await navigator.clipboard.writeText(orderNumber);
+      toast.success("Número de pedido copiado");
+    } catch {
+      toast.error("No se pudo copiar el número");
+    }
+  };
+
   const getStatusBadge = (status: string, paymentStatus?: string) => {
     if (paymentStatus === "rejected") {
       return <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase">Pago Rechazado</span>;
@@ -279,7 +288,17 @@ export function PedidosSection() {
                </button>
                <div>
                   <div className="flex items-center gap-3">
-                     <h2 className="text-2xl font-black uppercase tracking-tighter">Pedido #{selectedOrder.orderNumber}</h2>
+                     <div className="flex items-center gap-2">
+                       <h2 className="text-2xl font-black uppercase tracking-tighter" title={selectedOrder.orderNumber}>Pedido #{selectedOrder.orderNumber}</h2>
+                       <button
+                         type="button"
+                         onClick={() => copyOrderNumber(selectedOrder.orderNumber)}
+                         className="text-[9px] px-2 py-1 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
+                         title="Copiar número de pedido"
+                       >
+                         Copiar
+                       </button>
+                     </div>
                      {getStatusBadge(selectedOrder.orderStatus, selectedOrder.paymentStatus)}
                   </div>
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">Logística de Despacho & CRM</p>
@@ -477,6 +496,13 @@ export function PedidosSection() {
                                 placeholder="Agrega una observación para la aprobación o rechazo..."
                               />
                            </div>
+                           {selectedOrder.adminReviewStatus === "rejected" && (
+                             <div className="p-3 rounded-xl border border-red-200 bg-red-50">
+                               <p className="text-[10px] font-black uppercase tracking-widest text-red-700">
+                                 Motivo de rechazo: {selectedOrder.adminReviewNotes?.trim() || "No especificado"}
+                               </p>
+                             </div>
+                           )}
                            {selectedOrder.provider === "manual" && canAdminApproveManual(selectedOrder) && (
                               <>
                                <p className="text-[10px] text-amber-700 font-semibold">Recomendado: indique el motivo del rechazo.</p>
@@ -669,7 +695,17 @@ export function PedidosSection() {
                 }).map(o => (
                    <tr key={o.id} className="hover:bg-accent/30 transition-all">
                       <td className="p-3 pl-5">
-                         <p className="font-mono font-bold text-sm break-all" title={o.orderNumber}>#{o.orderNumber}</p>
+                         <div className="flex items-center gap-2">
+                           <p className="font-mono font-bold text-sm break-all" title={o.orderNumber}>#{o.orderNumber}</p>
+                           <button
+                             type="button"
+                             onClick={() => copyOrderNumber(o.orderNumber)}
+                             className="text-[9px] px-2 py-0.5 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
+                             title="Copiar número de pedido"
+                           >
+                             Copiar
+                           </button>
+                         </div>
                          <p className="text-[10px] uppercase text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
                       </td>
                       <td className="p-3">

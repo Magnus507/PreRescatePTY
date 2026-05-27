@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { generateOrderNumber } from "@/lib/order-number";
 import { z } from "zod";
 
 const ManualOrderSchema = z.object({
@@ -39,48 +40,28 @@ export async function POST(req: NextRequest) {
   }
 
 
-  // Generar un orderNumber único (ejemplo: timestamp + random)
-  const orderNumber = `M-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  const orderNumber = await generateOrderNumber("manual");
 
   // Crear la orden manual
-  try {
-    const order = await prisma.order.create({
-      data: {
-        userId,
-        orderNumber,
-        amount: pkg.price,
-        orderStatus: "pending",
-        paymentStatus: "pending",
-        paymentMethod: data.paymentMethod,
-        customerName: data.customerName,
-        customerEmail: data.customerEmail,
-        customerPhone: data.customerPhone || null,
-        customerDocument: data.customerDocument || null,
-        shippingAddress: data.shippingAddress || null,
-        shippingCity: data.shippingCity || null,
-        shippingNotes: data.shippingNotes || null,
-        provider: "manual",
-        packageId: pkg.id,
-        items: {
-          create: [{
-            productType: pkg.name,
-            quantity: 1,
-            unitPrice: pkg.price,
-            totalPrice: pkg.price
-          }]
-        }
-      }
-    });
+  const order = await prisma.order.create({
+    data: {
+      userId,
+      orderNumber,
+      amount: pkg.price,
+      orderStatus: "pending",
+      paymentStatus: "pending",
+      paymentMethod: data.paymentMethod,
+      customerName: data.customerName,
+      customerEmail: data.customerEmail,
+      customerPhone: data.customerPhone || null,
+      customerDocument: data.customerDocument || null,
+      shippingAddress: data.shippingAddress || null,
+      shippingCity: data.shippingCity || null,
+      shippingNotes: data.shippingNotes || null,
+      provider: "manual",
+      packageId: pkg.id,
+    }
+  });
 
-    return NextResponse.json({ order });
-  } catch (error) {
-    console.error("Manual order create failed", error);
-    return NextResponse.json(
-      {
-        error: "No se pudo crear el pedido",
-        details: error instanceof Error ? error.message : undefined,
-      },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ order });
 }

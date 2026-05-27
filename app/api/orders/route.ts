@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { generateOrderNumber } from "@/lib/order-number";
 import { orderCreateSchema, validateOrThrow } from "@/lib/validations";
 import { BUSINESS_RULES } from "@/domains/shared/constants";
 
@@ -26,10 +27,7 @@ export async function POST(req: NextRequest) {
       customerEmail: user.email,
     });
 
-    // 2. Generate unique order number with random suffix to avoid race conditions
-    const orderCount = await prisma.order.count();
-    const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    const nextNumber = `${(orderCount + 1).toString().padStart(5, '0')}-${randomSuffix}`;
+    const nextNumber = await generateOrderNumber("legacy");
 
     // 3. Atomicity: Update profile and create order in a transaction
     const order = await prisma.$transaction(async (tx) => {
