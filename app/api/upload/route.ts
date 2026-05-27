@@ -10,6 +10,38 @@ const ALLOWED_BUCKETS = new Set(["general", "profile-photos", "payment-proofs"])
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
+/**
+ * Validate file content via magic bytes (first bytes of the buffer).
+ * Returns the detected MIME type or null if unknown/invalid.
+ */
+function detectImageMagicBytes(buffer: Buffer): string | null {
+  if (buffer.length < 12) return null;
+
+  // JPEG: starts with FF D8 FF
+  if (
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  ) {
+    return "image/jpeg";
+  }
+
+  // PNG: starts with 89 50 4E 47 0D 0A 1A 0A
+  const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (buffer.slice(0, 8).equals(pngSignature)) {
+    return "image/png";
+  }
+
+  // WebP: RIFF + 4 bytes size + WEBP
+  const riff = buffer.slice(0, 4).toString("ascii");
+  const webp = buffer.slice(8, 12).toString("ascii");
+  if (riff === "RIFF" && webp === "WEBP") {
+    return "image/webp";
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -57,6 +89,15 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // P0 SECURITY: Validate magic bytes before any processing
+    const detectedMime = detectImageMagicBytes(buffer);
+    if (!detectedMime) {
+      return NextResponse.json(
+        { error: "Archivo inválido: el contenido no corresponde a una imagen permitida." },
+        { status: 400 }
+      );
+    }
     
     // Determine path and optimization settings
     let path = `${userId}/${Date.now()}`;

@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://browser.sentry-cdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.stripe.com https://chart.googleapis.com https://api.qrserver.com https://fikidmfquaxhlayxctsa.supabase.co; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.stripe.com https://*.sentry.io https://nominatim.openstreetmap.org; frame-src 'self' https://js.stripe.com; upgrade-insecure-requests;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://browser.sentry-cdn.com https://*.vercel-insights.com https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.stripe.com https://chart.googleapis.com https://api.qrserver.com https://*.supabase.co; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.stripe.com https://*.sentry.io https://nominatim.openstreetmap.org https://*.supabase.co wss:; frame-src 'self' https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'none'; base-uri 'self'; upgrade-insecure-requests;",
           },
           {
             key: 'X-Content-Type-Options',

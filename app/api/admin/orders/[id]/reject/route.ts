@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { canAdminRejectManual } from "@/lib/order-status";
+import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const RejectSchema = z.object({
@@ -19,6 +20,18 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const adminId = session.user.id;
+
+  // Rate limit: 20 reject/min per admin
+  const limiter = await rateLimit("admin-reject", adminId, {
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (!limiter.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta nuevamente." },
+      { status: 429 }
+    );
+  }
   const { id } = await context.params;
   const body = await req.json();
   const parsed = RejectSchema.safeParse(body);
