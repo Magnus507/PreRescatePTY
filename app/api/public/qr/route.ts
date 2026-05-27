@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const data = searchParams.get("data");
 
   if (!data) {
-    console.error("[QR_GENERATOR] Missing data parameter");
+    logger.error("[QR_GENERATOR] Missing data parameter");
     return new NextResponse("Missing data", { status: 400 });
   }
 
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
       errorCorrectionLevel: 'H' // High error correction for better scanning
     });
 
-    console.log("[QR_GENERATOR] Successfully generated locally for:", data.substring(0, 30) + "...");
+    logger.debug("[QR_GENERATOR] Successfully generated locally for", data.substring(0, 30) + "...");
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("[QR_GENERATOR] Critical failure:", error.message);
+    logger.error("[QR_GENERATOR] Critical failure", error.message);
     return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
   }
 }

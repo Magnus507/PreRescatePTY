@@ -5,6 +5,7 @@ import { generateOrderNumber } from "@/lib/order-number";
 import Stripe from "stripe";
 import { Prisma } from "@prisma/client";
 import { ACCOUNT_TYPES } from "@/domains/shared/constants";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       const packageId = session.metadata?.packageId;
 
       if (!userId || !packageId) {
-        console.warn("[Webhook] Missing userId or packageId in session metadata:", session.id);
+        logger.warn("[Webhook] Missing userId or packageId in session metadata", session.id);
         return NextResponse.json({ received: true, warning: "Missing metadata" });
       }
 
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
         !pkg.isActive ||
         ![ACCOUNT_TYPES.PERSONAL, ACCOUNT_TYPES.COMPANY].includes(pkg.accountType as "personal" | "company")
       ) {
-        console.error("[Webhook] User or Package not found for payment:", { userId, packageId });
+        logger.error("[Webhook] User or Package not found for payment", { userId, packageId });
         return NextResponse.json({ received: true, error: "User or Package invalid" });
       }
 
@@ -85,13 +86,13 @@ export async function POST(req: NextRequest) {
         });
       });
 
-      console.log(`[Webhook] ✅ Package '${pkg.name}' activated for user ${userId} on account ${user.accountId}`);
+      logger.info(`[Webhook] ✅ Package '${pkg.name}' activated for user ${userId} on account ${user.accountId}`);
     }
 
     return NextResponse.json({ received: true });
   } catch (err: unknown) {
     const error = err as Error;
-    console.error("[Webhook] Error:", error.message);
+    logger.error("[Webhook] Error", error.message);
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

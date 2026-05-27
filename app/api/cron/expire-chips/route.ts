@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     data: { serviceStatus: "expired" },
   });
 
-  console.log(`[cron/expire-chips] Marked ${count} chips as expired at ${now.toISOString()}`);
+  logger.info(`[cron/expire-chips] Marked ${count} chips as expired at ${now.toISOString()}`);
 
   return NextResponse.json({
     message: `${count} chip(s) marcados como expirados`,
