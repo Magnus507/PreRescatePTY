@@ -87,6 +87,7 @@ function ComprasContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           packageId: selectedProduct.packageId,
+          quantity,
           customerName,
           customerEmail,
           customerPhone,
@@ -103,9 +104,7 @@ function ComprasContent() {
           window.location.href = "/dashboard/pedidos";
         }, 1500);
       } else {
-        const data = await res.json().catch(() => ({}));
-        console.error("Manual order create failed", data);
-        toast.error(data.error || "Error al crear el pedido");
+        toast.error("Error al crear el pedido");
       }
     } catch (e) {
       toast.error("Error de conexión");

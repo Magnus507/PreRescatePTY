@@ -7,6 +7,7 @@ import { z } from "zod";
 
 const ManualOrderSchema = z.object({
   packageId: z.string(),
+  quantity: z.number().int().min(1).max(99).default(1),
   customerName: z.string().min(2),
   customerEmail: z.string().email(),
   customerPhone: z.string().optional(),
@@ -41,13 +42,16 @@ export async function POST(req: NextRequest) {
 
 
   const orderNumber = await generateOrderNumber("manual");
+  const comboQuantity = data.quantity ?? 1;
+  const totalAmount = pkg.price * comboQuantity;
+  const totalChips = pkg.maxChips * comboQuantity;
 
   // Crear la orden manual
   const order = await prisma.order.create({
     data: {
       userId,
       orderNumber,
-      amount: pkg.price,
+      amount: totalAmount,
       orderStatus: "pending",
       paymentStatus: "pending",
       paymentMethod: data.paymentMethod,
@@ -64,9 +68,9 @@ export async function POST(req: NextRequest) {
         create: [
           {
             productType: pkg.name,
-            quantity: pkg.maxChips,
+            quantity: totalChips,
             unitPrice: pkg.price,
-            totalPrice: pkg.price,
+            totalPrice: totalAmount,
           },
         ],
       },

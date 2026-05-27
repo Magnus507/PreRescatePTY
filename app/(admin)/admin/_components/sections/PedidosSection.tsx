@@ -30,6 +30,7 @@ interface Order {
     id: string;
     productType: string;
     quantity: number;
+    unitPrice: number;
     totalPrice: number;
   }[];
   chipClaimTokens: {
@@ -723,6 +724,7 @@ export function PedidosSection() {
                       <td className="p-3">
                          <p className="font-black text-base text-primary">${o.amount.toFixed(2)}</p>
                          <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0]?.productType || "Combo no especificado"}</p>
+                         <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${Math.max(1, Math.round(o.items[0].totalPrice / o.items[0].unitPrice))} combo${Math.max(1, Math.round(o.items[0].totalPrice / o.items[0].unitPrice)) === 1 ? "" : "s"}` : "0 combos"}</p>
                          <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${o.items[0].quantity} chip${o.items[0].quantity === 1 ? "" : "s"} incluido${o.items[0].quantity === 1 ? "" : "s"}` : "0 chips incluidos"}</p>
                       </td>
                       <td className="p-3">

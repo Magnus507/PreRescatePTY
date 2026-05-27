@@ -12,6 +12,7 @@ interface OrderItem {
   id: string;
   productType: string;
   quantity: number;
+  unitPrice: number;
   totalPrice: number;
 }
 
@@ -392,9 +393,15 @@ function PedidosContent() {
 
                   <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      {items.length > 0
-                        ? `${items[0].productType} • ${items[0].quantity} chip${items[0].quantity === 1 ? "" : "s"} incluidos`
-                        : "Combo no especificado"}
+                      {(() => {
+                        const item = items[0];
+                        if (!item) return "Combo no especificado";
+                        const comboCount = item.unitPrice > 0 ? Math.max(1, Math.round(item.totalPrice / item.unitPrice)) : 1;
+                        if (comboCount > 1) {
+                          return `${comboCount} combos ${item.productType} • ${item.quantity} chips incluidos`;
+                        }
+                        return `${item.productType} • ${item.quantity} chip${item.quantity === 1 ? "" : "s"} incluidos`;
+                      })()}
                     </p>
                   </div>
                 </div>
