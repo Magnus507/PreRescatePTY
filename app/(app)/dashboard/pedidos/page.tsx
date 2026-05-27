@@ -223,7 +223,7 @@ function PedidosContent() {
                 <div key={order.id} className={`border border-border bg-white shadow-xl shadow-black/[0.02] flex flex-col transition-all hover:shadow-2xl hover:shadow-black/[0.1] ${isFinalCompactState ? "p-6 sm:p-7 rounded-[2rem] gap-4" : "p-8 sm:p-10 rounded-[3.5rem] gap-8"}`}>
                   <div className={`flex flex-col sm:flex-row sm:items-center justify-between ${isFinalCompactState ? "gap-3" : "gap-6"}`}>
                     <div>
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2">Pedido #{order.orderNumber.substring(0, 10)}</p>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2">Pedido #{order.orderNumber}</p>
                       <h3 className={`${isFinalCompactState ? "text-2xl" : "text-3xl"} font-black tracking-tighter`}>${order.amount.toFixed(2)}</h3>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString()}</p>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">Pago: {(order.paymentMethod || "manual").replace("_", " ")}</p>

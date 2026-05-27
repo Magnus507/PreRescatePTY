@@ -53,6 +53,7 @@ interface InventoryChip {
 export function PedidosSection() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [reviewNote, setReviewNote] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -83,16 +84,19 @@ export function PedidosSection() {
     }
   }
 
-  async function loadOrders() {
-    setLoading(true);
+  async function loadOrders(options?: { silent?: boolean }) {
+    const isSilent = options?.silent ?? false;
+    if (!isSilent) setLoading(true);
+    if (isSilent) setRefreshing(true);
     try {
       const res = await fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       setOrders(data.orders || []);
     } catch (e) {
-      toast.error("Error al cargar pedidos");
+      toast.error(isSilent ? "No se pudo actualizar pedidos" : "Error al cargar pedidos");
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
+      if (isSilent) setRefreshing(false);
     }
   }
 
@@ -121,7 +125,7 @@ export function PedidosSection() {
   useEffect(() => {
     if (selectedOrder) return;
     const interval = window.setInterval(() => {
-      loadOrders();
+      loadOrders({ silent: true });
     }, 30000);
 
     return () => window.clearInterval(interval);
@@ -251,7 +255,7 @@ export function PedidosSection() {
     }
   };
 
-  if (loading) {
+  if (loading && orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -630,8 +634,8 @@ export function PedidosSection() {
                <Trash2 className="h-4 w-4" />
                <span className="hidden sm:inline">Limpiar Cancelados</span>
             </button>
-            <button onClick={loadOrders} disabled={loading} className="p-3 border border-border rounded-xl hover:bg-accent transition-all">
-               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <button onClick={() => loadOrders({ silent: true })} disabled={refreshing} className="p-3 border border-border rounded-xl hover:bg-accent transition-all">
+               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
          </div>
       </div>
@@ -661,7 +665,7 @@ export function PedidosSection() {
                 }).map(o => (
                    <tr key={o.id} className="hover:bg-accent/30 transition-all">
                       <td className="p-3 pl-5">
-                         <p className="font-mono font-bold text-sm">#{o.orderNumber.substring(0,8)}</p>
+                         <p className="font-mono font-bold text-sm">#{o.orderNumber}</p>
                          <p className="text-[10px] uppercase text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
                       </td>
                       <td className="p-3">
