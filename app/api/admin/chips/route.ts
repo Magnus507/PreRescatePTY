@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
@@ -9,20 +7,11 @@ import { SITE_URL } from "@/lib/constants";
 import { 
   getBatchUniqueShortCodes, getBatchUniqueSerialPublics, getBatchUniqueActivationCodes 
 } from "@/lib/identifiers";
-
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = session.user.role;
-  return role === "admin" || role === "superadmin" || role === "imprenta";
-}
+import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
 
 export async function GET(req: NextRequest) {
-  const sessionAdmin = await isAdmin();
-  
-  if (!sessionAdmin) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
@@ -91,11 +80,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const sessionAdmin = await isAdmin();
-  
-  if (!sessionAdmin) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const body = await req.json();
   const { count = 1, batchId, productType = "sticker_nfc_qr", labelBase = "Caja", labelStart = 1 } = body;

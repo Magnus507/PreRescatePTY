@@ -1,21 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = (session.user as { role?: string }).role;
-  return role === "admin" || role === "superadmin" || role === "imprenta";
-}
-
 export async function GET(req: NextRequest) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");

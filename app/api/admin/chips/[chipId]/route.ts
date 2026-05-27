@@ -3,23 +3,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
-
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = (session.user as { role?: string }).role;
-  return role === "admin" || role === "superadmin" || role === "imprenta";
-}
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ chipId: string }> }
 ) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { chipId } = await params;
 
@@ -107,9 +100,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ chipId: string }> }
 ) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { chipId } = await params;
   const body = await req.json();
