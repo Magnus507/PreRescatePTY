@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Cpu, Users, History, UsersRound,
   Building2, ChevronRight, Settings, CreditCard,
   LogOut, Home, ShoppingCart, Store, Package,
-  Loader2, ShieldCheck, Scan
+  Loader2, ShieldCheck, Scan, Menu, X
 } from "lucide-react";
 import { AccountState } from "@/domains/accounts/account.types";
 import { ScanMonitor } from "./_components/ScanMonitor";
@@ -62,6 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [state, setState] = useState<AccountState | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   const refreshState = () => {
     if (status === "authenticated") {
@@ -89,6 +90,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [status]);
+
+  useEffect(() => {
+    setIsMoreMenuOpen(false);
+  }, [pathname]);
 
   // The middleware handles redirections to /login.
   // We keep the loading state for visual feedback during hydration.
@@ -219,9 +224,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Mobile bottom nav */}
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/90 dark:bg-[#0f1419]/90 backdrop-blur-xl border-t border-slate-200 dark:border-[#1a2333] flex items-center gap-2 overflow-x-auto px-3 py-2 safe-area-bottom">
-          {(isCorporate ? corporateNavItems : [...consumerNavItems.slice(0, 3), { href: "/dashboard/perfiles-medicos", label: "Perfiles", icon: UsersRound }]).map((item) => {
+          {(isCorporate
+            ? corporateNavItems
+            : [
+                { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+                { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
+                { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
+              ]
+          ).map((item) => {
             const active = pathname === item.href;
-            if (item.href === "/dashboard/perfiles-medicos" && !state?.canManageFamilyProfiles) return null;
             
             return (
               <Link
@@ -237,7 +248,82 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
+
+          {!isCorporate && (
+            <button
+              type="button"
+              onClick={() => setIsMoreMenuOpen(true)}
+              className={`flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition-all duration-300 ${
+                isMoreMenuOpen ? "bg-primary/10 dark:bg-primary/20 text-primary" : "text-slate-500 dark:text-slate-400"
+              }`}
+              aria-label="Abrir más opciones"
+              aria-expanded={isMoreMenuOpen}
+            >
+              <Menu className="h-6 w-6" />
+              <span className="text-[9px] font-black uppercase tracking-tighter leading-none">Más</span>
+            </button>
+          )}
         </nav>
+
+        {!isCorporate && isMoreMenuOpen && (
+          <>
+            <div
+              className="lg:hidden fixed inset-0 z-[68] bg-slate-950/50 backdrop-blur-sm"
+              onClick={() => setIsMoreMenuOpen(false)}
+            />
+
+            <div className="lg:hidden fixed inset-x-0 bottom-0 z-[70] rounded-t-3xl border-t border-slate-200 dark:border-[#1a2333] bg-white dark:bg-[#0f1419] shadow-2xl p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] max-h-[75vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Menú</p>
+                <button
+                  type="button"
+                  onClick={() => setIsMoreMenuOpen(false)}
+                  className="h-10 w-10 rounded-xl border border-slate-200 dark:border-[#2a3a4f] flex items-center justify-center text-slate-500 dark:text-slate-300"
+                  aria-label="Cerrar menú"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { href: "/dashboard/pedidos", label: "Mis Pedidos", icon: Package },
+                  ...(state?.canManageFamilyProfiles ? [{ href: "/dashboard/perfiles-medicos", label: "Perfiles Médicos", icon: UsersRound }] : []),
+                  { href: "/dashboard/historial", label: "Historial de Rescate", icon: History },
+                  { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
+                  { href: "/dashboard/compras", label: "Tienda de Chips", icon: ShoppingCart },
+                  { href: "/dashboard/tienda", label: "Tienda PTY", icon: Store },
+                  { href: "/", label: "Inicio", icon: Home },
+                ].map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMoreMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-[#2a3a4f] bg-white dark:bg-[#141c29] px-4 py-3.5 text-sm font-black text-slate-700 dark:text-slate-200"
+                  >
+                    <item.icon className="h-4.5 w-4.5" />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={isLoggingOut}
+                  onClick={async () => {
+                    setIsMoreMenuOpen(false);
+                    setIsLoggingOut(true);
+                    await signOut({ redirect: false });
+                    window.location.href = "/login";
+                  }}
+                  className="flex items-center gap-3 rounded-2xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3.5 text-sm font-black text-red-600 dark:text-red-400 disabled:opacity-50"
+                >
+                  {isLoggingOut ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <LogOut className="h-4.5 w-4.5" />}
+                  <span>{isLoggingOut ? "Saliendo..." : "Salir"}</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto bg-slate-50/30 dark:bg-[#050812]/30">
