@@ -392,7 +392,9 @@ function PedidosContent() {
 
                   <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                       {items.length} {items.length === 1 ? 'artículo' : 'artículos'} • {items.map(i => i.productType.replace('COMBO_', '')).join(', ')}
+                      {items.length > 0
+                        ? `${items[0].productType} • ${items[0].quantity} chip${items[0].quantity === 1 ? "" : "s"} incluidos`
+                        : "Combo no especificado"}
                     </p>
                   </div>
                 </div>

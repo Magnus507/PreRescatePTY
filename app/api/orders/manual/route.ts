@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   // Validar que el paquete existe y está activo
   const pkg = await prisma.package.findUnique({
     where: { id: data.packageId },
-    select: { id: true, name: true, price: true, isActive: true }
+    select: { id: true, name: true, price: true, maxChips: true, isActive: true }
   });
   if (!pkg || !pkg.isActive) {
     return NextResponse.json({ error: "Paquete no disponible" }, { status: 400 });
@@ -60,6 +60,16 @@ export async function POST(req: NextRequest) {
       shippingNotes: data.shippingNotes || null,
       provider: "manual",
       packageId: pkg.id,
+      items: {
+        create: [
+          {
+            productType: pkg.name,
+            quantity: pkg.maxChips,
+            unitPrice: pkg.price,
+            totalPrice: pkg.price,
+          },
+        ],
+      },
     }
   });
 

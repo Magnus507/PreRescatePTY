@@ -722,7 +722,8 @@ export function PedidosSection() {
                       </td>
                       <td className="p-3">
                          <p className="font-black text-base text-primary">${o.amount.toFixed(2)}</p>
-                         <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items.length} items</p>
+                         <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0]?.productType || "Combo no especificado"}</p>
+                         <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${o.items[0].quantity} chip${o.items[0].quantity === 1 ? "" : "s"} incluido${o.items[0].quantity === 1 ? "" : "s"}` : "0 chips incluidos"}</p>
                       </td>
                       <td className="p-3">
                          {getStatusBadge(o.orderStatus, o.paymentStatus)}
