@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { rateLimit } from "@/lib/rateLimit";
+import { getClientIp } from "@/lib/request-ip";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -29,6 +31,16 @@ function getFrontendCorsOrigin(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
+    // Rate limit: 200 req/min per IP for image proxy (mitigates egress cost attacks)
+    const ip = getClientIp(req, "image-proxy");
+    const rl = await rateLimit("image-proxy", ip, { limit: 200, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intenta nuevamente." },
+        { status: 429 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const bucket = searchParams.get("bucket");
     const path = searchParams.get("path");
