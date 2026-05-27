@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Loader2, View, CheckCircle2, Truck, RefreshCw, Trash2 } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { ManualPaymentReview } from "@/app/(admin)/admin/_components/orders/ManualPaymentReview";
 import { ChipAssignmentPanel } from "@/app/(admin)/admin/_components/orders/ChipAssignmentPanel";
+import { useOrdersPolling } from "@/app/(admin)/admin/_hooks/useOrdersPolling";
 import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
@@ -73,10 +74,10 @@ export function PedidosSection() {
     loadInventory();
   }, []);
 
-  useEffect(() => {
-    loadOrdersRef.current = loadOrders;
-    loadInventoryRef.current = loadInventory;
-  }, [loadOrders, loadInventory]);
+  useOrdersPolling({
+    active: !selectedOrder,
+    onPoll: useCallback(() => loadOrders({ silent: true }), []),
+  });
 
   async function loadInventory() {
     try {
@@ -123,24 +124,6 @@ export function PedidosSection() {
     }
   }, [selectedOrder?.id, selectedOrder?.adminReviewNotes]);
 
-  useEffect(() => {
-    const handleWindowFocus = () => {
-      loadOrdersRef.current();
-      loadInventoryRef.current();
-    };
-
-    window.addEventListener("focus", handleWindowFocus);
-    return () => window.removeEventListener("focus", handleWindowFocus);
-  }, []);
-
-  useEffect(() => {
-    if (selectedOrder) return;
-    const interval = window.setInterval(() => {
-      loadOrders({ silent: true });
-    }, 30000);
-
-    return () => window.clearInterval(interval);
-  }, [selectedOrder]);
 
   const calculateNeededChips = (order: Order) => {
     return order.items.reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
