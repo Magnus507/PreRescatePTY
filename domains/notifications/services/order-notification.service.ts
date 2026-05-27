@@ -9,7 +9,7 @@ export class OrderNotificationService {
     try {
       const fromEmail = await ConfigRepository.get("sender_email", "soporte@prerescatepty.com");
       
-      const subject = `Pago Validado - Orden #${order.orderNumber.substring(0, 8)}`;
+      const subject = `Pago Validado - Orden #${order.orderNumber}`;
       
       const itemsHtml = order.items.map((item: any) => 
         `<li>${item.quantity}x ${item.productType}</li>`
@@ -49,7 +49,7 @@ export class OrderNotificationService {
     try {
       const fromEmail = await ConfigRepository.get("sender_email", "soporte@prerescatepty.com");
       
-      const subject = `Tu pedido está en camino - Orden #${order.orderNumber.substring(0, 8)}`;
+      const subject = `Tu pedido está en camino - Orden #${order.orderNumber}`;
       
       const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">

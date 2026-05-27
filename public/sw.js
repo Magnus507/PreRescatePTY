@@ -1,10 +1,9 @@
-const CACHE_NAME = 'prerescate-v2.7';
-const OFFLINE_URL = '/offline';
+const CACHE_NAME = 'prerescate-v2.8';
 
 const URLS_TO_CACHE = [
-  '/',
   '/manifest.json',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/logo.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,48 +30,47 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Strategy: Stale-While-Revalidate for images and pages
-// Strategy: Network-First for API data
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Never cache Next.js build assets/chunks to avoid stale chunk errors after deploys.
-  if (url.pathname.startsWith('/_next/')) {
+  // Never cache Next.js build assets/chunks, any API routes, or HTML navigations.
+  if (
+    url.pathname.startsWith('/_next/') ||
+    url.pathname.startsWith('/api/') ||
+    request.mode === 'navigate' ||
+    request.destination === 'document'
+  ) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // API Caching (Network First)
-  if (url.pathname.startsWith('/api/public/')) {
-    event.respondWith(
-      fetch(request.clone())
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, copy);
-            });
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
+  const isSafeStaticAsset =
+    request.method === 'GET' && (
+      request.destination === 'image' ||
+      request.destination === 'font' ||
+      url.pathname === '/manifest.json' ||
+      url.pathname === '/favicon.ico' ||
+      /\.(?:png|jpg|jpeg|webp|svg|ico|woff2?|ttf)$/i.test(url.pathname)
     );
+
+  if (!isSafeStaticAsset) {
+    event.respondWith(fetch(request));
     return;
   }
 
-  // General Fetch (Stale-While-Revalidate)
+  // Stale-while-revalidate only for safe static assets.
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
-        if (networkResponse.ok) {
+      const fetchPromise = fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse.ok) {
             const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-                cache.put(request, copy);
-            });
-        }
-        return networkResponse;
-      }).catch(() => null);
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => null);
 
       return cachedResponse || fetchPromise;
     })

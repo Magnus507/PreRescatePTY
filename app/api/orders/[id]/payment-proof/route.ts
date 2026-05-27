@@ -82,16 +82,18 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   }
 
   const body = await req.json();
-  console.error("[PAYMENT_PROOF] incoming", {
-    orderId: id,
-    userId,
-    provider: order.provider,
-    orderStatus: order.orderStatus,
-    paymentStatus: order.paymentStatus,
-    adminReviewStatus: order.adminReviewStatus,
-    hasPaymentProofUrl: !!body?.paymentProofUrl,
-    hasManualPaymentReference: !!body?.manualPaymentReference,
-  });
+  if (process.env.NODE_ENV !== "production") {
+    console.error("[PAYMENT_PROOF] incoming", {
+      orderId: id,
+      userId,
+      provider: order.provider,
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      adminReviewStatus: order.adminReviewStatus,
+      hasPaymentProofUrl: !!body?.paymentProofUrl,
+      hasManualPaymentReference: !!body?.manualPaymentReference,
+    });
+  }
   const parsed = PaymentProofSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Datos inválidos", details: parsed.error.flatten() }, { status: 400 });
@@ -103,11 +105,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     : null;
 
   if (data.paymentProofUrl && !normalizedProofUrl) {
-    console.error("[PAYMENT_PROOF] normalize failed", {
-      orderId: id,
-      userId,
-      paymentProofUrl: data.paymentProofUrl,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[PAYMENT_PROOF] normalize failed", {
+        orderId: id,
+        userId,
+        paymentProofUrl: data.paymentProofUrl,
+      });
+    }
     return NextResponse.json(
       { error: "paymentProofUrl inválida. Solo se permiten comprobantes del bucket payment-proofs." },
       { status: 400 }
