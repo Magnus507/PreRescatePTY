@@ -105,12 +105,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     : null;
 
   if (data.paymentProofUrl && !normalizedProofUrl) {
+    const safeUrlPreview = data.paymentProofUrl.length > 80
+      ? data.paymentProofUrl.substring(0, 80) + "..."
+      : data.paymentProofUrl;
+    const normalizeError = `[PAYMENT_PROOF] normalize failed for order ${id}: url=${safeUrlPreview}`;
     if (process.env.NODE_ENV !== "production") {
-      console.error("[PAYMENT_PROOF] normalize failed", {
-        orderId: id,
-        userId,
-        paymentProofUrl: data.paymentProofUrl,
-      });
+      console.error(normalizeError);
     }
     return NextResponse.json(
       { error: "paymentProofUrl inválida. Solo se permiten comprobantes del bucket payment-proofs." },

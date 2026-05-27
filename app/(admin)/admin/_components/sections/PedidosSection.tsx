@@ -439,7 +439,7 @@ export function PedidosSection() {
                </div>
                
                <div className="flex gap-4">
-                  {selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "cancelled" && (
+                  {selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "cancelled" && selectedOrder.provider !== "manual" && (
                      <>
                         <button 
                           onClick={() => handleStatusChange(selectedOrder.id, "shipped", "Enviado")} 
