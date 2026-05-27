@@ -37,6 +37,12 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Never cache Next.js build assets/chunks to avoid stale chunk errors after deploys.
+  if (url.pathname.startsWith('/_next/')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // API Caching (Network First)
   if (url.pathname.startsWith('/api/public/')) {
     event.respondWith(

@@ -11,7 +11,7 @@ const SAFE_PATH_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9/_.,=-]{0,240}\.(?:jpg|jpeg|png
 function normalizePaymentProofUrl(value: string) {
   let url: URL;
   try {
-    url = new URL(value);
+    url = new URL(value, "https://local.prerescue");
   } catch {
     return null;
   }
@@ -82,6 +82,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   }
 
   const body = await req.json();
+  console.error("[PAYMENT_PROOF] incoming", {
+    orderId: id,
+    userId,
+    provider: order.provider,
+    orderStatus: order.orderStatus,
+    paymentStatus: order.paymentStatus,
+    adminReviewStatus: order.adminReviewStatus,
+    hasPaymentProofUrl: !!body?.paymentProofUrl,
+    hasManualPaymentReference: !!body?.manualPaymentReference,
+  });
   const parsed = PaymentProofSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Datos inválidos", details: parsed.error.flatten() }, { status: 400 });
@@ -93,6 +103,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     : null;
 
   if (data.paymentProofUrl && !normalizedProofUrl) {
+    console.error("[PAYMENT_PROOF] normalize failed", {
+      orderId: id,
+      userId,
+      paymentProofUrl: data.paymentProofUrl,
+    });
     return NextResponse.json(
       { error: "paymentProofUrl inválida. Solo se permiten comprobantes del bucket payment-proofs." },
       { status: 400 }

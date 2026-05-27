@@ -135,7 +135,8 @@ function PedidosContent() {
         toast.success("Comprobante enviado. Tu pago está bajo revisión.");
         loadOrders();
       } else {
-        toast.error("Error al actualizar el pedido");
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Error al actualizar el pedido");
       }
     } catch (err) {
       console.error(err);

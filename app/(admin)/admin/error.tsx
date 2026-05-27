@@ -11,6 +11,8 @@ export default function AdminError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const isChunkError = /chunk|ChunkLoadError|Loading chunk failed/i.test(error?.message || "");
+
   useEffect(() => {
     console.error("Admin Domain Critical Error:", error);
   }, [error]);
@@ -33,6 +35,14 @@ export default function AdminError({
       </div>
 
       <div className="flex gap-4 mt-10">
+        {isChunkError && (
+          <button
+            onClick={() => window.location.reload()}
+            className="px-8 py-4 bg-amber-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-xl"
+          >
+            Recargar versión nueva
+          </button>
+        )}
         <button
           onClick={reset}
           className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-xl"
