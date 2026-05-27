@@ -92,7 +92,14 @@ export function PedidosSection() {
     try {
       const res = await fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
-      setOrders(data.orders || []);
+      const nextOrders = data.orders || [];
+      setOrders(nextOrders);
+      if (selectedOrder?.id) {
+        const updatedSelectedOrder = nextOrders.find((o: Order) => o.id === selectedOrder.id);
+        if (updatedSelectedOrder) {
+          setSelectedOrder(updatedSelectedOrder);
+        }
+      }
     } catch (e) {
       toast.error(isSilent ? "No se pudo actualizar pedidos" : "Error al cargar pedidos");
     } finally {
