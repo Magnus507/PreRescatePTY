@@ -83,6 +83,24 @@ export async function POST(req: NextRequest) {
   // Use atomic transaction to prevent race conditions on chip limit enforcement
   try {
     await prisma.$transaction(async (tx) => {
+      const now = new Date();
+
+      // Atomically consume token (single-use guard)
+      const tokenConsume = await tx.chipClaimToken.updateMany({
+        where: {
+          id: claimToken.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: {
+          usedAt: now,
+        },
+      });
+
+      if (tokenConsume.count !== 1) {
+        throw new Error("TOKEN_ALREADY_USED_OR_EXPIRED");
+      }
+
       // Re-read account state within transaction (not from cache) to ensure atomicity
       const account = await tx.account.findUnique({
         where: { id: state.accountId as string }
@@ -115,13 +133,15 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Activate the chip within transaction
-      const now = new Date();
+      // Activate the chip within transaction (conditional to prevent races)
       const serviceEndDate = new Date(now);
       serviceEndDate.setMonth(serviceEndDate.getMonth() + state.serviceDurationMonths);
 
-      await tx.chip.update({
-        where: { id: chip.id },
+      const chipActivate = await tx.chip.updateMany({
+        where: {
+          id: claimToken.chipId,
+          status: { in: ["inventory", "sold"] },
+        },
         data: {
           status: "activated",
           ownerUserId: userId,
@@ -134,11 +154,9 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Mark token as used
-      await tx.chipClaimToken.update({
-        where: { id: claimToken.id },
-        data: { usedAt: new Date() },
-      });
+      if (chipActivate.count !== 1) {
+        throw new Error("CHIP_ALREADY_ACTIVE_OR_INVALID");
+      }
 
       // Auto-confirm delivery if token is linked to an order
       if (claimToken.orderId) {
@@ -170,6 +188,12 @@ export async function POST(req: NextRequest) {
     await AccountStateService.invalidateCache(userId);
   } catch (error: unknown) {
     console.error("[chips/activate] Error:", error);
+    if (error instanceof Error && error.message === "TOKEN_ALREADY_USED_OR_EXPIRED") {
+      return NextResponse.json({ error: "Código ya usado o expirado." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "CHIP_ALREADY_ACTIVE_OR_INVALID") {
+      return NextResponse.json({ error: "Este chip ya no puede activarse." }, { status: 400 });
+    }
     const message = error instanceof Error ? error.message : "Error al activar el chip";
     const status = typeof error === "object" && error !== null && "status" in error
       ? Number((error as { status?: unknown }).status) || 500
