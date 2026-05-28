@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 import { canAdminApproveManual } from "@/lib/order-status";
 import { z } from "zod";
 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Datos inválidos", details: parsed.error.flatten() }, { status: 400 });
   }
   const notes = parsed.data.adminReviewNotes || null;
-  const assignedChipIds = Array.from(new Set((parsed.data.assignedChipIds || []).filter(Boolean)));
+  const assignedChipIds = OrderFulfillmentService.normalizeAssignedChipIds(parsed.data.assignedChipIds);
 
   // Buscar orden manual pendiente de revisión
   const order = await prisma.order.findUnique({ where: { id }, include: { items: true } });
@@ -54,11 +55,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Paquete no válido" }, { status: 400 });
   }
 
-  const purchasedChips = order.items.reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
-  const purchasedProfiles = Math.max(0, pkg.maxProfiles || 0);
-  const wasAlreadyApproved =
-    order.paymentStatus === "paid" ||
-    order.adminReviewStatus === "approved";
+  const purchasedChips = OrderFulfillmentService.calculatePurchasedChips(order.items);
+  const purchasedProfiles = OrderFulfillmentService.calculatePurchasedProfiles(pkg);
+  const wasAlreadyApproved = OrderFulfillmentService.wasOrderAlreadyApproved(order);
 
   if (assignedChipIds.length > purchasedChips) {
     return NextResponse.json({ error: "No puedes asignar más chips que los incluidos en la orden." }, { status: 400 });
