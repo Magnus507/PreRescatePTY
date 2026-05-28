@@ -3,6 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import {
+  TOKEN_AVAILABLE_WHERE,
+  TOKEN_HISTORICAL_WHERE,
+  TOKEN_RESERVED_WHERE,
+} from "@/domains/chips/token-lifecycle.helpers";
 
 export const dynamic = "force-dynamic";
 import { SITE_URL } from "@/lib/constants";
@@ -32,6 +37,7 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search");
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
+  const now = new Date();
 
   const where: Prisma.ChipWhereInput = {};
 
@@ -39,11 +45,7 @@ export async function GET(req: NextRequest) {
     where.status = "inventory";
     where.ownerUserId = null;
     where.claimTokens = {
-      none: {
-        orderId: { not: null },
-        usedAt: null,
-        expiresAt: { gt: new Date() },
-      },
+      none: TOKEN_RESERVED_WHERE(now),
     };
   } else if (view === "reserved") {
     where.AND = [
@@ -53,10 +55,7 @@ export async function GET(req: NextRequest) {
           { status: "sold" },
           {
             claimTokens: {
-              some: {
-                orderId: { not: null },
-                usedAt: null,
-              },
+              some: TOKEN_RESERVED_WHERE(now),
             },
           },
         ],
@@ -71,27 +70,14 @@ export async function GET(req: NextRequest) {
         OR: [
           {
             claimTokens: {
-              some: {
-                orderId: { not: null },
-              },
-            },
-          },
-          {
-            claimTokens: {
-              some: {
-                usedAt: { not: null },
-              },
+              some: TOKEN_HISTORICAL_WHERE(now),
             },
           },
         ],
       },
       {
         claimTokens: {
-          none: {
-            orderId: null,
-            usedAt: null,
-            expiresAt: { gt: new Date() },
-          },
+          none: TOKEN_AVAILABLE_WHERE(now),
         },
       },
     ];

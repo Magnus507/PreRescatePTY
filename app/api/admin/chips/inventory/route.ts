@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { USER_ROLES } from "@/domains/shared/constants";
+import { TOKEN_RESERVED_WHERE } from "@/domains/chips/token-lifecycle.helpers";
 
 async function isAdmin() {
   const session = await getServerSession(authOptions);
@@ -17,16 +18,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const now = new Date();
     const chips = await prisma.chip.findMany({
       where: {
         status: "inventory",
         ownerUserId: null,
         isPhysical: true,
         claimTokens: {
-          none: {
-            orderId: { not: null },
-            usedAt: null,
-          }
+          none: TOKEN_RESERVED_WHERE(now),
         }
       },
       select: {
