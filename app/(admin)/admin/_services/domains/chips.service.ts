@@ -44,5 +44,11 @@ export const chipsService = {
 
   async updatePhysicalStatus(id: string, isPhysical: boolean) {
     return adminClient.patch<{ chip: ChipAdmin }>(`/api/admin/chips/${id}`, { isPhysical });
+  },
+
+  async rehabilitateChip(id: string) {
+    return adminClient.post<{ message: string; chip: ChipAdmin; token: { activationCode: string; expiresAt: string } }>(
+      `/api/admin/chips/${id}/rehabilitate`
+    );
   }
 };

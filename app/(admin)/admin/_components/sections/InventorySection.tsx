@@ -163,6 +163,22 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     }
   };
 
+  const handleRehabilitate = async (chipId: string) => {
+    const confirmed = window.confirm(
+      "Esto generará un nuevo código de activación y devolverá el chip a Disponibles. ¿Deseas continuar?"
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await chipsService.rehabilitateChip(chipId);
+      toast.success(`Chip rehabilitado. Nuevo código: ${res.token.activationCode}`);
+      await loadView(activeView, query);
+      await loadSummary();
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudo rehabilitar el chip");
+    }
+  };
+
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
     return new Date(value).toLocaleDateString("es-PA", {
@@ -464,6 +480,13 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                             <div className="flex items-center justify-end gap-2">
                               <button onClick={() => copy(c.activationCode || c.claimTokens?.[0]?.activationCode || null)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar código">
                                 <Copy className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleRehabilitate(c.id)}
+                                className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-emerald-100 text-emerald-700"
+                                title="Rehabilitar para stock"
+                              >
+                                Rehabilitar
                               </button>
                               <button onClick={() => loadChipDetail(c.id)} className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-primary/10 text-primary">Ver</button>
                             </div>
