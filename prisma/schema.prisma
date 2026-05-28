@@ -119,6 +119,18 @@ model Profile {
   chronicConditions       String               @default("")
   medications             String               @default("")
   additionalNotes         String               @default("")
+  isInsured               Boolean              @default(false)
+  insuranceProvider       String?
+  insurancePolicyNumber   String?
+  preferredHospital       String?
+  insuranceEmergencyPhone String?
+  primaryDoctorName       String?
+  primaryDoctorPhone      String?
+  showInsuranceProviderPublic Boolean          @default(false)
+  showPreferredHospitalPublic  Boolean         @default(false)
+  showPrimaryDoctorPublic      Boolean         @default(false)
+  showPrimaryDoctorPhonePublic Boolean         @default(false)
+  showAdditionalNotesPublic    Boolean         @default(false)
   phone                   String?
   nationalId              String?              @default("")
   address                 String?              @db.Text

@@ -17,6 +17,12 @@ export class ProfileRepository {
       additionalNotes: decrypt(profile.additionalNotes),
       nationalId: decrypt(profile.nationalId || ""),
       address: decrypt(profile.address || ""),
+      insuranceProvider: decrypt(profile.insuranceProvider || ""),
+      insurancePolicyNumber: decrypt(profile.insurancePolicyNumber || ""),
+      preferredHospital: decrypt(profile.preferredHospital || ""),
+      insuranceEmergencyPhone: decrypt(profile.insuranceEmergencyPhone || ""),
+      primaryDoctorName: decrypt(profile.primaryDoctorName || ""),
+      primaryDoctorPhone: decrypt(profile.primaryDoctorPhone || ""),
     };
   }
 
@@ -80,6 +86,18 @@ export class ProfileRepository {
     medications?: string;
     nationalId?: string;
     address?: string;
+    isInsured?: boolean;
+    insuranceProvider?: string;
+    insurancePolicyNumber?: string;
+    preferredHospital?: string;
+    insuranceEmergencyPhone?: string;
+    primaryDoctorName?: string;
+    primaryDoctorPhone?: string;
+    showInsuranceProviderPublic?: boolean;
+    showPreferredHospitalPublic?: boolean;
+    showPrimaryDoctorPublic?: boolean;
+    showPrimaryDoctorPhonePublic?: boolean;
+    showAdditionalNotesPublic?: boolean;
   }) {
     const profile = await prisma.profile.create({
       data: {
@@ -91,6 +109,18 @@ export class ProfileRepository {
         additionalNotes: encrypt(data.additionalNotes || ""),
         nationalId: encrypt(data.nationalId || ""),
         address: encrypt(data.address || ""),
+        insuranceProvider: encrypt(data.insuranceProvider || ""),
+        insurancePolicyNumber: encrypt(data.insurancePolicyNumber || ""),
+        preferredHospital: encrypt(data.preferredHospital || ""),
+        insuranceEmergencyPhone: encrypt(data.insuranceEmergencyPhone || ""),
+        primaryDoctorName: encrypt(data.primaryDoctorName || ""),
+        primaryDoctorPhone: encrypt(data.primaryDoctorPhone || ""),
+        isInsured: data.isInsured ?? false,
+        showInsuranceProviderPublic: data.showInsuranceProviderPublic ?? false,
+        showPreferredHospitalPublic: data.showPreferredHospitalPublic ?? false,
+        showPrimaryDoctorPublic: data.showPrimaryDoctorPublic ?? false,
+        showPrimaryDoctorPhonePublic: data.showPrimaryDoctorPhonePublic ?? false,
+        showAdditionalNotesPublic: data.showAdditionalNotesPublic ?? false,
         userId: null,
       },
     });
@@ -139,10 +169,75 @@ export class ProfileRepository {
     if ("additionalNotes" in data) updateData.additionalNotes = encrypt(data.additionalNotes || "");
     if ("nationalId" in data) updateData.nationalId = encrypt(data.nationalId || "");
     if ("address" in data) updateData.address = encrypt(data.address || "");
+    if ("insuranceProvider" in data) updateData.insuranceProvider = encrypt(data.insuranceProvider || "");
+    if ("insurancePolicyNumber" in data) updateData.insurancePolicyNumber = encrypt(data.insurancePolicyNumber || "");
+    if ("preferredHospital" in data) updateData.preferredHospital = encrypt(data.preferredHospital || "");
+    if ("insuranceEmergencyPhone" in data) updateData.insuranceEmergencyPhone = encrypt(data.insuranceEmergencyPhone || "");
+    if ("primaryDoctorName" in data) updateData.primaryDoctorName = encrypt(data.primaryDoctorName || "");
+    if ("primaryDoctorPhone" in data) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
 
     const profile = await prisma.profile.update({
       where: { id },
       data: updateData
+    });
+
+    return this.decryptProfile(profile);
+  }
+
+  /**
+   * Upsert own profile by user id with encrypted fields.
+   */
+  static async upsertByUserId(userId: string, data: Partial<Profile>) {
+    const createData: any = {
+      userId,
+      firstName: data.firstName || "",
+      lastName: data.lastName || "Sin Perfil",
+      bloodType: encrypt(data.bloodType || "Pendiente"),
+      allergies: encrypt(data.allergies || ""),
+      chronicConditions: encrypt(data.chronicConditions || ""),
+      medications: encrypt(data.medications || ""),
+      additionalNotes: encrypt(data.additionalNotes || ""),
+      nationalId: encrypt(data.nationalId || ""),
+      address: encrypt(data.address || ""),
+      insuranceProvider: encrypt(data.insuranceProvider || ""),
+      insurancePolicyNumber: encrypt(data.insurancePolicyNumber || ""),
+      preferredHospital: encrypt(data.preferredHospital || ""),
+      insuranceEmergencyPhone: encrypt(data.insuranceEmergencyPhone || ""),
+      primaryDoctorName: encrypt(data.primaryDoctorName || ""),
+      primaryDoctorPhone: encrypt(data.primaryDoctorPhone || ""),
+      isInsured: data.isInsured ?? false,
+      showInsuranceProviderPublic: data.showInsuranceProviderPublic ?? false,
+      showPreferredHospitalPublic: data.showPreferredHospitalPublic ?? false,
+      showPrimaryDoctorPublic: data.showPrimaryDoctorPublic ?? false,
+      showPrimaryDoctorPhonePublic: data.showPrimaryDoctorPhonePublic ?? false,
+      showAdditionalNotesPublic: data.showAdditionalNotesPublic ?? false,
+      displayNamePublic: data.displayNamePublic,
+      birthDate: data.birthDate,
+      sex: data.sex,
+      phone: data.phone,
+      city: data.city,
+      profileVisibilityStatus: data.profileVisibilityStatus,
+    };
+
+    const updateData: any = { ...data };
+    if ("bloodType" in data) updateData.bloodType = encrypt(data.bloodType || "");
+    if ("allergies" in data) updateData.allergies = encrypt(data.allergies || "");
+    if ("chronicConditions" in data) updateData.chronicConditions = encrypt(data.chronicConditions || "");
+    if ("medications" in data) updateData.medications = encrypt(data.medications || "");
+    if ("additionalNotes" in data) updateData.additionalNotes = encrypt(data.additionalNotes || "");
+    if ("nationalId" in data) updateData.nationalId = encrypt(data.nationalId || "");
+    if ("address" in data) updateData.address = encrypt(data.address || "");
+    if ("insuranceProvider" in data) updateData.insuranceProvider = encrypt(data.insuranceProvider || "");
+    if ("insurancePolicyNumber" in data) updateData.insurancePolicyNumber = encrypt(data.insurancePolicyNumber || "");
+    if ("preferredHospital" in data) updateData.preferredHospital = encrypt(data.preferredHospital || "");
+    if ("insuranceEmergencyPhone" in data) updateData.insuranceEmergencyPhone = encrypt(data.insuranceEmergencyPhone || "");
+    if ("primaryDoctorName" in data) updateData.primaryDoctorName = encrypt(data.primaryDoctorName || "");
+    if ("primaryDoctorPhone" in data) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
+
+    const profile = await prisma.profile.upsert({
+      where: { userId },
+      update: updateData,
+      create: createData,
     });
 
     return this.decryptProfile(profile);

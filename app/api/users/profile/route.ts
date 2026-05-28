@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { profileUpdateSchema } from "@/lib/validations";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { ApiResponse } from "@/lib/api-response";
+import { ProfileRepository } from "@/domains/profiles/repositories/profile.repository";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,7 @@ export async function GET() {
     const userId = session.user.id;
     const state = await AccountStateService.getAccountState(userId);
 
-    const profile = await prisma.profile.findUnique({
-      where: { userId },
-    });
+    const profile = await ProfileRepository.findByUserId(userId);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -75,38 +74,53 @@ export async function PATCH(req: NextRequest) {
       firstName, lastName, displayNamePublic, birthDate, sex,
       bloodType, allergies, chronicConditions, medications,
       additionalNotes, phone, nationalId,
-      address, city
+      address, city,
+      isInsured,
+      insuranceProvider,
+      insurancePolicyNumber,
+      preferredHospital,
+      insuranceEmergencyPhone,
+      primaryDoctorName,
+      primaryDoctorPhone,
+      showInsuranceProviderPublic,
+      showPreferredHospitalPublic,
+      showPrimaryDoctorPublic,
+      showPrimaryDoctorPhonePublic,
+      showAdditionalNotesPublic,
     } = body;
     const profileVisibilityStatus = (raw as Record<string, unknown>).profileVisibilityStatus as string;
 
     // Get old values for audit
     const oldProfile = await prisma.profile.findUnique({ where: { userId } });
 
-    const profile = await prisma.profile.upsert({
-      where: { userId },
-      update: {
-        firstName, lastName, displayNamePublic, birthDate, sex,
-        bloodType, allergies, chronicConditions, medications,
-        additionalNotes, profileVisibilityStatus, phone, nationalId,
-        address, city
-      },
-      create: {
-        userId,
-        firstName: firstName || "",
-        lastName: lastName || "Sin Perfil",
-        displayNamePublic,
-        birthDate,
-        sex,
-        bloodType: bloodType || "Pendiente",
-        allergies: allergies || "",
-        chronicConditions: chronicConditions || "",
-        medications: medications || "",
-        additionalNotes: additionalNotes || "",
-        phone: phone || "",
-        nationalId: nationalId || "",
-        address: address || "",
-        city: city || "",
-      },
+    const profile = await ProfileRepository.upsertByUserId(userId, {
+      firstName,
+      lastName,
+      displayNamePublic,
+      birthDate,
+      sex,
+      bloodType,
+      allergies,
+      chronicConditions,
+      medications,
+      additionalNotes,
+      profileVisibilityStatus,
+      phone,
+      nationalId,
+      address,
+      city,
+      isInsured,
+      insuranceProvider,
+      insurancePolicyNumber,
+      preferredHospital,
+      insuranceEmergencyPhone,
+      primaryDoctorName,
+      primaryDoctorPhone,
+      showInsuranceProviderPublic,
+      showPreferredHospitalPublic,
+      showPrimaryDoctorPublic,
+      showPrimaryDoctorPhonePublic,
+      showAdditionalNotesPublic,
     });
 
     if (phone !== undefined) {
@@ -117,16 +131,18 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Audit log
-    await prisma.auditLog.create({
-      data: {
-        actorUserId: userId,
-        entityType: "profile",
-        entityId: profile.id,
-        action: oldProfile ? "update" : "create",
-        oldValuesJson: oldProfile ? JSON.stringify(oldProfile) : null,
-        newValuesJson: JSON.stringify(body),
-      },
-    });
+    if (profile) {
+      await prisma.auditLog.create({
+        data: {
+          actorUserId: userId,
+          entityType: "profile",
+          entityId: profile.id,
+          action: oldProfile ? "update" : "create",
+          oldValuesJson: oldProfile ? JSON.stringify(oldProfile) : null,
+          newValuesJson: JSON.stringify(body),
+        },
+      });
+    }
 
     await AccountStateService.invalidateCache(userId);
     return ApiResponse.success({ profile });

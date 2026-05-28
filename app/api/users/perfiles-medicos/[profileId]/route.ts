@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import { ProfileRepository } from "@/domains/profiles/repositories/profile.repository";
+import { profileUpdateSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +39,8 @@ export async function GET(
     return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
   }
 
-  return NextResponse.json({ profile });
+  const decryptedProfile = await ProfileRepository.findById(profile.id);
+  return NextResponse.json({ profile: decryptedProfile });
 }
 
 // PATCH: update a family profile's medical data
@@ -62,29 +65,60 @@ export async function PATCH(
   }
 
   const body = await req.json();
+  const validation = profileUpdateSchema.partial().safeParse(body);
+  if (!validation.success) {
+    return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
+  }
+
+  const safeBody = validation.data;
   const {
     firstName, lastName, displayNamePublic, birthDate: rawBirthDate, sex,
     bloodType, allergies, chronicConditions, medications, additionalNotes, phone,
-  } = body;
+    nationalId, address, city,
+    isInsured,
+    insuranceProvider,
+    insurancePolicyNumber,
+    preferredHospital,
+    insuranceEmergencyPhone,
+    primaryDoctorName,
+    primaryDoctorPhone,
+    showInsuranceProviderPublic,
+    showPreferredHospitalPublic,
+    showPrimaryDoctorPublic,
+    showPrimaryDoctorPhonePublic,
+    showAdditionalNotesPublic,
+  } = safeBody;
 
   // Parse birthDate string to Date (schema now uses DateTime)
   const birthDate = rawBirthDate !== undefined ? (rawBirthDate ? new Date(rawBirthDate) : null) : undefined;
 
-  const updated = await prisma.profile.update({
-    where: { id: profileId },
-    data: {
-      ...(firstName !== undefined && { firstName }),
-      ...(lastName !== undefined && { lastName }),
-      ...(displayNamePublic !== undefined && { displayNamePublic }),
-      ...(birthDate !== undefined && { birthDate }),
-      ...(sex !== undefined && { sex }),
-      ...(bloodType !== undefined && { bloodType }),
-      ...(allergies !== undefined && { allergies }),
-      ...(chronicConditions !== undefined && { chronicConditions }),
-      ...(medications !== undefined && { medications }),
-      ...(additionalNotes !== undefined && { additionalNotes }),
-      ...(phone !== undefined && { phone }),
-    },
+  const updated = await ProfileRepository.update(profileId, {
+    ...(firstName !== undefined && { firstName }),
+    ...(lastName !== undefined && { lastName }),
+    ...(displayNamePublic !== undefined && { displayNamePublic }),
+    ...(birthDate !== undefined && { birthDate }),
+    ...(sex !== undefined && { sex }),
+    ...(bloodType !== undefined && { bloodType }),
+    ...(allergies !== undefined && { allergies }),
+    ...(chronicConditions !== undefined && { chronicConditions }),
+    ...(medications !== undefined && { medications }),
+    ...(additionalNotes !== undefined && { additionalNotes }),
+    ...(phone !== undefined && { phone }),
+    ...(nationalId !== undefined && { nationalId }),
+    ...(address !== undefined && { address }),
+    ...(city !== undefined && { city }),
+    ...(isInsured !== undefined && { isInsured }),
+    ...(insuranceProvider !== undefined && { insuranceProvider }),
+    ...(insurancePolicyNumber !== undefined && { insurancePolicyNumber }),
+    ...(preferredHospital !== undefined && { preferredHospital }),
+    ...(insuranceEmergencyPhone !== undefined && { insuranceEmergencyPhone }),
+    ...(primaryDoctorName !== undefined && { primaryDoctorName }),
+    ...(primaryDoctorPhone !== undefined && { primaryDoctorPhone }),
+    ...(showInsuranceProviderPublic !== undefined && { showInsuranceProviderPublic }),
+    ...(showPreferredHospitalPublic !== undefined && { showPreferredHospitalPublic }),
+    ...(showPrimaryDoctorPublic !== undefined && { showPrimaryDoctorPublic }),
+    ...(showPrimaryDoctorPhonePublic !== undefined && { showPrimaryDoctorPhonePublic }),
+    ...(showAdditionalNotesPublic !== undefined && { showAdditionalNotesPublic }),
   });
 
   // Sync phone number to User table if this profile is the main user's profile

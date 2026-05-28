@@ -5,6 +5,7 @@ import { AccountStateService } from "@/domains/accounts/services/account-state.s
 import { ProfileRepository } from "@/domains/profiles/repositories/profile.repository";
 import { AuditLogRepository } from "@/domains/shared/repositories/audit-log.repository";
 import { ApiResponse } from "@/lib/api-response";
+import { profileUpdateSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 
@@ -68,10 +69,29 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    const validation = profileUpdateSchema.partial().safeParse(body);
+    if (!validation.success) {
+      return ApiResponse.error(validation.error.issues[0].message, { status: 400 });
+    }
+
+    const safeBody = validation.data;
     const { 
       firstName, lastName, displayNamePublic, birthDate: rawBirthDate, sex, bloodType, phone,
-      allergies, chronicConditions, medications, additionalNotes
-    } = body;
+      allergies, chronicConditions, medications, additionalNotes,
+      nationalId, address, city,
+      isInsured,
+      insuranceProvider,
+      insurancePolicyNumber,
+      preferredHospital,
+      insuranceEmergencyPhone,
+      primaryDoctorName,
+      primaryDoctorPhone,
+      showInsuranceProviderPublic,
+      showPreferredHospitalPublic,
+      showPrimaryDoctorPublic,
+      showPrimaryDoctorPhonePublic,
+      showAdditionalNotesPublic,
+    } = safeBody;
 
     if (!firstName || !lastName) {
       return ApiResponse.error("Datos obligatorios incompletos (nombre y apellido).", { status: 400 });
@@ -86,15 +106,29 @@ export async function POST(req: NextRequest) {
       accountId: state.accountId,
       firstName,
       lastName,
-      displayNamePublic,
+      displayNamePublic: displayNamePublic ?? undefined,
       birthDate,
-      sex,
+      sex: sex ?? undefined,
       bloodType: finalBloodType,
-      phone,
+      phone: phone ?? undefined,
       allergies,
       chronicConditions,
       medications,
       additionalNotes: additionalNotes || "",
+      nationalId: nationalId ?? undefined,
+      address: address ?? undefined,
+      isInsured,
+      insuranceProvider: insuranceProvider ?? undefined,
+      insurancePolicyNumber: insurancePolicyNumber ?? undefined,
+      preferredHospital: preferredHospital ?? undefined,
+      insuranceEmergencyPhone: insuranceEmergencyPhone ?? undefined,
+      primaryDoctorName: primaryDoctorName ?? undefined,
+      primaryDoctorPhone: primaryDoctorPhone ?? undefined,
+      showInsuranceProviderPublic,
+      showPreferredHospitalPublic,
+      showPrimaryDoctorPublic,
+      showPrimaryDoctorPhonePublic,
+      showAdditionalNotesPublic,
     });
 
     // Record audit log
