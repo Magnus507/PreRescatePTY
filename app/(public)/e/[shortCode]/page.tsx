@@ -33,13 +33,6 @@ interface EmergencyProfile {
     location: string | null;
     department: string | null;
   } | null;
-  publicMedicalExtras?: {
-    insuranceProvider?: string | null;
-    preferredHospital?: string | null;
-    primaryDoctorName?: string | null;
-    primaryDoctorPhone?: string | null;
-    emergencyInstructions?: string | null;
-  };
 }
 
 interface ChipMetadata {
@@ -73,8 +66,7 @@ export default function EmergencyPage() {
   const source = searchParams.get("source") || "qr";
   const normalizedSource = source === "nfc" ? "nfc" : "qr";
   const [profile, setProfile] = useState<EmergencyProfile | null>(null);
-  const [chipMetadata, setChipMetadata] = useState<ChipMetadata | null>(null);
-  const [isInactive, setIsInactive] = useState(false);
+  const [isUnactivated, setIsUnactivated] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [isParamedic, setIsParamedic] = useState<boolean | null>(null);
@@ -128,9 +120,8 @@ export default function EmergencyPage() {
         const res = await fetch(`/api/public/${shortCode}?t=${Date.now()}`);
         const data = await res.json();
 
-        if (data.status === "inactive") {
-          setIsInactive(true);
-          setChipMetadata(data.chip);
+        if (data.status === "unactivated" || data.status === "inactive") {
+          setIsUnactivated(true);
         } else if (!res.ok) {
           setError(data.error || "Perfil no disponible");
         } else {
@@ -158,74 +149,46 @@ export default function EmergencyPage() {
     );
   }
 
-  if (isInactive && chipMetadata) {
+  if (isUnactivated) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
         <div className="max-w-xl w-full">
           <div className="bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden relative">
-            {/* Header Aesthetic */}
             <div className="h-3 bg-red-600 w-full" />
             
             <div className="p-6 md:p-10 lg:p-14 text-center">
               <div className="bg-red-50 h-20 w-20 md:h-28 md:w-28 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 md:mb-10 border border-red-100 shadow-xl shadow-red-100/50">
-                <AlertTriangle className="h-12 w-12 text-red-600 animate-bounce" />
+                <AlertTriangle className="h-12 w-12 text-red-600" />
               </div>
 
               <div className="space-y-4 mb-8 md:mb-12">
                 <h1 className="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter italic leading-none">
-                  {chipMetadata.originalStatus === 'inventory' ? 'ALMACÉN CENTRAL' : 'Vínculo No Activado'}
+                  Chip aún no activado
                 </h1>
                 <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">
-                  {chipMetadata.originalStatus === 'inventory' ? 'Stock de Fábrica | Inventario PreRescate' : 'Suministro Verificado | Inventario PreRescate'}
+                  Identificador válido en PreRescate
                 </p>
-              </div>
-
-              <div className="bg-slate-50 rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-8 space-y-6 border border-slate-100 mb-8 md:mb-12">
-                <div className="flex flex-col md:flex-row gap-6 md:gap-10 justify-center">
-                  <div className="text-center md:text-left space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Etiqueta Interna</p>
-                    <p className="text-2xl font-black text-slate-900 tracking-tighter">{chipMetadata.internalLabel}</p>
-                  </div>
-                  <div className="h-px md:h-12 w-full md:w-px bg-slate-200" />
-                  <div className="text-center md:text-left space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">ID Público</p>
-                    <p className="text-2xl font-black text-slate-900 tracking-tighter">{chipMetadata.serialPublic}</p>
-                  </div>
-                </div>
-                
-                <div className="pt-6 border-t border-slate-200 flex flex-wrap justify-center gap-4">
-                  <div className="px-4 py-1.5 bg-white rounded-full border border-slate-200 flex items-center gap-2 shadow-sm">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{chipMetadata.productType}</span>
-                  </div>
-                  {chipMetadata.batchId && (
-                    <div className="px-4 py-1.5 bg-white rounded-full border border-slate-200 flex items-center gap-2 shadow-sm">
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">LOTE: {chipMetadata.batchId}</span>
-                    </div>
-                  )}
-                </div>
               </div>
 
               <div className="space-y-6">
                 <p className="text-slate-500 text-lg font-medium leading-relaxed max-w-sm mx-auto">
-                  Este dispositivo funciona correctamente, pero aún no tiene un perfil médico asignado.
+                  Este identificador existe, pero todavía no tiene un perfil médico vinculado.
+                </p>
+                <p className="text-slate-400 text-sm font-semibold leading-relaxed max-w-md mx-auto">
+                  Si este chip es tuyo, actívalo desde tu cuenta usando el código de activación.
                 </p>
 
                 <div className="grid grid-cols-1 gap-4">
-                  <a
+                  <Link
                     href="/activar"
                     className="group relative inline-flex items-center justify-center gap-3 w-full py-6 bg-red-600 text-white rounded-[2rem] font-black text-2xl transition-all hover:bg-black active:scale-95 shadow-2xl shadow-red-200"
                   >
-                    Activar Ahora <ShieldCheck className="h-7 w-7" />
-                  </a>
-                  <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">
-                    Requiere Código de Activación de 12 dígitos
-                  </p>
+                    Ir a activar chip <ShieldCheck className="h-7 w-7" />
+                  </Link>
                 </div>
               </div>
             </div>
 
-            {/* Background elements */}
             <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none rotate-12">
               <Activity className="h-64 w-64" />
             </div>
@@ -496,104 +459,32 @@ export default function EmergencyPage() {
                           <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SEXO: {profile.sex === 'M' ? 'MASCULINO' : profile.sex === 'F' ? 'FEMENINO' : 'NO REPORTADO'}</span>
                         </div>
                       </div>
-
-                      <div className="sm:hidden mt-4 bg-slate-50 rounded-xl border border-slate-200 p-3">
-                        <h3 className="text-xs font-black uppercase tracking-tight text-slate-900 mb-2">Resumen Médico Crítico</h3>
-                        <div className="space-y-2">
-                          <CompactMedicalRow
-                            icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
-                            label="Alergias"
-                            value={profile.allergies || "No reportado"}
-                            tone="amber"
-                            critical={!!(profile.allergies && !profile.allergies.toLowerCase().includes("no report"))}
-                          />
-                          <CompactMedicalRow
-                            icon={<Activity className="h-4 w-4 text-blue-500" />}
-                            label="Condiciones"
-                            value={profile.chronicConditions || "No reportado"}
-                            tone="blue"
-                          />
-                          <CompactMedicalRow
-                            icon={<Pill className="h-4 w-4 text-emerald-500" />}
-                            label="Medicamentos"
-                            value={profile.medications || "No reportado"}
-                            tone="emerald"
-                          />
-                        </div>
-                      </div>
                     </div>
                 </div>
             </div>
 
-            {/* CRITICAL SUMMARY */}
-            <div className="space-y-3">
-              <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <MedicalCard
-                  icon={<AlertTriangle className="h-7 w-7 text-amber-500" />}
-                  title="ALERGIAS"
-                  content={profile.allergies}
-                  critical={!!(profile.allergies && !profile.allergies.toLowerCase().includes("no report"))}
-                  color="amber"
-                />
-                <MedicalCard
-                  icon={<Activity className="h-7 w-7 text-blue-500" />}
-                  title="CONDICIONES"
-                  content={profile.chronicConditions}
-                  color="blue"
-                />
-                <MedicalCard
-                  icon={<Pill className="h-7 w-7 text-emerald-500" />}
-                  title="MEDICAMENTOS"
-                  content={profile.medications}
-                  color="emerald"
-                />
-              </div>
+            {/* CRITICAL GRID */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <MedicalCard
+                icon={<AlertTriangle className="h-7 w-7 text-amber-500" />}
+                title="ALERGIAS"
+                content={profile.allergies}
+                critical={!!(profile.allergies && !profile.allergies.toLowerCase().includes("no report"))}
+                color="amber"
+              />
+              <MedicalCard
+                icon={<Activity className="h-7 w-7 text-blue-500" />}
+                title="CONDICIONES"
+                content={profile.chronicConditions}
+                color="blue"
+              />
+              <MedicalCard
+                icon={<Pill className="h-7 w-7 text-emerald-500" />}
+                title="MEDICAMENTOS"
+                content={profile.medications}
+                color="emerald"
+              />
             </div>
-
-            {profile.publicMedicalExtras && (
-              (profile.publicMedicalExtras.insuranceProvider ||
-                profile.publicMedicalExtras.preferredHospital ||
-                profile.publicMedicalExtras.primaryDoctorName ||
-                profile.publicMedicalExtras.primaryDoctorPhone ||
-                profile.publicMedicalExtras.emergencyInstructions) ? (
-                <div className="bg-white p-5 md:p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
-                  <h3 className="text-lg font-black uppercase tracking-tight text-slate-900">Información médica adicional</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {profile.publicMedicalExtras.insuranceProvider && (
-                      <CompactInfoItem label="Aseguradora" value={profile.publicMedicalExtras.insuranceProvider} />
-                    )}
-                    {profile.publicMedicalExtras.preferredHospital && (
-                      <CompactInfoItem label="Hospital preferido" value={profile.publicMedicalExtras.preferredHospital} />
-                    )}
-                    {profile.publicMedicalExtras.primaryDoctorName && (
-                      <CompactInfoItem label="Médico tratante" value={profile.publicMedicalExtras.primaryDoctorName} />
-                    )}
-                  </div>
-
-                  {profile.publicMedicalExtras.primaryDoctorPhone && (
-                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Teléfono del médico</p>
-                        <p className="text-sm font-bold text-slate-900">{profile.publicMedicalExtras.primaryDoctorPhone}</p>
-                      </div>
-                      <a
-                        href={`tel:${sanitizeTelPhone(profile.publicMedicalExtras.primaryDoctorPhone)}`}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-wider"
-                      >
-                        <Phone className="h-4 w-4" /> Llamar médico
-                      </a>
-                    </div>
-                  )}
-
-                  {profile.publicMedicalExtras.emergencyInstructions && (
-                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-700 mb-1">Instrucciones especiales</p>
-                      <p className="text-sm font-semibold text-amber-900">{profile.publicMedicalExtras.emergencyInstructions}</p>
-                    </div>
-                  )}
-                </div>
-              ) : null
-            )}
           </div>
         )}
 
@@ -818,7 +709,7 @@ const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }
     const cardTone = colorMap[color] || colorMap.slate;
 
     return (
-        <div className={`group relative overflow-hidden p-5 md:p-7 rounded-[2rem] md:rounded-[3rem] border transition-all duration-500 ${critical ? "bg-red-50 border-red-200 shadow-xl shadow-red-100/50" : `${cardTone} shadow-sm hover:shadow-xl`}`}>
+        <div className={`group relative overflow-hidden p-8 rounded-[3rem] border transition-all duration-500 ${critical ? "bg-red-50 border-red-200 shadow-xl shadow-red-100/50" : `${cardTone} shadow-sm hover:shadow-xl`}`}>
             <div className={`absolute -right-10 -bottom-10 w-32 h-32 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40 pointer-events-none ${colorMap[color] ? colorMap[color].split(' ')[0].replace('bg-', 'bg-').replace('50', '400') : 'bg-slate-400'}`} />
             <div className="flex items-center gap-4 mb-6">
                 <div className={`p-3 rounded-2xl shadow-sm ${critical ? 'bg-white text-red-600' : 'bg-slate-50 text-slate-600'} group-hover:scale-110 transition-transform`}>
@@ -840,49 +731,4 @@ const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }
             )}
         </div>
     );
-};
-
-const CompactInfoItem = ({ label, value }: { label: string; value: string }) => (
-  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">{label}</p>
-    <p className="text-sm font-bold text-slate-900">{value}</p>
-  </div>
-);
-
-const CompactMedicalRow = ({
-  icon,
-  label,
-  value,
-  tone,
-  critical = false,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  tone: "amber" | "blue" | "emerald";
-  critical?: boolean;
-}) => {
-  const toneClasses: Record<string, string> = {
-    amber: "bg-amber-50 border-amber-200",
-    blue: "bg-blue-50 border-blue-200",
-    emerald: "bg-emerald-50 border-emerald-200",
-  };
-
-  return (
-    <div className={`rounded-xl border px-3 py-2 ${toneClasses[tone]}`}>
-      <div className="flex items-start gap-2">
-        <div className="mt-0.5">{icon}</div>
-        <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-wide text-slate-600">{label}</p>
-          <p className="text-sm font-semibold text-slate-900 break-words">{value || "No reportado"}</p>
-          {critical && (
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-wider text-red-600">Atención crítica</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 };

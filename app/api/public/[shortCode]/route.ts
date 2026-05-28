@@ -93,16 +93,9 @@ export async function GET(
     }
 
     if (chip.status !== "activated" || !chip.assignedProfile) {
-      return publicJson({ 
-        status: "inactive",
-        chip: {
-          shortCode: chip.shortCode,
-          serialPublic: chip.serialPublic,
-          internalLabel: chip.internalLabel || chip.chipUidInternal,
-          productType: chip.productType,
-          batchId: chip.batchId,
-          originalStatus: chip.status
-        }
+      return publicJson({
+        status: "unactivated",
+        message: "Chip aún no activado",
       });
     }
 
@@ -113,11 +106,6 @@ export async function GET(
     const decryptedAllergies = decrypt(profile.allergies || "");
     const decryptedConditions = decrypt(profile.chronicConditions || "");
     const decryptedBloodType = decrypt(profile.bloodType || "");
-    const decryptedInsuranceProvider = decrypt(profile.insuranceProvider || "");
-    const decryptedPreferredHospital = decrypt(profile.preferredHospital || "");
-    const decryptedPrimaryDoctorName = decrypt(profile.primaryDoctorName || "");
-    const decryptedPrimaryDoctorPhone = decrypt(profile.primaryDoctorPhone || "");
-    const decryptedAdditionalNotes = decrypt(profile.additionalNotes || "");
     // Humanitarian Overwrite Logic
     const hasCriticalData = 
       (decryptedAllergies && !decryptedAllergies.toLowerCase().includes("no report")) ||
@@ -184,14 +172,6 @@ export async function GET(
         relationship: pc.relationship,
         phone: pc.contact.phone,
       })),
-
-      publicMedicalExtras: {
-        insuranceProvider: profile.showInsuranceProviderPublic ? (decryptedInsuranceProvider || null) : null,
-        preferredHospital: profile.showPreferredHospitalPublic ? (decryptedPreferredHospital || null) : null,
-        primaryDoctorName: profile.showPrimaryDoctorPublic ? (decryptedPrimaryDoctorName || null) : null,
-        primaryDoctorPhone: profile.showPrimaryDoctorPhonePublic ? (decryptedPrimaryDoctorPhone || null) : null,
-        emergencyInstructions: profile.showAdditionalNotesPublic ? (decryptedAdditionalNotes || null) : null,
-      },
     };
 
     return publicJson({ profile: publicProfile });
