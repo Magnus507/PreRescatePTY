@@ -38,7 +38,6 @@ export async function GET(req: NextRequest) {
   if (view === "available") {
     where.status = "inventory";
     where.ownerUserId = null;
-    where.isPhysical = true;
     where.claimTokens = {
       none: {
         orderId: { not: null },
@@ -98,6 +97,8 @@ export async function GET(req: NextRequest) {
       ...existingOr,
       { serialPublic: { contains: search } },
       { shortCode: { contains: search } },
+      { internalLabel: { contains: search } },
+      { claimTokens: { some: { activationCode: { contains: search } } } },
       { owner: { email: { contains: search } } },
     ];
   }
