@@ -51,6 +51,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  // C10A GUARDRAILS — Legacy partial orchestrator (no functional changes here)
+  // - This PATCH remains operational for current admin/legacy flows.
+  // - Canonical manual approval path is: /api/admin/orders/[id]/approve (and /reject).
+  // - Chip reservation/token assignment must use OrderFulfillmentService helpers.
+  // - Do NOT reintroduce capacity increments for manual orders in this route.
+  // - Future target: keep PATCH as thin router/orchestrator and move domain logic to services.
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
@@ -96,6 +102,8 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    // C10A: Estado/Pago (legacy partial branch)
+    // Keep minimal direct updates here until transition helper is extracted (C10B).
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: {
@@ -106,7 +114,8 @@ export async function PATCH(req: NextRequest) {
 
     const isFulfilling = ["shipped", "completed"].includes(updatedOrder.orderStatus);
 
-    // Handle token generation and chip linkage
+    // C10A: generateTokens / fulfillment orchestration (legacy partial branch)
+    // Do not duplicate reservation/token logic outside OrderFulfillmentService.
     if ((generateTokens || isFulfilling) && order.items.length > 0) {
       let totalChips = 0;
       let totalProfiles = 0;
@@ -129,6 +138,8 @@ export async function PATCH(req: NextRequest) {
         const neededChips = totalChips - existingTokens;
         
         if (neededChips > 0) {
+          // C10A: assignedChipIds path
+          // Canonical reservation path must stay in OrderFulfillmentService.reserveAssignedChipsForOrder().
           if (normalizedAssignedChipIds.length > 0) {
             if (normalizedAssignedChipIds.length > purchasedChipLimit) {
               return NextResponse.json(
@@ -154,6 +165,8 @@ export async function PATCH(req: NextRequest) {
               return NextResponse.json({ error: message }, { status });
             }
           } else {
+            // C10A: auto token/chip generation fallback (legacy behavior)
+            // Pending extraction to OrderFulfillmentService in C10D.
             // Auto generation (fallback)
             for (let i = 0; i < neededChips; i++) {
                const chip = await prisma.chip.create({
@@ -178,6 +191,8 @@ export async function PATCH(req: NextRequest) {
           }
         }
 
+        // C10A: Capacity branch intentionally restricted to non-manual providers.
+        // Manual capacity adjustments belong to canonical /approve flow and must not be duplicated here.
         if (existingTokens === 0 && order.user?.accountId && order.provider !== "manual") {
           await prisma.account.update({
             where: { id: order.user.accountId },
@@ -212,6 +227,8 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    // C10A: Notifications + cache invalidation are side-effects.
+    // Future target (C10E): invoke through explicit orchestration/event helpers.
     // Trigger Notifications based on status change
     const newStatus = orderStatus || updatedOrder.orderStatus;
     const oldStatus = order.orderStatus;

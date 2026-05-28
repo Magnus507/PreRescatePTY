@@ -115,6 +115,16 @@ Y además ya existen helpers listos para mayor adopción:
 - Añadir comentarios estructurados y guardas explícitas de alcance de PATCH (sin cambiar comportamiento).
 - Checklist QA manual baseline para orders manual/non-manual.
 
+#### C10A guardrails added
+
+Se agregaron guardrails documentales en `app/api/admin/orders/route.ts` (sin cambios de lógica) para dejar explícito:
+
+- PATCH es **legacy partial orchestrator**.
+- Ruta canónica para aprobación manual: `/api/admin/orders/[id]/approve` (y `/reject`).
+- Reserva/asignación de chips/tokens debe mantenerse en `OrderFulfillmentService`.
+- No reintroducir incrementos de capacidad para órdenes manuales dentro de PATCH.
+- Señalización de bloques legacy: estado/pago, generateTokens, assignedChipIds, capacidad non-manual y side-effects de notificación/cache.
+
 ### C10B — Extraer helper de transición de estados
 - Crear helper de dominio para validar y aplicar transición `orderStatus/paymentStatus` por provider.
 - PATCH pasa a invocar helper en lugar de reglas inline.
