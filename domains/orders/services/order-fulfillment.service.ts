@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 type OrderItemLike = {
   quantity?: number | null;
 };
@@ -35,6 +37,17 @@ export type FulfillmentResult = {
   purchasedProfiles: number;
   wasAlreadyApproved: boolean;
   normalizedAssignedChipIds: string[];
+};
+
+type ReserveAssignedChipsInput = {
+  orderId: string;
+  assignedChipIds: string[];
+  purchasedChips: number;
+  tokenExpiresAt: Date;
+};
+
+type ReserveAssignedChipsResult = {
+  reservedChipIds: string[];
 };
 
 /**
@@ -91,5 +104,93 @@ export class OrderFulfillmentService {
       maxChipsAllocated: currentAccount.maxChipsAllocated + increment.chipsToAdd,
       maxProfilesAllocated: currentAccount.maxProfilesAllocated + increment.profilesToAdd,
     };
+  }
+
+  static async reserveAssignedChipsForOrder(
+    tx: Prisma.TransactionClient,
+    input: ReserveAssignedChipsInput
+  ): Promise<ReserveAssignedChipsResult> {
+    const { orderId, assignedChipIds, purchasedChips, tokenExpiresAt } = input;
+
+    if (assignedChipIds.length === 0) {
+      return { reservedChipIds: [] };
+    }
+
+    if (assignedChipIds.length > purchasedChips) {
+      throw Object.assign(new Error("No puedes asignar más chips que los incluidos en la orden."), { status: 400 });
+    }
+
+    const reservedChipIds: string[] = [];
+
+    for (const chipId of assignedChipIds) {
+      const chip = await tx.chip.findUnique({
+        where: { id: chipId },
+        include: {
+          claimTokens: {
+            where: { usedAt: null },
+            select: { id: true, orderId: true },
+          },
+        },
+      });
+
+      if (!chip) {
+        throw Object.assign(new Error("El chip ya no está disponible en inventario."), { status: 409 });
+      }
+
+      const conflictingToken = chip.claimTokens.find((t) => t.orderId && t.orderId !== orderId);
+      if (conflictingToken) {
+        throw Object.assign(new Error("Este chip ya está asignado a otra orden."), { status: 409 });
+      }
+
+      const tokenForThisOrder = chip.claimTokens.find((t) => t.orderId === orderId);
+
+      if (chip.status === "inventory") {
+        const reserved = await tx.chip.updateMany({
+          where: { id: chip.id, status: "inventory" },
+          data: { status: "sold" },
+        });
+
+        if (reserved.count !== 1) {
+          throw Object.assign(new Error("El chip ya no está disponible en inventario."), { status: 409 });
+        }
+      } else if (chip.status === "sold") {
+        if (!tokenForThisOrder) {
+          throw Object.assign(new Error("Este chip ya está asignado a otra orden."), { status: 409 });
+        }
+      } else {
+        throw Object.assign(new Error("El chip ya no está disponible en inventario."), { status: 409 });
+      }
+
+      if (tokenForThisOrder) {
+        await tx.chipClaimToken.update({
+          where: { id: tokenForThisOrder.id },
+          data: { expiresAt: tokenExpiresAt },
+        });
+      } else {
+        const reusableToken = chip.claimTokens.find((t) => t.orderId === null);
+        if (reusableToken) {
+          await tx.chipClaimToken.update({
+            where: { id: reusableToken.id },
+            data: {
+              orderId,
+              expiresAt: tokenExpiresAt,
+            },
+          });
+        } else {
+          await tx.chipClaimToken.create({
+            data: {
+              chipId: chip.id,
+              orderId,
+              activationCode: `ACT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+              expiresAt: tokenExpiresAt,
+            },
+          });
+        }
+      }
+
+      reservedChipIds.push(chip.id);
+    }
+
+    return { reservedChipIds };
   }
 }

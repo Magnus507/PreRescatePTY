@@ -148,3 +148,28 @@ Adopción en `app/api/admin/orders/[id]/approve/route.ts`:
 - No se cambió la transacción completa.
 - No se cambió la lógica de reserva de chips/tokens (queda para C6).
 - No se alteraron mensajes ni estados del flujo de aprobación.
+
+---
+
+## 9) Avance C6 — reserva de chips/token movida a servicio (implementado)
+
+Se movió la lógica de reserva de chips y vinculación de tokens del flujo de aprobación manual hacia `OrderFulfillmentService`, manteniendo el comportamiento funcional y mensajes de error.
+
+Método agregado:
+
+- `reserveAssignedChipsForOrder(tx, input)`
+  - Recibe `Prisma.TransactionClient` (sin crear cliente nuevo).
+  - Encapsula validación de cantidad asignada vs chips comprados.
+  - Maneja idempotencia para chips `sold` ya vinculados a la misma orden.
+  - Detecta conflicto de token activo ligado a otra orden.
+  - Reserva atómica `inventory -> sold` con `updateMany`.
+  - Crea/actualiza token de la orden sin duplicar token por chip/orden.
+
+Adopción en `app/api/admin/orders/[id]/approve/route.ts`:
+
+- Se reemplazó el bloque inline de reserva/token por llamada al servicio.
+- Se mantuvo intacto el resto de la transacción (estados, capacidad, audit, cache invalidation).
+
+Pendiente para C7:
+
+- `PATCH /api/admin/orders` aún conserva lógica propia de fulfillment y no fue movida en esta fase.

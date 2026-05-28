@@ -116,74 +116,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         data: accountUpdateData
       });
 
-      if (assignedChipIds.length > 0) {
-        for (const chipId of assignedChipIds) {
-          const chip = await tx.chip.findUnique({
-            where: { id: chipId },
-            include: {
-              claimTokens: {
-                where: { usedAt: null },
-                select: { id: true, orderId: true }
-              }
-            }
-          });
-
-          if (!chip) {
-            throw Object.assign(new Error("El chip ya no está disponible en inventario."), { status: 409 });
-          }
-
-          const conflictingToken = chip.claimTokens.find((t) => t.orderId && t.orderId !== id);
-          if (conflictingToken) {
-            throw Object.assign(new Error("Este chip ya está asignado a otra orden."), { status: 409 });
-          }
-
-          const tokenForThisOrder = chip.claimTokens.find((t) => t.orderId === id);
-
-          if (chip.status === "inventory") {
-            const reserved = await tx.chip.updateMany({
-              where: { id: chip.id, status: "inventory" },
-              data: { status: "sold" }
-            });
-
-            if (reserved.count !== 1) {
-              throw Object.assign(new Error("El chip ya no está disponible en inventario."), { status: 409 });
-            }
-          } else if (chip.status === "sold") {
-            if (!tokenForThisOrder) {
-              throw Object.assign(new Error("Este chip ya está asignado a otra orden."), { status: 409 });
-            }
-          } else {
-            throw Object.assign(new Error("El chip ya no está disponible en inventario."), { status: 409 });
-          }
-
-          if (tokenForThisOrder) {
-            await tx.chipClaimToken.update({
-              where: { id: tokenForThisOrder.id },
-              data: { expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) }
-            });
-          } else {
-            const reusableToken = chip.claimTokens.find((t) => t.orderId === null);
-            if (reusableToken) {
-              await tx.chipClaimToken.update({
-                where: { id: reusableToken.id },
-                data: {
-                  orderId: id,
-                  expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
-                }
-              });
-            } else {
-              await tx.chipClaimToken.create({
-                data: {
-                  chipId: chip.id,
-                  orderId: id,
-                  activationCode: `ACT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                  expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
-                }
-              });
-            }
-          }
-        }
-      }
+      await OrderFulfillmentService.reserveAssignedChipsForOrder(tx, {
+        orderId: id,
+        assignedChipIds,
+        purchasedChips,
+        tokenExpiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+      });
 
       // Crear AuditLog SOLO con campos válidos
       await tx.auditLog.create({
