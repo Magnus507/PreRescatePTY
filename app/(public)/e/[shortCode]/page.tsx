@@ -500,27 +500,53 @@ export default function EmergencyPage() {
                 </div>
             </div>
 
-            {/* CRITICAL GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <MedicalCard
-                icon={<AlertTriangle className="h-7 w-7 text-amber-500" />}
-                title="ALERGIAS"
-                content={profile.allergies}
-                critical={!!(profile.allergies && !profile.allergies.toLowerCase().includes("no report"))}
-                color="amber"
-              />
-              <MedicalCard
-                icon={<Activity className="h-7 w-7 text-blue-500" />}
-                title="CONDICIONES"
-                content={profile.chronicConditions}
-                color="blue"
-              />
-              <MedicalCard
-                icon={<Pill className="h-7 w-7 text-emerald-500" />}
-                title="MEDICAMENTOS"
-                content={profile.medications}
-                color="emerald"
-              />
+            {/* CRITICAL SUMMARY */}
+            <div className="space-y-3">
+              <div className="sm:hidden bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-3">Resumen Médico Crítico</h3>
+                <div className="space-y-2.5">
+                  <CompactMedicalRow
+                    icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+                    label="Alergias"
+                    value={profile.allergies || "No reportado"}
+                    tone="amber"
+                  />
+                  <CompactMedicalRow
+                    icon={<Activity className="h-4 w-4 text-blue-500" />}
+                    label="Condiciones"
+                    value={profile.chronicConditions || "No reportado"}
+                    tone="blue"
+                  />
+                  <CompactMedicalRow
+                    icon={<Pill className="h-4 w-4 text-emerald-500" />}
+                    label="Medicamentos"
+                    value={profile.medications || "No reportado"}
+                    tone="emerald"
+                  />
+                </div>
+              </div>
+
+              <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <MedicalCard
+                  icon={<AlertTriangle className="h-7 w-7 text-amber-500" />}
+                  title="ALERGIAS"
+                  content={profile.allergies}
+                  critical={!!(profile.allergies && !profile.allergies.toLowerCase().includes("no report"))}
+                  color="amber"
+                />
+                <MedicalCard
+                  icon={<Activity className="h-7 w-7 text-blue-500" />}
+                  title="CONDICIONES"
+                  content={profile.chronicConditions}
+                  color="blue"
+                />
+                <MedicalCard
+                  icon={<Pill className="h-7 w-7 text-emerald-500" />}
+                  title="MEDICAMENTOS"
+                  content={profile.medications}
+                  color="emerald"
+                />
+              </div>
             </div>
 
             {profile.publicMedicalExtras && (
@@ -821,3 +847,33 @@ const CompactInfoItem = ({ label, value }: { label: string; value: string }) => 
     <p className="text-sm font-bold text-slate-900">{value}</p>
   </div>
 );
+
+const CompactMedicalRow = ({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  tone: "amber" | "blue" | "emerald";
+}) => {
+  const toneClasses: Record<string, string> = {
+    amber: "bg-amber-50 border-amber-200",
+    blue: "bg-blue-50 border-blue-200",
+    emerald: "bg-emerald-50 border-emerald-200",
+  };
+
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${toneClasses[tone]}`}>
+      <div className="flex items-start gap-2">
+        <div className="mt-0.5">{icon}</div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-wide text-slate-600">{label}</p>
+          <p className="text-sm font-semibold text-slate-900 break-words">{value || "No reportado"}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
