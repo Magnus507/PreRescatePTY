@@ -42,6 +42,19 @@ interface FamilyProfile {
   medications: string;
   additionalNotes: string;
   phone: string | null;
+  nationalId: string | null;
+  isInsured: boolean;
+  insuranceProvider: string | null;
+  insurancePolicyNumber: string | null;
+  preferredHospital: string | null;
+  insuranceEmergencyPhone: string | null;
+  primaryDoctorName: string | null;
+  primaryDoctorPhone: string | null;
+  showInsuranceProviderPublic: boolean;
+  showPreferredHospitalPublic: boolean;
+  showPrimaryDoctorPublic: boolean;
+  showPrimaryDoctorPhonePublic: boolean;
+  showAdditionalNotesPublic: boolean;
   assignedChips: AssignedChip[];
 }
 
@@ -55,6 +68,19 @@ const emptyForm = {
   firstName: "", lastName: "", displayNamePublic: "", birthDate: "",
   sex: "", bloodType: "O+", allergies: "", chronicConditions: "",
   medications: "", additionalNotes: "", phone: "",
+  nationalId: "",
+  isInsured: false,
+  insuranceProvider: "",
+  insurancePolicyNumber: "",
+  preferredHospital: "",
+  insuranceEmergencyPhone: "",
+  primaryDoctorName: "",
+  primaryDoctorPhone: "",
+  showInsuranceProviderPublic: false,
+  showPreferredHospitalPublic: false,
+  showPrimaryDoctorPublic: false,
+  showPrimaryDoctorPhonePublic: false,
+  showAdditionalNotesPublic: false,
 };
 
 const emptyContactForm = {
@@ -161,6 +187,19 @@ export default function FamiliaPage() {
       medications: profile.medications || "",
       additionalNotes: profile.additionalNotes || "",
       phone: profile.phone || "",
+      nationalId: profile.nationalId || "",
+      isInsured: !!profile.isInsured,
+      insuranceProvider: profile.insuranceProvider || "",
+      insurancePolicyNumber: profile.insurancePolicyNumber || "",
+      preferredHospital: profile.preferredHospital || "",
+      insuranceEmergencyPhone: profile.insuranceEmergencyPhone || "",
+      primaryDoctorName: profile.primaryDoctorName || "",
+      primaryDoctorPhone: profile.primaryDoctorPhone || "",
+      showInsuranceProviderPublic: !!profile.showInsuranceProviderPublic,
+      showPreferredHospitalPublic: !!profile.showPreferredHospitalPublic,
+      showPrimaryDoctorPublic: !!profile.showPrimaryDoctorPublic,
+      showPrimaryDoctorPhonePublic: !!profile.showPrimaryDoctorPhonePublic,
+      showAdditionalNotesPublic: !!profile.showAdditionalNotesPublic,
     });
     setEditError("");
   }
