@@ -3,6 +3,8 @@ import { CheckCircle2, Circle, Copy, Cpu, Loader2, Package, Plus, RefreshCw, Sea
 import { toast } from "sonner";
 import { ChipAdmin } from "../../_types/admin";
 import { chipsService } from "../../_services/domains/chips.service";
+import { usersService, AdminUserProfileOption } from "../../_services/domains/users.service";
+import { UserAdmin } from "../../_types/admin";
 import { CreateBatchSection } from "./CreateBatchSection";
 
 type InventoryView = "available" | "reserved" | "activated" | "returned" | "damaged";
@@ -78,6 +80,25 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     returned: 0,
     damaged: 0,
   });
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
+  const [assignChip, setAssignChip] = useState<InventoryItem | null>(null);
+  const [assignUsers, setAssignUsers] = useState<UserAdmin[]>([]);
+  const [assignUserSearch, setAssignUserSearch] = useState("");
+  const [assignProfiles, setAssignProfiles] = useState<AdminUserProfileOption[]>([]);
+  const [assignLoadingProfiles, setAssignLoadingProfiles] = useState(false);
+  const [assignForm, setAssignForm] = useState({
+    targetUserId: "",
+    targetProfileId: "",
+    reason: "replacement" as "replacement" | "courtesy" | "warranty" | "internal_test" | "same_customer_reassign",
+    notes: "",
+    capacityMode: "deny_if_no_capacity" as "deny_if_no_capacity" | "consume_existing" | "grant_exception",
+  });
+  const [assignResult, setAssignResult] = useState<{
+    orderNumber: string;
+    activationCode: string;
+    expiresAt: string;
+  } | null>(null);
 
   const loadView = async (view: InventoryView, search = "") => {
     setLoadingView(true);
@@ -176,6 +197,94 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
       await loadSummary();
     } catch (e: any) {
       toast.error(e?.message || "No se pudo rehabilitar el chip");
+    }
+  };
+
+  const loadAssignUsers = async (search = "") => {
+    const res = await usersService.getUsers({ limit: 100, search: search || undefined });
+    setAssignUsers(res.users || []);
+  };
+
+  const openAssignModal = async (chip: InventoryItem) => {
+    setAssignChip(chip);
+    setAssignOpen(true);
+    setAssignResult(null);
+    setAssignProfiles([]);
+    setAssignForm({
+      targetUserId: "",
+      targetProfileId: "",
+      reason: "replacement",
+      notes: "",
+      capacityMode: "deny_if_no_capacity",
+    });
+    try {
+      await loadAssignUsers();
+    } catch {
+      toast.error("No se pudieron cargar los clientes");
+    }
+  };
+
+  const loadProfilesForUser = async (userId: string) => {
+    setAssignLoadingProfiles(true);
+    try {
+      const profiles = await usersService.getUserProfiles(userId);
+      setAssignProfiles(profiles || []);
+    } catch (e: any) {
+      setAssignProfiles([]);
+      toast.error(e?.message || "No se pudieron cargar los perfiles del cliente");
+    } finally {
+      setAssignLoadingProfiles(false);
+    }
+  };
+
+  const handleAssignSubmit = async () => {
+    if (!assignChip) return;
+    if (!assignForm.targetUserId) {
+      toast.error("Selecciona un cliente");
+      return;
+    }
+    if (!assignForm.targetProfileId) {
+      toast.error("Selecciona un perfil médico");
+      return;
+    }
+    if (!assignForm.reason) {
+      toast.error("Selecciona un motivo");
+      return;
+    }
+    if (assignForm.capacityMode === "grant_exception" && !assignForm.notes.trim()) {
+      toast.error("Debes agregar notas para grant_exception");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Esta acción generará una orden administrativa $0 y reservará el chip para el cliente seleccionado."
+    );
+    if (!confirmed) return;
+
+    setAssignSubmitting(true);
+    try {
+      const res = await chipsService.assignDirect(assignChip.id, {
+        targetUserId: assignForm.targetUserId,
+        targetProfileId: assignForm.targetProfileId,
+        reason: assignForm.reason,
+        notes: assignForm.notes || undefined,
+        capacityMode: assignForm.capacityMode,
+        autoActivate: false,
+      });
+
+      setAssignResult({
+        orderNumber: res.order?.orderNumber || "—",
+        activationCode: res.token?.activationCode || "",
+        expiresAt: res.token?.expiresAt || "",
+      });
+
+      toast.success("Chip asignado directamente");
+      await loadView(activeView, query);
+      await loadSummary();
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudo asignar el chip");
+    } finally {
+      setAssignSubmitting(false);
     }
   };
 
@@ -460,6 +569,13 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                               <button onClick={() => loadChipDetail(c.id)} className="p-2 rounded-lg bg-primary/10 text-primary" title="Ver detalle">
                                 <Cpu className="h-4 w-4" />
                               </button>
+                              <button
+                                onClick={() => openAssignModal(c)}
+                                className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-indigo-100 text-indigo-700"
+                                title="Asignar directo"
+                              >
+                                Asignar directo
+                              </button>
                             </div>
                           </td>
                         </>
@@ -531,6 +647,164 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
               )}
             </div>
           </div>
+
+          {assignOpen && assignChip && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+              <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-4">
+                <h3 className="text-lg font-black">Asignar chip directamente</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div><span className="font-black">ShortCode:</span> {assignChip.shortCode}</div>
+                  <div><span className="font-black">Etiqueta:</span> {assignChip.internalLabel || "—"}</div>
+                  <div><span className="font-black">Serial:</span> {assignChip.serialPublic}</div>
+                  <div><span className="font-black">Código actual:</span> {assignChip.activationCode || assignChip.claimTokens?.[0]?.activationCode || "—"}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Buscar cliente</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={assignUserSearch}
+                      onChange={(e) => setAssignUserSearch(e.target.value)}
+                      placeholder="Nombre o email"
+                      className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                    />
+                    <button
+                      onClick={() => loadAssignUsers(assignUserSearch)}
+                      className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black"
+                    >
+                      Buscar
+                    </button>
+                  </div>
+
+                  <select
+                    value={assignForm.targetUserId}
+                    onChange={async (e) => {
+                      const targetUserId = e.target.value;
+                      setAssignForm((prev) => ({ ...prev, targetUserId, targetProfileId: "" }));
+                      setAssignProfiles([]);
+                      if (targetUserId) await loadProfilesForUser(targetUserId);
+                    }}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                  >
+                    <option value="">Selecciona cliente</option>
+                    {assignUsers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.email}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Perfil médico</label>
+                  <select
+                    value={assignForm.targetProfileId}
+                    onChange={(e) => setAssignForm((prev) => ({ ...prev, targetProfileId: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                    disabled={assignLoadingProfiles || !assignForm.targetUserId}
+                  >
+                    <option value="">Selecciona perfil</option>
+                    {assignProfiles.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.firstName} {p.lastName} — {p.displayName}{p.isOwnerProfile ? " (Owner)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Motivo</label>
+                    <select
+                      value={assignForm.reason}
+                      onChange={(e) =>
+                        setAssignForm((prev) => ({
+                          ...prev,
+                          reason: e.target.value as "replacement" | "courtesy" | "warranty" | "internal_test" | "same_customer_reassign",
+                        }))
+                      }
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                    >
+                      <option value="replacement">replacement</option>
+                      <option value="courtesy">courtesy</option>
+                      <option value="warranty">warranty</option>
+                      <option value="internal_test">internal_test</option>
+                      <option value="same_customer_reassign">same_customer_reassign</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Capacity mode</label>
+                    <select
+                      value={assignForm.capacityMode}
+                      onChange={(e) =>
+                        setAssignForm((prev) => ({
+                          ...prev,
+                          capacityMode: e.target.value as "deny_if_no_capacity" | "consume_existing" | "grant_exception",
+                        }))
+                      }
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                    >
+                      <option value="deny_if_no_capacity">deny_if_no_capacity</option>
+                      <option value="consume_existing">consume_existing</option>
+                      <option value="grant_exception">grant_exception</option>
+                    </select>
+                  </div>
+                </div>
+
+                {assignForm.capacityMode === "grant_exception" && (
+                  <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                    Atención: grant_exception requiere notas y aumentará cupo de la cuenta.
+                  </p>
+                )}
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Notas</label>
+                  <textarea
+                    value={assignForm.notes}
+                    onChange={(e) => setAssignForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm min-h-24"
+                    placeholder="Notas administrativas"
+                  />
+                </div>
+
+                <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  Esta acción reservará el chip y generará una orden administrativa $0.
+                </p>
+
+                {assignResult && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-2">
+                    <p className="text-sm font-black text-emerald-700">Asignación completada</p>
+                    <p className="text-xs"><span className="font-black">Orden:</span> {assignResult.orderNumber}</p>
+                    <p className="text-xs"><span className="font-black">Código:</span> {assignResult.activationCode}</p>
+                    <p className="text-xs"><span className="font-black">Expira:</span> {formatDateTime(assignResult.expiresAt)}</p>
+                    <button
+                      onClick={() => copy(assignResult.activationCode)}
+                      className="px-3 py-1 rounded-lg text-[10px] font-black uppercase bg-emerald-100 text-emerald-700"
+                    >
+                      Copiar activationCode
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setAssignOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold"
+                    disabled={assignSubmitting}
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    onClick={handleAssignSubmit}
+                    disabled={assignSubmitting}
+                    className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-black disabled:opacity-60"
+                  >
+                    {assignSubmitting ? "Asignando..." : "Confirmar asignación"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

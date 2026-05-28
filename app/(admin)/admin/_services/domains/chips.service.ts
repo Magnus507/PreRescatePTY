@@ -50,5 +50,25 @@ export const chipsService = {
     return adminClient.post<{ message: string; chip: ChipAdmin; token: { activationCode: string; expiresAt: string } }>(
       `/api/admin/chips/${id}/rehabilitate`
     );
+  },
+
+  async assignDirect(
+    chipId: string,
+    payload: {
+      targetUserId: string;
+      targetProfileId: string;
+      reason: "replacement" | "courtesy" | "warranty" | "internal_test" | "same_customer_reassign";
+      notes?: string;
+      capacityMode: "deny_if_no_capacity" | "consume_existing" | "grant_exception";
+      autoActivate: false;
+    }
+  ) {
+    return adminClient.post<{
+      message: string;
+      chip: { id: string; shortCode: string; status: string };
+      order: { id: string; orderNumber: string };
+      token: { activationCode: string; expiresAt: string };
+      capacity: { maxChipsAllocated: number; maxProfilesAllocated: number };
+    }>(`/api/admin/chips/${chipId}/assign-direct`, payload);
   }
 };
