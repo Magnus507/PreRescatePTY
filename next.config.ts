@@ -46,14 +46,14 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/e/:path*',
+        source: '/:path*',
         has: [
           {
             type: 'host',
             value: 'pre-rescate-pty.vercel.app',
           },
         ],
-        destination: 'https://www.prerescatepty.com/e/:path*',
+        destination: 'https://prerescatepty.com/:path*',
         permanent: true,
       },
     ];
