@@ -1,9 +1,9 @@
 "use client";
 
 import { 
-  Phone, ShieldAlert, Activity, 
-  User, ShieldCheck, Building2, MapPin, 
-  Droplets, MessageCircle, Zap
+  Phone, ShieldAlert, Activity,
+  User, ShieldCheck, Building2, MapPin,
+  Droplets, MessageCircle, Zap, Calendar, Pill
 } from "lucide-react";
 
 interface IndustrialProfileViewProps {
@@ -30,6 +30,12 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
   const org = profile.organization;
   const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
   const extras = profile.publicMedicalExtras;
+  const ageLabel = profile.age ?? "No reportado";
+  const sexLabel = profile.sex === "M" ? "Masculino" : profile.sex === "F" ? "Femenino" : "No reportado";
+  const bloodLabel = profile.bloodType || "No reportado";
+  const allergiesLabel = profile.allergies || "No reportado";
+  const conditionsLabel = profile.chronicConditions || "No reportado";
+  const medicationsLabel = profile.medications || "No reportado";
   const hasExtras = !!(
     extras?.insuranceProvider ||
     extras?.preferredHospital ||
@@ -39,120 +45,80 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
   );
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-red-100 selection:text-red-900">
       {/* Top Warning Banner */}
-      <div className="bg-[#DA1A21] py-3 px-6 flex items-center justify-center gap-3 animate-pulse">
+      <div className="bg-[#DA1A21] py-3 px-6 flex items-center justify-center gap-3">
         <ShieldAlert className="h-5 w-5 text-white" />
         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Protocolo de Emergencia Industrial Activo</span>
       </div>
 
-      <div className="max-w-2xl mx-auto p-6 md:p-8 space-y-8">
+      <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
         
-        {/* Corporate Header Card */}
-        <div className="bg-slate-800 rounded-[2.5rem] p-8 border border-slate-700 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-3xl -mr-16 -mt-16" />
-          
-          <div className="flex flex-col md:flex-row items-center gap-8 relative z-10 text-center md:text-left">
+        {/* Compact Hero */}
+        <div className="bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-200 shadow-xl p-5 md:p-8">
+          <div className="flex flex-col md:flex-row items-center gap-5 md:gap-8 text-center md:text-left">
             <div className="relative">
-              <div className="h-32 w-32 rounded-[2rem] bg-slate-700 border-4 border-slate-600 flex items-center justify-center overflow-hidden shadow-2xl">
+              <div className="h-28 w-28 md:h-36 md:w-36 rounded-[1.8rem] bg-slate-100 border-4 border-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
                 {profile.photoUrl ? (
                   <img src={profile.photoUrl} alt={profile.displayName} className="h-full w-full object-cover" />
                 ) : (
-                  <User className="h-16 w-16 text-slate-500" />
+                  <User className="h-14 w-14 text-slate-400" />
                 )}
               </div>
-              <div className="absolute -bottom-2 -right-2 h-10 w-10 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg border-4 border-slate-800">
+              <div className="absolute -bottom-2 -right-2 h-10 w-10 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg border-4 border-white">
                 <ShieldCheck className="h-5 w-5 text-white" />
               </div>
             </div>
 
             <div className="flex-1 space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-black uppercase tracking-widest">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-700 text-[10px] font-black uppercase tracking-widest">
                 <Building2 className="h-3 w-3" /> {org.name}
               </div>
-              <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">
+              <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-none text-slate-900">
                 {profile.firstName} <br />
-                <span className="text-emerald-400">{profile.lastName}</span>
+                <span className="text-[#DA1A21]">{profile.lastName}</span>
               </h1>
+              {profile.displayName && profile.displayName !== `${profile.firstName} ${profile.lastName}` && (
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Alias: {profile.displayName}</p>
+              )}
               <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-2">
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-slate-500">
                   <MapPin className="h-4 w-4" />
                   <span className="text-xs font-bold uppercase tracking-widest">{org.location || "Sede Central"}</span>
                 </div>
+                <div className="text-xs font-black uppercase tracking-widest text-slate-400">{org.department || "Operaciones"}</div>
               </div>
             </div>
           </div>
-          <div className="mt-8 pt-6 border-t border-slate-700">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Área / Dept</p>
-            <p className="font-black text-sm uppercase text-slate-300">{org.department || "Operaciones"}</p>
+
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-2xl">
+              <Droplets className="h-5 w-5 text-red-600" />
+              <p className="text-sm font-black uppercase tracking-tight">Sangre: {bloodLabel}</p>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-3 bg-slate-100 border border-slate-200 rounded-2xl">
+              <Calendar className="h-5 w-5 text-slate-700" />
+              <p className="text-sm font-black uppercase tracking-tight">Edad: {ageLabel}</p>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-3 bg-slate-100 border border-slate-200 rounded-2xl">
+              <User className="h-5 w-5 text-slate-700" />
+              <p className="text-sm font-black uppercase tracking-tight">Sexo: {sexLabel}</p>
+            </div>
           </div>
         </div>
 
-        {/* Industrial Action Grid */}
-        <div className="space-y-4">
-          <div className="md:hidden bg-slate-800/70 border border-slate-700 rounded-2xl p-4">
-            <h3 className="text-sm font-black uppercase tracking-tight text-white mb-3">Resumen Médico Crítico</h3>
-            <div className="space-y-2.5">
-              <CompactMedicalRow
-                icon={<ShieldAlert className="h-4 w-4 text-red-400" />}
-                label="Alergias"
-                value={profile.allergies || "No reportado"}
-                tone="red"
-              />
-              <CompactMedicalRow
-                icon={<Activity className="h-4 w-4 text-blue-400" />}
-                label="Condiciones"
-                value={profile.chronicConditions || "No reportado"}
-                tone="blue"
-              />
-              <CompactMedicalRow
-                icon={<Zap className="h-4 w-4 text-emerald-400" />}
-                label="Medicamentos"
-                value={profile.medications || "No reportado"}
-                tone="emerald"
-              />
-            </div>
-          </div>
-
-          <div className="hidden md:grid grid-cols-1 gap-6">
-            {/* RED: ALERGIAS CRÍTICAS */}
-            <div className="bg-red-500/10 border-2 border-red-500/20 rounded-[2.5rem] p-8 overflow-hidden relative group transition-all hover:bg-red-500/20">
-              <div className="absolute top-4 right-6 opacity-20 group-hover:scale-110 transition-transform">
-                <ShieldAlert className="h-12 w-12 text-red-500" />
-              </div>
-              <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-                <Zap className="h-3 w-3 fill-current" /> Alergias Críticas
-              </p>
-              <p className="text-2xl font-black text-white leading-tight uppercase">
-                {profile.allergies || "Ninguna Reportada"}
-              </p>
-            </div>
-
-            {/* BLUE: CONDICIONES MÉDICAS */}
-            <div className="bg-blue-500/10 border-2 border-blue-500/20 rounded-[2.5rem] p-8 overflow-hidden relative group transition-all hover:bg-blue-500/20">
-              <div className="absolute top-4 right-6 opacity-20 group-hover:scale-110 transition-transform">
-                <Activity className="h-12 w-12 text-blue-500" />
-              </div>
-              <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-                <Droplets className="h-3 w-3 fill-current" /> Condiciones / Sangre
-              </p>
-              <div className="flex items-center gap-6">
-                <div>
-                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 opacity-60">TIPO SANGRE</p>
-                  <p className="text-3xl font-black text-white">{profile.bloodType}</p>
-                </div>
-                <div className="h-12 w-[1px] bg-blue-500/30" />
-                <div className="flex-1">
-                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 opacity-60">DIAGNÓSTICO</p>
-                  <p className="text-xl font-black text-white uppercase">{profile.chronicConditions || "Estable"}</p>
-                </div>
-              </div>
-            </div>
+        {/* Compact medical-first block */}
+        <div className="bg-white border border-slate-200 rounded-[2rem] md:rounded-[3rem] p-5 md:p-7 shadow-lg space-y-4">
+          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">Resumen médico crítico</h3>
+          <div className="grid grid-cols-1 gap-3">
+            <CompactMedicalRow icon={<ShieldAlert className="h-4 w-4 text-red-500" />} label="Alergias" value={allergiesLabel} tone="red" />
+            <CompactMedicalRow icon={<Activity className="h-4 w-4 text-blue-500" />} label="Condiciones" value={conditionsLabel} tone="blue" />
+            <CompactMedicalRow icon={<Pill className="h-4 w-4 text-emerald-500" />} label="Medicamentos" value={medicationsLabel} tone="emerald" />
           </div>
         </div>
 
         {hasExtras && (
-          <div className="bg-slate-800/60 border border-slate-700 rounded-[2rem] p-5 md:p-6 space-y-4">
+          <div className="bg-slate-900 text-white border border-slate-800 rounded-[2rem] p-5 md:p-6 space-y-4">
             <h3 className="text-sm font-black uppercase tracking-widest text-emerald-300">Información médica adicional</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {extras?.insuranceProvider && (
@@ -167,7 +133,7 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
             </div>
 
             {extras?.primaryDoctorPhone && (
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-900 border border-slate-700">
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-800 border border-slate-700">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Teléfono del médico</p>
                   <p className="text-sm font-bold text-white">{extras.primaryDoctorPhone}</p>
@@ -231,8 +197,8 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
                           <User className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-sm font-black text-white uppercase leading-none mb-1">{contact.fullName}</p>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{contact.relationship}</p>
+                    <p className="text-sm font-black text-white uppercase leading-none mb-1">{contact.fullName || "No reportado"}</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{contact.relationship || "No reportado"}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
