@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
             value: 'pre-rescate-pty.vercel.app',
           },
         ],
-        destination: 'https://prerescatepty.com/:path*',
+        destination: 'https://www.prerescatepty.com/:path*',
         permanent: true,
       },
     ];
