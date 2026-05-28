@@ -45,15 +45,20 @@ export async function GET(req: NextRequest) {
       },
     };
   } else if (view === "reserved") {
-    where.OR = [
-      { status: "sold" },
+    where.AND = [
+      { status: { not: "inventory" } },
       {
-        claimTokens: {
-          some: {
-            orderId: { not: null },
-            usedAt: null,
+        OR: [
+          { status: "sold" },
+          {
+            claimTokens: {
+              some: {
+                orderId: { not: null },
+                usedAt: null,
+              },
+            },
           },
-        },
+        ],
       },
     ];
   } else if (view === "activated") {
