@@ -544,34 +544,45 @@ export default function EmergencyPage() {
                 </div>
             </div>
 
-            {/* CRITICAL GRID */}
-            <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <MedicalCard
-                icon={<AlertTriangle className="h-7 w-7 text-amber-500" />}
-                title="ALERGIAS"
-                content={profile.allergies}
-                critical={!!(profile.allergies && !profile.allergies.toLowerCase().includes("no report"))}
-                color="amber"
-              />
-              <MedicalCard
-                icon={<Activity className="h-7 w-7 text-blue-500" />}
-                title="CONDICIONES"
-                content={profile.chronicConditions}
-                color="blue"
-              />
-              <MedicalCard
-                icon={<Pill className="h-7 w-7 text-emerald-500" />}
-                title="MEDICAMENTOS"
-                content={profile.medications}
-                color="emerald"
-              />
+            {/* Compact critical summary on desktop */}
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-red-600" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-red-700">Alergias</p>
+                    <p className="text-sm font-bold text-slate-900 break-words">{profile.allergies || "No reportado"}</p>
+                    {profile.allergies && !profile.allergies.toLowerCase().includes("no report") && (
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-red-600">• Atención crítica</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <Activity className="mt-0.5 h-4 w-4 text-blue-600" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p>
+                    <p className="text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <Pill className="mt-0.5 h-4 w-4 text-emerald-600" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p>
+                    <p className="text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {hasExtras && (
-          <div className="bg-slate-900 text-white border border-slate-800 rounded-[2rem] p-5 md:p-6 space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-300">Información médica adicional</h3>
+          <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
+            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-700">Información médica adicional</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {extras?.insuranceProvider && (
                 <PublicExtraItem label="Aseguradora" value={extras.insuranceProvider} />
@@ -585,10 +596,10 @@ export default function EmergencyPage() {
             </div>
 
             {extras?.primaryDoctorPhone && (
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-800 border border-slate-700">
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Teléfono del médico</p>
-                  <p className="text-sm font-bold text-white">{extras.primaryDoctorPhone}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Teléfono del médico</p>
+                  <p className="text-sm font-bold text-slate-900">{extras.primaryDoctorPhone}</p>
                 </div>
                 <a
                   href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`}
@@ -600,9 +611,9 @@ export default function EmergencyPage() {
             )}
 
             {extras?.emergencyInstructions && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-300 mb-1">Instrucciones especiales</p>
-                <p className="text-sm font-semibold text-amber-100">{extras.emergencyInstructions}</p>
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Instrucciones especiales</p>
+                <p className="text-sm font-semibold text-amber-900">{extras.emergencyInstructions}</p>
               </div>
             )}
           </div>
@@ -817,42 +828,6 @@ const InstructionItem = ({ number, title, desc }: { number: string; title: strin
     </div>
 );
 
-const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }: { icon: ReactNode; title: string; content: string; critical?: boolean; color?: string }) => {
-    
-    const colorMap: Record<string, string> = {
-        amber: "bg-amber-50 group-hover:bg-amber-100/50 border-amber-100",
-        blue: "bg-blue-50 group-hover:bg-blue-100/50 border-blue-100",
-        emerald: "bg-emerald-50 group-hover:bg-emerald-100/50 border-emerald-100",
-        slate: "bg-slate-50 group-hover:bg-slate-100/50 border-slate-100"
-    };
-
-    const cardTone = colorMap[color] || colorMap.slate;
-
-    return (
-        <div className={`group relative overflow-hidden p-8 rounded-[3rem] border transition-all duration-500 ${critical ? "bg-red-50 border-red-200 shadow-xl shadow-red-100/50" : `${cardTone} shadow-sm hover:shadow-xl`}`}>
-            <div className={`absolute -right-10 -bottom-10 w-32 h-32 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40 pointer-events-none ${colorMap[color] ? colorMap[color].split(' ')[0].replace('bg-', 'bg-').replace('50', '400') : 'bg-slate-400'}`} />
-            <div className="flex items-center gap-4 mb-6">
-                <div className={`p-3 rounded-2xl shadow-sm ${critical ? 'bg-white text-red-600' : 'bg-slate-50 text-slate-600'} group-hover:scale-110 transition-transform`}>
-                    {icon}
-                </div>
-                <div>
-                     <p className="text-[10px] font-black tracking-widest text-slate-600 uppercase leading-none">{title}</p>
-                </div>
-            </div>
-            <p className={`text-xl leading-tight uppercase tracking-tighter ${critical ? "font-black text-red-600" : "font-black text-slate-900"}`}>
-                {content || "No reportado"}
-            </p>
-            
-            {critical && (
-                <div className="mt-4 flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
-                    <span className="text-[9px] font-black text-red-600 uppercase tracking-widest">Atención Crítica</span>
-                </div>
-            )}
-        </div>
-    );
-};
-
 const SummaryChip = ({ icon, label, tone }: { icon: ReactNode; label: string; tone: "red" | "slate" }) => {
   const toneClass = tone === "red"
     ? "bg-red-50 border-red-100 text-slate-900"
@@ -878,8 +853,8 @@ const SummaryRow = ({ icon, title, value }: { icon: ReactNode; title: string; va
 );
 
 const PublicExtraItem = ({ label, value }: { label: string; value: string }) => (
-  <div className="p-3 rounded-xl bg-slate-900 border border-slate-700">
-    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
-    <p className="text-sm font-bold text-white">{value}</p>
+  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{label}</p>
+    <p className="text-sm font-bold text-slate-900">{value}</p>
   </div>
 );

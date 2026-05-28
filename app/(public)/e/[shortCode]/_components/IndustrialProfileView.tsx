@@ -118,8 +118,8 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
         </div>
 
         {hasExtras && (
-          <div className="bg-slate-900 text-white border border-slate-800 rounded-[2rem] p-5 md:p-6 space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-300">Información médica adicional</h3>
+          <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
+            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-700">Información médica adicional</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {extras?.insuranceProvider && (
                 <CompactItem label="Aseguradora" value={extras.insuranceProvider} />
@@ -133,10 +133,10 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
             </div>
 
             {extras?.primaryDoctorPhone && (
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-800 border border-slate-700">
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Teléfono del médico</p>
-                  <p className="text-sm font-bold text-white">{extras.primaryDoctorPhone}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Teléfono del médico</p>
+                  <p className="text-sm font-bold text-slate-900">{extras.primaryDoctorPhone}</p>
                 </div>
                 <a
                   href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`}
@@ -148,9 +148,9 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
             )}
 
             {extras?.emergencyInstructions && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-300 mb-1">Instrucciones especiales</p>
-                <p className="text-sm font-semibold text-amber-100">{extras.emergencyInstructions}</p>
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Instrucciones especiales</p>
+                <p className="text-sm font-semibold text-amber-900">{extras.emergencyInstructions}</p>
               </div>
             )}
           </div>
@@ -237,9 +237,9 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
 
 function CompactItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="p-3 rounded-xl bg-slate-900 border border-slate-700">
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
-      <p className="text-sm font-bold text-white">{value}</p>
+    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{label}</p>
+      <p className="text-sm font-bold text-slate-900">{value}</p>
     </div>
   );
 }
@@ -266,8 +266,8 @@ function CompactMedicalRow({
       <div className="flex items-start gap-2">
         <div className="mt-0.5">{icon}</div>
         <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-wide text-slate-300">{label}</p>
-          <p className="text-sm font-semibold text-white break-words">{value || "No reportado"}</p>
+          <p className="text-[11px] font-black uppercase tracking-wide text-slate-700">{label}</p>
+          <p className="text-sm font-semibold text-slate-900 break-words">{value || "No reportado"}</p>
         </div>
       </div>
     </div>
