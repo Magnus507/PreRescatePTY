@@ -24,6 +24,12 @@ interface InventorySectionProps {
 interface InventoryItem extends ChipAdmin {
   activationCode?: string;
   updatedAt?: string;
+  latestToken?: {
+    orderId?: string | null;
+    usedAt?: string | null;
+    expiresAt?: string | null;
+    createdAt?: string | null;
+  } | null;
   order?: {
     id: string;
     orderNumber: string;
@@ -131,6 +137,26 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     toast.success("Código copiado");
   };
 
+  const formatDate = (value?: string | null) => {
+    if (!value) return "—";
+    return new Date(value).toLocaleDateString("es-PA", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return "—";
+    return new Date(value).toLocaleString("es-PA", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -236,49 +262,178 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
-                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">ID público</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Código activación</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Estado</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Orden</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Perfil</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Actualizado</th>
-                    <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
-                  </tr>
+                  {activeView === "reserved" && (
+                    <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">ID público</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Código activación</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Orden</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Estado orden/pago</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Fecha reserva</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Expira código</th>
+                      <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
+                    </tr>
+                  )}
+
+                  {activeView === "activated" && (
+                    <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">ID público</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Perfil vinculado</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Fecha activación</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Vencimiento servicio</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Estado servicio</th>
+                      <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
+                    </tr>
+                  )}
+
+                  {activeView === "available" && (
+                    <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">ID público</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Código activación</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Lote</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Fecha creación</th>
+                      <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
+                    </tr>
+                  )}
+
+                  {activeView === "returned" && (
+                    <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">ID público</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Código activación</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Orden</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Perfil</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Actualizado</th>
+                      <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
+                    </tr>
+                  )}
+
+                  {activeView === "damaged" && (
+                    <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">ID público</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Estado</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Perfil</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Última actualización</th>
+                      <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filtered.map((c) => (
                     <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
-                      <td className="px-6 py-4">
-                        <div className="font-black text-slate-900 dark:text-white">{c.shortCode}</div>
-                        <div className="text-[11px] text-slate-400 font-mono">#{c.serialPublic}</div>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs">{c.activationCode || c.claimTokens?.[0]?.activationCode || "—"}</td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-slate-100 text-slate-700">{c.status}</span>
-                      </td>
-                      <td className="px-6 py-4 text-xs">{c.order?.orderNumber || "—"}</td>
-                      <td className="px-6 py-4 text-xs">{c.customer?.name || c.customer?.email || "—"}</td>
-                      <td className="px-6 py-4 text-xs">{c.profile ? `${c.profile.firstName} ${c.profile.lastName}` : "—"}</td>
-                      <td className="px-6 py-4 text-xs">{c.updatedAt ? new Date(c.updatedAt).toLocaleDateString() : "—"}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => copy(c.activationCode || c.claimTokens?.[0]?.activationCode || null)}
-                            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200"
-                            title="Copiar código"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => loadChipDetail(c.id)}
-                            className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-primary/10 text-primary"
-                          >
-                            Ver
-                          </button>
-                        </div>
-                      </td>
+                      {activeView === "reserved" && (
+                        <>
+                          <td className="px-6 py-4">
+                            <div className="font-black text-slate-900 dark:text-white">{c.shortCode}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">#{c.serialPublic}</div>
+                          </td>
+                          <td className="px-6 py-4 font-mono text-xs">{c.activationCode || c.claimTokens?.[0]?.activationCode || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{c.order?.orderNumber || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{c.customer?.name || c.customer?.email || "—"}</td>
+                          <td className="px-6 py-4 text-xs">
+                            <span className="px-2 py-1 rounded bg-slate-100 font-bold uppercase text-[10px] mr-1">{c.order?.orderStatus || "—"}</span>
+                            <span className="px-2 py-1 rounded bg-slate-100 font-bold uppercase text-[10px]">{c.order?.paymentStatus || "—"}</span>
+                          </td>
+                          <td className="px-6 py-4 text-xs">{formatDateTime(c.latestToken?.createdAt)}</td>
+                          <td className="px-6 py-4 text-xs">{formatDate(c.latestToken?.expiresAt)}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => copy(c.activationCode || c.claimTokens?.[0]?.activationCode || null)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar código">
+                                <Copy className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {activeView === "activated" && (
+                        <>
+                          <td className="px-6 py-4">
+                            <div className="font-black text-slate-900 dark:text-white">{c.shortCode}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">#{c.serialPublic}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs">{c.customer?.name || c.customer?.email || c.owner?.email || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{c.profile ? `${c.profile.firstName} ${c.profile.lastName}` : c.assignedProfile ? `${c.assignedProfile.firstName} ${c.assignedProfile.lastName}` : "—"}</td>
+                          <td className="px-6 py-4 text-xs">{formatDate(c.activatedAt)}</td>
+                          <td className="px-6 py-4 text-xs">{formatDate(c.serviceEndDate)}</td>
+                          <td className="px-6 py-4 text-xs">
+                            <span className="px-2 py-1 rounded bg-slate-100 font-bold uppercase text-[10px]">{c.serviceStatus || "—"}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => copy(c.shortCode)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar ID público">
+                                <Copy className="h-4 w-4" />
+                              </button>
+                              <button onClick={() => loadChipDetail(c.id)} className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-primary/10 text-primary">Ver</button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {activeView === "available" && (
+                        <>
+                          <td className="px-6 py-4">
+                            <div className="font-black text-slate-900 dark:text-white">{c.shortCode}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">#{c.serialPublic}</div>
+                          </td>
+                          <td className="px-6 py-4 font-mono text-xs">{c.activationCode || c.claimTokens?.[0]?.activationCode || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{c.batchId || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{c.isPhysical ? "Físico" : "Digital"}</td>
+                          <td className="px-6 py-4 text-xs">{formatDate(c.createdAt)}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => copy(c.activationCode || c.claimTokens?.[0]?.activationCode || null)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar código">
+                                <Copy className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {activeView === "returned" && (
+                        <>
+                          <td className="px-6 py-4">
+                            <div className="font-black text-slate-900 dark:text-white">{c.shortCode}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">#{c.serialPublic}</div>
+                          </td>
+                          <td className="px-6 py-4 font-mono text-xs">{c.activationCode || c.claimTokens?.[0]?.activationCode || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{c.order?.orderNumber || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{c.customer?.name || c.customer?.email || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{c.profile ? `${c.profile.firstName} ${c.profile.lastName}` : "—"}</td>
+                          <td className="px-6 py-4 text-xs">{formatDate(c.updatedAt)}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => copy(c.activationCode || c.claimTokens?.[0]?.activationCode || null)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar código">
+                                <Copy className="h-4 w-4" />
+                              </button>
+                              <button onClick={() => loadChipDetail(c.id)} className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-primary/10 text-primary">Ver</button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {activeView === "damaged" && (
+                        <>
+                          <td className="px-6 py-4">
+                            <div className="font-black text-slate-900 dark:text-white">{c.shortCode}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">#{c.serialPublic}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs">
+                            <span className="px-2 py-1 rounded bg-red-100 text-red-700 font-bold uppercase text-[10px]">{c.status}</span>
+                          </td>
+                          <td className="px-6 py-4 text-xs">{c.customer?.name || c.customer?.email || c.owner?.email || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{c.profile ? `${c.profile.firstName} ${c.profile.lastName}` : c.assignedProfile ? `${c.assignedProfile.firstName} ${c.assignedProfile.lastName}` : "—"}</td>
+                          <td className="px-6 py-4 text-xs">{formatDateTime(c.updatedAt)}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => loadChipDetail(c.id)} className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-primary/10 text-primary">Ver</button>
+                            </div>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
