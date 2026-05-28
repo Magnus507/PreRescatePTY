@@ -7,7 +7,7 @@
 - Clasificación global:
   - **OK**: flujo core (approve/assign-direct/activate/rehabilitate), privacidad pública principal, recuperación de cuenta con anti-enumeración.
   - **WARNING**: observabilidad básica, gobernanza de secretos/operación incompleta, y dependencia obligatoria de Upstash en producción para rate limiting.
-  - **CRITICAL**: endpoint admin legacy amplio (`PATCH/DELETE /api/admin/orders`).
+  - **WARNING**: endpoint admin legacy (`PATCH/DELETE /api/admin/orders`) aún existente, pero con guardrails reforzados.
 
 ---
 
@@ -25,9 +25,11 @@
    - Mitigación: solo refleja `Access-Control-Allow-Origin` para orígenes permitidos.
    - Estado: **OK**
 
-4. `app/api/admin/orders/route.ts` mantiene endpoint PATCH/DELETE legacy con gran superficie mutante y mezcla de responsabilidades.
-   - Riesgo: cambios de estado, tokens y borrados en una ruta amplia incrementan probabilidad de errores operativos.
-   - Estado: **CRITICAL**
+4. `app/api/admin/orders/route.ts` mantiene endpoint PATCH/DELETE legacy, ahora con hardening C6C:
+   - PATCH bloquea completamente `provider=manual` (obliga `/approve` y `/reject`).
+   - DELETE masivo deshabilitado.
+   - DELETE individual bloquea manual canceladas y órdenes con tokens vinculados.
+   - Estado: **WARNING**
 
 ---
 
@@ -181,7 +183,7 @@
 
 ## 12) Riesgos P0 (bloqueantes)
 
-1. **CRITICAL** — `PATCH/DELETE /api/admin/orders` legacy con alta superficie mutante.
+1. **WARNING** — `PATCH/DELETE /api/admin/orders` legacy aún existente (con guardrails C6C).
 2. **WARNING** — Dependencia fuerte de Upstash para rate limiting en producción (si falla, política fail-closed puede degradar disponibilidad).
 
 ---
@@ -220,6 +222,6 @@
 Condición para pasar a **GO controlado**:
 
 1. Mantener alta disponibilidad de Upstash (monitoreo + alertas) para evitar degradación por fail-closed.
-2. Establecer guardrails operativos estrictos para endpoint admin legacy mutante.
+2. Completar reducción gradual C10B..C10E para disminuir superficie legacy de admin orders.
 
 Con esos tres resueltos y validación E2E documentada, el sistema puede entrar en despliegue controlado por fases.

@@ -75,21 +75,23 @@ export async function PATCH(req: NextRequest) {
 
     if (!order) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
 
+    // C6C HARDENING: manual orders are fully protected in legacy PATCH.
+    // Any approval/rejection/state/payment/manual-fulfillment must go through
+    // canonical endpoints: /api/admin/orders/[id]/approve and /reject.
+    if (order.provider === "manual") {
+      return NextResponse.json(
+        {
+          error:
+            "Órdenes manuales están protegidas en PATCH legacy. Usa /api/admin/orders/{id}/approve o /reject.",
+        },
+        { status: 400 }
+      );
+    }
+
     const purchasedChipLimit = OrderFulfillmentService.calculatePurchasedChips(order.items);
     const normalizedAssignedChipIds = OrderFulfillmentService.normalizeAssignedChipIds(
       Array.isArray(assignedChipIds) ? assignedChipIds : undefined
     );
-
-    if (
-      order.provider === "manual" &&
-      ((typeof orderStatus === "string" && orderStatus !== order.orderStatus) ||
-        (typeof paymentStatus === "string" && paymentStatus !== order.paymentStatus))
-    ) {
-      return NextResponse.json(
-        { error: "Órdenes manuales: usa /api/admin/orders/{id}/approve o /reject para cambios de estado." },
-        { status: 400 }
-      );
-    }
 
     const requestedChipCount = normalizedAssignedChipIds.length > 0
       ? normalizedAssignedChipIds.length
@@ -265,15 +267,14 @@ export async function DELETE(req: NextRequest) {
   const bulk = searchParams.get('bulk');
 
   if (bulk === 'cancelled') {
-    try {
-      // Delete child records first if not handled by database cascade
-      await prisma.orderItem.deleteMany({ where: { order: { orderStatus: 'cancelled' } } });
-      await prisma.chipClaimToken.deleteMany({ where: { order: { orderStatus: 'cancelled' } } });
-      const result = await prisma.order.deleteMany({ where: { orderStatus: 'cancelled' } });
-      return NextResponse.json({ message: `${result.count} órdenes canceladas eliminadas` });
-    } catch (e) {
-      return NextResponse.json({ error: "Error en eliminación masiva" }, { status: 500 });
-    }
+    // C6C HARDENING: disable bulk destructive deletion to preserve audit traceability.
+    return NextResponse.json(
+      {
+        error:
+          "Eliminación masiva deshabilitada por trazabilidad. Usa eliminación individual controlada.",
+      },
+      { status: 400 }
+    );
   }
 
   if (!id) {
@@ -288,6 +289,24 @@ export async function DELETE(req: NextRequest) {
 
     if (order.orderStatus !== "cancelled") {
       return NextResponse.json({ error: "Solo puedes eliminar ordenes canceladas" }, { status: 400 });
+    }
+
+    if (order.provider === "manual") {
+      return NextResponse.json(
+        { error: "Órdenes manuales canceladas no se eliminan por trazabilidad." },
+        { status: 400 }
+      );
+    }
+
+    const relatedTokensCount = await prisma.chipClaimToken.count({ where: { orderId: id } });
+    if (relatedTokensCount > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "La orden tiene tokens/chips vinculados y no puede eliminarse para preservar trazabilidad.",
+        },
+        { status: 400 }
+      );
     }
 
     // Cascade delete is usually configured in Prisma schema, but let's delete items first to be safe

@@ -125,6 +125,26 @@ Se agregaron guardrails documentales en `app/api/admin/orders/route.ts` (sin cam
 - No reintroducir incrementos de capacidad para órdenes manuales dentro de PATCH.
 - Señalización de bloques legacy: estado/pago, generateTokens, assignedChipIds, capacidad non-manual y side-effects de notificación/cache.
 
+#### C6C guardrails adicionales (hardening aplicado)
+
+Se reforzó `app/api/admin/orders/route.ts` para blindar interferencia con flujo oficial:
+
+1. **PATCH bloquea completamente órdenes `provider=manual`**
+   - Ya no permite ningún camino legacy para manual.
+   - Mensaje explícito obliga usar:
+     - `POST /api/admin/orders/[id]/approve`
+     - `POST /api/admin/orders/[id]/reject`
+
+2. **DELETE masivo deshabilitado** (`bulk=cancelled`)
+   - Se bloquea eliminación masiva por trazabilidad.
+
+3. **DELETE individual endurecido**
+   - Solo `orderStatus=cancelled` (regla existente).
+   - Bloquea eliminación de órdenes manuales canceladas.
+   - Bloquea eliminación si existen `ChipClaimToken` vinculados.
+
+Resultado: PATCH/DELETE legacy conserva utilidad operativa acotada para casos no-manual, pero sin posibilidad de alterar ni destruir trazabilidad del flujo manual oficial.
+
 ### C10B — Extraer helper de transición de estados
 - Crear helper de dominio para validar y aplicar transición `orderStatus/paymentStatus` por provider.
 - PATCH pasa a invocar helper en lugar de reglas inline.
