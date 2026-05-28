@@ -50,6 +50,17 @@ type ReserveAssignedChipsResult = {
   reservedChipIds: string[];
 };
 
+type AssignDirectTokenInput = {
+  chipId: string;
+  orderId: string;
+  activationCode: string;
+  expiresAt: Date;
+};
+
+type AssignDirectTokenResult = {
+  tokenId: string;
+};
+
 /**
  * Fase C4 (baseline): servicio preparatorio para consolidar fulfillment.
  *
@@ -192,5 +203,69 @@ export class OrderFulfillmentService {
     }
 
     return { reservedChipIds };
+  }
+
+  static async assignDirectReserveChipAndToken(
+    tx: Prisma.TransactionClient,
+    input: AssignDirectTokenInput
+  ): Promise<AssignDirectTokenResult> {
+    const { chipId, orderId, activationCode, expiresAt } = input;
+
+    const chip = await tx.chip.findUnique({ where: { id: chipId } });
+    if (!chip || chip.status !== "inventory") {
+      throw Object.assign(new Error("El chip no está disponible para asignación directa."), { status: 409 });
+    }
+
+    const reservedByOtherOrder = await tx.chipClaimToken.findFirst({
+      where: {
+        chipId,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+        orderId: { not: null },
+      },
+      select: { id: true },
+    });
+
+    if (reservedByOtherOrder) {
+      throw Object.assign(new Error("El chip tiene una reserva activa en otra orden."), { status: 409 });
+    }
+
+    await tx.chipClaimToken.updateMany({
+      where: {
+        chipId,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: {
+        expiresAt: new Date(),
+      },
+    });
+
+    const moved = await tx.chip.updateMany({
+      where: { id: chipId, status: "inventory" },
+      data: {
+        status: "sold",
+        ownerUserId: null,
+        accountId: null,
+        assignedProfileId: null,
+      },
+    });
+
+    if (moved.count !== 1) {
+      throw Object.assign(new Error("El chip ya no está disponible para asignación directa."), { status: 409 });
+    }
+
+    const token = await tx.chipClaimToken.create({
+      data: {
+        chipId,
+        orderId,
+        activationCode,
+        usedAt: null,
+        expiresAt,
+      },
+      select: { id: true },
+    });
+
+    return { tokenId: token.id };
   }
 }
