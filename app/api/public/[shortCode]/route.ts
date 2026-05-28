@@ -5,6 +5,7 @@ import { ConfigRepository } from "@/domains/shared/repositories/config.repositor
 import { decrypt } from "@/lib/encryption";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
+import { CHIP_STATUS } from "@/domains/chips/chip-lifecycle.constants";
 
 export const dynamic = "force-dynamic";
 
@@ -92,7 +93,7 @@ export async function GET(
       );
     }
 
-    if (chip.status !== "activated" || !chip.assignedProfile) {
+    if (chip.status !== CHIP_STATUS.ACTIVATED || !chip.assignedProfile) {
       return publicJson({
         status: "unactivated",
         message: "Chip aún no activado",

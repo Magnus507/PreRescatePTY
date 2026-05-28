@@ -3,6 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import {
+  ACTIVATABLE_CHIP_STATUSES,
+  CHIP_SERVICE_STATUS,
+  CHIP_STATUS,
+  USED_CAPACITY_CHIP_STATUSES,
+} from "@/domains/chips/chip-lifecycle.constants";
 import { chipActivationSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +61,7 @@ export async function POST(req: NextRequest) {
 
   const chip = claimToken.chip;
 
-  if (chip.status !== "inventory" && chip.status !== "sold") {
+  if (!ACTIVATABLE_CHIP_STATUSES.includes(chip.status as (typeof ACTIVATABLE_CHIP_STATUSES)[number])) {
     return NextResponse.json(
       { error: "Este chip no está disponible para activación" },
       { status: 409 }
@@ -111,7 +117,7 @@ export async function POST(req: NextRequest) {
       }
 
       const currentActiveCount = await tx.chip.count({
-        where: { accountId: account.id, status: { in: ["activated", "suspended", "sold"] } }
+        where: { accountId: account.id, status: { in: [...USED_CAPACITY_CHIP_STATUSES] } }
       });
 
       // Enforce plan chip limit
@@ -140,17 +146,17 @@ export async function POST(req: NextRequest) {
       const chipActivate = await tx.chip.updateMany({
         where: {
           id: claimToken.chipId,
-          status: { in: ["inventory", "sold"] },
+          status: { in: [...ACTIVATABLE_CHIP_STATUSES] },
         },
         data: {
-          status: "activated",
+          status: CHIP_STATUS.ACTIVATED,
           ownerUserId: userId,
           accountId: targetAccountId,
           assignedProfileId: profile.id,
           activatedAt: now,
           serviceStartDate: now,
           serviceEndDate: serviceEndDate,
-          serviceStatus: "active"
+          serviceStatus: CHIP_SERVICE_STATUS.ACTIVE
         },
       });
 
