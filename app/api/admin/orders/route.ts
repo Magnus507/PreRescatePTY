@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { USER_ROLES } from "@/domains/shared/constants";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { OrderNotificationService } from "@/domains/notifications/services/order-notification.service";
+import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 
 // Check if the current session is an admin
 async function isAdmin() {
@@ -68,7 +69,10 @@ export async function PATCH(req: NextRequest) {
 
     if (!order) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
 
-    const purchasedChipLimit = order.items.reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
+    const purchasedChipLimit = OrderFulfillmentService.calculatePurchasedChips(order.items);
+    const normalizedAssignedChipIds = OrderFulfillmentService.normalizeAssignedChipIds(
+      Array.isArray(assignedChipIds) ? assignedChipIds : undefined
+    );
 
     if (
       order.provider === "manual" &&
@@ -81,8 +85,8 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const requestedChipCount = Array.isArray(assignedChipIds)
-      ? assignedChipIds.length
+    const requestedChipCount = normalizedAssignedChipIds.length > 0
+      ? normalizedAssignedChipIds.length
       : (generateTokens ? purchasedChipLimit : 0);
 
     if (requestedChipCount > purchasedChipLimit) {
@@ -125,70 +129,29 @@ export async function PATCH(req: NextRequest) {
         const neededChips = totalChips - existingTokens;
         
         if (neededChips > 0) {
-          if (assignedChipIds && Array.isArray(assignedChipIds) && assignedChipIds.length > 0) {
-            if (assignedChipIds.length > purchasedChipLimit) {
+          if (normalizedAssignedChipIds.length > 0) {
+            if (normalizedAssignedChipIds.length > purchasedChipLimit) {
               return NextResponse.json(
                 { error: `Este pedido solo permite ${purchasedChipLimit} chips.` },
                 { status: 400 }
               );
             }
-            // Manual Linkage logic
-            for (const chipId of assignedChipIds) {
-              const chip = await prisma.chip.findUnique({ where: { id: chipId } });
-              if (!chip) {
-                return NextResponse.json({ error: "Chip no encontrado" }, { status: 404 });
-              }
-
-              if (chip.status !== "inventory") {
-                return NextResponse.json({ error: "El chip ya no está disponible en inventario." }, { status: 409 });
-              }
-
-              const conflictingToken = await prisma.chipClaimToken.findFirst({
-                where: {
-                  chipId: chip.id,
-                  orderId: { not: null, notIn: [id] },
-                  usedAt: null,
-                },
-              });
-
-              if (conflictingToken) {
-                return NextResponse.json({ error: "Este chip ya está asignado a otra orden." }, { status: 409 });
-              }
-
-              // Reserve atomically: inventory -> sold. Prevents double assignment races.
-              const reserved = await prisma.chip.updateMany({
-                where: { id: chip.id, status: "inventory" },
-                data: { status: "sold" },
-              });
-
-              if (reserved.count !== 1) {
-                return NextResponse.json({ error: "El chip ya no está disponible en inventario." }, { status: 409 });
-              }
-
-              // Link existing token instead of creating a new one
-              const existingToken = await prisma.chipClaimToken.findFirst({
-                where: { chipId: chip.id }
-              });
-
-              if (existingToken) {
-                await prisma.chipClaimToken.update({
-                  where: { id: existingToken.id },
-                  data: {
-                    orderId: id,
-                    expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) // Extend expiry
-                  }
+            try {
+              await prisma.$transaction(async (tx) => {
+                await OrderFulfillmentService.reserveAssignedChipsForOrder(tx, {
+                  orderId: id,
+                  assignedChipIds: normalizedAssignedChipIds,
+                  purchasedChips: purchasedChipLimit,
+                  tokenExpiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
                 });
-              } else {
-                // Fallback if no token exists for some reason
-                await prisma.chipClaimToken.create({
-                  data: {
-                    chipId: chip.id,
-                    orderId: id,
-                    activationCode: `ACT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                    expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
-                  }
-                });
-              }
+              });
+            } catch (error: unknown) {
+              const message = error instanceof Error ? error.message : "Error al actualizar orden";
+              const status =
+                typeof error === "object" && error !== null && "status" in error
+                  ? Number((error as { status?: unknown }).status) || 500
+                  : 500;
+              return NextResponse.json({ error: message }, { status });
             }
           } else {
             // Auto generation (fallback)

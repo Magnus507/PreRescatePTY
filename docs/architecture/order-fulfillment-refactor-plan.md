@@ -173,3 +173,32 @@ Adopción en `app/api/admin/orders/[id]/approve/route.ts`:
 Pendiente para C7:
 
 - `PATCH /api/admin/orders` aún conserva lógica propia de fulfillment y no fue movida en esta fase.
+
+---
+
+## 10) Avance C7 — PATCH usa servicio para reserva/token (implementado)
+
+Se alineó `PATCH /api/admin/orders` para reutilizar `OrderFulfillmentService.reserveAssignedChipsForOrder(...)` cuando recibe `assignedChipIds`, sin cambiar contratos externos ni comportamiento general de estados.
+
+Qué se movió a servicio desde PATCH:
+
+- validación/normalización de chips asignados para reserva
+- detección de conflicto por token activo ligado a otra orden
+- transición atómica `inventory -> sold` para chips asignados
+- creación/actualización de token vinculado a la orden para chips asignados
+- idempotencia para chips ya `sold` vinculados a la misma orden
+
+Qué se mantuvo en PATCH:
+
+- transición de `orderStatus/paymentStatus`
+- guardas para órdenes manuales (approve/reject)
+- flujo `generateTokens` / `isFulfilling`
+- auto-generación fallback cuando no hay `assignedChipIds`
+- incremento de capacidad para providers no-manual (sin duplicar manual)
+- notificaciones y response shape
+
+Notas de compatibilidad C7:
+
+- si `assignedChipIds` viene vacío, PATCH mantiene comportamiento actual
+- expiración de token en rama `assignedChipIds` mantiene duración existente (60 días)
+- `PATCH /api/admin/orders` no fue migrado completo; solo se alineó la porción de reserva/token
