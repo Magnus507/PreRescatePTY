@@ -125,3 +125,26 @@ Adopción mínima segura realizada en `approve`:
 2. Misma semántica funcional en approve/PATCH.
 3. Menor duplicación y mayor testabilidad.
 4. Reglas de fulfillment centralizadas en una capa de dominio.
+
+---
+
+## 8) Avance C5 — centralización de capacidad (implementado)
+
+Se centralizó el cálculo acumulativo de capacidad para órdenes manuales en `OrderFulfillmentService`, sin mover todavía la parte delicada de reserva de chips/tokens.
+
+Helpers agregados:
+
+- `calculateCapacityIncrement(orderItems, pkg)`
+  - `chipsToAdd = calculatePurchasedChips(orderItems)`
+  - `profilesToAdd = calculatePurchasedProfiles(pkg)`
+
+- `applyCapacityIfFirstApproval(currentAccount, increment, wasAlreadyApproved)`
+  - Si `wasAlreadyApproved = true`: devuelve capacidad actual sin sumar.
+  - Si `false`: suma capacidad en modo acumulativo.
+
+Adopción en `app/api/admin/orders/[id]/approve/route.ts`:
+
+- El route ahora usa los helpers para derivar `maxChipsAllocated` y `maxProfilesAllocated`.
+- No se cambió la transacción completa.
+- No se cambió la lógica de reserva de chips/tokens (queda para C6).
+- No se alteraron mensajes ni estados del flujo de aprobación.

@@ -11,6 +11,16 @@ type OrderApprovalLike = {
   adminReviewStatus?: string | null;
 };
 
+type AccountCapacityLike = {
+  maxChipsAllocated: number;
+  maxProfilesAllocated: number;
+};
+
+type CapacityIncrement = {
+  chipsToAdd: number;
+  profilesToAdd: number;
+};
+
 export type AssignedChipInput = {
   chipId: string;
 };
@@ -53,5 +63,33 @@ export class OrderFulfillmentService {
 
   static normalizeAssignedChipIds(input?: string[] | null): string[] {
     return Array.from(new Set((input || []).filter(Boolean)));
+  }
+
+  static calculateCapacityIncrement(
+    orderItems: OrderItemLike[],
+    pkg: PackageLike
+  ): CapacityIncrement {
+    return {
+      chipsToAdd: this.calculatePurchasedChips(orderItems),
+      profilesToAdd: this.calculatePurchasedProfiles(pkg),
+    };
+  }
+
+  static applyCapacityIfFirstApproval(
+    currentAccount: AccountCapacityLike,
+    increment: CapacityIncrement,
+    wasAlreadyApproved: boolean
+  ): AccountCapacityLike {
+    if (wasAlreadyApproved) {
+      return {
+        maxChipsAllocated: currentAccount.maxChipsAllocated,
+        maxProfilesAllocated: currentAccount.maxProfilesAllocated,
+      };
+    }
+
+    return {
+      maxChipsAllocated: currentAccount.maxChipsAllocated + increment.chipsToAdd,
+      maxProfilesAllocated: currentAccount.maxProfilesAllocated + increment.profilesToAdd,
+    };
   }
 }

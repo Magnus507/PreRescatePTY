@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   }
 
   const purchasedChips = OrderFulfillmentService.calculatePurchasedChips(order.items);
-  const purchasedProfiles = OrderFulfillmentService.calculatePurchasedProfiles(pkg);
+  const capacityIncrement = OrderFulfillmentService.calculateCapacityIncrement(order.items, pkg);
   const wasAlreadyApproved = OrderFulfillmentService.wasOrderAlreadyApproved(order);
 
   if (assignedChipIds.length > purchasedChips) {
@@ -102,10 +102,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         status: "active",
       };
 
-      if (!wasAlreadyApproved) {
-        accountUpdateData.maxChipsAllocated = currentAccount.maxChipsAllocated + purchasedChips;
-        accountUpdateData.maxProfilesAllocated = currentAccount.maxProfilesAllocated + purchasedProfiles;
-      }
+      const nextCapacity = OrderFulfillmentService.applyCapacityIfFirstApproval(
+        currentAccount,
+        capacityIncrement,
+        wasAlreadyApproved
+      );
+
+      accountUpdateData.maxChipsAllocated = nextCapacity.maxChipsAllocated;
+      accountUpdateData.maxProfilesAllocated = nextCapacity.maxProfilesAllocated;
 
       const account = await tx.account.update({
         where: { id: user.accountId! },
