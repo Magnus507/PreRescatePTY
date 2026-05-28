@@ -89,42 +89,66 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
         </div>
 
         {/* Industrial Action Grid */}
-        <div className="grid grid-cols-1 gap-6">
-          
-          {/* RED: ALERGIAS CRÍTICAS */}
-          <div className="bg-red-500/10 border-2 border-red-500/20 rounded-[2.5rem] p-8 overflow-hidden relative group transition-all hover:bg-red-500/20">
-            <div className="absolute top-4 right-6 opacity-20 group-hover:scale-110 transition-transform">
-              <ShieldAlert className="h-12 w-12 text-red-500" />
-            </div>
-            <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-              <Zap className="h-3 w-3 fill-current" /> Alergias Críticas
-            </p>
-            <p className="text-2xl font-black text-white leading-tight uppercase">
-              {profile.allergies || "Ninguna Reportada"}
-            </p>
-          </div>
-
-          {/* BLUE: CONDICIONES MÉDICAS */}
-          <div className="bg-blue-500/10 border-2 border-blue-500/20 rounded-[2.5rem] p-8 overflow-hidden relative group transition-all hover:bg-blue-500/20">
-             <div className="absolute top-4 right-6 opacity-20 group-hover:scale-110 transition-transform">
-              <Activity className="h-12 w-12 text-blue-500" />
-            </div>
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-              <Droplets className="h-3 w-3 fill-current" /> Condiciones / Sangre
-            </p>
-            <div className="flex items-center gap-6">
-              <div>
-                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 opacity-60">TIPO SANGRE</p>
-                <p className="text-3xl font-black text-white">{profile.bloodType}</p>
-              </div>
-              <div className="h-12 w-[1px] bg-blue-500/30" />
-              <div className="flex-1">
-                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 opacity-60">DIAGNÓSTICO</p>
-                <p className="text-xl font-black text-white uppercase">{profile.chronicConditions || "Estable"}</p>
-              </div>
+        <div className="space-y-4">
+          <div className="md:hidden bg-slate-800/70 border border-slate-700 rounded-2xl p-4">
+            <h3 className="text-sm font-black uppercase tracking-tight text-white mb-3">Resumen Médico Crítico</h3>
+            <div className="space-y-2.5">
+              <CompactMedicalRow
+                icon={<ShieldAlert className="h-4 w-4 text-red-400" />}
+                label="Alergias"
+                value={profile.allergies || "No reportado"}
+                tone="red"
+              />
+              <CompactMedicalRow
+                icon={<Activity className="h-4 w-4 text-blue-400" />}
+                label="Condiciones"
+                value={profile.chronicConditions || "No reportado"}
+                tone="blue"
+              />
+              <CompactMedicalRow
+                icon={<Zap className="h-4 w-4 text-emerald-400" />}
+                label="Medicamentos"
+                value={profile.medications || "No reportado"}
+                tone="emerald"
+              />
             </div>
           </div>
 
+          <div className="hidden md:grid grid-cols-1 gap-6">
+            {/* RED: ALERGIAS CRÍTICAS */}
+            <div className="bg-red-500/10 border-2 border-red-500/20 rounded-[2.5rem] p-8 overflow-hidden relative group transition-all hover:bg-red-500/20">
+              <div className="absolute top-4 right-6 opacity-20 group-hover:scale-110 transition-transform">
+                <ShieldAlert className="h-12 w-12 text-red-500" />
+              </div>
+              <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+                <Zap className="h-3 w-3 fill-current" /> Alergias Críticas
+              </p>
+              <p className="text-2xl font-black text-white leading-tight uppercase">
+                {profile.allergies || "Ninguna Reportada"}
+              </p>
+            </div>
+
+            {/* BLUE: CONDICIONES MÉDICAS */}
+            <div className="bg-blue-500/10 border-2 border-blue-500/20 rounded-[2.5rem] p-8 overflow-hidden relative group transition-all hover:bg-blue-500/20">
+              <div className="absolute top-4 right-6 opacity-20 group-hover:scale-110 transition-transform">
+                <Activity className="h-12 w-12 text-blue-500" />
+              </div>
+              <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+                <Droplets className="h-3 w-3 fill-current" /> Condiciones / Sangre
+              </p>
+              <div className="flex items-center gap-6">
+                <div>
+                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 opacity-60">TIPO SANGRE</p>
+                  <p className="text-3xl font-black text-white">{profile.bloodType}</p>
+                </div>
+                <div className="h-12 w-[1px] bg-blue-500/30" />
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 opacity-60">DIAGNÓSTICO</p>
+                  <p className="text-xl font-black text-white uppercase">{profile.chronicConditions || "Estable"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {hasExtras && (
@@ -250,6 +274,36 @@ function CompactItem({ label, value }: { label: string; value: string }) {
     <div className="p-3 rounded-xl bg-slate-900 border border-slate-700">
       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
       <p className="text-sm font-bold text-white">{value}</p>
+    </div>
+  );
+}
+
+function CompactMedicalRow({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  tone: "red" | "blue" | "emerald";
+}) {
+  const toneClasses: Record<string, string> = {
+    red: "bg-red-500/10 border-red-500/30",
+    blue: "bg-blue-500/10 border-blue-500/30",
+    emerald: "bg-emerald-500/10 border-emerald-500/30",
+  };
+
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${toneClasses[tone]}`}>
+      <div className="flex items-start gap-2">
+        <div className="mt-0.5">{icon}</div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-wide text-slate-300">{label}</p>
+          <p className="text-sm font-semibold text-white break-words">{value || "No reportado"}</p>
+        </div>
+      </div>
     </div>
   );
 }
