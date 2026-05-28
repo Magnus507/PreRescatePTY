@@ -22,6 +22,24 @@ interface Window {
 }
 const store = new Map<string, Window>();
 
+const AUTH_RATE_LIMIT_NAMESPACES = [
+  "login",
+  "register",
+  "forgot-password",
+  "reset-password",
+] as const;
+
+function isAuthRateLimitNamespace(namespace: string): boolean {
+  return AUTH_RATE_LIMIT_NAMESPACES.some((base) => namespace === base || namespace.startsWith(`${base}:`));
+}
+
+type RateLimitResult = {
+  allowed: boolean;
+  remaining: number;
+  resetAt: number;
+  errorCode?: "RATE_LIMIT_BACKEND_UNAVAILABLE";
+};
+
 setInterval(() => {
   const now = Date.now();
   for (const [key, win] of store) {
@@ -33,7 +51,7 @@ export async function rateLimit(
   namespace: string,
   identifier: string,
   options: { limit: number; windowMs: number }
-): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+): Promise<RateLimitResult> {
   const key = `${namespace}:${identifier}`;
   const now = Date.now();
   const { limit, windowMs } = options;
@@ -42,10 +60,12 @@ export async function rateLimit(
   // If Upstash is missing, fail closed and block the request.
   if (isProduction && !redis) {
     console.error(PRODUCTION_FAIL_CLOSED_MESSAGE);
+    const authNamespace = isAuthRateLimitNamespace(namespace);
     return {
       allowed: false,
       remaining: 0,
       resetAt: now + windowMs,
+      ...(authNamespace ? { errorCode: "RATE_LIMIT_BACKEND_UNAVAILABLE" as const } : {}),
     };
   }
 
@@ -66,10 +86,12 @@ export async function rateLimit(
       console.error("Upstash Redis error:", e);
       if (isProduction) {
         console.error(PRODUCTION_FAIL_CLOSED_MESSAGE);
+        const authNamespace = isAuthRateLimitNamespace(namespace);
         return {
           allowed: false,
           remaining: 0,
           resetAt: now + windowMs,
+          ...(authNamespace ? { errorCode: "RATE_LIMIT_BACKEND_UNAVAILABLE" as const } : {}),
         };
       }
       // In non-production, fall through to in-memory store for local/dev resilience.

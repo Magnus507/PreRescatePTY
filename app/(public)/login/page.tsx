@@ -61,6 +61,8 @@ function LoginContent() {
       if (res?.error) {
         if (res.error.includes("MFA_REQUIRED")) {
           setRequiresMfa(true);
+        } else if (res.error.includes("RATE_LIMIT_BACKEND_UNAVAILABLE")) {
+          setError("Servicio temporalmente no disponible. Intente nuevamente en unos minutos.");
         } else {
           setError(res.error || "Credenciales inválidas. Por favor intenta de nuevo.");
         }
