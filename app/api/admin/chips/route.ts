@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
@@ -7,21 +9,78 @@ import { SITE_URL } from "@/lib/constants";
 import { 
   getBatchUniqueShortCodes, getBatchUniqueSerialPublics, getBatchUniqueActivationCodes 
 } from "@/lib/identifiers";
-import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+
+async function isAdmin() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return false;
+  const role = session.user.role;
+  return role === "admin" || role === "superadmin" || role === "imprenta";
+}
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
-  if (!auth.authorized) return auth.response;
+  const sessionAdmin = await isAdmin();
+  
+  if (!sessionAdmin) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const excludeStatus = searchParams.get("excludeStatus");
   const serviceStatus = searchParams.get("serviceStatus");
+  const view = searchParams.get("view");
   const search = searchParams.get("search");
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
 
   const where: Prisma.ChipWhereInput = {};
+
+  if (view === "available") {
+    where.status = "inventory";
+    where.ownerUserId = null;
+    where.isPhysical = true;
+    where.claimTokens = {
+      none: {
+        orderId: { not: null },
+        usedAt: null,
+      },
+    };
+  } else if (view === "reserved") {
+    where.OR = [
+      { status: "sold" },
+      {
+        claimTokens: {
+          some: {
+            orderId: { not: null },
+            usedAt: null,
+          },
+        },
+      },
+    ];
+  } else if (view === "activated") {
+    where.status = "activated";
+  } else if (view === "returned") {
+    where.status = "inventory";
+    where.OR = [
+      {
+        claimTokens: {
+          some: {
+            orderId: { not: null },
+          },
+        },
+      },
+      {
+        claimTokens: {
+          some: {
+            usedAt: { not: null },
+          },
+        },
+      },
+    ];
+  } else if (view === "damaged") {
+    where.status = { in: ["damaged", "lost"] };
+  }
+
   if (status) {
     where.status = status;
   } else if (excludeStatus) {
@@ -34,7 +93,9 @@ export async function GET(req: NextRequest) {
   if (accountId) where.accountId = accountId;
 
   if (search) {
+    const existingOr = where.OR ? (Array.isArray(where.OR) ? where.OR : [where.OR]) : [];
     where.OR = [
+      ...existingOr,
       { serialPublic: { contains: search } },
       { shortCode: { contains: search } },
       { owner: { email: { contains: search } } },
@@ -52,10 +113,10 @@ export async function GET(req: NextRequest) {
       take: limit,
       include: {
         owner: {
-          select: { email: true },
+          select: { id: true, email: true },
         },
         assignedProfile: {
-          select: { firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true },
         },
         account: {
           include: {
@@ -66,7 +127,37 @@ export async function GET(req: NextRequest) {
           }
         },
         claimTokens: {
-          select: { activationCode: true, usedAt: true },
+          select: {
+            id: true,
+            activationCode: true,
+            usedAt: true,
+            expiresAt: true,
+            createdAt: true,
+            orderId: true,
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+                customerName: true,
+                customerEmail: true,
+                orderStatus: true,
+                paymentStatus: true,
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    profile: {
+                      select: {
+                        firstName: true,
+                        lastName: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
         },
         _count: {
           select: { scanEvents: true },
@@ -76,12 +167,57 @@ export async function GET(req: NextRequest) {
     prisma.chip.count({ where }),
   ]);
 
-  return NextResponse.json({ chips, total, page, limit });
+  const items = chips.map((chip) => {
+    const latestToken = chip.claimTokens?.[0];
+    const order = latestToken?.order;
+    const orderCustomerName = order?.customerName ||
+      (order?.user?.profile ? `${order.user.profile.firstName || ""} ${order.user.profile.lastName || ""}`.trim() : null);
+
+    return {
+      ...chip,
+      activationCode: latestToken?.activationCode || null,
+      latestToken: latestToken
+        ? {
+            id: latestToken.id,
+            orderId: latestToken.orderId,
+            usedAt: latestToken.usedAt,
+            expiresAt: latestToken.expiresAt,
+            createdAt: latestToken.createdAt,
+          }
+        : null,
+      order: order
+        ? {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            orderStatus: order.orderStatus,
+            paymentStatus: order.paymentStatus,
+          }
+        : null,
+      customer: order
+        ? {
+            name: orderCustomerName || null,
+            email: order.customerEmail || order.user?.email || null,
+          }
+        : null,
+      profile: chip.assignedProfile
+        ? {
+            id: chip.assignedProfile.id,
+            firstName: chip.assignedProfile.firstName,
+            lastName: chip.assignedProfile.lastName,
+          }
+        : null,
+    };
+  });
+
+  return NextResponse.json({ items, chips: items, total, page, limit, view: view || null });
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
-  if (!auth.authorized) return auth.response;
+  const sessionAdmin = await isAdmin();
+  
+  if (!sessionAdmin) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   const body = await req.json();
   const { count = 1, batchId, productType = "sticker_nfc_qr", labelBase = "Caja", labelStart = 1 } = body;
