@@ -14,7 +14,7 @@ import { EmailService } from "@/domains/shared/services/email.service";
 import { SmsService } from "@/domains/shared/services/sms.service";
 import { WhatsappService } from "@/domains/shared/services/whatsapp.service";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://prerescatepty.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.prerescatepty.com";
 
 export interface EmergencyNotificationData {
   recipient: string;
