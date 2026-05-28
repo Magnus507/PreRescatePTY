@@ -40,16 +40,19 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   const update = (field: string, value: string | boolean) => onChange(field, value);
 
   return (
-    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${disabled ? "opacity-60 pointer-events-none" : ""}`}>
+    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 ${disabled ? "opacity-60 pointer-events-none" : ""}`}>
       
       {/* Identity Section */}
       <div className="space-y-4">
-        <div className="p-6 rounded-3xl border border-border bg-muted/20 space-y-5 shadow-inner">
+        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <User className="h-5 w-5" />
             </div>
-            <h3 className="font-black text-lg tracking-tight">Identidad</h3>
+            <div>
+              <h3 className="font-black text-base md:text-lg tracking-tight">Identidad</h3>
+              <p className="text-xs text-muted-foreground">Datos base para identificar a la persona.</p>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -66,7 +69,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             <Field label="Cédula / Identificación" value={form.nationalId || ""} onChange={(v: string) => update("nationalId", v)} placeholder="Opcional" />
             
             <div className="space-y-2">
-              <label htmlFor="sex-select" className="text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Sexo</label>
+              <label htmlFor="sex-select" className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground ml-1">Sexo</label>
               <select 
                 id="sex-select"
                 value={form.sex} 
@@ -80,7 +83,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             </div>
 
             <div className="flex items-center justify-between mb-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Fecha de Nacimiento</label>
+              <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground ml-1">Fecha de Nacimiento</label>
               {(() => {
                 if (!form.birthDate) return null;
                 const birthDate = new Date(form.birthDate);
@@ -108,17 +111,20 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 
       {/* Medical Section */}
       <div className="space-y-4">
-        <div className="p-6 rounded-3xl border border-border bg-muted/20 space-y-5 shadow-inner">
+        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center">
               <Heart className="h-5 w-5" />
             </div>
-            <h3 className="font-black text-lg tracking-tight text-red-600">Alerta Médica</h3>
+            <div>
+              <h3 className="font-black text-base md:text-lg tracking-tight text-red-600">Alerta médica</h3>
+              <p className="text-xs text-muted-foreground">Información crítica para primera respuesta.</p>
+            </div>
           </div>
 
           <div className="space-y-3">
             <div className="space-y-2">
-              <label htmlFor="blood-type-select" className="text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">Tipo de Sangre *</label>
+              <label htmlFor="blood-type-select" className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground ml-1">Tipo de Sangre *</label>
               <select 
                 id="blood-type-select"
                 required 
@@ -136,12 +142,15 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
               <Shield className="h-5 w-5" />
             </div>
-            <h3 className="font-black text-lg tracking-tight text-blue-700">Seguro Médico</h3>
+            <div>
+              <h3 className="font-black text-base md:text-lg tracking-tight text-blue-700">Seguro médico</h3>
+              <p className="text-xs text-muted-foreground">Completa estos datos solo si cuentas con seguro.</p>
+            </div>
           </div>
 
           <ToggleField
@@ -156,16 +165,22 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
               <Field label="Número de Póliza" value={form.insurancePolicyNumber || ""} onChange={(v: string) => update("insurancePolicyNumber", v)} placeholder="Privado" />
               <Field label="Hospital Preferido" value={form.preferredHospital || ""} onChange={(v: string) => update("preferredHospital", v)} placeholder="Ej: Punta Pacífica" />
               <Field label="Teléfono emergencia del seguro" value={form.insuranceEmergencyPhone || ""} onChange={(v: string) => update("insuranceEmergencyPhone", v)} placeholder="Privado" />
+              <p className="sm:col-span-2 text-xs text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2">
+                La póliza y el teléfono del seguro no se mostrarán públicamente.
+              </p>
             </div>
           )}
         </div>
 
-        <div className="p-6 rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
               <Stethoscope className="h-5 w-5" />
             </div>
-            <h3 className="font-black text-lg tracking-tight text-emerald-700">Médico Tratante</h3>
+            <div>
+              <h3 className="font-black text-base md:text-lg tracking-tight text-emerald-700">Médico tratante</h3>
+              <p className="text-xs text-muted-foreground">Solo se mostrará públicamente si lo autorizas en privacidad.</p>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Nombre del médico" value={form.primaryDoctorName || ""} onChange={(v: string) => update("primaryDoctorName", v)} placeholder="Opcional" />
@@ -173,18 +188,24 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center">
               <FileText className="h-5 w-5" />
             </div>
-            <h3 className="font-black text-lg tracking-tight">Instrucciones Especiales</h3>
+            <div>
+              <h3 className="font-black text-base md:text-lg tracking-tight">Instrucciones especiales</h3>
+              <p className="text-xs text-muted-foreground">Detalles útiles para actuar más rápido en emergencia.</p>
+            </div>
           </div>
           <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas adicionales" value={form.additionalNotes} onChange={(v: string) => update("additionalNotes", v)} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
         </div>
 
-        <div className="p-6 rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <h3 className="font-black text-base tracking-tight">Privacidad / Visibilidad pública</h3>
+        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+          <h3 className="font-black text-base tracking-tight">Privacidad y visibilidad</h3>
+          <p className="text-xs text-muted-foreground font-medium">
+            Qué puede ver quien escanee tu chip.
+          </p>
           <p className="text-xs text-muted-foreground font-medium">
             Estos datos podrán ser vistos por cualquier persona que escanee tu chip en una emergencia.
           </p>
@@ -205,8 +226,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (val: boolean) => void }) {
   const id = React.useId();
   return (
-    <label htmlFor={id} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3">
-      <span className="text-xs font-semibold">{label}</span>
+    <label htmlFor={id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2.5">
+      <span className="text-xs font-medium leading-snug">{label}</span>
       <input id={id} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4" />
     </label>
   );
@@ -224,7 +245,7 @@ function Field({ label, value, onChange, required, placeholder }: FieldProps) {
   const id = React.useId();
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">{label}</label>
+      <label htmlFor={id} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground ml-1">{label}</label>
       <input 
         id={id}
         type="text" 
@@ -232,7 +253,7 @@ function Field({ label, value, onChange, required, placeholder }: FieldProps) {
         value={value} 
         onChange={(e) => onChange(e.target.value)} 
         placeholder={placeholder} 
-        className="w-full rounded-2xl border-2 border-input bg-background px-5 py-4 text-base font-bold shadow-sm input-premium outline-none" 
+        className="w-full rounded-xl border-2 border-input bg-background px-3.5 py-2.5 text-sm md:text-base font-semibold shadow-sm input-premium outline-none" 
       />
     </div>
   );
@@ -253,14 +274,14 @@ function TextAreaField({ icon, label, value, onChange, placeholder, color }: Tex
     <div className="space-y-2">
       <div className="flex items-center gap-2 ml-1">
         <span className={color}>{icon}</span>
-        <label htmlFor={id} className={`text-[10px] font-black uppercase tracking-[0.1em] ${color}`}>{label}</label>
+        <label htmlFor={id} className={`text-[11px] font-semibold uppercase tracking-wide ${color}`}>{label}</label>
       </div>
       <textarea 
         id={id}
         value={value} 
         onChange={(e) => onChange(e.target.value)} 
-        rows={1} 
-        className="w-full rounded-2xl border-2 border-input bg-card/50 px-5 py-4 text-sm font-semibold resize-none shadow-sm italic hover:bg-background input-premium outline-none" 
+        rows={2} 
+        className="w-full rounded-xl border-2 border-input bg-card/50 px-3.5 py-2.5 text-sm font-medium resize-y min-h-[84px] shadow-sm italic hover:bg-background input-premium outline-none" 
         placeholder={placeholder} 
       />
     </div>

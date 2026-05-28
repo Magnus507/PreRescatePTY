@@ -808,18 +808,18 @@ interface ModalProps {
 
 function Modal({ title, onClose, children }: ModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-card w-full max-w-6xl rounded-[3rem] shadow-2xl border border-white/20 flex flex-col max-h-[90vh] overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div className="px-12 py-10 border-b border-border flex items-center justify-between shrink-0 bg-gradient-to-r from-primary/5 to-transparent">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="bg-card w-full max-w-none sm:max-w-5xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/20 flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div className="sticky top-0 z-10 px-4 sm:px-8 py-4 sm:py-6 border-b border-border flex items-center justify-between shrink-0 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90">
           <div>
-            <h3 id="modal-title" className="font-black text-2xl tracking-tighter">{title}</h3>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest mt-1">Configuración Médica</p>
+            <h3 id="modal-title" className="font-black text-lg sm:text-2xl tracking-tight sm:tracking-tighter">{title}</h3>
+            <p className="text-xs text-muted-foreground font-medium mt-1">Completa los datos que podrían ayudar en una emergencia.</p>
           </div>
-          <button onClick={onClose} aria-label="Cerrar modal" className="h-10 w-10 rounded-full border border-border flex items-center justify-center hover:bg-accent transition-colors">
-            <X className="h-5 w-5" />
+          <button onClick={onClose} aria-label="Cerrar modal" className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-border flex items-center justify-center hover:bg-accent transition-colors">
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
-        <div className="p-12 overflow-y-auto">{children}</div>
+        <div className="px-4 sm:px-8 py-4 sm:py-6 overflow-y-auto pb-28 sm:pb-10">{children}</div>
       </div>
     </div>
   );
