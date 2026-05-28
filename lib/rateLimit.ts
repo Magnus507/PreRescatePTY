@@ -5,6 +5,9 @@ const hasUpstashConfig = Boolean(
   process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
 );
 
+const PRODUCTION_FAIL_CLOSED_MESSAGE =
+  "Rate limit backend unavailable in production (Upstash missing or unreachable). Request blocked by policy.";
+
 let redis: Redis | null = null;
 if (hasUpstashConfig) {
   redis = new Redis({
@@ -31,13 +34,20 @@ export async function rateLimit(
   identifier: string,
   options: { limit: number; windowMs: number }
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
-  if (isProduction && !redis) {
-    console.warn("Rate limit: Upstash Redis not configured. Falling back to in-memory store (single-instance only).");
-  }
-
   const key = `${namespace}:${identifier}`;
   const now = Date.now();
   const { limit, windowMs } = options;
+
+  // Production hardening: never rely on per-instance memory limiter.
+  // If Upstash is missing, fail closed and block the request.
+  if (isProduction && !redis) {
+    console.error(PRODUCTION_FAIL_CLOSED_MESSAGE);
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt: now + windowMs,
+    };
+  }
 
   if (redis) {
     try {
@@ -54,7 +64,15 @@ export async function rateLimit(
       };
     } catch (e) {
       console.error("Upstash Redis error:", e);
-      // Fall through to in-memory store instead of breaking the request
+      if (isProduction) {
+        console.error(PRODUCTION_FAIL_CLOSED_MESSAGE);
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt: now + windowMs,
+        };
+      }
+      // In non-production, fall through to in-memory store for local/dev resilience.
     }
   }
 

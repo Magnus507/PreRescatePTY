@@ -6,8 +6,8 @@
 - El sistema está funcional y avanzado para operación real, pero aún hay riesgos críticos en seguridad operativa y gobernanza de producción.
 - Clasificación global:
   - **OK**: flujo core (approve/assign-direct/activate/rehabilitate), privacidad pública principal, recuperación de cuenta con anti-enumeración.
-  - **WARNING**: observabilidad básica, gobernanza de secretos/operación incompleta, rate limit con fallback in-memory en producción.
-  - **CRITICAL**: endpoint admin legacy amplio (`PATCH/DELETE /api/admin/orders`) y fallback in-memory de rate limit en producción.
+  - **WARNING**: observabilidad básica, gobernanza de secretos/operación incompleta, y dependencia obligatoria de Upstash en producción para rate limiting.
+  - **CRITICAL**: endpoint admin legacy amplio (`PATCH/DELETE /api/admin/orders`).
 
 ---
 
@@ -56,12 +56,19 @@
 1. Login, forgot-password, reset-password y perfil público sí tienen rate limit.
    - Estado: **OK**
 
-2. `lib/rateLimit.ts` permite fallback in-memory incluso en producción si falla Upstash/credenciales.
-   - Riesgo: límites inconsistentes en entornos multi-instancia/serverless.
-   - Estado: **CRITICAL**
+2. `lib/rateLimit.ts` fue endurecido: en producción ya no usa fallback in-memory.
+   - Política aplicada: **fail closed** si Upstash falta o falla (bloquea request con `allowed=false`).
+   - Estado: **OK**
 
 3. Endpoints admin mutantes críticos no muestran rate limit específico por operación sensible.
    - Estado: **WARNING**
+
+4. Endpoints actualmente protegidos por `rateLimit()`:
+   - Auth: login (`lib/auth.ts`), register, forgot-password, reset-password
+   - Público: `/api/public/[shortCode]`, `/api/public/[shortCode]/scan`, `/api/contacts/public`, `/api/image-proxy`
+   - Usuario sensible: `/api/users/account/delete`, `/api/upload`
+   - Admin: `/api/admin/orders/[id]/reject`
+   - Estado: **OK**
 
 ---
 
@@ -175,7 +182,7 @@
 ## 12) Riesgos P0 (bloqueantes)
 
 1. **CRITICAL** — `PATCH/DELETE /api/admin/orders` legacy con alta superficie mutante.
-2. **CRITICAL** — Rate limit con fallback in-memory en producción si falla Upstash.
+2. **WARNING** — Dependencia fuerte de Upstash para rate limiting en producción (si falla, política fail-closed puede degradar disponibilidad).
 
 ---
 
@@ -198,7 +205,7 @@
 ## 15) Checklist antes de lanzamiento
 
 - [x] Endurecer política CORS para API pública de perfil.
-- [ ] Definir estrategia segura cuando Upstash no esté disponible en producción (sin fallback inseguro multi-instancia).
+- [x] Definir estrategia segura cuando Upstash no esté disponible en producción (sin fallback inseguro multi-instancia).
 - [ ] Reducir superficie operativa de `PATCH/DELETE /api/admin/orders` (control estricto de uso legacy).
 - [ ] Formalizar runbook operativo de incidentes/alertas (Sentry + canales).
 - [ ] Consolidar guía de secretos/env por entorno y responsables.
@@ -212,7 +219,7 @@
 
 Condición para pasar a **GO controlado**:
 
-1. Mitigar P0 de rate limiting en producción distribuida.
+1. Mantener alta disponibilidad de Upstash (monitoreo + alertas) para evitar degradación por fail-closed.
 2. Establecer guardrails operativos estrictos para endpoint admin legacy mutante.
 
 Con esos tres resueltos y validación E2E documentada, el sistema puede entrar en despliegue controlado por fases.
