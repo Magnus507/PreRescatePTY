@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { USER_ROLES } from "@/domains/shared/constants";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { OrderNotificationService } from "@/domains/notifications/services/order-notification.service";
-import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
+
+// Check if the current session is an admin
+async function isAdmin() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.role) return false;
+  const role = session.user.role;
+  return role === USER_ROLES.ADMIN || role === USER_ROLES.SUPERADMIN;
+}
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(GENERAL_ADMIN_ROLES);
-  if (!auth.authorized) return auth.response;
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   try {
     const orders = await prisma.order.findMany({
@@ -39,8 +50,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireRole(GENERAL_ADMIN_ROLES);
-  if (!auth.authorized) return auth.response;
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   // MANUAL FLOW P0 HARDENING
   const { id, orderStatus, paymentStatus, generateTokens, assignedChipIds } = await req.json();
@@ -175,7 +187,7 @@ export async function PATCH(req: NextRequest) {
           }
         }
 
-        if (existingTokens === 0 && order.user?.accountId) {
+        if (existingTokens === 0 && order.user?.accountId && order.provider !== "manual") {
           await prisma.account.update({
             where: { id: order.user.accountId },
             data: {
@@ -236,8 +248,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = await requireRole(GENERAL_ADMIN_ROLES);
-  if (!auth.authorized) return auth.response;
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');

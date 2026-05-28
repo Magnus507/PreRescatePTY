@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { canAdminApproveManual } from "@/lib/order-status";
-import { rateLimit } from "@/lib/rateLimit";
-import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
 import { z } from "zod";
 
 const ApproveSchema = z.object({
@@ -11,22 +11,14 @@ const ApproveSchema = z.object({
 });
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
-  if (!auth.authorized) return auth.response;
-  const session = auth.session;
-  const adminId = session.user.id;
-
-  // Rate limit: 20 approve/min per admin
-  const limiter = await rateLimit("admin-approve", adminId, {
-    limit: 20,
-    windowMs: 60_000,
-  });
-  if (!limiter.allowed) {
-    return NextResponse.json(
-      { error: "Demasiadas solicitudes. Intenta nuevamente." },
-      { status: 429 }
-    );
+  const session = await getServerSession(authOptions);
+  if (
+    !session?.user ||
+    !["admin", "superadmin", "imprenta"].includes(session.user.role)
+  ) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
+  const adminId = session.user.id;
   const { id } = await context.params;
   const body = await req.json();
   const parsed = ApproveSchema.safeParse(body);
@@ -60,6 +52,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Paquete no válido" }, { status: 400 });
   }
 
+  const purchasedChips = order.items.reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
+  const purchasedProfiles = Math.max(0, pkg.maxProfiles || 0);
+  const wasAlreadyApproved =
+    order.paymentStatus === "paid" ||
+    order.adminReviewStatus === "approved";
+
   // Actualizar orden y cuenta en transacción
   const result = await prisma.$transaction(async (tx) => {
     // Actualizar orden
@@ -84,15 +82,26 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       throw new Error("Cuenta no encontrada");
     }
 
+    const accountUpdateData: {
+      packageId: string;
+      accountType: string;
+      status: string;
+      maxChipsAllocated?: number;
+      maxProfilesAllocated?: number;
+    } = {
+      packageId: pkg.id,
+      accountType: pkg.accountType,
+      status: "active",
+    };
+
+    if (!wasAlreadyApproved) {
+      accountUpdateData.maxChipsAllocated = currentAccount.maxChipsAllocated + purchasedChips;
+      accountUpdateData.maxProfilesAllocated = currentAccount.maxProfilesAllocated + purchasedProfiles;
+    }
+
     const account = await tx.account.update({
       where: { id: user.accountId! },
-      data: {
-        packageId: pkg.id,
-        accountType: pkg.accountType,
-        maxChipsAllocated: Math.max(currentAccount.maxChipsAllocated, pkg.maxChips),
-        maxProfilesAllocated: Math.max(currentAccount.maxProfilesAllocated, pkg.maxProfiles),
-        status: "active",
-      }
+      data: accountUpdateData
     });
     // Crear AuditLog SOLO con campos válidos
     await tx.auditLog.create({
