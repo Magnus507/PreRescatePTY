@@ -496,36 +496,37 @@ export default function EmergencyPage() {
                           <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SEXO: {profile.sex === 'M' ? 'MASCULINO' : profile.sex === 'F' ? 'FEMENINO' : 'NO REPORTADO'}</span>
                         </div>
                       </div>
+
+                      <div className="sm:hidden mt-4 bg-slate-50 rounded-xl border border-slate-200 p-3">
+                        <h3 className="text-xs font-black uppercase tracking-tight text-slate-900 mb-2">Resumen Médico Crítico</h3>
+                        <div className="space-y-2">
+                          <CompactMedicalRow
+                            icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+                            label="Alergias"
+                            value={profile.allergies || "No reportado"}
+                            tone="amber"
+                            critical={!!(profile.allergies && !profile.allergies.toLowerCase().includes("no report"))}
+                          />
+                          <CompactMedicalRow
+                            icon={<Activity className="h-4 w-4 text-blue-500" />}
+                            label="Condiciones"
+                            value={profile.chronicConditions || "No reportado"}
+                            tone="blue"
+                          />
+                          <CompactMedicalRow
+                            icon={<Pill className="h-4 w-4 text-emerald-500" />}
+                            label="Medicamentos"
+                            value={profile.medications || "No reportado"}
+                            tone="emerald"
+                          />
+                        </div>
+                      </div>
                     </div>
                 </div>
             </div>
 
             {/* CRITICAL SUMMARY */}
             <div className="space-y-3">
-              <div className="sm:hidden bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-                <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 mb-3">Resumen Médico Crítico</h3>
-                <div className="space-y-2.5">
-                  <CompactMedicalRow
-                    icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
-                    label="Alergias"
-                    value={profile.allergies || "No reportado"}
-                    tone="amber"
-                  />
-                  <CompactMedicalRow
-                    icon={<Activity className="h-4 w-4 text-blue-500" />}
-                    label="Condiciones"
-                    value={profile.chronicConditions || "No reportado"}
-                    tone="blue"
-                  />
-                  <CompactMedicalRow
-                    icon={<Pill className="h-4 w-4 text-emerald-500" />}
-                    label="Medicamentos"
-                    value={profile.medications || "No reportado"}
-                    tone="emerald"
-                  />
-                </div>
-              </div>
-
               <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <MedicalCard
                   icon={<AlertTriangle className="h-7 w-7 text-amber-500" />}
@@ -853,11 +854,13 @@ const CompactMedicalRow = ({
   label,
   value,
   tone,
+  critical = false,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   tone: "amber" | "blue" | "emerald";
+  critical?: boolean;
 }) => {
   const toneClasses: Record<string, string> = {
     amber: "bg-amber-50 border-amber-200",
@@ -872,6 +875,12 @@ const CompactMedicalRow = ({
         <div className="min-w-0">
           <p className="text-[11px] font-black uppercase tracking-wide text-slate-600">{label}</p>
           <p className="text-sm font-semibold text-slate-900 break-words">{value || "No reportado"}</p>
+          {critical && (
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-wider text-red-600">Atención crítica</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
