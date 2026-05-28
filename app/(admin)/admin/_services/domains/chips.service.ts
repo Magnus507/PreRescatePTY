@@ -9,13 +9,21 @@ export const chipsService = {
     search?: string; 
     accountId?: string;
     excludeStatus?: string;
+    view?: "available" | "reserved" | "activated" | "returned" | "damaged";
   }, signal?: AbortSignal) {
     // Sanitize params to remove undefined/null/empty values
     const cleanParams = Object.fromEntries(
       Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== "")
     );
     const query = new URLSearchParams(cleanParams as any).toString();
-    return adminClient.get<{ chips: ChipAdmin[]; total: number }>(`/api/admin/chips?${query}`, { signal });
+    return adminClient.get<{
+      chips: ChipAdmin[];
+      items?: ChipAdmin[];
+      total: number;
+      page?: number;
+      limit?: number;
+      view?: string | null;
+    }>(`/api/admin/chips?${query}`, { signal });
   },
 
   async getChipDetail(id: string, signal?: AbortSignal) {
