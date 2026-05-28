@@ -1,6 +1,14 @@
 import { adminClient } from "../apiClient";
 import { UserAdmin, AdminAccount } from "../../_types/admin";
 
+export interface AdminUserProfileOption {
+  id: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  isOwnerProfile: boolean;
+}
+
 export const usersService = {
   async getUsers(params: { limit?: number; search?: string }, signal?: AbortSignal) {
     const cleanParams = Object.fromEntries(
@@ -12,6 +20,10 @@ export const usersService = {
 
   async runUserAction(userId: string, action: string, data: any) {
     return adminClient.post<{ message: string }>(`/api/admin/users/${userId}/actions`, { action, data });
+  },
+
+  async getUserProfiles(userId: string, signal?: AbortSignal) {
+    return adminClient.get<AdminUserProfileOption[]>(`/api/admin/users/${userId}/profiles`, { signal });
   },
 
   async updateUserStatus(userId: string, status: string) {
