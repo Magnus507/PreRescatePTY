@@ -280,12 +280,6 @@ export default function EmergencyPage() {
             </p>
           </div>
 
-          {profile && (
-            <div className="text-left">
-              <CriticalMedicalSummary profile={profile} />
-            </div>
-          )}
-
           <div className="grid grid-cols-1 gap-5">
             <button
               onClick={() => setIsParamedic(true)}
@@ -428,7 +422,6 @@ export default function EmergencyPage() {
         {/* Medical Section (PARAMEDICS ONLY) */}
         {isParamedic && (
           <div className="space-y-6 animate-in fade-in slide-in-from-top-10 duration-1000">
-            <CriticalMedicalSummary profile={profile} />
             {/* VITAL IDENTITY CARD */}
             <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#DA1A21] to-red-600 rounded-[3.5rem] blur opacity-15 group-hover:opacity-25 transition duration-1000"></div>
