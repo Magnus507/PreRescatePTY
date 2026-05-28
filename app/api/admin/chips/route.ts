@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
       none: {
         orderId: { not: null },
         usedAt: null,
+        expiresAt: { gt: new Date() },
       },
     };
   } else if (view === "reserved") {
@@ -65,18 +66,31 @@ export async function GET(req: NextRequest) {
     where.status = "activated";
   } else if (view === "returned") {
     where.status = "inventory";
-    where.OR = [
+    where.AND = [
       {
-        claimTokens: {
-          some: {
-            orderId: { not: null },
+        OR: [
+          {
+            claimTokens: {
+              some: {
+                orderId: { not: null },
+              },
+            },
           },
-        },
+          {
+            claimTokens: {
+              some: {
+                usedAt: { not: null },
+              },
+            },
+          },
+        ],
       },
       {
         claimTokens: {
-          some: {
-            usedAt: { not: null },
+          none: {
+            orderId: null,
+            usedAt: null,
+            expiresAt: { gt: new Date() },
           },
         },
       },
