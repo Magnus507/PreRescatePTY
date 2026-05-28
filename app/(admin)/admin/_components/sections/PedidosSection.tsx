@@ -1,11 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Loader2, View, CheckCircle2, Truck, RefreshCw, Trash2 } from "lucide-react";
-import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
-import { ManualPaymentReview } from "@/app/(admin)/admin/_components/orders/ManualPaymentReview";
-import { ChipAssignmentPanel } from "@/app/(admin)/admin/_components/orders/ChipAssignmentPanel";
-import { useOrdersPolling } from "@/app/(admin)/admin/_hooks/useOrdersPolling";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
@@ -74,10 +70,10 @@ export function PedidosSection() {
     loadInventory();
   }, []);
 
-  useOrdersPolling({
-    active: !selectedOrder,
-    onPoll: useCallback(() => loadOrders({ silent: true }), []),
-  });
+  useEffect(() => {
+    loadOrdersRef.current = loadOrders;
+    loadInventoryRef.current = loadInventory;
+  }, [loadOrders, loadInventory]);
 
   async function loadInventory() {
     try {
@@ -96,14 +92,7 @@ export function PedidosSection() {
     try {
       const res = await fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
-      const nextOrders = data.orders || [];
-      setOrders(nextOrders);
-      if (selectedOrder?.id) {
-        const updatedSelectedOrder = nextOrders.find((o: Order) => o.id === selectedOrder.id);
-        if (updatedSelectedOrder) {
-          setSelectedOrder(updatedSelectedOrder);
-        }
-      }
+      setOrders(data.orders || []);
     } catch (e) {
       toast.error(isSilent ? "No se pudo actualizar pedidos" : "Error al cargar pedidos");
     } finally {
@@ -124,6 +113,24 @@ export function PedidosSection() {
     }
   }, [selectedOrder?.id, selectedOrder?.adminReviewNotes]);
 
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      loadOrdersRef.current();
+      loadInventoryRef.current();
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    return () => window.removeEventListener("focus", handleWindowFocus);
+  }, []);
+
+  useEffect(() => {
+    if (selectedOrder) return;
+    const interval = window.setInterval(() => {
+      loadOrders({ silent: true });
+    }, 30000);
+
+    return () => window.clearInterval(interval);
+  }, [selectedOrder]);
 
   const calculateNeededChips = (order: Order) => {
     return order.items.reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
@@ -184,10 +191,18 @@ export function PedidosSection() {
     setUpdating(true);
 
     try {
+      const shouldSendAssignedChips =
+        action === "approve" &&
+        selectedOrder &&
+        assignedChipIds.length > 0;
+
       const res = await fetch(`/api/admin/orders/${id}/${action}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminReviewNotes: reviewNote }),
+        body: JSON.stringify({
+          adminReviewNotes: reviewNote,
+          assignedChipIds: shouldSendAssignedChips ? assignedChipIds : undefined,
+        }),
       });
 
       if (res.ok) {
@@ -234,6 +249,20 @@ export function PedidosSection() {
     }
   };
 
+  const getStatusBadge = (status: string, paymentStatus?: string) => {
+    if (paymentStatus === "rejected") {
+      return <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase">Pago Rechazado</span>;
+    }
+
+    switch(status) {
+      case "pending": return <span className="px-2 py-1 bg-amber-500/10 text-amber-600 rounded-lg text-xs font-bold uppercase">Pendiente</span>;
+      case "processing": return <span className="px-2 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-xs font-bold uppercase">Revisión Pagos</span>;
+      case "shipped": return <span className="px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg text-xs font-bold uppercase">Enviado</span>;
+      case "completed": return <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-lg text-xs font-bold uppercase">Completado</span>;
+      case "cancelled": return <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase">Cancelada</span>;
+      default: return <span className="px-2 py-1 bg-slate-500/10 text-slate-600 rounded-lg text-xs font-bold uppercase">{status}</span>;
+    }
+  };
 
   if (loading && orders.length === 0) {
     return (
@@ -252,8 +281,7 @@ export function PedidosSection() {
             <div className="flex items-center gap-4">
                <button 
                  onClick={() => setSelectedOrder(null)}
-                 className="h-10 w-10 flex items-center justify-center bg-white border border-border rounded-xl hover:bg-slate-50 transition-all group"
-                 aria-label="Volver al listado de pedidos"
+               className="h-10 w-10 flex items-center justify-center bg-white border border-border rounded-xl hover:bg-slate-50 transition-all group"
                >
                   <RefreshCw className="h-5 w-5 text-muted-foreground group-hover:rotate-180 transition-transform duration-500" />
                </button>
@@ -270,12 +298,7 @@ export function PedidosSection() {
                          Copiar
                        </button>
                      </div>
-                     <OrderStatusBadge
-                       orderStatus={selectedOrder.orderStatus}
-                       paymentStatus={selectedOrder.paymentStatus}
-                       adminReviewStatus={selectedOrder.adminReviewStatus}
-                       variant="admin"
-                     />
+                     {getStatusBadge(selectedOrder.orderStatus, selectedOrder.paymentStatus)}
                   </div>
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">Logística de Despacho & CRM</p>
                </div>
@@ -343,35 +366,173 @@ export function PedidosSection() {
 
                   {/* COL 2: Fulfillment & Picking */}
                   <div className="lg:col-span-4 space-y-6 bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[2rem] border border-border/60">
-                    <ChipAssignmentPanel
-                      orderStatus={selectedOrder.orderStatus}
-                      purchasedChips={calculateNeededChips(selectedOrder)}
-                      chipClaimTokens={selectedOrder.chipClaimTokens}
-                      inventory={inventory}
-                      assignedChipIds={assignedChipIds}
-                      searchInventory={searchInventory}
-                      onSearchChange={setSearchInventory}
-                      onToggleChip={(chipId) => {
-                        if (assignedChipIds.includes(chipId)) {
-                          setAssignedChipIds((prev) => prev.filter((id) => id !== chipId));
-                        } else if (assignedChipIds.length < calculateNeededChips(selectedOrder)) {
-                          setAssignedChipIds((prev) => [...prev, chipId]);
-                        } else {
-                          toast.error(`Este pedido solo incluye ${calculateNeededChips(selectedOrder)} chips.`);
-                        }
-                      }}
-                    />
+                     <section className="space-y-4">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Picking Físico
+                        </h3>
+                        
+                        {selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "shipped" ? (
+                           <div className="space-y-4">
+                              <div className="relative group">
+                                 <PackageSearch className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                 <input 
+                                   type="text" 
+                                   placeholder="Escanea o busca sticker..." 
+                                   className="w-full bg-white dark:bg-slate-800 border-border rounded-xl pl-12 pr-4 py-3 text-sm font-bold shadow-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                   value={searchInventory}
+                                   onChange={(e) => setSearchInventory(e.target.value)}
+                                 />
+                              </div>
+                              
+                               <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                                 {inventory.filter(c => 
+                                    c.isPhysical && (
+                                      c.serialPublic.toLowerCase().includes(searchInventory.toLowerCase()) || 
+                                      (c.internalLabel?.toLowerCase().includes(searchInventory.toLowerCase()))
+                                    )
+                                 ).map(chip => {
+                                    const isAssigned = assignedChipIds.includes(chip.id);
+                                    const neededCount = calculateNeededChips(selectedOrder);
+                                    const canAddMore = assignedChipIds.length < neededCount;
+
+                                    return (
+                                       <button 
+                                         key={chip.id}
+                                         disabled={!isAssigned && !canAddMore}
+                                         onClick={() => {
+                                           if(isAssigned) {
+                                             setAssignedChipIds(prev => prev.filter(id => id !== chip.id));
+                                           } else if(canAddMore) {
+                                             setAssignedChipIds(prev => [...prev, chip.id]);
+                                           } else {
+                                             toast.error(`Este pedido solo incluye ${neededCount} chips.`);
+                                           }
+                                         }}
+                                         className={`w-full p-3 rounded-xl text-left flex items-center justify-between transition-all border ${isAssigned ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-white border-transparent hover:border-border'} ${(!isAssigned && !canAddMore) ? 'opacity-20 grayscale cursor-not-allowed' : ''}`}
+                                       >
+                                          <div className="flex items-center gap-4">
+                                             <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isAssigned ? 'bg-white/20' : 'bg-slate-100'}`}>
+                                                <QrCode className="h-5 w-5" />
+                                             </div>
+                                             <div>
+                                                <p className="text-xs font-black uppercase tracking-widest">{chip.internalLabel || "Sin Etiqueta"}</p>
+                                                <p className="text-[10px] font-mono opacity-60 mt-0.5">{chip.serialPublic}</p>
+                                             </div>
+                                          </div>
+                                          {isAssigned && <CheckCircle2 className="h-5 w-5" />}
+                                       </button>
+                                    );
+                                 })}
+                              </div>
+
+                              <div className="p-5 bg-indigo-600 dark:bg-indigo-700 text-white rounded-[1.5rem] shadow-lg shadow-indigo-600/30 flex items-center justify-between">
+                                 <div className="flex items-baseline gap-1">
+                                    <span className="text-3xl font-black">{assignedChipIds.length}</span>
+                                    <span className="text-base opacity-50 font-bold">/ {calculateNeededChips(selectedOrder)}</span>
+                                 </div>
+                                 <p className="text-[11px] font-bold text-right">Seleccionados<br/>{assignedChipIds.length} / {calculateNeededChips(selectedOrder)}</p>
+                              </div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">
+                                Chips comprados: {calculateNeededChips(selectedOrder)}
+                              </p>
+                           </div>
+                        ) : (
+                           <div className="space-y-4">
+                               <div className="p-5 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-[1.5rem] text-center mb-4">
+                                 <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto mb-4" />
+                                 <h4 className="text-xl font-black uppercase tracking-tight text-emerald-700">Completado</h4>
+                                 <p className="text-xs font-bold text-emerald-600/60 uppercase tracking-widest mt-1">Los chips ya están vinculados.</p>
+                              </div>
+                              <div className="space-y-3">
+                                 {selectedOrder.chipClaimTokens.map(token => (
+                                    <div key={token.id} className="p-4 bg-white border border-border rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
+                                       <div className="space-y-1">
+                                          <div className="flex flex-col">
+                                             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">{token.chip.internalLabel || 'ID INTERNO'}</span>
+                                             <span className="font-mono text-sm font-bold tracking-tighter text-indigo-600">{token.chip.shortCode || '—'}</span>
+                                          </div>
+                                          <div className="flex flex-col mt-2">
+                                             <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">SERIAL PÚBLICO</span>
+                                             <span className="font-mono text-[11px] font-bold text-slate-500">{token.chip.serialPublic}</span>
+                                          </div>
+                                       </div>
+                                        <div className="w-full sm:w-auto p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-center sm:text-right">
+                                          <p className="text-[9px] font-black text-indigo-900/60 uppercase tracking-[0.2em] mb-1">Cód. Activación</p>
+                                          <p className="font-mono text-xl font-black text-indigo-600 tracking-[0.2em]">{token.activationCode}</p>
+                                       </div>
+                                    </div>
+                                 ))}
+                              </div>
+                           </div>
+                        )}
+                     </section>
                   </div>
 
                   <div className="lg:col-span-4 space-y-6">
-                    <ManualPaymentReview
-                      order={selectedOrder}
-                      reviewNote={reviewNote}
-                      updating={updating}
-                      onReviewNoteChange={setReviewNote}
-                      onApprove={() => handleReviewAction(selectedOrder.id, "approve")}
-                      onReject={() => handleReviewAction(selectedOrder.id, "reject")}
-                    />
+                     <section className="space-y-4">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Revisión de Pago
+                        </h3>
+                        <div className="bg-white dark:bg-slate-900 p-5 rounded-[1.75rem] border border-border shadow-sm space-y-3">
+                           <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Método de Pago</p>
+                              <p className="text-base font-black text-slate-900 dark:text-white">{selectedOrder.paymentMethod ? selectedOrder.paymentMethod.replace("_", " ").toUpperCase() : "Manual"}</p>
+                           </div>
+                           <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Referencia Manual</p>
+                              <p className="text-sm font-bold text-slate-900 dark:text-white break-all">{selectedOrder.manualPaymentReference || "—"}</p>
+                           </div>
+                           <div className="grid grid-cols-2 gap-3">
+                              <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
+                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de orden</p>
+                                 <p className="text-sm font-bold uppercase mt-2">{selectedOrder.orderStatus}</p>
+                              </div>
+                              <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
+                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de pago</p>
+                                 <p className="text-sm font-bold uppercase mt-2">{selectedOrder.paymentStatus}</p>
+                              </div>
+                           </div>
+                           <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Notas de revisión</p>
+                              <textarea
+                                value={reviewNote}
+                                onChange={(e) => setReviewNote(e.target.value)}
+                                className="w-full min-h-[90px] rounded-xl border border-border bg-slate-50 dark:bg-slate-950 p-3 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10"
+                                placeholder="Agrega una observación para la aprobación o rechazo..."
+                              />
+                           </div>
+                           {selectedOrder.adminReviewStatus === "rejected" && (
+                             <div className="p-3 rounded-xl border border-red-200 bg-red-50">
+                               <p className="text-[10px] font-black uppercase tracking-widest text-red-700">
+                                 Motivo de rechazo: {selectedOrder.adminReviewNotes?.trim() || "No especificado"}
+                               </p>
+                             </div>
+                           )}
+                           {selectedOrder.provider === "manual" && canAdminApproveManual(selectedOrder) && (
+                              <>
+                               <p className="text-[10px] text-amber-700 font-semibold">Recomendado: indique el motivo del rechazo.</p>
+                               <div className="flex flex-col gap-2 sm:flex-row">
+                                 <button
+                                    disabled={updating || !canAdminApproveManual(selectedOrder)}
+                                   onClick={() => handleReviewAction(selectedOrder.id, "approve")}
+                                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
+                                 >
+                                   Aprobar Pago
+                                 </button>
+                                 <button
+                                    disabled={updating || !canAdminRejectManual(selectedOrder)}
+                                   onClick={() => handleReviewAction(selectedOrder.id, "reject")}
+                                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
+                                 >
+                                   Rechazar Pago
+                                 </button>
+                              </div>
+                              </>
+                           )}
+                        </div>
+                     </section>
                   </div>
 
                   {/* COL 3: Summary & Evidence */}
@@ -439,7 +600,7 @@ export function PedidosSection() {
                </div>
                
                <div className="flex gap-4">
-                  {selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "cancelled" && selectedOrder.provider !== "manual" && (
+                  {selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "cancelled" && (
                      <>
                         <button 
                           onClick={() => handleStatusChange(selectedOrder.id, "shipped", "Enviado")} 
@@ -510,7 +671,7 @@ export function PedidosSection() {
                <Trash2 className="h-4 w-4" />
                <span className="hidden sm:inline">Limpiar Cancelados</span>
             </button>
-            <button onClick={() => loadOrders({ silent: true })} disabled={refreshing} className="p-3 border border-border rounded-xl hover:bg-accent transition-all" aria-label="Actualizar pedidos">
+            <button onClick={() => loadOrders({ silent: true })} disabled={refreshing} className="p-3 border border-border rounded-xl hover:bg-accent transition-all">
                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
          </div>
@@ -543,13 +704,12 @@ export function PedidosSection() {
                       <td className="p-3 pl-5">
                          <div className="flex items-center gap-2">
                            <p className="font-mono font-bold text-sm break-all" title={o.orderNumber}>#{o.orderNumber}</p>
-                         <button
-                           type="button"
-                           onClick={() => copyOrderNumber(o.orderNumber)}
-                           className="text-[9px] px-2 py-0.5 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
-                           title="Copiar número de pedido"
-                           aria-label={`Copiar número de pedido ${o.orderNumber}`}
-                         >
+                           <button
+                             type="button"
+                             onClick={() => copyOrderNumber(o.orderNumber)}
+                             className="text-[9px] px-2 py-0.5 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
+                             title="Copiar número de pedido"
+                           >
                              Copiar
                            </button>
                          </div>
@@ -573,19 +733,13 @@ export function PedidosSection() {
                          <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${o.items[0].quantity} chip${o.items[0].quantity === 1 ? "" : "s"} incluido${o.items[0].quantity === 1 ? "" : "s"}` : "0 chips incluidos"}</p>
                       </td>
                       <td className="p-3">
-                          <OrderStatusBadge
-                            orderStatus={o.orderStatus}
-                            paymentStatus={o.paymentStatus}
-                            adminReviewStatus={o.adminReviewStatus}
-                            variant="admin"
-                          />
+                         {getStatusBadge(o.orderStatus, o.paymentStatus)}
                          {o.paymentProofUrl && <p className="text-[9px] font-black text-emerald-600 uppercase mt-1">✓ Pago Subido</p>}
                       </td>
                       <td className="p-3 pr-5">
                          <button 
                            onClick={() => setSelectedOrder(o)}
                            className="p-2 border border-border rounded-lg hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-center"
-                           aria-label={`Ver detalle del pedido ${o.orderNumber}`}
                          >
                             <View className="h-4 w-4" />
                          </button>
