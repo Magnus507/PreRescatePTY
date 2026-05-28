@@ -33,6 +33,13 @@ interface EmergencyProfile {
     location: string | null;
     department: string | null;
   } | null;
+  publicMedicalExtras?: {
+    insuranceProvider: string | null;
+    preferredHospital: string | null;
+    primaryDoctorName: string | null;
+    primaryDoctorPhone: string | null;
+    emergencyInstructions: string | null;
+  };
 }
 
 interface ChipMetadata {
@@ -311,6 +318,15 @@ export default function EmergencyPage() {
     return <IndustrialProfileView profile={profile} scanLocation={scanLocation} />;
   }
 
+  const extras = profile.publicMedicalExtras;
+  const hasExtras = !!(
+    extras?.insuranceProvider ||
+    extras?.preferredHospital ||
+    extras?.primaryDoctorName ||
+    extras?.primaryDoctorPhone ||
+    extras?.emergencyInstructions
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-24 selection:bg-red-100">
       {/* High-Impact Header */}
@@ -550,6 +566,45 @@ export default function EmergencyPage() {
                 color="emerald"
               />
             </div>
+          </div>
+        )}
+
+        {hasExtras && (
+          <div className="bg-slate-900 text-white border border-slate-800 rounded-[2rem] p-5 md:p-6 space-y-4">
+            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-300">Información médica adicional</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {extras?.insuranceProvider && (
+                <PublicExtraItem label="Aseguradora" value={extras.insuranceProvider} />
+              )}
+              {extras?.preferredHospital && (
+                <PublicExtraItem label="Hospital preferido" value={extras.preferredHospital} />
+              )}
+              {extras?.primaryDoctorName && (
+                <PublicExtraItem label="Médico tratante" value={extras.primaryDoctorName} />
+              )}
+            </div>
+
+            {extras?.primaryDoctorPhone && (
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-800 border border-slate-700">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Teléfono del médico</p>
+                  <p className="text-sm font-bold text-white">{extras.primaryDoctorPhone}</p>
+                </div>
+                <a
+                  href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white"
+                >
+                  <Phone className="h-4 w-4" /> Llamar médico
+                </a>
+              </div>
+            )}
+
+            {extras?.emergencyInstructions && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-300 mb-1">Instrucciones especiales</p>
+                <p className="text-sm font-semibold text-amber-100">{extras.emergencyInstructions}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -819,5 +874,12 @@ const SummaryRow = ({ icon, title, value }: { icon: ReactNode; title: string; va
         <p className="text-sm font-bold text-slate-900 break-words">{value}</p>
       </div>
     </div>
+  </div>
+);
+
+const PublicExtraItem = ({ label, value }: { label: string; value: string }) => (
+  <div className="p-3 rounded-xl bg-slate-900 border border-slate-700">
+    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
+    <p className="text-sm font-bold text-white">{value}</p>
   </div>
 );
