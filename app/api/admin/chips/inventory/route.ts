@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+import { USER_ROLES } from "@/domains/shared/constants";
+
+async function isAdmin() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return false;
+  const role = session.user.role;
+  return role === "admin" || role === "superadmin" || role === "imprenta";
+}
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
-  if (!auth.authorized) return auth.response;
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   try {
     const chips = await prisma.chip.findMany({
@@ -12,6 +22,12 @@ export async function GET(req: NextRequest) {
         status: "inventory",
         ownerUserId: null,
         isPhysical: true,
+        claimTokens: {
+          none: {
+            orderId: { not: null },
+            usedAt: null,
+          }
+        }
       },
       select: {
         id: true,
@@ -34,8 +50,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
-  if (!auth.authorized) return auth.response;
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   try {
     const { id, internalLabel } = await req.json();

@@ -94,9 +94,9 @@ export async function PATCH(req: NextRequest) {
 
     const updatedOrder = await prisma.order.update({
       where: { id },
-      data: { 
+      data: {
         orderStatus: orderStatus || order.orderStatus,
-        paymentStatus: paymentStatus || order.paymentStatus 
+        paymentStatus: paymentStatus || order.paymentStatus
       }
     });
 
@@ -133,35 +133,63 @@ export async function PATCH(req: NextRequest) {
               );
             }
             // Manual Linkage logic
-          for (const chipId of assignedChipIds) {
-             const chip = await prisma.chip.findUnique({ where: { id: chipId } });
-             if (chip && chip.status === "inventory") {
-                // Link existing token instead of creating a new one
-                const existingToken = await prisma.chipClaimToken.findFirst({
-                   where: { chipId: chip.id }
-                });
+            for (const chipId of assignedChipIds) {
+              const chip = await prisma.chip.findUnique({ where: { id: chipId } });
+              if (!chip) {
+                return NextResponse.json({ error: "Chip no encontrado" }, { status: 404 });
+              }
 
-                if (existingToken) {
-                   await prisma.chipClaimToken.update({
-                      where: { id: existingToken.id },
-                      data: { 
-                         orderId: id,
-                         expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) // Extend expiry
-                      }
-                   });
-                } else {
-                   // Fallback if no token exists for some reason
-                   await prisma.chipClaimToken.create({
-                      data: {
-                         chipId: chip.id,
-                         orderId: id,
-                         activationCode: `ACT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                         expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
-                      }
-                   });
-                }
-             }
-          }
+              if (chip.status !== "inventory") {
+                return NextResponse.json({ error: "El chip ya no está disponible en inventario." }, { status: 409 });
+              }
+
+              const conflictingToken = await prisma.chipClaimToken.findFirst({
+                where: {
+                  chipId: chip.id,
+                  orderId: { not: null, notIn: [id] },
+                  usedAt: null,
+                },
+              });
+
+              if (conflictingToken) {
+                return NextResponse.json({ error: "Este chip ya está asignado a otra orden." }, { status: 409 });
+              }
+
+              // Reserve atomically: inventory -> sold. Prevents double assignment races.
+              const reserved = await prisma.chip.updateMany({
+                where: { id: chip.id, status: "inventory" },
+                data: { status: "sold" },
+              });
+
+              if (reserved.count !== 1) {
+                return NextResponse.json({ error: "El chip ya no está disponible en inventario." }, { status: 409 });
+              }
+
+              // Link existing token instead of creating a new one
+              const existingToken = await prisma.chipClaimToken.findFirst({
+                where: { chipId: chip.id }
+              });
+
+              if (existingToken) {
+                await prisma.chipClaimToken.update({
+                  where: { id: existingToken.id },
+                  data: {
+                    orderId: id,
+                    expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) // Extend expiry
+                  }
+                });
+              } else {
+                // Fallback if no token exists for some reason
+                await prisma.chipClaimToken.create({
+                  data: {
+                    chipId: chip.id,
+                    orderId: id,
+                    activationCode: `ACT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+                    expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
+                  }
+                });
+              }
+            }
           } else {
             // Auto generation (fallback)
             for (let i = 0; i < neededChips; i++) {
