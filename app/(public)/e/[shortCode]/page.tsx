@@ -44,6 +44,11 @@ interface ChipMetadata {
   originalStatus?: string;
 }
 
+type SummaryProfile = Pick<
+  EmergencyProfile,
+  "bloodType" | "age" | "sex" | "allergies" | "chronicConditions" | "medications"
+>;
+
 function sanitizeTelPhone(phone: string) {
   return phone.replace(/[^\d+]/g, "");
 }
@@ -57,6 +62,30 @@ function normalizeWhatsAppPhone(phone: string) {
       : trimmed;
   const digits = withoutInternationalPrefix.replace(/\D/g, "");
   return digits.length === 8 ? `507${digits}` : digits;
+}
+
+function normalizeSexLabel(sex: string) {
+  if (sex === "M") return "Masculino";
+  if (sex === "F") return "Femenino";
+  return "No reportado";
+}
+
+function CriticalMedicalSummary({ profile }: { profile: SummaryProfile }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-[2rem] p-4 shadow-lg space-y-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Resumen Médico Crítico</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <SummaryChip icon={<Droplets className="h-4 w-4 text-red-600" />} label={`Sangre: ${profile.bloodType || "No reportado"}`} tone="red" />
+        <SummaryChip icon={<Calendar className="h-4 w-4 text-slate-700" />} label={`Edad: ${profile.age ?? "No reportado"}`} tone="slate" />
+        <SummaryChip icon={<User className="h-4 w-4 text-slate-700" />} label={`Sexo: ${normalizeSexLabel(profile.sex)}`} tone="slate" />
+      </div>
+      <div className="grid grid-cols-1 gap-2">
+        <SummaryRow icon={<AlertTriangle className="h-4 w-4 text-amber-500" />} title="Alergias" value={profile.allergies || "No reportado"} />
+        <SummaryRow icon={<Activity className="h-4 w-4 text-blue-500" />} title="Condiciones" value={profile.chronicConditions || "No reportado"} />
+        <SummaryRow icon={<Pill className="h-4 w-4 text-emerald-500" />} title="Medicamentos" value={profile.medications || "No reportado"} />
+      </div>
+    </div>
+  );
 }
 
 export default function EmergencyPage() {
@@ -251,6 +280,12 @@ export default function EmergencyPage() {
             </p>
           </div>
 
+          {profile && (
+            <div className="text-left">
+              <CriticalMedicalSummary profile={profile} />
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-5">
             <button
               onClick={() => setIsParamedic(true)}
@@ -338,6 +373,7 @@ export default function EmergencyPage() {
         {/* Civil Protocol View */}
         {!isParamedic && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+            <CriticalMedicalSummary profile={profile} />
             <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 space-y-8">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100">
@@ -392,6 +428,7 @@ export default function EmergencyPage() {
         {/* Medical Section (PARAMEDICS ONLY) */}
         {isParamedic && (
           <div className="space-y-6 animate-in fade-in slide-in-from-top-10 duration-1000">
+            <CriticalMedicalSummary profile={profile} />
             {/* VITAL IDENTITY CARD */}
             <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#DA1A21] to-red-600 rounded-[3.5rem] blur opacity-15 group-hover:opacity-25 transition duration-1000"></div>
@@ -732,3 +769,27 @@ const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }
         </div>
     );
 };
+
+const SummaryChip = ({ icon, label, tone }: { icon: ReactNode; label: string; tone: "red" | "slate" }) => {
+  const toneClass = tone === "red"
+    ? "bg-red-50 border-red-100 text-slate-900"
+    : "bg-slate-100 border-slate-200 text-slate-900";
+  return (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${toneClass}`}>
+      {icon}
+      <p className="text-xs font-black uppercase tracking-tight">{label}</p>
+    </div>
+  );
+};
+
+const SummaryRow = ({ icon, title, value }: { icon: ReactNode; title: string; value: string }) => (
+  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+    <div className="flex items-start gap-2">
+      <div className="mt-0.5">{icon}</div>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</p>
+        <p className="text-sm font-bold text-slate-900 break-words">{value}</p>
+      </div>
+    </div>
+  </div>
+);
