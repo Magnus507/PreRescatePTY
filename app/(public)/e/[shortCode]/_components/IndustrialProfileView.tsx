@@ -29,6 +29,14 @@ function normalizeWhatsAppPhone(phone: string) {
 export function IndustrialProfileView({ profile, scanLocation = "" }: IndustrialProfileViewProps) {
   const org = profile.organization;
   const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
+  const extras = profile.publicMedicalExtras;
+  const hasExtras = !!(
+    extras?.insuranceProvider ||
+    extras?.preferredHospital ||
+    extras?.primaryDoctorName ||
+    extras?.primaryDoctorPhone ||
+    extras?.emergencyInstructions
+  );
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white">
@@ -119,6 +127,45 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
 
         </div>
 
+        {hasExtras && (
+          <div className="bg-slate-800/60 border border-slate-700 rounded-[2rem] p-5 md:p-6 space-y-4">
+            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-300">Información médica adicional</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {extras?.insuranceProvider && (
+                <CompactItem label="Aseguradora" value={extras.insuranceProvider} />
+              )}
+              {extras?.preferredHospital && (
+                <CompactItem label="Hospital preferido" value={extras.preferredHospital} />
+              )}
+              {extras?.primaryDoctorName && (
+                <CompactItem label="Médico tratante" value={extras.primaryDoctorName} />
+              )}
+            </div>
+
+            {extras?.primaryDoctorPhone && (
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-900 border border-slate-700">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Teléfono del médico</p>
+                  <p className="text-sm font-bold text-white">{extras.primaryDoctorPhone}</p>
+                </div>
+                <a
+                  href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white"
+                >
+                  <Phone className="h-4 w-4" /> Llamar médico
+                </a>
+              </div>
+            )}
+
+            {extras?.emergencyInstructions && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-300 mb-1">Instrucciones especiales</p>
+                <p className="text-sm font-semibold text-amber-100">{extras.emergencyInstructions}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Manual Emergency Actions */}
         <div className="space-y-4">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center mb-6">Acciones Manuales de Emergencia</p>
@@ -194,6 +241,15 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
         </div>
 
       </div>
+    </div>
+  );
+}
+
+function CompactItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="p-3 rounded-xl bg-slate-900 border border-slate-700">
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
+      <p className="text-sm font-bold text-white">{value}</p>
     </div>
   );
 }

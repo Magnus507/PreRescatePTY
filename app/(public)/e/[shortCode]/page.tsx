@@ -33,6 +33,13 @@ interface EmergencyProfile {
     location: string | null;
     department: string | null;
   } | null;
+  publicMedicalExtras?: {
+    insuranceProvider?: string | null;
+    preferredHospital?: string | null;
+    primaryDoctorName?: string | null;
+    primaryDoctorPhone?: string | null;
+    emergencyInstructions?: string | null;
+  };
 }
 
 interface ChipMetadata {
@@ -494,7 +501,7 @@ export default function EmergencyPage() {
             </div>
 
             {/* CRITICAL GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <MedicalCard
                 icon={<AlertTriangle className="h-7 w-7 text-amber-500" />}
                 title="ALERGIAS"
@@ -515,6 +522,51 @@ export default function EmergencyPage() {
                 color="emerald"
               />
             </div>
+
+            {profile.publicMedicalExtras && (
+              (profile.publicMedicalExtras.insuranceProvider ||
+                profile.publicMedicalExtras.preferredHospital ||
+                profile.publicMedicalExtras.primaryDoctorName ||
+                profile.publicMedicalExtras.primaryDoctorPhone ||
+                profile.publicMedicalExtras.emergencyInstructions) ? (
+                <div className="bg-white p-5 md:p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+                  <h3 className="text-lg font-black uppercase tracking-tight text-slate-900">Información médica adicional</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {profile.publicMedicalExtras.insuranceProvider && (
+                      <CompactInfoItem label="Aseguradora" value={profile.publicMedicalExtras.insuranceProvider} />
+                    )}
+                    {profile.publicMedicalExtras.preferredHospital && (
+                      <CompactInfoItem label="Hospital preferido" value={profile.publicMedicalExtras.preferredHospital} />
+                    )}
+                    {profile.publicMedicalExtras.primaryDoctorName && (
+                      <CompactInfoItem label="Médico tratante" value={profile.publicMedicalExtras.primaryDoctorName} />
+                    )}
+                  </div>
+
+                  {profile.publicMedicalExtras.primaryDoctorPhone && (
+                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Teléfono del médico</p>
+                        <p className="text-sm font-bold text-slate-900">{profile.publicMedicalExtras.primaryDoctorPhone}</p>
+                      </div>
+                      <a
+                        href={`tel:${sanitizeTelPhone(profile.publicMedicalExtras.primaryDoctorPhone)}`}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-wider"
+                      >
+                        <Phone className="h-4 w-4" /> Llamar médico
+                      </a>
+                    </div>
+                  )}
+
+                  {profile.publicMedicalExtras.emergencyInstructions && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-700 mb-1">Instrucciones especiales</p>
+                      <p className="text-sm font-semibold text-amber-900">{profile.publicMedicalExtras.emergencyInstructions}</p>
+                    </div>
+                  )}
+                </div>
+              ) : null
+            )}
           </div>
         )}
 
@@ -739,7 +791,7 @@ const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }
     const cardTone = colorMap[color] || colorMap.slate;
 
     return (
-        <div className={`group relative overflow-hidden p-8 rounded-[3rem] border transition-all duration-500 ${critical ? "bg-red-50 border-red-200 shadow-xl shadow-red-100/50" : `${cardTone} shadow-sm hover:shadow-xl`}`}>
+        <div className={`group relative overflow-hidden p-5 md:p-7 rounded-[2rem] md:rounded-[3rem] border transition-all duration-500 ${critical ? "bg-red-50 border-red-200 shadow-xl shadow-red-100/50" : `${cardTone} shadow-sm hover:shadow-xl`}`}>
             <div className={`absolute -right-10 -bottom-10 w-32 h-32 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40 pointer-events-none ${colorMap[color] ? colorMap[color].split(' ')[0].replace('bg-', 'bg-').replace('50', '400') : 'bg-slate-400'}`} />
             <div className="flex items-center gap-4 mb-6">
                 <div className={`p-3 rounded-2xl shadow-sm ${critical ? 'bg-white text-red-600' : 'bg-slate-50 text-slate-600'} group-hover:scale-110 transition-transform`}>
@@ -762,3 +814,10 @@ const MedicalCard = ({ icon, title, content, critical = false, color = "slate" }
         </div>
     );
 };
+
+const CompactInfoItem = ({ label, value }: { label: string; value: string }) => (
+  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">{label}</p>
+    <p className="text-sm font-bold text-slate-900">{value}</p>
+  </div>
+);
