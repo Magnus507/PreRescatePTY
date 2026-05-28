@@ -7,7 +7,7 @@
 - Clasificación global:
   - **OK**: flujo core (approve/assign-direct/activate/rehabilitate), privacidad pública principal, recuperación de cuenta con anti-enumeración.
   - **WARNING**: observabilidad básica, gobernanza de secretos/operación incompleta, rate limit con fallback in-memory en producción.
-  - **CRITICAL**: endpoint admin legacy amplio (`PATCH/DELETE /api/admin/orders`) y configuración de CORS pública demasiado abierta para perfil de emergencia.
+  - **CRITICAL**: endpoint admin legacy amplio (`PATCH/DELETE /api/admin/orders`) y fallback in-memory de rate limit en producción.
 
 ---
 
@@ -21,9 +21,9 @@
 2. `app/api/public/[shortCode]/route.ts` aplica rate limit y no expone IDs internos en payload público.
    - Estado: **OK**
 
-3. `app/api/public/[shortCode]/route.ts` usa `Access-Control-Allow-Origin: *` y habilita headers amplios.
-   - Riesgo: facilita scraping/extracción masiva de perfil público desde terceros.
-   - Estado: **CRITICAL**
+3. `app/api/public/[shortCode]/route.ts` ahora aplica política CORS endurecida por allowlist explícita (sin wildcard).
+   - Mitigación: solo refleja `Access-Control-Allow-Origin` para orígenes permitidos.
+   - Estado: **OK**
 
 4. `app/api/admin/orders/route.ts` mantiene endpoint PATCH/DELETE legacy con gran superficie mutante y mezcla de responsabilidades.
    - Riesgo: cambios de estado, tokens y borrados en una ruta amplia incrementan probabilidad de errores operativos.
@@ -87,8 +87,8 @@
 1. `shortCode` se usa como identificador público esperado para emergencia.
    - Estado: **OK**
 
-2. Endpoint público con CORS abierto + perfil sensible de emergencia incrementa riesgo de scraping a escala.
-   - Estado: **CRITICAL**
+2. Endpoint público endurecido a allowlist explícita para evitar wildcard global.
+   - Estado: **OK**
 
 3. Hay fast-track demo hardcoded en API pública (`DEMO-ADMIN-VIP`, etc.).
    - Riesgo de comportamiento no gobernado por flag/entorno.
@@ -174,9 +174,8 @@
 
 ## 12) Riesgos P0 (bloqueantes)
 
-1. **CRITICAL** — CORS abierto en endpoint público de perfil de emergencia (`Access-Control-Allow-Origin: *`).
-2. **CRITICAL** — `PATCH/DELETE /api/admin/orders` legacy con alta superficie mutante.
-3. **CRITICAL** — Rate limit con fallback in-memory en producción si falla Upstash.
+1. **CRITICAL** — `PATCH/DELETE /api/admin/orders` legacy con alta superficie mutante.
+2. **CRITICAL** — Rate limit con fallback in-memory en producción si falla Upstash.
 
 ---
 
@@ -198,7 +197,7 @@
 
 ## 15) Checklist antes de lanzamiento
 
-- [ ] Endurecer política CORS para API pública de perfil.
+- [x] Endurecer política CORS para API pública de perfil.
 - [ ] Definir estrategia segura cuando Upstash no esté disponible en producción (sin fallback inseguro multi-instancia).
 - [ ] Reducir superficie operativa de `PATCH/DELETE /api/admin/orders` (control estricto de uso legacy).
 - [ ] Formalizar runbook operativo de incidentes/alertas (Sentry + canales).
@@ -213,8 +212,7 @@
 
 Condición para pasar a **GO controlado**:
 
-1. Mitigar P0 de CORS público.
-2. Mitigar P0 de rate limiting en producción distribuida.
-3. Establecer guardrails operativos estrictos para endpoint admin legacy mutante.
+1. Mitigar P0 de rate limiting en producción distribuida.
+2. Establecer guardrails operativos estrictos para endpoint admin legacy mutante.
 
 Con esos tres resueltos y validación E2E documentada, el sistema puede entrar en despliegue controlado por fases.

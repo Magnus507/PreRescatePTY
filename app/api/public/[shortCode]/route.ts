@@ -9,14 +9,30 @@ import { CHIP_STATUS } from "@/domains/chips/chip-lifecycle.constants";
 
 export const dynamic = "force-dynamic";
 
+const ALLOWED_PUBLIC_ORIGINS = new Set([
+  "https://www.prerescatepty.com",
+  "https://prerescatepty.com",
+  "https://pre-rescate-pty.vercel.app",
+]);
+
+function getAllowedOrigin(origin: string | null): string | null {
+  if (!origin) return null; // navegación directa / QR / NFC normal no envía Origin en mismo sitio
+  return ALLOWED_PUBLIC_ORIGINS.has(origin) ? origin : null;
+}
+
 function publicJson(
+  req: NextRequest,
   body: unknown,
   init?: ResponseInit
 ) {
   const response = NextResponse.json(body, init);
-  response.headers.set("Access-Control-Allow-Origin", "*");
+  const allowedOrigin = getAllowedOrigin(req.headers.get("origin"));
   response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
   response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  response.headers.set("Vary", "Origin");
+  if (allowedOrigin) {
+    response.headers.set("Access-Control-Allow-Origin", allowedOrigin);
+  }
   return response;
 }
 
@@ -32,6 +48,7 @@ export async function GET(
     const rl = await rateLimit("profile_view", ip, { limit: 30, windowMs: 60_000 });
     if (!rl.allowed) {
       return publicJson(
+        req,
         { error: "Demasiadas solicitudes. Intenta más tarde." },
         {
           status: 429,
@@ -60,7 +77,7 @@ export async function GET(
           { fullName: "Dr. Mendoza (Cardiólogo)", relationship: "Médico Cabecera", phone: "+507 6677-8899" }
         ],
       };
-      return publicJson({ profile: demoProfile });
+      return publicJson(req, { profile: demoProfile });
     }
 
     const chip = await prisma.chip.findUnique({
@@ -88,13 +105,14 @@ export async function GET(
 
     if (!chip) {
       return publicJson(
+        req,
         { error: "Código no encontrado en el sistema.", status: "not_found" },
         { status: 404 }
       );
     }
 
     if (chip.status !== CHIP_STATUS.ACTIVATED || !chip.assignedProfile) {
-      return publicJson({
+      return publicJson(req, {
         status: "unactivated",
         message: "Chip aún no activado",
       });
@@ -122,6 +140,7 @@ export async function GET(
 
     if (isServiceInactive && !hasCriticalData) {
       return publicJson(
+        req,
         { error: "Protocolo inactivo por falta de renovación.", status: "expired" },
         { status: 403 }
       );
@@ -129,6 +148,7 @@ export async function GET(
 
     if (profile.profileVisibilityStatus !== "active") {
       return publicJson(
+        req,
         { error: "Perfil desactivado temporalmente", status: "hidden" },
         { status: 403 }
       );
@@ -188,21 +208,26 @@ export async function GET(
       },
     };
 
-    return publicJson({ profile: publicProfile });
+    return publicJson(req, { profile: publicProfile });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Public profile error:", errorMessage);
     return publicJson(
+      req,
       { error: "Error interno" },
       { status: 500 }
     );
   }
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
   const response = new NextResponse(null, { status: 204 });
-  response.headers.set("Access-Control-Allow-Origin", "*");
-  response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  const allowedOrigin = getAllowedOrigin(req.headers.get("origin"));
+  response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
   response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  response.headers.set("Vary", "Origin");
+  if (allowedOrigin) {
+    response.headers.set("Access-Control-Allow-Origin", allowedOrigin);
+  }
   return response;
 }
