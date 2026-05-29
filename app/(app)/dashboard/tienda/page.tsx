@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShoppingCart, Store, Package, Star, ArrowRight, Activity, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle } from "lucide-react";
+import { ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -34,6 +34,9 @@ export default function TiendaPage() {
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
+  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [proofUploaded, setProofUploaded] = useState(false);
   const router = useRouter();
 
   const [shippingData, setShippingData] = useState({
@@ -79,16 +82,60 @@ export default function TiendaPage() {
         headers: { "Content-Type": "application/json" }
       });
 
+      const data = await res.json();
       if (res.ok) {
         setShowCheckout(false);
         setShowSuccessModal(true);
+        setLastOrderId(data.order?.id || null);
+        setProofUploaded(false);
       } else {
-        toast.error("Error al procesar el pedido");
+        toast.error(data?.error || "Error al procesar el pedido");
       }
     } catch {
       toast.error("Error de conexión");
     } finally {
       setCreatingOrder(false);
+    }
+  };
+
+  const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !lastOrderId) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("El archivo es muy pesado (máx 5MB)");
+      return;
+    }
+
+    setUploadingProof(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "payment");
+      formData.append("bucket", "payment-proofs");
+
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!uploadRes.ok) throw new Error("Error al subir archivo");
+      const { url } = await uploadRes.json();
+
+      const res = await fetch(`/api/orders/${lastOrderId}/payment-proof`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentProofUrl: url }),
+      });
+
+      if (res.ok) {
+        setProofUploaded(true);
+        toast.success("Comprobante enviado. Tu pago está en revisión.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Error al registrar comprobante");
+      }
+    } catch (err) {
+      toast.error("Error al subir el comprobante");
+      console.error(err);
+    } finally {
+      setUploadingProof(false);
     }
   };
 
@@ -324,11 +371,11 @@ export default function TiendaPage() {
               </div>
               
               <h3 className="text-4xl font-black tracking-tighter mb-4 italic uppercase">¡Pedido Recibido!</h3>
-              <p className="text-sm font-bold text-slate-400 mb-10 max-w-sm mx-auto uppercase tracking-tight leading-relaxed">
-                 Tu orden ha sido registrada. Para que podamos procesarla y entregar tus stickers, realiza el pago a través de:
+              <p className="text-sm font-bold text-slate-400 mb-8 max-w-sm mx-auto uppercase tracking-tight leading-relaxed">
+                 Tu orden ha sido registrada. Puedes realizar el pago y subir tu comprobante aquí mismo o después desde Mis Pedidos.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                  <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
                     <p className="text-[10px] font-black uppercase text-indigo-500 mb-2">Yappy</p>
                     <div className="h-24 w-24 bg-white dark:bg-slate-800 rounded-2xl mx-auto mb-3 flex items-center justify-center border border-indigo-100 dark:border-indigo-900 overflow-hidden">
@@ -350,17 +397,51 @@ export default function TiendaPage() {
                  </div>
               </div>
 
-              <div className="p-6 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/50 mb-10">
-                 <p className="text-[9px] font-black text-amber-700 dark:text-amber-500 uppercase tracking-widest leading-relaxed">
-                    IMPORTANTE: Sube una foto del comprobante en la sección "Mis Pedidos" después de pagar para validar tu compra.
-                 </p>
+              {/* Upload proof section */}
+              <div className={`p-6 mb-8 rounded-2xl border-2 transition-all ${proofUploaded ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
+                {proofUploaded ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                    <p className="font-bold text-emerald-700">Comprobante enviado. Tu pago está en revisión.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sube tu comprobante de pago</p>
+                    <p className="text-[10px] text-muted-foreground">Selecciona una imagen o captura del comprobante de tu pago.</p>
+                    <div className="flex items-center justify-center gap-3">
+                      <input
+                        id="proof-upload-tienda"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        onChange={handleUploadProof}
+                        disabled={uploadingProof}
+                      />
+                      <label
+                        htmlFor="proof-upload-tienda"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all disabled:opacity-50"
+                      >
+                        {uploadingProof ? (
+                          <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</>
+                        ) : (
+                          <><Upload className="h-4 w-4" /> Seleccionar archivo</>
+                        )}
+                      </label>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground">Máx 5MB. Formatos: JPG, PNG, WebP.</p>
+                  </div>
+                )}
               </div>
+
+              <p className="text-[9px] text-muted-foreground mb-6">
+                También puedes subir tu comprobante después desde <button onClick={() => router.push("/dashboard/pedidos")} className="underline font-bold text-primary">Mis Pedidos</button>.
+              </p>
 
               <button 
                 onClick={() => router.push("/dashboard/pedidos")}
-                className="w-full py-6 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-slate-200 dark:shadow-none"
+                className="w-full py-6 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2"
               >
-                 Entendido, Ir a Mis Pedidos
+                Ir a Mis Pedidos <ArrowRight className="h-4 w-4" />
               </button>
            </div>
         </div>

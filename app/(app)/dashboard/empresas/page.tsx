@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight } from "lucide-react";
+import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload } from "lucide-react";
 
 type CorporateTab =
   | "solicitantes"
@@ -121,6 +121,9 @@ export default function EmpresasPage() {
   const [corporateOrders, setCorporateOrders] = useState<any[]>([]);
   const [companyCodeError, setCompanyCodeError] = useState("");
   const [submittingJoin, setSubmittingJoin] = useState(false);
+  const [proofFileUploading, setProofFileUploading] = useState(false);
+  const [proofFileName, setProofFileName] = useState("");
+  const [proofUploadedName, setProofUploadedName] = useState("");
 
   const [form, setForm] = useState({
     companyCode: "",
@@ -260,12 +263,17 @@ export default function EmpresasPage() {
       return;
     }
 
+    if (!paymentProofUrl) {
+      toast.error("Debes adjuntar un comprobante de pago antes de enviar.");
+      return;
+    }
+
     try {
       setSubmittingCorporateOrder(true);
       const res = await fetch("/api/organizations/corporate-orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ members: payloadMembers, paymentProofUrl: paymentProofUrl || null }),
+        body: JSON.stringify({ members: payloadMembers, paymentProofUrl }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo enviar compra corporativa");
@@ -273,6 +281,7 @@ export default function EmpresasPage() {
       setSelectedMembers({});
       setMemberProducts({});
       setPaymentProofUrl("");
+      setProofUploadedName("");
       await loadMembersByTab("aprobados");
     } catch (err: any) {
       toast.error(err?.message || "No se pudo enviar compra corporativa");
@@ -838,13 +847,81 @@ export default function EmpresasPage() {
       {tab === "aprobados" && (
         <div className="rounded-2xl border p-4 space-y-3">
           <p className="text-sm text-muted-foreground">Arma la compra corporativa para empleados aprobados sin pagar.</p>
-          <label className="text-sm space-y-1 block">
-            <span className="text-xs text-muted-foreground">Comprobante (URL opcional)</span>
-            <input className="w-full border rounded-xl px-3 py-2" value={paymentProofUrl} onChange={(e) => setPaymentProofUrl(e.target.value)} placeholder="https://..." />
-          </label>
+
+          {/* File upload for payment proof */}
+          <div className={`p-4 rounded-xl border-2 transition-all ${paymentProofUrl ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
+            {paymentProofUrl ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <span className="text-sm font-semibold text-emerald-700 truncate">
+                    {proofUploadedName || "Comprobante adjuntado"}
+                  </span>
+                </div>
+                <button
+                  onClick={() => { setPaymentProofUrl(""); setProofUploadedName(""); }}
+                  className="text-xs text-rose-600 font-semibold hover:underline shrink-0"
+                >
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Comprobante de pago</p>
+                <p className="text-[10px] text-muted-foreground">Selecciona una imagen o captura del comprobante.</p>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="corporate-proof-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={proofFileUploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error("El archivo es muy pesado (máx 5MB)");
+                        return;
+                      }
+                      setProofFileName(file.name);
+                      setProofFileUploading(true);
+                      try {
+                        const formData = new FormData();
+                        formData.append("file", file);
+                        formData.append("type", "payment");
+                        formData.append("bucket", "payment-proofs");
+                        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+                        if (!uploadRes.ok) throw new Error("Error al subir archivo");
+                        const { url } = await uploadRes.json();
+                        setPaymentProofUrl(url);
+                        setProofUploadedName(file.name);
+                        toast.success("Comprobante adjuntado");
+                      } catch {
+                        toast.error("Error al subir el comprobante");
+                      } finally {
+                        setProofFileUploading(false);
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="corporate-proof-upload"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all"
+                  >
+                    {proofFileUploading ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</>
+                    ) : (
+                      <><Upload className="h-4 w-4" /> Seleccionar archivo</>
+                    )}
+                  </label>
+                </div>
+                <p className="text-[9px] text-muted-foreground">Máx 5MB. Formatos: JPG, PNG, WebP.</p>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center justify-between">
             <p className="font-bold">Total general: ${totalGeneral.toFixed(2)}</p>
-            <button onClick={submitCorporateOrder} disabled={submittingCorporateOrder} className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold">
+            <button onClick={submitCorporateOrder} disabled={submittingCorporateOrder || !paymentProofUrl} className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50">
               {submittingCorporateOrder ? "Enviando..." : "Enviar compra corporativa"}
             </button>
           </div>
