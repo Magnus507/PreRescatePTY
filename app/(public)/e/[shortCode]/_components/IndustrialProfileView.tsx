@@ -5,6 +5,7 @@ import {
   User, ShieldCheck, Building2, MapPin,
   Droplets, MessageCircle, Zap, Calendar, Pill
 } from "lucide-react";
+import { formatEmergencyLocation } from "@/domains/shared/services/emergency-location";
 
 interface IndustrialProfileViewProps {
   profile: any;
@@ -182,9 +183,14 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
                 {profile.emergencyContacts.map((contact: any, i: number) => {
                   const contactPhone = sanitizeTelPhone(contact.phone);
                   const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
-                  const whatsappMessage = scanLocation
-                    ? `Hola ${contact.fullName}, ${personName} tuvo un accidente. Fue escaneado en ${scanLocation}.`
-                    : `Hola ${contact.fullName}, ${personName} tuvo un accidente. Fue escaneado desde su perfil de emergencia.`;
+                  const locInfo = formatEmergencyLocation(scanLocation);
+                  const whatsappMessage = locInfo.text
+                    ? `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente.
+
+${locInfo.text}
+
+Por favor intenta contactarle o verifica si necesita asistencia.`
+                    : `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente. Por favor intenta contactarle o verifica si necesita asistencia.`;
                   const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
                   return (
