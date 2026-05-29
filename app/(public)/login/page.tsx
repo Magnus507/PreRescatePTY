@@ -9,6 +9,24 @@ import {
   Lock, Mail, HeartPulse, CheckCircle2, ShieldAlert
 } from "lucide-react";
 
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, ms);
+
+    promise
+      .then((value) => {
+        clearTimeout(timeoutId);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
+}
+
 export default function LoginPage() {
   return (
     <Suspense fallback={
@@ -35,6 +53,7 @@ function LoginContent() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [requiresMfa, setRequiresMfa] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     const errorMsg = searchParams.get("error");
@@ -51,12 +70,16 @@ function LoginContent() {
     setLoading(true);
 
     try {
-      const res = await signIn("credentials", {
-        redirect: false,
-        email,
-        password,
-        mfaCode: requiresMfa ? mfaCode : undefined,
-      });
+      const res = await withTimeout(
+        signIn("credentials", {
+          redirect: false,
+          email,
+          password,
+          mfaCode: requiresMfa ? mfaCode : undefined,
+        }),
+        15000,
+        "LOGIN_TIMEOUT"
+      );
 
       if (res?.error) {
         if (res.error.includes("MFA_REQUIRED")) {
@@ -65,25 +88,48 @@ function LoginContent() {
           setError(res.error || "Credenciales inválidas. Por favor intenta de nuevo.");
         }
         setLoading(false);
-      } else {
+      } else if (res?.ok) {
         setIsSuccess(true);
+        setIsRedirecting(true);
         // Delay slightly for success animation, then do a full navigation
         // to ensure the SessionProvider hydrates with the fresh session
         setTimeout(async () => {
-          const sessionRes = await fetch("/api/auth/session");
-          const session = await sessionRes.json();
-          const role = session?.user?.role;
+          try {
+            const sessionRes = await withTimeout(
+              fetch("/api/auth/session"),
+              10000,
+              "SESSION_TIMEOUT"
+            );
+            const session = await sessionRes.json();
+            const role = session?.user?.role;
 
-          if (role === "admin" || role === "superadmin" || role === "imprenta") {
-            window.location.href = "/admin";
-          } else {
-            window.location.href = "/dashboard";
+            if (role === "admin" || role === "superadmin" || role === "imprenta") {
+              window.location.href = "/admin";
+            } else {
+              window.location.href = "/dashboard";
+            }
+          } catch (err) {
+            console.error("[login] Session fetch/redirect error", err);
+            setError("El servidor tardó demasiado en responder. Intenta nuevamente.");
+            setIsSuccess(false);
+            setIsRedirecting(false);
+            setLoading(false);
           }
         }, 800);
+      } else {
+        setError("No pudimos iniciar sesión. Verifica tu conexión e intenta nuevamente.");
       }
     } catch (err) {
-      setError("Error de conexión. Inténtalo más tarde.");
-      setLoading(false);
+      console.error("[login] Sign-in error", err);
+      if (err instanceof Error && err.message === "LOGIN_TIMEOUT") {
+        setError("El servidor tardó demasiado en responder. Intenta nuevamente.");
+      } else {
+        setError("No pudimos iniciar sesión. Verifica tu conexión e intenta nuevamente.");
+      }
+    } finally {
+      if (!isRedirecting) {
+        setLoading(false);
+      }
     }
   }
 
