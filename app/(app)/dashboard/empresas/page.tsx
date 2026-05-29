@@ -12,6 +12,47 @@ type CorporateTab =
   | "suspendidos"
   | "archivados";
 
+type CorporatePublicProfile = {
+  id: string;
+  shortCode: string;
+  status: "draft" | "active" | "hidden";
+  displayName: string | null;
+  legalName: string | null;
+  ruc: string | null;
+  industry: string | null;
+  description: string | null;
+  slogan: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
+  mainServices: string | null;
+  mainProducts: string | null;
+  securityContactName: string | null;
+  securityPhone: string | null;
+  emergencyProcedure: string | null;
+  customEmployeeMessage: string | null;
+  showCompanyCode: boolean;
+  showDisplayName: boolean;
+  showLegalName: boolean;
+  showRuc: boolean;
+  showIndustry: boolean;
+  showDescription: boolean;
+  showSlogan: boolean;
+  showPhone: boolean;
+  showWhatsapp: boolean;
+  showEmail: boolean;
+  showWebsite: boolean;
+  showAddress: boolean;
+  showMainServices: boolean;
+  showMainProducts: boolean;
+  showSecurityContactName: boolean;
+  showSecurityPhone: boolean;
+  showEmergencyProcedure: boolean;
+  showCustomEmployeeMessage: boolean;
+};
+
 export default function EmpresasPage() {
   const [loading, setLoading] = useState(true);
   const [isCorporateAccount, setIsCorporateAccount] = useState(false);
@@ -19,6 +60,9 @@ export default function EmpresasPage() {
   const [myStatus, setMyStatus] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [tab, setTab] = useState<CorporateTab>("solicitantes");
+  const [publicProfile, setPublicProfile] = useState<CorporatePublicProfile | null>(null);
+  const [publicLoading, setPublicLoading] = useState(false);
+  const [savingPublic, setSavingPublic] = useState(false);
 
   const [form, setForm] = useState({
     companyCode: "",
@@ -45,6 +89,7 @@ export default function EmpresasPage() {
         setIsCorporateAccount(true);
         const corpJson = await corp.json();
         setMembers(corpJson.members || []);
+        await loadPublicProfile();
       } else {
         setIsCorporateAccount(false);
       }
@@ -53,6 +98,60 @@ export default function EmpresasPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadPublicProfile = async () => {
+    setPublicLoading(true);
+    try {
+      const res = await fetch("/api/organizations/public-profile");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo cargar el perfil público");
+      setPublicProfile(json.profile || null);
+    } catch (err: any) {
+      toast.error(err?.message || "No se pudo cargar el perfil público");
+    } finally {
+      setPublicLoading(false);
+    }
+  };
+
+  const createPublicProfile = async () => {
+    try {
+      setPublicLoading(true);
+      const res = await fetch("/api/organizations/public-profile", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo crear el perfil");
+      setPublicProfile(json.profile);
+      toast.success("Perfil empresarial creado");
+    } catch (err: any) {
+      toast.error(err?.message || "No se pudo crear el perfil");
+    } finally {
+      setPublicLoading(false);
+    }
+  };
+
+  const savePublicProfile = async () => {
+    if (!publicProfile) return;
+    try {
+      setSavingPublic(true);
+      const res = await fetch("/api/organizations/public-profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(publicProfile),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo guardar");
+      setPublicProfile(json.profile);
+      toast.success("Perfil empresarial actualizado");
+    } catch (err: any) {
+      toast.error(err?.message || "No se pudo guardar");
+    } finally {
+      setSavingPublic(false);
+    }
+  };
+
+  const updateProfileField = (key: keyof CorporatePublicProfile, value: any) => {
+    if (!publicProfile) return;
+    setPublicProfile({ ...publicProfile, [key]: value });
   };
 
   useEffect(() => {
@@ -184,6 +283,196 @@ export default function EmpresasPage() {
             {t.label}
           </button>
         ))}
+      </div>
+
+      <div className="rounded-2xl border p-4 md:p-5 bg-card space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-lg font-bold">Perfil empresarial</h2>
+          {publicProfile && (
+            <span className="text-xs px-2 py-1 rounded-full border">Estado: {publicProfile.status}</span>
+          )}
+        </div>
+
+        {!publicProfile ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Crea un perfil empresarial de cortesía para publicar información básica de tu organización.
+            </p>
+            <button
+              onClick={createPublicProfile}
+              disabled={publicLoading}
+              className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold"
+            >
+              {publicLoading ? "Creando..." : "Crear perfil empresarial"}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">Nombre público</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.displayName || ""} onChange={(e) => updateProfileField("displayName", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">Razón social</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.legalName || ""} onChange={(e) => updateProfileField("legalName", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">RUC</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.ruc || ""} onChange={(e) => updateProfileField("ruc", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">Rubro</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.industry || ""} onChange={(e) => updateProfileField("industry", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1 md:col-span-2">
+                <span className="text-xs text-muted-foreground">Descripción</span>
+                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.description || ""} onChange={(e) => updateProfileField("description", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1 md:col-span-2">
+                <span className="text-xs text-muted-foreground">Slogan</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.slogan || ""} onChange={(e) => updateProfileField("slogan", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">Teléfono</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.phone || ""} onChange={(e) => updateProfileField("phone", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">WhatsApp</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.whatsapp || ""} onChange={(e) => updateProfileField("whatsapp", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">Email</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.email || ""} onChange={(e) => updateProfileField("email", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">Website</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.website || ""} onChange={(e) => updateProfileField("website", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1 md:col-span-2">
+                <span className="text-xs text-muted-foreground">Dirección</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.address || ""} onChange={(e) => updateProfileField("address", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1 md:col-span-2">
+                <span className="text-xs text-muted-foreground">Servicios principales</span>
+                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.mainServices || ""} onChange={(e) => updateProfileField("mainServices", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1 md:col-span-2">
+                <span className="text-xs text-muted-foreground">Productos principales</span>
+                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.mainProducts || ""} onChange={(e) => updateProfileField("mainProducts", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">Contacto de seguridad</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.securityContactName || ""} onChange={(e) => updateProfileField("securityContactName", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">Teléfono de seguridad</span>
+                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.securityPhone || ""} onChange={(e) => updateProfileField("securityPhone", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1 md:col-span-2">
+                <span className="text-xs text-muted-foreground">Procedimiento de emergencia</span>
+                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.emergencyProcedure || ""} onChange={(e) => updateProfileField("emergencyProcedure", e.target.value)} />
+              </label>
+              <label className="text-sm space-y-1 md:col-span-2">
+                <span className="text-xs text-muted-foreground">Mensaje para empleados</span>
+                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.customEmployeeMessage || ""} onChange={(e) => updateProfileField("customEmployeeMessage", e.target.value)} />
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Visibilidad por campo</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                {[
+                  ["showDisplayName", "Mostrar nombre público"],
+                  ["showLegalName", "Mostrar razón social"],
+                  ["showRuc", "Mostrar RUC"],
+                  ["showIndustry", "Mostrar rubro"],
+                  ["showDescription", "Mostrar descripción"],
+                  ["showSlogan", "Mostrar slogan"],
+                  ["showPhone", "Mostrar teléfono"],
+                  ["showWhatsapp", "Mostrar WhatsApp"],
+                  ["showEmail", "Mostrar email"],
+                  ["showWebsite", "Mostrar website"],
+                  ["showAddress", "Mostrar dirección"],
+                  ["showMainServices", "Mostrar servicios"],
+                  ["showMainProducts", "Mostrar productos"],
+                  ["showSecurityContactName", "Mostrar contacto de seguridad"],
+                  ["showSecurityPhone", "Mostrar teléfono de seguridad"],
+                  ["showEmergencyProcedure", "Mostrar procedimiento"],
+                  ["showCustomEmployeeMessage", "Mostrar mensaje a empleados"],
+                ].map(([field, label]) => (
+                  <label key={field} className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(publicProfile[field as keyof CorporatePublicProfile])}
+                      onChange={(e) => updateProfileField(field as keyof CorporatePublicProfile, e.target.checked)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={publicProfile.showCompanyCode}
+                  onChange={(e) => updateProfileField("showCompanyCode", e.target.checked)}
+                />
+                <span>Mostrar código empresarial</span>
+              </label>
+              <p className="text-xs text-amber-700">
+                Recomendado solo para espacios internos donde transiten empleados.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+              <label className="text-sm space-y-1">
+                <span className="text-xs text-muted-foreground">Estado público</span>
+                <select
+                  value={publicProfile.status}
+                  onChange={(e) => updateProfileField("status", e.target.value as CorporatePublicProfile["status"])}
+                  className="w-full border rounded-xl px-3 py-2"
+                >
+                  <option value="draft">draft</option>
+                  <option value="active">active</option>
+                  <option value="hidden">hidden</option>
+                </select>
+              </label>
+              <div className="sm:col-span-2">
+                <p className="text-xs text-muted-foreground">Link público</p>
+                <div className="flex gap-2 mt-1">
+                  <input className="flex-1 border rounded-xl px-3 py-2 text-sm" readOnly value={`/empresa/${publicProfile.shortCode}`} />
+                  <button
+                    onClick={async () => {
+                      try {
+                        const fullUrl = `${window.location.origin}/empresa/${publicProfile.shortCode}`;
+                        await navigator.clipboard.writeText(fullUrl);
+                        toast.success("Link copiado");
+                      } catch {
+                        toast.error("No se pudo copiar el link");
+                      }
+                    }}
+                    className="px-3 py-2 border rounded-xl text-sm font-semibold"
+                  >
+                    Copiar link
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <button
+                onClick={savePublicProfile}
+                disabled={savingPublic || publicLoading}
+                className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold"
+              >
+                {savingPublic ? "Guardando..." : "Guardar perfil empresarial"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {(tab === "pagados" || tab === "suspendidos" || tab === "archivados") && (

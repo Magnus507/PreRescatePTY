@@ -259,6 +259,99 @@ model Organization {
   account   Account                @relation(fields: [accountId], references: [id])
   members   OrganizationMember[]
   locations OrganizationLocation[]
+  publicProfile CorporatePublicProfile?
+}
+
+model CorporatePublicProfile {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  shortCode      String   @unique
+  status         String   @default("draft")
+
+  logoUrl        String?
+  displayName    String?
+  legalName      String?
+  ruc            String?
+  foundedYear    Int?
+  industry       String?
+  description    String?
+  slogan         String?
+
+  phone          String?
+  whatsapp       String?
+  email          String?
+  website        String?
+  address        String?
+  mapUrl         String?
+  businessHours  String?
+
+  instagram      String?
+  facebook       String?
+  linkedin       String?
+  tiktok         String?
+  xTwitter       String?
+  youtube        String?
+
+  mainServices      String?
+  mainProducts      String?
+  branches          String?
+  contactPerson     String?
+  contactDepartment String?
+  certifications    String?
+  licenses          String?
+  operationNotice   String?
+
+  securityContactName String?
+  securityPhone       String?
+  emergencyProcedure  String?
+  meetingPoint        String?
+  receptionPhone      String?
+  corporateWhatsapp   String?
+
+  customEmployeeMessage String?
+  showCompanyCode       Boolean @default(false)
+
+  showLogo                Boolean @default(true)
+  showDisplayName         Boolean @default(true)
+  showLegalName           Boolean @default(false)
+  showRuc                 Boolean @default(false)
+  showFoundedYear         Boolean @default(false)
+  showIndustry            Boolean @default(true)
+  showDescription         Boolean @default(true)
+  showSlogan              Boolean @default(true)
+  showPhone               Boolean @default(false)
+  showWhatsapp            Boolean @default(false)
+  showEmail               Boolean @default(false)
+  showWebsite             Boolean @default(false)
+  showAddress             Boolean @default(false)
+  showMapUrl              Boolean @default(false)
+  showBusinessHours       Boolean @default(false)
+  showInstagram           Boolean @default(false)
+  showFacebook            Boolean @default(false)
+  showLinkedin            Boolean @default(false)
+  showTiktok              Boolean @default(false)
+  showXTwitter            Boolean @default(false)
+  showYoutube             Boolean @default(false)
+  showMainServices        Boolean @default(false)
+  showMainProducts        Boolean @default(false)
+  showBranches            Boolean @default(false)
+  showContactPerson       Boolean @default(false)
+  showContactDepartment   Boolean @default(false)
+  showCertifications      Boolean @default(false)
+  showLicenses            Boolean @default(false)
+  showOperationNotice     Boolean @default(false)
+  showSecurityContactName Boolean @default(false)
+  showSecurityPhone       Boolean @default(false)
+  showEmergencyProcedure  Boolean @default(false)
+  showMeetingPoint        Boolean @default(false)
+  showReceptionPhone      Boolean @default(false)
+  showCorporateWhatsapp   Boolean @default(false)
+  showCustomEmployeeMessage Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
 model OrganizationLocation {
