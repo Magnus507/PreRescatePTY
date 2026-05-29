@@ -54,7 +54,8 @@ const TABS: { key: InventoryView; label: string }[] = [
   { key: "reserved", label: "Vendidos / Reservados" },
   { key: "activated", label: "Activados" },
   { key: "returned", label: "Revertidos / Devueltos" },
-  { key: "damaged", label: "Dañados / Perdidos" },
+  // PRE-LAUNCH: Dañados/Perdidos menos prominente y al final
+  { key: "damaged", label: "Dañados / Perdidos (opcional)" },
 ];
 
 export const InventorySection: React.FC<InventorySectionProps> = ({
@@ -569,13 +570,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                               <button onClick={() => loadChipDetail(c.id)} className="p-2 rounded-lg bg-primary/10 text-primary" title="Ver detalle">
                                 <Cpu className="h-4 w-4" />
                               </button>
-                              <button
-                                onClick={() => openAssignModal(c)}
-                                className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-indigo-100 text-indigo-700"
-                                title="Asignar directo"
-                              >
-                                Asignar directo
-                              </button>
+                              {/* PRE-LAUNCH: Botón Asignar directo oculto */}
                             </div>
                           </td>
                         </>
@@ -648,163 +643,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
             </div>
           </div>
 
-          {assignOpen && assignChip && (
-            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-              <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-4">
-                <h3 className="text-lg font-black">Asignar chip directamente</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <div><span className="font-black">ShortCode:</span> {assignChip.shortCode}</div>
-                  <div><span className="font-black">Etiqueta:</span> {assignChip.internalLabel || "—"}</div>
-                  <div><span className="font-black">Serial:</span> {assignChip.serialPublic}</div>
-                  <div><span className="font-black">Código actual:</span> {assignChip.activationCode || assignChip.claimTokens?.[0]?.activationCode || "—"}</div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Buscar cliente</label>
-                  <div className="flex gap-2">
-                    <input
-                      value={assignUserSearch}
-                      onChange={(e) => setAssignUserSearch(e.target.value)}
-                      placeholder="Nombre o email"
-                      className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                    />
-                    <button
-                      onClick={() => loadAssignUsers(assignUserSearch)}
-                      className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black"
-                    >
-                      Buscar
-                    </button>
-                  </div>
-
-                  <select
-                    value={assignForm.targetUserId}
-                    onChange={async (e) => {
-                      const targetUserId = e.target.value;
-                      setAssignForm((prev) => ({ ...prev, targetUserId, targetProfileId: "" }));
-                      setAssignProfiles([]);
-                      if (targetUserId) await loadProfilesForUser(targetUserId);
-                    }}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                  >
-                    <option value="">Selecciona cliente</option>
-                    {assignUsers.map((u) => (
-                      <option key={u.id} value={u.id}>{u.email}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Perfil médico</label>
-                  <select
-                    value={assignForm.targetProfileId}
-                    onChange={(e) => setAssignForm((prev) => ({ ...prev, targetProfileId: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                    disabled={assignLoadingProfiles || !assignForm.targetUserId}
-                  >
-                    <option value="">Selecciona perfil</option>
-                    {assignProfiles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.firstName} {p.lastName} — {p.displayName}{p.isOwnerProfile ? " (Owner)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Motivo</label>
-                    <select
-                      value={assignForm.reason}
-                      onChange={(e) =>
-                        setAssignForm((prev) => ({
-                          ...prev,
-                          reason: e.target.value as "replacement" | "courtesy" | "warranty" | "internal_test" | "same_customer_reassign",
-                        }))
-                      }
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                    >
-                      <option value="replacement">replacement</option>
-                      <option value="courtesy">courtesy</option>
-                      <option value="warranty">warranty</option>
-                      <option value="internal_test">internal_test</option>
-                      <option value="same_customer_reassign">same_customer_reassign</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Capacity mode</label>
-                    <select
-                      value={assignForm.capacityMode}
-                      onChange={(e) =>
-                        setAssignForm((prev) => ({
-                          ...prev,
-                          capacityMode: e.target.value as "deny_if_no_capacity" | "consume_existing" | "grant_exception",
-                        }))
-                      }
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                    >
-                      <option value="deny_if_no_capacity">deny_if_no_capacity</option>
-                      <option value="consume_existing">consume_existing</option>
-                      <option value="grant_exception">grant_exception</option>
-                    </select>
-                  </div>
-                </div>
-
-                {assignForm.capacityMode === "grant_exception" && (
-                  <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-                    Atención: grant_exception requiere notas y aumentará cupo de la cuenta.
-                  </p>
-                )}
-
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Notas</label>
-                  <textarea
-                    value={assignForm.notes}
-                    onChange={(e) => setAssignForm((prev) => ({ ...prev, notes: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm min-h-24"
-                    placeholder="Notas administrativas"
-                  />
-                </div>
-
-                <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                  Esta acción reservará el chip y generará una orden administrativa $0.
-                </p>
-
-                {assignResult && (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-2">
-                    <p className="text-sm font-black text-emerald-700">Asignación completada</p>
-                    <p className="text-xs"><span className="font-black">Orden:</span> {assignResult.orderNumber}</p>
-                    <p className="text-xs"><span className="font-black">Código:</span> {assignResult.activationCode}</p>
-                    <p className="text-xs"><span className="font-black">Expira:</span> {formatDateTime(assignResult.expiresAt)}</p>
-                    <button
-                      onClick={() => copy(assignResult.activationCode)}
-                      className="px-3 py-1 rounded-lg text-[10px] font-black uppercase bg-emerald-100 text-emerald-700"
-                    >
-                      Copiar activationCode
-                    </button>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    onClick={() => setAssignOpen(false)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold"
-                    disabled={assignSubmitting}
-                  >
-                    Cerrar
-                  </button>
-                  <button
-                    onClick={handleAssignSubmit}
-                    disabled={assignSubmitting}
-                    className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-black disabled:opacity-60"
-                  >
-                    {assignSubmitting ? "Asignando..." : "Confirmar asignación"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+{/* PRE-LAUNCH: Modal Asignar directo completamente oculto */}
         </>
       )}
     </div>
