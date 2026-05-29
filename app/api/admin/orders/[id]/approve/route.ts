@@ -30,13 +30,55 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const notes = parsed.data.adminReviewNotes || null;
   const assignedChipIds = OrderFulfillmentService.normalizeAssignedChipIds(parsed.data.assignedChipIds);
 
-  // Buscar orden manual pendiente de revisión
-  const order = await prisma.order.findUnique({ where: { id }, include: { items: true } });
+  // Buscar orden pendiente de revisión
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: { items: true, corporateEmployeeItems: { select: { organizationMemberId: true } } },
+  });
   if (!order || order.provider !== "manual") {
     return NextResponse.json({ error: "Orden manual no encontrada" }, { status: 404 });
   }
   if (!canAdminApproveManual(order)) {
     return NextResponse.json({ error: "La orden manual no puede aprobarse en su estado actual" }, { status: 400 });
+  }
+
+  if (order.orderType === "corporate_employee_purchase") {
+    const memberIds = Array.from(new Set(order.corporateEmployeeItems.map((item) => item.organizationMemberId)));
+
+    await prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id },
+        data: {
+          paymentStatus: "paid",
+          orderStatus: "completed",
+          adminReviewStatus: "approved",
+          adminReviewedAt: new Date(),
+          adminReviewedById: adminId,
+          adminReviewNotes: notes,
+        },
+      });
+
+      if (memberIds.length > 0) {
+        await tx.organizationMember.updateMany({
+          where: { id: { in: memberIds } },
+          data: { corporateStatus: "paid_active" },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          accountId: null,
+          actorUserId: adminId,
+          entityType: "Order",
+          entityId: order.id,
+          action: "corporate_order_approved",
+          newValuesJson: null,
+          oldValuesJson: null,
+        },
+      });
+    });
+
+    return NextResponse.json({ orderId: order.id });
   }
 
   // Buscar usuario y accountId

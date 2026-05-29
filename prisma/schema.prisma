@@ -22,6 +22,7 @@ model Product {
   isActive                 Boolean  @default(true)
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
+  corporateOrderItems      CorporateOrderEmployeeItem[]
 }
 
 model Account {
@@ -259,6 +260,7 @@ model Organization {
   account   Account                @relation(fields: [accountId], references: [id])
   members   OrganizationMember[]
   locations OrganizationLocation[]
+  orders    Order[]
   publicProfile CorporatePublicProfile?
 }
 
@@ -417,6 +419,7 @@ model OrganizationMember {
   profile      Profile                 @relation(fields: [profileId], references: [id], onDelete: Cascade)
   location     OrganizationLocation?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
   department   OrganizationDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  corporateOrderItems CorporateOrderEmployeeItem[]
 }
 
 model ChipClaimToken {
@@ -533,12 +536,16 @@ model Order {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
   manualPaymentReference String?
+  organizationId         String?
+  orderType              String    @default("manual")
 
   packageId       String?
   package         Package?         @relation(fields: [packageId], references: [id])
   user            User?            @relation(fields: [userId], references: [id])
   adminReviewedBy User?            @relation("OrderAdminReview", fields: [adminReviewedById], references: [id])
+  organization    Organization?    @relation(fields: [organizationId], references: [id])
   items           OrderItem[]
+  corporateEmployeeItems CorporateOrderEmployeeItem[]
   chipClaimTokens ChipClaimToken[]
   // Stripe idempotency is enforced by a partial unique index on
   // (provider, providerReference) where provider='stripe' in the SQL migration.
@@ -548,6 +555,8 @@ model Order {
   @@index([orderStatus])
   @@index([paymentStatus])
   @@index([packageId])
+  @@index([organizationId])
+  @@index([orderType])
 }
 
 model OrderItem {
@@ -563,6 +572,25 @@ model OrderItem {
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
+}
+
+model CorporateOrderEmployeeItem {
+  id                   String             @id @default(cuid())
+  orderId              String
+  organizationMemberId String
+  productId            String
+  quantity             Int                @default(1)
+  unitPrice            Float
+  subtotal             Float
+  createdAt            DateTime           @default(now())
+
+  order              Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  organizationMember OrganizationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
+  product            Product            @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([organizationMemberId])
+  @@index([productId])
 }
 
 model DigitalPass {

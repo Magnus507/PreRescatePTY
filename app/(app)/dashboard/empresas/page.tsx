@@ -63,6 +63,11 @@ export default function EmpresasPage() {
   const [publicProfile, setPublicProfile] = useState<CorporatePublicProfile | null>(null);
   const [publicLoading, setPublicLoading] = useState(false);
   const [savingPublic, setSavingPublic] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<Record<string, boolean>>({});
+  const [memberProducts, setMemberProducts] = useState<Record<string, { productId: string; quantity: number }[]>>({});
+  const [paymentProofUrl, setPaymentProofUrl] = useState("");
+  const [submittingCorporateOrder, setSubmittingCorporateOrder] = useState(false);
 
   const [form, setForm] = useState({
     companyCode: "",
@@ -90,6 +95,9 @@ export default function EmpresasPage() {
         const corpJson = await corp.json();
         setMembers(corpJson.members || []);
         await loadPublicProfile();
+        const productsRes = await fetch("/api/products");
+        const productsJson = await productsRes.json();
+        if (productsRes.ok) setProducts((productsJson.products || []).filter((p: any) => p.isActive));
       } else {
         setIsCorporateAccount(false);
       }
@@ -153,6 +161,83 @@ export default function EmpresasPage() {
     if (!publicProfile) return;
     setPublicProfile({ ...publicProfile, [key]: value });
   };
+
+  const toggleMemberSelection = (memberId: string) => {
+    setSelectedMembers((prev) => ({ ...prev, [memberId]: !prev[memberId] }));
+    setMemberProducts((prev) => prev[memberId] ? prev : { ...prev, [memberId]: [] });
+  };
+
+  const addProductToMember = (memberId: string, productId: string) => {
+    if (!productId) return;
+    setMemberProducts((prev) => {
+      const current = prev[memberId] || [];
+      const existing = current.find((p) => p.productId === productId);
+      if (existing) {
+        return {
+          ...prev,
+          [memberId]: current.map((p) => p.productId === productId ? { ...p, quantity: p.quantity + 1 } : p),
+        };
+      }
+      return { ...prev, [memberId]: [...current, { productId, quantity: 1 }] };
+    });
+  };
+
+  const updateMemberProductQty = (memberId: string, productId: string, quantity: number) => {
+    setMemberProducts((prev) => ({
+      ...prev,
+      [memberId]: (prev[memberId] || []).map((p) => p.productId === productId ? { ...p, quantity: Math.max(1, quantity) } : p),
+    }));
+  };
+
+  const removeMemberProduct = (memberId: string, productId: string) => {
+    setMemberProducts((prev) => ({
+      ...prev,
+      [memberId]: (prev[memberId] || []).filter((p) => p.productId !== productId),
+    }));
+  };
+
+  const submitCorporateOrder = async () => {
+    const payloadMembers = members
+      .filter((m) => selectedMembers[m.id])
+      .map((m) => ({ organizationMemberId: m.id, products: memberProducts[m.id] || [] }))
+      .filter((m) => m.products.length > 0);
+
+    if (payloadMembers.length === 0) {
+      toast.error("Selecciona empleados con productos");
+      return;
+    }
+
+    try {
+      setSubmittingCorporateOrder(true);
+      const res = await fetch("/api/organizations/corporate-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ members: payloadMembers, paymentProofUrl: paymentProofUrl || null }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo enviar compra corporativa");
+      toast.success("Compra corporativa enviada para revisión");
+      setSelectedMembers({});
+      setMemberProducts({});
+      setPaymentProofUrl("");
+      await loadMembersByTab("aprobados");
+    } catch (err: any) {
+      toast.error(err?.message || "No se pudo enviar compra corporativa");
+    } finally {
+      setSubmittingCorporateOrder(false);
+    }
+  };
+
+  const getMemberSubtotal = (memberId: string) => {
+    return (memberProducts[memberId] || []).reduce((sum, item) => {
+      const product = products.find((p) => p.id === item.productId);
+      return sum + (product?.price || 0) * item.quantity;
+    }, 0);
+  };
+
+  const totalGeneral = members
+    .filter((m) => selectedMembers[m.id])
+    .reduce((sum, m) => sum + getMemberSubtotal(m.id), 0);
 
   useEffect(() => {
     loadAll();
@@ -505,6 +590,45 @@ export default function EmpresasPage() {
                   </button>
                 </div>
               )}
+
+              {tab === "aprobados" && (
+                <div className="w-full md:w-[420px] space-y-2">
+                  <label className="inline-flex items-center gap-2 text-sm font-medium">
+                    <input type="checkbox" checked={Boolean(selectedMembers[m.id])} onChange={() => toggleMemberSelection(m.id)} />
+                    Seleccionar para compra
+                  </label>
+                  {selectedMembers[m.id] && (
+                    <div className="rounded-xl border p-3 space-y-2">
+                      <select
+                        className="w-full border rounded-lg px-2 py-2 text-sm"
+                        defaultValue=""
+                        onChange={(e) => {
+                          addProductToMember(m.id, e.target.value);
+                          e.currentTarget.value = "";
+                        }}
+                      >
+                        <option value="">Agregar producto activo...</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name} (${p.price.toFixed(2)})</option>
+                        ))}
+                      </select>
+                      {(memberProducts[m.id] || []).map((item) => {
+                        const product = products.find((p) => p.id === item.productId);
+                        if (!product) return null;
+                        return (
+                          <div key={item.productId} className="flex items-center gap-2 text-sm">
+                            <span className="flex-1">{product.name}</span>
+                            <input type="number" min={1} value={item.quantity} onChange={(e) => updateMemberProductQty(m.id, item.productId, Number(e.target.value))} className="w-16 border rounded px-2 py-1" />
+                            <span className="w-20 text-right">${(product.price * item.quantity).toFixed(2)}</span>
+                            <button onClick={() => removeMemberProduct(m.id, item.productId)} className="text-rose-600">Quitar</button>
+                          </div>
+                        );
+                      })}
+                      <p className="text-xs font-semibold text-right">Subtotal: ${getMemberSubtotal(m.id).toFixed(2)}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -513,8 +637,18 @@ export default function EmpresasPage() {
       </div>
 
       {tab === "aprobados" && (
-        <div className="rounded-2xl border p-4 text-sm text-muted-foreground">
-          La compra corporativa se habilitará en la siguiente fase.
+        <div className="rounded-2xl border p-4 space-y-3">
+          <p className="text-sm text-muted-foreground">Arma la compra corporativa para empleados aprobados sin pagar.</p>
+          <label className="text-sm space-y-1 block">
+            <span className="text-xs text-muted-foreground">Comprobante (URL opcional)</span>
+            <input className="w-full border rounded-xl px-3 py-2" value={paymentProofUrl} onChange={(e) => setPaymentProofUrl(e.target.value)} placeholder="https://..." />
+          </label>
+          <div className="flex items-center justify-between">
+            <p className="font-bold">Total general: ${totalGeneral.toFixed(2)}</p>
+            <button onClick={submitCorporateOrder} disabled={submittingCorporateOrder} className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold">
+              {submittingCorporateOrder ? "Enviando..." : "Enviar compra corporativa"}
+            </button>
+          </div>
         </div>
       )}
     </div>

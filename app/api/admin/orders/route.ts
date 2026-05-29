@@ -23,6 +23,9 @@ export async function GET(req: NextRequest) {
   try {
     const orders = await prisma.order.findMany({
       include: {
+        organization: {
+          select: { id: true, legalName: true, displayName: true, companyCode: true },
+        },
         user: {
           select: {
             email: true,
@@ -33,6 +36,18 @@ export async function GET(req: NextRequest) {
           }
         },
         items: true,
+        corporateEmployeeItems: {
+          include: {
+            product: { select: { id: true, name: true, productType: true } },
+            organizationMember: {
+              select: {
+                id: true,
+                employeeInternalId: true,
+                profile: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
         chipClaimTokens: {
           include: {
             chip: true
