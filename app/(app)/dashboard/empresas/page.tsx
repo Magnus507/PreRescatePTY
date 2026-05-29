@@ -125,6 +125,8 @@ export default function EmpresasPage() {
   const [proofFileUploading, setProofFileUploading] = useState(false);
   const [proofFileName, setProofFileName] = useState("");
   const [proofUploadedName, setProofUploadedName] = useState("");
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     companyCode: "",
@@ -380,6 +382,25 @@ export default function EmpresasPage() {
     await loadMembersByTab(tab);
   };
 
+  const handleCancelOrder = async (orderId: string) => {
+    if (!confirm("¿Seguro que deseas cancelar esta compra? Los empleados volverán a 'Aprobados sin pagar'.")) return;
+    setCancellingOrder(orderId);
+    try {
+      const res = await fetch(`/api/organizations/corporate-orders/${orderId}/cancel`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo cancelar");
+      toast.success("Compra cancelada");
+      await loadMembersByTab("pagos_enviados");
+    } catch (err: any) {
+      toast.error(err?.message || "No se pudo cancelar");
+    } finally {
+      setCancellingOrder(null);
+    }
+  };
+
   const activeRequest = useMemo(() => {
     const reqs = myStatus?.requests || [];
     return reqs.find((r: any) =>
@@ -403,7 +424,6 @@ export default function EmpresasPage() {
       const statusInfo = getStatusInfo(activeRequest.corporateStatus as RequestStatus);
       return (
         <div className="max-w-2xl mx-auto space-y-6">
-          {/* Header */}
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
               <Building2 className="h-6 w-6 text-indigo-600" />
@@ -414,7 +434,6 @@ export default function EmpresasPage() {
             </div>
           </div>
 
-          {/* Status card */}
           <div className={`rounded-2xl border-2 p-5 ${statusInfo.color}`}>
             <div className="flex items-start gap-4">
               <div className="h-10 w-10 rounded-xl bg-white/80 flex items-center justify-center shrink-0">
@@ -433,7 +452,6 @@ export default function EmpresasPage() {
             </div>
           </div>
 
-          {/* Show form again if rejected to allow re-application */}
           {activeRequest.corporateStatus === "rejected_by_company" && (
             <div className="rounded-2xl border-2 border-dashed border-rose-200 p-5 bg-rose-50/30">
               <p className="text-sm font-semibold text-rose-700 mb-3">
@@ -452,10 +470,8 @@ export default function EmpresasPage() {
       );
     }
 
-    // No active request — show the join form
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
             <Building2 className="h-6 w-6 text-indigo-600" />
@@ -466,7 +482,6 @@ export default function EmpresasPage() {
           </div>
         </div>
 
-        {/* Intro card */}
         <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-white p-5 space-y-3">
           <div className="flex items-start gap-3">
             <Briefcase className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
@@ -493,27 +508,6 @@ export default function EmpresasPage() {
   }
 
   // ==================== CORPORATE ADMIN VIEW ====================
-  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
-  const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
-
-  const handleCancelOrder = async (orderId: string) => {
-    if (!confirm("¿Seguro que deseas cancelar esta compra? Los empleados volverán a 'Aprobados sin pagar'.")) return;
-    setCancellingOrder(orderId);
-    try {
-      const res = await fetch(`/api/organizations/corporate-orders/${orderId}/cancel`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "No se pudo cancelar");
-      toast.success("Compra cancelada");
-      await loadMembersByTab("pagos_enviados");
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo cancelar");
-    } finally {
-      setCancellingOrder(null);
-    }
-  };
   const tabs: { key: CorporateTab; label: string }[] = [
     { key: "solicitantes", label: "Solicitantes" },
     { key: "aprobados", label: "Aprobados sin pagar" },
@@ -551,7 +545,6 @@ export default function EmpresasPage() {
           <div className="rounded-2xl border p-4 bg-blue-50/30 border-blue-200">
             <p className="text-xs font-semibold text-blue-700">
               Compras corporativas enviadas con comprobante y pendientes de revisión por PreRescue ID.
-              Tu pago está en revisión. PreRescue ID aprobará o rechazará la compra.
             </p>
           </div>
           {corporateOrders.filter(o =>
@@ -730,7 +723,6 @@ export default function EmpresasPage() {
         <div className="rounded-2xl border p-4 space-y-3">
           <p className="text-sm text-muted-foreground">Arma la compra corporativa para empleados aprobados sin pagar.</p>
 
-          {/* File upload for payment proof */}
           <div className={`p-4 rounded-xl border-2 transition-all ${paymentProofUrl ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
             {paymentProofUrl ? (
               <div className="flex items-center justify-between gap-3">
@@ -840,7 +832,6 @@ function JoinForm({
 }) {
   return (
     <form onSubmit={handleSubmitJoin} className="rounded-2xl border p-5 bg-card space-y-5">
-      {/* Company code */}
       <div className="space-y-1.5">
         <label className="text-sm font-semibold">
           Código empresarial <span className="text-rose-500">*</span>
@@ -873,10 +864,8 @@ function JoinForm({
         </p>
       </div>
 
-      {/* Separator */}
       <div className="border-t border-dashed border-slate-200" />
 
-      {/* Personal info */}
       <div className="space-y-1.5">
         <p className="text-sm font-semibold">Tus datos personales</p>
         <p className="text-xs text-muted-foreground">Completa con la información que tu empresa necesita.</p>
