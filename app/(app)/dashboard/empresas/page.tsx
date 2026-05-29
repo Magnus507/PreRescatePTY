@@ -370,7 +370,7 @@ export default function EmpresasPage() {
     }
   };
 
-  const handleDecision = async (id: string, action: "approve" | "reject") => {
+  const handleDecision = async (id: string, action: "approve" | "reject" | "archive") => {
     const res = await fetch(`/api/organizations/members/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -710,6 +710,20 @@ export default function EmpresasPage() {
                       <p className="text-xs font-semibold text-right">Subtotal: ${getMemberSubtotal(m.id).toFixed(2)}</p>
                     </div>
                   )}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => handleDecision(m.id, "reject")}
+                      className="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors"
+                    >
+                      Rechazar
+                    </button>
+                    <button
+                      onClick={() => handleDecision(m.id, "archive")}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
+                    >
+                      Archivar
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

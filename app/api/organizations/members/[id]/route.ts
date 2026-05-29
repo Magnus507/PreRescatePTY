@@ -41,7 +41,6 @@ export async function PATCH(
       corporateStatus = "suspended";
       break;
     case "unsuspend":
-      // If member had paid_active status before, go back to approved_unpaid
       corporateStatus = "approved_unpaid";
       break;
     case "archive":
@@ -49,6 +48,29 @@ export async function PATCH(
       break;
     default:
       return NextResponse.json({ error: "Acción no válida" }, { status: 400 });
+  }
+
+  // Validate: if member has a pending corporate order, block reject/archive
+  if (action === "reject" || action === "archive") {
+    if (member.corporateStatus === "approved_unpaid") {
+      const pendingOrder = await prisma.corporateOrderEmployeeItem.findFirst({
+        where: {
+          organizationMemberId: id,
+          order: {
+            organizationId: organization.id,
+            paymentStatus: "under_review",
+            adminReviewStatus: "pending",
+          },
+        },
+        select: { id: true },
+      });
+      if (pendingOrder) {
+        return NextResponse.json(
+          { error: "Este colaborador tiene una compra enviada pendiente. Cancela primero la compra en Pagos enviados." },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   const updated = await prisma.organizationMember.update({
