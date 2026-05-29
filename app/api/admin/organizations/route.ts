@@ -8,6 +8,32 @@ import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 const CORPORATE_PACKAGE_SLUG = "combo-corporativo";
 
+function normalizeCompanyCode(input?: string | null) {
+  if (!input) return null;
+  return input
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 16) || null;
+}
+
+async function generateUniqueCompanyCode(base: string) {
+  const now = new Date();
+  const year = now.getFullYear().toString();
+  const seed = base
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 5) || "EMP";
+
+  for (let i = 0; i < 10; i++) {
+    const suffix = i === 0 ? "" : Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 2);
+    const candidate = `${seed}${year}${suffix}`.slice(0, 16);
+    const exists = await prisma.organization.findUnique({ where: { companyCode: candidate } });
+    if (!exists) return candidate;
+  }
+
+  return `EMP${Date.now().toString(36).toUpperCase()}`.slice(0, 16);
+}
+
 export async function GET(req: Request) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
@@ -39,7 +65,7 @@ export async function POST(req: Request) {
 
   try {
     const data = await req.json();
-    const { legalName, displayName, contactEmail, maxChips, ownerPassword, organizationType, contactPhone } = data;
+    const { legalName, displayName, contactEmail, maxChips, ownerPassword, organizationType, contactPhone, companyCode } = data;
     const ownerEmail = (data.ownerEmail as string || "").toLowerCase().trim();
     const chipCount = Number(maxChips) || 30;
 
@@ -80,6 +106,15 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const normalizedCode = normalizeCompanyCode(companyCode);
+    if (normalizedCode) {
+      const exists = await prisma.organization.findUnique({ where: { companyCode: normalizedCode } });
+      if (exists) {
+        return NextResponse.json({ error: "El código empresarial ya existe" }, { status: 409 });
+      }
+    }
+    const resolvedCompanyCode = normalizedCode || await generateUniqueCompanyCode(displayName || legalName);
 
     const batchId = `ORG-${Date.now().toString(36).toUpperCase()}`;
 
@@ -139,6 +174,7 @@ export async function POST(req: Request) {
           accountId: account.id,
           legalName,
           displayName: displayName || legalName,
+          companyCode: resolvedCompanyCode,
           contactEmail,
           contactPhone: contactPhone || null,
           organizationType: organizationType || "industrial",

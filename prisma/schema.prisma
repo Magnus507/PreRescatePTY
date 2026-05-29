@@ -237,6 +237,7 @@ model Organization {
   accountId        String
   legalName        String
   displayName      String?
+  companyCode      String? @unique
   organizationType String  @default("company") // "company", "school", "port", etc.
   taxId            String?
   contactEmail     String?
@@ -305,6 +306,15 @@ model OrganizationMember {
   // Corporate Contacts (Specific per member if needed)
   supervisorName  String?
   supervisorPhone String?
+
+  corporateStatus    String  @default("pending_company_review")
+  employeeNationalId String?
+  employeeAge        Int?
+  employeePhone      String?
+  employeePosition   String?
+  employeeDepartment String?
+  employeeInternalId String?
+  employeeNote       String?
 
   memberStatus String   @default("active") // "active", "visitor", "contractor", "suspended"
   createdAt    DateTime @default(now())

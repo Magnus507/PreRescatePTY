@@ -75,7 +75,7 @@ export async function PATCH(
 
   const { orgId } = await params;
   const body = await req.json();
-  const { legalName, displayName, contactEmail, contactPhone, taxId, address, status, packageId, maxChips } = body;
+  const { legalName, displayName, contactEmail, contactPhone, taxId, address, status, packageId, maxChips, companyCode } = body;
 
   const updateData: any = {};
   if (legalName !== undefined) updateData.legalName = legalName;
@@ -84,7 +84,22 @@ export async function PATCH(
   if (contactPhone !== undefined) updateData.contactPhone = contactPhone;
   if (taxId !== undefined) updateData.taxId = taxId;
   if (address !== undefined) updateData.address = address;
-  if (status === "active" || status === "suspended") updateData.status = status;
+  if (status === "active" || status === "suspended" || status === "archived") updateData.status = status;
+  if (companyCode !== undefined) {
+    const normalized = String(companyCode || "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 16) || null;
+
+    if (normalized) {
+      const existing = await prisma.organization.findUnique({ where: { companyCode: normalized } });
+      if (existing && existing.id !== orgId) {
+        return NextResponse.json({ error: "El código empresarial ya existe" }, { status: 409 });
+      }
+    }
+
+    updateData.companyCode = normalized;
+  }
 
   const org = await prisma.organization.update({
     where: { id: orgId },

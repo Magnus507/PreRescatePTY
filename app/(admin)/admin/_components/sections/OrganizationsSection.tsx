@@ -6,8 +6,10 @@ import { AdminTab } from "../../_hooks/useAdminManager";
 interface OrganizationAdmin {
   id: string;
   legalName: string;
+  companyCode?: string | null;
   contactEmail: string | null;
   organizationType: string;
+  status?: string;
   createdAt: string;
   _count: { members: number };
   accountId: string;
@@ -87,9 +89,15 @@ export function OrganizationsSection({
                 </div>
 
                 <div className="space-y-4 mb-8">
+                   <div className="px-4 text-[10px] font-black uppercase tracking-widest text-primary break-all">
+                      Código: {org.companyCode || "(pendiente)"}
+                   </div>
                    <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                       <span className="text-xs font-bold text-slate-500">Miembros</span>
                       <span className="text-lg font-black">{org._count?.members || 0}</span>
+                   </div>
+                   <div className="px-4 text-[11px] font-medium text-slate-500 truncate">
+                      Estado: {org.status || "active"}
                    </div>
                    <div className="px-4 text-[11px] font-medium text-slate-500 truncate">
                       {org.contactEmail || "Sin email de contacto"}

@@ -108,6 +108,7 @@ export interface OrganizationAdmin {
   accountId: string;
   legalName: string;
   displayName: string | null;
+  companyCode?: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
   taxId: string | null;
