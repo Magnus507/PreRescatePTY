@@ -97,6 +97,7 @@ export function PedidosSection() {
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'paid' | 'rejected' | 'completed'>('all');
   const [availableChips, setAvailableChips] = useState<{ id: string; shortCode: string; serialPublic: string; internalLabel: string | null; status: string; isPhysical: boolean }[]>([]);
   const [corporateAssigning, setCorporateAssigning] = useState<string | null>(null);
+  const [selectedChipForItem, setSelectedChipForItem] = useState<Record<string, string>>({});
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const loadInventoryRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const loadAvailableChipsRef = useRef<() => Promise<void>>(() => Promise.resolve());
@@ -698,31 +699,44 @@ export function PedidosSection() {
                         </div>
 
                         {item.fulfillmentStatus === "pending_assignment" && (
-                          <div className="flex items-center gap-2 shrink-0">
-                            <select
-                              className="border border-indigo-200 rounded-lg px-3 py-2 text-xs font-bold bg-white min-w-[160px]"
-                              defaultValue=""
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  handleCorporateAssign(item, e.target.value);
-                                  e.target.value = "";
-                                }
-                              }}
-                              disabled={corporateAssigning === item.id}
-                            >
-                              <option value="">Seleccionar chip...</option>
-                              {availableChips.map((chip) => (
-                                <option key={chip.id} value={chip.id}>
-                                  {chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""} {chip.isPhysical ? "🔷" : "💻"}
-                                </option>
-                              ))}
-                              {availableChips.length === 0 && (
-                                <option value="" disabled>Sin chips disponibles</option>
-                              )}
-                            </select>
-                            {corporateAssigning === item.id && (
-                              <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
-                            )}
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <select
+                                className="border border-indigo-200 rounded-lg px-3 py-2 text-xs font-bold bg-white min-w-[160px]"
+                                value={selectedChipForItem[item.id] || ""}
+                                onChange={(e) => {
+                                  setSelectedChipForItem((prev) => ({ ...prev, [item.id]: e.target.value }));
+                                }}
+                                disabled={corporateAssigning === item.id}
+                              >
+                                <option value="">Seleccionar chip...</option>
+                                {availableChips.map((chip) => (
+                                  <option key={chip.id} value={chip.id}>
+                                    {chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""} {chip.isPhysical ? "🔷" : "💻"}
+                                  </option>
+                                ))}
+                                {availableChips.length === 0 && (
+                                  <option value="" disabled>Sin chips disponibles</option>
+                                )}
+                              </select>
+                              <button
+                                onClick={() => {
+                                  const chipId = selectedChipForItem[item.id];
+                                  if (chipId) {
+                                    handleCorporateAssign(item, chipId);
+                                  }
+                                }}
+                                disabled={corporateAssigning === item.id || !selectedChipForItem[item.id]}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all disabled:opacity-50 inline-flex items-center gap-1"
+                              >
+                                {corporateAssigning === item.id ? (
+                                  <><Loader2 className="h-3 w-3 animate-spin" /> Asignando</>
+                                ) : (
+                                  "Asignar"
+                                )}
+                              </button>
+                            </div>
+                            <p className="text-[9px] text-muted-foreground">Selecciona un chip y confirma la asignación.</p>
                           </div>
                         )}
                       </div>
