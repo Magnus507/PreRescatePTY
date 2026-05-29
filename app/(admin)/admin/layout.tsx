@@ -22,10 +22,10 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
   const isFounder = session.user?.email === "admin@prerescatepty.com";
 
   const branding = isFounder
-    ? { title: "Sistema", sub: "RAIZ CORE", icon: Crown, color: "bg-amber-500 shadow-amber-500/40" }
+    ? { title: "Sistema", sub: "PreRescue ID", icon: Crown, color: "bg-amber-500 shadow-amber-500/40" }
     : isPrintRole
-      ? { title: "Imprenta", sub: "GESTIÓN PTY", icon: Store, color: "bg-indigo-600 shadow-indigo-500/40" }
-      : { title: "Admin", sub: "CORE ENGINE", icon: Shield, color: "bg-primary shadow-primary/40" };
+      ? { title: "Imprenta", sub: "PreRescue ID", icon: Store, color: "bg-indigo-600 shadow-indigo-500/40" }
+      : { title: "Admin", sub: "PreRescue ID", icon: Shield, color: "bg-primary shadow-primary/40" };
 
   const nav = [
     { label: "Dashboard", id: "dashboard", icon: LayoutDashboard },
@@ -48,7 +48,9 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
           </div>
           <div className="flex flex-col">
             <span className="leading-none">{branding.title}</span>
-            <span className={`text-[10px] uppercase tracking-[0.4em] mt-1 opacity-70 ${isFounder ? 'text-amber-600' : 'text-primary'}`}>{branding.sub}</span>
+            <span className={`text-[10px] uppercase tracking-[0.4em] mt-1 opacity-70 ${isFounder ? 'text-amber-600' : 'text-primary'}`}>
+              <span className="text-red-500">Pre</span><span className="text-black dark:text-white">Rescue</span> <span className="text-red-500">ID</span>
+            </span>
           </div>
         </div>
         {closeMobileMenu && (
@@ -159,10 +161,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isPrintRole = role === 'imprenta';
 
   const headerBranding = isFounder
-    ? { title: "Sistema Raíz", sub: "Control Maestro", icon: Crown, color: "bg-amber-500 shadow-amber-500/30" }
+    ? { title: "Sistema", sub: "PreRescue ID", icon: Crown, color: "bg-amber-500 shadow-amber-500/30" }
     : isPrintRole
-      ? { title: "Gestión Imprenta", sub: "Producción PTY", icon: Store, color: "bg-indigo-600 shadow-indigo-600/30" }
-      : { title: "Admin PTY", sub: "Control Panel", icon: Shield, color: "bg-primary shadow-primary/30" };
+      ? { title: "Imprenta", sub: "PreRescue ID", icon: Store, color: "bg-indigo-600 shadow-indigo-600/30" }
+      : { title: "Admin", sub: "PreRescue ID", icon: Shield, color: "bg-primary shadow-primary/30" };
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -208,7 +210,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <div className="flex flex-col hidden xs:flex">
               <span className={`font-black text-xl tracking-tighter leading-none ${isFounder ? 'text-amber-600' : 'text-slate-900 dark:text-white'}`}>{headerBranding.title}</span>
-              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-0.5 opacity-80 ${isFounder ? 'text-amber-500' : 'text-primary'}`}>{headerBranding.sub}</span>
+              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-0.5 opacity-80 ${isFounder ? 'text-amber-500' : 'text-primary'}`}>
+                <span className="text-red-500">Pre</span><span className="text-black dark:text-white">Rescue</span> <span className="text-red-500">ID</span>
+              </span>
             </div>
           </Link>
 

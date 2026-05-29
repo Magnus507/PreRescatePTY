@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Circle, Copy, Cpu, Loader2, Package, Plus, RefreshCw, Search } from "lucide-react";
+import { CheckCircle2, Circle, Copy, Cpu, Loader2, Package, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ChipAdmin } from "../../_types/admin";
 import { chipsService } from "../../_services/domains/chips.service";
@@ -71,6 +71,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   const isPrintRole = role === "imprenta";
   const [activeSubTab, setActiveSubTab] = useState<"list" | "create">("list");
   const [activeView, setActiveView] = useState<InventoryView>("available");
+  const [physicalFilter, setPhysicalFilter] = useState<"all" | "physical" | "digital">("all");
   const [query, setQuery] = useState("");
   const [loadingView, setLoadingView] = useState(false);
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -144,14 +145,23 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   }, [activeSubTab]);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return items;
-    const q = query.toLowerCase();
-    return items.filter((c) =>
-      c.shortCode.toLowerCase().includes(q) ||
-      c.serialPublic.toLowerCase().includes(q) ||
-      (c.internalLabel || "").toLowerCase().includes(q)
-    );
-  }, [items, query]);
+    let result = items;
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      result = result.filter((c) =>
+        c.shortCode.toLowerCase().includes(q) ||
+        c.serialPublic.toLowerCase().includes(q) ||
+        (c.internalLabel || "").toLowerCase().includes(q)
+      );
+    }
+    // Solo aplicar filtro físico/digital en la vista "available"
+    if (activeView === "available" && physicalFilter !== "all") {
+      result = result.filter((c) =>
+        physicalFilter === "physical" ? c.isPhysical === true : c.isPhysical === false
+      );
+    }
+    return result;
+  }, [items, query, physicalFilter, activeView]);
 
   const copy = (value?: string | null) => {
     if (!value) return;
@@ -309,6 +319,24 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     });
   };
 
+  const handleDelete = async (chip: InventoryItem) => {
+    const confirmed = window.confirm("Esta acción eliminará el chip disponible del inventario. No se puede deshacer.");
+    if (!confirmed) return;
+    try {
+      const res = await fetch(`/api/admin/chips/${chip.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delete: true }),
+      });
+      if (!res.ok) throw new Error("Error al eliminar");
+      toast.success("Chip eliminado permanentemente");
+      await loadView(activeView, query);
+      await loadSummary();
+    } catch {
+      toast.error("No se pudo eliminar el chip");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -363,7 +391,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
             {TABS.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveView(tab.key)}
+                onClick={() => { setActiveView(tab.key); setPhysicalFilter("all"); }}
                 className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
                   activeView === tab.key
                     ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
@@ -383,7 +411,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
             <Card label="Dañados/Perdidos" value={summary.damaged} tone="red" />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="relative flex-1 md:max-w-md">
               <Search className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
               <input
@@ -403,6 +431,42 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
               <RefreshCw className={`h-4 w-4 ${loadingView ? "animate-spin text-primary" : "text-slate-400"}`} />
             </button>
           </div>
+
+          {/* Subtabs Físicos / Digitales solo en vista Disponibles */}
+          {activeView === "available" && (
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1 rounded-xl w-fit">
+              <button
+                onClick={() => setPhysicalFilter("all")}
+                className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                  physicalFilter === "all"
+                    ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Todos
+              </button>
+              <button
+                onClick={() => setPhysicalFilter("physical")}
+                className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                  physicalFilter === "physical"
+                    ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Físicos
+              </button>
+              <button
+                onClick={() => setPhysicalFilter("digital")}
+                className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                  physicalFilter === "digital"
+                    ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Digitales
+              </button>
+            </div>
+          )}
 
           {activeView === "returned" && (
             <p className="text-[11px] text-amber-700 font-semibold">
@@ -446,8 +510,6 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Serial</th>
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Código activación</th>
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Lote</th>
-                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo</th>
-                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Fecha creación</th>
                       <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
                     </tr>
                   )}
@@ -549,8 +611,6 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                           <td className="px-6 py-4 text-xs font-mono text-slate-500">#{c.serialPublic}</td>
                           <td className="px-6 py-4 font-mono text-xs">{c.activationCode || c.claimTokens?.[0]?.activationCode || "—"}</td>
                           <td className="px-6 py-4 text-xs">{c.batchId || "—"}</td>
-                          <td className="px-6 py-4 text-xs">{c.isPhysical ? "Físico" : "Digital"}</td>
-                          <td className="px-6 py-4 text-xs">{formatDate(c.createdAt)}</td>
                           <td className="px-6 py-4">
                             <div className="flex items-center justify-end gap-2">
                               <button onClick={() => copy(c.shortCode)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar ID público">
@@ -569,6 +629,13 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                               </button>
                               <button onClick={() => loadChipDetail(c.id)} className="p-2 rounded-lg bg-primary/10 text-primary" title="Ver detalle">
                                 <Cpu className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(c)}
+                                className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </button>
                               {/* PRE-LAUNCH: Botón Asignar directo oculto */}
                             </div>

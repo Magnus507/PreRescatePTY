@@ -17,6 +17,7 @@ import { ScanMonitor } from "./_components/ScanMonitor";
 // === CONSUMER Navigation — Reorganized ===
 const consumerNavItems = [
   { href: "/dashboard", label: "Perfil", icon: LayoutDashboard },
+  { href: "/dashboard/configuracion", label: "Ajuste de Perfil", icon: Settings },
 ];
 
 const consumerSecondaryItems: { href: string; label: string; icon: React.ElementType }[] = [];
