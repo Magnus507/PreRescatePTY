@@ -6,6 +6,37 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
 
+interface CorporateEmployeeItem {
+  id: string;
+  orderId: string;
+  productId: string;
+  chipId: string | null;
+  fulfillmentStatus: string;
+  activatedAt: string | null;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  product: {
+    id: string;
+    name: string;
+    productType: string;
+  };
+  chip: {
+    id: string;
+    shortCode: string;
+    serialPublic: string;
+    status: string;
+  } | null;
+  organizationMember: {
+    id: string;
+    corporateStatus: string;
+    profile: {
+      firstName: string;
+      lastName: string;
+    } | null;
+  };
+}
+
 interface Order {
   id: string;
   provider: string;
@@ -26,6 +57,7 @@ interface Order {
   shippingCity: string | null;
   shippingNotes: string | null;
   createdAt: string;
+  orderType: string | null;
   items: {
     id: string;
     productType: string;
@@ -41,6 +73,7 @@ interface Order {
       internalLabel: string | null;
     }
   }[];
+  corporateEmployeeItems?: CorporateEmployeeItem[];
 }
 
 interface InventoryChip {
@@ -62,8 +95,11 @@ export function PedidosSection() {
   const [assignedChipIds, setAssignedChipIds] = useState<string[]>([]);
   const [searchInventory, setSearchInventory] = useState("");
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'paid' | 'rejected' | 'completed'>('all');
+  const [availableChips, setAvailableChips] = useState<{ id: string; shortCode: string; serialPublic: string; internalLabel: string | null; status: string; isPhysical: boolean }[]>([]);
+  const [corporateAssigning, setCorporateAssigning] = useState<string | null>(null);
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const loadInventoryRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const loadAvailableChipsRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   useEffect(() => {
     loadOrders();
@@ -84,6 +120,26 @@ export function PedidosSection() {
       console.error(error);
     }
   }
+
+  async function loadAvailableChips() {
+    try {
+      const res = await fetch(`/api/admin/chips/available?_t=${Date.now()}`, { cache: "no-store" });
+      const data = await res.json();
+      setAvailableChips(data.chips || []);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  useEffect(() => {
+    if (selectedOrder?.orderType === "corporate_employee_purchase") {
+      loadAvailableChips();
+    }
+  }, [selectedOrder?.id, selectedOrder?.orderType]);
+
+  useEffect(() => {
+    loadAvailableChipsRef.current = loadAvailableChips;
+  }, []);
 
   async function loadOrders(options?: { silent?: boolean }) {
     const isSilent = options?.silent ?? false;
@@ -174,6 +230,30 @@ export function PedidosSection() {
       toast.error("Error de conexión");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleCorporateAssign = async (item: CorporateEmployeeItem, chipId: string) => {
+    if (!selectedOrder) return;
+    setCorporateAssigning(item.id);
+    try {
+      const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ corporateOrderItemId: item.id, chipId }),
+      });
+      if (res.ok) {
+        toast.success("Chip asignado correctamente");
+        loadAvailableChips();
+        loadOrders({ silent: true });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "No se pudo asignar chip");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setCorporateAssigning(null);
     }
   };
 
@@ -572,6 +652,85 @@ export function PedidosSection() {
 
                </div>
             </div>
+
+            {/* Corporate Chip Assignment Section */}
+            {selectedOrder.orderType === "corporate_employee_purchase" && (selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (
+              <div className="px-6 pb-6">
+                <div className="rounded-[2rem] border border-indigo-200 bg-indigo-50/50 p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-1.5 w-6 bg-indigo-500 rounded-full" />
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-700">
+                      Asignación de chips corporativos
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    {(selectedOrder as any).corporateEmployeeItems.map((item: CorporateEmployeeItem) => (
+                      <div key={item.id} className="bg-white rounded-xl border border-indigo-100 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm">
+                              {item.organizationMember?.profile?.firstName || "—"} {item.organizationMember?.profile?.lastName || ""}
+                            </p>
+                            <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded font-bold">{item.product?.name || item.product?.productType || "Producto"}</span>
+                            <span className="text-[9px] text-muted-foreground">x{item.quantity}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
+                              item.fulfillmentStatus === "activated" ? "bg-emerald-100 text-emerald-700" :
+                              item.fulfillmentStatus === "assigned_reserved" ? "bg-blue-100 text-blue-700" :
+                              "bg-amber-100 text-amber-700"
+                            }`}>
+                              {item.fulfillmentStatus === "activated" ? "Activado" :
+                               item.fulfillmentStatus === "assigned_reserved" ? "Asignado / reservado" :
+                               "Pendiente asignación"}
+                            </span>
+                            {item.chip && (
+                              <span className="font-mono text-muted-foreground">
+                                Chip: {item.chip.shortCode} ({item.chip.serialPublic})
+                              </span>
+                            )}
+                            {item.activatedAt && (
+                              <span className="text-muted-foreground">
+                                Act.: {new Date(item.activatedAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {item.fulfillmentStatus === "pending_assignment" && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <select
+                              className="border border-indigo-200 rounded-lg px-3 py-2 text-xs font-bold bg-white min-w-[160px]"
+                              defaultValue=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleCorporateAssign(item, e.target.value);
+                                  e.target.value = "";
+                                }
+                              }}
+                              disabled={corporateAssigning === item.id}
+                            >
+                              <option value="">Seleccionar chip...</option>
+                              {availableChips.map((chip) => (
+                                <option key={chip.id} value={chip.id}>
+                                  {chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""} {chip.isPhysical ? "🔷" : "💻"}
+                                </option>
+                              ))}
+                              {availableChips.length === 0 && (
+                                <option value="" disabled>Sin chips disponibles</option>
+                              )}
+                            </select>
+                            {corporateAssigning === item.id && (
+                              <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Action Bar */}
             <div className="px-6 py-5 border-t border-border bg-muted/30 flex justify-between items-center gap-4">
