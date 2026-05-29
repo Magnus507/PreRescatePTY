@@ -40,8 +40,8 @@ const corporateNavItems = [
   { href: "/dashboard/empresa-perfil", label: "Perfil", icon: Building2 },
   { href: "/dashboard/empresas", label: "Panel de Empresa", icon: Users },
   { href: "/dashboard/historial", label: "Historial de Escaneos", icon: Scan },
-  { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];
+//// Configuración es eliminado del sidebar corporativo porque no aplica a cuentas empresa
 
 function NavLink({ href, label, icon: Icon, active }: {
   href: string; label: string; icon: React.ElementType; active: boolean;

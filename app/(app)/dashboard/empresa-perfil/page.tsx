@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
-import { Building2, Loader2, CheckCircle2, ExternalLink, Globe, Save } from "lucide-react";
+import { Building2, Loader2, CheckCircle2, ExternalLink, Globe, Save, Upload, Download, QrCode, Camera } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 
 type CorporatePublicProfile = {
   id: string;
   shortCode: string;
   status: "draft" | "active" | "hidden";
+  logoUrl: string | null;
   displayName: string | null;
   legalName: string | null;
   ruc: string | null;
@@ -26,6 +28,7 @@ type CorporatePublicProfile = {
   emergencyProcedure: string | null;
   customEmployeeMessage: string | null;
   showCompanyCode: boolean;
+  showLogo: boolean;
   showDisplayName: boolean;
   showLegalName: boolean;
   showRuc: boolean;
@@ -48,7 +51,9 @@ type CorporatePublicProfile = {
 export default function EmpresaPerfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [profile, setProfile] = useState<CorporatePublicProfile | null>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadProfile();
@@ -103,9 +108,56 @@ export default function EmpresaPerfilPage() {
     }
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("El archivo es muy pesado (máx 5MB)");
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "logo");
+      formData.append("bucket", "general");
+
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!uploadRes.ok) throw new Error("Error al subir logo");
+      const { url } = await uploadRes.json();
+
+      // Update profile with new logoUrl
+      const res = await fetch("/api/organizations/public-profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...profile, logoUrl: url }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo guardar logo");
+      setProfile(json.profile);
+      toast.success("Logo actualizado");
+    } catch (err: any) {
+      toast.error(err?.message || "Error al subir logo");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const updateField = (key: keyof CorporatePublicProfile, value: any) => {
     if (!profile) return;
     setProfile({ ...profile, [key]: value });
+  };
+
+  const downloadQR = () => {
+    const canvas = qrRef.current?.querySelector("canvas");
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `qr-perfil-${profile?.shortCode || "empresa"}.png`;
+    a.click();
   };
 
   if (loading) {
@@ -133,7 +185,6 @@ export default function EmpresaPerfilPage() {
         <div className="rounded-2xl border p-6 bg-card space-y-4">
           <p className="text-sm text-muted-foreground">
             Crea un perfil empresarial de cortesía para publicar información básica de tu organización.
-            Tus empleados y el público podrán ver la información que habilites.
           </p>
           <button onClick={createProfile} className="px-6 py-3 rounded-xl bg-primary text-white font-black text-sm hover:opacity-90 transition-all">
             Crear perfil empresarial
@@ -142,6 +193,8 @@ export default function EmpresaPerfilPage() {
       </div>
     );
   }
+
+  const profileUrl = `${window.location.origin}/empresa/${profile.shortCode}`;
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -165,7 +218,110 @@ export default function EmpresaPerfilPage() {
         </span>
       </div>
 
-      {/* Status + Link */}
+      {/* Logo + QR Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Logo Upload */}
+        <div className="rounded-2xl border bg-card overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/30">
+            <Camera className="h-4 w-4 text-primary" />
+            <h2 className="font-bold text-sm uppercase tracking-widest">Logo / Foto</h2>
+          </div>
+          <div className="p-5 flex flex-col items-center gap-4">
+            {profile.logoUrl ? (
+              <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center">
+                <img
+                  src={profile.logoUrl}
+                  alt="Logo"
+                  className="object-contain h-full w-full p-2"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+              </div>
+            ) : (
+              <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center">
+                <Building2 className="h-10 w-10 text-slate-300" />
+              </div>
+            )}
+            <div className="space-y-2 text-center">
+              <input
+                id="logo-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={handleLogoUpload}
+                disabled={uploadingLogo}
+              />
+              <label
+                htmlFor="logo-upload"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all disabled:opacity-50"
+              >
+                {uploadingLogo ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</>
+                ) : (
+                  <><Upload className="h-4 w-4" /> {profile.logoUrl ? "Cambiar logo" : "Subir logo"}</>
+                )}
+              </label>
+              <p className="text-[9px] text-muted-foreground">JPG, PNG, WebP. Máx 5MB.</p>
+            </div>
+            <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={profile.showLogo}
+                onChange={(e) => updateField("showLogo", e.target.checked)}
+              />
+              Mostrar logo en perfil público
+            </label>
+          </div>
+        </div>
+
+        {/* QR Code */}
+        <div className="rounded-2xl border bg-card overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/30">
+            <QrCode className="h-4 w-4 text-primary" />
+            <h2 className="font-bold text-sm uppercase tracking-widest">QR del perfil</h2>
+          </div>
+          <div className="p-5 flex flex-col items-center gap-4">
+            <div ref={qrRef} className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+              <QRCodeCanvas value={profileUrl} size={140} level="M" />
+            </div>
+            <div className="w-full space-y-2">
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 border rounded-xl px-3 py-2 text-xs font-mono bg-slate-50 truncate"
+                  readOnly
+                  value={profileUrl}
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(profileUrl);
+                    toast.success("Link copiado");
+                  }}
+                  className="px-3 py-2 border rounded-xl text-xs font-bold hover:bg-slate-50 shrink-0"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={profileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 px-3 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-all"
+                >
+                  Abrir perfil
+                </a>
+                <button
+                  onClick={downloadQR}
+                  className="flex-1 px-3 py-2 border border-slate-300 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all inline-flex items-center justify-center gap-1"
+                >
+                  <Download className="h-3.5 w-3.5" /> QR
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Status + Link (compact) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Visibilidad</label>
@@ -182,12 +338,11 @@ export default function EmpresaPerfilPage() {
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Link público</label>
           <div className="flex gap-2">
-            <input className="flex-1 border rounded-xl px-3 py-2.5 text-sm font-mono bg-slate-50" readOnly value={`/empresa/${profile.shortCode}`} />
+            <input className="flex-1 border rounded-xl px-3 py-2.5 text-sm font-mono bg-slate-50" readOnly value={profileUrl} />
             <button
               onClick={async () => {
                 try {
-                  const fullUrl = `${window.location.origin}/empresa/${profile.shortCode}`;
-                  await navigator.clipboard.writeText(fullUrl);
+                  await navigator.clipboard.writeText(profileUrl);
                   toast.success("Link copiado");
                 } catch {
                   toast.error("No se pudo copiar");
@@ -202,7 +357,7 @@ export default function EmpresaPerfilPage() {
       </div>
 
       {/* Sección: Identidad */}
-      <SectionCard title="Identidad" icon={<Building2 className="h-4 w-4" />}>
+      <SectionCard title="Identidad">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FieldWithVisibility
             label="Nombre público"
@@ -255,7 +410,7 @@ export default function EmpresaPerfilPage() {
       </SectionCard>
 
       {/* Sección: Contacto */}
-      <SectionCard title="Contacto" icon={<Globe className="h-4 w-4" />}>
+      <SectionCard title="Contacto">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FieldWithVisibility
             label="Teléfono"
@@ -298,7 +453,7 @@ export default function EmpresaPerfilPage() {
       </SectionCard>
 
       {/* Sección: Servicios */}
-      <SectionCard title="Servicios y productos" icon={<Building2 className="h-4 w-4" />}>
+      <SectionCard title="Servicios y productos">
         <div className="space-y-4">
           <FieldWithVisibility
             label="Servicios principales"
@@ -319,8 +474,8 @@ export default function EmpresaPerfilPage() {
         </div>
       </SectionCard>
 
-      {/* Sección: Seguridad / Emergencia */}
-      <SectionCard title="Seguridad y emergencia" icon={<Building2 className="h-4 w-4" />}>
+      {/* Sección: Seguridad */}
+      <SectionCard title="Seguridad y emergencia">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FieldWithVisibility
             label="Contacto de seguridad"
@@ -350,7 +505,7 @@ export default function EmpresaPerfilPage() {
       </SectionCard>
 
       {/* Sección: PreRescue ID */}
-      <SectionCard title="PreRescue ID" icon={<Building2 className="h-4 w-4" />}>
+      <SectionCard title="PreRescue ID">
         <div className="space-y-4">
           <FieldWithVisibility
             label="Mensaje personalizado para empleados"
@@ -394,11 +549,11 @@ export default function EmpresaPerfilPage() {
 
 // ==================== COMPONENTS ====================
 
-function SectionCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border bg-card overflow-hidden">
       <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/30">
-        <span className="text-primary">{icon}</span>
+        <span className="h-1.5 w-6 bg-primary rounded-full" />
         <h2 className="font-bold text-sm uppercase tracking-widest">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
