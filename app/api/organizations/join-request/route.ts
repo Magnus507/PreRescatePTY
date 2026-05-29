@@ -42,27 +42,22 @@ export async function POST(req: Request) {
   });
   if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
 
+  // Always use existing personal profile (never overwrite personal data)
   let profileId = user.profile?.id;
   if (!profileId) {
-    const profile = await prisma.profile.create({
+    const personalProfile = await prisma.profile.create({
       data: {
         userId: user.id,
         accountId: user.accountId || null,
         firstName: firstName || "Pendiente",
         lastName: lastName || "Pendiente",
         bloodType: "Pendiente",
+        profileType: "personal",
       },
     });
-    profileId = profile.id;
-  } else {
-    await prisma.profile.update({
-      where: { id: profileId },
-      data: {
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-      },
-    });
+    profileId = personalProfile.id;
   }
+  // NOTE: Do NOT update firstName/lastName of personal profile
 
   const existing = await prisma.organizationMember.findFirst({
     where: {
@@ -75,6 +70,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ya tienes una solicitud/vinculación activa con esta empresa." }, { status: 409 });
   }
 
+  // Create the OrganizationMember with personal profile reference
   const member = await prisma.organizationMember.create({
     data: {
       organizationId: organization.id,
@@ -88,6 +84,23 @@ export async function POST(req: Request) {
       employeeInternalId: employeeInternalId || null,
       employeeNote: employeeNote || null,
     },
+  });
+
+  // Create separate corporate profile (does NOT touch personal profile)
+  const corporateProfile = await prisma.profile.create({
+    data: {
+      accountId: user.accountId || null,
+      firstName: user.profile?.firstName || firstName || "Pendiente",
+      lastName: user.profile?.lastName || lastName || "Pendiente",
+      bloodType: "Pendiente",
+      profileType: "corporate",
+    },
+  });
+
+  // Link corporate profile to the OrganizationMember
+  await prisma.organizationMember.update({
+    where: { id: member.id },
+    data: { corporateProfileId: corporateProfile.id },
   });
 
   return NextResponse.json({

@@ -145,11 +145,16 @@ model Profile {
   lastScanLocation        String?
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @updatedAt
+  
+  // Profile type: personal, family, corporate
+  profileType            String               @default("personal")
+  
   account                 Account?             @relation(fields: [accountId], references: [id])
   contacts                ProfileContact[]
   user                    User?                @relation(fields: [userId], references: [id])
   assignedChips           Chip[]
   organizationMembers     OrganizationMember[]
+  corporateProfileOf     OrganizationMember?  @relation("CorporateProfileOwner")
   digitalPass             DigitalPass?
 
   @@index([accountId]) // Dashboard: list profiles per account
@@ -388,6 +393,7 @@ model OrganizationMember {
   profileId      String
   locationId     String?
   departmentId   String?
+  corporateProfileId String? @unique
 
   employeeId   String? // ID de empleado o carnet
   internalCode String? // Código interno adicional
@@ -418,6 +424,7 @@ model OrganizationMember {
 
   organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   profile      Profile                 @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  corporateProfile Profile?             @relation("CorporateProfileOwner", fields: [corporateProfileId], references: [id])
   location     OrganizationLocation?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
   department   OrganizationDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   corporateOrderItems CorporateOrderEmployeeItem[]
