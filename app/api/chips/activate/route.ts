@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
           where: { id: corpProfileId },
         });
 
-        if (!corpProfile || corpProfile.profileType !== "corporate") {
+        if (!corpProfile || (corpProfile as any).profileType !== "corporate") {
           throw Object.assign(
             new Error("El perfil vinculado no es un perfil empresarial válido."),
             { status: 400 }

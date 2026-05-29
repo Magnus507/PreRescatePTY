@@ -118,8 +118,28 @@ export async function GET(
       });
     }
 
-    const profile = chip.assignedProfile;
+    const profile = chip.assignedProfile as any;
     const orgMember = profile.organizationMembers?.[0] || null;
+
+    // Check if this is a corporate profile with inactive benefit
+    if ((profile as any)?.profileType === "corporate") {
+      const corporateMember = await (prisma.organizationMember as any).findFirst({
+        where: { corporateProfileId: profile.id },
+        select: { corporateStatus: true, organization: { select: { displayName: true, legalName: true } } },
+      });
+
+      if (corporateMember && corporateMember.corporateStatus !== "paid_active") {
+        return publicJson(
+          req,
+          {
+            status: "corporate_inactive",
+            error: "Perfil empresarial no disponible",
+            message: "Este perfil corporativo ya no está activo.",
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     // Decrypt sensitive fields
     const decryptedAllergies = decrypt(profile.allergies || "");
