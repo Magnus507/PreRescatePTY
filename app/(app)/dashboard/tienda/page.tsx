@@ -122,7 +122,7 @@ export default function TiendaPage() {
         </div>
       </div>
 
-      {/* Categories */}
+      {/* Categories — sin "Explorar" */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {categories.map((cat) => (
           <div key={cat.name} className="p-8 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex items-center gap-5 hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all cursor-pointer group">
@@ -130,7 +130,6 @@ export default function TiendaPage() {
               <cat.icon className="h-7 w-7" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5 opacity-60">Explorar</p>
               <h3 className="text-xl font-black tracking-tight">{cat.name}</h3>
             </div>
           </div>
@@ -141,12 +140,13 @@ export default function TiendaPage() {
       <div>
         <div className="flex items-center justify-between mb-10">
            <div>
-              <h2 className="text-4xl font-black tracking-tighter uppercase italic">Adicionales</h2>
+              <h2 className="text-4xl font-black tracking-tighter uppercase italic">
+                <span className="text-brand">PRE</span>{' '}
+                <span className="text-slate-900 dark:text-white">RESCUE</span>{' '}
+                <span className="text-brand">ID</span>
+              </h2>
               <div className="h-1.5 w-12 bg-primary rounded-full mt-1" />
            </div>
-           <button className="text-primary font-black text-xs uppercase tracking-widest flex items-center gap-2 group p-4 hover:bg-primary/5 rounded-2xl transition-all">
-              Ver Todo el Almacén <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
-           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
@@ -335,7 +335,7 @@ export default function TiendaPage() {
 
               <div className="p-6 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/50 mb-10">
                  <p className="text-[9px] font-black text-amber-700 dark:text-amber-500 uppercase tracking-widest leading-relaxed">
-                    IMPORTANTE: Sube una foto del comprobante en la sección &quot;Mis Pedidos&quot; después de pagar para validar tu compra.
+                    IMPORTANTE: Sube una foto del comprobante en la sección "Mis Pedidos" después de pagar para validar tu compra.
                  </p>
               </div>
 
@@ -349,13 +349,7 @@ export default function TiendaPage() {
         </div>
       )}
 
-      {/* Modules Message */}
-      <div className="p-12 bg-slate-50 dark:bg-slate-900 rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-800 text-center">
-         <Activity className="h-10 w-10 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-         <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em]">
-           Módulo de Suministros Sincronizado — PreRescue ID Network v3.2
-         </p>
-      </div>
+      {/* Modules Message — ocultado */}
     </div>
   );
 }

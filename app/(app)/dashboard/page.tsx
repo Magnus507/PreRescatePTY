@@ -158,7 +158,11 @@ export default function DashboardPage() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tighter mb-1 uppercase text-slate-950">PreRescue ID</h1>
+          <h1 className="text-4xl font-black tracking-tighter mb-1 uppercase">
+            <span className="text-brand">PRE</span>{' '}
+            <span className="text-slate-900 dark:text-white">RESCUE</span>{' '}
+            <span className="text-brand">ID</span>
+          </h1>
         </div>
         
         <div className="flex items-center gap-3">
@@ -246,14 +250,8 @@ export default function DashboardPage() {
                 <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mb-1">NIVEL DE PROTECCIÓN</p>
                 <div className="flex items-center gap-3">
                   <h2 className={`text-3xl font-black tracking-tight ${state.isInactive ? "text-red-600" : state.isExpired ? "text-destructive" : "text-primary dark:text-white"}`}>
-                    {state.isInactive ? "Inactiva" : state.packageName}
+                    {state.isInactive ? "Inactiva" : "Cuenta activa"}
                   </h2>
-                  {!state.isInactive && state.packagePrice > 0 && (
-                    <p className="text-sm font-bold text-muted-foreground/70 mt-1">
-                      ${state.packagePrice.toFixed(2)} {BUSINESS_RULES.CURRENCY} · pago único
-                    </p>
-                  )}
-
                   {state.isInactive ? (
                     <span className="bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase">Esperando Combo</span>
                   ) : state.isExpired && (
