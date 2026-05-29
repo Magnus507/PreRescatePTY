@@ -6,12 +6,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
-  context: { params: Promise<{ userId: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
 
-  const { userId } = await context.params;
+  const { id } = await context.params;
+  const userId = id;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
