@@ -403,10 +403,10 @@ export default function FamiliaPage() {
                  <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
-                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">ESTADO LOGÍSTICO</p>
-                 <p className="font-black text-lg tracking-tight uppercase italic">
-                    {state.familyProfilesCount + 1} de {state.maxProfilesAllocated} Espacios Utilizados
-                 </p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Capacidad Utilizada</p>
+                  <p className="font-black text-lg tracking-tight uppercase italic">
+                     {state.familyProfilesCount + 1} de {state.maxProfilesAllocated} perfiles utilizados
+                  </p>
               </div>
            </div>
 
@@ -417,8 +417,8 @@ export default function FamiliaPage() {
                       <PlusCircle className="h-6 w-6" />
                    </div>
                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">¡CAPACIDAD AL LÍMITE!</p>
-                      <p className="font-black text-lg tracking-tight text-amber-900 uppercase italic leading-none">Adquiere espacios adicionales aquí</p>
+                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Necesitas más perfiles?</p>
+                       <p className="font-black text-lg tracking-tight text-amber-900 uppercase italic leading-none">Amplía tu protección agregando perfiles adicionales.</p>
                    </div>
                 </div>
                 <ChevronUp className="h-5 w-5 text-amber-500 rotate-90 group-hover:translate-x-1 transition-transform" />
