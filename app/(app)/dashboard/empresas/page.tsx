@@ -309,6 +309,7 @@ export default function EmpresasPage() {
   }, []);
 
   const loadMembersByTab = async (nextTab: CorporateTab) => {
+    setMembers([]);
     const map: Record<CorporateTab, string | null> = {
       solicitantes: "pending_company_review",
       aprobados: "approved_unpaid",
@@ -316,7 +317,7 @@ export default function EmpresasPage() {
       rechazados: "rejected_by_company",
       pagados: "paid_active",
       suspendidos: "suspended",
-      archivados: "archivados",
+      archivados: "archived",
     };
 
     const status = map[nextTab];
@@ -324,7 +325,6 @@ export default function EmpresasPage() {
       const ordersRes = await fetch("/api/organizations/corporate-orders");
       const ordersJson = await ordersRes.json();
       if (ordersRes.ok) setCorporateOrders(ordersJson.orders || []);
-      setMembers([]);
     } else if (status) {
       const res = await fetch(`/api/organizations/members?status=${status}`);
       const json = await res.json();
@@ -370,7 +370,14 @@ export default function EmpresasPage() {
     }
   };
 
-  const handleDecision = async (id: string, action: "approve" | "reject" | "archive") => {
+  const handleDecision = async (id: string, action: "approve" | "reject" | "archive" | "restore" | "unsuspend") => {
+    const confirmMessages: Record<string, string> = {
+      reject: "¿Seguro que deseas rechazar este colaborador? Esto solo afecta el vínculo corporativo. La cuenta personal del usuario no será afectada.",
+      archive: "¿Seguro que deseas archivar este colaborador? Se ocultará del flujo activo, pero su cuenta personal no se verá afectada.",
+      restore: "¿Restaurar este colaborador? Volverá al estado activo. Su cuenta personal no se verá afectada.",
+    };
+    const msg = confirmMessages[action];
+    if (msg && !confirm(msg)) return;
     const res = await fetch(`/api/organizations/members/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -643,10 +650,6 @@ export default function EmpresasPage() {
         </div>
       )}
 
-      {(tab === "suspendidos" || tab === "archivados") && (
-        <div className="rounded-2xl border p-4 text-sm text-muted-foreground">Próximamente en siguientes fases.</div>
-      )}
-
       <div className="space-y-3">
         {members.map((m) => (
           <div key={m.id} className="rounded-2xl border p-4 bg-card">
@@ -724,6 +727,33 @@ export default function EmpresasPage() {
                       Archivar
                     </button>
                   </div>
+                </div>
+              )}
+              {(tab === "rechazados" && m.corporateStatus === "rejected_by_company") && (
+                <div className="flex gap-2">
+                  <button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1">
+                    <CheckCircle2 className="h-4 w-4" /> Restaurar
+                  </button>
+                  <button onClick={() => handleDecision(m.id, "archive")} className="px-3 py-2 rounded-xl bg-slate-600 text-white text-sm font-semibold inline-flex items-center gap-1">
+                    <Archive className="h-4 w-4" /> Archivar
+                  </button>
+                </div>
+              )}
+              {(tab === "archivados" && m.corporateStatus === "archived") && (
+                <div className="flex gap-2">
+                  <button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1">
+                    <CheckCircle2 className="h-4 w-4" /> Restaurar
+                  </button>
+                </div>
+              )}
+              {(tab === "suspendidos" && m.corporateStatus === "suspended") && (
+                <div className="flex gap-2">
+                  <button onClick={() => handleDecision(m.id, "unsuspend")} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-1">
+                    <CheckCircle2 className="h-4 w-4" /> Reactivar
+                  </button>
+                  <button onClick={() => handleDecision(m.id, "archive")} className="px-3 py-2 rounded-xl bg-slate-600 text-white text-sm font-semibold inline-flex items-center gap-1">
+                    <Archive className="h-4 w-4" /> Archivar
+                  </button>
                 </div>
               )}
             </div>

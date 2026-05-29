@@ -41,10 +41,40 @@ export async function PATCH(
       corporateStatus = "suspended";
       break;
     case "unsuspend":
-      corporateStatus = "approved_unpaid";
+      // If member has paid items, go back to paid_active; otherwise approved_unpaid
+      const hasPaidItems = await prisma.corporateOrderEmployeeItem.findFirst({
+        where: {
+          organizationMemberId: id,
+          order: {
+            organizationId: organization.id,
+            paymentStatus: "approved",
+          },
+        },
+        select: { id: true },
+      });
+      corporateStatus = hasPaidItems ? "paid_active" : "approved_unpaid";
       break;
     case "archive":
       corporateStatus = "archived";
+      break;
+    case "restore":
+      if (member.corporateStatus !== "archived" && member.corporateStatus !== "rejected_by_company") {
+        return NextResponse.json(
+          { error: "Solo se puede restaurar desde Archivados o Rechazados." },
+          { status: 400 }
+        );
+      }
+      const hasAnyPaid = await prisma.corporateOrderEmployeeItem.findFirst({
+        where: {
+          organizationMemberId: id,
+          order: {
+            organizationId: organization.id,
+            paymentStatus: "approved",
+          },
+        },
+        select: { id: true },
+      });
+      corporateStatus = hasAnyPaid ? "paid_active" : "approved_unpaid";
       break;
     default:
       return NextResponse.json({ error: "Acción no válida" }, { status: 400 });

@@ -77,11 +77,13 @@ export default function ColaboradoresPage() {
     }
   };
 
-  const handleAction = async (memberId: string, action: "suspend" | "unsuspend" | "archive") => {
+  const handleAction = async (memberId: string, action: "suspend" | "unsuspend" | "archive" | "restore" | "reject") => {
     const confirmMessages: Record<string, string> = {
       suspend: "¿Seguro que deseas suspender a este colaborador? Su vínculo corporativo quedará suspendido, pero su cuenta personal no se verá afectada.",
       unsuspend: "¿Reactivar este colaborador? Volverá al estado activo con beneficios.",
       archive: "¿Archivar este colaborador? Se ocultará del flujo activo, pero su cuenta personal no se verá afectada.",
+      restore: "¿Restaurar este colaborador? Volverá al estado activo. Su cuenta personal no se verá afectada.",
+      reject: "¿Seguro que deseas rechazar este colaborador? Esto solo afecta el vínculo corporativo. La cuenta personal del usuario no será afectada.",
     };
 
     if (!confirm(confirmMessages[action])) return;
@@ -203,13 +205,23 @@ export default function ColaboradoresPage() {
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     ) : (
                       <>
-                        {m.corporateStatus !== "suspended" && m.corporateStatus !== "archived" && (
-                          <button
-                            onClick={() => handleAction(m.id, "suspend")}
-                            className="px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100 transition-colors inline-flex items-center gap-1"
-                          >
-                            <Ban className="h-3.5 w-3.5" /> Suspender
-                          </button>
+                        {(m.corporateStatus === "paid_active" || m.corporateStatus === "approved_unpaid") && (
+                          <>
+                            {m.corporateStatus === "approved_unpaid" && (
+                              <button
+                                onClick={() => handleAction(m.id, "reject")}
+                                className="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors inline-flex items-center gap-1"
+                              >
+                                <XCircle className="h-3.5 w-3.5" /> Rechazar
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleAction(m.id, "suspend")}
+                              className="px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100 transition-colors inline-flex items-center gap-1"
+                            >
+                              <Ban className="h-3.5 w-3.5" /> Suspender
+                            </button>
+                          </>
                         )}
                         {m.corporateStatus === "suspended" && (
                           <button
@@ -219,7 +231,23 @@ export default function ColaboradoresPage() {
                             <CheckCircle2 className="h-3.5 w-3.5" /> Reactivar
                           </button>
                         )}
-                        {m.corporateStatus !== "archived" && (
+                        {m.corporateStatus === "rejected_by_company" && (
+                          <button
+                            onClick={() => handleAction(m.id, "restore")}
+                            className="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-bold hover:bg-indigo-100 transition-colors inline-flex items-center gap-1"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Restaurar
+                          </button>
+                        )}
+                        {m.corporateStatus === "archived" && (
+                          <button
+                            onClick={() => handleAction(m.id, "restore")}
+                            className="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-bold hover:bg-indigo-100 transition-colors inline-flex items-center gap-1"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Restaurar
+                          </button>
+                        )}
+                        {m.corporateStatus !== "archived" && m.corporateStatus !== "rejected_by_company" && (
                           <button
                             onClick={() => handleAction(m.id, "archive")}
                             className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors inline-flex items-center gap-1"
