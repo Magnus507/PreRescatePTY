@@ -20,6 +20,8 @@ interface CorporateEmployeeItem {
     id: string;
     name: string;
     productType: string;
+    estimatedProductionTime: string | null;
+    requiresPersonalization: boolean;
   };
   chip: {
     id: string;
@@ -355,6 +357,7 @@ export function PedidosSection() {
   }
 
   if (selectedOrder) {
+    const isCorporateOrder = selectedOrder.orderType === "corporate_employee_purchase";
     return (
       <div className="space-y-5 animate-in fade-in slide-in-from-bottom-5 duration-500 blur-none">
          {/* Integrated Admin Dashboard Header */}
@@ -370,7 +373,7 @@ export function PedidosSection() {
                   <div className="flex items-center gap-3">
                      <div className="flex items-center gap-2">
                        <h2 className="text-2xl font-black uppercase tracking-tighter" title={selectedOrder.orderNumber}>Pedido #{selectedOrder.orderNumber}</h2>
-                       {selectedOrder.orderType === "corporate_employee_purchase" && (
+                       {isCorporateOrder && (
                          <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-widest inline-flex items-center gap-1">
                            <Building2 className="h-3.5 w-3.5" /> Corporativo
                          </span>
@@ -386,7 +389,9 @@ export function PedidosSection() {
                      </div>
                      {getStatusBadge(selectedOrder.orderStatus, selectedOrder.paymentStatus)}
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">Logística de Despacho & CRM</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
+                    {isCorporateOrder ? "Pedido corporativo" : "Logística de Despacho & CRM"}
+                  </p>
                </div>
             </div>
 
@@ -400,6 +405,246 @@ export function PedidosSection() {
 
          <div className="bg-card w-full overflow-hidden rounded-[2rem] border border-border shadow-lg min-h-[70vh] flex flex-col">
             <div className="flex-1 p-6 lg:p-8">
+               {/* ==================== CORPORATE ORDER DETAIL ==================== */}
+               {isCorporateOrder && (
+                 <div className="space-y-6">
+                   {/* Corporate summary card */}
+                   <div className="rounded-[2rem] border border-blue-200 bg-blue-50/50 p-6 space-y-4">
+                     <div className="flex items-center gap-3">
+                       <Building2 className="h-5 w-5 text-blue-600" />
+                       <h3 className="text-lg font-black">Pedido corporativo</h3>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                       <div className="bg-white rounded-xl p-4 border border-blue-100">
+                         <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Empresa</p>
+                         <p className="font-bold">{selectedOrder.customerName || "Corporativo"}</p>
+                         {selectedOrder.customerEmail && <p className="text-xs text-muted-foreground">{selectedOrder.customerEmail}</p>}
+                       </div>
+                       <div className="bg-white rounded-xl p-4 border border-blue-100">
+                         <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Colaboradores</p>
+                         <p className="font-bold text-2xl">{(selectedOrder as any).corporateEmployeeItems?.length || 0}</p>
+                       </div>
+                       <div className="bg-white rounded-xl p-4 border border-blue-100">
+                         <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Total</p>
+                         <p className="font-bold text-2xl text-primary">${selectedOrder.amount.toFixed(2)}</p>
+                       </div>
+                     </div>
+                     <div className="flex flex-wrap gap-2">
+                       <span className="px-3 py-1 bg-white rounded-full text-[10px] font-bold border border-blue-200">
+                         Estado: {selectedOrder.paymentStatus === "paid" ? "Pagado" : selectedOrder.paymentStatus === "under_review" ? "En revisión" : selectedOrder.paymentStatus}
+                       </span>
+                       {selectedOrder.adminReviewStatus && (
+                         <span className="px-3 py-1 bg-white rounded-full text-[10px] font-bold border border-blue-200">
+                           Revisión: {selectedOrder.adminReviewStatus === "approved" ? "Aprobado" : selectedOrder.adminReviewStatus === "rejected" ? "Rechazado" : selectedOrder.adminReviewStatus}
+                         </span>
+                       )}
+                       <span className="px-3 py-1 bg-white rounded-full text-[10px] font-bold border border-blue-200">
+                         {new Date(selectedOrder.createdAt).toLocaleDateString()}
+                       </span>
+                     </div>
+                   </div>
+
+                   {/* Payment proof */}
+                   {selectedOrder.paymentProofUrl && (
+                     <div className="rounded-[2rem] border border-slate-200 p-5 bg-white">
+                       <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary mb-3">Comprobante de pago</h3>
+                       <div className="aspect-video max-w-md rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
+                         <img 
+                           src={`/api/image-proxy?bucket=payment-proofs&path=${encodeURIComponent(selectedOrder.paymentProofUrl!.split('/').slice(-2).join('/'))}`} 
+                           alt="Pago" 
+                           className="object-contain w-full h-full p-2" 
+                           onError={(e) => { e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
+                         />
+                       </div>
+                     </div>
+                   )}
+
+                   {/* Corporate payment review */}
+                   {selectedOrder.provider === "manual" && canAdminApproveManual(selectedOrder) && (
+                     <div className="rounded-[2rem] border border-amber-200 bg-amber-50/50 p-6 space-y-4">
+                       <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-amber-700">Revisión de pago corporativo</h3>
+                       <p className="text-sm text-amber-800">
+                         Al aprobar este pago, los colaboradores pasarán a Pagados / activos. Los productos quedarán en seguimiento operativo según su estado de fabricación, entrega o asignación de chip.
+                       </p>
+                       <textarea
+                         value={reviewNote}
+                         onChange={(e) => setReviewNote(e.target.value)}
+                         className="w-full min-h-[80px] rounded-xl border border-amber-200 bg-white p-3 text-sm font-medium outline-none focus:ring-4 focus:ring-amber-200"
+                         placeholder="Nota para aprobación o rechazo..."
+                       />
+                       <div className="flex gap-3">
+                         <button
+                           disabled={updating || !canAdminApproveManual(selectedOrder)}
+                           onClick={() => handleReviewAction(selectedOrder.id, "approve")}
+                           className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
+                         >
+                           Aprobar pago corporativo
+                         </button>
+                         <button
+                           disabled={updating || !canAdminRejectManual(selectedOrder)}
+                           onClick={() => handleReviewAction(selectedOrder.id, "reject")}
+                           className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
+                         >
+                           Rechazar pago
+                         </button>
+                       </div>
+                     </div>
+                   )}
+
+                   {/* Approved / Rejected status */}
+                   {selectedOrder.adminReviewStatus === "approved" && (
+                     <div className="rounded-[2rem] border border-emerald-200 bg-emerald-50/50 p-5">
+                       <div className="flex items-center gap-3">
+                         <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                         <p className="font-black text-emerald-700">Pago aprobado</p>
+                       </div>
+                     </div>
+                   )}
+                   {selectedOrder.adminReviewStatus === "rejected" && (
+                     <div className="rounded-[2rem] border border-red-200 bg-red-50/50 p-5">
+                       <div className="flex items-center gap-3">
+                         <XCircle className="h-6 w-6 text-red-600" />
+                         <p className="font-black text-red-700">Pago rechazado: {selectedOrder.adminReviewNotes?.trim() || "No especificado"}</p>
+                       </div>
+                     </div>
+                   )}
+
+                   {/* Colaboradores + fulfillment */}
+                   {(selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (
+                     <div className="rounded-[2rem] border border-indigo-200 bg-indigo-50/50 p-6 space-y-4">
+                       <div className="flex items-center gap-3">
+                         <div className="h-1.5 w-6 bg-indigo-500 rounded-full" />
+                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-700">
+                           Colaboradores incluidos — seguimiento operativo
+                         </h3>
+                       </div>
+                       <div className="space-y-3">
+                         {(selectedOrder as any).corporateEmployeeItems.map((item: CorporateEmployeeItem) => (
+                           <div key={item.id} className="bg-white rounded-xl border border-indigo-100 p-4 flex flex-col md:flex-row md:items-start justify-between gap-3">
+                             <div className="space-y-1 min-w-0 flex-1">
+                               <div className="flex items-center gap-2 flex-wrap">
+                                 <p className="font-semibold text-sm">
+                                   {item.organizationMember?.profile?.firstName || "—"} {item.organizationMember?.profile?.lastName || ""}
+                                 </p>
+                                 <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded font-bold">{item.product?.name || item.product?.productType || "Producto"}</span>
+                                 <span className="text-[9px] text-muted-foreground">x{item.quantity}</span>
+                               </div>
+                               <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground mt-1">
+                                 {item.product?.productType && <span className="bg-muted px-1.5 py-0.5 rounded font-bold uppercase">{item.product.productType}</span>}
+                                 {item.product?.estimatedProductionTime && <span className="bg-amber-50 px-1.5 py-0.5 rounded font-bold text-amber-700">Fabricación: {item.product.estimatedProductionTime}</span>}
+                                 {item.product?.requiresPersonalization && <span className="bg-purple-50 px-1.5 py-0.5 rounded font-bold text-purple-700">Requiere personalización</span>}
+                               </div>
+                               <div className="flex items-center gap-2 text-xs mt-1">
+                                 <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
+                                   item.fulfillmentStatus === "activated" ? "bg-emerald-100 text-emerald-700" :
+                                   item.fulfillmentStatus === "assigned_reserved" ? "bg-blue-100 text-blue-700" :
+                                   item.fulfillmentStatus === "in_production" ? "bg-purple-100 text-purple-700" :
+                                   item.fulfillmentStatus === "ready_for_assignment" ? "bg-teal-100 text-teal-700" :
+                                   item.fulfillmentStatus === "delivered" ? "bg-slate-200 text-slate-700" :
+                                   "bg-amber-100 text-amber-700"
+                                 }`}>
+                                   {item.fulfillmentStatus === "activated" ? "✔ Activado" :
+                                    item.fulfillmentStatus === "assigned_reserved" ? "🔷 Asignado / reservado" :
+                                    item.fulfillmentStatus === "in_production" ? "⚙ En fabricación" :
+                                    item.fulfillmentStatus === "ready_for_assignment" ? "✅ Listo" :
+                                    item.fulfillmentStatus === "delivered" ? "📦 Entregado" :
+                                    "⏳ Pendiente"}
+                                 </span>
+                                 {item.chip && (
+                                   <span className="font-mono text-muted-foreground">
+                                     Chip: {item.chip.shortCode} ({item.chip.serialPublic})
+                                   </span>
+                                 )}
+                                 {item.activatedAt && (
+                                   <span className="text-muted-foreground">Act.: {new Date(item.activatedAt).toLocaleDateString()}</span>
+                                 )}
+                                 <span className="text-muted-foreground">${item.subtotal?.toFixed(2)}</span>
+                               </div>
+                             </div>
+
+                             <div className="flex flex-col items-end gap-2 shrink-0">
+                               {/* Fulfillment buttons */}
+                               {(item.fulfillmentStatus === "pending_assignment" || item.fulfillmentStatus === "in_production" || item.fulfillmentStatus === "ready_for_assignment") && (
+                                 <div className="flex flex-wrap gap-1 justify-end">
+                                   {item.fulfillmentStatus === "pending_assignment" && (
+                                     <button
+                                       onClick={async () => {
+                                         const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                           method: "PATCH",
+                                           headers: { "Content-Type": "application/json" },
+                                           body: JSON.stringify({ fulfillmentStatus: "in_production" }),
+                                         });
+                                         if (res.ok) { toast.success("Marcado en fabricación"); loadOrders({ silent: true }); }
+                                         else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                       }}
+                                       disabled={corporateAssigning === item.id}
+                                       className="px-2.5 py-1.5 rounded-lg bg-purple-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-purple-700 disabled:opacity-50"
+                                     >Fabricación</button>
+                                   )}
+                                   {item.fulfillmentStatus !== "ready_for_assignment" && (
+                                     <button
+                                       onClick={async () => {
+                                         const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                           method: "PATCH",
+                                           headers: { "Content-Type": "application/json" },
+                                           body: JSON.stringify({ fulfillmentStatus: "ready_for_assignment" }),
+                                         });
+                                         if (res.ok) { toast.success("Marcado como listo"); loadOrders({ silent: true }); }
+                                         else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                       }}
+                                       disabled={corporateAssigning === item.id}
+                                       className="px-2.5 py-1.5 rounded-lg bg-teal-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-teal-700 disabled:opacity-50"
+                                     >Listo</button>
+                                   )}
+                                   <button
+                                     onClick={async () => {
+                                       const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                         method: "PATCH",
+                                         headers: { "Content-Type": "application/json" },
+                                         body: JSON.stringify({ fulfillmentStatus: "delivered" }),
+                                       });
+                                       if (res.ok) { toast.success("Marcado como entregado"); loadOrders({ silent: true }); }
+                                       else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                     }}
+                                     disabled={corporateAssigning === item.id}
+                                     className="px-2.5 py-1.5 rounded-lg bg-slate-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-slate-700 disabled:opacity-50"
+                                   >Entregar</button>
+                                 </div>
+                               )}
+
+                               {/* Chip assignment */}
+                               {item.fulfillmentStatus === "pending_assignment" && (
+                                 <div className="flex items-center gap-2 mt-1">
+                                   <select className="border border-indigo-200 rounded-lg px-2 py-1 text-[9px] font-bold bg-white min-w-[140px]"
+                                     value={selectedChipForItem[item.id] || ""}
+                                     onChange={(e) => setSelectedChipForItem((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                     disabled={corporateAssigning === item.id}
+                                   >
+                                     <option value="">Chip...</option>
+                                     {availableChips.map((chip) => (
+                                       <option key={chip.id} value={chip.id}>{chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""}</option>
+                                     ))}
+                                     {availableChips.length === 0 && <option value="" disabled>Sin chips disponibles</option>}
+                                   </select>
+                                   <button onClick={() => { const chipId = selectedChipForItem[item.id]; if (chipId) handleCorporateAssign(item, chipId); }}
+                                     disabled={corporateAssigning === item.id || !selectedChipForItem[item.id]}
+                                     className="px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 inline-flex items-center gap-1"
+                                   >
+                                     {corporateAssigning === item.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Asignar chip"}
+                                   </button>
+                                 </div>
+                               )}
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+                 </div>
+               )}
+
+               {/* ==================== NORMAL ORDER DETAIL (exact same as before) ==================== */}
+               {!isCorporateOrder && (
                <div className="grid grid-cols-1 lg:grid-cols-16 gap-6">
                   
                   {/* COL 1: Logistics & Delivery */}
@@ -657,6 +902,7 @@ export function PedidosSection() {
                   </div>
 
                </div>
+               )}
             </div>
 
             {/* Corporate Chip Assignment Section */}
