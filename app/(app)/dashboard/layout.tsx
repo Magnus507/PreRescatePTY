@@ -18,6 +18,7 @@ import { ScanMonitor } from "./_components/ScanMonitor";
 const consumerNavItems = [
   { href: "/dashboard", label: "Perfil", icon: LayoutDashboard },
   { href: "/dashboard/configuracion", label: "Ajuste de Perfil", icon: Settings },
+  { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
 ];
 
 const consumerSecondaryItems: { href: string; label: string; icon: React.ElementType }[] = [];
@@ -296,6 +297,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   { href: "/dashboard", label: "Perfil", icon: LayoutDashboard },
                   { href: "/dashboard/perfiles-medicos", label: "Perfiles Médicos", icon: UsersRound },
                   { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
+                  { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
                   { href: "/dashboard/historial", label: "Historial de PreRescue ID", icon: History },
                   { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
                   { href: "/dashboard/tienda", label: "Accesorios", icon: Store },
