@@ -126,17 +126,100 @@ export async function POST(req: NextRequest) {
       }
       const targetAccountId = account.id;
 
-      // Find the current user's own profile. Another complete profile in the same
-      // account must not unlock activation for this chip.
-      const profile = await tx.profile.findFirst({
-        where: { userId }
-      });
+      // Detect if this is a corporate chip by checking CorporateOrderEmployeeItem
+      const corporateItem = await tx.corporateOrderEmployeeItem.findFirst({
+        where: { chipId: claimToken.chipId },
+        include: {
+          organizationMember: {
+            include: { profile: { include: { user: true } } },
+          },
+        },
+      }) as any;
 
-      if (!profile || !AccountStateService.isMedicalProfileComplete(profile)) {
-        throw Object.assign(
-          new Error("Debes completar tu perfil médico (nombre, apellido y tipo de sangre) antes de activar un chip"),
-          { status: 400 }
-        );
+      let assignedProfileId: string;
+
+      if (corporateItem) {
+        // === CORPORATE ACTIVATION FLOW ===
+        const member = corporateItem.organizationMember as any;
+
+        if (!member) {
+          throw Object.assign(
+            new Error("El chip corporativo no está vinculado a un miembro de la organización."),
+            { status: 400 }
+          );
+        }
+
+        if (member.corporateStatus !== "paid_active") {
+          throw Object.assign(
+            new Error("Tu beneficio empresarial no está activo."),
+            { status: 403 }
+          );
+        }
+
+        // Use corporateProfileId from the member
+        const corpProfileId = member.corporateProfileId as string | null;
+
+        if (!corpProfileId) {
+          throw Object.assign(
+            new Error("Tu perfil empresarial no está configurado. Contacta a tu empresa."),
+            { status: 400 }
+          );
+        }
+
+        // Fetch the corporate profile directly
+        const corpProfile = await tx.profile.findUnique({
+          where: { id: corpProfileId },
+        });
+
+        if (!corpProfile || corpProfile.profileType !== "corporate") {
+          throw Object.assign(
+            new Error("El perfil vinculado no es un perfil empresarial válido."),
+            { status: 400 }
+          );
+        }
+
+        // Verify the corporate profile belongs to this user's account
+        const userProfile = await tx.profile.findUnique({
+          where: { userId },
+          select: { accountId: true },
+        });
+
+        if (!userProfile) {
+          throw Object.assign(
+            new Error("No se encontró tu perfil de usuario."),
+            { status: 400 }
+          );
+        }
+
+        if (corpProfile.accountId !== userProfile.accountId) {
+          throw Object.assign(
+            new Error("Este chip corporativo no pertenece a tu cuenta."),
+            { status: 403 }
+          );
+        }
+
+        if (!AccountStateService.isMedicalProfileComplete(corpProfile)) {
+          throw Object.assign(
+            new Error("Completa tu perfil empresarial (nombre, apellido y tipo de sangre) antes de activar este chip."),
+            { status: 400 }
+          );
+        }
+
+        assignedProfileId = corpProfileId;
+      } else {
+        // === NORMAL ACTIVATION FLOW (unchanged) ===
+        const profile = await tx.profile.findFirst({
+          where: { userId }
+        });
+
+        if (!profile || !AccountStateService.isMedicalProfileComplete(profile)) {
+          throw Object.assign(
+            new Error("Debes completar tu perfil médico (nombre, apellido y tipo de sangre) antes de activar un chip"),
+            { status: 400 }
+          );
+        }
+
+        assignedProfileId = profile.id;
       }
 
       // Activate the chip within transaction (conditional to prevent races)
@@ -152,7 +235,7 @@ export async function POST(req: NextRequest) {
           status: CHIP_STATUS.ACTIVATED,
           ownerUserId: userId,
           accountId: targetAccountId,
-          assignedProfileId: profile.id,
+          assignedProfileId,
           activatedAt: now,
           serviceStartDate: now,
           serviceEndDate: serviceEndDate,
@@ -176,10 +259,7 @@ export async function POST(req: NextRequest) {
       }
 
       // [Fase5-Corporate] Mark corporate order items as activated if this chip was assigned to them
-      const corporateItems = await tx.corporateOrderEmployeeItem.findMany({
-        where: { chipId: claimToken.chipId },
-      });
-      if (corporateItems.length > 0) {
+      if (corporateItem) {
         await tx.corporateOrderEmployeeItem.updateMany({
           where: { chipId: claimToken.chipId },
           data: { fulfillmentStatus: "activated", activatedAt: now },
