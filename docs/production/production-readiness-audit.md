@@ -6,7 +6,7 @@
 - El sistema está funcional y avanzado para operación real, pero aún hay riesgos críticos en seguridad operativa y gobernanza de producción.
 - Clasificación global:
   - **OK**: flujo core (approve/assign-direct/activate/rehabilitate), privacidad pública principal, recuperación de cuenta con anti-enumeración.
-  - **WARNING**: observabilidad básica, gobernanza de secretos/operación incompleta, y dependencia obligatoria de Upstash en producción para rate limiting.
+  - **WARNING**: observabilidad básica y gobernanza de secretos/operación incompleta.
   - **WARNING**: endpoint admin legacy (`PATCH/DELETE /api/admin/orders`) aún existente, pero con guardrails reforzados.
 
 ---
@@ -58,9 +58,9 @@
 1. Login, forgot-password, reset-password y perfil público sí tienen rate limit.
    - Estado: **OK**
 
-2. `lib/rateLimit.ts` fue endurecido: en producción ya no usa fallback in-memory.
-   - Política aplicada: **fail closed** si Upstash falta o falla (bloquea request con `allowed=false`).
-   - Estado: **OK**
+2. `lib/rateLimit.ts` usa Upstash cuando está disponible y cae a fallback in-memory cuando falta/falla.
+   - Riesgo residual: en producción distribuida, fallback in-memory tiene semántica por instancia.
+   - Estado: **WARNING**
 
 3. Endpoints admin mutantes críticos no muestran rate limit específico por operación sensible.
    - Estado: **WARNING**
@@ -184,7 +184,7 @@
 ## 12) Riesgos P0 (bloqueantes)
 
 1. **WARNING** — `PATCH/DELETE /api/admin/orders` legacy aún existente (con guardrails C6C).
-2. **WARNING** — Dependencia fuerte de Upstash para rate limiting en producción (si falla, política fail-closed puede degradar disponibilidad).
+2. **WARNING** — Si Upstash no está disponible, el fallback in-memory en producción distribuida puede reducir efectividad global del rate limit.
 
 ---
 
@@ -207,7 +207,7 @@
 ## 15) Checklist antes de lanzamiento
 
 - [x] Endurecer política CORS para API pública de perfil.
-- [x] Definir estrategia segura cuando Upstash no esté disponible en producción (sin fallback inseguro multi-instancia).
+- [ ] Definir estrategia definitiva de rate limit distribuido en producción (Upstash recomendado) y plan de contingencia.
 - [ ] Reducir superficie operativa de `PATCH/DELETE /api/admin/orders` (control estricto de uso legacy).
 - [ ] Formalizar runbook operativo de incidentes/alertas (Sentry + canales).
 - [ ] Consolidar guía de secretos/env por entorno y responsables.
@@ -221,7 +221,7 @@
 
 Condición para pasar a **GO controlado**:
 
-1. Mantener alta disponibilidad de Upstash (monitoreo + alertas) para evitar degradación por fail-closed.
+1. Mantener Upstash como backend recomendado para rate limit distribuido y evitar depender de fallback in-memory en producción.
 2. Completar reducción gradual C10B..C10E para disminuir superficie legacy de admin orders.
 
 Con esos tres resueltos y validación E2E documentada, el sistema puede entrar en despliegue controlado por fases.

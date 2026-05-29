@@ -30,9 +30,6 @@ export const authOptions: NextAuthOptions = {
         const ip = getClientIp(req ?? {}, "auth-login");
         const limiter = await rateLimit("login", ip, { limit: 10, windowMs: 60_000 * 15 });
         if (!limiter.allowed) {
-          if (limiter.errorCode === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
-            throw new Error("RATE_LIMIT_BACKEND_UNAVAILABLE");
-          }
           throw new Error("Demasiados intentos. Intenta de nuevo más tarde.");
         }
 
