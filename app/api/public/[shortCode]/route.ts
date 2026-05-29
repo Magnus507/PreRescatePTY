@@ -118,7 +118,7 @@ export async function GET(
       });
     }
 
-    const profile = chip.assignedProfile as any;
+    const profile = chip.assignedProfile;
     const orgMember = profile.organizationMembers?.[0] || null;
 
     // Check if this is a corporate profile with inactive benefit
