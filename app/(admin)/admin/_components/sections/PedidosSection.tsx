@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2, ExternalLink, ImageIcon } from "lucide-react";
+import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2, ExternalLink, ImageIcon, Building2, Clock, Wrench, CheckCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
@@ -370,6 +370,11 @@ export function PedidosSection() {
                   <div className="flex items-center gap-3">
                      <div className="flex items-center gap-2">
                        <h2 className="text-2xl font-black uppercase tracking-tighter" title={selectedOrder.orderNumber}>Pedido #{selectedOrder.orderNumber}</h2>
+                       {selectedOrder.orderType === "corporate_employee_purchase" && (
+                         <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-widest inline-flex items-center gap-1">
+                           <Building2 className="h-3.5 w-3.5" /> Corporativo
+                         </span>
+                       )}
                        <button
                          type="button"
                          onClick={() => copyOrderNumber(selectedOrder.orderNumber)}
@@ -874,9 +879,14 @@ export function PedidosSection() {
                   return true;
                 }).map(o => (
                    <tr key={o.id} className="hover:bg-accent/30 transition-all">
-                      <td className="p-3 pl-5">
-                         <div className="flex items-center gap-2">
+                      <td className={`p-3 pl-5 ${o.orderType === "corporate_employee_purchase" ? "border-l-4 border-l-blue-400" : ""}`}>
+                         <div className="flex items-center gap-2 flex-wrap">
                            <p className="font-mono font-bold text-sm break-all" title={o.orderNumber}>#{o.orderNumber}</p>
+                           {o.orderType === "corporate_employee_purchase" && (
+                             <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold uppercase tracking-widest inline-flex items-center gap-1">
+                               <Building2 className="h-3 w-3" /> Corporativo
+                             </span>
+                           )}
                            <button
                              type="button"
                              onClick={() => copyOrderNumber(o.orderNumber)}
@@ -891,6 +901,11 @@ export function PedidosSection() {
                       <td className="p-3">
                          <p className="font-black text-sm">{o.customerName || "—"}</p>
                          {o.customerDocument && <p className="text-xs text-muted-foreground">{o.customerDocument}</p>}
+                         {o.orderType === "corporate_employee_purchase" && (
+                           <p className="text-[10px] font-bold text-blue-600 mt-1 inline-flex items-center gap-1">
+                             <Building2 className="h-3 w-3" /> Empresa
+                           </p>
+                         )}
                       </td>
                       <td className="p-3 space-y-1">
                          {o.customerEmail && <p className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded max-w-fit truncate">{o.customerEmail}</p>}
@@ -902,8 +917,21 @@ export function PedidosSection() {
                       </td>
                       <td className="p-3">
                          <p className="font-black text-base text-primary">${o.amount.toFixed(2)}</p>
-                         <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0]?.productType || "Combo no especificado"}</p>
-                         <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${o.items[0].quantity} chip${o.items[0].quantity === 1 ? "" : "s"} incluido${o.items[0].quantity === 1 ? "" : "s"}` : "0 chips incluidos"}</p>
+                         {o.orderType === "corporate_employee_purchase" && o.corporateEmployeeItems ? (
+                           <>
+                             <p className="text-[10px] font-black uppercase text-muted-foreground">
+                               {o.corporateEmployeeItems.length} empleado{o.corporateEmployeeItems.length === 1 ? "" : "s"}
+                             </p>
+                             <p className="text-[10px] font-black uppercase text-muted-foreground">
+                               {o.corporateEmployeeItems.reduce((s, i) => s + (i.product?.name ? 1 : 0), 0)} producto{o.corporateEmployeeItems.reduce((s, i) => s + (i.product?.name ? 1 : 0), 0) === 1 ? "" : "s"}
+                             </p>
+                           </>
+                         ) : (
+                           <>
+                             <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0]?.productType || "Combo no especificado"}</p>
+                             <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${o.items[0].quantity} chip${o.items[0].quantity === 1 ? "" : "s"} incluido${o.items[0].quantity === 1 ? "" : "s"}` : "0 chips incluidos"}</p>
+                           </>
+                         )}
                       </td>
                       <td className="p-3">
                          {getStatusBadge(o.orderStatus, o.paymentStatus)}
