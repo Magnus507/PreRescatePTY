@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const { id } = await params;
     const body = await req.json();
-    const { name, description, price, category, stock, image, isActive } = body;
+    const { name, description, price, category, stock, image, isActive, productType, estimatedProductionTime, requiresPersonalization } = body;
 
     const product = await prisma.product.update({
       where: { id },
@@ -20,7 +20,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         category,
         stock: stock !== undefined ? parseInt(stock) : undefined,
         image,
-        isActive
+        isActive,
+        productType: productType !== undefined ? productType : undefined,
+        estimatedProductionTime: estimatedProductionTime !== undefined ? estimatedProductionTime : undefined,
+        requiresPersonalization: requiresPersonalization !== undefined ? requiresPersonalization : undefined
       }
     });
 

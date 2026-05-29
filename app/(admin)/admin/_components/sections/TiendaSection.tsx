@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Store, Plus, Package, DollarSign, Trash2, Edit3, Loader2, X, Image as ImageIcon } from "lucide-react";
+import { Store, Plus, Package, DollarSign, Trash2, Edit3, Loader2, X, Image as ImageIcon, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Product {
@@ -13,7 +13,28 @@ interface Product {
   stock: number;
   image: string | null;
   isActive: boolean;
+  productType: string;
+  estimatedProductionTime: string | null;
+  requiresPersonalization: boolean;
 }
+
+const PRODUCT_TYPES = [
+  { value: "sticker", label: "Sticker" },
+  { value: "llavero", label: "Llavero" },
+  { value: "tarjeta", label: "Tarjeta" },
+  { value: "brazalete", label: "Brazalete" },
+  { value: "combo", label: "Combo" },
+  { value: "otro", label: "Otro" },
+];
+
+const PRODUCT_TYPE_BADGES: Record<string, { color: string; label: string }> = {
+  sticker: { color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400", label: "Sticker" },
+  llavero: { color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400", label: "Llavero" },
+  tarjeta: { color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400", label: "Tarjeta" },
+  brazalete: { color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400", label: "Brazalete" },
+  combo: { color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400", label: "Combo" },
+  otro: { color: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400", label: "Otro" },
+};
 
 export function TiendaSection() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -28,7 +49,10 @@ export function TiendaSection() {
     price: "",
     category: "Accesorios",
     stock: "0",
-    image: ""
+    image: "",
+    productType: "otro",
+    estimatedProductionTime: "",
+    requiresPersonalization: false
   });
 
   const loadProducts = async () => {
@@ -65,7 +89,7 @@ export function TiendaSection() {
         toast.success(editingProduct ? "Producto actualizado" : "Producto creado");
         setShowModal(false);
         setEditingProduct(null);
-        setFormData({ name: "", description: "", price: "", category: "Accesorios", stock: "0", image: "" });
+        setFormData({ name: "", description: "", price: "", category: "Accesorios", stock: "0", image: "", productType: "otro", estimatedProductionTime: "", requiresPersonalization: false });
         loadProducts();
       } else {
         toast.error("Error al guardar producto");
@@ -98,7 +122,10 @@ export function TiendaSection() {
       price: p.price.toString(),
       category: p.category,
       stock: p.stock.toString(),
-      image: p.image || ""
+      image: p.image || "",
+      productType: p.productType || "otro",
+      estimatedProductionTime: p.estimatedProductionTime || "",
+      requiresPersonalization: p.requiresPersonalization
     });
     setShowModal(true);
   };
@@ -123,7 +150,7 @@ export function TiendaSection() {
         <button 
           onClick={() => {
             setEditingProduct(null);
-            setFormData({ name: "", description: "", price: "", category: "Accesorios", stock: "0", image: "" });
+            setFormData({ name: "", description: "", price: "", category: "Accesorios", stock: "0", image: "", productType: "otro", estimatedProductionTime: "", requiresPersonalization: false });
             setShowModal(true);
           }}
           className="px-8 py-4 bg-primary text-white text-[11px] font-black uppercase tracking-widest rounded-[1.5rem] hover:opacity-90 transition-all shadow-xl shadow-primary/20 flex items-center gap-2 group"
@@ -145,11 +172,31 @@ export function TiendaSection() {
                <div className="absolute top-4 right-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm">
                   {p.category}
                </div>
+               <div className="absolute bottom-4 left-4">
+                  <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest ${PRODUCT_TYPE_BADGES[p.productType]?.color || PRODUCT_TYPE_BADGES.otro.color}`}>
+                     {PRODUCT_TYPE_BADGES[p.productType]?.label || p.productType}
+                  </span>
+               </div>
             </div>
             
             <div className="p-8 flex-1 flex flex-col">
               <h3 className="text-xl font-black tracking-tight mb-2 truncate">{p.name}</h3>
-              <p className="text-xs text-slate-400 font-medium line-clamp-2 mb-6 flex-1">{p.description || "Sin descripción"}</p>
+              <p className="text-xs text-slate-400 font-medium line-clamp-2 mb-3 flex-1">{p.description || "Sin descripción"}</p>
+
+              <div className="flex flex-wrap gap-2 mb-6">
+                 {p.estimatedProductionTime && (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+                       <Clock className="h-3 w-3" />
+                       {p.estimatedProductionTime}
+                    </span>
+                 )}
+                 {p.requiresPersonalization && (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-full">
+                       <AlertTriangle className="h-3 w-3" />
+                       Personalizable
+                    </span>
+                 )}
+              </div>
               
               <div className="flex items-center justify-between mb-8">
                  <div className="flex flex-col">
@@ -204,6 +251,52 @@ export function TiendaSection() {
                  </div>
 
                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-2 block">Tipo de Producto</label>
+                       <select 
+                         value={formData.productType}
+                         onChange={e => setFormData({...formData, productType: e.target.value})}
+                         className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-sm focus:ring-4 focus:ring-primary/10 appearance-none cursor-pointer"
+                       >
+                         {PRODUCT_TYPES.map(pt => (
+                           <option key={pt.value} value={pt.value}>{pt.label}</option>
+                         ))}
+                       </select>
+                    </div>
+
+                    <div>
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-2 block">Tiempo de Fabricación</label>
+                       <div className="relative">
+                          <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <input 
+                            value={formData.estimatedProductionTime}
+                            onChange={e => setFormData({...formData, estimatedProductionTime: e.target.value})}
+                            className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-sm focus:ring-4 focus:ring-primary/10"
+                            placeholder="Ej: 3 a 5 días hábiles"
+                          />
+                       </div>
+                    </div>
+
+                    <div className="col-span-2 flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
+                       <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.requiresPersonalization}
+                            onChange={e => setFormData({...formData, requiresPersonalization: e.target.checked})}
+                            className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
+                          />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Requiere Personalización
+                          </span>
+                       </label>
+                       {formData.requiresPersonalization && (
+                          <span className="text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-1 rounded-full flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            El cliente deberá llenar datos adicionales
+                          </span>
+                       )}
+                    </div>
+                    
                     <div className="col-span-2">
                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-2 block">Nombre del Producto</label>
                        <input 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShoppingCart, Store, Package, Star, ArrowRight, Activity, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode } from "lucide-react";
+import { ShoppingCart, Store, Package, Star, ArrowRight, Activity, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -13,6 +13,9 @@ interface Product {
   category: string;
   stock: number;
   image: string | null;
+  productType: string;
+  estimatedProductionTime: string | null;
+  requiresPersonalization: boolean;
 }
 
 interface PaymentConfig {
@@ -134,23 +137,55 @@ export default function TiendaPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
           {products.map((p) => (
             <div key={p.id} className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 overflow-hidden group hover:shadow-2xl hover:shadow-slate-200/60 dark:hover:shadow-none transition-all flex flex-col">
-              <div className="aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center relative p-12 overflow-hidden transition-colors group-hover:bg-slate-100 dark:group-hover:bg-slate-700">
-                 <div className="absolute top-8 right-8 px-4 py-2 bg-white dark:bg-slate-900 shadow-xl rounded-2xl text-[10px] font-black uppercase tracking-widest z-10">
+              <div className="aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center relative p-8 md:p-12 overflow-hidden transition-colors group-hover:bg-slate-100 dark:group-hover:bg-slate-700">
+                 <div className="absolute top-4 right-4 md:top-8 md:right-8 px-3 md:px-4 py-1.5 md:py-2 bg-white dark:bg-slate-900 shadow-xl rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest z-10">
                    {p.category}
+                 </div>
+                 <div className="absolute bottom-4 left-4 z-10">
+                    <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg ${
+                      p.productType === 'sticker' ? 'bg-blue-500/90 text-white' :
+                      p.productType === 'llavero' ? 'bg-amber-500/90 text-white' :
+                      p.productType === 'tarjeta' ? 'bg-purple-500/90 text-white' :
+                      p.productType === 'brazalete' ? 'bg-emerald-500/90 text-white' :
+                      p.productType === 'combo' ? 'bg-rose-500/90 text-white' :
+                      'bg-slate-500/90 text-white'
+                    }`}>
+                      {p.productType === 'sticker' ? 'Sticker' :
+                       p.productType === 'llavero' ? 'Llavero' :
+                       p.productType === 'tarjeta' ? 'Tarjeta' :
+                       p.productType === 'brazalete' ? 'Brazalete' :
+                       p.productType === 'combo' ? 'Combo' :
+                       p.productType || 'Producto'}
+                    </span>
                  </div>
                  {p.image ? (
                    // eslint-disable-next-line @next/next/no-img-element
                    <img src={`/api/image-proxy?bucket=general&path=${encodeURIComponent(p.image.split('/').slice(-2).join('/'))}`} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" onError={(e) => { if (p.image) e.currentTarget.src = p.image; }} />
                  ) : (
-                   <Store className="h-24 w-24 text-slate-200 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700" />
+                   <Store className="h-20 w-20 md:h-24 md:w-24 text-slate-200 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700" />
                  )}
               </div>
-              <div className="p-10 flex-1 flex flex-col">
-                <h3 className="text-2xl font-black tracking-tighter mb-3 group-hover:text-primary transition-colors">{p.name}</h3>
-                <p className="text-sm text-slate-400 font-medium line-clamp-2 mb-8 flex-1 leading-relaxed">
+              <div className="p-6 md:p-10 flex-1 flex flex-col">
+                <h3 className="text-xl md:text-2xl font-black tracking-tighter mb-2 md:mb-3 group-hover:text-primary transition-colors">{p.name}</h3>
+                <p className="text-xs md:text-sm text-slate-400 font-medium line-clamp-2 mb-4 md:mb-6 flex-1 leading-relaxed">
                   {p.description || "Accesorio certificado de alta durabilidad."}
                 </p>
-                <div className="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-800">
+
+                {p.estimatedProductionTime && (
+                   <div className="flex items-center gap-2 mb-4 text-[10px] md:text-xs font-bold text-slate-500 bg-slate-50 dark:bg-slate-800 w-fit px-3 md:px-4 py-1.5 md:py-2 rounded-full">
+                      <Clock className="h-3 w-3 md:h-4 md:w-4" />
+                      {p.estimatedProductionTime}
+                   </div>
+                )}
+
+                {p.requiresPersonalization && (
+                   <div className="flex items-center gap-2 mb-4 text-[10px] md:text-xs font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 w-fit px-3 md:px-4 py-1.5 md:py-2 rounded-full">
+                      <AlertTriangle className="h-3 w-3 md:h-4 md:w-4" />
+                      Requiere personalización
+                   </div>
+                )}
+
+                <div className="flex items-center justify-between pt-4 md:pt-6 border-t border-slate-50 dark:border-slate-800">
                    <div className="flex flex-col">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Inversión</span>
                       <p className="text-3xl font-black text-primary italic leading-none">${p.price.toFixed(2)}</p>
