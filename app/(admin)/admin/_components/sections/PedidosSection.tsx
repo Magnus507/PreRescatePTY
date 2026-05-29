@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2, ExternalLink, ImageIcon, Building2, Clock, Wrench, CheckCheck, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon } from "lucide-react";
+import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2, ExternalLink, ImageIcon, Building2, Clock, Wrench, CheckCheck, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound } from "lucide-react";
 const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => ({ default: mod.QRCodeCanvas })), { ssr: false });
 import { toast } from "sonner";
 import Link from "next/link";
@@ -520,185 +520,224 @@ export function PedidosSection() {
                      </div>
                    )}
 
-                   {/* Colaboradores + fulfillment */}
-                   {(selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (
-                     <div className="rounded-[2rem] border border-indigo-200 bg-indigo-50/50 p-6 space-y-4">
-                       <div className="flex items-center gap-3">
-                         <div className="h-1.5 w-6 bg-indigo-500 rounded-full" />
-                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-700">
-                           Colaboradores incluidos — seguimiento operativo
-                         </h3>
-                       </div>
-                       <div className="space-y-3">
-                         {(selectedOrder as any).corporateEmployeeItems.map((item: CorporateEmployeeItem) => (
-                           <div key={item.id} className="bg-white rounded-xl border border-indigo-100 p-4 flex flex-col md:flex-row md:items-start justify-between gap-3">
-                             <div className="space-y-1 min-w-0 flex-1">
-                               <div className="flex items-center gap-2 flex-wrap">
-                                 <p className="font-semibold text-sm">
-                                   {item.organizationMember?.profile?.firstName || "—"} {item.organizationMember?.profile?.lastName || ""}
-                                 </p>
-                                 <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded font-bold">{item.product?.name || item.product?.productType || "Producto"}</span>
-                                 <span className="text-[9px] text-muted-foreground">x{item.quantity}</span>
-                               </div>
-                               <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground mt-1">
-                                 {item.product?.productType && <span className="bg-muted px-1.5 py-0.5 rounded font-bold uppercase">{item.product.productType}</span>}
-                                 {item.product?.estimatedProductionTime && <span className="bg-amber-50 px-1.5 py-0.5 rounded font-bold text-amber-700">Fabricación: {item.product.estimatedProductionTime}</span>}
-                                 {item.product?.requiresPersonalization && <span className="bg-purple-50 px-1.5 py-0.5 rounded font-bold text-purple-700">Requiere personalización</span>}
-                               </div>
-                               <div className="flex items-center gap-2 text-xs mt-1">
-                                 <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
-                                   item.fulfillmentStatus === "activated" ? "bg-emerald-100 text-emerald-700" :
-                                   item.fulfillmentStatus === "assigned_reserved" ? "bg-blue-100 text-blue-700" :
-                                   item.fulfillmentStatus === "in_production" ? "bg-purple-100 text-purple-700" :
-                                   item.fulfillmentStatus === "ready_for_assignment" ? "bg-teal-100 text-teal-700" :
-                                   item.fulfillmentStatus === "delivered" ? "bg-slate-200 text-slate-700" :
-                                   "bg-amber-100 text-amber-700"
-                                 }`}>
-                                   {item.fulfillmentStatus === "activated" ? "✔ Activado" :
-                                    item.fulfillmentStatus === "assigned_reserved" ? "🔷 Asignado / reservado" :
-                                    item.fulfillmentStatus === "in_production" ? "⚙ En fabricación" :
-                                    item.fulfillmentStatus === "ready_for_assignment" ? "✅ Listo" :
-                                    item.fulfillmentStatus === "delivered" ? "📦 Entregado" :
-                                    "⏳ Pendiente"}
-                                 </span>
-                                 {item.chip && (
-                                   <span className="font-mono text-muted-foreground">
-                                     Chip: {item.chip.shortCode} ({item.chip.serialPublic})
-                                   </span>
-                                 )}
-                                 {item.activatedAt && (
-                                   <span className="text-muted-foreground">Act.: {new Date(item.activatedAt).toLocaleDateString()}</span>
-                                 )}
-                                 <span className="text-muted-foreground">${item.subtotal?.toFixed(2)}</span>
-                               </div>
-                             </div>
+                    {/* Colaboradores — grouped by collaborator */}
+                    {(selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (() => {
+                      const items = (selectedOrder as any).corporateEmployeeItems as CorporateEmployeeItem[];
+                      // Group by organizationMemberId
+                      const groups = new Map<string, CorporateEmployeeItem[]>();
+                      for (const item of items) {
+                        const mid = item.organizationMember?.id || "unknown";
+                        if (!groups.has(mid)) groups.set(mid, []);
+                        groups.get(mid)!.push(item);
+                      }
+                      const total = groups.size;
+                      const completed = Array.from(groups.values()).filter(g => g.every(i => i.fulfillmentStatus === "delivered" || i.fulfillmentStatus === "activated")).length;
 
-                             <div className="flex flex-col items-end gap-2 shrink-0">
-                               {/* QR / Link operativo */}
-                               {item.chip?.shortCode && (
-                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 w-full max-w-[220px] mb-2">
-                                   <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">QR / Link operativo</p>
-                                   <div className="flex items-center justify-center mb-2">
-                                     {typeof window !== "undefined" && (
-                                       <div className="bg-white p-1 rounded-lg border border-slate-100">
-                                         <QRCodeCanvas value={`${window.location.origin}/e/${item.chip.shortCode}`} size={64} />
-                                       </div>
-                                     )}
-                                   </div>
-                                   <p className="text-[9px] font-mono text-center truncate bg-white px-1 py-0.5 rounded border border-slate-100">
-                                     /e/{item.chip.shortCode}
-                                   </p>
-                                   <div className="flex gap-1 mt-1.5 justify-center">
-                                     <button
-                                       onClick={async () => {
-                                         const url = `${window.location.origin}/e/${item.chip!.shortCode}`;
-                                         try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
-                                         catch { toast.error("No se pudo copiar"); }
-                                       }}
-                                       className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[8px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1"
-                                     ><Copy className="h-3 w-3" /> Copiar</button>
-                                     <a
-                                       href={`/e/${item.chip.shortCode}`}
-                                       target="_blank"
-                                       className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[8px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1"
-                                     ><ExternalLinkIcon className="h-3 w-3" /> Abrir</a>
-                                     <button
-                                       onClick={() => {
-                                         const canvas = document.querySelector(`#qr-${item.id}`) as HTMLCanvasElement | null;
-                                         downloadQR(canvas, item.chip!.shortCode);
-                                       }}
-                                       className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[8px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1"
-                                     ><Download className="h-3 w-3" /> QR</button>
-                                   </div>
-                                 </div>
-                               )}
+                      return (
+                      <div className="rounded-[2rem] border border-indigo-200 bg-indigo-50/50 p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-1.5 w-6 bg-indigo-500 rounded-full" />
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-700">
+                              Colaboradores — seguimiento operativo
+                            </h3>
+                          </div>
+                          <span className="px-3 py-1 bg-white rounded-full text-[9px] font-bold border border-indigo-200">
+                            {completed}/{total} completados
+                          </span>
+                        </div>
 
-                               {/* Fulfillment buttons */}
-                               {(item.fulfillmentStatus === "pending_assignment" || item.fulfillmentStatus === "in_production" || item.fulfillmentStatus === "ready_for_assignment") && (
-                                 <div className="flex flex-wrap gap-1 justify-end">
-                                   {item.fulfillmentStatus === "pending_assignment" && (
-                                     <button
-                                       onClick={async () => {
-                                         const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
-                                           method: "PATCH",
-                                           headers: { "Content-Type": "application/json" },
-                                           body: JSON.stringify({ fulfillmentStatus: "in_production" }),
-                                         });
-                                         if (res.ok) { toast.success("Marcado en fabricación"); loadOrders({ silent: true }); }
-                                         else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
-                                       }}
-                                       disabled={corporateAssigning === item.id}
-                                       className="px-2.5 py-1.5 rounded-lg bg-purple-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-purple-700 disabled:opacity-50"
-                                     >Fabricación</button>
-                                   )}
-                                   {item.fulfillmentStatus !== "ready_for_assignment" && (
-                                     <button
-                                       onClick={async () => {
-                                         const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
-                                           method: "PATCH",
-                                           headers: { "Content-Type": "application/json" },
-                                           body: JSON.stringify({ fulfillmentStatus: "ready_for_assignment" }),
-                                         });
-                                         if (res.ok) { toast.success("Marcado como listo"); loadOrders({ silent: true }); }
-                                         else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
-                                       }}
-                                       disabled={corporateAssigning === item.id}
-                                       className="px-2.5 py-1.5 rounded-lg bg-teal-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-teal-700 disabled:opacity-50"
-                                     >Listo</button>
-                                   )}
-                                   <button
-                                     onClick={async () => {
-                                       const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
-                                         method: "PATCH",
-                                         headers: { "Content-Type": "application/json" },
-                                         body: JSON.stringify({ fulfillmentStatus: "delivered" }),
-                                       });
-                                       if (res.ok) { toast.success("Marcado como entregado"); loadOrders({ silent: true }); }
-                                       else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
-                                     }}
-                                     disabled={corporateAssigning === item.id}
-                                     className="px-2.5 py-1.5 rounded-lg bg-slate-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-slate-700 disabled:opacity-50"
-                                   >Entregar</button>
-                                 </div>
-                               )}
+                        {completed === total && total > 0 && (
+                          <div className="rounded-xl bg-emerald-100 border border-emerald-200 px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-5 w-5 text-emerald-700" />
+                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                                Pedido operativo listo para entrega
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
-                               {/* No chip warning */}
-                               {!item.chip && item.product?.requiresPersonalization && item.fulfillmentStatus === "pending_assignment" && (
-                                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 max-w-[200px]">
-                                   <p className="text-[8px] font-bold text-amber-700">
-                                     Asigna un chip antes de fabricar si este producto llevará QR/NFC personalizado.
-                                   </p>
-                                 </div>
-                               )}
+                        <div className="space-y-3">
+                          {Array.from(groups.entries()).map(([memberId, groupItems]) => {
+                            const first = groupItems[0];
+                            const member = first?.organizationMember;
+                            const profile = member?.profile;
+                            const groupStatus = (() => {
+                              const allDone = groupItems.every(i => i.fulfillmentStatus === "delivered" || i.fulfillmentStatus === "activated");
+                              if (allDone) return { label: "Completado", color: "bg-emerald-100 text-emerald-700 border-emerald-200" };
+                              const anyProduction = groupItems.some(i => i.fulfillmentStatus === "in_production");
+                              if (anyProduction) return { label: "En fabricación", color: "bg-purple-100 text-purple-700 border-purple-200" };
+                              const allReady = groupItems.every(i => i.fulfillmentStatus === "ready_for_assignment" || i.fulfillmentStatus === "delivered" || i.fulfillmentStatus === "activated");
+                              if (allReady) return { label: "Listo", color: "bg-teal-100 text-teal-700 border-teal-200" };
+                              return { label: "Pendiente", color: "bg-amber-100 text-amber-700 border-amber-200" };
+                            })();
+                            const mainChip = groupItems.find(i => i.chip)?.chip || null;
 
-                               {/* Chip assignment */}
-                               {item.fulfillmentStatus === "pending_assignment" && (
-                                 <div className="flex items-center gap-2 mt-1">
-                                   <select className="border border-indigo-200 rounded-lg px-2 py-1 text-[9px] font-bold bg-white min-w-[140px]"
-                                     value={selectedChipForItem[item.id] || ""}
-                                     onChange={(e) => setSelectedChipForItem((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                                     disabled={corporateAssigning === item.id}
-                                   >
-                                     <option value="">Chip...</option>
-                                     {availableChips.map((chip) => (
-                                       <option key={chip.id} value={chip.id}>{chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""}</option>
-                                     ))}
-                                     {availableChips.length === 0 && <option value="" disabled>Sin chips disponibles</option>}
-                                   </select>
-                                   <button onClick={() => { const chipId = selectedChipForItem[item.id]; if (chipId) handleCorporateAssign(item, chipId); }}
-                                     disabled={corporateAssigning === item.id || !selectedChipForItem[item.id]}
-                                     className="px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 inline-flex items-center gap-1"
-                                   >
-                                     {corporateAssigning === item.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Asignar chip"}
-                                   </button>
-                                 </div>
-                               )}
-                             </div>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   )}
+                            return (
+                              <div key={memberId} className={`bg-white rounded-xl border overflow-hidden ${
+                                groupStatus.label === "Completado" ? "border-emerald-200 bg-emerald-50/30" : "border-indigo-100"
+                              }`}>
+                                {/* Header */}
+                                <div className="flex items-center justify-between p-4">
+                                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div className="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-black shrink-0">
+                                      <UserRound className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="font-black text-sm">
+                                          {profile?.firstName || "—"} {profile?.lastName || ""}
+                                        </p>
+                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${groupStatus.color}`}>
+                                          {groupStatus.label}
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] text-muted-foreground">
+                                        <span>{groupItems.length} producto{groupItems.length === 1 ? "" : "s"}</span>
+                                        {mainChip && (
+                                          <span className="font-mono text-indigo-600">QR: /e/{mainChip.shortCode}</span>
+                                        )}
+                                        {!mainChip && (
+                                          <span className="text-amber-600 font-bold uppercase tracking-widest">Sin chip</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Products */}
+                                <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+                                  {groupItems.map((item: CorporateEmployeeItem) => (
+                                    <div key={item.id} className="flex flex-col md:flex-row md:items-start justify-between gap-3 pl-14">
+                                      <div className="space-y-1 min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-[11px] font-bold">{item.product?.name || item.product?.productType || "Producto"}</span>
+                                          <span className="text-[9px] text-muted-foreground">x{item.quantity}</span>
+                                          <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
+                                            item.fulfillmentStatus === "activated" ? "bg-emerald-100 text-emerald-700" :
+                                            item.fulfillmentStatus === "assigned_reserved" ? "bg-blue-100 text-blue-700" :
+                                            item.fulfillmentStatus === "in_production" ? "bg-purple-100 text-purple-700" :
+                                            item.fulfillmentStatus === "ready_for_assignment" ? "bg-teal-100 text-teal-700" :
+                                            item.fulfillmentStatus === "delivered" ? "bg-slate-200 text-slate-700" :
+                                            "bg-amber-100 text-amber-700"
+                                          }`}>
+                                            {item.fulfillmentStatus === "activated" ? "✔ Activado" :
+                                             item.fulfillmentStatus === "assigned_reserved" ? "🔷 Asignado" :
+                                             item.fulfillmentStatus === "in_production" ? "⚙ Fabricación" :
+                                             item.fulfillmentStatus === "ready_for_assignment" ? "✅ Listo" :
+                                             item.fulfillmentStatus === "delivered" ? "📦 Entregado" :
+                                             "⏳ Pendiente"}
+                                          </span>
+                                        </div>
+                                        {item.product?.productType && (
+                                          <span className="text-[8px] bg-muted px-1.5 py-0.5 rounded font-bold uppercase text-muted-foreground">{item.product.productType}</span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex flex-col items-end gap-2 shrink-0">
+                                        {/* Fulfillment buttons */}
+                                        {(item.fulfillmentStatus === "pending_assignment" || item.fulfillmentStatus === "in_production" || item.fulfillmentStatus === "ready_for_assignment") && (
+                                          <div className="flex flex-wrap gap-1 justify-end">
+                                            {item.fulfillmentStatus === "pending_assignment" && (
+                                              <button onClick={async () => {
+                                                const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                                  method: "PATCH", headers: { "Content-Type": "application/json" },
+                                                  body: JSON.stringify({ fulfillmentStatus: "in_production" }),
+                                                });
+                                                if (res.ok) { toast.success("Marcado en fabricación"); loadOrders({ silent: true }); }
+                                                else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                              }} className="px-2 py-1 rounded-lg bg-purple-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-purple-700">Fabricación</button>
+                                            )}
+                                            {item.fulfillmentStatus !== "ready_for_assignment" && (
+                                              <button onClick={async () => {
+                                                const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                                  method: "PATCH", headers: { "Content-Type": "application/json" },
+                                                  body: JSON.stringify({ fulfillmentStatus: "ready_for_assignment" }),
+                                                });
+                                                if (res.ok) { toast.success("Marcado listo"); loadOrders({ silent: true }); }
+                                                else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                              }} className="px-2 py-1 rounded-lg bg-teal-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-teal-700">Listo</button>
+                                            )}
+                                            <button onClick={async () => {
+                                              const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                                method: "PATCH", headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ fulfillmentStatus: "delivered" }),
+                                              });
+                                              if (res.ok) { toast.success("Marcado entregado"); loadOrders({ silent: true }); }
+                                              else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                            }} className="px-2 py-1 rounded-lg bg-slate-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-slate-700">Entregar</button>
+                                          </div>
+                                        )}
+
+                                        {/* Chip assignment */}
+                                        {item.fulfillmentStatus === "pending_assignment" && (
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <select className="border border-indigo-200 rounded-lg px-2 py-1 text-[8px] font-bold bg-white min-w-[120px]"
+                                              value={selectedChipForItem[item.id] || ""}
+                                              onChange={(e) => setSelectedChipForItem((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                            >
+                                              <option value="">Chip principal...</option>
+                                              {availableChips.map((chip: { id: string; shortCode: string; internalLabel: string | null }) => (
+                                                <option key={chip.id} value={chip.id}>{chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""}</option>
+                                              ))}
+                                              {availableChips.length === 0 && <option value="" disabled>Sin chips</option>}
+                                            </select>
+                                            <button onClick={() => { const cid = selectedChipForItem[item.id]; if (cid) handleCorporateAssign(item, cid); }}
+                                              disabled={!selectedChipForItem[item.id]}
+                                              className="px-2 py-1 bg-indigo-600 text-white rounded-lg font-black text-[8px] uppercase tracking-widest hover:bg-indigo-700"
+                                            >Asignar</button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* QR principal del colaborador */}
+                                {mainChip && (
+                                  <div className="px-4 pb-4">
+                                    <div className="ml-14 bg-slate-50 border border-slate-200 rounded-xl p-3 inline-flex items-center gap-4">
+                                      <div className="bg-white p-1 rounded-lg border border-slate-100">
+                                        {typeof window !== "undefined" && (
+                                          <QRCodeCanvas value={`${window.location.origin}/e/${mainChip.shortCode}`} size={56} />
+                                        )}
+                                      </div>
+                                      <div>
+                                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">QR / Link principal</p>
+                                        <p className="text-[10px] font-mono truncate max-w-[120px] bg-white px-1 py-0.5 rounded border border-slate-100">/e/{mainChip.shortCode}</p>
+                                        <div className="flex gap-1 mt-1.5">
+                                          <button onClick={async () => {
+                                            const url = `${window.location.origin}/e/${mainChip.shortCode}`;
+                                            try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
+                                            catch { toast.error("No se pudo copiar"); }
+                                          }} className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-[7px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1"><Copy className="h-2.5 w-2.5" /> Copiar</button>
+                                          <a href={`/e/${mainChip.shortCode}`} target="_blank" className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-[7px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1"><ExternalLinkIcon className="h-2.5 w-2.5" /> Abrir</a>
+                                          <button onClick={() => {
+                                            const canvas = document.querySelector(`#qr-group-${memberId}`) as HTMLCanvasElement | null;
+                                            if (canvas) {
+                                              const url = canvas.toDataURL("image/png");
+                                              const a = document.createElement("a");
+                                              a.href = url; a.download = `qr-${mainChip.shortCode}.png`; a.click();
+                                            }
+                                          }} className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-[7px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1"><Download className="h-2.5 w-2.5" /> QR</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {typeof window !== "undefined" && (
+                                      <div className="hidden">
+                                        <QRCodeCanvas id={`qr-group-${memberId}`} value={`${window.location.origin}/e/${mainChip.shortCode}`} size={256} />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      );
+                    })()}
                  </div>
                )}
 

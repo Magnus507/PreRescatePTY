@@ -52,8 +52,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         tokenExpiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
       });
 
-      await tx.corporateOrderEmployeeItem.update({
-        where: { id: corporateOrderItemId },
+      // Assign chip to ALL items of the same collaborator in this order
+      const collaboratorItems = await tx.corporateOrderEmployeeItem.findMany({
+        where: {
+          orderId: order.id,
+          organizationMemberId: item.organizationMemberId,
+        },
+      });
+
+      await tx.corporateOrderEmployeeItem.updateMany({
+        where: {
+          orderId: order.id,
+          organizationMemberId: item.organizationMemberId,
+        },
         data: {
           chipId,
           fulfillmentStatus: "assigned_reserved",
