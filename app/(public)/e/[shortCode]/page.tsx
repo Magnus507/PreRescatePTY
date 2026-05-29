@@ -276,9 +276,10 @@ export default function EmergencyPage() {
             <div className="bg-white/20 backdrop-blur-xl rounded-[2.5rem] w-28 h-28 flex items-center justify-center mx-auto border border-white/30 shadow-2xl">
               <Activity className="h-14 w-14 text-white animate-pulse" />
             </div>
-            <div className="space-y-2">
-                <h1 className="text-4xl font-black uppercase tracking-tighter italic text-white leading-none">Triaje de Emergencia</h1>
-                <p className="text-red-100/70 font-bold uppercase tracking-widest text-[10px]">PreRescate Panama | Protocolo V.2</p>
+            <div className="space-y-1">
+                <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-none">
+                  PRE RESCUE ID
+                </h1>
             </div>
           </div>
           
@@ -305,11 +306,12 @@ export default function EmergencyPage() {
             </button>
           </div>
 
-          <div className="pt-8 flex items-center justify-center gap-10 opacity-40">
+          <div className="pt-4 flex items-center justify-center gap-10 opacity-40">
                 <div className="h-px bg-white flex-1" />
                 <Droplets className="h-5 w-5" />
                 <div className="h-px bg-white flex-1" />
           </div>
+          <p className="text-xs text-white/40 font-black uppercase tracking-[0.35em] -mt-4">PreRescate Panamá</p>
         </div>
       </div>
     );
