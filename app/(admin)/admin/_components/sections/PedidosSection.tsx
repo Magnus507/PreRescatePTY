@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2, ExternalLink, ImageIcon, Building2, Clock, Wrench, CheckCheck, XCircle } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2, ExternalLink, ImageIcon, Building2, Clock, Wrench, CheckCheck, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon } from "lucide-react";
+const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => ({ default: mod.QRCodeCanvas })), { ssr: false });
 import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
@@ -356,6 +358,15 @@ export function PedidosSection() {
     );
   }
 
+  const downloadQR = (canvas: HTMLCanvasElement | null, label: string) => {
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `qr-${label.replace(/[^a-zA-Z0-9]/g, "-")}.png`;
+    a.click();
+  };
+
   if (selectedOrder) {
     const isCorporateOrder = selectedOrder.orderType === "corporate_employee_purchase";
     return (
@@ -563,6 +574,45 @@ export function PedidosSection() {
                              </div>
 
                              <div className="flex flex-col items-end gap-2 shrink-0">
+                               {/* QR / Link operativo */}
+                               {item.chip?.shortCode && (
+                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 w-full max-w-[220px] mb-2">
+                                   <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">QR / Link operativo</p>
+                                   <div className="flex items-center justify-center mb-2">
+                                     {typeof window !== "undefined" && (
+                                       <div className="bg-white p-1 rounded-lg border border-slate-100">
+                                         <QRCodeCanvas value={`${window.location.origin}/e/${item.chip.shortCode}`} size={64} />
+                                       </div>
+                                     )}
+                                   </div>
+                                   <p className="text-[9px] font-mono text-center truncate bg-white px-1 py-0.5 rounded border border-slate-100">
+                                     /e/{item.chip.shortCode}
+                                   </p>
+                                   <div className="flex gap-1 mt-1.5 justify-center">
+                                     <button
+                                       onClick={async () => {
+                                         const url = `${window.location.origin}/e/${item.chip!.shortCode}`;
+                                         try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
+                                         catch { toast.error("No se pudo copiar"); }
+                                       }}
+                                       className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[8px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1"
+                                     ><Copy className="h-3 w-3" /> Copiar</button>
+                                     <a
+                                       href={`/e/${item.chip.shortCode}`}
+                                       target="_blank"
+                                       className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[8px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1"
+                                     ><ExternalLinkIcon className="h-3 w-3" /> Abrir</a>
+                                     <button
+                                       onClick={() => {
+                                         const canvas = document.querySelector(`#qr-${item.id}`) as HTMLCanvasElement | null;
+                                         downloadQR(canvas, item.chip!.shortCode);
+                                       }}
+                                       className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[8px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1"
+                                     ><Download className="h-3 w-3" /> QR</button>
+                                   </div>
+                                 </div>
+                               )}
+
                                {/* Fulfillment buttons */}
                                {(item.fulfillmentStatus === "pending_assignment" || item.fulfillmentStatus === "in_production" || item.fulfillmentStatus === "ready_for_assignment") && (
                                  <div className="flex flex-wrap gap-1 justify-end">
@@ -609,6 +659,15 @@ export function PedidosSection() {
                                      disabled={corporateAssigning === item.id}
                                      className="px-2.5 py-1.5 rounded-lg bg-slate-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-slate-700 disabled:opacity-50"
                                    >Entregar</button>
+                                 </div>
+                               )}
+
+                               {/* No chip warning */}
+                               {!item.chip && item.product?.requiresPersonalization && item.fulfillmentStatus === "pending_assignment" && (
+                                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 max-w-[200px]">
+                                   <p className="text-[8px] font-bold text-amber-700">
+                                     Asigna un chip antes de fabricar si este producto llevará QR/NFC personalizado.
+                                   </p>
                                  </div>
                                )}
 
