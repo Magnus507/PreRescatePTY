@@ -443,8 +443,7 @@ export default function EmergencyPage() {
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#DA1A21] to-red-600 rounded-[3.5rem] blur opacity-15 group-hover:opacity-25 transition duration-1000"></div>
                 <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-white shadow-2xl flex flex-col md:flex-row items-center gap-5 md:gap-8 overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 space-y-2 text-right hidden md:block">
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Vínculo Seguro</p>
-                         <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none">Verificado</p>
+                         {/* PRE-LAUNCH: badges visuales eliminados */}
                     </div>
 
                     {profile.photoUrl ? (
@@ -693,42 +692,8 @@ export default function EmergencyPage() {
             </div>
         </div>
 
-        <div className="pt-10 flex flex-col items-center gap-6">
-             <div className="flex items-center gap-8 opacity-20">
-                  <div className="h-px bg-slate-400 w-24" />
-                  <MapPin className="h-6 w-6 text-slate-600" />
-                  <div className="h-px bg-slate-400 w-24" />
-             </div>
-             <div className="text-center group cursor-default">
-                  {profile.isVerifiedAdmin ? (
-                    <div className="bg-red-600 text-white px-6 py-2 rounded-full mb-4 inline-block font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-red-200">
-                       Perfil de Demostración Oficial
-                    </div>
-                  ) : (
-                    <p className="text-[10px] text-slate-300 font-black tracking-[0.4em] uppercase mb-1">PRE-RESCATE PANAMÁ</p>
-                  )}
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest transition-all group-hover:text-[#DA1A21]">Intelligent Prevention Ecosystem v.2.4</p>
-             </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mt-8">
-          <div className="bg-white border border-slate-200 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Acceso Verificado</p>
-            <p className="mt-4 text-2xl font-black text-slate-900 uppercase tracking-tight">{normalizedSource === "nfc" ? "NFC Seguro" : "QR Seguro"}</p>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">Lectura registrada con prioridad de emergencia.</p>
-          </div>
-
-          <div className="bg-white border border-slate-200 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Última Actualización</p>
-            <p className="mt-4 text-2xl font-black text-slate-900 uppercase tracking-tight">{scanTime}</p>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">El evento de escaneo fue transmitido al servidor de emergencia.</p>
-          </div>
-
-          <div className="bg-white border border-slate-200 p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-            <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">Estado del Perfil</p>
-            <p className="mt-4 text-2xl font-black text-slate-900 uppercase tracking-tight">{profile.allergies ? "Alerta Médica" : "Sin Alertas Críticas"}</p>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">Información prioritaria disponible para el equipo de respuesta.</p>
-          </div>
+        <div className="pt-6 text-center">
+          <p className="text-[10px] text-slate-300 font-black tracking-[0.4em] uppercase">PRE-RESCATE PANAMÁ</p>
         </div>
       </main>
 
