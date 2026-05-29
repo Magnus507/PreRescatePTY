@@ -5,12 +5,6 @@ import { ShoppingCart, Store, Package, Star, ArrowRight, Activity, Loader2, X, M
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-const categories = [
-  {"name": "Hardware", "icon": Package, "color": "bg-blue-500"},
-  {"name": "Accesorios", "icon": Star, "color": "bg-amber-500"},
-  {"name": "Suscripciones", "icon": ShoppingCart, "color": "bg-primary"},
-];
-
 interface Product {
   id: string;
   name: string;
@@ -122,30 +116,18 @@ export default function TiendaPage() {
         </div>
       </div>
 
-      {/* Categories — sin "Explorar" */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {categories.map((cat) => (
-          <div key={cat.name} className="p-8 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex items-center gap-5 hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all cursor-pointer group">
-            <div className={`h-14 w-14 rounded-2xl ${cat.color} flex items-center justify-center text-white shadow-xl shadow-current/20 group-hover:rotate-6 group-hover:scale-110 transition-all`}>
-              <cat.icon className="h-7 w-7" />
-            </div>
-            <div>
-              <h3 className="text-xl font-black tracking-tight">{cat.name}</h3>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* Featured Products */}
       <div>
         <div className="flex items-center justify-between mb-10">
            <div>
-              <h2 className="text-4xl font-black tracking-tighter uppercase italic">
+              <h2 className="text-4xl font-black tracking-tighter uppercase">
                 <span className="text-brand">PRE</span>{' '}
                 <span className="text-slate-900 dark:text-white">RESCUE</span>{' '}
                 <span className="text-brand">ID</span>
               </h2>
-              <div className="h-1.5 w-12 bg-primary rounded-full mt-1" />
+              <p className="text-sm text-muted-foreground font-medium mt-1">
+                Tienda de accesorios <span className="text-brand">Pre</span>Rescue<span className="text-brand">ID</span>
+              </p>
            </div>
         </div>
 
@@ -348,8 +330,6 @@ export default function TiendaPage() {
            </div>
         </div>
       )}
-
-      {/* Modules Message — ocultado */}
     </div>
   );
 }

@@ -122,8 +122,11 @@ function ComprasContent() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-12">
       <div>
-        <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-1 uppercase">Tienda Chips +</h1>
-        <p className="text-muted-foreground font-medium text-sm">Solicita stickers NFC/QR para tus perfiles o reemplazos.</p>
+        <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-1 uppercase">
+          <span className="text-brand">PRE</span>{' '}
+          <span className="text-slate-900 dark:text-white">RESCUE</span>{' '}
+          <span className="text-brand">ID</span>
+        </h1>
       </div>
 
       <div className="flex flex-col xl:flex-row gap-6 xl:gap-10">
@@ -134,7 +137,7 @@ function ComprasContent() {
         <div className="order-first xl:order-last w-full xl:w-96 space-y-4">
           <div className="px-1">
             <h3 className="text-lg md:text-xl font-black tracking-tight mb-1">Compra tu Combo</h3>
-            <p className="text-xs font-bold text-muted-foreground leading-relaxed">Protege a todo tu entorno con un solo paquete.</p>
+            <p className="text-xs font-bold text-muted-foreground leading-relaxed">Stickers originales de alta resistencia. Vinculación vitalicia a nuestra red de asistencia nacional.</p>
           </div>
           
           <div className="space-y-3">
@@ -187,11 +190,10 @@ function ComprasContent() {
                  Combo Seleccionado
                </div>
              )}
-             <div className="h-14 w-14 md:h-20 md:w-20 rounded-2xl md:rounded-3xl flex items-center justify-center mb-6 md:mb-8 transition-colors ${selectedProduct.isCombo ? 'bg-indigo-600/10 text-indigo-600' : 'bg-primary/10 text-primary'}">
+             <div className="h-14 w-14 md:h-20 md:w-20 rounded-2xl md:rounded-3xl flex items-center justify-center mb-6 md:mb-8 transition-colors bg-primary/10 text-primary">
                 <ShoppingCart className="h-7 w-7 md:h-10 md:w-10" />
              </div>
              
-             <h2 className="text-2xl md:text-4xl font-black tracking-tight mb-2 md:mb-4">{selectedProduct.name}</h2>
              <p className="text-muted-foreground text-xs md:text-sm font-medium mb-8 md:mb-12 max-w-md leading-relaxed">Stickers originales de alta resistencia. Vinculación vitalicia a nuestra red de asistencia nacional.</p>
              
              <div className="flex items-center justify-between p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] bg-muted/50 border border-border mb-8 md:mb-12">
