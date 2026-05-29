@@ -19,6 +19,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
+  const search = searchParams.get("search")?.trim() || "";
 
   const allowedStatuses = [
     "pending_company_review",
@@ -31,11 +32,27 @@ export async function GET(req: Request) {
 
   const whereStatus = status && allowedStatuses.includes(status) ? status : undefined;
 
+  const where: any = {
+    organizationId: organization.id,
+  };
+
+  if (whereStatus) {
+    where.corporateStatus = whereStatus;
+  }
+
+  // Search by name, email, or cédula
+  if (search) {
+    const searchUpper = search.toUpperCase();
+    where.OR = [
+      { profile: { firstName: { contains: searchUpper, mode: "insensitive" } } },
+      { profile: { lastName: { contains: searchUpper, mode: "insensitive" } } },
+      { profile: { user: { email: { contains: search, mode: "insensitive" } } } },
+      { employeeNationalId: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
   const members = await prisma.organizationMember.findMany({
-    where: {
-      organizationId: organization.id,
-      corporateStatus: whereStatus,
-    },
+    where,
     include: {
       profile: {
         select: {

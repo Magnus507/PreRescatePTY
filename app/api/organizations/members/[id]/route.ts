@@ -29,9 +29,27 @@ export async function PATCH(
   }
 
   let corporateStatus: string;
-  if (action === "approve") corporateStatus = "approved_unpaid";
-  else if (action === "reject") corporateStatus = "rejected_by_company";
-  else return NextResponse.json({ error: "Acción no válida" }, { status: 400 });
+
+  switch (action) {
+    case "approve":
+      corporateStatus = "approved_unpaid";
+      break;
+    case "reject":
+      corporateStatus = "rejected_by_company";
+      break;
+    case "suspend":
+      corporateStatus = "suspended";
+      break;
+    case "unsuspend":
+      // If member had paid_active status before, go back to approved_unpaid
+      corporateStatus = "approved_unpaid";
+      break;
+    case "archive":
+      corporateStatus = "archived";
+      break;
+    default:
+      return NextResponse.json({ error: "Acción no válida" }, { status: 400 });
+  }
 
   const updated = await prisma.organizationMember.update({
     where: { id },

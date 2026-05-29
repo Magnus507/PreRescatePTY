@@ -493,14 +493,35 @@ export default function EmpresasPage() {
   }
 
   // ==================== CORPORATE ADMIN VIEW ====================
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!confirm("¿Seguro que deseas cancelar esta compra? Los empleados volverán a 'Aprobados sin pagar'.")) return;
+    setCancellingOrder(orderId);
+    try {
+      const res = await fetch(`/api/organizations/corporate-orders/${orderId}/cancel`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo cancelar");
+      toast.success("Compra cancelada");
+      await loadMembersByTab("pagos_enviados");
+    } catch (err: any) {
+      toast.error(err?.message || "No se pudo cancelar");
+    } finally {
+      setCancellingOrder(null);
+    }
+  };
   const tabs: { key: CorporateTab; label: string }[] = [
     { key: "solicitantes", label: "Solicitantes" },
     { key: "aprobados", label: "Aprobados sin pagar" },
     { key: "pagos_enviados", label: "Pagos enviados" },
-    { key: "rechazados", label: "Rechazados" },
     { key: "pagados", label: "Pagados / activos" },
-    { key: "suspendidos", label: "Suspendidos" },
+    { key: "rechazados", label: "Rechazados" },
     { key: "archivados", label: "Archivados" },
+    { key: "suspendidos", label: "Suspendidos" },
   ];
 
   return (
