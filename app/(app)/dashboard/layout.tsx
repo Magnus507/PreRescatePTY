@@ -37,7 +37,8 @@ const consumerShoppingItems = [
 
 // === CORPORATE Navigation ===
 const corporateNavItems = [
-  { href: "/dashboard/empresas", label: "Panel de Empresa", icon: Building2 },
+  { href: "/dashboard/empresa-perfil", label: "Perfil", icon: Building2 },
+  { href: "/dashboard/empresas", label: "Panel de Empresa", icon: Users },
   { href: "/dashboard/historial", label: "Historial de Escaneos", icon: Scan },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];

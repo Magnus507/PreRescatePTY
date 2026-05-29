@@ -7,6 +7,7 @@ import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archi
 type CorporateTab =
   | "solicitantes"
   | "aprobados"
+  | "pagos_enviados"
   | "rechazados"
   | "pagados"
   | "suspendidos"
@@ -309,6 +310,7 @@ export default function EmpresasPage() {
     const map: Record<CorporateTab, string | null> = {
       solicitantes: "pending_company_review",
       aprobados: "approved_unpaid",
+      pagos_enviados: null,
       rechazados: "rejected_by_company",
       pagados: "paid_active",
       suspendidos: "suspended",
@@ -316,15 +318,15 @@ export default function EmpresasPage() {
     };
 
     const status = map[nextTab];
-    if (!status) return;
-    const res = await fetch(`/api/organizations/members?status=${status}`);
-    const json = await res.json();
-    if (res.ok) setMembers(json.members || []);
-
-    if (nextTab === "pagados") {
+    if (nextTab === "pagos_enviados" || nextTab === "pagados") {
       const ordersRes = await fetch("/api/organizations/corporate-orders");
       const ordersJson = await ordersRes.json();
       if (ordersRes.ok) setCorporateOrders(ordersJson.orders || []);
+      setMembers([]);
+    } else if (status) {
+      const res = await fetch(`/api/organizations/members?status=${status}`);
+      const json = await res.json();
+      if (res.ok) setMembers(json.members || []);
     }
   };
 
@@ -494,6 +496,7 @@ export default function EmpresasPage() {
   const tabs: { key: CorporateTab; label: string }[] = [
     { key: "solicitantes", label: "Solicitantes" },
     { key: "aprobados", label: "Aprobados sin pagar" },
+    { key: "pagos_enviados", label: "Pagos enviados" },
     { key: "rechazados", label: "Rechazados" },
     { key: "pagados", label: "Pagados / activos" },
     { key: "suspendidos", label: "Suspendidos" },
@@ -522,195 +525,53 @@ export default function EmpresasPage() {
         ))}
       </div>
 
-      <div className="rounded-2xl border p-4 md:p-5 bg-card space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="text-lg font-bold">Perfil empresarial</h2>
-          {publicProfile && (
-            <span className="text-xs px-2 py-1 rounded-full border">Estado: {publicProfile.status}</span>
+      {tab === "pagos_enviados" && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border p-4 bg-blue-50/30 border-blue-200">
+            <p className="text-xs font-semibold text-blue-700">
+              Compras corporativas enviadas con comprobante y pendientes de revisión por PreRescue ID.
+              Tu pago está en revisión. PreRescue ID aprobará o rechazará la compra.
+            </p>
+          </div>
+          {corporateOrders.filter(o =>
+            o.paymentStatus === "under_review" || o.adminReviewStatus === "pending"
+          ).length === 0 ? (
+            <div className="rounded-2xl border p-6 text-sm text-muted-foreground">Sin pagos enviados pendientes de revisión.</div>
+          ) : (
+            corporateOrders.filter(o =>
+              o.paymentStatus === "under_review" || o.adminReviewStatus === "pending"
+            ).map((order: any) => (
+              <div key={order.id} className="rounded-2xl border p-4 bg-card">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="font-bold text-sm">Orden #{order.orderNumber}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold">En revisión</span>
+                    <p className="font-black text-primary">${order.amount?.toFixed(2)}</p>
+                  </div>
+                </div>
+                {order.corporateEmployeeItems?.map((item: any) => (
+                  <div key={item.id} className="flex items-center gap-2 text-xs text-muted-foreground py-1 border-t border-dashed border-slate-100">
+                    <span className="font-semibold">{item.organizationMember?.profile?.firstName || "—"} {item.organizationMember?.profile?.lastName || ""}</span>
+                    <span>·</span>
+                    <span>{item.product?.name || "Producto"} x{item.quantity}</span>
+                    <span>·</span>
+                    <span>${item.subtotal?.toFixed(2)}</span>
+                  </div>
+                ))}
+                {order.paymentProofUrl && (
+                  <div className="mt-2 flex items-center gap-2 text-[10px] text-emerald-600 font-semibold">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Comprobante adjuntado
+                  </div>
+                )}
+              </div>
+            ))
           )}
         </div>
-
-        {!publicProfile ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Crea un perfil empresarial de cortesía para publicar información básica de tu organización.
-            </p>
-            <button
-              onClick={createPublicProfile}
-              disabled={publicLoading}
-              className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold"
-            >
-              {publicLoading ? "Creando..." : "Crear perfil empresarial"}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">Nombre público</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.displayName || ""} onChange={(e) => updateProfileField("displayName", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">Razón social</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.legalName || ""} onChange={(e) => updateProfileField("legalName", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">RUC</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.ruc || ""} onChange={(e) => updateProfileField("ruc", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">Rubro</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.industry || ""} onChange={(e) => updateProfileField("industry", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1 md:col-span-2">
-                <span className="text-xs text-muted-foreground">Descripción</span>
-                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.description || ""} onChange={(e) => updateProfileField("description", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1 md:col-span-2">
-                <span className="text-xs text-muted-foreground">Slogan</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.slogan || ""} onChange={(e) => updateProfileField("slogan", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">Teléfono</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.phone || ""} onChange={(e) => updateProfileField("phone", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">WhatsApp</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.whatsapp || ""} onChange={(e) => updateProfileField("whatsapp", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">Email</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.email || ""} onChange={(e) => updateProfileField("email", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">Website</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.website || ""} onChange={(e) => updateProfileField("website", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1 md:col-span-2">
-                <span className="text-xs text-muted-foreground">Dirección</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.address || ""} onChange={(e) => updateProfileField("address", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1 md:col-span-2">
-                <span className="text-xs text-muted-foreground">Servicios principales</span>
-                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.mainServices || ""} onChange={(e) => updateProfileField("mainServices", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1 md:col-span-2">
-                <span className="text-xs text-muted-foreground">Productos principales</span>
-                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.mainProducts || ""} onChange={(e) => updateProfileField("mainProducts", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">Contacto de seguridad</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.securityContactName || ""} onChange={(e) => updateProfileField("securityContactName", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">Teléfono de seguridad</span>
-                <input className="w-full border rounded-xl px-3 py-2" value={publicProfile.securityPhone || ""} onChange={(e) => updateProfileField("securityPhone", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1 md:col-span-2">
-                <span className="text-xs text-muted-foreground">Procedimiento de emergencia</span>
-                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.emergencyProcedure || ""} onChange={(e) => updateProfileField("emergencyProcedure", e.target.value)} />
-              </label>
-              <label className="text-sm space-y-1 md:col-span-2">
-                <span className="text-xs text-muted-foreground">Mensaje para empleados</span>
-                <textarea className="w-full border rounded-xl px-3 py-2" value={publicProfile.customEmployeeMessage || ""} onChange={(e) => updateProfileField("customEmployeeMessage", e.target.value)} />
-              </label>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold">Visibilidad por campo</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                {[
-                  ["showDisplayName", "Mostrar nombre público"],
-                  ["showLegalName", "Mostrar razón social"],
-                  ["showRuc", "Mostrar RUC"],
-                  ["showIndustry", "Mostrar rubro"],
-                  ["showDescription", "Mostrar descripción"],
-                  ["showSlogan", "Mostrar slogan"],
-                  ["showPhone", "Mostrar teléfono"],
-                  ["showWhatsapp", "Mostrar WhatsApp"],
-                  ["showEmail", "Mostrar email"],
-                  ["showWebsite", "Mostrar website"],
-                  ["showAddress", "Mostrar dirección"],
-                  ["showMainServices", "Mostrar servicios"],
-                  ["showMainProducts", "Mostrar productos"],
-                  ["showSecurityContactName", "Mostrar contacto de seguridad"],
-                  ["showSecurityPhone", "Mostrar teléfono de seguridad"],
-                  ["showEmergencyProcedure", "Mostrar procedimiento"],
-                  ["showCustomEmployeeMessage", "Mostrar mensaje a empleados"],
-                ].map(([field, label]) => (
-                  <label key={field} className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(publicProfile[field as keyof CorporatePublicProfile])}
-                      onChange={(e) => updateProfileField(field as keyof CorporatePublicProfile, e.target.checked)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={publicProfile.showCompanyCode}
-                  onChange={(e) => updateProfileField("showCompanyCode", e.target.checked)}
-                />
-                <span>Mostrar código empresarial</span>
-              </label>
-              <p className="text-xs text-amber-700">
-                Recomendado solo para espacios internos donde transiten empleados.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-              <label className="text-sm space-y-1">
-                <span className="text-xs text-muted-foreground">Estado público</span>
-                <select
-                  value={publicProfile.status}
-                  onChange={(e) => updateProfileField("status", e.target.value as CorporatePublicProfile["status"])}
-                  className="w-full border rounded-xl px-3 py-2"
-                >
-                  <option value="draft">draft</option>
-                  <option value="active">active</option>
-                  <option value="hidden">hidden</option>
-                </select>
-              </label>
-              <div className="sm:col-span-2">
-                <p className="text-xs text-muted-foreground">Link público</p>
-                <div className="flex gap-2 mt-1">
-                  <input className="flex-1 border rounded-xl px-3 py-2 text-sm" readOnly value={`/empresa/${publicProfile.shortCode}`} />
-                  <button
-                    onClick={async () => {
-                      try {
-                        const fullUrl = `${window.location.origin}/empresa/${publicProfile.shortCode}`;
-                        await navigator.clipboard.writeText(fullUrl);
-                        toast.success("Link copiado");
-                      } catch {
-                        toast.error("No se pudo copiar el link");
-                      }
-                    }}
-                    className="px-3 py-2 border rounded-xl text-sm font-semibold"
-                  >
-                    Copiar link
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <button
-                onClick={savePublicProfile}
-                disabled={savingPublic || publicLoading}
-                className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold"
-              >
-                {savingPublic ? "Guardando..." : "Guardar perfil empresarial"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {tab === "pagados" && (
         <div className="space-y-4">
