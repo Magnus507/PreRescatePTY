@@ -78,6 +78,105 @@ function normalizeSexLabel(sex: string) {
   return "No reportado";
 }
 
+/** Reusable profile hero card shared by citizen + paramedic views */
+function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfile; isParamedic?: boolean }) {
+  const hasAllergies = profile.allergies && profile.allergies.trim() && !profile.allergies.toLowerCase().includes("no report");
+  return (
+    <div className="relative group">
+      <div className="absolute -inset-1 bg-gradient-to-r from-[#DA1A21] to-red-600 rounded-[3.5rem] blur opacity-15 group-hover:opacity-25 transition duration-1000" />
+      <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-white shadow-2xl flex flex-col md:flex-row items-center gap-5 md:gap-8 overflow-hidden">
+        {/* Photo */}
+        {profile.photoUrl ? (
+          <div className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border-[4px] md:border-[6px] border-slate-50 shadow-2xl flex-shrink-0 relative group-hover:scale-105 transition-transform duration-500">
+            <img src={profile.photoUrl} alt={`Foto de ${profile.firstName}`} className="w-full h-full object-cover"
+              onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${profile.firstName}&background=DA1A21&color=fff&size=200`; }} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+          </div>
+        ) : (
+          <div className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-slate-100 flex items-center justify-center text-slate-300 flex-shrink-0 border-2 border-dashed border-slate-200">
+            <User className="h-14 w-14 md:h-20 md:w-20" />
+          </div>
+        )}
+
+        <div className="text-center md:text-left flex-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-full mb-3 border border-red-100">
+            <span className="text-[10px] font-black uppercase tracking-widest">Ficha de Emergencia</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-[0.9] tracking-tighter mb-1 uppercase">
+            {profile.firstName} <br /> {profile.lastName}
+          </h1>
+
+          {isParamedic && profile.isVerifiedAdmin && (
+            <div className="flex flex-col items-center md:items-start mb-6">
+              <div className="relative mb-2">
+                <Crown className="h-10 w-10 text-yellow-500 fill-yellow-500 animate-bounce" />
+                <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full" />
+              </div>
+              <div className="flex items-center gap-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white px-5 py-2 rounded-full border border-slate-700 shadow-2xl">
+                <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                <span className="text-[12px] font-black uppercase tracking-[0.2em] italic">Demo En Vivo</span>
+              </div>
+            </div>
+          )}
+
+          {profile.displayName !== `${profile.firstName} ${profile.lastName.charAt(0)}.` && (
+            <p className="text-sm font-black text-slate-400 mb-4 mt-1 uppercase tracking-widest">ALIAS: {profile.displayName}</p>
+          )}
+
+          {/* Blood / Age / Sex badges */}
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3">
+            <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-[#DA1A21] text-white rounded-xl md:rounded-2xl shadow-lg shadow-red-200">
+              <Droplets className="h-4 w-4 md:h-5 md:w-5 fill-white" />
+              <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SANGRE: {profile.bloodType}</span>
+            </div>
+            {profile.age !== null && (
+              <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-900 text-white rounded-xl md:rounded-2xl shadow-lg shadow-slate-200">
+                <Calendar className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Edad: {profile.age}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-50 text-slate-950 rounded-xl md:rounded-2xl border border-slate-300 shadow-sm">
+              <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SEXO: {profile.sex === 'M' ? 'MASCULINO' : profile.sex === 'F' ? 'FEMENINO' : 'NO REPORTADO'}</span>
+            </div>
+          </div>
+
+          {/* Medical on mobile */}
+          <div className="mt-4 space-y-2 md:hidden">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 text-red-600" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-red-700">Alergias</p>
+                  <p className="text-sm font-bold text-slate-900 break-words">{profile.allergies || "No reportado"}</p>
+                  {hasAllergies && <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-red-600">• Atención crítica</p>}
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
+              <div className="flex items-start gap-2">
+                <Activity className="mt-0.5 h-4 w-4 text-blue-600" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p>
+                  <p className="text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+              <div className="flex items-start gap-2">
+                <Pill className="mt-0.5 h-4 w-4 text-emerald-600" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p>
+                  <p className="text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CriticalMedicalSummary({ profile }: { profile: SummaryProfile }) {
   return (
     <div className="bg-white border border-slate-200 rounded-[2rem] p-4 shadow-lg space-y-3">
@@ -386,7 +485,45 @@ export default function EmergencyPage() {
         {/* Civil Protocol View */}
         {!isParamedic && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-            <CriticalMedicalSummary profile={profile} />
+            {/* Full profile hero card (shared with paramedic) */}
+            <PatientMedicalCard profile={profile} />
+
+            {/* Medical extras */}
+            {hasExtras && (
+              <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
+                <h3 className="text-sm font-black uppercase tracking-widest text-emerald-700">Información médica adicional</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {extras?.insuranceProvider && (
+                    <PublicExtraItem label="Aseguradora" value={extras.insuranceProvider} />
+                  )}
+                  {extras?.preferredHospital && (
+                    <PublicExtraItem label="Hospital preferido" value={extras.preferredHospital} />
+                  )}
+                  {extras?.primaryDoctorName && (
+                    <PublicExtraItem label="Médico tratante" value={extras.primaryDoctorName} />
+                  )}
+                </div>
+                {extras?.primaryDoctorPhone && (
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Teléfono del médico</p>
+                      <p className="text-sm font-bold text-slate-900">{extras.primaryDoctorPhone}</p>
+                    </div>
+                    <a href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white">
+                      <Phone className="h-4 w-4" /> Llamar médico
+                    </a>
+                  </div>
+                )}
+                {extras?.emergencyInstructions && (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Instrucciones especiales</p>
+                    <p className="text-sm font-semibold text-amber-900">{extras.emergencyInstructions}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Protocolo Ciudadano */}
             <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 space-y-8">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100">
