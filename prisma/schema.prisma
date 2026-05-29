@@ -221,6 +221,7 @@ model Chip {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   claimTokens       ChipClaimToken[]
+  corporateOrderItems CorporateOrderEmployeeItem[]
   scanEvents        ScanEvent[]
   notifications     Notification[]
   owner             User?            @relation(fields: [ownerUserId], references: [id])
@@ -579,6 +580,9 @@ model CorporateOrderEmployeeItem {
   orderId              String
   organizationMemberId String
   productId            String
+  chipId               String?
+  fulfillmentStatus    String             @default("pending_assignment")
+  activatedAt          DateTime?
   quantity             Int                @default(1)
   unitPrice            Float
   subtotal             Float
@@ -587,10 +591,13 @@ model CorporateOrderEmployeeItem {
   order              Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
   organizationMember OrganizationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
   product            Product            @relation(fields: [productId], references: [id])
+  chip               Chip?              @relation(fields: [chipId], references: [id])
 
   @@index([orderId])
   @@index([organizationMemberId])
   @@index([productId])
+  @@index([chipId])
+  @@index([fulfillmentStatus])
 }
 
 model DigitalPass {

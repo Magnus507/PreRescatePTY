@@ -39,9 +39,11 @@ export async function GET() {
       corporateEmployeeItems: {
         include: {
           product: { select: { id: true, name: true, productType: true } },
+          chip: { select: { id: true, shortCode: true, serialPublic: true, status: true, activatedAt: true } },
           organizationMember: {
             select: {
               id: true,
+              corporateStatus: true,
               profile: { select: { firstName: true, lastName: true } },
             },
           },

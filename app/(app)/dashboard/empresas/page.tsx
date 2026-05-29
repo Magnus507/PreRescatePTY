@@ -68,6 +68,7 @@ export default function EmpresasPage() {
   const [memberProducts, setMemberProducts] = useState<Record<string, { productId: string; quantity: number }[]>>({});
   const [paymentProofUrl, setPaymentProofUrl] = useState("");
   const [submittingCorporateOrder, setSubmittingCorporateOrder] = useState(false);
+  const [corporateOrders, setCorporateOrders] = useState<any[]>([]);
 
   const [form, setForm] = useState({
     companyCode: "",
@@ -250,7 +251,7 @@ export default function EmpresasPage() {
       rechazados: "rejected_by_company",
       pagados: "paid_active",
       suspendidos: "suspended",
-      archivados: "archived",
+      archivados: "archivados",
     };
 
     const status = map[nextTab];
@@ -258,6 +259,12 @@ export default function EmpresasPage() {
     const res = await fetch(`/api/organizations/members?status=${status}`);
     const json = await res.json();
     if (res.ok) setMembers(json.members || []);
+
+    if (nextTab === "pagados") {
+      const ordersRes = await fetch("/api/organizations/corporate-orders");
+      const ordersJson = await ordersRes.json();
+      if (ordersRes.ok) setCorporateOrders(ordersJson.orders || []);
+    }
   };
 
   const handleSubmitJoin = async (e: React.FormEvent) => {
@@ -560,7 +567,63 @@ export default function EmpresasPage() {
         )}
       </div>
 
-      {(tab === "pagados" || tab === "suspendidos" || tab === "archivados") && (
+      {tab === "pagados" && (
+        <div className="space-y-4">
+          {members.map((m) => {
+            const memberOrders = corporateOrders.filter((o: any) =>
+              o.corporateEmployeeItems?.some((item: any) => item.organizationMemberId === m.id)
+            );
+            const allItems = memberOrders.flatMap((o: any) => o.corporateEmployeeItems || []);
+            const profileComplete = Boolean(m.profile?.firstName && m.profile?.lastName && m.profile?.bloodType && m.profile?.bloodType !== "Pendiente");
+            const fulfillmentStatus = allItems[0]?.fulfillmentStatus || "pending_assignment";
+            const chip = allItems[0]?.chip;
+
+            return (
+              <div key={m.id} className="rounded-2xl border p-4 bg-card">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="font-semibold">{m.profile?.firstName} {m.profile?.lastName}</p>
+                    <p className="text-sm text-muted-foreground">{m.profile?.user?.email}</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {allItems.map((item: any) => (
+                        <span key={item.id} className="text-xs bg-muted px-2 py-0.5 rounded">
+                          {item.product?.name || "Producto"} x{item.quantity}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className={`px-2 py-1 rounded-full border font-semibold ${profileComplete ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                      Perfil: {profileComplete ? "Completado" : "Pendiente"}
+                    </span>
+                    <span className={`px-2 py-1 rounded-full border font-semibold ${
+                      fulfillmentStatus === "activated" ? "bg-emerald-50 text-emerald-700" :
+                      fulfillmentStatus === "assigned_reserved" ? "bg-blue-50 text-blue-700" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      Chip: {fulfillmentStatus === "activated" ? "Activado" :
+                             fulfillmentStatus === "assigned_reserved" ? "Asignado" : "Pendiente"}
+                    </span>
+                    {chip?.shortCode && (
+                      <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600 font-mono">
+                        {chip.shortCode}
+                      </span>
+                    )}
+                    {allItems[0]?.activatedAt && (
+                      <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600">
+                        Act.: {new Date(allItems[0].activatedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {members.length === 0 && <div className="rounded-2xl border p-6 text-sm text-muted-foreground">Sin empleados pagados/activos.</div>}
+        </div>
+      )}
+
+      {(tab === "suspendidos" || tab === "archivados") && (
         <div className="rounded-2xl border p-4 text-sm text-muted-foreground">Próximamente en siguientes fases.</div>
       )}
 

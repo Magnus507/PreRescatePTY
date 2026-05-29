@@ -175,6 +175,17 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // [Fase5-Corporate] Mark corporate order items as activated if this chip was assigned to them
+      const corporateItems = await tx.corporateOrderEmployeeItem.findMany({
+        where: { chipId: claimToken.chipId },
+      });
+      if (corporateItems.length > 0) {
+        await tx.corporateOrderEmployeeItem.updateMany({
+          where: { chipId: claimToken.chipId },
+          data: { fulfillmentStatus: "activated", activatedAt: now },
+        });
+      }
+
       // Audit log
       await tx.auditLog.create({
         data: {
