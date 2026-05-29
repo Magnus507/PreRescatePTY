@@ -14,17 +14,22 @@ import {
 import { AccountState } from "@/domains/accounts/account.types";
 import { ScanMonitor } from "./_components/ScanMonitor";
 
-// === CONSUMER Navigation ===
+// === CONSUMER Navigation — Reorganized ===
 const consumerNavItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
-  { href: "/dashboard/compras", label: "Tienda de Chips", icon: ShoppingCart },
-  { href: "/dashboard/tienda", label: "Tienda PTY", icon: Store },
-  { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
+  { href: "/dashboard", label: "Perfil", icon: LayoutDashboard },
 ];
 
-const consumerSecondaryItems = [
-  { href: "/dashboard/historial", label: "Alertas Recientes", icon: History },
+const consumerSecondaryItems: { href: string; label: string; icon: React.ElementType }[] = [];
+
+const consumerProtectionItems = [
+  { href: "/dashboard/perfiles-medicos", label: "Perfiles Médicos", icon: UsersRound },
+  { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
+  { href: "/dashboard/historial", label: "Historial de PreRescue ID", icon: History },
+];
+
+const consumerShoppingItems = [
+  { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
+  { href: "/dashboard/tienda", label: "Accesorios", icon: Store },
   { href: "/dashboard/pedidos", label: "Mis Pedidos", icon: Package },
 ];
 
@@ -44,7 +49,7 @@ function NavLink({ href, label, icon: Icon, active }: {
       className={`flex items-center justify-between group px-4 py-3.5 rounded-2xl text-sm font-black transition-all duration-300 ${
         active 
           ? "bg-primary text-white shadow-xl shadow-primary/20 translate-x-1" 
-          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+          : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
       }`}
     >
       <div className="flex items-center gap-3">
@@ -117,6 +122,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const isCorporate = state?.isOrganization === true;
 
+  const mobileLinks = isCorporate
+    ? corporateNavItems
+    : [
+        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
+        { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
+      ];
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#050812] selection:bg-primary selection:text-white">
       <ScanMonitor />
@@ -151,7 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               /* ========== CONSUMER SIDEBAR ========== */
               <>
                 <div className="space-y-2">
-                  <p className="px-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4">Menú Principal</p>
+                  <p className="px-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4">Perfil</p>
                   {consumerNavItems.map((item) => (
                     <NavLink key={item.href} {...item} active={pathname === item.href} />
                   ))}
@@ -159,18 +172,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 <div className="space-y-2">
                   <p className="px-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4">Protección Vital</p>
-                  <NavLink href="/dashboard/perfiles-medicos" label="Perfiles Médicos" icon={UsersRound} active={pathname === "/dashboard/perfiles-medicos"} />
-                  <NavLink href="/dashboard/historial" label="Historial de Rescate" icon={History} active={pathname === "/dashboard/historial"} />
+                  {consumerProtectionItems.map((item) => (
+                    <NavLink key={item.href} {...item} active={pathname === item.href} />
+                  ))}
                 </div>
 
-                {consumerSecondaryItems.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="px-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4">Compras</p>
-                    {consumerSecondaryItems.map((item) => (
-                      <NavLink key={item.href} {...item} active={pathname === item.href} />
-                    ))}
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <p className="px-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4">Compras</p>
+                  {consumerShoppingItems.map((item) => (
+                    <NavLink key={item.href} {...item} active={pathname === item.href} />
+                  ))}
+                </div>
               </>
             )}
           </div>
@@ -202,7 +214,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
               )}
              
-             <div className="grid grid-cols-2 gap-2 mt-3">
+			  <div className="grid grid-cols-2 gap-2 mt-3">
                 <Link href="/" className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white dark:bg-[#1a2333] border border-slate-200 dark:border-[#2a3a4f] text-slate-600 dark:text-slate-300 font-extrabold text-[10px] uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-[#2a3a4f] transition-all">
                   <Home className="h-3.5 w-3.5" /> Inicio
                 </Link>
@@ -224,14 +236,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Mobile bottom nav */}
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/90 dark:bg-[#0f1419]/90 backdrop-blur-xl border-t border-slate-200 dark:border-[#1a2333] flex items-center gap-2 overflow-x-auto px-3 py-2 safe-area-bottom">
-          {(isCorporate
-            ? corporateNavItems
-            : [
-                { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-                { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
-                { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
-              ]
-          ).map((item) => {
+          {mobileLinks.map((item) => {
             const active = pathname === item.href;
             
             return (
@@ -239,7 +244,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.href}
                 href={item.href}
                 className={`flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition-all duration-300 ${
-                  active ? "bg-primary/10 dark:bg-primary/20 text-primary" : "text-slate-500 dark:text-slate-400"
+                  active ? "bg-primary/20 dark:bg-primary/30 text-primary" : "text-slate-500 dark:text-slate-400"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
@@ -254,7 +259,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               type="button"
               onClick={() => setIsMoreMenuOpen(true)}
               className={`flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition-all duration-300 ${
-                isMoreMenuOpen ? "bg-primary/10 dark:bg-primary/20 text-primary" : "text-slate-500 dark:text-slate-400"
+                isMoreMenuOpen ? "bg-primary/20 dark:bg-primary/30 text-primary" : "text-slate-500 dark:text-slate-400"
               }`}
               aria-label="Abrir más opciones"
               aria-expanded={isMoreMenuOpen}
@@ -287,12 +292,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               <div className="grid grid-cols-1 gap-2">
                 {[
-                  { href: "/dashboard/pedidos", label: "Mis Pedidos", icon: Package },
+                  { href: "/dashboard", label: "Perfil", icon: LayoutDashboard },
                   { href: "/dashboard/perfiles-medicos", label: "Perfiles Médicos", icon: UsersRound },
-                  { href: "/dashboard/historial", label: "Historial de Rescate", icon: History },
+                  { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
+                  { href: "/dashboard/historial", label: "Historial de PreRescue ID", icon: History },
+                  { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
+                  { href: "/dashboard/tienda", label: "Accesorios", icon: Store },
+                  { href: "/dashboard/pedidos", label: "Mis Pedidos", icon: Package },
                   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
-                  { href: "/dashboard/compras", label: "Tienda de Chips", icon: ShoppingCart },
-                  { href: "/dashboard/tienda", label: "Tienda PTY", icon: Store },
                   { href: "/", label: "Inicio", icon: Home },
                 ].map((item) => (
                   <Link

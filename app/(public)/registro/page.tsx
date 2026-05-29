@@ -204,7 +204,7 @@ function RegistroForm() {
                 <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20 flex items-center justify-between gap-4 group">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-[#DA1A21]">Kit Seleccionado</p>
-                    <p className="font-black text-slate-900 dark:text-white">{selectedPkg.name}</p>
+                    <p className="font-black text-white">{selectedPkg.name}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-black text-[#DA1A21]">${selectedPkg.price}</p>
@@ -212,7 +212,7 @@ function RegistroForm() {
                   </div>
                 </div>
               ) : (
-                <p className="text-muted-foreground font-medium">Únete a PreRescate PTY y protege lo que más importa</p>
+                <p className="text-slate-300 font-medium">Únete a PreRescate PTY y protege lo que más importa</p>
               )}
             </div>
 
@@ -239,7 +239,7 @@ function RegistroForm() {
                       value={form.email}
                       onChange={(e) => update("email", e.target.value)}
                       disabled={loading}
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm input-premium"
+                      className="w-full bg-slate-800/60 border border-slate-600 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-white/30 transition-all shadow-sm"
                       placeholder="nombre@ejemplo.com"
                     />
                   </div>
@@ -256,7 +256,7 @@ function RegistroForm() {
                       value={form.phone}
                       onChange={(e) => update("phone", e.target.value)}
                       disabled={loading}
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm input-premium"
+                      className="w-full bg-slate-800/60 border border-slate-600 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-white/30 transition-all shadow-sm"
                       placeholder="+507 0000-0000"
                     />
                   </div>
@@ -274,7 +274,7 @@ function RegistroForm() {
                       value={form.password}
                       onChange={(e) => update("password", e.target.value)}
                       disabled={loading}
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm input-premium"
+                      className="w-full bg-slate-800/60 border border-slate-600 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-white/30 transition-all shadow-sm"
                       placeholder="••••••••"
                     />
                   </div>
@@ -292,7 +292,7 @@ function RegistroForm() {
                       value={form.confirm}
                       onChange={(e) => update("confirm", e.target.value)}
                       disabled={loading}
-                      className={`w-full bg-slate-50 dark:bg-slate-800/50 border ${form.confirm && form.password !== form.confirm ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} rounded-2xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm input-premium`}
+                      className={`w-full bg-slate-800/60 border ${form.confirm && form.password !== form.confirm ? 'border-red-500' : 'border-slate-600'} rounded-2xl pl-12 pr-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-white/30 transition-all shadow-sm`}
                       placeholder="Repite..."
                     />
                   </div>
@@ -305,9 +305,9 @@ function RegistroForm() {
                     type="checkbox" 
                     checked={acceptTerms} 
                     onChange={(e) => setAcceptTerms(e.target.checked)} 
-                    className="mt-1 h-5 w-5 rounded-lg border-slate-300 text-primary focus:ring-primary/20" 
+                    className="mt-1 h-5 w-5 rounded-lg border-slate-600 text-primary focus:ring-primary/20 bg-slate-800/60" 
                   />
-                  <span className="text-[11px] text-slate-500 font-medium leading-relaxed group-hover:text-slate-700 transition-colors">
+                  <span className="text-[11px] text-slate-400 font-medium leading-relaxed group-hover:text-slate-300 transition-colors">
                     Acepto los <Link href="/legal/terminos" target="_blank" className="text-primary font-bold hover:underline">Términos</Link> y la <Link href="/legal/privacidad" target="_blank" className="text-primary font-bold hover:underline">Política de Privacidad</Link>. Autorizo el manejo de mis datos de salud bajo la <span className="text-indigo-600 font-bold">Ley 81 de Panamá</span>.
                   </span>
                 </label>
@@ -327,7 +327,7 @@ function RegistroForm() {
             </form>
 
             <div className="mt-8 text-center">
-              <p className="text-slate-500 text-sm font-medium">
+              <p className="text-slate-400 text-sm font-medium">
                 ¿Ya eres parte de la red?{" "}
                 <Link href="/login" className="text-primary font-black hover:underline ml-1">Inicia sesión</Link>
               </p>

@@ -140,7 +140,8 @@ function LoginContent() {
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] items-center">
-          <section className="rounded-[3rem] border border-white/10 bg-white/5 p-10 shadow-2xl shadow-blue-500/10 backdrop-blur-xl">
+          {/* Left: Brand panel — hidden on mobile */}
+          <section className="hidden lg:block rounded-[3rem] border border-white/10 bg-white/5 p-10 shadow-2xl shadow-blue-500/10 backdrop-blur-xl">
             <span className="inline-flex rounded-full bg-brand/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] text-brand">Acceso seguro</span>
             <h1 className="mt-8 text-5xl font-black tracking-tight max-w-2xl">Vuelve a tu panel médico en segundos.</h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">Inicia sesión para gestionar tu perfil médico, revisar tus dispositivos NFC/QR y mantener a tus primeros respondedores informados cuando más te necesitan.</p>
@@ -165,11 +166,16 @@ function LoginContent() {
             </div>
           </section>
 
+          {/* Right: Login form */}
           <section className="rounded-[3rem] border border-white/10 bg-slate-950/90 p-10 shadow-2xl">
             <div className="mb-10">
               <p className="text-sm uppercase tracking-[0.35em] text-slate-400 font-black">Inicia sesión</p>
-              <h2 className="mt-4 text-4xl font-black tracking-tight">Recupera tu acceso a PreRescate PTY</h2>
-              <p className="mt-3 text-slate-400 leading-relaxed">Usa tu email y contraseña para entrar, o recupera tu cuenta si olvidaste tus datos.</p>
+              <h2 className="mt-4 text-4xl font-black tracking-tight">
+                <span className="text-brand">PRE</span>{' '}
+                <span className="text-white">RESCUE</span>{' '}
+                <span className="text-brand">ID</span>
+              </h2>
+              <p className="mt-3 text-slate-400 leading-relaxed">Usa tu email y contraseña para entrar.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -196,7 +202,7 @@ function LoginContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading || isSuccess}
-                  className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none input-premium"
+                  className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 input-premium"
                   placeholder="nombre@ejemplo.com"
                 />
               </div>
@@ -215,7 +221,7 @@ function LoginContent() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={loading || isSuccess}
-                      className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-5 py-4 pr-12 text-sm text-white placeholder:text-slate-500 focus:outline-none input-premium"
+                      className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-5 py-4 pr-12 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 input-premium"
                       placeholder="••••••••"
                     />
                     <button
@@ -241,7 +247,7 @@ function LoginContent() {
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
                     disabled={loading || isSuccess}
-                    className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-6 py-4 text-center text-3xl font-black tracking-[0.5em] text-white placeholder:text-slate-500 focus:outline-none input-premium"
+                    className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-6 py-4 text-center text-3xl font-black tracking-[0.5em] text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 input-premium"
                     placeholder="000000"
                   />
                   <button
