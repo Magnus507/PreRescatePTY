@@ -9,7 +9,7 @@ import { profileUpdateSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 
-// GET: all profiles in the account (own profile + family profiles)
+// GET: profiles (own profile + family profiles + corporate profiles)
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -21,7 +21,7 @@ export async function GET() {
     const state = await AccountStateService.getAccountState(userId);
 
     if (!state.accountId) {
-      return ApiResponse.success({ ownProfile: null, familyProfiles: [], state });
+      return ApiResponse.success({ ownProfile: null, familyProfiles: [], corporateProfiles: [], state });
     }
 
     const allProfiles = await ProfileRepository.findAllByAccount(state.accountId);
@@ -29,7 +29,45 @@ export async function GET() {
     const ownProfile = allProfiles.find((p) => p?.userId === userId) ?? null;
     const familyProfiles = allProfiles.filter((p) => p && p.userId !== userId);
 
-    return ApiResponse.success({ ownProfile, familyProfiles, state });
+    // Fetch corporate profiles linked via OrganizationMember.corporateProfileId
+    let corporateProfiles: any[] = [];
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+      
+      if (user) {
+        const corporateMembers = await prisma.organizationMember.findMany({
+          where: {
+            profile: { userId: user.id },
+            corporateProfileId: { not: null },
+          },
+          include: {
+            corporateProfile: true,
+            organization: { select: { id: true, displayName: true, legalName: true } },
+          },
+        });
+
+        corporateProfiles = corporateMembers.map((m) => {
+          const corpProfile = m.corporateProfile as any;
+          const org = m.organization as any;
+          return {
+            id: corpProfile?.id || null,
+            organizationId: m.organizationId,
+            organizationMemberId: m.id,
+            organizationName: org?.displayName || org?.legalName || "Empresa",
+            corporateStatus: m.corporateStatus,
+            profile: corpProfile,
+          };
+        });
+      }
+    } catch (corpErr) {
+      console.error("Error fetching corporate profiles:", corpErr);
+    }
+
+    return ApiResponse.success({ ownProfile, familyProfiles, corporateProfiles, state });
   } catch (error: unknown) {
     const err = error as Error & { message?: string };
     console.error("GET /api/users/perfiles-medicos critical error:", error);
