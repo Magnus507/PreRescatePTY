@@ -626,10 +626,17 @@ export default function EmpresasPage() {
                     <span className={`px-2 py-1 rounded-full border font-semibold ${
                       fulfillmentStatus === "activated" ? "bg-emerald-50 text-emerald-700" :
                       fulfillmentStatus === "assigned_reserved" ? "bg-blue-50 text-blue-700" :
+                      fulfillmentStatus === "in_production" ? "bg-purple-50 text-purple-700" :
+                      fulfillmentStatus === "ready_for_assignment" ? "bg-teal-50 text-teal-700" :
+                      fulfillmentStatus === "delivered" ? "bg-slate-100 text-slate-600" :
                       "bg-muted text-muted-foreground"
                     }`}>
                       Chip: {fulfillmentStatus === "activated" ? "Activado" :
-                             fulfillmentStatus === "assigned_reserved" ? "Asignado" : "Pendiente"}
+                             fulfillmentStatus === "assigned_reserved" ? "Asignado / reservado" :
+                             fulfillmentStatus === "in_production" ? "En fabricación" :
+                             fulfillmentStatus === "ready_for_assignment" ? "Listo" :
+                             fulfillmentStatus === "delivered" ? "Entregado" :
+                             "Pendiente"}
                     </span>
                     {chip?.shortCode && (
                       <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600 font-mono">

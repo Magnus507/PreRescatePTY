@@ -671,7 +671,7 @@ export function PedidosSection() {
                   </div>
                   <div className="space-y-3">
                     {(selectedOrder as any).corporateEmployeeItems.map((item: CorporateEmployeeItem) => (
-                      <div key={item.id} className="bg-white rounded-xl border border-indigo-100 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div key={item.id} className="bg-white rounded-xl border border-indigo-100 p-4 flex flex-col md:flex-row md:items-start justify-between gap-3">
                         <div className="space-y-1 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold text-sm">
@@ -680,15 +680,21 @@ export function PedidosSection() {
                             <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded font-bold">{item.product?.name || item.product?.productType || "Producto"}</span>
                             <span className="text-[9px] text-muted-foreground">x{item.quantity}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-xs">
+                          <div className="flex items-center gap-2 text-xs mt-1">
                             <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
                               item.fulfillmentStatus === "activated" ? "bg-emerald-100 text-emerald-700" :
                               item.fulfillmentStatus === "assigned_reserved" ? "bg-blue-100 text-blue-700" :
+                              item.fulfillmentStatus === "in_production" ? "bg-purple-100 text-purple-700" :
+                              item.fulfillmentStatus === "ready_for_assignment" ? "bg-teal-100 text-teal-700" :
+                              item.fulfillmentStatus === "delivered" ? "bg-slate-200 text-slate-700" :
                               "bg-amber-100 text-amber-700"
                             }`}>
-                              {item.fulfillmentStatus === "activated" ? "Activado" :
-                               item.fulfillmentStatus === "assigned_reserved" ? "Asignado / reservado" :
-                               "Pendiente asignación"}
+                              {item.fulfillmentStatus === "activated" ? "✔ Activado" :
+                               item.fulfillmentStatus === "assigned_reserved" ? "🔷 Asignado / reservado" :
+                               item.fulfillmentStatus === "in_production" ? "⚙ En fabricación" :
+                               item.fulfillmentStatus === "ready_for_assignment" ? "✅ Listo" :
+                               item.fulfillmentStatus === "delivered" ? "📦 Entregado" :
+                               "⏳ Pendiente"}
                             </span>
                             {item.chip && (
                               <span className="font-mono text-muted-foreground">
@@ -701,23 +707,88 @@ export function PedidosSection() {
                               </span>
                             )}
                           </div>
+                          {item.product?.productType && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {item.product.productType && (
+                                <span className="text-[8px] bg-muted px-1.5 py-0.5 rounded font-bold uppercase text-muted-foreground">
+                                  {item.product.productType}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {item.fulfillmentStatus === "pending_assignment" && (
-                          <div className="flex flex-col items-end gap-2 shrink-0">
-                            <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          {/* Fulfillment action buttons */}
+                          {(item.fulfillmentStatus === "pending_assignment" || item.fulfillmentStatus === "in_production" || item.fulfillmentStatus === "ready_for_assignment") && (
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {item.fulfillmentStatus === "pending_assignment" && (
+                                <button
+                                  onClick={async () => {
+                                    const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ fulfillmentStatus: "in_production" }),
+                                    });
+                                    if (res.ok) { toast.success("Marcado en fabricación"); loadOrders({ silent: true }); }
+                                    else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                  }}
+                                  disabled={corporateAssigning === item.id}
+                                  className="px-2.5 py-1.5 rounded-lg bg-purple-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-purple-700 transition-all disabled:opacity-50"
+                                >
+                                  Fabricación
+                                </button>
+                              )}
+                              {item.fulfillmentStatus !== "ready_for_assignment" && (
+                                <button
+                                  onClick={async () => {
+                                    const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ fulfillmentStatus: "ready_for_assignment" }),
+                                    });
+                                    if (res.ok) { toast.success("Marcado como listo"); loadOrders({ silent: true }); }
+                                    else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                  }}
+                                  disabled={corporateAssigning === item.id}
+                                  className="px-2.5 py-1.5 rounded-lg bg-teal-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-teal-700 transition-all disabled:opacity-50"
+                                >
+                                  Listo
+                                </button>
+                              )}
+                              <button
+                                onClick={async () => {
+                                  const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ fulfillmentStatus: "delivered" }),
+                                  });
+                                  if (res.ok) { toast.success("Marcado como entregado"); loadOrders({ silent: true }); }
+                                  else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                }}
+                                disabled={corporateAssigning === item.id}
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-600 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all disabled:opacity-50"
+                              >
+                                Entregar
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Chip assignment (only for pending_assignment + when chips exist) */}
+                          {item.fulfillmentStatus === "pending_assignment" && (
+                            <div className="flex items-center gap-2 mt-1">
                               <select
-                                className="border border-indigo-200 rounded-lg px-3 py-2 text-xs font-bold bg-white min-w-[160px]"
+                                className="border border-indigo-200 rounded-lg px-2 py-1 text-[9px] font-bold bg-white min-w-[140px]"
                                 value={selectedChipForItem[item.id] || ""}
                                 onChange={(e) => {
                                   setSelectedChipForItem((prev) => ({ ...prev, [item.id]: e.target.value }));
                                 }}
                                 disabled={corporateAssigning === item.id}
                               >
-                                <option value="">Seleccionar chip...</option>
+                                <option value="">Chip...</option>
                                 {availableChips.map((chip) => (
                                   <option key={chip.id} value={chip.id}>
-                                    {chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""} {chip.isPhysical ? "🔷" : "💻"}
+                                    {chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""}
                                   </option>
                                 ))}
                                 {availableChips.length === 0 && (
@@ -727,23 +798,20 @@ export function PedidosSection() {
                               <button
                                 onClick={() => {
                                   const chipId = selectedChipForItem[item.id];
-                                  if (chipId) {
-                                    handleCorporateAssign(item, chipId);
-                                  }
+                                  if (chipId) handleCorporateAssign(item, chipId);
                                 }}
                                 disabled={corporateAssigning === item.id || !selectedChipForItem[item.id]}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all disabled:opacity-50 inline-flex items-center gap-1"
+                                className="px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-indigo-700 transition-all disabled:opacity-50 inline-flex items-center gap-1"
                               >
                                 {corporateAssigning === item.id ? (
-                                  <><Loader2 className="h-3 w-3 animate-spin" /> Asignando</>
+                                  <><Loader2 className="h-2.5 w-2.5 animate-spin" /></>
                                 ) : (
-                                  "Asignar"
+                                  "Asignar chip"
                                 )}
                               </button>
                             </div>
-                            <p className="text-[9px] text-muted-foreground">Selecciona un chip y confirma la asignación.</p>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
