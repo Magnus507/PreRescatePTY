@@ -121,14 +121,6 @@ function ComprasContent() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-12">
-      <div>
-        <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-1 uppercase">
-          <span className="text-brand">PRE</span>{' '}
-          <span className="text-slate-900 dark:text-white">RESCUE</span>{' '}
-          <span className="text-brand">ID</span>
-        </h1>
-      </div>
-
       <div className="flex flex-col xl:flex-row gap-6 xl:gap-10">
         {/* Mobile: Combos first, then order form */}
         {/* Desktop: order form first, combos sidebar */}
@@ -190,8 +182,17 @@ function ComprasContent() {
                  Combo Seleccionado
                </div>
              )}
-             <div className="h-14 w-14 md:h-20 md:w-20 rounded-2xl md:rounded-3xl flex items-center justify-center mb-6 md:mb-8 transition-colors bg-primary/10 text-primary">
-                <ShoppingCart className="h-7 w-7 md:h-10 md:w-10" />
+             <div className="flex items-center gap-4 mb-6 md:mb-8">
+               <div className="h-14 w-14 md:h-20 md:w-20 rounded-2xl md:rounded-3xl flex items-center justify-center transition-colors bg-primary/10 text-primary shrink-0">
+                  <ShoppingCart className="h-7 w-7 md:h-10 md:w-10" />
+               </div>
+               <div>
+                 <h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
+                   <span className="text-brand">PRE</span>{' '}
+                   <span className="text-slate-900 dark:text-white">RESCUE</span>{' '}
+                   <span className="text-brand">ID</span>
+                 </h2>
+               </div>
              </div>
              
              <p className="text-muted-foreground text-xs md:text-sm font-medium mb-8 md:mb-12 max-w-md leading-relaxed">Stickers originales de alta resistencia. Vinculación vitalicia a nuestra red de asistencia nacional.</p>
