@@ -53,6 +53,7 @@ export default function EmpresaPerfilPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [profile, setProfile] = useState<CorporatePublicProfile | null>(null);
+  const [companyCode, setCompanyCode] = useState("");
   const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function EmpresaPerfilPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo cargar");
       setProfile(json.profile || null);
+      if (json.companyCode) setCompanyCode(json.companyCode);
     } catch (err: any) {
       toast.error(err?.message || "No se pudo cargar el perfil");
     } finally {
@@ -92,10 +94,16 @@ export default function EmpresaPerfilPage() {
     if (!profile) return;
     setSaving(true);
     try {
+      const body: any = { ...profile };
+      // Include companyCode in the PATCH payload
+      if (companyCode) {
+        body.companyCode = companyCode;
+      }
+
       const res = await fetch("/api/organizations/public-profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo guardar");
@@ -515,6 +523,21 @@ export default function EmpresaPerfilPage() {
             onVisibilityChange={(v) => updateField("showCustomEmployeeMessage", v)}
             textarea
           />
+          {/* Company code field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Código empresarial</label>
+            <input
+              className="w-full border rounded-xl px-3 py-2.5 text-sm font-bold tracking-widest uppercase"
+              placeholder="Ejemplo: ACP2026"
+              value={companyCode}
+              onChange={(e) => {
+                const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+                setCompanyCode(val);
+              }}
+              maxLength={20}
+            />
+            <p className="text-xs text-muted-foreground">Este código lo usan tus empleados para solicitar vinculación a tu empresa.</p>
+          </div>
           <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-200">
             <div className="space-y-1">
               <label className="inline-flex items-center gap-2 text-sm font-semibold">

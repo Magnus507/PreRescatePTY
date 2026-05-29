@@ -90,7 +90,7 @@ async function getOrganizationIdFromSession() {
 
   const organization = await prisma.organization.findFirst({
     where: { accountId: session.user.accountId },
-    select: { id: true, displayName: true, legalName: true, taxId: true, contactEmail: true },
+    select: { id: true, displayName: true, legalName: true, taxId: true, contactEmail: true, companyCode: true },
   });
 
   return organization;
@@ -106,7 +106,10 @@ export async function GET() {
     where: { organizationId: organization.id },
   });
 
-  return NextResponse.json({ profile: profile ?? null });
+  return NextResponse.json({ 
+    profile: profile ?? null,
+    companyCode: organization.companyCode,
+  });
 }
 
 export async function POST() {
@@ -171,6 +174,25 @@ export async function PATCH(req: Request) {
 
   if (data.status && !["draft", "active", "hidden"].includes(String(data.status))) {
     return NextResponse.json({ error: "Status inválido" }, { status: 400 });
+  }
+
+  // Handle companyCode specially — update Organization not CorporatePublicProfile
+  if (Object.prototype.hasOwnProperty.call(body, "companyCode")) {
+    const rawCode = String(body.companyCode).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+    if (rawCode.length < 4) {
+      return NextResponse.json({ error: "El código empresarial debe tener al menos 4 caracteres." }, { status: 400 });
+    }
+
+    // Check uniqueness: no other organization has this companyCode
+    const existingOrg = await prisma.organization.findUnique({ where: { companyCode: rawCode } });
+    if (existingOrg && existingOrg.id !== organization.id) {
+      return NextResponse.json({ error: "Ese código empresarial ya está en uso." }, { status: 409 });
+    }
+
+    await prisma.organization.update({
+      where: { id: organization.id },
+      data: { companyCode: rawCode },
+    });
   }
 
   const profile = await prisma.corporatePublicProfile.update({
