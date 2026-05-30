@@ -40,6 +40,7 @@ export default function ChipsPage() {
   
   // Activation State
   const [activationCode, setActivationCode] = useState("");
+  const [activationProfileId, setActivationProfileId] = useState<string>("");
   const [activating, setActivating] = useState(false);
   const [activationError, setActivationError] = useState("");
   const [activationSuccess, setActivationSuccess] = useState(false);
@@ -60,7 +61,17 @@ export default function ChipsPage() {
       
       const own = familyData.ownProfile ? [{ ...familyData.ownProfile, _own: true }] : [];
       const fam = familyData.familyProfiles || [];
-      setProfiles([...own, ...fam]);
+      const allProfiles = [...own, ...fam];
+      setProfiles(allProfiles);
+
+      // Auto-select profile
+      if (allProfiles.length === 1) {
+        setActivationProfileId(allProfiles[0].id);
+      } else if (allProfiles.length > 0) {
+        // Pre-select own profile if present
+        const ownProfile = own[0];
+        setActivationProfileId(ownProfile ? ownProfile.id : allProfiles[0].id);
+      }
     } catch (e) {
       console.error("Error loading chips page:", e);
     } finally {
@@ -86,7 +97,7 @@ export default function ChipsPage() {
       const res = await fetch("/api/chips/activate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activationCode }),
+        body: JSON.stringify({ activationCode, profileId: activationProfileId || undefined }),
       });
 
       const data = await res.json();
@@ -97,6 +108,7 @@ export default function ChipsPage() {
 
       setActivationSuccess(true);
       setActivationCode("");
+      setActivationProfileId("");
       await loadData();
     } catch (err) {
       setActivationError("Error de conexión");
@@ -345,6 +357,32 @@ export default function ChipsPage() {
                     </div>
                   )}
 
+                  {/* Profile selector for activation */}
+                  {profiles.length > 1 && (
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-6 block">Selecciona a quién protegerá este chip</label>
+                      <select
+                        value={activationProfileId}
+                        onChange={(e) => setActivationProfileId(e.target.value)}
+                        className="w-full px-6 py-4 rounded-[2.5rem] bg-slate-50 border-2 border-slate-100 focus:border-primary/20 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/5 font-black text-sm transition-all appearance-none cursor-pointer"
+                      >
+                        {profiles.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.firstName} {p.lastName} {p.userId ? "(Tú)" : "(Familiar)"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {profiles.length === 1 && (
+                    <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 text-center">
+                      <p className="text-[11px] font-bold text-primary">
+                        Protegiendo a: {profiles[0].firstName} {profiles[0].lastName}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="space-y-4">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 ml-6 block">Código de Activación (12 dígitos)</label>
                     <input 
@@ -364,7 +402,7 @@ export default function ChipsPage() {
 
                   <button 
                     type="submit" 
-                    disabled={activating || !activationCode}
+                    disabled={activating || !activationCode || !activationProfileId}
                     className="w-full py-8 bg-primary text-white rounded-[2.5rem] font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-50"
                   >
                     {activating ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />}

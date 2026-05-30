@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { activationCode } = parsedBody.data;
+  const { activationCode, profileId } = parsedBody.data;
 
   // Find the claim token
   const claimToken = await prisma.chipClaimToken.findUnique({
@@ -207,10 +207,35 @@ export async function POST(req: NextRequest) {
 
         assignedProfileId = corpProfileId;
       } else {
-        // === NORMAL ACTIVATION FLOW (unchanged) ===
-        const profile = await tx.profile.findFirst({
-          where: { userId }
-        });
+        // === NORMAL ACTIVATION FLOW ===
+        let profile;
+
+        if (profileId) {
+          // Use the selected profile if provided
+          profile = await tx.profile.findFirst({
+            where: { id: profileId, accountId: targetAccountId },
+          });
+
+          if (!profile) {
+            throw Object.assign(
+              new Error("Perfil médico inválido para esta activación."),
+              { status: 400 }
+            );
+          }
+
+          // Block activation against corporate profiles
+          if ((profile as any).profileType === "corporate") {
+            throw Object.assign(
+              new Error("Los perfiles empresariales se activan desde el módulo Empresa."),
+              { status: 400 }
+            );
+          }
+        } else {
+          // Fallback: use own profile by userId
+          profile = await tx.profile.findFirst({
+            where: { userId }
+          });
+        }
 
         if (!profile || !AccountStateService.isMedicalProfileComplete(profile)) {
           throw Object.assign(

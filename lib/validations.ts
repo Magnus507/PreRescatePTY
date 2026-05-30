@@ -101,6 +101,7 @@ export const familyProfileCreateSchema = profileUpdateSchema.extend({
 
 export const chipActivationSchema = z.object({
   activationCode: z.string().min(1, "Código de activación requerido").transform(v => v.toUpperCase().trim()),
+  profileId: z.string().min(1, "Perfil requerido").optional(),
 });
 
 export const publicScanSchema = z.object({
