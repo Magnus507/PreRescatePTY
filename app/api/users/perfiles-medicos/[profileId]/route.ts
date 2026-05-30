@@ -171,6 +171,26 @@ export async function DELETE(
     return NextResponse.json({ error: "No puedes eliminar tu propio perfil" }, { status: 400 });
   }
 
+  // Cannot delete corporate profile
+  if (existing.profileType === "corporate") {
+    return NextResponse.json(
+      { error: "El perfil empresarial no puede eliminarse desde Perfiles Médicos. Gestiona este beneficio desde Empresa." },
+      { status: 400 }
+    );
+  }
+
+  // Cannot delete if profile is used as corporateProfileId in OrganizationMember
+  const orgMember = await prisma.organizationMember.findFirst({
+    where: { corporateProfileId: profileId },
+    select: { id: true },
+  });
+  if (orgMember) {
+    return NextResponse.json(
+      { error: "Este perfil pertenece a un beneficio empresarial y no puede eliminarse desde Perfiles Médicos." },
+      { status: 400 }
+    );
+  }
+
   // Cannot delete if chips are assigned
   const chipCount = await prisma.chip.count({
     where: { assignedProfileId: profileId, status: { not: "inventory" } },
