@@ -77,13 +77,14 @@ export default function ColaboradoresPage() {
     }
   };
 
-  const handleAction = async (memberId: string, action: "suspend" | "unsuspend" | "archive" | "restore" | "reject") => {
+  const handleAction = async (memberId: string, action: "suspend" | "unsuspend" | "archive" | "restore" | "reject" | "delete_forever") => {
     const confirmMessages: Record<string, string> = {
       suspend: "¿Seguro que deseas suspender a este colaborador? Su vínculo corporativo quedará suspendido, pero su cuenta personal no se verá afectada.",
       unsuspend: "¿Reactivar este colaborador? Volverá al estado activo con beneficios.",
       archive: "¿Seguro que deseas eliminar/despedir a este colaborador de la empresa? Se desactivarán sus beneficios corporativos, perfil empresarial y chip corporativo de esta empresa. Su cuenta personal y otros beneficios no serán afectados.",
       restore: "¿Restaurar este colaborador? Volverá al estado activo. Su cuenta personal no se verá afectada.",
       reject: "¿Seguro que deseas rechazar este colaborador? Esto solo afecta el vínculo corporativo. La cuenta personal del usuario no será afectada.",
+      delete_forever: "¿Eliminar definitivamente este colaborador? Se eliminará el vínculo empresarial y los datos corporativos de esta empresa. No se eliminará la cuenta personal del usuario. Esta acción no se puede deshacer.",
     };
 
     if (!confirm(confirmMessages[action])) return;
@@ -240,12 +241,20 @@ export default function ColaboradoresPage() {
                           </button>
                         )}
                         {m.corporateStatus === "archived" && (
-                          <button
-                            onClick={() => handleAction(m.id, "restore")}
-                            className="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-bold hover:bg-indigo-100 transition-colors inline-flex items-center gap-1"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Restaurar
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleAction(m.id, "restore")}
+                              className="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-bold hover:bg-indigo-100 transition-colors inline-flex items-center gap-1"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Restaurar
+                            </button>
+                            <button
+                              onClick={() => handleAction(m.id, "delete_forever")}
+                              className="px-3 py-1.5 rounded-lg border border-red-700 bg-red-100 text-red-700 text-xs font-bold hover:bg-red-200 transition-colors inline-flex items-center gap-1"
+                            >
+                              <XCircle className="h-3.5 w-3.5" /> Eliminar definitivo
+                            </button>
+                          </>
                         )}
                         {m.corporateStatus !== "archived" && m.corporateStatus !== "rejected_by_company" && (
                           <button

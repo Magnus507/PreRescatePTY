@@ -471,11 +471,12 @@ export default function EmpresasPage() {
     }
   };
 
-  const handleDecision = async (id: string, action: "approve" | "reject" | "archive" | "restore" | "unsuspend") => {
+  const handleDecision = async (id: string, action: "approve" | "reject" | "archive" | "restore" | "unsuspend" | "delete_forever") => {
     const confirmMessages: Record<string, string> = {
       reject: "¿Seguro que deseas rechazar este colaborador? Esto solo afecta el vínculo corporativo. La cuenta personal del usuario no será afectada.",
       archive: "¿Seguro que deseas eliminar/despedir a este colaborador de la empresa? Se desactivarán sus beneficios corporativos, perfil empresarial y chip corporativo de esta empresa. Su cuenta personal y otros beneficios no serán afectados.",
       restore: "¿Restaurar este colaborador? Volverá al estado activo. Su cuenta personal no se verá afectada.",
+      delete_forever: "¿Eliminar definitivamente este colaborador? Se eliminará el vínculo empresarial y los datos corporativos de esta empresa. No se eliminará la cuenta personal del usuario. Esta acción no se puede deshacer.",
     };
     const msg = confirmMessages[action];
     if (msg && !confirm(msg)) return;
@@ -994,7 +995,10 @@ export default function EmpresasPage() {
                 </div>
               )}
               {(tab === "archivados" && m.corporateStatus === "archived") && (
-                <div className="flex gap-2"><button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Restaurar</button></div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Restaurar</button>
+                  <button onClick={() => handleDecision(m.id, "delete_forever")} className="px-3 py-2 rounded-xl bg-red-700 text-white text-sm font-semibold inline-flex items-center gap-1"><XCircle className="h-4 w-4" /> Eliminar definitivo</button>
+                </div>
               )}
               {(tab === "suspendidos" && m.corporateStatus === "suspended") && (
                 <div className="flex gap-2">
