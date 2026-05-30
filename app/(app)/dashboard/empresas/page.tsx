@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus } from "lucide-react";
+import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save } from "lucide-react";
+import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
 
 type CorporateTab =
   | "solicitantes"
@@ -104,6 +105,25 @@ function getStatusInfo(status: RequestStatus) {
   return map[status] || map.pending_company_review;
 }
 
+const emptyProfileForm = {
+  firstName: "", lastName: "", displayNamePublic: "", birthDate: "",
+  sex: "", bloodType: "O+", allergies: "", chronicConditions: "",
+  medications: "", additionalNotes: "", phone: "",
+  nationalId: "",
+  isInsured: false,
+  insuranceProvider: "",
+  insurancePolicyNumber: "",
+  preferredHospital: "",
+  insuranceEmergencyPhone: "",
+  primaryDoctorName: "",
+  primaryDoctorPhone: "",
+  showInsuranceProviderPublic: false,
+  showPreferredHospitalPublic: false,
+  showPrimaryDoctorPublic: false,
+  showPrimaryDoctorPhonePublic: false,
+  showAdditionalNotesPublic: false,
+};
+
 export default function EmpresasPage() {
   const [loading, setLoading] = useState(true);
   const [isCorporateAccount, setIsCorporateAccount] = useState(false);
@@ -127,6 +147,13 @@ export default function EmpresasPage() {
   const [proofUploadedName, setProofUploadedName] = useState("");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
+  // Corporate profile editor
+  const [showCorpEditor, setShowCorpEditor] = useState(false);
+  const [corpEditForm, setCorpEditForm] = useState({ ...emptyProfileForm });
+  const [corpEditProfileId, setCorpEditProfileId] = useState<string | null>(null);
+  const [corpEditSaving, setCorpEditSaving] = useState(false);
+  const [corpEditLoading, setCorpEditLoading] = useState(false);
+  const [corpEditError, setCorpEditError] = useState("");
 
   const [form, setForm] = useState({
     companyCode: "",
@@ -326,7 +353,6 @@ export default function EmpresasPage() {
       const ordersJson = await ordersRes.json();
       if (ordersRes.ok) setCorporateOrders(ordersJson.orders || []);
     } else if (nextTab === "aprobados") {
-      // Load both members and orders to filter out those already in pending corporate orders
       const [membersRes, ordersRes] = await Promise.all([
         fetch(`/api/organizations/members?status=${status}`),
         fetch("/api/organizations/corporate-orders"),
@@ -336,7 +362,6 @@ export default function EmpresasPage() {
       if (ordersRes.ok) setCorporateOrders(ordersJson.orders || []);
 
       if (membersRes.ok) {
-        // Build set of member IDs that are in non-cancelled, non-rejected pending orders
         const pendingOrders = (ordersJson.orders || []).filter(
           (o: any) =>
             o.orderType === "corporate_employee_purchase" &&
@@ -350,7 +375,6 @@ export default function EmpresasPage() {
             pendingMemberIds.add(item.organizationMemberId);
           }
         }
-        // Exclude members that are already in a pending corporate order
         const filtered = (membersJson.members || []).filter(
           (m: any) => !pendingMemberIds.has(m.id)
         );
@@ -439,6 +463,82 @@ export default function EmpresasPage() {
     }
   };
 
+  const openCorporateProfileEditor = async () => {
+    const active = activeRequest;
+    const corpProfileId = active?.corporateProfile?.id;
+    if (!corpProfileId) {
+      toast.error("No se encontró perfil empresarial");
+      return;
+    }
+    setCorpEditProfileId(corpProfileId);
+    setCorpEditLoading(true);
+    setShowCorpEditor(true);
+    setCorpEditError("");
+    try {
+      const res = await fetch(`/api/users/perfiles-medicos/${corpProfileId}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo cargar");
+      const p = json.profile;
+      setCorpEditForm({
+        firstName: p.firstName || "",
+        lastName: p.lastName || "",
+        displayNamePublic: p.displayNamePublic || "",
+        birthDate: p.birthDate ? new Date(p.birthDate).toISOString().split("T")[0] : "",
+        sex: p.sex || "",
+        bloodType: p.bloodType || "O+",
+        allergies: p.allergies || "",
+        chronicConditions: p.chronicConditions || "",
+        medications: p.medications || "",
+        additionalNotes: p.additionalNotes || "",
+        phone: p.phone || "",
+        nationalId: p.nationalId || "",
+        isInsured: !!p.isInsured,
+        insuranceProvider: p.insuranceProvider || "",
+        insurancePolicyNumber: p.insurancePolicyNumber || "",
+        preferredHospital: p.preferredHospital || "",
+        insuranceEmergencyPhone: p.insuranceEmergencyPhone || "",
+        primaryDoctorName: p.primaryDoctorName || "",
+        primaryDoctorPhone: p.primaryDoctorPhone || "",
+        showInsuranceProviderPublic: !!p.showInsuranceProviderPublic,
+        showPreferredHospitalPublic: !!p.showPreferredHospitalPublic,
+        showPrimaryDoctorPublic: !!p.showPrimaryDoctorPublic,
+        showPrimaryDoctorPhonePublic: !!p.showPrimaryDoctorPhonePublic,
+        showAdditionalNotesPublic: !!p.showAdditionalNotesPublic,
+      });
+    } catch (err: any) {
+      setCorpEditError(err.message || "Error al cargar perfil");
+      toast.error(err.message || "Error al cargar perfil empresarial");
+    } finally {
+      setCorpEditLoading(false);
+    }
+  };
+
+  const handleCorpEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!corpEditProfileId) return;
+    setCorpEditError("");
+    setCorpEditSaving(true);
+    try {
+      const res = await fetch(`/api/users/perfiles-medicos/${corpEditProfileId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpEditForm),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error al guardar");
+      toast.success("Perfil empresarial actualizado");
+      setShowCorpEditor(false);
+      // Reload myStatus
+      const my = await fetch("/api/organizations/my-status");
+      const myJson = await my.json();
+      if (my.ok) setMyStatus(myJson);
+    } catch (err: any) {
+      setCorpEditError(err.message || "Error de conexión");
+    } finally {
+      setCorpEditSaving(false);
+    }
+  };
+
   const activeRequest = useMemo(() => {
     const reqs = myStatus?.requests || [];
     return reqs.find((r: any) =>
@@ -457,7 +557,6 @@ export default function EmpresasPage() {
 
   // ==================== EMPLOYEE VIEW (not a corporate account admin) ====================
   if (!isCorporateAccount) {
-    // If there's an active request, show its status
     if (activeRequest) {
       const statusInfo = getStatusInfo(activeRequest.corporateStatus as RequestStatus);
       const corpProfile = activeRequest.corporateProfile;
@@ -506,9 +605,7 @@ export default function EmpresasPage() {
                     {corpProfile.firstName?.[0]?.toUpperCase() || "E"}
                   </div>
                   <div>
-                    <h3 className="font-black text-lg">
-                      Perfil médico empresarial
-                    </h3>
+                    <h3 className="font-black text-lg">Perfil médico empresarial</h3>
                     <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
                       Empresarial — {corpProfile.firstName || ""} {corpProfile.lastName || ""}
                     </p>
@@ -522,12 +619,12 @@ export default function EmpresasPage() {
                 Este perfil pertenece a tu beneficio empresarial. No afecta tu perfil personal.
               </p>
               {canEdit ? (
-                <a
-                  href={`/dashboard/perfiles-medicos?editProfileId=${corpProfile.id}`}
+                <button
+                  onClick={openCorporateProfileEditor}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all"
                 >
                   <Pencil className="h-3.5 w-3.5" /> Editar perfil empresarial
-                </a>
+                </button>
               ) : (
                 <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
                   <p className="text-xs font-bold text-amber-700 uppercase tracking-widest">
@@ -558,11 +655,8 @@ export default function EmpresasPage() {
                 }`}>
                   {corporateChip.status === "activated" ? "Activado" : corporateChip.status || "Asignado"}
                 </span>
-                <a
-                  href={`/e/${corporateChip.shortCode}`}
-                  target="_blank"
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-teal-200 text-teal-700 text-[9px] font-bold hover:bg-teal-50 transition-all"
-                >
+                <a href={`/e/${corporateChip.shortCode}`} target="_blank"
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-teal-200 text-teal-700 text-[9px] font-bold hover:bg-teal-50 transition-all">
                   <ExternalLink className="h-3 w-3" /> Abrir ficha pública
                 </a>
               </div>
@@ -584,18 +678,13 @@ export default function EmpresasPage() {
             </div>
           )}
 
-          {/* No corporate profile yet but paid_active — show link to create */}
+          {/* No corporate profile yet but paid_active */}
           {isPaidActive && !corpProfile && (
             <div className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/30 p-6 text-center">
               <p className="text-sm font-semibold text-indigo-700 mb-2">
                 Tu beneficio empresarial está activo pero no tienes perfil empresarial configurado.
+                Contacta al administrador de tu empresa para configurarlo.
               </p>
-              <a
-                href="/dashboard/perfiles-medicos?createCorporateProfile=true"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700"
-              >
-                <Plus className="h-3.5 w-3.5" /> Configurar perfil empresarial
-              </a>
             </div>
           )}
 
@@ -604,13 +693,52 @@ export default function EmpresasPage() {
               <p className="text-sm font-semibold text-rose-700 mb-3">
                 ¿Quieres intentar de nuevo con otra empresa?
               </p>
-              <JoinForm
-                form={form}
-                setForm={setForm}
-                companyCodeError={companyCodeError}
-                submittingJoin={submittingJoin}
-                handleSubmitJoin={handleSubmitJoin}
-              />
+              <JoinForm form={form} setForm={setForm} companyCodeError={companyCodeError} submittingJoin={submittingJoin} handleSubmitJoin={handleSubmitJoin} />
+            </div>
+          )}
+
+          {/* Corporate Profile Editor Modal */}
+          {showCorpEditor && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-card w-full max-w-none sm:max-w-5xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/20 flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden">
+                <div className="sticky top-0 z-10 px-4 sm:px-8 py-4 sm:py-6 border-b border-border flex items-center justify-between shrink-0 bg-card/95 backdrop-blur">
+                  <div>
+                    <h3 className="font-black text-lg sm:text-2xl tracking-tight">Perfil médico empresarial</h3>
+                    <p className="text-xs text-muted-foreground font-medium mt-1">
+                      Este perfil pertenece a tu beneficio empresarial. No afecta tu perfil personal.
+                    </p>
+                  </div>
+                  <button onClick={() => setShowCorpEditor(false)} className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-border flex items-center justify-center hover:bg-accent transition-colors">
+                    <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                </div>
+                <div className="px-4 sm:px-8 py-4 sm:py-6 overflow-y-auto pb-28 sm:pb-10">
+                  {corpEditLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <form onSubmit={handleCorpEdit} className="space-y-6">
+                      {corpEditError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{corpEditError}</p>}
+                      <MedicalProfileForm
+                        form={corpEditForm}
+                        onChange={(field, val) => setCorpEditForm((prev: any) => ({ ...prev, [field]: val }))}
+                      />
+                      <div className="flex gap-6 pt-8 border-t border-border/50">
+                        <button type="button" onClick={() => setShowCorpEditor(false)}
+                          className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">
+                          Cancelar
+                        </button>
+                        <button type="submit" disabled={corpEditSaving}
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
+                          {corpEditSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                          Guardar perfil empresarial
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -628,28 +756,18 @@ export default function EmpresasPage() {
             <p className="text-sm text-muted-foreground">Conecta tu cuenta con tu empleador</p>
           </div>
         </div>
-
         <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-white p-5 space-y-3">
           <div className="flex items-start gap-3">
             <Briefcase className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
             <div>
-              <p className="font-semibold text-indigo-900">
-                ¿Tu empresa trabaja con PreRescue ID?
-              </p>
+              <p className="font-semibold text-indigo-900">¿Tu empresa trabaja con PreRescue ID?</p>
               <p className="text-sm text-indigo-700/70 mt-1">
                 Ingresa el código empresarial que te proporcionaron para solicitar tu vinculación y acceder a los beneficios corporativos.
               </p>
             </div>
           </div>
         </div>
-
-        <JoinForm
-          form={form}
-          setForm={setForm}
-          companyCodeError={companyCodeError}
-          submittingJoin={submittingJoin}
-          handleSubmitJoin={handleSubmitJoin}
-        />
+        <JoinForm form={form} setForm={setForm} companyCodeError={companyCodeError} submittingJoin={submittingJoin} handleSubmitJoin={handleSubmitJoin} />
       </div>
     );
   }
@@ -671,37 +789,25 @@ export default function EmpresasPage() {
         <Building2 className="h-8 w-8 text-primary" />
         <h1 className="text-3xl font-black">Gestión Empresarial</h1>
       </div>
-
       <div className="flex gap-2 overflow-x-auto">
         {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={async () => {
-              setTab(t.key);
-              await loadMembersByTab(t.key);
-            }}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${tab === t.key ? "bg-primary text-white" : "bg-muted"}`}
-          >
+          <button key={t.key} onClick={async () => { setTab(t.key); await loadMembersByTab(t.key); }}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${tab === t.key ? "bg-primary text-white" : "bg-muted"}`}>
             {t.label}
           </button>
         ))}
       </div>
 
+      {/* Admin tabs content — unchanged from original */}
       {tab === "pagos_enviados" && (
         <div className="space-y-4">
           <div className="rounded-2xl border p-4 bg-blue-50/30 border-blue-200">
-            <p className="text-xs font-semibold text-blue-700">
-              Compras corporativas enviadas con comprobante y pendientes de revisión por PreRescue ID.
-            </p>
+            <p className="text-xs font-semibold text-blue-700">Compras corporativas enviadas con comprobante y pendientes de revisión por PreRescue ID.</p>
           </div>
-          {corporateOrders.filter(o =>
-            o.paymentStatus === "under_review" || o.adminReviewStatus === "pending"
-          ).length === 0 ? (
+          {corporateOrders.filter(o => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").length === 0 ? (
             <div className="rounded-2xl border p-6 text-sm text-muted-foreground">Sin pagos enviados pendientes de revisión.</div>
           ) : (
-            corporateOrders.filter(o =>
-              o.paymentStatus === "under_review" || o.adminReviewStatus === "pending"
-            ).map((order: any) => (
+            corporateOrders.filter(o => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").map((order: any) => (
               <div key={order.id} className="rounded-2xl border p-4 bg-card">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
                   <div>
@@ -722,38 +828,14 @@ export default function EmpresasPage() {
                     <span>${item.subtotal?.toFixed(2)}</span>
                   </div>
                 ))}
-                {order.paymentProofUrl && (
-                  <div className="mt-2 flex items-center gap-2 text-[10px] text-emerald-600 font-semibold">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Comprobante adjuntado
-                  </div>
-                )}
+                {order.paymentProofUrl && <div className="mt-2 flex items-center gap-2 text-[10px] text-emerald-600 font-semibold"><CheckCircle2 className="h-3 w-3" /> Comprobante adjuntado</div>}
                 {order.corporateDeliveryStatus && (
                   <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
-                    <span className={`px-2 py-1 rounded-full border font-semibold ${
-                      order.corporateDeliveryStatus === "delivered" ? "bg-emerald-50 text-emerald-700" :
-                      order.corporateDeliveryStatus === "in_transit" ? "bg-blue-50 text-blue-700" :
-                      order.corporateDeliveryStatus === "ready_for_delivery" ? "bg-teal-50 text-teal-700" :
-                      order.corporateDeliveryStatus === "on_hold" ? "bg-amber-50 text-amber-700" :
-                      "bg-muted text-muted-foreground"
-                    }`}>
-                      {order.corporateDeliveryStatus === "delivered" ? "📦 Entregado" :
-                       order.corporateDeliveryStatus === "in_transit" ? "🚚 En tránsito" :
-                       order.corporateDeliveryStatus === "ready_for_delivery" ? "✅ Listo" :
-                       order.corporateDeliveryStatus === "on_hold" ? "⏸ En espera" :
-                       order.corporateDeliveryStatus === "preparation_pending" ? "⏳ Preparando" :
-                       order.corporateDeliveryStatus}
+                    <span className={`px-2 py-1 rounded-full border font-semibold ${order.corporateDeliveryStatus === "delivered" ? "bg-emerald-50 text-emerald-700" : order.corporateDeliveryStatus === "in_transit" ? "bg-blue-50 text-blue-700" : order.corporateDeliveryStatus === "ready_for_delivery" ? "bg-teal-50 text-teal-700" : order.corporateDeliveryStatus === "on_hold" ? "bg-amber-50 text-amber-700" : "bg-muted text-muted-foreground"}`}>
+                      {order.corporateDeliveryStatus === "delivered" ? "📦 Entregado" : order.corporateDeliveryStatus === "in_transit" ? "🚚 En tránsito" : order.corporateDeliveryStatus === "ready_for_delivery" ? "✅ Listo" : order.corporateDeliveryStatus === "on_hold" ? "⏸ En espera" : order.corporateDeliveryStatus === "preparation_pending" ? "⏳ Preparando" : order.corporateDeliveryStatus}
                     </span>
-                    {order.estimatedDeliveryDate && (
-                      <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600">
-                        Est: {new Date(order.estimatedDeliveryDate).toLocaleDateString()}
-                      </span>
-                    )}
-                    {order.deliveryNote && (
-                      <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600 italic truncate max-w-[200px]">
-                        "{order.deliveryNote}"
-                      </span>
-                    )}
+                    {order.estimatedDeliveryDate && <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600">Est: {new Date(order.estimatedDeliveryDate).toLocaleDateString()}</span>}
+                    {order.deliveryNote && <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600 italic truncate max-w-[200px]">"{order.deliveryNote}"</span>}
                   </div>
                 )}
               </div>
@@ -764,58 +846,27 @@ export default function EmpresasPage() {
 
       {tab === "pagados" && (
         <div className="space-y-4">
-          {members.map((m) => {
-            const memberOrders = corporateOrders.filter((o: any) =>
-              o.corporateEmployeeItems?.some((item: any) => item.organizationMemberId === m.id)
-            );
+          {members.map((m: any) => {
+            const memberOrders = corporateOrders.filter((o: any) => o.corporateEmployeeItems?.some((item: any) => item.organizationMemberId === m.id));
             const allItems = memberOrders.flatMap((o: any) => o.corporateEmployeeItems || []);
             const profileComplete = Boolean(m.profile?.firstName && m.profile?.lastName && m.profile?.bloodType && m.profile?.bloodType !== "Pendiente");
             const fulfillmentStatus = allItems[0]?.fulfillmentStatus || "pending_assignment";
             const chip = allItems[0]?.chip;
-
             return (
               <div key={m.id} className="rounded-2xl border p-4 bg-card">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="space-y-1">
                     <p className="font-semibold">{m.profile?.firstName} {m.profile?.lastName}</p>
                     <p className="text-sm text-muted-foreground">{m.profile?.user?.email}</p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {allItems.map((item: any) => (
-                        <span key={item.id} className="text-xs bg-muted px-2 py-0.5 rounded">
-                          {item.product?.name || "Producto"} x{item.quantity}
-                        </span>
-                      ))}
-                    </div>
+                    <div className="flex flex-wrap gap-2 mt-1">{allItems.map((item: any) => <span key={item.id} className="text-xs bg-muted px-2 py-0.5 rounded">{item.product?.name || "Producto"} x{item.quantity}</span>)}</div>
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs">
-                    <span className={`px-2 py-1 rounded-full border font-semibold ${profileComplete ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                      Perfil: {profileComplete ? "Completado" : "Pendiente"}
+                    <span className={`px-2 py-1 rounded-full border font-semibold ${profileComplete ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>Perfil: {profileComplete ? "Completado" : "Pendiente"}</span>
+                    <span className={`px-2 py-1 rounded-full border font-semibold ${fulfillmentStatus === "activated" ? "bg-emerald-50 text-emerald-700" : fulfillmentStatus === "assigned_reserved" ? "bg-blue-50 text-blue-700" : fulfillmentStatus === "in_production" ? "bg-purple-50 text-purple-700" : fulfillmentStatus === "ready_for_assignment" ? "bg-teal-50 text-teal-700" : fulfillmentStatus === "delivered" ? "bg-slate-100 text-slate-600" : "bg-muted text-muted-foreground"}`}>
+                      Chip: {fulfillmentStatus === "activated" ? "Activado" : fulfillmentStatus === "assigned_reserved" ? "Asignado / reservado" : fulfillmentStatus === "in_production" ? "En fabricación" : fulfillmentStatus === "ready_for_assignment" ? "Listo" : fulfillmentStatus === "delivered" ? "Entregado" : "Pendiente"}
                     </span>
-                    <span className={`px-2 py-1 rounded-full border font-semibold ${
-                      fulfillmentStatus === "activated" ? "bg-emerald-50 text-emerald-700" :
-                      fulfillmentStatus === "assigned_reserved" ? "bg-blue-50 text-blue-700" :
-                      fulfillmentStatus === "in_production" ? "bg-purple-50 text-purple-700" :
-                      fulfillmentStatus === "ready_for_assignment" ? "bg-teal-50 text-teal-700" :
-                      fulfillmentStatus === "delivered" ? "bg-slate-100 text-slate-600" :
-                      "bg-muted text-muted-foreground"
-                    }`}>
-                      Chip: {fulfillmentStatus === "activated" ? "Activado" :
-                             fulfillmentStatus === "assigned_reserved" ? "Asignado / reservado" :
-                             fulfillmentStatus === "in_production" ? "En fabricación" :
-                             fulfillmentStatus === "ready_for_assignment" ? "Listo" :
-                             fulfillmentStatus === "delivered" ? "Entregado" :
-                             "Pendiente"}
-                    </span>
-                    {chip?.shortCode && (
-                      <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600 font-mono">
-                        {chip.shortCode}
-                      </span>
-                    )}
-                    {allItems[0]?.activatedAt && (
-                      <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600">
-                        Act.: {new Date(allItems[0].activatedAt).toLocaleDateString()}
-                      </span>
-                    )}
+                    {chip?.shortCode && <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600 font-mono">{chip.shortCode}</span>}
+                    {allItems[0]?.activatedAt && <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600">Act.: {new Date(allItems[0].activatedAt).toLocaleDateString()}</span>}
                   </div>
                 </div>
               </div>
@@ -826,55 +877,33 @@ export default function EmpresasPage() {
       )}
 
       <div className="space-y-3">
-        {members.map((m) => (
+        {members.map((m: any) => (
           <div key={m.id} className="rounded-2xl border p-4 bg-card">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <p className="font-semibold">{m.profile?.firstName} {m.profile?.lastName}</p>
                 <p className="text-sm text-muted-foreground">{m.profile?.user?.email}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Cédula: {m.employeeNationalId || "—"} · Edad: {m.employeeAge || "—"} · Tel: {m.employeePhone || "—"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Cargo/Depto: {m.employeePosition || "—"} / {m.employeeDepartment || "—"} · ID laboral: {m.employeeInternalId || "—"}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">Cédula: {m.employeeNationalId || "—"} · Edad: {m.employeeAge || "—"} · Tel: {m.employeePhone || "—"}</p>
+                <p className="text-xs text-muted-foreground">Cargo/Depto: {m.employeePosition || "—"} / {m.employeeDepartment || "—"} · ID laboral: {m.employeeInternalId || "—"}</p>
                 {m.employeeNote && <p className="text-xs text-muted-foreground">Nota: {m.employeeNote}</p>}
               </div>
-
               {tab === "solicitantes" && (
                 <div className="flex gap-2">
-                  <button onClick={() => handleDecision(m.id, "approve")} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4" /> Aprobar
-                  </button>
-                  <button onClick={() => handleDecision(m.id, "reject")} className="px-3 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold inline-flex items-center gap-1">
-                    <XCircle className="h-4 w-4" /> Rechazar
-                  </button>
+                  <button onClick={() => handleDecision(m.id, "approve")} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Aprobar</button>
+                  <button onClick={() => handleDecision(m.id, "reject")} className="px-3 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold inline-flex items-center gap-1"><XCircle className="h-4 w-4" /> Rechazar</button>
                 </div>
               )}
-
               {tab === "aprobados" && (
                 <div className="w-full md:w-[420px] space-y-2">
-                  <label className="inline-flex items-center gap-2 text-sm font-medium">
-                    <input type="checkbox" checked={Boolean(selectedMembers[m.id])} onChange={() => toggleMemberSelection(m.id)} />
-                    Seleccionar para compra
-                  </label>
+                  <label className="inline-flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={Boolean(selectedMembers[m.id])} onChange={() => toggleMemberSelection(m.id)} /> Seleccionar para compra</label>
                   {selectedMembers[m.id] && (
                     <div className="rounded-xl border p-3 space-y-2">
-                      <select
-                        className="w-full border rounded-lg px-2 py-2 text-sm"
-                        defaultValue=""
-                        onChange={(e) => {
-                          addProductToMember(m.id, e.target.value);
-                          e.currentTarget.value = "";
-                        }}
-                      >
+                      <select className="w-full border rounded-lg px-2 py-2 text-sm" defaultValue="" onChange={(e) => { addProductToMember(m.id, e.target.value); e.currentTarget.value = ""; }}>
                         <option value="">Agregar producto activo...</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name} (${p.price.toFixed(2)})</option>
-                        ))}
+                        {products.map((p: any) => <option key={p.id} value={p.id}>{p.name} (${p.price.toFixed(2)})</option>)}
                       </select>
-                      {(memberProducts[m.id] || []).map((item) => {
-                        const product = products.find((p) => p.id === item.productId);
+                      {(memberProducts[m.id] || []).map((item: any) => {
+                        const product = products.find((p: any) => p.id === item.productId);
                         if (!product) return null;
                         return (
                           <div key={item.productId} className="flex items-center gap-2 text-sm">
@@ -889,129 +918,67 @@ export default function EmpresasPage() {
                     </div>
                   )}
                   <div className="flex gap-2 mt-2">
-                    <button
-                      onClick={() => handleDecision(m.id, "reject")}
-                      className="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors"
-                    >
-                      Rechazar
-                    </button>
-                    <button
-                      onClick={() => handleDecision(m.id, "archive")}
-                      className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100 transition-colors inline-flex items-center gap-1"
-                    >
-                      <XCircle className="h-3.5 w-3.5" /> Eliminar
-                    </button>
+                    <button onClick={() => handleDecision(m.id, "reject")} className="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors">Rechazar</button>
+                    <button onClick={() => handleDecision(m.id, "archive")} className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100 transition-colors inline-flex items-center gap-1"><XCircle className="h-3.5 w-3.5" /> Eliminar</button>
                   </div>
                 </div>
               )}
               {(tab === "rechazados" && m.corporateStatus === "rejected_by_company") && (
                 <div className="flex gap-2">
-                  <button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4" /> Restaurar
-                  </button>
-                  <button onClick={() => handleDecision(m.id, "archive")} className="px-3 py-2 rounded-xl bg-slate-600 text-white text-sm font-semibold inline-flex items-center gap-1">
-                    <Archive className="h-4 w-4" /> Archivar
-                  </button>
+                  <button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Restaurar</button>
+                  <button onClick={() => handleDecision(m.id, "archive")} className="px-3 py-2 rounded-xl bg-slate-600 text-white text-sm font-semibold inline-flex items-center gap-1"><Archive className="h-4 w-4" /> Archivar</button>
                 </div>
               )}
               {(tab === "archivados" && m.corporateStatus === "archived") && (
                 <div className="flex gap-2">
-                  <button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4" /> Restaurar
-                  </button>
+                  <button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Restaurar</button>
                 </div>
               )}
               {(tab === "suspendidos" && m.corporateStatus === "suspended") && (
                 <div className="flex gap-2">
-                  <button onClick={() => handleDecision(m.id, "unsuspend")} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4" /> Reactivar
-                  </button>
-                  <button onClick={() => handleDecision(m.id, "archive")} className="px-3 py-2 rounded-xl bg-slate-600 text-white text-sm font-semibold inline-flex items-center gap-1">
-                    <Archive className="h-4 w-4" /> Archivar
-                  </button>
+                  <button onClick={() => handleDecision(m.id, "unsuspend")} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Reactivar</button>
+                  <button onClick={() => handleDecision(m.id, "archive")} className="px-3 py-2 rounded-xl bg-slate-600 text-white text-sm font-semibold inline-flex items-center gap-1"><Archive className="h-4 w-4" /> Archivar</button>
                 </div>
               )}
             </div>
           </div>
         ))}
-
         {members.length === 0 && <div className="rounded-2xl border p-6 text-sm text-muted-foreground">Sin registros en esta pestaña.</div>}
       </div>
 
       {tab === "aprobados" && (
         <div className="rounded-2xl border p-4 space-y-3">
           <p className="text-sm text-muted-foreground">Arma la compra corporativa para empleados aprobados sin pagar.</p>
-
           <div className={`p-4 rounded-xl border-2 transition-all ${paymentProofUrl ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
             {paymentProofUrl ? (
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                  <span className="text-sm font-semibold text-emerald-700 truncate">
-                    {proofUploadedName || "Comprobante adjuntado"}
-                  </span>
-                </div>
-                <button
-                  onClick={() => { setPaymentProofUrl(""); setProofUploadedName(""); }}
-                  className="text-xs text-rose-600 font-semibold hover:underline shrink-0"
-                >
-                  Quitar
-                </button>
+                <div className="flex items-center gap-2 min-w-0"><CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" /><span className="text-sm font-semibold text-emerald-700 truncate">{proofUploadedName || "Comprobante adjuntado"}</span></div>
+                <button onClick={() => { setPaymentProofUrl(""); setProofUploadedName(""); }} className="text-xs text-rose-600 font-semibold hover:underline shrink-0">Quitar</button>
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Comprobante de pago</p>
                 <p className="text-[10px] text-muted-foreground">Selecciona una imagen o captura del comprobante.</p>
                 <div className="flex items-center gap-3">
-                  <input
-                    id="corporate-proof-upload"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="sr-only"
-                    disabled={proofFileUploading}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.size > 5 * 1024 * 1024) {
-                        toast.error("El archivo es muy pesado (máx 5MB)");
-                        return;
-                      }
-                      setProofFileName(file.name);
-                      setProofFileUploading(true);
-                      try {
-                        const formData = new FormData();
-                        formData.append("file", file);
-                        formData.append("type", "payment");
-                        formData.append("bucket", "payment-proofs");
-                        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-                        if (!uploadRes.ok) throw new Error("Error al subir archivo");
-                        const { url } = await uploadRes.json();
-                        setPaymentProofUrl(url);
-                        setProofUploadedName(file.name);
-                        toast.success("Comprobante adjuntado");
-                      } catch {
-                        toast.error("Error al subir el comprobante");
-                      } finally {
-                        setProofFileUploading(false);
-                      }
-                    }}
-                  />
-                  <label
-                    htmlFor="corporate-proof-upload"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all"
-                  >
-                    {proofFileUploading ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</>
-                    ) : (
-                      <><Upload className="h-4 w-4" /> Seleccionar archivo</>
-                    )}
+                  <input id="corporate-proof-upload" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={proofFileUploading} onChange={async (e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) { toast.error("El archivo es muy pesado (máx 5MB)"); return; }
+                    setProofFileName(file.name); setProofFileUploading(true);
+                    try {
+                      const formData = new FormData(); formData.append("file", file); formData.append("type", "payment"); formData.append("bucket", "payment-proofs");
+                      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+                      if (!uploadRes.ok) throw new Error("Error al subir archivo");
+                      const { url } = await uploadRes.json(); setPaymentProofUrl(url); setProofUploadedName(file.name); toast.success("Comprobante adjuntado");
+                    } catch { toast.error("Error al subir el comprobante"); } finally { setProofFileUploading(false); }
+                  }} />
+                  <label htmlFor="corporate-proof-upload" className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all">
+                    {proofFileUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</> : <><Upload className="h-4 w-4" /> Seleccionar archivo</>}
                   </label>
                 </div>
                 <p className="text-[9px] text-muted-foreground">Máx 5MB. Formatos: JPG, PNG, WebP.</p>
               </div>
             )}
           </div>
-
           <div className="flex items-center justify-between">
             <p className="font-bold">Total general: ${totalGeneral.toFixed(2)}</p>
             <button onClick={submitCorporateOrder} disabled={submittingCorporateOrder || !paymentProofUrl} className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50">
@@ -1025,25 +992,8 @@ export default function EmpresasPage() {
 }
 
 // ==================== SHARED JOIN FORM COMPONENT ====================
-function JoinForm({
-  form,
-  setForm,
-  companyCodeError,
-  submittingJoin,
-  handleSubmitJoin,
-}: {
-  form: {
-    companyCode: string;
-    firstName: string;
-    lastName: string;
-    employeeNationalId: string;
-    employeeAge: string;
-    employeePhone: string;
-    employeePosition: string;
-    employeeDepartment: string;
-    employeeInternalId: string;
-    employeeNote: string;
-  };
+function JoinForm({ form, setForm, companyCodeError, submittingJoin, handleSubmitJoin }: {
+  form: { companyCode: string; firstName: string; lastName: string; employeeNationalId: string; employeeAge: string; employeePhone: string; employeePosition: string; employeeDepartment: string; employeeInternalId: string; employeeNote: string; };
   setForm: React.Dispatch<React.SetStateAction<typeof form>>;
   companyCodeError: string;
   submittingJoin: boolean;
@@ -1052,136 +1002,28 @@ function JoinForm({
   return (
     <form onSubmit={handleSubmitJoin} className="rounded-2xl border p-5 bg-card space-y-5">
       <div className="space-y-1.5">
-        <label className="text-sm font-semibold">
-          Código empresarial <span className="text-rose-500">*</span>
-        </label>
-        <input
-          className={`w-full border-2 rounded-xl px-4 py-3 text-lg font-bold tracking-widest text-center uppercase ${
-            companyCodeError
-              ? "border-rose-300 bg-rose-50 focus:border-rose-500 focus:ring-rose-500"
-              : "border-indigo-200 bg-indigo-50/30 focus:border-indigo-400 focus:ring-indigo-400"
-          } outline-none transition-all`}
-          placeholder="Ejemplo: ACP2026"
-          value={form.companyCode}
-          onChange={(e) => {
-            const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-            setForm((prev) => ({ ...prev, companyCode: val }));
-            if (companyCodeError) setForm((prev) => ({ ...prev, companyCode: val }));
-          }}
-          maxLength={20}
-          required
-          autoComplete="off"
-        />
-        {companyCodeError && (
-          <p className="text-xs font-medium text-rose-600 flex items-center gap-1 mt-1">
-            <XCircle className="h-3.5 w-3.5" />
-            {companyCodeError}
-          </p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          El código que te proporcionó tu empleador. Se convertirá a mayúsculas automáticamente.
-        </p>
+        <label className="text-sm font-semibold">Código empresarial <span className="text-rose-500">*</span></label>
+        <input className={`w-full border-2 rounded-xl px-4 py-3 text-lg font-bold tracking-widest text-center uppercase ${companyCodeError ? "border-rose-300 bg-rose-50 focus:border-rose-500 focus:ring-rose-500" : "border-indigo-200 bg-indigo-50/30 focus:border-indigo-400 focus:ring-indigo-400"} outline-none transition-all`}
+          placeholder="Ejemplo: ACP2026" value={form.companyCode}
+          onChange={(e) => { const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); setForm((prev) => ({ ...prev, companyCode: val })); }}
+          maxLength={20} required autoComplete="off" />
+        {companyCodeError && <p className="text-xs font-medium text-rose-600 flex items-center gap-1 mt-1"><XCircle className="h-3.5 w-3.5" />{companyCodeError}</p>}
       </div>
-
       <div className="border-t border-dashed border-slate-200" />
-
-      <div className="space-y-1.5">
-        <p className="text-sm font-semibold">Tus datos personales</p>
-        <p className="text-xs text-muted-foreground">Completa con la información que tu empresa necesita.</p>
-      </div>
-
+      <div className="space-y-1.5"><p className="text-sm font-semibold">Tus datos personales</p></div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Cédula / ID</label>
-          <input
-            className="w-full border rounded-xl px-3 py-2.5"
-            placeholder="8-000-0000"
-            value={form.employeeNationalId}
-            onChange={(e) => setForm((prev) => ({ ...prev, employeeNationalId: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Edad</label>
-          <input
-            className="w-full border rounded-xl px-3 py-2.5"
-            placeholder="25"
-            type="number"
-            min={1}
-            max={120}
-            value={form.employeeAge}
-            onChange={(e) => setForm((prev) => ({ ...prev, employeeAge: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Teléfono</label>
-          <input
-            className="w-full border rounded-xl px-3 py-2.5"
-            placeholder="+507 6000-0000"
-            value={form.employeePhone}
-            onChange={(e) => setForm((prev) => ({ ...prev, employeePhone: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Cargo</label>
-          <input
-            className="w-full border rounded-xl px-3 py-2.5"
-            placeholder="Ej: Operador, Supervisor"
-            value={form.employeePosition}
-            onChange={(e) => setForm((prev) => ({ ...prev, employeePosition: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Departamento</label>
-          <input
-            className="w-full border rounded-xl px-3 py-2.5"
-            placeholder="Ej: Logística, RRHH"
-            value={form.employeeDepartment}
-            onChange={(e) => setForm((prev) => ({ ...prev, employeeDepartment: e.target.value }))}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">ID laboral interno</label>
-          <input
-            className="w-full border rounded-xl px-3 py-2.5"
-            placeholder="Opcional"
-            value={form.employeeInternalId}
-            onChange={(e) => setForm((prev) => ({ ...prev, employeeInternalId: e.target.value }))}
-          />
-        </div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cédula / ID</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="8-000-0000" value={form.employeeNationalId} onChange={(e) => setForm((prev) => ({ ...prev, employeeNationalId: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Edad</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="25" type="number" min={1} max={120} value={form.employeeAge} onChange={(e) => setForm((prev) => ({ ...prev, employeeAge: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Teléfono</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="+507 6000-0000" value={form.employeePhone} onChange={(e) => setForm((prev) => ({ ...prev, employeePhone: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cargo</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Operador, Supervisor" value={form.employeePosition} onChange={(e) => setForm((prev) => ({ ...prev, employeePosition: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Departamento</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Logística, RRHH" value={form.employeeDepartment} onChange={(e) => setForm((prev) => ({ ...prev, employeeDepartment: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">ID laboral interno</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Opcional" value={form.employeeInternalId} onChange={(e) => setForm((prev) => ({ ...prev, employeeInternalId: e.target.value }))} /></div>
       </div>
-
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">Nota opcional</label>
-        <textarea
-          className="w-full border rounded-xl px-3 py-2.5"
-          placeholder="Cualquier información adicional que quieras compartir con tu empresa..."
-          rows={2}
-          value={form.employeeNote}
-          onChange={(e) => setForm((prev) => ({ ...prev, employeeNote: e.target.value }))}
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={submittingJoin}
-        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-black text-sm hover:shadow-lg hover:shadow-indigo-600/20 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/10 disabled:opacity-50 inline-flex items-center justify-center gap-2"
-      >
-        {submittingJoin ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Enviando solicitud...
-          </>
-        ) : (
-          <>
-            Enviar solicitud
-            <ArrowRight className="h-4 w-4" />
-          </>
-        )}
+      <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Nota opcional</label><textarea className="w-full border rounded-xl px-3 py-2.5" placeholder="Cualquier información adicional que quieras compartir con tu empresa..." rows={2} value={form.employeeNote} onChange={(e) => setForm((prev) => ({ ...prev, employeeNote: e.target.value }))} /></div>
+      <button type="submit" disabled={submittingJoin} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-black text-sm hover:shadow-lg hover:shadow-indigo-600/20 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/10 disabled:opacity-50 inline-flex items-center justify-center gap-2">
+        {submittingJoin ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando solicitud...</> : <>Enviar solicitud <ArrowRight className="h-4 w-4" /></>}
       </button>
-
-      <p className="text-xs text-center text-muted-foreground">
-        Tu solicitud será enviada a la empresa para que la revise. No compartimos datos médicos en este proceso.
-      </p>
+      <p className="text-xs text-center text-muted-foreground">Tu solicitud será enviada a la empresa para que la revise. No compartimos datos médicos en este proceso.</p>
     </form>
   );
 }
