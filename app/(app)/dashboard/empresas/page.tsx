@@ -588,6 +588,34 @@ export default function EmpresasPage() {
                     Comprobante adjuntado
                   </div>
                 )}
+                {order.corporateDeliveryStatus && (
+                  <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                    <span className={`px-2 py-1 rounded-full border font-semibold ${
+                      order.corporateDeliveryStatus === "delivered" ? "bg-emerald-50 text-emerald-700" :
+                      order.corporateDeliveryStatus === "in_transit" ? "bg-blue-50 text-blue-700" :
+                      order.corporateDeliveryStatus === "ready_for_delivery" ? "bg-teal-50 text-teal-700" :
+                      order.corporateDeliveryStatus === "on_hold" ? "bg-amber-50 text-amber-700" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {order.corporateDeliveryStatus === "delivered" ? "📦 Entregado" :
+                       order.corporateDeliveryStatus === "in_transit" ? "🚚 En tránsito" :
+                       order.corporateDeliveryStatus === "ready_for_delivery" ? "✅ Listo" :
+                       order.corporateDeliveryStatus === "on_hold" ? "⏸ En espera" :
+                       order.corporateDeliveryStatus === "preparation_pending" ? "⏳ Preparando" :
+                       order.corporateDeliveryStatus}
+                    </span>
+                    {order.estimatedDeliveryDate && (
+                      <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600">
+                        Est: {new Date(order.estimatedDeliveryDate).toLocaleDateString()}
+                      </span>
+                    )}
+                    {order.deliveryNote && (
+                      <span className="px-2 py-1 rounded-full border bg-slate-50 text-slate-600 italic truncate max-w-[200px]">
+                        "{order.deliveryNote}"
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             ))
           )}

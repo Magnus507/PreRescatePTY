@@ -546,6 +546,11 @@ model Order {
   manualPaymentReference String?
   organizationId         String?
   orderType              String    @default("manual")
+  
+  // Corporate delivery tracking (only for corporate_employee_purchase)
+  corporateDeliveryStatus String?
+  estimatedDeliveryDate  DateTime?
+  deliveryNote           String?   @db.Text
 
   packageId       String?
   package         Package?         @relation(fields: [packageId], references: [id])

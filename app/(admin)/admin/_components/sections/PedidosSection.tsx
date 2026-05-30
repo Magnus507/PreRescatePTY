@@ -102,6 +102,9 @@ export function PedidosSection() {
   const [availableChips, setAvailableChips] = useState<{ id: string; shortCode: string; serialPublic: string; internalLabel: string | null; status: string; isPhysical: boolean }[]>([]);
   const [corporateAssigning, setCorporateAssigning] = useState<string | null>(null);
   const [selectedChipForItem, setSelectedChipForItem] = useState<Record<string, string>>({});
+  const [corporateDeliveryStatus, setCorporateDeliveryStatus] = useState("preparation_pending");
+  const [deliveryEstimatedDate, setDeliveryEstimatedDate] = useState("");
+  const [deliveryNote, setDeliveryNote] = useState("");
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const loadInventoryRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const loadAvailableChipsRef = useRef<() => Promise<void>>(() => Promise.resolve());
@@ -171,6 +174,9 @@ export function PedidosSection() {
   useEffect(() => {
     if (selectedOrder) {
       setReviewNote(selectedOrder.adminReviewNotes || "");
+      setCorporateDeliveryStatus((selectedOrder as any).corporateDeliveryStatus || "preparation_pending");
+      setDeliveryEstimatedDate((selectedOrder as any).estimatedDeliveryDate ? new Date((selectedOrder as any).estimatedDeliveryDate).toISOString().split("T")[0] : "");
+      setDeliveryNote((selectedOrder as any).deliveryNote || "");
     }
   }, [selectedOrder?.id, selectedOrder?.adminReviewNotes]);
 
@@ -254,6 +260,33 @@ export function PedidosSection() {
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(data.error || "No se pudo asignar chip");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setCorporateAssigning(null);
+    }
+  };
+
+  const handleSaveCorporateDelivery = async () => {
+    if (!selectedOrder) return;
+    setCorporateAssigning("_delivery");
+    try {
+      const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-delivery`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          corporateDeliveryStatus,
+          estimatedDeliveryDate: deliveryEstimatedDate || null,
+          deliveryNote: deliveryNote || null,
+        }),
+      });
+      if (res.ok) {
+        toast.success("Datos de entrega actualizados");
+        loadOrders({ silent: true });
+      } else {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error || "Error al guardar");
       }
     } catch {
       toast.error("Error de conexión");
@@ -1159,6 +1192,49 @@ export function PedidosSection() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+             )}
+
+            {/* Corporate Delivery Tracking */}
+            {selectedOrder.orderType === "corporate_employee_purchase" && (
+              <div className="px-6 pb-6">
+                <div className="rounded-[2rem] border border-blue-200 bg-blue-50/50 p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Truck className="h-5 w-5 text-blue-600" />
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-700">Entrega Corporativa</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Estado de Entrega</label>
+                      <select value={corporateDeliveryStatus} onChange={(e) => setCorporateDeliveryStatus(e.target.value)}
+                        className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-medium">
+                        <option value="preparation_pending">⏳ Pendiente de preparación</option>
+                        <option value="ready_for_delivery">✅ Listo para entrega</option>
+                        <option value="in_transit">🚚 En tránsito</option>
+                        <option value="delivered">📦 Entregado</option>
+                        <option value="on_hold">⏸️ En espera / coordinación</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Fecha Estimada</label>
+                      <input type="date" value={deliveryEstimatedDate}
+                        onChange={(e) => setDeliveryEstimatedDate(e.target.value)}
+                        className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-medium" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Nota de Entrega</label>
+                    <textarea value={deliveryNote}
+                      onChange={(e) => setDeliveryNote(e.target.value)}
+                      placeholder="Ej: Se entrega en recepción, coordinar con RRHH..."
+                      className="w-full min-h-[80px] rounded-xl border border-blue-200 bg-white p-3 text-sm font-medium outline-none focus:ring-4 focus:ring-blue-200" />
+                  </div>
+                  <button onClick={handleSaveCorporateDelivery}
+                    disabled={corporateAssigning === "_delivery"}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50">
+                    {corporateAssigning === "_delivery" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar entrega"}
+                  </button>
                 </div>
               </div>
             )}
