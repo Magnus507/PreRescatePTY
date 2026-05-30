@@ -404,7 +404,7 @@ export default function EmpresasPage() {
   const handleDecision = async (id: string, action: "approve" | "reject" | "archive" | "restore" | "unsuspend") => {
     const confirmMessages: Record<string, string> = {
       reject: "¿Seguro que deseas rechazar este colaborador? Esto solo afecta el vínculo corporativo. La cuenta personal del usuario no será afectada.",
-      archive: "¿Seguro que deseas archivar este colaborador? Se ocultará del flujo activo, pero su cuenta personal no se verá afectada.",
+      archive: "¿Seguro que deseas eliminar/despedir a este colaborador de la empresa? Se desactivarán sus beneficios corporativos, perfil empresarial y chip corporativo de esta empresa. Su cuenta personal y otros beneficios no serán afectados.",
       restore: "¿Restaurar este colaborador? Volverá al estado activo. Su cuenta personal no se verá afectada.",
     };
     const msg = confirmMessages[action];
@@ -897,9 +897,9 @@ export default function EmpresasPage() {
                     </button>
                     <button
                       onClick={() => handleDecision(m.id, "archive")}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
+                      className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100 transition-colors inline-flex items-center gap-1"
                     >
-                      Archivar
+                      <XCircle className="h-3.5 w-3.5" /> Eliminar
                     </button>
                   </div>
                 </div>

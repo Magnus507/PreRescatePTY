@@ -28,7 +28,7 @@ const STATUS_INFO: Record<string, { label: string; color: string; bg: string }> 
   pending_company_review: { label: "Pendiente", color: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
   rejected_by_company: { label: "Rechazado", color: "text-rose-700", bg: "bg-rose-50 border-rose-200" },
   suspended: { label: "Suspendido", color: "text-red-700", bg: "bg-red-50 border-red-200" },
-  archived: { label: "Archivado", color: "text-slate-600", bg: "bg-slate-50 border-slate-200" },
+  archived: { label: "Eliminado / Archivado", color: "text-slate-600", bg: "bg-slate-50 border-slate-200" },
 };
 
 const TABS: { key: TabFilter; label: string }[] = [
@@ -81,7 +81,7 @@ export default function ColaboradoresPage() {
     const confirmMessages: Record<string, string> = {
       suspend: "¿Seguro que deseas suspender a este colaborador? Su vínculo corporativo quedará suspendido, pero su cuenta personal no se verá afectada.",
       unsuspend: "¿Reactivar este colaborador? Volverá al estado activo con beneficios.",
-      archive: "¿Archivar este colaborador? Se ocultará del flujo activo, pero su cuenta personal no se verá afectada.",
+      archive: "¿Seguro que deseas eliminar/despedir a este colaborador de la empresa? Se desactivarán sus beneficios corporativos, perfil empresarial y chip corporativo de esta empresa. Su cuenta personal y otros beneficios no serán afectados.",
       restore: "¿Restaurar este colaborador? Volverá al estado activo. Su cuenta personal no se verá afectada.",
       reject: "¿Seguro que deseas rechazar este colaborador? Esto solo afecta el vínculo corporativo. La cuenta personal del usuario no será afectada.",
     };
@@ -250,9 +250,9 @@ export default function ColaboradoresPage() {
                         {m.corporateStatus !== "archived" && m.corporateStatus !== "rejected_by_company" && (
                           <button
                             onClick={() => handleAction(m.id, "archive")}
-                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors inline-flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100 transition-colors inline-flex items-center gap-1"
                           >
-                            <Archive className="h-3.5 w-3.5" /> Archivar
+                            <XCircle className="h-3.5 w-3.5" /> Eliminar
                           </button>
                         )}
                       </>
