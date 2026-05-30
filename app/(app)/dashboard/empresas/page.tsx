@@ -325,6 +325,37 @@ export default function EmpresasPage() {
       const ordersRes = await fetch("/api/organizations/corporate-orders");
       const ordersJson = await ordersRes.json();
       if (ordersRes.ok) setCorporateOrders(ordersJson.orders || []);
+    } else if (nextTab === "aprobados") {
+      // Load both members and orders to filter out those already in pending corporate orders
+      const [membersRes, ordersRes] = await Promise.all([
+        fetch(`/api/organizations/members?status=${status}`),
+        fetch("/api/organizations/corporate-orders"),
+      ]);
+      const membersJson = await membersRes.json();
+      const ordersJson = await ordersRes.json();
+      if (ordersRes.ok) setCorporateOrders(ordersJson.orders || []);
+
+      if (membersRes.ok) {
+        // Build set of member IDs that are in non-cancelled, non-rejected pending orders
+        const pendingOrders = (ordersJson.orders || []).filter(
+          (o: any) =>
+            o.orderType === "corporate_employee_purchase" &&
+            (o.adminReviewStatus === "pending" || o.paymentStatus === "under_review") &&
+            o.orderStatus !== "cancelled" &&
+            o.paymentStatus !== "rejected"
+        );
+        const pendingMemberIds = new Set<string>();
+        for (const order of pendingOrders) {
+          for (const item of order.corporateEmployeeItems || []) {
+            pendingMemberIds.add(item.organizationMemberId);
+          }
+        }
+        // Exclude members that are already in a pending corporate order
+        const filtered = (membersJson.members || []).filter(
+          (m: any) => !pendingMemberIds.has(m.id)
+        );
+        setMembers(filtered);
+      }
     } else if (status) {
       const res = await fetch(`/api/organizations/members?status=${status}`);
       const json = await res.json();

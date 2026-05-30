@@ -177,7 +177,7 @@ export async function POST(req: NextRequest) {
         provider: "manual",
         paymentMethod: "manual",
         orderStatus: "pending",
-        paymentStatus: "pending",
+        paymentStatus: "under_review",
         adminReviewStatus: "pending",
         paymentProofUrl,
       },
