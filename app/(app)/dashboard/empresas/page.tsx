@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save } from "lucide-react";
+import Link from "next/link";
+import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, Phone, ShieldCheck } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
 
 type CorporateTab =
@@ -124,6 +125,17 @@ const emptyProfileForm = {
   showAdditionalNotesPublic: false,
 };
 
+interface CorpFullProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  displayNamePublic: string | null;
+  bloodType: string;
+  phone: string | null;
+  allergies: string;
+  chronicConditions: string;
+}
+
 export default function EmpresasPage() {
   const [loading, setLoading] = useState(true);
   const [isCorporateAccount, setIsCorporateAccount] = useState(false);
@@ -154,6 +166,8 @@ export default function EmpresasPage() {
   const [corpEditSaving, setCorpEditSaving] = useState(false);
   const [corpEditLoading, setCorpEditLoading] = useState(false);
   const [corpEditError, setCorpEditError] = useState("");
+  // Full decrypted corporate profile for display
+  const [corpFullProfile, setCorpFullProfile] = useState<CorpFullProfile | null>(null);
 
   const [form, setForm] = useState({
     companyCode: "",
@@ -173,7 +187,16 @@ export default function EmpresasPage() {
     try {
       const my = await fetch("/api/organizations/my-status");
       const myJson = await my.json();
-      if (my.ok) setMyStatus(myJson);
+      if (my.ok) {
+        setMyStatus(myJson);
+        // Load full decrypted corporate profile
+        const active = (myJson.requests || []).find((r: any) =>
+          ["pending_company_review", "approved_unpaid", "paid_active", "suspended", "archived"].includes(r.corporateStatus)
+        );
+        if (active?.corporateProfile?.id) {
+          loadCorpFullProfile(active.corporateProfile.id);
+        }
+      }
 
       const corp = await fetch("/api/organizations/members?status=pending_company_review");
       if (corp.ok) {
@@ -191,6 +214,29 @@ export default function EmpresasPage() {
       toast.error("Error al cargar módulo empresarial");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCorpFullProfile = async (profileId: string) => {
+    try {
+      const res = await fetch(`/api/users/perfiles-medicos/${profileId}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const p = json.profile;
+      if (p) {
+        setCorpFullProfile({
+          id: p.id,
+          firstName: p.firstName || "",
+          lastName: p.lastName || "",
+          displayNamePublic: p.displayNamePublic || null,
+          bloodType: p.bloodType || "—",
+          phone: p.phone || null,
+          allergies: p.allergies || "",
+          chronicConditions: p.chronicConditions || "",
+        });
+      }
+    } catch {
+      // silent — card will show minimal data from my-status
     }
   };
 
@@ -528,10 +574,16 @@ export default function EmpresasPage() {
       if (!res.ok) throw new Error(json.error || "Error al guardar");
       toast.success("Perfil empresarial actualizado");
       setShowCorpEditor(false);
-      // Reload myStatus
+      // Reload
       const my = await fetch("/api/organizations/my-status");
       const myJson = await my.json();
-      if (my.ok) setMyStatus(myJson);
+      if (my.ok) {
+        setMyStatus(myJson);
+        const active = (myJson.requests || []).find((r: any) =>
+          ["pending_company_review", "approved_unpaid", "paid_active", "suspended", "archived"].includes(r.corporateStatus)
+        );
+        if (active?.corporateProfile?.id) loadCorpFullProfile(active.corporateProfile.id);
+      }
     } catch (err: any) {
       setCorpEditError(err.message || "Error de conexión");
     } finally {
@@ -564,6 +616,11 @@ export default function EmpresasPage() {
       const canEdit = isPaidActive;
       const corporateChip = activeRequest.corporateOrderItems?.find((item: any) => item?.chip)?.chip || null;
       const hasCorporateOrderItems = activeRequest.corporateOrderItems?.length > 0;
+      const isDisabled = !isPaidActive;
+      const profile = corpFullProfile;
+      const initials = profile?.firstName && profile?.lastName
+        ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
+        : "EM";
 
       return (
         <div className="max-w-2xl mx-auto space-y-6">
@@ -596,75 +653,104 @@ export default function EmpresasPage() {
             </div>
           </div>
 
-          {/* Corporate Medical Profile */}
+          {/* Corporate Medical Profile — styled like ProfileCard from Perfiles Médicos */}
           {corpProfile && (
-            <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center font-black">
-                    {corpProfile.firstName?.[0]?.toUpperCase() || "E"}
+            <div className={`group overflow-hidden rounded-[2.5rem] border transition-all hover:shadow-2xl hover:shadow-indigo-500/5 border-indigo-200/50 bg-indigo-500/[0.03] ${isDisabled ? 'opacity-70' : ''}`}>
+              <div className="p-8 flex flex-col md:flex-row items-start gap-8">
+                <div className="relative flex flex-col items-center shrink-0">
+                  <div className="h-20 w-20 rounded-[2rem] flex items-center justify-center font-black text-2xl shadow-inner mb-3 bg-indigo-500 text-white">
+                    {initials}
                   </div>
-                  <div>
-                    <h3 className="font-black text-lg">Perfil médico empresarial</h3>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                      Empresarial — {corpProfile.firstName || ""} {corpProfile.lastName || ""}
-                    </p>
-                  </div>
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-500 text-white">
+                    Empresarial
+                  </span>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold border border-indigo-200">
-                  {corpProfile.firstName && corpProfile.lastName && corpProfile.bloodType ? "Completado" : "Pendiente"}
-                </span>
+
+                <div className="flex-1 space-y-4 w-full">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="text-2xl font-black tracking-tight leading-none">
+                          {profile?.firstName || corpProfile.firstName || "Pendiente"} {profile?.lastName || corpProfile.lastName || ""}
+                        </h3>
+                        {profile?.displayNamePublic && (
+                          <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 text-[10px] font-black uppercase tracking-tighter">
+                            Alias: {profile.displayNamePublic}
+                          </span>
+                        )}
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-tighter border ${
+                          profile && profile.firstName && profile.lastName && profile.bloodType !== "—"
+                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                            : "bg-amber-100 text-amber-700 border-amber-200"
+                        }`}>
+                          {profile && profile.firstName && profile.lastName && profile.bloodType !== "—" ? "Completado" : "Pendiente"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {profile?.bloodType && profile.bloodType !== "—" && (
+                          <div className="px-3 py-1.5 rounded-xl bg-indigo-500/5 border border-indigo-200/50 text-[11px] font-black text-indigo-600 uppercase flex items-center gap-2">
+                            <Activity className="h-3.5 w-3.5" /> {profile.bloodType}
+                          </div>
+                        )}
+                        {corporateChip ? (
+                          <div className="px-3 py-1.5 rounded-xl bg-teal-500/10 border border-teal-200/50 text-[11px] font-black text-teal-700 uppercase flex items-center gap-2">
+                            <Smartphone className="h-3.5 w-3.5" /> {corporateChip.shortCode}
+                          </div>
+                        ) : (
+                          <div className="px-3 py-1.5 rounded-xl bg-muted border border-border text-[11px] font-black text-muted-foreground uppercase flex items-center gap-2">
+                            <AlertCircle className="h-3.5 w-3.5" /> Sin Chip
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {corporateChip && (
+                        <Link href={`/e/${corporateChip.shortCode}`} target="_blank"
+                          className="p-3 rounded-xl border border-border hover:bg-slate-100 transition-all text-slate-500" title="Ver Perfil Público">
+                          <ExternalLink className="h-5 w-5" />
+                        </Link>
+                      )}
+                      {canEdit && (
+                        <button onClick={openCorporateProfileEditor}
+                          className="p-3 rounded-xl border border-indigo-200 hover:bg-indigo-100 transition-all text-indigo-600" title="Editar Perfil Empresarial">
+                          <Pencil className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {!isDisabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                      <div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">TELÉFONO</p>
+                        <p className="text-sm font-medium italic">{profile?.phone || corpProfile.phone || "—"}</p>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">ALERGIAS</p>
+                        <p className="text-sm font-medium line-clamp-2 italic">{profile?.allergies || "Ninguna declarada"}</p>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">CONDICIONES</p>
+                        <p className="text-sm font-medium line-clamp-2 italic">{profile?.chronicConditions || "Ninguna declarada"}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {isDisabled && !canEdit && (
+                    <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-200/50">
+                      <p className="text-xs font-bold text-amber-700 uppercase tracking-widest">
+                        ⚠️ Este beneficio empresarial no está activo. Tu perfil personal no se ve afectado.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Este perfil pertenece a tu beneficio empresarial. No afecta tu perfil personal.
-              </p>
-              {canEdit ? (
-                <button
-                  onClick={openCorporateProfileEditor}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all"
-                >
-                  <Pencil className="h-3.5 w-3.5" /> Editar perfil empresarial
-                </button>
-              ) : (
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-                  <p className="text-xs font-bold text-amber-700 uppercase tracking-widest">
-                    ⚠️ Tu beneficio empresarial no está activo. Tu perfil personal no se ve afectado.
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Corporate Chip */}
-          {corporateChip && (
-            <div className="rounded-2xl border border-teal-200 bg-teal-50/50 p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-teal-500 text-white flex items-center justify-center">
-                  <Smartphone className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-lg">Chip empresarial</h3>
-                  <p className="text-[10px] font-mono text-teal-700 font-bold">{corporateChip.shortCode}</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className={`px-3 py-1 rounded-full text-[9px] font-bold border ${
-                  corporateChip.status === "activated" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
-                  corporateChip.status === "assigned" ? "bg-blue-100 text-blue-700 border-blue-200" :
-                  "bg-muted text-muted-foreground"
-                }`}>
-                  {corporateChip.status === "activated" ? "Activado" : corporateChip.status || "Asignado"}
-                </span>
-                <a href={`/e/${corporateChip.shortCode}`} target="_blank"
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-teal-200 text-teal-700 text-[9px] font-bold hover:bg-teal-50 transition-all">
-                  <ExternalLink className="h-3 w-3" /> Abrir ficha pública
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* No chip yet */}
-          {isPaidActive && !corporateChip && hasCorporateOrderItems && (
+          {/* Corporate Chip standalone (only if no corporateProfile exists to show) */}
+          {!corpProfile && isPaidActive && !corporateChip && hasCorporateOrderItems && (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-slate-300 text-white flex items-center justify-center">
@@ -726,9 +812,7 @@ export default function EmpresasPage() {
                       />
                       <div className="flex gap-6 pt-8 border-t border-border/50">
                         <button type="button" onClick={() => setShowCorpEditor(false)}
-                          className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">
-                          Cancelar
-                        </button>
+                          className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
                         <button type="submit" disabled={corpEditSaving}
                           className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
                           {corpEditSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -761,9 +845,7 @@ export default function EmpresasPage() {
             <Briefcase className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
             <div>
               <p className="font-semibold text-indigo-900">¿Tu empresa trabaja con PreRescue ID?</p>
-              <p className="text-sm text-indigo-700/70 mt-1">
-                Ingresa el código empresarial que te proporcionaron para solicitar tu vinculación y acceder a los beneficios corporativos.
-              </p>
+              <p className="text-sm text-indigo-700/70 mt-1">Ingresa el código empresarial que te proporcionaron para solicitar tu vinculación y acceder a los beneficios corporativos.</p>
             </div>
           </div>
         </div>
@@ -792,40 +874,29 @@ export default function EmpresasPage() {
       <div className="flex gap-2 overflow-x-auto">
         {tabs.map((t) => (
           <button key={t.key} onClick={async () => { setTab(t.key); await loadMembersByTab(t.key); }}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${tab === t.key ? "bg-primary text-white" : "bg-muted"}`}>
-            {t.label}
-          </button>
+            className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${tab === t.key ? "bg-primary text-white" : "bg-muted"}`}>{t.label}</button>
         ))}
       </div>
 
-      {/* Admin tabs content — unchanged from original */}
+      {/* Admin tabs — unchanged */}
       {tab === "pagos_enviados" && (
         <div className="space-y-4">
           <div className="rounded-2xl border p-4 bg-blue-50/30 border-blue-200">
             <p className="text-xs font-semibold text-blue-700">Compras corporativas enviadas con comprobante y pendientes de revisión por PreRescue ID.</p>
           </div>
-          {corporateOrders.filter(o => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").length === 0 ? (
+          {corporateOrders.filter((o: any) => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").length === 0 ? (
             <div className="rounded-2xl border p-6 text-sm text-muted-foreground">Sin pagos enviados pendientes de revisión.</div>
           ) : (
-            corporateOrders.filter(o => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").map((order: any) => (
+            corporateOrders.filter((o: any) => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").map((order: any) => (
               <div key={order.id} className="rounded-2xl border p-4 bg-card">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
-                  <div>
-                    <p className="font-bold text-sm">Orden #{order.orderNumber}</p>
-                    <p className="text-[10px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold">En revisión</span>
-                    <p className="font-black text-primary">${order.amount?.toFixed(2)}</p>
-                  </div>
+                  <div><p className="font-bold text-sm">Orden #{order.orderNumber}</p><p className="text-[10px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p></div>
+                  <div className="flex items-center gap-2"><span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold">En revisión</span><p className="font-black text-primary">${order.amount?.toFixed(2)}</p></div>
                 </div>
                 {order.corporateEmployeeItems?.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-2 text-xs text-muted-foreground py-1 border-t border-dashed border-slate-100">
                     <span className="font-semibold">{item.organizationMember?.profile?.firstName || "—"} {item.organizationMember?.profile?.lastName || ""}</span>
-                    <span>·</span>
-                    <span>{item.product?.name || "Producto"} x{item.quantity}</span>
-                    <span>·</span>
-                    <span>${item.subtotal?.toFixed(2)}</span>
+                    <span>·</span><span>{item.product?.name || "Producto"} x{item.quantity}</span><span>·</span><span>${item.subtotal?.toFixed(2)}</span>
                   </div>
                 ))}
                 {order.paymentProofUrl && <div className="mt-2 flex items-center gap-2 text-[10px] text-emerald-600 font-semibold"><CheckCircle2 className="h-3 w-3" /> Comprobante adjuntado</div>}
@@ -905,14 +976,7 @@ export default function EmpresasPage() {
                       {(memberProducts[m.id] || []).map((item: any) => {
                         const product = products.find((p: any) => p.id === item.productId);
                         if (!product) return null;
-                        return (
-                          <div key={item.productId} className="flex items-center gap-2 text-sm">
-                            <span className="flex-1">{product.name}</span>
-                            <input type="number" min={1} value={item.quantity} onChange={(e) => updateMemberProductQty(m.id, item.productId, Number(e.target.value))} className="w-16 border rounded px-2 py-1" />
-                            <span className="w-20 text-right">${(product.price * item.quantity).toFixed(2)}</span>
-                            <button onClick={() => removeMemberProduct(m.id, item.productId)} className="text-rose-600">Quitar</button>
-                          </div>
-                        );
+                        return (<div key={item.productId} className="flex items-center gap-2 text-sm"><span className="flex-1">{product.name}</span><input type="number" min={1} value={item.quantity} onChange={(e) => updateMemberProductQty(m.id, item.productId, Number(e.target.value))} className="w-16 border rounded px-2 py-1" /><span className="w-20 text-right">${(product.price * item.quantity).toFixed(2)}</span><button onClick={() => removeMemberProduct(m.id, item.productId)} className="text-rose-600">Quitar</button></div>);
                       })}
                       <p className="text-xs font-semibold text-right">Subtotal: ${getMemberSubtotal(m.id).toFixed(2)}</p>
                     </div>
@@ -930,9 +994,7 @@ export default function EmpresasPage() {
                 </div>
               )}
               {(tab === "archivados" && m.corporateStatus === "archived") && (
-                <div className="flex gap-2">
-                  <button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Restaurar</button>
-                </div>
+                <div className="flex gap-2"><button onClick={() => handleDecision(m.id, "restore")} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Restaurar</button></div>
               )}
               {(tab === "suspendidos" && m.corporateStatus === "suspended") && (
                 <div className="flex gap-2">
@@ -960,17 +1022,13 @@ export default function EmpresasPage() {
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Comprobante de pago</p>
                 <p className="text-[10px] text-muted-foreground">Selecciona una imagen o captura del comprobante.</p>
                 <div className="flex items-center gap-3">
-                  <input id="corporate-proof-upload" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={proofFileUploading} onChange={async (e) => {
-                    const file = e.target.files?.[0]; if (!file) return;
-                    if (file.size > 5 * 1024 * 1024) { toast.error("El archivo es muy pesado (máx 5MB)"); return; }
-                    setProofFileName(file.name); setProofFileUploading(true);
-                    try {
-                      const formData = new FormData(); formData.append("file", file); formData.append("type", "payment"); formData.append("bucket", "payment-proofs");
-                      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-                      if (!uploadRes.ok) throw new Error("Error al subir archivo");
-                      const { url } = await uploadRes.json(); setPaymentProofUrl(url); setProofUploadedName(file.name); toast.success("Comprobante adjuntado");
-                    } catch { toast.error("Error al subir el comprobante"); } finally { setProofFileUploading(false); }
-                  }} />
+                  <input id="corporate-proof-upload" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={proofFileUploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) { toast.error("El archivo es muy pesado (máx 5MB)"); return; }
+                      setProofFileName(file.name); setProofFileUploading(true);
+                      try { const formData = new FormData(); formData.append("file", file); formData.append("type", "payment"); formData.append("bucket", "payment-proofs"); const uploadRes = await fetch("/api/upload", { method: "POST", body: formData }); if (!uploadRes.ok) throw new Error("Error al subir archivo"); const { url } = await uploadRes.json(); setPaymentProofUrl(url); setProofUploadedName(file.name); toast.success("Comprobante adjuntado"); } catch { toast.error("Error al subir el comprobante"); } finally { setProofFileUploading(false); }
+                    }} />
                   <label htmlFor="corporate-proof-upload" className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all">
                     {proofFileUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</> : <><Upload className="h-4 w-4" /> Seleccionar archivo</>}
                   </label>
@@ -991,13 +1049,9 @@ export default function EmpresasPage() {
   );
 }
 
-// ==================== SHARED JOIN FORM COMPONENT ====================
+// ==================== SHARED JOIN FORM ====================
 function JoinForm({ form, setForm, companyCodeError, submittingJoin, handleSubmitJoin }: {
-  form: { companyCode: string; firstName: string; lastName: string; employeeNationalId: string; employeeAge: string; employeePhone: string; employeePosition: string; employeeDepartment: string; employeeInternalId: string; employeeNote: string; };
-  setForm: React.Dispatch<React.SetStateAction<typeof form>>;
-  companyCodeError: string;
-  submittingJoin: boolean;
-  handleSubmitJoin: (e: React.FormEvent) => Promise<void>;
+  form: any; setForm: any; companyCodeError: string; submittingJoin: boolean; handleSubmitJoin: (e: React.FormEvent) => Promise<void>;
 }) {
   return (
     <form onSubmit={handleSubmitJoin} className="rounded-2xl border p-5 bg-card space-y-5">
@@ -1005,25 +1059,22 @@ function JoinForm({ form, setForm, companyCodeError, submittingJoin, handleSubmi
         <label className="text-sm font-semibold">Código empresarial <span className="text-rose-500">*</span></label>
         <input className={`w-full border-2 rounded-xl px-4 py-3 text-lg font-bold tracking-widest text-center uppercase ${companyCodeError ? "border-rose-300 bg-rose-50 focus:border-rose-500 focus:ring-rose-500" : "border-indigo-200 bg-indigo-50/30 focus:border-indigo-400 focus:ring-indigo-400"} outline-none transition-all`}
           placeholder="Ejemplo: ACP2026" value={form.companyCode}
-          onChange={(e) => { const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); setForm((prev) => ({ ...prev, companyCode: val })); }}
-          maxLength={20} required autoComplete="off" />
+          onChange={(e) => { const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); setForm((prev: any) => ({ ...prev, companyCode: val })); }} maxLength={20} required autoComplete="off" />
         {companyCodeError && <p className="text-xs font-medium text-rose-600 flex items-center gap-1 mt-1"><XCircle className="h-3.5 w-3.5" />{companyCodeError}</p>}
       </div>
       <div className="border-t border-dashed border-slate-200" />
-      <div className="space-y-1.5"><p className="text-sm font-semibold">Tus datos personales</p></div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cédula / ID</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="8-000-0000" value={form.employeeNationalId} onChange={(e) => setForm((prev) => ({ ...prev, employeeNationalId: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Edad</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="25" type="number" min={1} max={120} value={form.employeeAge} onChange={(e) => setForm((prev) => ({ ...prev, employeeAge: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Teléfono</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="+507 6000-0000" value={form.employeePhone} onChange={(e) => setForm((prev) => ({ ...prev, employeePhone: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cargo</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Operador, Supervisor" value={form.employeePosition} onChange={(e) => setForm((prev) => ({ ...prev, employeePosition: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Departamento</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Logística, RRHH" value={form.employeeDepartment} onChange={(e) => setForm((prev) => ({ ...prev, employeeDepartment: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">ID laboral interno</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Opcional" value={form.employeeInternalId} onChange={(e) => setForm((prev) => ({ ...prev, employeeInternalId: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cédula / ID</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="8-000-0000" value={form.employeeNationalId} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeNationalId: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Edad</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="25" type="number" min={1} max={120} value={form.employeeAge} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeAge: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Teléfono</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="+507 6000-0000" value={form.employeePhone} onChange={(e) => setForm((prev: any) => ({ ...prev, employeePhone: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cargo</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Operador, Supervisor" value={form.employeePosition} onChange={(e) => setForm((prev: any) => ({ ...prev, employeePosition: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Departamento</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Logística, RRHH" value={form.employeeDepartment} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeDepartment: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">ID laboral interno</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Opcional" value={form.employeeInternalId} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeInternalId: e.target.value }))} /></div>
       </div>
-      <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Nota opcional</label><textarea className="w-full border rounded-xl px-3 py-2.5" placeholder="Cualquier información adicional que quieras compartir con tu empresa..." rows={2} value={form.employeeNote} onChange={(e) => setForm((prev) => ({ ...prev, employeeNote: e.target.value }))} /></div>
+      <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Nota opcional</label><textarea className="w-full border rounded-xl px-3 py-2.5" placeholder="..." rows={2} value={form.employeeNote} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeNote: e.target.value }))} /></div>
       <button type="submit" disabled={submittingJoin} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-black text-sm hover:shadow-lg hover:shadow-indigo-600/20 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/10 disabled:opacity-50 inline-flex items-center justify-center gap-2">
         {submittingJoin ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando solicitud...</> : <>Enviar solicitud <ArrowRight className="h-4 w-4" /></>}
       </button>
-      <p className="text-xs text-center text-muted-foreground">Tu solicitud será enviada a la empresa para que la revise. No compartimos datos médicos en este proceso.</p>
     </form>
   );
 }
