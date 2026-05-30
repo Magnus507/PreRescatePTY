@@ -25,12 +25,24 @@ export async function GET() {
     include: {
       _count: { select: { scanEvents: true } },
       assignedProfile: {
-        select: { id: true, firstName: true, lastName: true, userId: true },
+        select: { id: true, firstName: true, lastName: true, userId: true, profileType: true },
+      },
+      corporateOrderItems: {
+        select: { id: true },
       },
     },
   });
 
-  return NextResponse.json({ chips });
+  // Filtrar chips para excluir chips corporativos
+  const personalChips = chips.filter((chip) => {
+    const isCorporateProfile = chip.assignedProfile?.profileType === "corporate";
+    const hasCorporateOrderItems = chip.corporateOrderItems && chip.corporateOrderItems.length > 0;
+
+    // Excluir si es perfil corporate O tiene items de orden corporativa
+    return !isCorporateProfile && !hasCorporateOrderItems;
+  });
+
+  return NextResponse.json({ chips: personalChips });
 }
 
 export async function PATCH(req: NextRequest) {
