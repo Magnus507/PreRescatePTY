@@ -17,6 +17,7 @@ export async function GET() {
           id: true,
           firstName: true,
           lastName: true,
+          phone: true,
           organizationMembers: {
             include: {
               organization: {
