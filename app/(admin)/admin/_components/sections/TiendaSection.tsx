@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Store, Plus, Package, DollarSign, Trash2, Edit3, Loader2, X, Image as ImageIcon, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Store, Plus, Package, DollarSign, Trash2, Edit3, Loader2, X, Image as ImageIcon, Clock, CheckCircle2, AlertTriangle, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 interface Product {
@@ -362,17 +362,39 @@ export function TiendaSection() {
                        </select>
                     </div>
 
-                    <div>
-                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-2 block">Link de Imagen (URL)</label>
-                       <div className="relative">
-                          <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          <input 
-                            value={formData.image}
-                            onChange={e => setFormData({...formData, image: e.target.value})}
-                            className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-sm focus:ring-4 focus:ring-primary/10"
-                            placeholder="https://..."
-                          />
-                       </div>
+                    <div className="col-span-2">
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-2 block">Imagen del Producto</label>
+                       {formData.image ? (
+                         <div className="relative">
+                           <img src={formData.image} alt="Preview" className="w-full h-48 object-cover rounded-2xl border border-slate-200" />
+                           <button type="button" onClick={() => setFormData({...formData, image: ""})}
+                             className="absolute top-2 right-2 p-2 bg-white/90 rounded-xl shadow-md hover:bg-white transition-all">
+                             <X className="h-4 w-4 text-slate-600" />
+                           </button>
+                         </div>
+                       ) : (
+                         <label className="flex flex-col items-center justify-center w-full h-48 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all">
+                           <Upload className="h-8 w-8 text-slate-300 mb-2" />
+                           <span className="text-xs font-bold text-slate-400">Seleccionar imagen</span>
+                           <span className="text-[10px] text-slate-300 mt-1">JPG, PNG o WebP — máximo 5MB</span>
+                           <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+                             onChange={async (e) => {
+                               const file = e.target.files?.[0];
+                               if (!file) return;
+                               if (file.size > 5 * 1024 * 1024) { toast.error("El archivo supera 5MB"); return; }
+                               try {
+                                 const fd = new FormData();
+                                 fd.append("file", file);
+                                 fd.append("bucket", "general");
+                                 const res = await fetch("/api/upload", { method: "POST", body: fd });
+                                 if (!res.ok) throw new Error("Error al subir imagen");
+                                 const data = await res.json();
+                                 setFormData({...formData, image: data.url});
+                                 toast.success("Imagen subida correctamente");
+                               } catch { toast.error("Error al subir imagen"); }
+                             }} />
+                         </label>
+                       )}
                     </div>
                  </div>
 
