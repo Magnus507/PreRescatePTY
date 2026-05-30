@@ -60,15 +60,6 @@ interface FamilyProfile {
   profileType?: string;
 }
 
-interface CorporateProfileEntry {
-  id: string;
-  organizationId: string;
-  organizationMemberId: string;
-  organizationName: string;
-  corporateStatus: string;
-  profile: FamilyProfile | null;
-}
-
 interface FamilyState {
   canAddFamilyMember: boolean;
   familyProfilesCount: number;
@@ -101,7 +92,6 @@ const emptyContactForm = {
 
 export default function FamiliaPage() {
   const [familyProfiles, setFamilyProfiles] = useState<FamilyProfile[]>([]);
-  const [corporateProfiles, setCorporateProfiles] = useState<CorporateProfileEntry[]>([]);
   const [profilesLoadedAt, setProfilesLoadedAt] = useState<number | null>(null);
   const [ownProfile, setOwnProfile] = useState<FamilyProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,7 +139,6 @@ export default function FamiliaPage() {
 
       setOwnProfile(pData.ownProfile);
       setFamilyProfiles(pData.familyProfiles || []);
-      setCorporateProfiles(pData.corporateProfiles || []);
       setProfilesLoadedAt(Date.now());
       setState(pData.state);
 
@@ -497,41 +486,6 @@ export default function FamiliaPage() {
         </div>
       )}
 
-      {/* Corporate Profiles Section */}
-      {corporateProfiles.length > 0 && (
-        <div className="space-y-6 pt-4">
-          <div className="flex items-center gap-3 border-b border-border pb-4">
-            <div className="h-10 w-10 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
-              <Users className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-black tracking-tight uppercase italic">Perfiles Empresariales</h2>
-              <p className="text-sm text-muted-foreground font-medium">Perfiles médicos habilitados por tu empresa para PreRescue ID.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-6">
-            {corporateProfiles.map((corpEntry) => (
-              <CorporateProfileCard
-                key={corpEntry.id}
-                entry={corpEntry}
-                onEdit={() => {
-                  if (corpEntry.profile) {
-                    openEdit(corpEntry.profile);
-                  }
-                }}
-                onStartAddContact={() => {
-                  if (corpEntry.id) {
-                    setAddingContactToProfile(corpEntry.id);
-                    setContactError("");
-                    setContactForm({...emptyContactForm});
-                  }
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Modals */}
       {showAdd && (
         <Modal title="Añadir Perfil Médico" onClose={() => setShowAdd(false)}>
@@ -848,109 +802,6 @@ function ProfileCard({
   );
 }
 
-interface CorporateProfileCardProps {
-  entry: CorporateProfileEntry;
-  onEdit: () => void;
-  onStartAddContact: () => void;
-}
-
-function CorporateProfileCard({ entry, onEdit, onStartAddContact }: CorporateProfileCardProps) {
-  const statusConfig: Record<string, { label: string; color: string }> = {
-    paid_active: { label: "Activo", color: "bg-emerald-500/10 text-emerald-700 border-emerald-200" },
-    approved_unpaid: { label: "Pendiente", color: "bg-amber-500/10 text-amber-700 border-amber-200" },
-    pending: { label: "Pendiente", color: "bg-amber-500/10 text-amber-700 border-amber-200" },
-    suspended: { label: "Suspendido", color: "bg-red-500/10 text-red-700 border-red-200" },
-    archived: { label: "Archivado", color: "bg-slate-500/10 text-slate-600 border-slate-200" },
-  };
-
-  const status = statusConfig[entry.corporateStatus] || { label: entry.corporateStatus || "Desconocido", color: "bg-muted text-muted-foreground border-border" };
-  const profile = entry.profile;
-  const initials = profile?.firstName && profile?.lastName
-    ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
-    : "EM";
-
-  const isDisabled = entry.corporateStatus === "suspended" || entry.corporateStatus === "archived";
-
-  return (
-    <div className={`group overflow-hidden rounded-[2.5rem] border transition-all hover:shadow-2xl hover:shadow-indigo-500/5 border-indigo-200/50 bg-indigo-500/[0.03] ${isDisabled ? 'opacity-70' : ''}`}>
-      <div className="p-8 flex flex-col md:flex-row items-start gap-8">
-         <div className="relative flex flex-col items-center shrink-0">
-            <div className="h-20 w-20 rounded-[2rem] flex items-center justify-center font-black text-2xl shadow-inner mb-3 bg-indigo-500 text-white">
-               {initials}
-            </div>
-            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-500 text-white">
-               Empresarial
-            </span>
-         </div>
-
-         <div className="flex-1 space-y-4 w-full">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-               <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-2xl font-black tracking-tight leading-none">
-                      {profile?.firstName || "Pendiente"} {profile?.lastName || ""}
-                    </h3>
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-tighter border ${status.color}`}>
-                       {status.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building2 className="h-4 w-4 text-indigo-500" />
-                    <span className="font-bold italic">{entry.organizationName}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    {profile?.bloodType && (
-                      <div className="px-3 py-1.5 rounded-xl bg-indigo-500/5 border border-indigo-200/50 text-[11px] font-black text-indigo-600 uppercase flex items-center gap-2">
-                         <Activity className="h-3.5 w-3.5" /> {profile.bloodType}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground font-medium italic mt-2">
-                    Este perfil fue habilitado por tu empresa. Si la empresa suspende el beneficio, tu perfil personal no se verá afectado.
-                  </p>
-               </div>
-
-               <div className="flex items-center gap-2">
-                  {!isDisabled && (
-                    <>
-                      <button onClick={onEdit} className="p-3 rounded-xl border border-indigo-200 hover:bg-indigo-100 transition-all text-indigo-600" title="Editar Perfil Empresarial">
-                         <Pencil className="h-5 w-5" />
-                      </button>
-                    </>
-                  )}
-               </div>
-            </div>
-
-            {!isDisabled && profile && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                 <div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">TELÉFONO</p>
-                    <p className="text-sm font-medium italic">{profile.phone || "—"}</p>
-                 </div>
-                 <div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">ALERGIAS</p>
-                    <p className="text-sm font-medium line-clamp-2 italic">{profile.allergies || "Ninguna declarada"}</p>
-                 </div>
-                 <div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">CONDICIONES</p>
-                    <p className="text-sm font-medium line-clamp-2 italic">{profile.chronicConditions || "Ninguna declarada"}</p>
-                 </div>
-              </div>
-            )}
-
-            {isDisabled && (
-              <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-200/50">
-                <p className="text-xs font-bold text-amber-700 uppercase tracking-widest">
-                  ⚠️ Este perfil empresarial está {status.label.toLowerCase()}. No se puede editar hasta que la empresa reactive el beneficio.
-                </p>
-              </div>
-            )}
-         </div>
-      </div>
-    </div>
-  );
-}
-
 interface ModalProps {
   title: string;
   onClose: () => void;
@@ -975,5 +826,3 @@ function Modal({ title, onClose, children }: ModalProps) {
     </div>
   );
 }
-
-

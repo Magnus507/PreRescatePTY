@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload } from "lucide-react";
+import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus } from "lucide-react";
 
 type CorporateTab =
   | "solicitantes"
@@ -460,6 +460,12 @@ export default function EmpresasPage() {
     // If there's an active request, show its status
     if (activeRequest) {
       const statusInfo = getStatusInfo(activeRequest.corporateStatus as RequestStatus);
+      const corpProfile = activeRequest.corporateProfile;
+      const isPaidActive = activeRequest.corporateStatus === "paid_active";
+      const canEdit = isPaidActive;
+      const corporateChip = activeRequest.corporateOrderItems?.find((item: any) => item?.chip)?.chip || null;
+      const hasCorporateOrderItems = activeRequest.corporateOrderItems?.length > 0;
+
       return (
         <div className="max-w-2xl mx-auto space-y-6">
           <div className="flex items-center gap-3">
@@ -468,10 +474,11 @@ export default function EmpresasPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black">Vinculación Empresarial</h1>
-              <p className="text-sm text-muted-foreground">Estado de tu solicitud</p>
+              <p className="text-sm text-muted-foreground">Estado de tu beneficio corporativo</p>
             </div>
           </div>
 
+          {/* Status card */}
           <div className={`rounded-2xl border-2 p-5 ${statusInfo.color}`}>
             <div className="flex items-start gap-4">
               <div className="h-10 w-10 rounded-xl bg-white/80 flex items-center justify-center shrink-0">
@@ -489,6 +496,108 @@ export default function EmpresasPage() {
               </div>
             </div>
           </div>
+
+          {/* Corporate Medical Profile */}
+          {corpProfile && (
+            <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center font-black">
+                    {corpProfile.firstName?.[0]?.toUpperCase() || "E"}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-lg">
+                      Perfil médico empresarial
+                    </h3>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                      Empresarial — {corpProfile.firstName || ""} {corpProfile.lastName || ""}
+                    </p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold border border-indigo-200">
+                  {corpProfile.firstName && corpProfile.lastName && corpProfile.bloodType ? "Completado" : "Pendiente"}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Este perfil pertenece a tu beneficio empresarial. No afecta tu perfil personal.
+              </p>
+              {canEdit ? (
+                <a
+                  href={`/dashboard/perfiles-medicos?editProfileId=${corpProfile.id}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Editar perfil empresarial
+                </a>
+              ) : (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-widest">
+                    ⚠️ Tu beneficio empresarial no está activo. Tu perfil personal no se ve afectado.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Corporate Chip */}
+          {corporateChip && (
+            <div className="rounded-2xl border border-teal-200 bg-teal-50/50 p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-teal-500 text-white flex items-center justify-center">
+                  <Smartphone className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg">Chip empresarial</h3>
+                  <p className="text-[10px] font-mono text-teal-700 font-bold">{corporateChip.shortCode}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className={`px-3 py-1 rounded-full text-[9px] font-bold border ${
+                  corporateChip.status === "activated" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                  corporateChip.status === "assigned" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                  "bg-muted text-muted-foreground"
+                }`}>
+                  {corporateChip.status === "activated" ? "Activado" : corporateChip.status || "Asignado"}
+                </span>
+                <a
+                  href={`/e/${corporateChip.shortCode}`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-teal-200 text-teal-700 text-[9px] font-bold hover:bg-teal-50 transition-all"
+                >
+                  <ExternalLink className="h-3 w-3" /> Abrir ficha pública
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* No chip yet */}
+          {isPaidActive && !corporateChip && hasCorporateOrderItems && (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-slate-300 text-white flex items-center justify-center">
+                  <Smartphone className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm">Chip empresarial</p>
+                  <p className="text-xs text-muted-foreground">Chip empresarial pendiente de asignación o activación por tu empresa.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* No corporate profile yet but paid_active — show link to create */}
+          {isPaidActive && !corpProfile && (
+            <div className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/30 p-6 text-center">
+              <p className="text-sm font-semibold text-indigo-700 mb-2">
+                Tu beneficio empresarial está activo pero no tienes perfil empresarial configurado.
+              </p>
+              <a
+                href="/dashboard/perfiles-medicos?createCorporateProfile=true"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700"
+              >
+                <Plus className="h-3.5 w-3.5" /> Configurar perfil empresarial
+              </a>
+            </div>
+          )}
 
           {activeRequest.corporateStatus === "rejected_by_company" && (
             <div className="rounded-2xl border-2 border-dashed border-rose-200 p-5 bg-rose-50/30">

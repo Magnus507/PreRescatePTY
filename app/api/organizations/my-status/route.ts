@@ -28,6 +28,25 @@ export async function GET() {
                   status: true,
                 },
               },
+              corporateProfile: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  profileType: true,
+                  bloodType: true,
+                  phone: true,
+                },
+              },
+              corporateOrderItems: {
+                select: {
+                  id: true,
+                  fulfillmentStatus: true,
+                  activatedAt: true,
+                  product: { select: { id: true, name: true, productType: true } },
+                  chip: { select: { id: true, shortCode: true, status: true, serialPublic: true } },
+                },
+              },
             },
             orderBy: { createdAt: "desc" },
           },
