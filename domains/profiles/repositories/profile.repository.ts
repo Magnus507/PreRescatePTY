@@ -48,10 +48,14 @@ export class ProfileRepository {
 
   /**
    * Get all family profiles for an account, including chip metadata.
+   * Excludes corporate profiles (profileType = "corporate").
    */
   static async findAllByAccount(accountId: string) {
     const profiles = await prisma.profile.findMany({
-      where: { accountId },
+      where: { 
+        accountId,
+        profileType: { not: "corporate" }
+      },
       include: {
         assignedChips: {
           select: {

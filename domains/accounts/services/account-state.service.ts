@@ -121,7 +121,12 @@ export class AccountStateService {
       ? await Promise.all([
           prisma.chip.count({ where: { accountId: account.id, status: { in: CHIP_CAPACITY_STATUSES } } }),
           prisma.chip.count({ where: { accountId: account.id, status: "sold", isPhysical: true } }),
-          prisma.profile.count({ where: { accountId: account.id } }),
+          prisma.profile.count({ 
+            where: { 
+              accountId: account.id,
+              profileType: { not: "corporate" }
+            } 
+          }),
           prisma.scanEvent.count({ where: { accountId: account.id } }),
           prisma.profileContact.count({ 
             where: { 
