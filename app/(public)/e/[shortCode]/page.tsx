@@ -484,7 +484,8 @@ export default function EmergencyPage() {
           </div>
         )}
 
-        {/* EMERGENCY CONTACTS — shown to BOTH citizen and paramedic */}
+        {/* EMERGENCY CONTACTS — citizen view only */}
+        {!isParamedic && (
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
           <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
@@ -535,6 +536,7 @@ export default function EmergencyPage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Medical extras — paramedic view (keeps original format) */}
         {isParamedic && hasExtras && (
