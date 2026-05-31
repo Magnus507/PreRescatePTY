@@ -102,9 +102,9 @@ export async function POST(req: NextRequest) {
       return ApiResponse.error("Cuenta no configurada", { status: 400 });
     }
 
-    if (!state.canAddFamilyMember) {
-      return ApiResponse.error("Límite de perfiles alcanzado. Adquiere un paquete adicional.", { status: 403 });
-    }
+    // El límite comercial se aplica a chips/protecciones activas, no a perfiles.
+    // Solo bloqueamos si se supera el límite técnico anti-abuso.
+    // (ya validado en canAddFamilyMember con MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT = 50)
 
     const body = await req.json();
     const validation = profileUpdateSchema.partial().safeParse(body);

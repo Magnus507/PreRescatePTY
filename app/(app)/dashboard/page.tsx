@@ -380,30 +380,30 @@ export default function DashboardPage() {
            ))}
            
            {!state.isFamily && familyProfiles?.length > 0 && (
-              <div className="col-span-full mt-2 p-4 rounded-2xl border border-dashed border-border bg-slate-50/50 flex items-center justify-between">
-                 <p className="text-xs font-medium text-muted-foreground italic">
-                    Tienes {familyProfiles.length} perfiles adicionales.
-                 </p>
-                 <Link href="/dashboard/perfiles-medicos" className="text-[10px] font-black uppercase text-primary hover:underline">Ver todos</Link>
-              </div>
-           )}
-
-           {(state.isFamily || state.isOrganization) && state.familyProfilesCount < (state.maxProfilesAllocated - 1) && (
-              <Link
-                href={state.isOrganization ? "/dashboard/empresas" : "/dashboard/perfiles-medicos"}
-                className="flex flex-col items-center justify-center gap-3 p-8 rounded-[2rem] border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/50 transition-all text-muted-foreground hover:text-primary group"
-              >
-                <div className="h-12 w-12 rounded-2xl bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-                  <Plus className="h-6 w-6" />
-                </div>
-                <div className="text-center">
-                  <p className="font-black text-sm uppercase tracking-widest">
-                    {state.isOrganization ? "Añadir Colaborador" : "Nuevo Perfil Médico"}
+               <div className="col-span-full mt-2 p-4 rounded-2xl border border-dashed border-border bg-slate-50/50 flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground italic">
+                     Tienes {familyProfiles.length} personas registradas.
                   </p>
-                  <p className="text-[10px] mt-1 opacity-60">Cupo: {state.familyProfilesCount + 1}/{state.maxProfilesAllocated}</p>
-                </div>
-              </Link>
-           )}
+                  <Link href="/dashboard/perfiles-medicos" className="text-[10px] font-black uppercase text-primary hover:underline">Ver todos</Link>
+               </div>
+            )}
+
+            {(state.isFamily || state.isOrganization) && (
+               <Link
+                 href={state.isOrganization ? "/dashboard/empresas" : "/dashboard/perfiles-medicos"}
+                 className="flex flex-col items-center justify-center gap-3 p-8 rounded-[2rem] border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/50 transition-all text-muted-foreground hover:text-primary group"
+               >
+                 <div className="h-12 w-12 rounded-2xl bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                   <Plus className="h-6 w-6" />
+                 </div>
+                 <div className="text-center">
+                   <p className="font-black text-sm uppercase tracking-widest">
+                     {state.isOrganization ? "Añadir Colaborador" : "Nuevo Perfil Médico"}
+                   </p>
+                   <p className="text-[10px] mt-1 opacity-60">Protecciones activas: {state.activeChipsCount}/{state.maxChipsAllocated}</p>
+                 </div>
+               </Link>
+            )}
         </div>
       </section>
 

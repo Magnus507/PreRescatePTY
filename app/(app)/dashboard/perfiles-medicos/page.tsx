@@ -391,41 +391,26 @@ export default function FamiliaPage() {
         </div>
         <button
           onClick={() => { setShowAdd(true); setAddError(""); setAddForm({ ...emptyForm }); }}
-          disabled={state ? !state.canAddFamilyMember : false}
-          className="bg-primary text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
+          className="bg-primary text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
         >
           <Plus className="h-4 w-4" /> Añadir Perfil
         </button>
       </div>
 
       {state && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <div className={`p-6 rounded-[2rem] border flex items-center gap-4 ${state.canAddFamilyMember ? 'border-primary/20 bg-primary/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
-              <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${state.canAddFamilyMember ? 'bg-primary text-white' : 'bg-amber-500 text-white'}`}>
+        <div className="grid grid-cols-1 gap-4">
+           <div className="p-6 rounded-[2rem] border border-primary/20 bg-primary/5 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-primary text-white flex items-center justify-center">
                  <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Capacidad Utilizada</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Perfiles Registrados</p>
                   <p className="font-black text-lg tracking-tight uppercase italic">
-                     {state.familyProfilesCount + 1} de {state.maxProfilesAllocated} perfiles utilizados
+                     {state.familyProfilesCount + 1} {state.familyProfilesCount + 1 === 1 ? 'persona' : 'personas'} registradas
                   </p>
+                  <p className="text-[10px] text-muted-foreground font-medium mt-0.5">La protección se activa al vincular un chip o sticker.</p>
               </div>
            </div>
-
-           {!state.canAddFamilyMember && (
-             <Link href="/dashboard/upgrade" className="p-6 rounded-[2rem] border border-amber-500/30 bg-amber-500/5 flex items-center justify-between group hover:bg-amber-500/10 transition-all">
-                <div className="flex items-center gap-4">
-                   <div className="h-12 w-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center animate-pulse">
-                      <PlusCircle className="h-6 w-6" />
-                   </div>
-                   <div>
-                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Necesitas más perfiles?</p>
-                       <p className="font-black text-lg tracking-tight text-amber-900 uppercase italic leading-none">Amplía tu protección agregando perfiles adicionales.</p>
-                   </div>
-                </div>
-                <ChevronUp className="h-5 w-5 text-amber-500 rotate-90 group-hover:translate-x-1 transition-transform" />
-             </Link>
-           )}
         </div>
       )}
 
@@ -755,12 +740,12 @@ function ProfileCard({
                              </button>
                           );
                        }
-                       return (
-                          <div key={c.id} className="p-6 rounded-[2rem] bg-white dark:bg-slate-950 border-2 border-primary/20 shadow-xl shadow-primary/5 flex flex-col gap-4 relative group">
+                        return (
+                           <div key={c.id} className="p-6 rounded-[2rem] bg-white dark:bg-slate-950 border-2 border-primary/20 shadow-xl shadow-primary/5 flex flex-col gap-4 relative group">
                              <button 
-                               onClick={() => onDeleteContact(c.id)} 
-                               className="absolute -top-2 -right-2 h-8 w-8 bg-white border border-border shadow-md rounded-full flex items-center justify-center text-destructive hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
-                               title="Eliminar Guardián"
+                                onClick={() => onDeleteContact(c.id)} 
+                                className="absolute -top-2 -right-2 h-8 w-8 bg-white border border-border shadow-md rounded-full flex items-center justify-center text-destructive hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
+                                title="Eliminar Guardián"
                              >
                                 <Trash2 className="h-4 w-4" />
                              </button>

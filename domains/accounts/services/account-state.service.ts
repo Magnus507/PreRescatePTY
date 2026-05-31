@@ -8,6 +8,9 @@ export { type SetupChecklist };
 
 const CHIP_CAPACITY_STATUSES = ["activated", "suspended", "sold"];
 const CHIP_SERVICE_STATUSES = ["activated", "suspended"];
+// Límite técnico anti-abuso para perfiles personales/familiares
+const MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT = 50;
+
 export const ACCOUNT_STATE_ERRORS = {
   USER_NOT_FOUND: "USER_NOT_FOUND",
   ADMIN_ACCESS_CLIENT_DASHBOARD: "ADMIN_ACCESS_CLIENT_DASHBOARD",
@@ -188,7 +191,7 @@ export class AccountStateService {
       canManageFamilyProfiles: isFamily && isOwner,
       canAccessOrganizationModule: isCorporate && isOwner,
       canActivateMoreChips: isOwner && activeChipsCount < maxChipsLimit,
-      canAddFamilyMember: isFamily && isOwner && actualProfilesCount < maxProfilesLimit,
+      canAddFamilyMember: isOwner && actualProfilesCount < MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT,
 
       activeChipsCount,
       physicalChipsInTransitCount: inTransitCount, 
