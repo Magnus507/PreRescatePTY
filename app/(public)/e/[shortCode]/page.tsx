@@ -536,29 +536,6 @@ export default function EmergencyPage() {
           </div>
         </div>
 
-        {/* Medical extras — citizen view (NO "Información médica adicional" title) */}
-        {!isParamedic && hasExtras && (
-          <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {extras?.insuranceProvider && <PublicExtraItem label="Aseguradora" value={extras.insuranceProvider} />}
-              {extras?.preferredHospital && <PublicExtraItem label="Hospital preferido" value={extras.preferredHospital} />}
-              {extras?.primaryDoctorName && <PublicExtraItem label="Médico tratante" value={extras.primaryDoctorName} />}
-            </div>
-            {extras?.primaryDoctorPhone && (
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Teléfono del médico</p><p className="text-sm font-bold text-slate-900">{extras.primaryDoctorPhone}</p></div>
-                <a href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white"><Phone className="h-4 w-4" /> Llamar médico</a>
-              </div>
-            )}
-            {extras?.emergencyInstructions && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Instrucciones especiales</p>
-                <p className="text-sm font-semibold text-amber-900">{extras.emergencyInstructions}</p>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Medical extras — paramedic view (keeps original format) */}
         {isParamedic && hasExtras && (
           <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
@@ -580,6 +557,54 @@ export default function EmergencyPage() {
                 <p className="text-sm font-semibold text-amber-900">{extras.emergencyInstructions}</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Paramedic emergency contacts at end */}
+        {isParamedic && profile.emergencyContacts.length > 0 && (
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
+            <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-emerald-50 h-12 w-12 rounded-2xl p-2.5 border border-emerald-100 flex items-center justify-center"><Heart className="h-8 w-8 text-emerald-600 fill-emerald-600 animate-pulse" /></div>
+                  <div>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Contactos de Rescate</h2>
+                    <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1">Contactos de emergencia registrados</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6">
+                {profile.emergencyContacts.map((contact, idx) => {
+                  const contactPhone = sanitizeTelPhone(contact.phone);
+                  const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
+                  const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
+                  const locInfo = formatEmergencyLocation(scanLocation);
+                  const whatsappMessage = locInfo.text
+                    ? `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente.\n\n${locInfo.text}\n\nPor favor intenta contactarle o verifica si necesita asistencia.`
+                    : `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente. Por favor intenta contactarle o verifica si necesita asistencia.`;
+                  const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+                  return (
+                    <div key={idx} className="p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8 shadow-sm">
+                      <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row w-full md:w-auto">
+                        <div className="h-12 w-12 md:h-16 md:w-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-xl md:text-2xl shadow-lg shadow-emerald-100 shrink-0">{contact.fullName[0].toUpperCase()}</div>
+                        <div>
+                          <p className="font-black text-slate-900 uppercase tracking-tight text-xl md:text-2xl leading-none mb-1">{contact.fullName}</p>
+                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full border border-emerald-200">
+                            <ShieldCheck className="h-3 w-3 text-emerald-700" />
+                            <span className="text-[10px] text-emerald-700 font-black uppercase tracking-widest">{contact.relationship}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:flex items-center gap-3 w-full md:w-auto">
+                        <a href={`tel:${contactPhone}`} className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-glow-sm transition-all active:scale-95 shadow-xl shadow-emerald-100/50 btn-premium"><Phone className="h-4 w-4 fill-white" /> Llamar</a>
+                        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-[#25D366] text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all active:scale-95 shadow-xl shadow-emerald-100"><MessageCircle className="h-4 w-4 fill-white" /> WhatsApp</a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
