@@ -45,7 +45,7 @@ export async function GET(
     const shortCode = paramsAwaited.shortCode.toUpperCase().trim();
 
     const ip = getClientIp(req, "public-profile-view");
-    const rl = await rateLimit("profile_view", ip, { limit: 30, windowMs: 60_000 });
+    const rl = await rateLimit("profile_view", ip, { limit: 5, windowMs: 60_000 });
     if (!rl.allowed) {
       return publicJson(
         req,
@@ -209,8 +209,6 @@ export async function GET(
       // not exposed from the public emergency profile.
       organization: orgMember ? {
         name: orgMember.organization.legalName,
-        location: orgMember.location?.name || null,
-        department: orgMember.department?.name || null,
       } : null,
 
       emergencyContacts: profile.contacts.map((pc) => ({

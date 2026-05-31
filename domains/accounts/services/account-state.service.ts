@@ -6,7 +6,7 @@ import { redis, isRedisConfigured } from "@/lib/redis";
 
 export { type SetupChecklist };
 
-const CHIP_CAPACITY_STATUSES = ["activated", "suspended", "sold"];
+const CHIP_CAPACITY_STATUSES = ["activated", "suspended"];
 const CHIP_SERVICE_STATUSES = ["activated", "suspended"];
 // Límite técnico anti-abuso para perfiles personales/familiares
 const MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT = 50;

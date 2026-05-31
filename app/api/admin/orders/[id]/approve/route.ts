@@ -46,6 +46,31 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const memberIds = Array.from(new Set(order.corporateEmployeeItems.map((item) => item.organizationMemberId)));
 
     await prisma.$transaction(async (tx) => {
+      // Revalidate corporate order employees within transaction
+      const corporateEmployeeItems = await tx.corporateOrderEmployeeItem.findMany({
+        where: { orderId: id },
+        include: {
+          organizationMember: {
+            include: { organization: true }
+          }
+        }
+      });
+
+      if (corporateEmployeeItems.length === 0) {
+        throw new Error("No hay colaboradores vinculados a esta orden corporativa");
+      }
+
+      const validMembers = corporateEmployeeItems.filter(item => {
+        const member = item.organizationMember;
+        return member &&
+               member.memberStatus === "active" &&
+               member.corporateStatus === "approved_unpaid";
+      });
+
+      if (validMembers.length === 0) {
+        throw new Error("No hay colaboradores válidos para aprobar (estado debe ser: active, approved_unpaid)");
+      }
+
       await tx.order.update({
         where: { id },
         data: {
