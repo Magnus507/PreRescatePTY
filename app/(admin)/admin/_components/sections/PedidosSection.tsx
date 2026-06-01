@@ -1208,8 +1208,8 @@ export function PedidosSection() {
               </div>
              )}
 
-            {/* Corporate Delivery Tracking */}
-            {selectedOrder.orderType === "corporate_employee_purchase" && (
+            {/* Corporate Delivery Tracking (hidden in corporate admin detail simplification) */}
+            {false && selectedOrder?.orderType === "corporate_employee_purchase" && (
               <div className="px-6 pb-6">
                 <div className="rounded-[2rem] border border-blue-200 bg-blue-50/50 p-6 space-y-4">
                   <div className="flex items-center gap-3">
