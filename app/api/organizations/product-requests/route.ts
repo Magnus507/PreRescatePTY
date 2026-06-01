@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
   const member = await prisma.organizationMember.findFirst({
     where: {
       profile: { userId },
-      corporateStatus: { in: ["paid_active", "approved_unpaid"] },
+      corporateStatus: "paid_active",
     },
     select: {
       id: true,

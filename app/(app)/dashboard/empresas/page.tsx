@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, Phone, ShieldCheck, Users } from "lucide-react";
+import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, Phone, ShieldCheck, Users, ShoppingCart, Package, Minus, PlusCircle } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
 
 type CorporateTab =
@@ -168,6 +168,15 @@ export default function EmpresasPage() {
   const [corpEditError, setCorpEditError] = useState("");
   // Full decrypted corporate profile for display
   const [corpFullProfile, setCorpFullProfile] = useState<CorpFullProfile | null>(null);
+
+  // Employee product requests UI
+  const [showProductRequest, setShowProductRequest] = useState(false);
+  const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Record<string, { productId: string; quantity: number; note: string }>>({});
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [myRequests, setMyRequests] = useState<any[]>([]);
+  const [myRequestsLoading, setMyRequestsLoading] = useState(false);
 
   const [form, setForm] = useState({
     companyCode: "",
@@ -624,6 +633,120 @@ export default function EmpresasPage() {
         ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
         : "EM";
 
+      const loadCatalogAndRequests = async () => {
+        if (!isPaidActive) return;
+        setCatalogLoading(true);
+        setMyRequestsLoading(true);
+        try {
+          const [prodRes, reqRes] = await Promise.all([
+            fetch("/api/products"),
+            fetch("/api/organizations/product-requests/my"),
+          ]);
+          if (prodRes.ok) {
+            const prodJson = await prodRes.json();
+            setCatalogProducts((prodJson.products || []).filter((p: any) => p.isActive));
+          }
+          if (reqRes.ok) {
+            const reqJson = await reqRes.json();
+            setMyRequests(reqJson.requests || []);
+          }
+        } catch {
+          // silent
+        } finally {
+          setCatalogLoading(false);
+          setMyRequestsLoading(false);
+        }
+      };
+
+      // Load catalog and requests on mount if paid_active
+      useEffect(() => {
+        if (isPaidActive) {
+          loadCatalogAndRequests();
+        }
+      }, [isPaidActive]);
+
+      const handleOpenProductRequest = () => {
+        setSelectedItems({});
+        loadCatalogAndRequests();
+        setShowProductRequest(true);
+      };
+
+      const handleToggleProduct = (product: any) => {
+        if (selectedItems[product.id]) {
+          const next = { ...selectedItems };
+          delete next[product.id];
+          setSelectedItems(next);
+        } else {
+          setSelectedItems({
+            ...selectedItems,
+            [product.id]: { productId: product.id, quantity: 1, note: "" },
+          });
+        }
+      };
+
+      const handleItemQty = (productId: string, qty: number) => {
+        setSelectedItems((prev) => ({
+          ...prev,
+          [productId]: { ...prev[productId], quantity: Math.max(1, qty) },
+        }));
+      };
+
+      const handleItemNote = (productId: string, note: string) => {
+        setSelectedItems((prev) => ({
+          ...prev,
+          [productId]: { ...prev[productId], note },
+        }));
+      };
+
+      const handleSubmitRequest = async () => {
+        const items = Object.values(selectedItems).filter((i) => i.quantity > 0);
+        if (items.length === 0) {
+          toast.error("Selecciona al menos un producto.");
+          return;
+        }
+        setSubmittingRequest(true);
+        try {
+          const res = await fetch("/api/organizations/product-requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Error al enviar solicitud");
+          toast.success("Solicitud enviada a tu empresa.");
+          setShowProductRequest(false);
+          setSelectedItems({});
+          await loadCatalogAndRequests();
+        } catch (err: any) {
+          toast.error(err.message || "Error al enviar solicitud");
+        } finally {
+          setSubmittingRequest(false);
+        }
+      };
+
+      const requestTotal = Object.values(selectedItems).reduce((sum, item) => {
+        const prod = catalogProducts.find((p: any) => p.id === item.productId);
+        return sum + (prod?.price || 0) * item.quantity;
+      }, 0);
+
+      const PRODUCT_STATUS_LABELS: Record<string, string> = {
+        pending_company_approval: "Pendiente de aprobación",
+        approved_pending_payment: "Aprobada por empresa — pendiente de pago",
+        rejected_by_company: "Rechazada",
+        payment_under_review: "Pago en revisión",
+        paid_approved: "Pago aprobado",
+        cancelled: "Cancelada",
+      };
+
+      const PRODUCT_STATUS_COLORS: Record<string, string> = {
+        pending_company_approval: "bg-amber-100 text-amber-700 border-amber-200",
+        approved_pending_payment: "bg-blue-100 text-blue-700 border-blue-200",
+        rejected_by_company: "bg-rose-100 text-rose-700 border-rose-200",
+        payment_under_review: "bg-indigo-100 text-indigo-700 border-indigo-200",
+        paid_approved: "bg-emerald-100 text-emerald-700 border-emerald-200",
+        cancelled: "bg-slate-100 text-slate-500 border-slate-200",
+      };
+
       return (
         <div className="max-w-2xl mx-auto space-y-6">
           <div className="flex items-center gap-3">
@@ -776,12 +899,247 @@ export default function EmpresasPage() {
             </div>
           )}
 
+          {/* Productos empresariales section */}
+          {isPaidActive && (
+            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/30 to-white p-6 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <ShoppingCart className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-lg">Productos empresariales</h3>
+                    <p className="text-xs text-muted-foreground">Solicita stickers, llaveros, tarjetas o accesorios a tu empresa.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleOpenProductRequest}
+                  className="px-5 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 shrink-0"
+                >
+                  <PlusCircle className="h-4 w-4" /> Solicitar productos
+                </button>
+              </div>
+            </div>
+          )}
+          {!isPaidActive && (
+            <div className="rounded-2xl border border-dashed border-slate-200 p-5 bg-slate-50/50">
+              <p className="text-xs font-medium text-muted-foreground italic">
+                Cuando tu vinculación esté activa podrás solicitar productos empresariales.
+              </p>
+            </div>
+          )}
+
           {activeRequest.corporateStatus === "rejected_by_company" && (
             <div className="rounded-2xl border-2 border-dashed border-rose-200 p-5 bg-rose-50/30">
               <p className="text-sm font-semibold text-rose-700 mb-3">
                 ¿Quieres intentar de nuevo con otra empresa?
               </p>
               <JoinForm form={form} setForm={setForm} companyCodeError={companyCodeError} submittingJoin={submittingJoin} handleSubmitJoin={handleSubmitJoin} />
+            </div>
+          )}
+
+          {/* Mis solicitudes de productos */}
+          {isPaidActive && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                  <Package className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg">Mis solicitudes de productos</h3>
+                  <p className="text-xs text-muted-foreground">Estado de tus solicitudes enviadas a la empresa</p>
+                </div>
+              </div>
+              {myRequestsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : myRequests.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
+                  <p className="text-sm font-medium text-muted-foreground">Todavía no has solicitado productos.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {myRequests.map((req: any) => {
+                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    const statusLabel = PRODUCT_STATUS_LABELS[req.status] || req.status;
+                    const statusColor = PRODUCT_STATUS_COLORS[req.status] || "bg-slate-100 text-slate-600 border-slate-200";
+                    return (
+                      <div key={req.id} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            {new Date(req.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "short", day: "numeric" })}
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${statusColor}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {(req.items || []).map((item: any) => (
+                            <div key={item.id} className="flex items-center justify-between py-2 text-sm">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-semibold text-slate-900 truncate">{item.product?.name || "Producto"}</span>
+                                <span className="text-muted-foreground shrink-0">x{item.quantity}</span>
+                              </div>
+                              <span className="font-bold text-primary shrink-0">${item.subtotal?.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                          <span className="text-xs font-medium text-muted-foreground">Total estimado</span>
+                          <span className="font-black text-lg text-slate-900">${reqTotal.toFixed(2)}</span>
+                        </div>
+                        {req.rejectionReason && (
+                          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+                            Motivo: {req.rejectionReason}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Product Request Modal */}
+          {showProductRequest && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-card w-full max-w-none sm:max-w-3xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/20 flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden">
+                <div className="sticky top-0 z-10 px-4 sm:px-8 py-4 sm:py-6 border-b border-border flex items-center justify-between shrink-0 bg-card/95 backdrop-blur">
+                  <div>
+                    <h3 className="font-black text-lg sm:text-2xl tracking-tight">Solicitar productos</h3>
+                    <p className="text-xs text-muted-foreground font-medium mt-1">
+                      Selecciona los productos que necesitas. Tu empresa revisará y aprobará esta solicitud.
+                    </p>
+                  </div>
+                  <button onClick={() => setShowProductRequest(false)} className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-border flex items-center justify-center hover:bg-accent transition-colors">
+                    <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                </div>
+                <div className="px-4 sm:px-8 py-4 sm:py-6 overflow-y-auto pb-28 sm:pb-10 space-y-4">
+                  {catalogLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : catalogProducts.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Package className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                      <p className="font-semibold">No hay productos disponibles</p>
+                      <p className="text-xs mt-1">Tu empresa aún no ha configurado productos para solicitar.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {catalogProducts.map((product: any) => {
+                        const isSelected = !!selectedItems[product.id];
+                        const sel = selectedItems[product.id];
+                        return (
+                          <div
+                            key={product.id}
+                            className={`rounded-2xl border-2 p-5 transition-all cursor-pointer ${
+                              isSelected
+                                ? "border-indigo-500 bg-indigo-50/30 shadow-lg shadow-indigo-500/10"
+                                : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-sm"
+                            }`}
+                            onClick={() => handleToggleProduct(product)}
+                          >
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="font-black text-base text-slate-900 leading-tight">{product.name}</h4>
+                                  {product.requiresPersonalization && (
+                                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[8px] font-black uppercase tracking-widest border border-amber-200 shrink-0">
+                                      Personalizable
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{product.productType}</p>
+                              </div>
+                              <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                isSelected ? "bg-indigo-600 border-indigo-600" : "border-slate-300"
+                              }`}>
+                                {isSelected && <CheckCircle2 className="h-4 w-4 text-white" />}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xl font-black text-primary">${product.price.toFixed(2)}</p>
+                                {product.estimatedProductionTime && (
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                                    Fabricación: {product.estimatedProductionTime}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <div className="mt-4 pt-4 border-t border-indigo-200 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                                <div className="flex items-center gap-3">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cantidad</label>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); handleItemQty(product.id, (sel?.quantity || 1) - 1); }}
+                                      className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </button>
+                                    <span className="w-10 text-center font-bold text-lg">{sel?.quantity || 1}</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); handleItemQty(product.id, (sel?.quantity || 1) + 1); }}
+                                      className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Nota (opcional)</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Ej: color, tamaño, especificaciones..."
+                                    value={sel?.note || ""}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => handleItemNote(product.id, e.target.value)}
+                                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="sticky bottom-0 px-4 sm:px-8 py-4 sm:py-6 border-t border-border bg-card/95 backdrop-blur flex items-center justify-between gap-4 shrink-0">
+                  <div>
+                    {Object.keys(selectedItems).length > 0 && (
+                      <p className="text-sm font-medium text-muted-foreground">
+                        {Object.keys(selectedItems).length} producto(s) · Total estimado: <span className="font-black text-lg text-primary">${requestTotal.toFixed(2)}</span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowProductRequest(false)}
+                      className="px-6 py-3 rounded-xl border border-border font-black text-sm hover:bg-accent transition-all"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSubmitRequest}
+                      disabled={Object.keys(selectedItems).length === 0 || submittingRequest}
+                      className="px-8 py-3 rounded-xl bg-indigo-600 text-white font-black text-sm shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                    >
+                      {submittingRequest ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+                      {submittingRequest ? "Enviando..." : "Enviar solicitud"}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
