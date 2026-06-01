@@ -499,7 +499,7 @@ export default function EmpresasPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestIds: selectedApprovedRequestIds,
-          paymentProofUrl,
+          paymentProofUrl: orderProofUrl,
         }),
       });
       const json = await res.json();
