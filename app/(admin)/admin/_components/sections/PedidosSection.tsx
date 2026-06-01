@@ -572,7 +572,7 @@ export function PedidosSection() {
                           <div className="flex items-center gap-3">
                             <div className="h-1.5 w-6 bg-indigo-500 rounded-full" />
                             <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-700">
-                              Colaboradores — seguimiento operativo
+                              Seguimiento corporativo
                             </h3>
                           </div>
                           <span className="px-3 py-1 bg-white rounded-full text-[9px] font-bold border border-indigo-200">
@@ -629,10 +629,10 @@ export function PedidosSection() {
                                       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] text-muted-foreground">
                                         <span>{groupItems.length} producto{groupItems.length === 1 ? "" : "s"}</span>
                                         {mainChip && (
-                                          <span className="font-mono text-indigo-600">QR: /e/{mainChip.shortCode}</span>
+                                          <span className="font-mono text-indigo-600">Usando chip empresarial existente · /e/{mainChip.shortCode}</span>
                                         )}
                                         {!mainChip && (
-                                          <span className="text-amber-600 font-bold uppercase tracking-widest">Sin chip</span>
+                                          <span className="text-amber-600 font-bold uppercase tracking-widest">Sin chip empresarial</span>
                                         )}
                                       </div>
                                     </div>
@@ -669,20 +669,10 @@ export function PedidosSection() {
                                       </div>
 
                                       <div className="flex flex-col items-end gap-2 shrink-0">
-                                        {/* Fulfillment buttons */}
-                                        {(item.fulfillmentStatus === "pending_assignment" || item.fulfillmentStatus === "in_production" || item.fulfillmentStatus === "ready_for_assignment") && (
+                                        {/* Fulfillment buttons (only next action) */}
+                                        {(item.fulfillmentStatus === "pending_assignment" || item.fulfillmentStatus === "in_production" || item.fulfillmentStatus === "assigned_reserved" || item.fulfillmentStatus === "ready_for_assignment") && (
                                           <div className="flex flex-wrap gap-1 justify-end">
-                                            {item.fulfillmentStatus === "pending_assignment" && (
-                                              <button onClick={async () => {
-                                                const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
-                                                  method: "PATCH", headers: { "Content-Type": "application/json" },
-                                                  body: JSON.stringify({ fulfillmentStatus: "in_production" }),
-                                                });
-                                                if (res.ok) { toast.success("Marcado en fabricación"); loadOrders({ silent: true }); }
-                                                else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
-                                              }} className="px-2 py-1 rounded-lg bg-purple-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-purple-700">Fabricación</button>
-                                            )}
-                                            {item.fulfillmentStatus !== "ready_for_assignment" && (
+                                            {item.fulfillmentStatus === "pending_assignment" && item.chip && (
                                               <button onClick={async () => {
                                                 const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
                                                   method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -690,16 +680,26 @@ export function PedidosSection() {
                                                 });
                                                 if (res.ok) { toast.success("Marcado listo"); loadOrders({ silent: true }); }
                                                 else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
-                                              }} className="px-2 py-1 rounded-lg bg-teal-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-teal-700">Listo</button>
+                                              }} className="px-2 py-1 rounded-lg bg-teal-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-teal-700">Marcar listo</button>
                                             )}
-                                            <button onClick={async () => {
+                                            {(item.fulfillmentStatus === "assigned_reserved" || item.fulfillmentStatus === "in_production") && (
+                                              <button onClick={async () => {
+                                                const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                                  method: "PATCH", headers: { "Content-Type": "application/json" },
+                                                  body: JSON.stringify({ fulfillmentStatus: "ready_for_assignment" }),
+                                                });
+                                                if (res.ok) { toast.success("Marcado listo"); loadOrders({ silent: true }); }
+                                                else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                              }} className="px-2 py-1 rounded-lg bg-teal-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-teal-700">Marcar listo</button>
+                                            )}
+                                            {item.fulfillmentStatus === "ready_for_assignment" && <button onClick={async () => {
                                               const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
                                                 method: "PATCH", headers: { "Content-Type": "application/json" },
                                                 body: JSON.stringify({ fulfillmentStatus: "delivered" }),
                                               });
                                               if (res.ok) { toast.success("Marcado entregado"); loadOrders({ silent: true }); }
                                               else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
-                                            }} className="px-2 py-1 rounded-lg bg-slate-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-slate-700">Entregar</button>
+                                            }} className="px-2 py-1 rounded-lg bg-slate-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-slate-700">Marcar entregado</button>}
                                           </div>
                                         )}
 
@@ -719,7 +719,7 @@ export function PedidosSection() {
                                             <button onClick={() => { const cid = selectedChipForItem[item.id]; if (cid) handleCorporateAssign(item, cid); }}
                                               disabled={!selectedChipForItem[item.id]}
                                               className="px-2 py-1 bg-indigo-600 text-white rounded-lg font-black text-[8px] uppercase tracking-widest hover:bg-indigo-700"
-                                            >Asignar</button>
+                                            >Asignar chip principal</button>
                                           </div>
                                         )}
                                       </div>
@@ -1036,8 +1036,8 @@ export function PedidosSection() {
                )}
             </div>
 
-            {/* Corporate Chip Assignment Section */}
-            {selectedOrder.orderType === "corporate_employee_purchase" && (selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (
+            {/* Corporate Chip Assignment Section (hidden for corporate detail simplification) */}
+            {false && selectedOrder?.orderType === "corporate_employee_purchase" && (selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (
               <div className="px-6 pb-6">
                 <div className="rounded-[2rem] border border-indigo-200 bg-indigo-50/50 p-6 space-y-4">
                   <div className="flex items-center gap-3">
@@ -1102,7 +1102,7 @@ export function PedidosSection() {
                               {item.fulfillmentStatus === "pending_assignment" && (
                                 <button
                                   onClick={async () => {
-                                    const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                    const res = await fetch(`/api/admin/orders/${selectedOrder?.id}/corporate-items/${item.id}/fulfillment`, {
                                       method: "PATCH",
                                       headers: { "Content-Type": "application/json" },
                                       body: JSON.stringify({ fulfillmentStatus: "in_production" }),
@@ -1119,7 +1119,7 @@ export function PedidosSection() {
                               {item.fulfillmentStatus !== "ready_for_assignment" && (
                                 <button
                                   onClick={async () => {
-                                    const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                    const res = await fetch(`/api/admin/orders/${selectedOrder?.id}/corporate-items/${item.id}/fulfillment`, {
                                       method: "PATCH",
                                       headers: { "Content-Type": "application/json" },
                                       body: JSON.stringify({ fulfillmentStatus: "ready_for_assignment" }),
@@ -1135,7 +1135,7 @@ export function PedidosSection() {
                               )}
                               <button
                                 onClick={async () => {
-                                  const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                  const res = await fetch(`/api/admin/orders/${selectedOrder?.id}/corporate-items/${item.id}/fulfillment`, {
                                     method: "PATCH",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({ fulfillmentStatus: "delivered" }),
@@ -1202,7 +1202,7 @@ export function PedidosSection() {
                 <div className="rounded-[2rem] border border-blue-200 bg-blue-50/50 p-6 space-y-4">
                   <div className="flex items-center gap-3">
                     <Truck className="h-5 w-5 text-blue-600" />
-                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-700">Entrega Corporativa</h3>
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-700">Estado de entrega</h3>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -1240,7 +1240,7 @@ export function PedidosSection() {
             )}
 
             {/* Action Bar */}
-            <div className="px-6 py-5 border-t border-border bg-muted/30 flex justify-between items-center gap-4">
+            {!isCorporateOrder && <div className="px-6 py-5 border-t border-border bg-muted/30 flex justify-between items-center gap-4">
                <div className="flex gap-4">
                   {selectedOrder.orderStatus === "cancelled" && (
                      <button onClick={async () => {
@@ -1295,7 +1295,7 @@ export function PedidosSection() {
                      </button>
                   )}
                </div>
-            </div>
+            </div>}
          </div>
       </div>
     );
