@@ -1391,6 +1391,18 @@ export default function EmpresasPage() {
         <Building2 className="h-8 w-8 text-primary" />
         <h1 className="text-3xl font-black">Gestión Empresarial</h1>
       </div>
+
+      /* Guidance banner */
+      <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 space-y-1">
+        <p className="text-xs font-semibold text-indigo-800 flex items-center gap-2">
+          <Building2 className="h-4 w-4" /> Gestión de colaboradores y productos
+        </p>
+        <p className="text-[10px] text-indigo-700/70 leading-relaxed">
+          Gestiona colaboradores en la sección <strong>Colaboradores</strong> (aprobación de nuevos miembros, suspender, archivar).
+          Aquí gestionas solicitudes de productos, pagos corporativos y estado de vinculaciones activas.
+          El perfil empresarial es separado del perfil personal del empleado.
+        </p>
+      </div>
       <div className="flex gap-2 overflow-x-auto">
         {tabs.map((t) => (
           <button key={t.key} onClick={async () => { setTab(t.key); await loadMembersByTab(t.key); }}
