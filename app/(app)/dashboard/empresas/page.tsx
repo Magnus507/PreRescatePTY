@@ -399,6 +399,13 @@ export default function EmpresasPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
 
+  // Order creation from requests
+  const [selectedApprovedRequests, setSelectedApprovedRequests] = useState<Record<string, boolean>>({});
+  const [orderProofUploading, setOrderProofUploading] = useState(false);
+  const [orderProofUrl, setOrderProofUrl] = useState("");
+  const [orderProofName, setOrderProofName] = useState("");
+  const [submittingOrderFromRequests, setSubmittingOrderFromRequests] = useState(false);
+
   const loadCompanyRequests = async () => {
     setCompanyRequestsLoading(true);
     try {
@@ -411,6 +418,74 @@ export default function EmpresasPage() {
       toast.error("Error al cargar solicitudes");
     } finally {
       setCompanyRequestsLoading(false);
+    }
+  };
+
+  const selectedApprovedRequestIds = useMemo(() => {
+    return Object.entries(selectedApprovedRequests)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+  }, [selectedApprovedRequests]);
+
+  const selectedApprovedTotal = useMemo(() => {
+    return companyRequests
+      .filter((r: any) => selectedApprovedRequestIds.includes(r.id))
+      .reduce((sum: number, r: any) => {
+        return sum + (r.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+      }, 0);
+  }, [companyRequests, selectedApprovedRequestIds]);
+
+  const toggleApprovedRequest = (requestId: string) => {
+    setSelectedApprovedRequests((prev) => ({ ...prev, [requestId]: !prev[requestId] }));
+  };
+
+  const selectAllApproved = () => {
+    const approved = companyRequests.filter((r: any) => r.status === "approved_pending_payment" && !r.orderId);
+    const allSelected = approved.every((r: any) => selectedApprovedRequests[r.id]);
+    if (allSelected) {
+      const next: Record<string, boolean> = {};
+      for (const key of Object.keys(selectedApprovedRequests)) {
+        if (!approved.find((r: any) => r.id === key)) next[key] = true;
+      }
+      setSelectedApprovedRequests(next);
+    } else {
+      const next: Record<string, boolean> = {};
+      for (const r of approved) next[r.id] = true;
+      setSelectedApprovedRequests(next);
+    }
+  };
+
+  const handleSubmitOrderFromRequests = async () => {
+    if (selectedApprovedRequestIds.length === 0) {
+      toast.error("Selecciona al menos una solicitud aprobada");
+      return;
+    }
+    if (!orderProofUrl) {
+      toast.error("Debes adjuntar un comprobante de pago");
+      return;
+    }
+    setSubmittingOrderFromRequests(true);
+    try {
+      const res = await fetch("/api/organizations/corporate-orders/from-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestIds: selectedApprovedRequestIds,
+          paymentProofUrl,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo crear la orden");
+      toast.success(`Orden ${json.orderNumber} creada — pago enviado a revisión`);
+      setSelectedApprovedRequests({});
+      setOrderProofUrl("");
+      setOrderProofName("");
+      await loadCompanyRequests();
+      await loadMembersByTab("pagos_enviados");
+    } catch (err: any) {
+      toast.error(err.message || "No se pudo crear la orden");
+    } finally {
+      setSubmittingOrderFromRequests(false);
     }
   };
 
@@ -1396,28 +1471,52 @@ export default function EmpresasPage() {
                 </div>
               )}
 
-              {/* Approved requests */}
+              {/* Approved requests — selectable for payment */}
               {companyRequests.filter((r: any) => r.status === "approved_pending_payment").length > 0 && (
                 <div className="space-y-4">
-                  <h3 className="text-sm font-black text-blue-800 uppercase tracking-widest flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" /> Aprobadas — pendientes de pago ({companyRequests.filter((r: any) => r.status === "approved_pending_payment").length})
-                  </h3>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-black text-blue-800 uppercase tracking-widest flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" /> Aprobadas — pendientes de pago ({companyRequests.filter((r: any) => r.status === "approved_pending_payment").length})
+                    </h3>
+                    <button
+                      onClick={selectAllApproved}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest"
+                    >
+                      {companyRequests.filter((r: any) => r.status === "approved_pending_payment" && !r.orderId).every((r: any) => selectedApprovedRequests[r.id]) ? "Deseleccionar" : "Seleccionar todas"}
+                    </button>
+                  </div>
                   {companyRequests.filter((r: any) => r.status === "approved_pending_payment").map((req: any) => {
                     const member = req.organizationMember;
                     const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
                     const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    const alreadyLinked = !!req.orderId;
                     return (
-                      <div key={req.id} className="rounded-2xl border border-blue-200 bg-white p-5 space-y-3 shadow-sm">
+                      <div key={req.id} className={`rounded-2xl border bg-white p-5 space-y-3 shadow-sm transition-all ${
+                        selectedApprovedRequests[req.id] ? "border-blue-500 ring-2 ring-blue-500/10" : alreadyLinked ? "border-slate-200 opacity-60" : "border-blue-200"
+                      }`}>
                         <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                              <UserRound className="h-4 w-4" />
+                          <div className="flex items-center gap-3">
+                            {!alreadyLinked && (
+                              <input
+                                type="checkbox"
+                                checked={!!selectedApprovedRequests[req.id]}
+                                onChange={() => toggleApprovedRequest(req.id)}
+                                className="h-5 w-5 rounded border-blue-300 text-blue-600 focus:ring-blue-500 shrink-0"
+                              />
+                            )}
+                            {alreadyLinked && (
+                              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[9px] font-bold shrink-0">EN ORDEN</span>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                                <UserRound className="h-4 w-4" />
+                              </div>
+                              <p className="font-semibold text-sm">{memberName}</p>
                             </div>
-                            <p className="font-semibold text-sm">{memberName}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-lg font-black text-primary">${reqTotal.toFixed(2)}</p>
-                            <p className="text-[10px] text-muted-foreground">Aprobada {new Date(req.companyReviewedAt).toLocaleDateString("es-PA")}</p>
+                            <p className="text-[10px] text-muted-foreground">Aprobada {req.companyReviewedAt ? new Date(req.companyReviewedAt).toLocaleDateString("es-PA") : "—"}</p>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -1427,9 +1526,158 @@ export default function EmpresasPage() {
                             </span>
                           ))}
                         </div>
-                        <p className="text-[10px] text-muted-foreground italic">
-                          Esta solicitud fue aprobada. En la próxima fase podrá incluirse en un pago corporativo.
-                        </p>
+                      </div>
+                    );
+                  })}
+
+                  {/* Payment creation panel */}
+                  {selectedApprovedRequestIds.length > 0 && (
+                    <div className="rounded-2xl border-2 border-blue-300 bg-gradient-to-br from-blue-50/50 to-white p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-black text-blue-900">Crear pago corporativo</p>
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</p>
+                          <p className="text-2xl font-black text-primary">${selectedApprovedTotal.toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      {/* Upload proof */}
+                      <div className={`p-4 rounded-xl border-2 transition-all ${orderProofUrl ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
+                        {orderProofUrl ? (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                              <span className="text-sm font-semibold text-emerald-700 truncate">{orderProofName || "Comprobante adjuntado"}</span>
+                            </div>
+                            <button onClick={() => { setOrderProofUrl(""); setOrderProofName(""); }} className="text-xs text-rose-600 font-semibold hover:underline shrink-0">Quitar</button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Comprobante de pago</p>
+                            <p className="text-[10px] text-muted-foreground">Adjunta imagen o captura del comprobante de transferencia/depósito.</p>
+                            <div className="flex items-center gap-3">
+                              <input
+                                id="order-proof-upload"
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                className="sr-only"
+                                disabled={orderProofUploading}
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  if (file.size > 5 * 1024 * 1024) { toast.error("El archivo es muy pesado (máx 5MB)"); return; }
+                                  setOrderProofUploading(true);
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append("file", file);
+                                    formData.append("type", "payment");
+                                    formData.append("bucket", "payment-proofs");
+                                    const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+                                    if (!uploadRes.ok) throw new Error("Error al subir archivo");
+                                    const { url } = await uploadRes.json();
+                                    setOrderProofUrl(url);
+                                    setOrderProofName(file.name);
+                                    toast.success("Comprobante adjuntado");
+                                  } catch {
+                                    toast.error("Error al subir el comprobante");
+                                  } finally {
+                                    setOrderProofUploading(false);
+                                  }
+                                }}
+                              />
+                              <label htmlFor="order-proof-upload" className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all">
+                                {orderProofUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</> : <><Upload className="h-4 w-4" /> Seleccionar archivo</>}
+                              </label>
+                            </div>
+                            <p className="text-[9px] text-muted-foreground">Máx 5MB. Formatos: JPG, PNG, WebP.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2">
+                        <p className="text-xs text-muted-foreground">{selectedApprovedRequestIds.length} solicitud(es) seleccionada(s)</p>
+                        <button
+                          onClick={handleSubmitOrderFromRequests}
+                          disabled={submittingOrderFromRequests || !orderProofUrl}
+                          className="px-6 py-3 rounded-xl bg-blue-600 text-white font-black text-sm shadow-lg shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                        >
+                          {submittingOrderFromRequests ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+                          {submittingOrderFromRequests ? "Creando orden..." : "Enviar pago a revisión"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Payment under review */}
+              {companyRequests.filter((r: any) => r.status === "payment_under_review").length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-indigo-800 uppercase tracking-widest flex items-center gap-2">
+                    <Clock className="h-4 w-4" /> Pagos en revisión ({companyRequests.filter((r: any) => r.status === "payment_under_review").length})
+                  </h3>
+                  {companyRequests.filter((r: any) => r.status === "payment_under_review").map((req: any) => {
+                    const member = req.organizationMember;
+                    const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
+                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    return (
+                      <div key={req.id} className="rounded-2xl border border-indigo-200 bg-indigo-50/30 p-5 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                              <UserRound className="h-4 w-4" />
+                            </div>
+                            <p className="font-semibold text-sm">{memberName}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-black text-primary">${reqTotal.toFixed(2)}</p>
+                            <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold border border-indigo-200">En revisión</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(req.items || []).map((item: any) => (
+                            <span key={item.id} className="px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[10px] font-semibold border border-indigo-100">
+                              {item.product?.name || "Producto"} × {item.quantity}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Paid / approved */}
+              {companyRequests.filter((r: any) => r.status === "paid_approved").length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-emerald-800 uppercase tracking-widest flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" /> Pagos aprobados ({companyRequests.filter((r: any) => r.status === "paid_approved").length})
+                  </h3>
+                  {companyRequests.filter((r: any) => r.status === "paid_approved").map((req: any) => {
+                    const member = req.organizationMember;
+                    const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
+                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    return (
+                      <div key={req.id} className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              <CheckCircle2 className="h-4 w-4" />
+                            </div>
+                            <p className="font-semibold text-sm">{memberName}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-black text-emerald-600">${reqTotal.toFixed(2)}</p>
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-bold border border-emerald-200">Pagado</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(req.items || []).map((item: any) => (
+                            <span key={item.id} className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-100">
+                              {item.product?.name || "Producto"} × {item.quantity}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     );
                   })}

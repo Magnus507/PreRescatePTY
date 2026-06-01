@@ -90,6 +90,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         });
       }
 
+      // Mark linked product requests as paid_approved
+      await tx.corporateProductRequest.updateMany({
+        where: { orderId: id },
+        data: { status: "paid_approved" },
+      });
+
       await tx.auditLog.create({
         data: {
           accountId: null,

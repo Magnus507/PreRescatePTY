@@ -70,6 +70,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         });
       }
 
+      // Revert linked product requests to approved_pending_payment and clear orderId
+      await tx.corporateProductRequest.updateMany({
+        where: { orderId: id },
+        data: {
+          status: "approved_pending_payment",
+          orderId: null,
+        },
+      });
+
       await tx.auditLog.create({
         data: {
           accountId: null,
