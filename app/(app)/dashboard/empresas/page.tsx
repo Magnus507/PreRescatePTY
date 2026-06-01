@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, Phone, ShieldCheck, Users, ShoppingCart, Package, Minus, PlusCircle } from "lucide-react";
@@ -392,6 +392,34 @@ export default function EmpresasPage() {
     loadAll();
   }, []);
 
+  // Load catalog when employee becomes paid_active
+  const [shouldLoadCatalog, setShouldLoadCatalog] = useState(false);
+  useEffect(() => {
+    if (!shouldLoadCatalog) return;
+    const load = async () => {
+      try {
+        const [prodRes, reqRes] = await Promise.all([
+          fetch("/api/products"),
+          fetch("/api/organizations/product-requests/my"),
+        ]);
+        if (prodRes.ok) {
+          const prodJson = await prodRes.json();
+          setCatalogProducts((prodJson.products || []).filter((p: any) => p.isActive));
+        }
+        if (reqRes.ok) {
+          const reqJson = await reqRes.json();
+          setMyRequests(reqJson.requests || []);
+        }
+      } catch {
+        // silent
+      } finally {
+        setCatalogLoading(false);
+        setMyRequestsLoading(false);
+      }
+    };
+    load();
+  }, [shouldLoadCatalog]);
+
   // Company product requests
   const [companyRequests, setCompanyRequests] = useState<any[]>([]);
   const [companyRequestsLoading, setCompanyRequestsLoading] = useState(false);
@@ -733,6 +761,21 @@ export default function EmpresasPage() {
     );
   }, [myStatus]);
 
+  // Detect when employee goes from no-active to paid_active and load catalog
+  // This must be after activeRequest declaration to avoid "used before declaration" error
+  const prevActiveStatus = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isCorporateAccount && activeRequest) {
+      const status = activeRequest.corporateStatus;
+      if (status === "paid_active" && prevActiveStatus.current !== "paid_active") {
+        setCatalogLoading(true);
+        setMyRequestsLoading(true);
+        setShouldLoadCatalog(true);
+      }
+      prevActiveStatus.current = status;
+    }
+  }, [isCorporateAccount, activeRequest]);
+
   if (loading) {
     return (
       <div className="py-24 flex flex-col items-center gap-3">
@@ -781,13 +824,6 @@ export default function EmpresasPage() {
           setMyRequestsLoading(false);
         }
       };
-
-      // Load catalog and requests on mount if paid_active
-      useEffect(() => {
-        if (isPaidActive) {
-          loadCatalogAndRequests();
-        }
-      }, [isPaidActive]);
 
       const handleOpenProductRequest = () => {
         setSelectedItems({});
