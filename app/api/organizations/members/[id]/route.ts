@@ -135,7 +135,7 @@ export async function PATCH(
           organizationMemberId: id,
           order: {
             organizationId: organization.id,
-            paymentStatus: "approved",
+            paymentStatus: "paid",
           },
         },
         select: { id: true },
@@ -157,7 +157,7 @@ export async function PATCH(
           organizationMemberId: id,
           order: {
             organizationId: organization.id,
-            paymentStatus: "approved",
+            paymentStatus: "paid",
           },
         },
         select: { id: true },
