@@ -53,6 +53,44 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Este ítem ya no está pendiente de asignación" }, { status: 400 });
   }
 
+  // Check if this collaborator already has a corporate chip assigned to the same corporate profile
+  const orgMemberFull = await prisma.organizationMember.findUnique({
+    where: { id: item.organizationMemberId },
+    select: { corporateProfileId: true },
+  });
+  if (orgMemberFull?.corporateProfileId) {
+    const existingCorporateChip = await prisma.corporateOrderEmployeeItem.findFirst({
+      where: {
+        organizationMemberId: item.organizationMemberId,
+        chipId: { not: null },
+        id: { not: item.id },
+        chip: {
+          assignedProfileId: orgMemberFull.corporateProfileId,
+          status: { notIn: ["lost", "damaged"] },
+        },
+      },
+      include: {
+        chip: {
+          select: {
+            id: true,
+            shortCode: true,
+            assignedProfileId: true,
+            status: true,
+          },
+        },
+      },
+    });
+    if (existingCorporateChip?.chip) {
+      return NextResponse.json(
+        {
+          error: "Este colaborador ya tiene un chip empresarial asignado. Los productos adicionales deben usar el mismo QR/link.",
+          existingShortCode: existingCorporateChip.chip.shortCode,
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   // Validate that the chip is not already assigned to another active item in a different order or to a different member
   const existingAssignment = await prisma.corporateOrderEmployeeItem.findFirst({
     where: {
