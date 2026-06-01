@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, Phone, ShieldCheck, Users, ShoppingCart, Package, Minus, PlusCircle } from "lucide-react";
+import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, Phone, ShieldCheck, Users, ShoppingCart, Package, Minus, PlusCircle, Copy } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
 
 type CorporateTab =
@@ -792,8 +792,17 @@ export default function EmpresasPage() {
       const corpProfile = activeRequest.corporateProfile;
       const isPaidActive = activeRequest.corporateStatus === "paid_active";
       const canEdit = isPaidActive;
-      const corporateChip = activeRequest.corporateOrderItems?.find((item: any) => item?.chip)?.chip || null;
+      const corporateChipItem = activeRequest.corporateOrderItems?.find((item: any) => item?.chip) || null;
+      const corporateChip = corporateChipItem?.chip || null;
+      const corporateFulfillmentStatus = corporateChipItem?.fulfillmentStatus || null;
       const hasCorporateOrderItems = activeRequest.corporateOrderItems?.length > 0;
+      
+      // Calcular estado de protección empresarial
+      const corporateProtectionStatus = (() => {
+        if (!corporateChip) return "pending_assignment";
+        if (corporateFulfillmentStatus === "delivered" || corporateFulfillmentStatus === "activated") return "active";
+        return "assigned_pending_delivery";
+      })();
       const isDisabled = !isPaidActive;
       const profile = corpFullProfile;
       const initials = profile?.firstName && profile?.lastName
@@ -1056,6 +1065,119 @@ export default function EmpresasPage() {
                 Tu beneficio empresarial está activo pero no tienes perfil empresarial configurado.
                 Contacta al administrador de tu empresa para configurarlo.
               </p>
+            </div>
+          )}
+
+          {/* Tu protección empresarial */}
+          {isPaidActive && (
+            <div className="rounded-[2rem] border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-white p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-indigo-500 text-white flex items-center justify-center">
+                  <ShieldCheck className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg text-indigo-900">Tu protección empresarial</h3>
+                  <p className="text-xs text-muted-foreground">Estado de tu chip corporativo asignado por tu empresa</p>
+                </div>
+              </div>
+
+              {/* Caso A: Sin chip todavía */}
+              {corporateProtectionStatus === "pending_assignment" && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="font-black text-sm text-amber-800">Pendiente de asignación</p>
+                      <p className="text-xs text-amber-700">Tu empresa aún no te ha asignado un chip empresarial.</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-amber-600 italic">
+                    Cuando PreRescue ID lo prepare, lo verás aquí. Los chips empresariales se gestionan desde este módulo y están separados de tus dispositivos personales.
+                  </p>
+                </div>
+              )}
+
+              {/* Caso B: Chip asignado pero pendiente de entrega */}
+              {corporateProtectionStatus === "assigned_pending_delivery" && corporateChip && (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                        <Smartphone className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-black text-sm text-blue-800">Chip empresarial asignado</p>
+                        <p className="text-xs text-blue-700">Pendiente de entrega</p>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest border border-blue-200">
+                      {corporateChip.shortCode}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-blue-600 italic">
+                    Tu QR empresarial ya fue preparado. La entrega física está pendiente.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Link href={`/e/${corporateChip.shortCode}`} target="_blank"
+                      className="px-4 py-2 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all inline-flex items-center gap-2">
+                      <ExternalLink className="h-3.5 w-3.5" /> Ver ficha
+                    </Link>
+                    <button onClick={async () => {
+                      const url = `${window.location.origin}/e/${corporateChip.shortCode}`;
+                      try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
+                      catch { toast.error("No se pudo copiar"); }
+                    }} className="px-4 py-2 rounded-xl border border-blue-200 bg-white text-blue-700 text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-all inline-flex items-center gap-2">
+                      <Copy className="h-3.5 w-3.5" /> Copiar link
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Caso C: Entregado / activo */}
+              {corporateProtectionStatus === "active" && corporateChip && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="font-black text-sm text-emerald-800">Protección empresarial activa</p>
+                        <p className="text-xs text-emerald-700">
+                          {corporateFulfillmentStatus === "activated" ? "Chip activado" : "Chip entregado"}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 font-mono">
+                      {corporateChip.shortCode}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-600 italic">
+                    Tu protección empresarial está activa. Puedes ver tu ficha, copiar el link o editar tu perfil empresarial.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Link href={`/e/${corporateChip.shortCode}`} target="_blank"
+                      className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all inline-flex items-center gap-2">
+                      <ExternalLink className="h-3.5 w-3.5" /> Ver ficha
+                    </Link>
+                    <button onClick={async () => {
+                      const url = `${window.location.origin}/e/${corporateChip.shortCode}`;
+                      try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
+                      catch { toast.error("No se pudo copiar"); }
+                    }} className="px-4 py-2 rounded-xl border border-emerald-200 bg-white text-emerald-700 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-50 transition-all inline-flex items-center gap-2">
+                      <Copy className="h-3.5 w-3.5" /> Copiar link
+                    </button>
+                    {canEdit && (
+                      <button onClick={openCorporateProfileEditor}
+                        className="px-4 py-2 rounded-xl border border-indigo-200 bg-white text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all inline-flex items-center gap-2">
+                        <Pencil className="h-3.5 w-3.5" /> Editar perfil empresarial
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
