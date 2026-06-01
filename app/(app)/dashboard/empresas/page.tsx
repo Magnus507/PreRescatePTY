@@ -142,7 +142,7 @@ export default function EmpresasPage() {
 
   const [myStatus, setMyStatus] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
-  const [tab, setTab] = useState<CorporateTab>("solicitantes");
+  const [tab, setTab] = useState<CorporateTab>("aprobados");
   const [publicProfile, setPublicProfile] = useState<CorporatePublicProfile | null>(null);
   const [publicLoading, setPublicLoading] = useState(false);
   const [savingPublic, setSavingPublic] = useState(false);
@@ -198,7 +198,8 @@ export default function EmpresasPage() {
         }
       }
 
-      const corp = await fetch("/api/organizations/members?status=pending_company_review");
+      // Check if user has corporate account
+      const corp = await fetch("/api/organizations/members?status=approved_unpaid");
       if (corp.ok) {
         setIsCorporateAccount(true);
         const corpJson = await corp.json();
@@ -857,7 +858,6 @@ export default function EmpresasPage() {
 
   // ==================== CORPORATE ADMIN VIEW ====================
   const tabs: { key: CorporateTab; label: string }[] = [
-    { key: "solicitantes", label: "Solicitantes" },
     { key: "aprobados", label: "Aprobados sin pagar" },
     { key: "pagos_enviados", label: "Pagos enviados" },
     { key: "pagados", label: "Pagados / activos" },

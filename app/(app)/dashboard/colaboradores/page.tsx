@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Users, Loader2, Search, XCircle, CheckCircle2, Ban, Archive, ShieldCheck } from "lucide-react";
 
-type TabFilter = "todos" | "paid_active" | "approved_unpaid" | "suspended" | "archived" | "rejected_by_company";
+type TabFilter = "todos" | "pending_company_review" | "paid_active" | "approved_unpaid" | "suspended" | "archived" | "rejected_by_company";
 
 type Member = {
   id: string;
@@ -33,6 +33,7 @@ const STATUS_INFO: Record<string, { label: string; color: string; bg: string }> 
 
 const TABS: { key: TabFilter; label: string }[] = [
   { key: "todos", label: "Todos" },
+  { key: "pending_company_review", label: "Solicitantes" },
   { key: "paid_active", label: "Activos" },
   { key: "approved_unpaid", label: "Aprobados sin pagar" },
   { key: "suspended", label: "Suspendidos" },
@@ -77,8 +78,9 @@ export default function ColaboradoresPage() {
     }
   };
 
-  const handleAction = async (memberId: string, action: "suspend" | "unsuspend" | "archive" | "restore" | "reject" | "delete_forever") => {
+  const handleAction = async (memberId: string, action: "suspend" | "unsuspend" | "archive" | "restore" | "reject" | "delete_forever" | "approve") => {
     const confirmMessages: Record<string, string> = {
+      approve: "¿Aprobar a este solicitante? Pasará a 'Aprobado sin pagar' para que pueda completar su compra corporativa.",
       suspend: "¿Seguro que deseas suspender a este colaborador? Su vínculo corporativo quedará suspendido, pero su cuenta personal no se verá afectada.",
       unsuspend: "¿Reactivar este colaborador? Volverá al estado activo con beneficios.",
       archive: "¿Seguro que deseas eliminar/despedir a este colaborador de la empresa? Se desactivarán sus beneficios corporativos, perfil empresarial y chip corporativo de esta empresa. Su cuenta personal y otros beneficios no serán afectados.",
@@ -206,6 +208,22 @@ export default function ColaboradoresPage() {
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     ) : (
                       <>
+                        {m.corporateStatus === "pending_company_review" && (
+                          <>
+                            <button
+                              onClick={() => handleAction(m.id, "approve")}
+                              className="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-colors inline-flex items-center gap-1"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Aprobar
+                            </button>
+                            <button
+                              onClick={() => handleAction(m.id, "reject")}
+                              className="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors inline-flex items-center gap-1"
+                            >
+                              <XCircle className="h-3.5 w-3.5" /> Rechazar
+                            </button>
+                          </>
+                        )}
                         {(m.corporateStatus === "paid_active" || m.corporateStatus === "approved_unpaid") && (
                           <>
                             {m.corporateStatus === "approved_unpaid" && (
