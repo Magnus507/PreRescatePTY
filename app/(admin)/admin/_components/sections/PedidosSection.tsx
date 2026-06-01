@@ -39,6 +39,12 @@ interface CorporateEmployeeItem {
       lastName: string;
     } | null;
   };
+  existingCorporateChip?: {
+    id: string;
+    shortCode: string;
+    serialPublic: string;
+    status: string;
+  } | null;
 }
 
 interface Order {
@@ -102,6 +108,7 @@ export function PedidosSection() {
   const [availableChips, setAvailableChips] = useState<{ id: string; shortCode: string; serialPublic: string; internalLabel: string | null; status: string; isPhysical: boolean }[]>([]);
   const [corporateAssigning, setCorporateAssigning] = useState<string | null>(null);
   const [selectedChipForItem, setSelectedChipForItem] = useState<Record<string, string>>({});
+  const [selectedChipForMember, setSelectedChipForMember] = useState<Record<string, string>>({});
   const [corporateDeliveryStatus, setCorporateDeliveryStatus] = useState("preparation_pending");
   const [deliveryEstimatedDate, setDeliveryEstimatedDate] = useState("");
   const [deliveryNote, setDeliveryNote] = useState("");
@@ -263,7 +270,11 @@ export function PedidosSection() {
         await loadOrders({ silent: true });
       } else {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "No se pudo asignar chip");
+        if (data.existingShortCode) {
+          toast.error(`Este colaborador ya tiene un chip empresarial asignado: /e/${data.existingShortCode}. Los productos adicionales deben usar el mismo QR/link.`);
+        } else {
+          toast.error(data.error || "No se pudo asignar chip");
+        }
       }
     } catch {
       toast.error("Error de conexión");
@@ -626,7 +637,10 @@ export function PedidosSection() {
                               if (allReady) return { label: "Listo", color: "bg-teal-100 text-teal-700 border-teal-200" };
                               return { label: "Pendiente", color: "bg-amber-100 text-amber-700 border-amber-200" };
                             })();
-                            const mainChip = groupItems.find(i => i.chip)?.chip || null;
+                            const mainChip = 
+                              groupItems.find(i => i.chip)?.chip || 
+                              groupItems.find(i => (i as any).existingCorporateChip)?.existingCorporateChip || 
+                              null;
 
                             return (
                               <div key={memberId} className={`bg-white rounded-xl border overflow-hidden ${
@@ -732,29 +746,38 @@ export function PedidosSection() {
                                           </div>
                                         )}
 
-                                        {/* Chip assignment */}
-                                        {item.fulfillmentStatus === "pending_assignment" && (
-                                          <div className="flex items-center gap-2 mt-1">
-                                            <select className="border border-indigo-200 rounded-lg px-2 py-1 text-[8px] font-bold bg-white min-w-[120px]"
-                                              value={selectedChipForItem[item.id] || ""}
-                                              onChange={(e) => setSelectedChipForItem((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                                            >
-                                              <option value="">Chip principal...</option>
-                                              {availableChips.map((chip: { id: string; shortCode: string; internalLabel: string | null }) => (
-                                                <option key={chip.id} value={chip.id}>{chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""}</option>
-                                              ))}
-                                              {availableChips.length === 0 && <option value="" disabled>Sin chips</option>}
-                                            </select>
-                                            <button onClick={() => { const cid = selectedChipForItem[item.id]; if (cid) handleCorporateAssign(item, cid); }}
-                                              disabled={!selectedChipForItem[item.id]}
-                                              className="px-2 py-1 bg-indigo-600 text-white rounded-lg font-black text-[8px] uppercase tracking-widest hover:bg-indigo-700"
-                                            >Asignar chip principal</button>
-                                          </div>
-                                        )}
                                       </div>
                                     </div>
                                   ))}
                                 </div>
+
+                                {/* Chip assignment at member level (only if no mainChip and has pending items) */}
+                                {!mainChip && groupItems.some(i => i.fulfillmentStatus === "pending_assignment") && (
+                                  <div className="px-4 pb-4">
+                                    <div className="ml-14 flex items-center gap-2 mt-1">
+                                      <select className="border border-indigo-200 rounded-lg px-2 py-1 text-[9px] font-bold bg-white min-w-[140px]"
+                                        value={selectedChipForMember[memberId] || ""}
+                                        onChange={(e) => setSelectedChipForMember((prev) => ({ ...prev, [memberId]: e.target.value }))}
+                                      >
+                                        <option value="">Chip principal...</option>
+                                        {availableChips.map((chip: { id: string; shortCode: string; internalLabel: string | null }) => (
+                                          <option key={chip.id} value={chip.id}>{chip.shortCode} {chip.internalLabel ? `(${chip.internalLabel})` : ""}</option>
+                                        ))}
+                                        {availableChips.length === 0 && <option value="" disabled>Sin chips</option>}
+                                      </select>
+                                      <button onClick={() => {
+                                        const cid = selectedChipForMember[memberId];
+                                        const assignableItem = groupItems.find(i => i.fulfillmentStatus === "pending_assignment");
+                                        if (cid && assignableItem) handleCorporateAssign(assignableItem, cid);
+                                      }}
+                                        disabled={!selectedChipForMember[memberId] || corporateAssigning !== null}
+                                        className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50"
+                                      >
+                                        {corporateAssigning !== null ? <Loader2 className="h-3 w-3 animate-spin" /> : "Asignar chip principal"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
 
                                 {/* QR principal del colaborador */}
                                 {mainChip && (

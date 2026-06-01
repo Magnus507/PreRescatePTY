@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
                 id: true,
                 employeeInternalId: true,
                 corporateStatus: true,
+                corporateProfileId: true,
                 profile: { select: { firstName: true, lastName: true } },
               },
             },
@@ -60,7 +61,65 @@ export async function GET(req: NextRequest) {
       take: 200
     });
 
-    return NextResponse.json({ orders });
+    // Fetch existing corporate chips for all organization members in these orders
+    const allMemberIds = new Set<string>();
+    const allCorporateProfileIds = new Set<string>();
+    for (const order of orders) {
+      for (const item of order.corporateEmployeeItems || []) {
+        if (item.organizationMember?.id) {
+          allMemberIds.add(item.organizationMember.id);
+        }
+        if (item.organizationMember?.corporateProfileId) {
+          allCorporateProfileIds.add(item.organizationMember.corporateProfileId);
+        }
+      }
+    }
+
+    // Build map of existing corporate chips by organizationMemberId
+    const existingChipsByMember = new Map<string, { id: string; shortCode: string; serialPublic: string; status: string }>();
+    if (allCorporateProfileIds.size > 0) {
+      const existingChips = await prisma.corporateOrderEmployeeItem.findMany({
+        where: {
+          organizationMemberId: { in: Array.from(allMemberIds) },
+          chipId: { not: null },
+          chip: {
+            assignedProfileId: { in: Array.from(allCorporateProfileIds) },
+            status: { notIn: ["lost", "damaged"] },
+          },
+        },
+        select: {
+          organizationMemberId: true,
+          chip: {
+            select: {
+              id: true,
+              shortCode: true,
+              serialPublic: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      for (const item of existingChips) {
+        if (item.chip && !existingChipsByMember.has(item.organizationMemberId)) {
+          existingChipsByMember.set(item.organizationMemberId, item.chip);
+        }
+      }
+    }
+
+    // Inject existingCorporateChip into each corporateEmployeeItem
+    const ordersWithExistingChips = orders.map((order) => ({
+      ...order,
+      corporateEmployeeItems: (order.corporateEmployeeItems || []).map((item) => ({
+        ...item,
+        existingCorporateChip: item.organizationMember?.id
+          ? existingChipsByMember.get(item.organizationMember.id) || null
+          : null,
+      })),
+    }));
+
+    return NextResponse.json({ orders: ordersWithExistingChips });
   } catch (error) {
     console.error("Fetch orders error:", error);
     return NextResponse.json({ error: "Error al cargar órdenes" }, { status: 500 });
