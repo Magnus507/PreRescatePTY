@@ -60,63 +60,9 @@ export async function GET() {
 
   let requests = user.profile?.organizationMembers || [];
 
-  // Auto-repair: detect corporate members with missing corporateProfile
-  if (user.accountId && requests.length > 0) {
-    const repairedRequests = await Promise.all(
-      requests.map(async (member) => {
-        if (!member.corporateProfile) {
-          // Check if this member is in an active/visible state that should have a corporate profile
-          const activeStatuses = ["paid_active", "approved_unpaid"];
-          if (activeStatuses.includes(member.corporateStatus)) {
-            try {
-              // Create a new corporate profile from personal profile data
-              const personalProfile = user.profile;
-              const newCorpProfile = await prisma.profile.create({
-                data: {
-                  accountId: user.accountId!,
-                  profileType: "corporate",
-                  firstName: personalProfile?.firstName || "Colaborador",
-                  lastName: personalProfile?.lastName || "Empresarial",
-                  bloodType: "Pendiente",
-                  phone: personalProfile?.phone || null,
-                  // No copy medical sensitive fields
-                  // No set userId — corporate profiles don't use userId
-                },
-              });
-
-              // Update OrganizationMember to link the new corporate profile
-              await prisma.organizationMember.update({
-                where: { id: member.id },
-                data: { corporateProfileId: newCorpProfile.id },
-              });
-
-              // Return updated member with the new corporate profile
-              return {
-                ...member,
-                corporateProfile: {
-                  id: newCorpProfile.id,
-                  firstName: newCorpProfile.firstName,
-                  lastName: newCorpProfile.lastName,
-                  profileType: newCorpProfile.profileType,
-                  bloodType: newCorpProfile.bloodType,
-                  phone: newCorpProfile.phone,
-                },
-              };
-            } catch (repairErr) {
-              console.error("[my-status] Auto-repair failed for member", member.id, repairErr);
-              // Return member as-is with corporateProfileMissing flag
-              return {
-                ...member,
-                corporateProfileMissing: true,
-              };
-            }
-          }
-        }
-        return member;
-      })
-    );
-    requests = repairedRequests as any;
-  }
+  // Nota: corporateProfile debe ser creado por el endpoint de approve
+  // (members/[id]) o por join-request. Este endpoint solo reporta el estado
+  // actual sin crear perfiles automáticamente.
 
   return NextResponse.json({
     hasProfile: Boolean(user.profile),

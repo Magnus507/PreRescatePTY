@@ -2,11 +2,24 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  // Rate limit: 5 join requests per minute per user
+  const limiter = await rateLimit("join-request", session.user.id, {
+    limit: 5,
+    windowMs: 60_000,
+  });
+  if (!limiter.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta nuevamente en un minuto." },
+      { status: 429 }
+    );
   }
 
   const {

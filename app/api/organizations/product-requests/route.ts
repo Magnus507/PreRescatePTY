@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const createRequestSchema = z.object({
@@ -85,6 +86,18 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.user.id;
+
+  // Rate limit: 10 product requests per minute per user
+  const limiter = await rateLimit("product-request", userId, {
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!limiter.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta nuevamente en un minuto." },
+      { status: 429 }
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const parsed = createRequestSchema.safeParse(body);
 

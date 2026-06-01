@@ -43,23 +43,40 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Este ítem ya no está pendiente de asignación" }, { status: 400 });
   }
 
+  // Validate that the chip is not already assigned to another active item in a different order or to a different member
+  const existingAssignment = await prisma.corporateOrderEmployeeItem.findFirst({
+    where: {
+      chipId,
+      orderId: { not: order.id },
+      fulfillmentStatus: { notIn: ["pending_assignment", "delivered"] },
+    },
+    select: { id: true, orderId: true, organizationMemberId: true },
+  });
+  if (existingAssignment) {
+    return NextResponse.json(
+      { error: "Este chip ya está asignado a otro colaborador u otra orden." },
+      { status: 409 }
+    );
+  }
+
+  // Count unique collaborators in this order to determine purchasedChips per member
+  const uniqueMemberIds = new Set(
+    order.corporateEmployeeItems.map((i) => i.organizationMemberId)
+  );
+  // Use the count of unique members as purchasedChips baseline, but at least 1 per target member
+  const purchasedChips = Math.max(1, uniqueMemberIds.size);
+
   try {
     await prisma.$transaction(async (tx) => {
       await OrderFulfillmentService.reserveAssignedChipsForOrder(tx, {
         orderId: order.id,
         assignedChipIds: [chipId],
-        purchasedChips: Math.max(1, order.corporateEmployeeItems.length),
+        purchasedChips,
         tokenExpiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
       });
 
       // Assign chip to ALL items of the same collaborator in this order
-      const collaboratorItems = await tx.corporateOrderEmployeeItem.findMany({
-        where: {
-          orderId: order.id,
-          organizationMemberId: item.organizationMemberId,
-        },
-      });
-
+      // (business decision: one chip per collaborator, shared across their items)
       await tx.corporateOrderEmployeeItem.updateMany({
         where: {
           orderId: order.id,

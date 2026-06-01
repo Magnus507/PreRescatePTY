@@ -30,6 +30,15 @@ export async function PATCH(
       organizationId: true,
       corporateStatus: true,
       corporateProfileId: true,
+      profile: {
+        select: {
+          id: true,
+          accountId: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+        },
+      },
     },
   });
   if (!member || member.organizationId !== organization.id) {
@@ -94,6 +103,24 @@ export async function PATCH(
   switch (action) {
     case "approve":
       corporateStatus = "approved_unpaid";
+      // If no corporateProfileId exists, create a corporate profile within this action
+      if (!member.corporateProfileId && member.profile) {
+        const corpProfile = await prisma.profile.create({
+          data: {
+            accountId: member.profile.accountId,
+            firstName: member.profile.firstName || "Colaborador",
+            lastName: member.profile.lastName || "Empresarial",
+            bloodType: "Pendiente",
+            profileType: "corporate",
+            phone: member.profile.phone || null,
+          },
+        });
+        // Associate the new corporate profile with the member
+        await prisma.organizationMember.update({
+          where: { id },
+          data: { corporateProfileId: corpProfile.id },
+        });
+      }
       break;
     case "reject":
       corporateStatus = "rejected_by_company";

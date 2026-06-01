@@ -18,6 +18,14 @@ export async function POST(req: NextRequest) {
 
   const userId = session.user.id;
 
+  // Verify the user is an owner of this account (not just a member)
+  if (session.user.role !== "owner") {
+    return NextResponse.json(
+      { error: "Solo el administrador de la cuenta puede crear órdenes corporativas." },
+      { status: 403 }
+    );
+  }
+
   // 1. Verify organization
   const organization = await prisma.organization.findFirst({
     where: { accountId: session.user.accountId },
