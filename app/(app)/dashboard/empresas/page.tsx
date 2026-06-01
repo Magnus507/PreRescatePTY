@@ -126,6 +126,9 @@ const emptyProfileForm = {
   showAdditionalNotesPublic: false,
 };
 
+const CORP_RELATIONSHIPS = ["Madre", "Padre", "Cónyuge", "Hermano/a", "Hijo/a", "Abuelo/a", "Amigo/a", "Otro"];
+const emptyCorpContactForm = { fullName: "", relationship: "", phone: "", email: "" };
+
 interface CorpFullProfile {
   id: string;
   firstName: string;
@@ -170,6 +173,12 @@ export default function EmpresasPage() {
   // Full decrypted corporate profile for display
   const [corpFullProfile, setCorpFullProfile] = useState<CorpFullProfile | null>(null);
 
+  // Corporate emergency contacts
+  const [corpContacts, setCorpContacts] = useState<any[]>([]);
+  const [corpContactForm, setCorpContactForm] = useState({ ...emptyCorpContactForm });
+  const [savingCorpContact, setSavingCorpContact] = useState(false);
+  const [deletingCorpContactId, setDeletingCorpContactId] = useState<string | null>(null);
+
   // Employee product requests UI
   const [showProductRequest, setShowProductRequest] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
@@ -205,6 +214,7 @@ export default function EmpresasPage() {
         );
         if (active?.corporateProfile?.id) {
           loadCorpFullProfile(active.corporateProfile.id);
+          loadCorpContacts(active.corporateProfile.id);
         }
       }
 
@@ -248,6 +258,68 @@ export default function EmpresasPage() {
       }
     } catch {
       // silent — card will show minimal data from my-status
+    }
+  };
+
+  const loadCorpContacts = async (profileId: string) => {
+    try {
+      const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts`);
+      if (res.ok) {
+        const data = await res.json();
+        setCorpContacts(data.contacts || []);
+      }
+    } catch {
+      // silent
+    }
+  };
+
+  const handleAddCorpContact = async () => {
+    if (!corpEditProfileId) return;
+    if (!corpContactForm.fullName.trim() || !corpContactForm.relationship.trim() || !corpContactForm.phone.trim()) {
+      toast.error("Nombre, relación y teléfono son obligatorios");
+      return;
+    }
+    setSavingCorpContact(true);
+    try {
+      const res = await fetch(`/api/users/perfiles-medicos/${corpEditProfileId}/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpContactForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCorpContacts((prev) => [...prev, data.contact]);
+        setCorpContactForm({ ...emptyCorpContactForm });
+        toast.success("Contacto añadido");
+      } else {
+        toast.error(data.error || "Error al añadir contacto");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setSavingCorpContact(false);
+    }
+  };
+
+  const handleDeleteCorpContact = async (contactId: string) => {
+    if (!corpEditProfileId) return;
+    if (!confirm("¿Eliminar este contacto de emergencia?")) return;
+    setDeletingCorpContactId(contactId);
+    try {
+      const res = await fetch(`/api/users/perfiles-medicos/${corpEditProfileId}/contacts?id=${contactId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setCorpContacts((prev) => prev.filter((c) => c.id !== contactId));
+        toast.success("Contacto eliminado");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Error al eliminar");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setDeletingCorpContactId(null);
     }
   };
 
@@ -683,6 +755,8 @@ export default function EmpresasPage() {
     setCorpEditLoading(true);
     setShowCorpEditor(true);
     setCorpEditError("");
+    setCorpContactForm({ ...emptyCorpContactForm });
+    loadCorpContacts(corpProfileId);
     try {
       const res = await fetch(`/api/users/perfiles-medicos/${corpProfileId}`);
       const json = await res.json();
@@ -1188,9 +1262,27 @@ export default function EmpresasPage() {
                     <Users className="h-4 w-4 text-slate-500" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-700">
-                      Recuerda configurar contactos de emergencia en tu perfil empresarial para que aparezcan en tu ficha.
-                    </p>
+                    {corpContacts.length === 0 ? (
+                      <p className="text-xs font-semibold text-slate-700">
+                        No tienes contactos de emergencia en tu perfil empresarial. Agrega al menos uno para que aparezca en tu ficha.
+                      </p>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-semibold text-emerald-700">
+                          Contactos de emergencia configurados: {corpContacts.length}
+                        </p>
+                        <div className="mt-1 space-y-0.5">
+                          {corpContacts.slice(0, 2).map((c: any) => (
+                            <p key={c.id} className="text-[10px] text-slate-500">
+                              {c.fullName} — {c.relationship}
+                            </p>
+                          ))}
+                          {corpContacts.length > 2 && (
+                            <p className="text-[10px] text-slate-400">+{corpContacts.length - 2} más</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 {canEdit && (
