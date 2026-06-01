@@ -406,6 +406,9 @@ export function PedidosSection() {
 
   if (selectedOrder) {
     const isCorporateOrder = selectedOrder.orderType === "corporate_employee_purchase";
+    const isCorporatePaymentApproved =
+      selectedOrder.paymentStatus === "paid" &&
+      selectedOrder.adminReviewStatus === "approved";
     return (
       <div className="space-y-5 animate-in fade-in slide-in-from-bottom-5 duration-500 blur-none">
          {/* Integrated Admin Dashboard Header */}
@@ -558,7 +561,21 @@ export function PedidosSection() {
                    )}
 
                     {/* Colaboradores — grouped by collaborator */}
-                    {(selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (() => {
+                    {!isCorporatePaymentApproved && (selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (
+                      <div className="rounded-[2rem] border border-amber-200 bg-amber-50/50 p-6 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-1.5 w-6 bg-amber-500 rounded-full" />
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-amber-700">
+                            Colaboradores
+                          </h3>
+                        </div>
+                        <p className="text-[10px] font-bold text-amber-700 flex items-center gap-2">
+                          🔒 Operación bloqueada hasta aprobar el pago corporativo.
+                        </p>
+                        <p className="text-[10px] text-amber-600">Puedes revisar el comprobante y aprobar o rechazar el pago arriba.</p>
+                      </div>
+                    )}
+                    {isCorporatePaymentApproved && (selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (() => {
                       const items = (selectedOrder as any).corporateEmployeeItems as CorporateEmployeeItem[];
                       // Group by organizationMemberId
                       const groups = new Map<string, CorporateEmployeeItem[]>();

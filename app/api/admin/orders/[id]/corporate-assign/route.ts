@@ -38,6 +38,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Orden corporativa no encontrada" }, { status: 404 });
   }
 
+  // Guard: no permitir asignar chip si el pago no está aprobado
+  if (order.paymentStatus !== "paid" || order.adminReviewStatus !== "approved") {
+    return NextResponse.json(
+      { error: "Debes aprobar el pago corporativo antes de asignar chips." },
+      { status: 400 }
+    );
+  }
+
   const item = order.corporateEmployeeItems.find((x) => x.id === corporateOrderItemId);
   if (!item) {
     return NextResponse.json({ error: "Ítem corporativo no encontrado en la orden" }, { status: 404 });

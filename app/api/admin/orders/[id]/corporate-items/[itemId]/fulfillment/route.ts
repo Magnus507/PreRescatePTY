@@ -29,7 +29,7 @@ export async function PATCH(
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { id: true, orderType: true },
+    select: { id: true, orderType: true, paymentStatus: true, adminReviewStatus: true },
   });
 
   if (!order) {
@@ -39,6 +39,14 @@ export async function PATCH(
   if (order.orderType !== "corporate_employee_purchase") {
     return NextResponse.json(
       { error: "Solo aplica a órdenes corporativas" },
+      { status: 400 }
+    );
+  }
+
+  // Guard: no permitir cambios operativos si el pago no está aprobado
+  if (order.paymentStatus !== "paid" || order.adminReviewStatus !== "approved") {
+    return NextResponse.json(
+      { error: "Debes aprobar el pago corporativo antes de cambiar el estado operativo." },
       { status: 400 }
     );
   }
