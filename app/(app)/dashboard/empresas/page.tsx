@@ -1068,21 +1068,82 @@ export default function EmpresasPage() {
             </div>
           )}
 
-          {/* Tu protección empresarial */}
+          {/* Productos empresariales activos */}
           {isPaidActive && (
             <div className="rounded-[2rem] border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-white p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-2xl bg-indigo-500 text-white flex items-center justify-center">
-                  <ShieldCheck className="h-6 w-6" />
+                  <Package className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-black text-lg text-indigo-900">Tu protección empresarial</h3>
-                  <p className="text-xs text-muted-foreground">Estado de tu chip corporativo asignado por tu empresa</p>
+                  <h3 className="font-black text-lg text-indigo-900">Productos empresariales activos</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {corporateChip
+                      ? `Todos usan tu QR empresarial /e/${corporateChip.shortCode}`
+                      : "Estos productos están vinculados a tu chip empresarial"}
+                  </p>
                 </div>
               </div>
 
-              {/* Caso A: Sin chip todavía */}
-              {corporateProtectionStatus === "pending_assignment" && (
+              {/* Lista de productos corporativos */}
+              {activeRequest.corporateOrderItems && activeRequest.corporateOrderItems.length > 0 ? (
+                <div className="space-y-2">
+                  {activeRequest.corporateOrderItems.map((item: any) => {
+                    const FULFILLMENT_LABELS: Record<string, string> = {
+                      pending_assignment: "Pendiente de asignación",
+                      assigned_reserved: "Chip asignado",
+                      in_production: "En preparación",
+                      ready_for_assignment: "Listo para entrega",
+                      delivered: "Entregado",
+                      activated: "Activo",
+                    };
+                    const FULFILLMENT_COLORS: Record<string, string> = {
+                      pending_assignment: "bg-amber-100 text-amber-700 border-amber-200",
+                      assigned_reserved: "bg-blue-100 text-blue-700 border-blue-200",
+                      in_production: "bg-indigo-100 text-indigo-700 border-indigo-200",
+                      ready_for_assignment: "bg-sky-100 text-sky-700 border-sky-200",
+                      delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
+                      activated: "bg-emerald-100 text-emerald-800 border-emerald-300",
+                    };
+                    const FULFILLMENT_ICONS: Record<string, React.ReactNode> = {
+                      pending_assignment: <Clock className="h-4 w-4 text-amber-500" />,
+                      assigned_reserved: <Smartphone className="h-4 w-4 text-blue-500" />,
+                      in_production: <Loader2 className="h-4 w-4 text-indigo-500" />,
+                      ready_for_assignment: <Package className="h-4 w-4 text-sky-500" />,
+                      delivered: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+                      activated: <ShieldCheck className="h-4 w-4 text-emerald-600" />,
+                    };
+                    const status = item.fulfillmentStatus || "pending_assignment";
+                    const label = FULFILLMENT_LABELS[status] || status;
+                    const color = FULFILLMENT_COLORS[status] || "bg-slate-100 text-slate-600 border-slate-200";
+                    const icon = FULFILLMENT_ICONS[status] || <Package className="h-4 w-4 text-slate-400" />;
+
+                    return (
+                      <div key={item.id} className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-slate-200 bg-white hover:shadow-sm transition-all">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                            {icon}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-slate-900 truncate">
+                              {item.product?.name || "Producto"}
+                              {item.quantity > 1 && <span className="text-muted-foreground ml-1">x{item.quantity}</span>}
+                            </p>
+                            {item.product?.productType && (
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                {item.product.productType}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shrink-0 ${color}`}>
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center">
@@ -1090,94 +1151,55 @@ export default function EmpresasPage() {
                     </div>
                     <div>
                       <p className="font-black text-sm text-amber-800">Pendiente de asignación</p>
-                      <p className="text-xs text-amber-700">Tu empresa aún no te ha asignado un chip empresarial.</p>
+                      <p className="text-xs text-amber-700">
+                        {corporateChip
+                          ? "Tu chip empresarial aún no tiene productos vinculados."
+                          : "Tu empresa aún no te ha asignado un chip empresarial."}
+                      </p>
                     </div>
                   </div>
                   <p className="text-[11px] text-amber-600 italic">
-                    Cuando PreRescue ID lo prepare, lo verás aquí. Los chips empresariales se gestionan desde este módulo y están separados de tus dispositivos personales.
+                    Cuando tu empresa asigne un chip empresarial, tus productos aparecerán vinculados aquí.
                   </p>
                 </div>
               )}
 
-              {/* Caso B: Chip asignado pero pendiente de entrega */}
-              {corporateProtectionStatus === "assigned_pending_delivery" && corporateChip && (
-                <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                        <Smartphone className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-black text-sm text-blue-800">Chip empresarial asignado</p>
-                        <p className="text-xs text-blue-700">Pendiente de entrega</p>
-                      </div>
-                    </div>
-                    <span className="px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest border border-blue-200">
-                      {corporateChip.shortCode}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-blue-600 italic">
-                    Tu QR empresarial ya fue preparado. La entrega física está pendiente.
-                  </p>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Link href={`/e/${corporateChip.shortCode}`} target="_blank"
-                      className="px-4 py-2 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all inline-flex items-center gap-2">
-                      <ExternalLink className="h-3.5 w-3.5" /> Ver ficha
-                    </Link>
-                    <button onClick={async () => {
-                      const url = `${window.location.origin}/e/${corporateChip.shortCode}`;
-                      try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
-                      catch { toast.error("No se pudo copiar"); }
-                    }} className="px-4 py-2 rounded-xl border border-blue-200 bg-white text-blue-700 text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-all inline-flex items-center gap-2">
-                      <Copy className="h-3.5 w-3.5" /> Copiar link
-                    </button>
-                  </div>
+              {/* Botones globales (solo si hay chip) */}
+              {corporateChip && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Link href={`/e/${corporateChip.shortCode}`} target="_blank"
+                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all inline-flex items-center gap-2">
+                    <ExternalLink className="h-3.5 w-3.5" /> Ver ficha
+                  </Link>
+                  <button onClick={async () => {
+                    const url = `${window.location.origin}/e/${corporateChip.shortCode}`;
+                    try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
+                    catch { toast.error("No se pudo copiar"); }
+                  }} className="px-4 py-2 rounded-xl border border-indigo-200 bg-white text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all inline-flex items-center gap-2">
+                    <Copy className="h-3.5 w-3.5" /> Copiar link
+                  </button>
                 </div>
               )}
 
-              {/* Caso C: Entregado / activo */}
-              {corporateProtectionStatus === "active" && corporateChip && (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <p className="font-black text-sm text-emerald-800">Protección empresarial activa</p>
-                        <p className="text-xs text-emerald-700">
-                          {corporateFulfillmentStatus === "activated" ? "Chip activado" : "Chip entregado"}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 font-mono">
-                      {corporateChip.shortCode}
-                    </span>
+              {/* Aviso contactos de emergencia */}
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
+                    <Users className="h-4 w-4 text-slate-500" />
                   </div>
-                  <p className="text-[11px] text-emerald-600 italic">
-                    Tu protección empresarial está activa. Puedes ver tu ficha, copiar el link o editar tu perfil empresarial.
-                  </p>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Link href={`/e/${corporateChip.shortCode}`} target="_blank"
-                      className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all inline-flex items-center gap-2">
-                      <ExternalLink className="h-3.5 w-3.5" /> Ver ficha
-                    </Link>
-                    <button onClick={async () => {
-                      const url = `${window.location.origin}/e/${corporateChip.shortCode}`;
-                      try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
-                      catch { toast.error("No se pudo copiar"); }
-                    }} className="px-4 py-2 rounded-xl border border-emerald-200 bg-white text-emerald-700 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-50 transition-all inline-flex items-center gap-2">
-                      <Copy className="h-3.5 w-3.5" /> Copiar link
-                    </button>
-                    {canEdit && (
-                      <button onClick={openCorporateProfileEditor}
-                        className="px-4 py-2 rounded-xl border border-indigo-200 bg-white text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all inline-flex items-center gap-2">
-                        <Pencil className="h-3.5 w-3.5" /> Editar perfil empresarial
-                      </button>
-                    )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-700">
+                      Recuerda configurar contactos de emergencia en tu perfil empresarial para que aparezcan en tu ficha.
+                    </p>
                   </div>
                 </div>
-              )}
+                {canEdit && (
+                  <button onClick={openCorporateProfileEditor}
+                    className="mt-3 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all inline-flex items-center gap-2">
+                    <Pencil className="h-3.5 w-3.5" /> Editar perfil empresarial
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
