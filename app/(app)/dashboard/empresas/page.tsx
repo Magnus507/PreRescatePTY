@@ -1964,7 +1964,7 @@ export default function EmpresasPage() {
             </div>
           ) : (
             corporateOrders.filter((o: any) => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").map((order: any) => {
-              const totalMembers = order.corporateEmployeeItems?.length || 0;
+              const totalMembers = new Set((order.corporateEmployeeItems || []).map((item: any) => item.organizationMemberId).filter(Boolean)).size;
               const memberNames = [...new Set((order.corporateEmployeeItems || []).map((item: any) => 
                 `${item.organizationMember?.profile?.firstName || ""} ${item.organizationMember?.profile?.lastName || ""}`
               ).filter(Boolean))];

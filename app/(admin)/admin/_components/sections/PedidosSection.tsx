@@ -471,10 +471,10 @@ export function PedidosSection() {
                          <p className="font-bold">{selectedOrder.customerName || "Corporativo"}</p>
                          {selectedOrder.customerEmail && <p className="text-xs text-muted-foreground">{selectedOrder.customerEmail}</p>}
                        </div>
-                       <div className="bg-white rounded-xl p-4 border border-blue-100">
-                         <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Colaboradores</p>
-                         <p className="font-bold text-2xl">{(selectedOrder as any).corporateEmployeeItems?.length || 0}</p>
-                       </div>
+                        <div className="bg-white rounded-xl p-4 border border-blue-100">
+                          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Colaboradores</p>
+                          <p className="font-bold text-2xl">{new Set(((selectedOrder as any).corporateEmployeeItems || []).map((item: any) => item.organizationMemberId).filter(Boolean)).size}</p>
+                        </div>
                        <div className="bg-white rounded-xl p-4 border border-blue-100">
                          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Total</p>
                          <p className="font-bold text-2xl text-primary">${selectedOrder.amount.toFixed(2)}</p>
