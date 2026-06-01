@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function PATCH(
   req: NextRequest,
@@ -18,6 +19,15 @@ export async function PATCH(
   });
   if (!organization) {
     return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
+  }
+
+  const userId = session.user.id;
+  const limiter = await rateLimit("organization-member-action", userId, { limit: 30, windowMs: 60_000 });
+  if (!limiter.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas acciones sobre colaboradores. Intenta nuevamente en un momento." },
+      { status: 429 }
+    );
   }
 
   const { id } = await params;

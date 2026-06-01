@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 
 const VALID_STATUSES = ["preparation_pending", "ready_for_delivery", "in_transit", "delivered", "on_hold"];
 
@@ -12,6 +13,15 @@ export async function PATCH(
   const session = await getServerSession(authOptions);
   if (!session?.user?.accountId) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const userId = (session.user as { id: string }).id;
+  const limiter = await rateLimit("admin-corporate-delivery", userId, { limit: 20, windowMs: 60_000 });
+  if (!limiter.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas actualizaciones de entrega. Intenta nuevamente en un momento." },
+      { status: 429 }
+    );
   }
 
   const { id } = await params;

@@ -3,11 +3,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user || !["admin", "superadmin", "imprenta"].includes(session.user.role)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const adminId = session.user.id;
+  const limiter = await rateLimit("admin-corporate-assign", adminId, { limit: 20, windowMs: 60_000 });
+  if (!limiter.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas asignaciones de chips. Intenta nuevamente en un momento." },
+      { status: 429 }
+    );
   }
 
   const { id } = await context.params;
