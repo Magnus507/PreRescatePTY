@@ -8,6 +8,7 @@ import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
 
 type CorporateTab =
   | "solicitantes"
+  | "solicitudes"
   | "aprobados"
   | "pagos_enviados"
   | "rechazados"
@@ -391,10 +392,56 @@ export default function EmpresasPage() {
     loadAll();
   }, []);
 
+  // Company product requests
+  const [companyRequests, setCompanyRequests] = useState<any[]>([]);
+  const [companyRequestsLoading, setCompanyRequestsLoading] = useState(false);
+  const [reviewingRequest, setReviewingRequest] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
+
+  const loadCompanyRequests = async () => {
+    setCompanyRequestsLoading(true);
+    try {
+      const res = await fetch("/api/organizations/product-requests");
+      if (res.ok) {
+        const data = await res.json();
+        setCompanyRequests(data.requests || []);
+      }
+    } catch {
+      toast.error("Error al cargar solicitudes");
+    } finally {
+      setCompanyRequestsLoading(false);
+    }
+  };
+
+  const handleReviewRequest = async (requestId: string, action: "approve" | "reject", reason?: string) => {
+    setReviewingRequest(requestId);
+    try {
+      const body: Record<string, unknown> = { action };
+      if (action === "reject" && reason) body.rejectionReason = reason;
+      const res = await fetch(`/api/organizations/product-requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error al procesar solicitud");
+      toast.success(action === "approve" ? "Solicitud aprobada" : "Solicitud rechazada");
+      await loadCompanyRequests();
+      setShowRejectModal(null);
+      setRejectReason("");
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar solicitud");
+    } finally {
+      setReviewingRequest(null);
+    }
+  };
+
   const loadMembersByTab = async (nextTab: CorporateTab) => {
     setMembers([]);
     const map: Record<CorporateTab, string | null> = {
       solicitantes: "pending_company_review",
+      solicitudes: null,
       aprobados: "approved_unpaid",
       pagos_enviados: null,
       rechazados: "rejected_by_company",
@@ -404,7 +451,9 @@ export default function EmpresasPage() {
     };
 
     const status = map[nextTab];
-    if (nextTab === "pagos_enviados" || nextTab === "pagados") {
+    if (nextTab === "solicitudes") {
+      await loadCompanyRequests();
+    } else if (nextTab === "pagos_enviados" || nextTab === "pagados") {
       const ordersRes = await fetch("/api/organizations/corporate-orders");
       const ordersJson = await ordersRes.json();
       if (ordersRes.ok) setCorporateOrders(ordersJson.orders || []);
@@ -1216,6 +1265,7 @@ export default function EmpresasPage() {
 
   // ==================== CORPORATE ADMIN VIEW ====================
   const tabs: { key: CorporateTab; label: string }[] = [
+    { key: "solicitudes", label: "Solicitudes de productos" },
     { key: "aprobados", label: "Aprobados sin pagar" },
     { key: "pagos_enviados", label: "Pagos enviados" },
     { key: "pagados", label: "Pagados / activos" },
@@ -1236,6 +1286,243 @@ export default function EmpresasPage() {
             className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${tab === t.key ? "bg-primary text-white" : "bg-muted"}`}>{t.label}</button>
         ))}
       </div>
+
+      {/* SOLICITUDES DE PRODUCTOS — company reviews employee product requests */}
+      {tab === "solicitudes" && (
+        <div className="space-y-6">
+          <div className="rounded-2xl border p-5 bg-indigo-50/30 border-indigo-200 space-y-2">
+            <p className="text-xs font-semibold text-indigo-800 flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4" /> Solicitudes de productos de colaboradores
+            </p>
+            <p className="text-[10px] text-indigo-700/70 leading-relaxed">
+              Revisa y aprueba o rechaza las solicitudes de productos enviadas por tus colaboradores.
+              Las solicitudes aprobadas quedarán pendientes de pago en la próxima fase.
+            </p>
+          </div>
+
+          {companyRequestsLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : companyRequests.length === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center">
+              <div className="h-16 w-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-400">
+                <Package className="h-8 w-8" />
+              </div>
+              <p className="text-base font-semibold text-slate-700 mb-1">Sin solicitudes de productos</p>
+              <p className="text-sm text-muted-foreground">Tus colaboradores aún no han solicitado productos.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Pending requests */}
+              {companyRequests.filter((r: any) => r.status === "pending_company_approval").length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-amber-800 uppercase tracking-widest flex items-center gap-2">
+                    <Clock className="h-4 w-4" /> Pendientes de revisión ({companyRequests.filter((r: any) => r.status === "pending_company_approval").length})
+                  </h3>
+                  {companyRequests.filter((r: any) => r.status === "pending_company_approval").map((req: any) => {
+                    const member = req.organizationMember;
+                    const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
+                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    return (
+                      <div key={req.id} className="rounded-2xl border border-amber-200 bg-white shadow-md overflow-hidden">
+                        <div className="p-5 bg-amber-50/50 border-b border-amber-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                              <UserRound className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="font-black text-sm">{memberName}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {member?.employeePosition && `${member.employeePosition} · `}
+                                {member?.employeeNationalId && `Céd: ${member.employeeNationalId}`}
+                                {!member?.employeePosition && !member?.employeeNationalId && (
+                                  <>Solicitado {new Date(req.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "short", day: "numeric" })}</>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Total</span>
+                            <span className="text-xl font-black text-primary">${reqTotal.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <div className="p-5 space-y-4">
+                          <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
+                            {(req.items || []).map((item: any) => (
+                              <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50/50 transition-colors">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="h-7 w-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black shrink-0">
+                                    {item.quantity}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-slate-900 truncate">{item.product?.name || "Producto"}</p>
+                                    <p className="text-[10px] text-muted-foreground">${item.unitPrice?.toFixed(2)} c/u</p>
+                                  </div>
+                                </div>
+                                <span className="text-sm font-bold text-primary shrink-0">${item.subtotal?.toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {req.items?.some((i: any) => i.note) && (
+                            <div className="space-y-1">
+                              {req.items.filter((i: any) => i.note).map((i: any) => (
+                                <p key={i.id} className="text-[10px] text-muted-foreground italic">Nota para {i.product?.name}: {i.note}</p>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-100">
+                            <button
+                              onClick={() => handleReviewRequest(req.id, "approve")}
+                              disabled={reviewingRequest === req.id}
+                              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white font-black text-sm shadow-lg shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                            >
+                              {reviewingRequest === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                              Aprobar solicitud
+                            </button>
+                            <button
+                              onClick={() => { setShowRejectModal(req.id); setRejectReason(""); }}
+                              disabled={reviewingRequest === req.id}
+                              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 font-black text-sm hover:bg-rose-100 transition-all disabled:opacity-50"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              Rechazar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Approved requests */}
+              {companyRequests.filter((r: any) => r.status === "approved_pending_payment").length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-blue-800 uppercase tracking-widest flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" /> Aprobadas — pendientes de pago ({companyRequests.filter((r: any) => r.status === "approved_pending_payment").length})
+                  </h3>
+                  {companyRequests.filter((r: any) => r.status === "approved_pending_payment").map((req: any) => {
+                    const member = req.organizationMember;
+                    const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
+                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    return (
+                      <div key={req.id} className="rounded-2xl border border-blue-200 bg-white p-5 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                              <UserRound className="h-4 w-4" />
+                            </div>
+                            <p className="font-semibold text-sm">{memberName}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-black text-primary">${reqTotal.toFixed(2)}</p>
+                            <p className="text-[10px] text-muted-foreground">Aprobada {new Date(req.companyReviewedAt).toLocaleDateString("es-PA")}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(req.items || []).map((item: any) => (
+                            <span key={item.id} className="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 text-[10px] font-semibold border border-blue-100">
+                              {item.product?.name || "Producto"} × {item.quantity}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground italic">
+                          Esta solicitud fue aprobada. En la próxima fase podrá incluirse en un pago corporativo.
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Rejected requests */}
+              {companyRequests.filter((r: any) => r.status === "rejected_by_company").length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-rose-800 uppercase tracking-widest flex items-center gap-2">
+                    <XCircle className="h-4 w-4" /> Rechazadas ({companyRequests.filter((r: any) => r.status === "rejected_by_company").length})
+                  </h3>
+                  {companyRequests.filter((r: any) => r.status === "rejected_by_company").map((req: any) => {
+                    const member = req.organizationMember;
+                    const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
+                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    return (
+                      <div key={req.id} className="rounded-2xl border border-rose-200 bg-white p-5 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                              <UserRound className="h-4 w-4" />
+                            </div>
+                            <p className="font-semibold text-sm">{memberName}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-black text-rose-500">${reqTotal.toFixed(2)}</p>
+                            <p className="text-[10px] text-muted-foreground">Rechazada {req.companyReviewedAt ? new Date(req.companyReviewedAt).toLocaleDateString("es-PA") : "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(req.items || []).map((item: any) => (
+                            <span key={item.id} className="px-2 py-1 rounded-lg bg-rose-50 text-rose-700 text-[10px] font-semibold border border-rose-100">
+                              {item.product?.name || "Producto"} × {item.quantity}
+                            </span>
+                          ))}
+                        </div>
+                        {req.rejectionReason && (
+                          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+                            Motivo: {req.rejectionReason}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reject Reason Modal */}
+          {showRejectModal && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-card w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black text-lg">Rechazar solicitud</h3>
+                  <button onClick={() => { setShowRejectModal(null); setRejectReason(""); }} className="h-8 w-8 rounded-full border border-border flex items-center justify-center hover:bg-accent transition-colors">
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  ¿Estás seguro de que deseas rechazar esta solicitud? El empleado será notificado.
+                </p>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Motivo (opcional)</label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Ej: No disponible en inventario, presupuesto insuficiente..."
+                    className="w-full border rounded-xl px-3 py-2.5 text-sm resize-none h-24"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setShowRejectModal(null); setRejectReason(""); }}
+                    className="flex-1 px-4 py-3 rounded-xl border border-border font-black text-sm hover:bg-accent transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => handleReviewRequest(showRejectModal, "reject", rejectReason)}
+                    disabled={reviewingRequest === showRejectModal}
+                    className="flex-1 px-4 py-3 rounded-xl bg-rose-600 text-white font-black text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  >
+                    {reviewingRequest === showRejectModal ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                    Confirmar rechazo
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* PAGOS ENVIADOS — show orders with clear collaborator breakdown */}
       {tab === "pagos_enviados" && (
