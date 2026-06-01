@@ -157,6 +157,10 @@ export function PedidosSection() {
       const res = await fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       setOrders(data.orders || []);
+      if (selectedOrder) {
+        const refreshedSelectedOrder = (data.orders || []).find((o: Order) => o.id === selectedOrder.id) || null;
+        setSelectedOrder(refreshedSelectedOrder);
+      }
     } catch (e) {
       toast.error(isSilent ? "No se pudo actualizar pedidos" : "Error al cargar pedidos");
     } finally {
@@ -256,7 +260,7 @@ export function PedidosSection() {
       if (res.ok) {
         toast.success("Chip asignado correctamente");
         loadAvailableChips();
-        loadOrders({ silent: true });
+        await loadOrders({ silent: true });
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(data.error || "No se pudo asignar chip");
