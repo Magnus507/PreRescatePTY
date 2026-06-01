@@ -23,6 +23,7 @@ model Product {
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
   corporateOrderItems      CorporateOrderEmployeeItem[]
+  productRequestItems      CorporateProductRequestItem[]
 }
 
 model Account {
@@ -93,6 +94,8 @@ model User {
   consent          Consent[]
   appNotifications AppNotification[]
   contacts         Contact[]
+  productRequests  CorporateProductRequest[]           @relation("CorporateProductRequestRequestedBy")
+  reviewedRequests CorporateProductRequest[]           @relation("CorporateProductRequestReviewedBy")
 
   @@index([isAdmin]) // Fast admin filtering
   @@index([phone]) // Support lookup
@@ -268,6 +271,7 @@ model Organization {
   locations OrganizationLocation[]
   orders    Order[]
   publicProfile CorporatePublicProfile?
+  productRequests CorporateProductRequest[]
 }
 
 model CorporatePublicProfile {
@@ -428,6 +432,7 @@ model OrganizationMember {
   location     OrganizationLocation?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
   department   OrganizationDepartment? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   corporateOrderItems CorporateOrderEmployeeItem[]
+  productRequests      CorporateProductRequest[]
 }
 
 model ChipClaimToken {
@@ -560,6 +565,7 @@ model Order {
   items           OrderItem[]
   corporateEmployeeItems CorporateOrderEmployeeItem[]
   chipClaimTokens ChipClaimToken[]
+  productRequests      CorporateProductRequest[]
   // Stripe idempotency is enforced by a partial unique index on
   // (provider, providerReference) where provider='stripe' in the SQL migration.
 
@@ -610,6 +616,53 @@ model CorporateOrderEmployeeItem {
   @@index([productId])
   @@index([chipId])
   @@index([fulfillmentStatus])
+}
+
+// ==================== FASE 2: Corporate Product Requests ====================
+// Employee requests products from their company.
+// The company approves/rejects, then can group into a payment order later.
+
+model CorporateProductRequest {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  organizationMemberId String
+  requestedByUserId    String
+  status               String   @default("pending_company_approval")
+  companyReviewedAt    DateTime?
+  companyReviewedById  String?
+  rejectionReason      String?
+  orderId              String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization       Organization               @relation(fields: [organizationId], references: [id])
+  organizationMember OrganizationMember          @relation(fields: [organizationMemberId], references: [id])
+  requestedBy        User                       @relation("CorporateProductRequestRequestedBy", fields: [requestedByUserId], references: [id])
+  companyReviewedBy  User?                      @relation("CorporateProductRequestReviewedBy", fields: [companyReviewedById], references: [id])
+  order              Order?                     @relation(fields: [orderId], references: [id])
+  items              CorporateProductRequestItem[]
+
+  @@index([organizationId])
+  @@index([organizationMemberId])
+  @@index([requestedByUserId])
+  @@index([status])
+}
+
+model CorporateProductRequestItem {
+  id         String   @id @default(cuid())
+  requestId  String
+  productId  String
+  quantity   Int      @default(1)
+  unitPrice  Float
+  subtotal   Float
+  note       String?
+  createdAt  DateTime @default(now())
+
+  request CorporateProductRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  product Product                 @relation(fields: [productId], references: [id])
+
+  @@index([requestId])
+  @@index([productId])
 }
 
 model DigitalPass {

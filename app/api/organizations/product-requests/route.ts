@@ -1,0 +1,186 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+
+const createRequestSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        quantity: z.number().int().min(1),
+        note: z.string().optional(),
+      })
+    )
+    .min(1, "Debes solicitar al menos un producto."),
+});
+
+// GET /api/organizations/product-requests
+// Company sees requests from their collaborators.
+// Optional query: ?status=pending_company_approval
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.accountId) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const organization = await prisma.organization.findFirst({
+    where: { accountId: session.user.accountId },
+    select: { id: true },
+  });
+
+  if (!organization) {
+    return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const statusFilter = searchParams.get("status");
+
+  const where: Record<string, unknown> = {
+    organizationId: organization.id,
+  };
+
+  if (statusFilter) {
+    where.status = statusFilter;
+  }
+
+  const requests = await prisma.corporateProductRequest.findMany({
+    where,
+    include: {
+      items: {
+        include: {
+          product: {
+            select: { id: true, name: true, price: true, productType: true },
+          },
+        },
+      },
+      organizationMember: {
+        select: {
+          id: true,
+          employeeNationalId: true,
+          employeePosition: true,
+          employeeDepartment: true,
+          profile: {
+            select: { firstName: true, lastName: true, phone: true },
+          },
+        },
+      },
+      requestedBy: {
+        select: { id: true, email: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json({ requests });
+}
+
+// POST /api/organizations/product-requests
+// Employee creates a product request.
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+  const body = await req.json().catch(() => ({}));
+  const parsed = createRequestSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.errors[0]?.message || "Datos inválidos" },
+      { status: 400 }
+    );
+  }
+
+  const { items } = parsed.data;
+
+  // Find the employee's active organization membership
+  const member = await prisma.organizationMember.findFirst({
+    where: {
+      profile: { userId },
+      corporateStatus: { in: ["paid_active", "approved_unpaid"] },
+    },
+    select: {
+      id: true,
+      organizationId: true,
+      corporateStatus: true,
+      organization: { select: { status: true } },
+    },
+  });
+
+  if (!member) {
+    return NextResponse.json(
+      { error: "No tienes un vínculo empresarial activo para solicitar productos." },
+      { status: 403 }
+    );
+  }
+
+  if (member.organization.status !== "active") {
+    return NextResponse.json(
+      { error: "Tu organización no está habilitada para recibir solicitudes." },
+      { status: 403 }
+    );
+  }
+
+  // Validate products exist and are active, read prices from DB
+  const productIds = items.map((i) => i.productId);
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds }, isActive: true },
+    select: { id: true, price: true, name: true },
+  });
+
+  if (products.length !== productIds.length) {
+    return NextResponse.json(
+      { error: "Uno o más productos no existen o están inactivos." },
+      { status: 400 }
+    );
+  }
+
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
+  // Build request items with prices from DB
+  const requestItems = items.map((item) => {
+    const product = productMap.get(item.productId)!;
+    const subtotal = product.price * item.quantity;
+    return {
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: product.price,
+      subtotal,
+      note: item.note || null,
+    };
+  });
+
+  // Create the request with items in a transaction
+  const request = await prisma.$transaction(async (tx) => {
+    const created = await tx.corporateProductRequest.create({
+      data: {
+        organizationId: member.organizationId,
+        organizationMemberId: member.id,
+        requestedByUserId: userId,
+        status: "pending_company_approval",
+        items: {
+          createMany: {
+            data: requestItems,
+          },
+        },
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: { id: true, name: true, price: true, productType: true },
+            },
+          },
+        },
+      },
+    });
+
+    return created;
+  });
+
+  return NextResponse.json({ request }, { status: 201 });
+}
