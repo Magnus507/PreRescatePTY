@@ -44,6 +44,10 @@ export async function GET() {
             select: {
               id: true,
               corporateStatus: true,
+              employeeNationalId: true,
+              employeePhone: true,
+              employeePosition: true,
+              employeeDepartment: true,
               profile: { select: { firstName: true, lastName: true } },
             },
           },
