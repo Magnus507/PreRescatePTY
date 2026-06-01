@@ -686,7 +686,7 @@ export function PedidosSection() {
                                                 else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
                                               }} className="px-2 py-1 rounded-lg bg-teal-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-teal-700">Marcar listo</button>
                                             )}
-                                            {(item.fulfillmentStatus === "assigned_reserved" || item.fulfillmentStatus === "in_production") && (
+                                            {item.fulfillmentStatus === "in_production" && (
                                               <button onClick={async () => {
                                                 const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
                                                   method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -696,6 +696,14 @@ export function PedidosSection() {
                                                 else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
                                               }} className="px-2 py-1 rounded-lg bg-teal-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-teal-700">Marcar listo</button>
                                             )}
+                                            {item.fulfillmentStatus === "assigned_reserved" && <button onClick={async () => {
+                                              const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
+                                                method: "PATCH", headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ fulfillmentStatus: "delivered" }),
+                                              });
+                                              if (res.ok) { toast.success("Marcado entregado"); loadOrders({ silent: true }); }
+                                              else { const d = await res.json().catch(() => ({})); toast.error(d.error || "Error"); }
+                                            }} className="px-2 py-1 rounded-lg bg-slate-600 text-white text-[8px] font-bold uppercase tracking-widest hover:bg-slate-700">Marcar entregado</button>}
                                             {item.fulfillmentStatus === "ready_for_assignment" && <button onClick={async () => {
                                               const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-items/${item.id}/fulfillment`, {
                                                 method: "PATCH", headers: { "Content-Type": "application/json" },
