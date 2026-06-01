@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
 import { normalizePaymentProofUrl } from "@/lib/payment-proof";
+import { rateLimit } from "@/lib/rateLimit";
 
 type RequestSelection = {
   requestIds: string[];
@@ -23,6 +24,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "Solo el administrador de la cuenta puede crear órdenes corporativas." },
       { status: 403 }
+    );
+  }
+
+  const limitResult = await rateLimit("corporate-order-create", userId, { limit: 10, windowMs: 60_000 });
+  if (!limitResult.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta nuevamente en un minuto." },
+      { status: 429 }
     );
   }
 

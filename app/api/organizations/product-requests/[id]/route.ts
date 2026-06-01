@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const reviewSchema = z.object({
@@ -21,6 +22,14 @@ export async function PATCH(
   }
 
   const adminUserId = session.user.id;
+
+  const limitResult = await rateLimit("product-request-review", adminUserId, { limit: 20, windowMs: 60_000 });
+  if (!limitResult.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta nuevamente en un minuto." },
+      { status: 429 }
+    );
+  }
 
   // Verify the session user belongs to an organization
   const organization = await prisma.organization.findFirst({

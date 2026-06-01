@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 import { canAdminApproveManual } from "@/lib/order-status";
+import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const ApproveSchema = z.object({
@@ -21,6 +22,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const adminId = session.user.id;
+  const limitResult = await rateLimit("admin-approve", adminId, { limit: 20, windowMs: 60_000 });
+  if (!limitResult.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta nuevamente en un minuto." },
+      { status: 429 }
+    );
+  }
   const { id } = await context.params;
   const body = await req.json();
   const parsed = ApproveSchema.safeParse(body);
