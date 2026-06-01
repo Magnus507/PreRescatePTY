@@ -122,8 +122,8 @@ export async function GET(
     const orgMember = profile.organizationMembers?.[0] || null;
 
     // Check if this is a corporate profile with inactive benefit
-    if ((profile as any)?.profileType === "corporate") {
-      const corporateMember = await (prisma.organizationMember as any).findFirst({
+    if (profile.profileType === "corporate") {
+      const corporateMember = await prisma.organizationMember.findFirst({
         where: { corporateProfileId: profile.id },
         select: { corporateStatus: true, organization: { select: { displayName: true, legalName: true } } },
       });

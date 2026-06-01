@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
           where: { id: corpProfileId },
         });
 
-        if (!corpProfile || (corpProfile as any).profileType !== "corporate") {
+        if (!corpProfile || corpProfile.profileType !== "corporate") {
           throw Object.assign(
             new Error("El perfil vinculado no es un perfil empresarial válido."),
             { status: 400 }
@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
           }
 
           // Block activation against corporate profiles
-          if ((profile as any).profileType === "corporate") {
+          if (profile.profileType === "corporate") {
             throw Object.assign(
               new Error("Los perfiles empresariales se activan desde el módulo Empresa."),
               { status: 400 }

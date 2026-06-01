@@ -43,6 +43,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (!order || order.provider !== "manual") {
     return NextResponse.json({ error: "Orden manual no encontrada" }, { status: 404 });
   }
+  if (order.adminReviewStatus === "rejected" || order.paymentStatus === "rejected") {
+    return NextResponse.json(
+      { error: "Este pedido ya fue rechazado." },
+      { status: 400 }
+    );
+  }
+
+  if (order.adminReviewStatus === "approved" || order.paymentStatus === "paid") {
+    return NextResponse.json(
+      { error: "Este pedido ya fue aprobado y no puede rechazarse." },
+      { status: 400 }
+    );
+  }
+
   if (!canAdminRejectManual(order)) {
     return NextResponse.json({ error: "La orden manual no puede rechazarse en su estado actual" }, { status: 400 });
   }

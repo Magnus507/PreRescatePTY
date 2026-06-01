@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
+import { normalizePaymentProofUrl } from "@/lib/payment-proof";
 
 type RequestSelection = {
   requestIds: string[];
@@ -40,6 +41,11 @@ export async function POST(req: NextRequest) {
 
   if (!paymentProofUrl || typeof paymentProofUrl !== "string") {
     return NextResponse.json({ error: "Debes adjuntar un comprobante de pago" }, { status: 400 });
+  }
+
+  const normalizedProofUrl = normalizePaymentProofUrl(paymentProofUrl);
+  if (!normalizedProofUrl) {
+    return NextResponse.json({ error: "El comprobante de pago no es válido" }, { status: 400 });
   }
 
   // 3. Fetch all requests and validate
@@ -117,7 +123,7 @@ export async function POST(req: NextRequest) {
         orderStatus: "pending",
         paymentStatus: "under_review",
         adminReviewStatus: "pending",
-        paymentProofUrl,
+        paymentProofUrl: normalizedProofUrl,
       },
     });
 

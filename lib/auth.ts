@@ -26,80 +26,63 @@ export const authOptions: NextAuthOptions = {
         mfaCode: { label: "Código MFA", type: "text" },
       },
       async authorize(credentials, req) {
-        console.time("login-total");
-        try {
-          // Rate limiting
-          console.time("login-rateLimit");
-          const ip = getClientIp(req ?? {}, "auth-login");
-          const limiter = await rateLimit("login", ip, { limit: 10, windowMs: 60_000 * 15 });
-          console.timeEnd("login-rateLimit");
-          if (!limiter.allowed) {
-            throw new Error("Demasiados intentos. Intenta de nuevo más tarde.");
-          }
-
-          if (!credentials?.email || !credentials?.password) {
-            throw new Error("Email y contraseña son requeridos");
-          }
-
-          const emailLower = credentials.email.toLowerCase();
-
-          // Unified lookup: single User table
-          console.time("login-findUser");
-          const user = await prisma.user.findUnique({
-            where: { email: emailLower },
-          }) as User | null;
-          console.timeEnd("login-findUser");
-
-          if (!user || user.status !== "active") {
-            throw new Error("Credenciales inválidas");
-          }
-
-          console.time("login-password");
-          const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
-          console.timeEnd("login-password");
-          if (!isValid) {
-            throw new Error("Credenciales inválidas");
-          }
-
-          // Check MFA
-          console.time("login-mfa");
-          if (user && user.mfaEnabled && user.mfaSecret) {
-            if (!credentials.mfaCode) {
-              console.timeEnd("login-mfa");
-              throw new Error("MFA_REQUIRED");
-            }
-
-            const { verifyMfaToken } = await import("@/domains/users/services/mfa.service");
-            const isTokenValid = verifyMfaToken(credentials.mfaCode, decrypt(user.mfaSecret));
-
-            if (!isTokenValid) {
-              console.timeEnd("login-mfa");
-              throw new Error("Código MFA inválido");
-            }
-          }
-          console.timeEnd("login-mfa");
-
-          // Update last login
-          console.time("login-updateLastLogin");
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastLoginAt: new Date() },
-          });
-          console.timeEnd("login-updateLastLogin");
-
-          // Determine role: admin users use adminRole, regular users use role
-          const effectiveRole = user.isAdmin ? (user.adminRole || "admin") : (user.role || "owner");
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.email,
-            role: effectiveRole,
-            accountId: user.accountId,
-          };
-        } finally {
-          console.timeEnd("login-total");
+        // Rate limiting
+        const ip = getClientIp(req ?? {}, "auth-login");
+        const limiter = await rateLimit("login", ip, { limit: 10, windowMs: 60_000 * 15 });
+        if (!limiter.allowed) {
+          throw new Error("Demasiados intentos. Intenta de nuevo más tarde.");
         }
+
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Email y contraseña son requeridos");
+        }
+
+        const emailLower = credentials.email.toLowerCase();
+
+        // Unified lookup: single User table
+        const user = await prisma.user.findUnique({
+          where: { email: emailLower },
+        }) as User | null;
+
+        if (!user || user.status !== "active") {
+          throw new Error("Credenciales inválidas");
+        }
+
+        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+        if (!isValid) {
+          throw new Error("Credenciales inválidas");
+        }
+
+        // Check MFA
+        if (user && user.mfaEnabled && user.mfaSecret) {
+          if (!credentials.mfaCode) {
+            throw new Error("MFA_REQUIRED");
+          }
+
+          const { verifyMfaToken } = await import("@/domains/users/services/mfa.service");
+          const isTokenValid = verifyMfaToken(credentials.mfaCode, decrypt(user.mfaSecret));
+
+          if (!isTokenValid) {
+            throw new Error("Código MFA inválido");
+          }
+        }
+
+        // Update last login
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        });
+
+        // Determine role: admin users use adminRole, regular users use role
+        const effectiveRole = user.isAdmin ? (user.adminRole || "admin") : (user.role || "owner");
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.email,
+          role: effectiveRole,
+          accountId: user.accountId,
+        };
       },
     }),
   ],
