@@ -178,6 +178,7 @@ export default function EmpresasPage() {
   const [corpContactForm, setCorpContactForm] = useState({ ...emptyCorpContactForm });
   const [savingCorpContact, setSavingCorpContact] = useState(false);
   const [deletingCorpContactId, setDeletingCorpContactId] = useState<string | null>(null);
+  const [showCorpContacts, setShowCorpContacts] = useState(false);
 
   // Employee product requests UI
   const [showProductRequest, setShowProductRequest] = useState(false);
@@ -1080,6 +1081,12 @@ export default function EmpresasPage() {
                         </Link>
                       )}
                       {canEdit && (
+                        <button onClick={() => setShowCorpContacts(!showCorpContacts)}
+                          className={`p-3 rounded-xl border transition-all ${showCorpContacts ? 'border-emerald-300 bg-emerald-50 text-emerald-600' : 'border-emerald-200 hover:bg-emerald-50 text-emerald-600'}`} title="Contactos de emergencia">
+                          <Users className="h-5 w-5" />
+                        </button>
+                      )}
+                      {canEdit && (
                         <button onClick={openCorporateProfileEditor}
                           className="p-3 rounded-xl border border-indigo-200 hover:bg-indigo-100 transition-all text-indigo-600" title="Editar Perfil Empresarial">
                           <Pencil className="h-5 w-5" />
@@ -1114,6 +1121,99 @@ export default function EmpresasPage() {
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Guardianes del Perfil Empresarial — expandible */}
+          {showCorpContacts && canEdit && corpProfile && (
+            <div className="rounded-[2rem] border-2 border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white p-6 space-y-4 animate-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg text-emerald-900">Guardianes del Perfil Empresarial</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Configura los contactos de emergencia exclusivos para este perfil empresarial.
+                  </p>
+                </div>
+              </div>
+
+              {/* Lista de contactos existentes */}
+              {corpContacts.length > 0 && (
+                <div className="space-y-2">
+                  {corpContacts.map((c: any) => (
+                    <div key={c.id} className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-slate-200 bg-white hover:shadow-sm transition-all">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                          <UserRound className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-slate-900 truncate">{c.fullName}</p>
+                          <p className="text-[10px] text-muted-foreground">{c.relationship} · {c.phone}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCorpContact(c.id)}
+                        disabled={deletingCorpContactId === c.id}
+                        className="p-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors shrink-0 disabled:opacity-50"
+                      >
+                        {deletingCorpContactId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Formulario agregar contacto */}
+              {corpContacts.length < 3 ? (
+                <div className="p-5 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/30 space-y-3">
+                  <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Añadir guardián</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Nombre completo *"
+                      value={corpContactForm.fullName}
+                      onChange={(e) => setCorpContactForm({ ...corpContactForm, fullName: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                    />
+                    <select
+                      value={corpContactForm.relationship}
+                      onChange={(e) => setCorpContactForm({ ...corpContactForm, relationship: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 bg-white"
+                    >
+                      <option value="">Relación / Cargo *</option>
+                      {CORP_RELATIONSHIPS.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      placeholder="Teléfono *"
+                      value={corpContactForm.phone}
+                      onChange={(e) => setCorpContactForm({ ...corpContactForm, phone: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email (opcional)"
+                      value={corpContactForm.email}
+                      onChange={(e) => setCorpContactForm({ ...corpContactForm, email: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddCorpContact}
+                    disabled={savingCorpContact}
+                    className="px-5 py-3 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {savingCorpContact ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                    Añadir contacto de emergencia
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-500 italic">Has alcanzado el límite de 3 contactos de emergencia.</p>
+              )}
             </div>
           )}
 
@@ -1255,43 +1355,6 @@ export default function EmpresasPage() {
                 </div>
               )}
 
-              {/* Aviso contactos de emergencia */}
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
-                    <Users className="h-4 w-4 text-slate-500" />
-                  </div>
-                  <div className="min-w-0">
-                    {corpContacts.length === 0 ? (
-                      <p className="text-xs font-semibold text-slate-700">
-                        No tienes contactos de emergencia en tu perfil empresarial. Agrega al menos uno para que aparezca en tu ficha.
-                      </p>
-                    ) : (
-                      <div>
-                        <p className="text-xs font-semibold text-emerald-700">
-                          Contactos de emergencia configurados: {corpContacts.length}
-                        </p>
-                        <div className="mt-1 space-y-0.5">
-                          {corpContacts.slice(0, 2).map((c: any) => (
-                            <p key={c.id} className="text-[10px] text-slate-500">
-                              {c.fullName} — {c.relationship}
-                            </p>
-                          ))}
-                          {corpContacts.length > 2 && (
-                            <p className="text-[10px] text-slate-400">+{corpContacts.length - 2} más</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {canEdit && (
-                  <button onClick={openCorporateProfileEditor}
-                    className="mt-3 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all inline-flex items-center gap-2">
-                    <Pencil className="h-3.5 w-3.5" /> Editar perfil empresarial
-                  </button>
-                )}
-              </div>
             </div>
           )}
 
