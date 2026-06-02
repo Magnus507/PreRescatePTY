@@ -55,7 +55,24 @@ export function IndustrialProfileView({ profile, scanLocation = "", isParamedic 
       </div>
 
       <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-        
+
+        {/* EMERGENCY 911 CALL — placed at top for immediate visibility */}
+        <a
+          href="tel:911"
+          className="w-full flex items-center justify-between p-6 rounded-3xl bg-red-600 border border-red-500 hover:bg-red-700 transition-all active:scale-[0.98] group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-white/20 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+              <Phone className="h-6 w-6 fill-current" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-red-100 uppercase tracking-widest mb-1">Central de Urgencias</p>
+              <p className="text-xl font-black text-white uppercase tracking-tighter">Llamar al 911</p>
+            </div>
+          </div>
+          <Phone className="h-5 w-5 text-white/60" />
+        </a>
+
         {/* Compact Hero */}
         <div className="bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-200 shadow-xl p-5 md:p-8">
           <div className="flex flex-col md:flex-row items-center gap-5 md:gap-8 text-center md:text-left">
@@ -185,77 +202,41 @@ export function IndustrialProfileView({ profile, scanLocation = "", isParamedic 
           </>
         )}
 
-        {/* Manual Emergency Actions (shown for both views) */}
+        {/* Emergency Contacts */}
         <div className="space-y-4">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center mb-6">Acciones Manuales de Emergencia</p>
-          <div className="grid grid-cols-1 gap-3">
-            <a
-              href="tel:911"
-              className="w-full flex items-center justify-between p-6 rounded-3xl bg-red-600 border border-red-500 hover:bg-red-700 transition-all active:scale-[0.98] group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-white/20 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                  <Phone className="h-6 w-6 fill-current" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-red-100 uppercase tracking-widest mb-1">Central de Urgencias</p>
-                  <p className="text-xl font-black text-white uppercase tracking-tighter">Llamar al 911</p>
-                </div>
-              </div>
-              <Phone className="h-5 w-5 text-white/60" />
-            </a>
-            
-            <div className="pt-6">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center mb-6">Familiares / Contactos Personales</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {profile.emergencyContacts.map((contact: any, i: number) => {
-                  const contactPhone = sanitizeTelPhone(contact.phone);
-                  const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
-                  const locInfo = formatEmergencyLocation(scanLocation);
-                  const whatsappMessage = locInfo.text
-                    ? `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente.
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center mb-6">Familiares / Contactos Personales</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {profile.emergencyContacts.map((contact: any, i: number) => {
+              const contactPhone = sanitizeTelPhone(contact.phone);
+              const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
+              const locInfo = formatEmergencyLocation(scanLocation);
+              const whatsappMessage = locInfo.text
+                ? `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente.\n\n${locInfo.text}\n\nPor favor intenta contactarle o verifica si necesita asistencia.`
+                : `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente. Por favor intenta contactarle o verifica si necesita asistencia.`;
+              const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
-${locInfo.text}
-
-Por favor intenta contactarle o verifica si necesita asistencia.`
-                    : `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente. Por favor intenta contactarle o verifica si necesita asistencia.`;
-                  const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`;
-
-                  return (
-                    <div
-                      key={i}
-                      className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/50 space-y-4"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-slate-700 text-slate-400 flex items-center justify-center">
-                          <User className="h-5 w-5" />
-                        </div>
-                        <div>
-                    <p className="text-sm font-black text-white uppercase leading-none mb-1">{contact.fullName || "No reportado"}</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{contact.relationship || "No reportado"}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <a
-                          href={`tel:${contactPhone}`}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white"
-                        >
-                          <Phone className="h-4 w-4" /> Llamar
-                        </a>
-                        <a
-                          href={whatsappUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white"
-                        >
-                          <MessageCircle className="h-4 w-4" /> WhatsApp
-                        </a>
-                      </div>
+              return (
+                <div key={i} className="p-4 rounded-2xl bg-slate-800/40 border border-slate-700/50 space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-slate-700 text-slate-400 flex items-center justify-center">
+                      <User className="h-5 w-5" />
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                    <div>
+                      <p className="text-sm font-black text-white uppercase leading-none mb-1">{contact.fullName || "No reportado"}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{contact.relationship || "No reportado"}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <a href={`tel:${contactPhone}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white">
+                      <Phone className="h-4 w-4" /> Llamar
+                    </a>
+                    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white">
+                      <MessageCircle className="h-4 w-4" /> WhatsApp
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

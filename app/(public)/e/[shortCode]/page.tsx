@@ -18,6 +18,7 @@ interface EmergencyProfile {
   displayName: string;
   sex: string;
   age: number | null;
+  profileType?: string;
   bloodType: string;
   allergies: string;
   chronicConditions: string;
@@ -354,8 +355,8 @@ export default function EmergencyPage() {
     );
   }
 
-  // Corporate profile — route to IndustrialProfileView with mode
-  if (profile.organization) {
+  // Corporate profile — route to IndustrialProfileView only for actual corporate profiles
+  if (profile.profileType === "corporate") {
     return <IndustrialProfileView profile={profile} scanLocation={scanLocation} isParamedic={isParamedic} />;
   }
 

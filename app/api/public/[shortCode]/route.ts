@@ -225,6 +225,7 @@ export async function GET(
       displayName: profile.displayNamePublic || `${profile.firstName} ${profile.lastName.charAt(0)}.`,
       sex: profile.sex || "No reportado",
       age: calculateAge(profile.birthDate),
+      profileType: profile.profileType,
       bloodType: decryptedBloodType,
       allergies: decryptedAllergies || "No reportadas",
       chronicConditions: decryptedConditions || "No reportadas",
@@ -235,7 +236,8 @@ export async function GET(
       // Public-safe organization context. Internal protocols, employee IDs,
       // occupational risks and corporate response buttons are intentionally
       // not exposed from the public emergency profile.
-      organization: orgMember ? {
+      // Organization data is ONLY included for corporate profiles.
+      organization: orgMember && profile.profileType === "corporate" ? {
         name: orgMember.organization.legalName,
         location: orgMember.location
           ? `${orgMember.location.name}${orgMember.location.city ? `, ${orgMember.location.city}` : ""}`
