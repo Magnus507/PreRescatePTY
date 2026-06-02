@@ -182,6 +182,8 @@ export default function EmpresasPage() {
 
   // Employee product requests UI
   const [showProductRequest, setShowProductRequest] = useState(false);
+  const [showAllCorporateProducts, setShowAllCorporateProducts] = useState(false);
+  const [showAllProductRequests, setShowAllProductRequests] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Record<string, { productId: string; quantity: number; note: string }>>({});
@@ -1270,7 +1272,8 @@ export default function EmpresasPage() {
               {/* Lista de productos corporativos */}
               {activeRequest.corporateOrderItems && activeRequest.corporateOrderItems.length > 0 ? (
                 <div className="space-y-2">
-                  {activeRequest.corporateOrderItems.map((item: any) => {
+                  {(showAllCorporateProducts ? activeRequest.corporateOrderItems : activeRequest.corporateOrderItems.slice(0, 3)).map((item: any) => {
+                    // NOTE: FULFILLMENT_LABELS etc defined inside map for readability — same as original
                     const FULFILLMENT_LABELS: Record<string, string> = {
                       pending_assignment: "Pendiente de asignación",
                       assigned_reserved: "Chip asignado",
@@ -1324,6 +1327,14 @@ export default function EmpresasPage() {
                       </div>
                     );
                   })}
+                  {activeRequest.corporateOrderItems.length > 3 && (
+                    <button
+                      onClick={() => setShowAllCorporateProducts(!showAllCorporateProducts)}
+                      className="w-full py-2.5 rounded-xl border border-indigo-200 bg-white text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all"
+                    >
+                      {showAllCorporateProducts ? "Contraer productos" : `Ver todos los productos (${activeRequest.corporateOrderItems.length})`}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 space-y-3">
@@ -1427,7 +1438,7 @@ export default function EmpresasPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {myRequests.map((req: any) => {
+                  {(showAllProductRequests ? myRequests : myRequests.slice(0, 2)).map((req: any) => {
                     const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
                     const statusLabel = PRODUCT_STATUS_LABELS[req.status] || req.status;
                     const statusColor = PRODUCT_STATUS_COLORS[req.status] || "bg-slate-100 text-slate-600 border-slate-200";
@@ -1465,6 +1476,14 @@ export default function EmpresasPage() {
                       </div>
                     );
                   })}
+                  {myRequests.length > 2 && (
+                    <button
+                      onClick={() => setShowAllProductRequests(!showAllProductRequests)}
+                      className="w-full py-2.5 rounded-xl border border-indigo-200 bg-white text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all"
+                    >
+                      {showAllProductRequests ? "Contraer solicitudes" : `Ver todas las solicitudes (${myRequests.length})`}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
