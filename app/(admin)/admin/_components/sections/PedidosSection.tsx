@@ -73,6 +73,19 @@ interface Order {
     productType: string;
     quantity: number;
     totalPrice: number;
+    profile?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      displayNamePublic?: string | null;
+      profileType: string;
+    } | null;
+    chip?: {
+      id: string;
+      shortCode: string;
+      serialPublic: string;
+      status: string;
+    } | null;
   }[];
   chipClaimTokens: {
     id: string;
