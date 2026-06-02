@@ -73,22 +73,26 @@ export default function TiendaPage() {
       });
   }, []);
 
-  const loadProfiles = async () => {
-    if (!selectedProduct?.requiresPersonalization) return;
+  const loadProfiles = async (product?: Product) => {
+    const target = product ?? null;
+    if (!target?.requiresPersonalization) return;
     setProfileLoading(true);
     try {
       const res = await fetch("/api/users/perfiles-medicos");
-      const data = await res.json();
+      const json = await res.json();
+      const payload = json.data ?? json;
       const profiles: ProfileOption[] = [];
-      if (data.ownProfile) {
-        profiles.push({ ...data.ownProfile, profileType: "personal" });
+      if (payload.ownProfile) {
+        profiles.push({ ...payload.ownProfile, profileType: "personal" });
       }
-      if (data.familyProfiles) {
-        profiles.push(...data.familyProfiles.map((p: any) => ({ ...p, profileType: "family" })));
+      if (Array.isArray(payload.familyProfiles)) {
+        profiles.push(...payload.familyProfiles.map((p: any) => ({ ...p, profileType: "family" })));
       }
       setProfileOptions(profiles);
-      const withChip = profiles.find(p => p.assignedChips && p.assignedChips.length > 0);
-      setSelectedProfileId(withChip?.id || profiles[0]?.id || "");
+      if (profiles.length > 0) {
+        const withChip = profiles.find(p => p.assignedChips && p.assignedChips.length > 0);
+        setSelectedProfileId(withChip?.id || profiles[0]?.id || "");
+      }
     } catch {
       toast.error("Error al cargar perfiles");
     } finally {
@@ -152,7 +156,7 @@ export default function TiendaPage() {
     setProfileLoading(false);
     if (product.requiresPersonalization) {
       // Use setTimeout to ensure state is updated before calling loadProfiles
-      setTimeout(() => loadProfiles(), 0);
+      loadProfiles(product);
     }
   };
 
