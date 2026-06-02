@@ -248,8 +248,8 @@ function PedidosContent() {
                     <RejectionReasonBox adminReviewNotes={order.adminReviewNotes} />
                   )}
                   
-                  {/* MANUAL FLOW P0 HARDENING */}
-                  {showManualPaymentBlock && (
+                  {/* MANUAL FLOW — pending: full form, under_review: compact summary */}
+                  {showManualPaymentBlock && order.paymentStatus === "pending" && (
                     <PaymentProofForm
                       order={{
                         id: order.id,
@@ -275,6 +275,42 @@ function PedidosContent() {
                       }}
                       paymentInstructions={<PaymentInstructions paymentConfig={paymentConfig} />}
                     />
+                  )}
+
+                  {/* UNDER REVIEW — compact summary */}
+                  {showManualPaymentBlock && order.paymentStatus === "under_review" && (
+                    <div className="p-6 rounded-[2.5rem] bg-emerald-50 border border-emerald-200 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full border border-emerald-200 mb-2">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Comprobante Enviado</span>
+                          </div>
+                          <h3 className="text-lg font-black text-slate-900 tracking-tight">Pago en revisión</h3>
+                          <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                            Tu comprobante está siendo verificado por el equipo de PreRescate.
+                          </p>
+                        </div>
+                      </div>
+                      {order.paymentProofUrl && (
+                        <div className="flex flex-wrap gap-3 pt-2">
+                          <a
+                            href={order.paymentProofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all active:scale-95 shadow-lg"
+                          >
+                            <Upload className="h-4 w-4" /> Ver comprobante
+                          </a>
+                        </div>
+                      )}
+                      {order.manualPaymentReference && (
+                        <div className="p-3 rounded-xl bg-emerald-100/50 border border-emerald-200">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-emerald-700 mb-0.5">Referencia de pago</p>
+                          <p className="text-sm font-bold text-slate-900">{order.manualPaymentReference}</p>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   { (order.orderStatus === "completed" || order.orderStatus === "shipped") && order.chipClaimTokens.length > 0 && (
