@@ -147,6 +147,7 @@ export const orderCreateSchema = z.object({
     productType: z.string(),
     quantity: z.number().int().positive(),
     unitPrice: z.number().positive(),
+    profileId: z.string().optional(),
   })).min(1, "Debe incluir al menos un producto"),
 });
 
