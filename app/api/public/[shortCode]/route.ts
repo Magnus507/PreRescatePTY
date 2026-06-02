@@ -119,16 +119,37 @@ export async function GET(
     }
 
     const profile = chip.assignedProfile;
-    const orgMember = profile.organizationMembers?.[0] || null;
+    let orgMember = profile.organizationMembers?.[0] || null;
 
-    // Check if this is a corporate profile with inactive benefit
+    // Check if this is a corporate profile with inactive benefit.
+    // For corporate profiles, the organization member relationship is stored
+    // via OrganizationMember.corporateProfileId, not via profile.organizationMembers.
     if (profile.profileType === "corporate") {
       const corporateMember = await prisma.organizationMember.findFirst({
         where: { corporateProfileId: profile.id },
-        select: { corporateStatus: true, organization: { select: { displayName: true, legalName: true } } },
+        select: {
+          corporateStatus: true,
+          organization: { select: { displayName: true, legalName: true } },
+          location: {
+            select: { name: true, address: true, city: true },
+          },
+          department: { select: { name: true } },
+        },
       });
 
-      if (corporateMember && corporateMember.corporateStatus !== "paid_active") {
+      if (!corporateMember) {
+        return publicJson(
+          req,
+          {
+            status: "corporate_inactive",
+            error: "Perfil empresarial no disponible",
+            message: "Este perfil corporativo no tiene vinculación empresarial.",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (corporateMember.corporateStatus !== "paid_active") {
         return publicJson(
           req,
           {
@@ -139,6 +160,13 @@ export async function GET(
           { status: 403 }
         );
       }
+
+      // Build organization from the corporate member record instead of profile.organizationMembers
+      orgMember = {
+        organization: corporateMember.organization,
+        location: corporateMember.location,
+        department: corporateMember.department,
+      } as any;
     }
 
     // Decrypt sensitive fields
@@ -209,6 +237,10 @@ export async function GET(
       // not exposed from the public emergency profile.
       organization: orgMember ? {
         name: orgMember.organization.legalName,
+        location: orgMember.location
+          ? `${orgMember.location.name}${orgMember.location.city ? `, ${orgMember.location.city}` : ""}`
+          : null,
+        department: orgMember.department?.name || null,
       } : null,
 
       emergencyContacts: profile.contacts.map((pc) => ({

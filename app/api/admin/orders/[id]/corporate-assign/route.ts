@@ -143,6 +143,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           fulfillmentStatus: "assigned_reserved",
         },
       });
+
+      // CRITICAL: Set the chip's assignedProfileId to the corporate profile
+      // so the public emergency page (/e/[shortCode]) resolves correctly
+      if (orgMemberFull?.corporateProfileId) {
+        await tx.chip.update({
+          where: { id: chipId },
+          data: { assignedProfileId: orgMemberFull.corporateProfileId },
+        });
+      } else {
+        throw Object.assign(
+          new Error("El colaborador no tiene perfil empresarial asociado."),
+          { status: 400 }
+        );
+      }
     });
 
     return NextResponse.json({ ok: true });
