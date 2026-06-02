@@ -184,6 +184,8 @@ export default function EmpresasPage() {
   const [showProductRequest, setShowProductRequest] = useState(false);
   const [showAllCorporateProducts, setShowAllCorporateProducts] = useState(false);
   const [showAllProductRequests, setShowAllProductRequests] = useState(false);
+  const [corporateActivationCode, setCorporateActivationCode] = useState("");
+  const [activatingCorporateChip, setActivatingCorporateChip] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Record<string, { productId: string; quantity: number; note: string }>>({});
@@ -983,6 +985,41 @@ export default function EmpresasPage() {
         return sum + (prod?.price || 0) * item.quantity;
       }, 0);
 
+      // Handler: activate corporate chip
+      const handleActivateCorporateChip = async () => {
+        if (!corporateActivationCode.trim()) {
+          toast.error("Ingresa el código de activación del chip empresarial");
+          return;
+        }
+        setActivatingCorporateChip(true);
+        try {
+          const res = await fetch("/api/chips/activate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ activationCode: corporateActivationCode.trim() }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            toast.error(data.error || "Error al activar chip empresarial");
+            return;
+          }
+          toast.success("¡Chip empresarial activado! Tu protección empresarial ya está activa.");
+          setCorporateActivationCode("");
+          await loadAll();
+          const active = (myStatus?.requests || []).find((r: any) =>
+            ["pending_company_review", "approved_unpaid", "paid_active", "suspended", "archived"].includes(r.corporateStatus)
+          );
+          if (active?.corporateProfile?.id) {
+            loadCorpFullProfile(active.corporateProfile.id);
+            loadCorpContacts(active.corporateProfile.id);
+          }
+        } catch (err) {
+          toast.error("Error de conexión al activar chip");
+        } finally {
+          setActivatingCorporateChip(false);
+        }
+      };
+
       const PRODUCT_STATUS_LABELS: Record<string, string> = {
         pending_company_approval: "Pendiente de aprobación",
         approved_pending_payment: "Aprobada por empresa — pendiente de pago",
@@ -1354,6 +1391,47 @@ export default function EmpresasPage() {
                   <p className="text-[11px] text-amber-600 italic">
                     Cuando tu empresa asigne un chip empresarial, tus productos aparecerán vinculados aquí.
                   </p>
+                </div>
+              )}
+
+              {/* Activar chip empresarial — card compacta */}
+              {corporateChip && corporateChip.status !== "activated" &&
+                activeRequest.corporateOrderItems?.some((item: any) =>
+                  ["assigned_reserved", "delivered", "ready_for_assignment"].includes(item.fulfillmentStatus)
+                ) && (
+                <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/50 to-white p-5 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0">
+                      <Smartphone className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-blue-900">Activar chip empresarial</h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        Tu empresa ya te asignó el chip <span className="font-mono font-bold">{corporateChip.shortCode}</span>.{" "}
+                        {corporateFulfillmentStatus === "delivered"
+                          ? "Chip entregado. Ingresa el código para activar tu protección."
+                          : "Ingresa el código de activación que viene en el empaque para activar tu protección empresarial."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      type="text"
+                      value={corporateActivationCode}
+                      onChange={(e) => setCorporateActivationCode(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleActivateCorporateChip(); }}
+                      placeholder="XXXX-XXXX-XXXX"
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-blue-200 bg-white text-sm font-bold focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    />
+                    <button
+                      onClick={handleActivateCorporateChip}
+                      disabled={activatingCorporateChip || !corporateActivationCode.trim()}
+                      className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
+                    >
+                      {activatingCorporateChip ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                      {activatingCorporateChip ? "Activando..." : "Activar chip"}
+                    </button>
+                  </div>
                 </div>
               )}
 
