@@ -275,14 +275,18 @@ export default function EmpresasPage() {
   };
 
   const handleAddCorpContact = async () => {
-    if (!corpEditProfileId) return;
+    const profileId = activeRequest?.corporateProfile?.id;
+    if (!profileId) {
+      toast.error("No se encontró el perfil empresarial");
+      return;
+    }
     if (!corpContactForm.fullName.trim() || !corpContactForm.relationship.trim() || !corpContactForm.phone.trim()) {
       toast.error("Nombre, relación y teléfono son obligatorios");
       return;
     }
     setSavingCorpContact(true);
     try {
-      const res = await fetch(`/api/users/perfiles-medicos/${corpEditProfileId}/contacts`, {
+      const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(corpContactForm),
@@ -303,11 +307,15 @@ export default function EmpresasPage() {
   };
 
   const handleDeleteCorpContact = async (contactId: string) => {
-    if (!corpEditProfileId) return;
+    const profileId = activeRequest?.corporateProfile?.id;
+    if (!profileId) {
+      toast.error("No se encontró el perfil empresarial");
+      return;
+    }
     if (!confirm("¿Eliminar este contacto de emergencia?")) return;
     setDeletingCorpContactId(contactId);
     try {
-      const res = await fetch(`/api/users/perfiles-medicos/${corpEditProfileId}/contacts?id=${contactId}`, {
+      const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts?id=${contactId}`, {
         method: "DELETE",
       });
       if (res.ok) {
