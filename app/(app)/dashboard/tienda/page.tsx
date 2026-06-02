@@ -87,7 +87,6 @@ export default function TiendaPage() {
         profiles.push(...data.familyProfiles.map((p: any) => ({ ...p, profileType: "family" })));
       }
       setProfileOptions(profiles);
-      // Auto-select first profile or one with chip
       const withChip = profiles.find(p => p.assignedChips && p.assignedChips.length > 0);
       setSelectedProfileId(withChip?.id || profiles[0]?.id || "");
     } catch {
@@ -150,8 +149,10 @@ export default function TiendaPage() {
     setShowCheckout(true);
     setSelectedProfileId("");
     setProfileOptions([]);
+    setProfileLoading(false);
     if (product.requiresPersonalization) {
-      loadProfiles();
+      // Use setTimeout to ensure state is updated before calling loadProfiles
+      setTimeout(() => loadProfiles(), 0);
     }
   };
 
