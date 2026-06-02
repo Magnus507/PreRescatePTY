@@ -97,9 +97,7 @@ export async function POST(req: NextRequest) {
           userId,
           orderNumber: nextNumber,
           amount: totalPrice,
-          // MANUAL FLOW P1 DOMAIN CONSISTENCY
-          // Legacy /api/orders must not look like manual-payment workflow orders.
-          provider: "legacy",
+          provider: "manual",
           orderStatus: "pending",
           paymentStatus: "pending",
           paymentMethod: (validatedData.paymentMethod as "manual" | "yappy" | "bank_transfer" | undefined) || "manual",
