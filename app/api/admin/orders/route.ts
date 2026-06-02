@@ -7,7 +7,6 @@ import { AccountStateService } from "@/domains/accounts/services/account-state.s
 import { OrderNotificationService } from "@/domains/notifications/services/order-notification.service";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 
-// Check if the current session is an admin
 async function isAdmin() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.role) return false;
@@ -35,7 +34,16 @@ export async function GET(req: NextRequest) {
             }
           }
         },
-        items: true,
+        items: {
+          include: {
+            profile: {
+              select: { id: true, firstName: true, lastName: true, displayNamePublic: true, profileType: true },
+            },
+            chip: {
+              select: { id: true, shortCode: true, serialPublic: true, status: true },
+            },
+          },
+        },
         corporateEmployeeItems: {
           include: {
             product: { select: { id: true, name: true, productType: true } },
@@ -61,7 +69,6 @@ export async function GET(req: NextRequest) {
       take: 200
     });
 
-    // Fetch existing corporate chips for all organization members in these orders
     const allMemberIds = new Set<string>();
     const allCorporateProfileIds = new Set<string>();
     for (const order of orders) {
@@ -75,7 +82,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Build map of existing corporate chips by organizationMemberId
     const existingChipsByMember = new Map<string, { id: string; shortCode: string; serialPublic: string; status: string }>();
     if (allCorporateProfileIds.size > 0) {
       const existingChips = await prisma.corporateOrderEmployeeItem.findMany({
@@ -108,7 +114,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Inject existingCorporateChip into each corporateEmployeeItem
     const ordersWithExistingChips = orders.map((order) => ({
       ...order,
       corporateEmployeeItems: (order.corporateEmployeeItems || []).map((item) => ({
@@ -127,17 +132,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  // C10A GUARDRAILS — Legacy partial orchestrator (no functional changes here)
-  // - This PATCH remains operational for current admin/legacy flows.
-  // - Canonical manual approval path is: /api/admin/orders/[id]/approve (and /reject).
-  // - Chip reservation/token assignment must use OrderFulfillmentService helpers.
-  // - Do NOT reintroduce capacity increments for manual orders in this route.
-  // - Future target: keep PATCH as thin router/orchestrator and move domain logic to services.
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  // MANUAL FLOW P0 HARDENING
   const { id, orderStatus, paymentStatus, generateTokens, assignedChipIds } = await req.json();
 
   try {
@@ -151,9 +149,6 @@ export async function PATCH(req: NextRequest) {
 
     if (!order) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
 
-    // C6C HARDENING: manual orders are fully protected in legacy PATCH.
-    // Any approval/rejection/state/payment/manual-fulfillment must go through
-    // canonical endpoints: /api/admin/orders/[id]/approve and /reject.
     if (order.provider === "manual") {
       return NextResponse.json(
         {
@@ -180,8 +175,6 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // C10A: Estado/Pago (legacy partial branch)
-    // Keep minimal direct updates here until transition helper is extracted (C10B).
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: {
@@ -192,8 +185,6 @@ export async function PATCH(req: NextRequest) {
 
     const isFulfilling = ["shipped", "completed"].includes(updatedOrder.orderStatus);
 
-    // C10A: generateTokens / fulfillment orchestration (legacy partial branch)
-    // Do not duplicate reservation/token logic outside OrderFulfillmentService.
     if ((generateTokens || isFulfilling) && order.items.length > 0) {
       let totalChips = 0;
       let totalProfiles = 0;
@@ -216,8 +207,6 @@ export async function PATCH(req: NextRequest) {
         const neededChips = totalChips - existingTokens;
         
         if (neededChips > 0) {
-          // C10A: assignedChipIds path
-          // Canonical reservation path must stay in OrderFulfillmentService.reserveAssignedChipsForOrder().
           if (normalizedAssignedChipIds.length > 0) {
             if (normalizedAssignedChipIds.length > purchasedChipLimit) {
               return NextResponse.json(
@@ -236,16 +225,9 @@ export async function PATCH(req: NextRequest) {
               });
             } catch (error: unknown) {
               const message = error instanceof Error ? error.message : "Error al actualizar orden";
-              const status =
-                typeof error === "object" && error !== null && "status" in error
-                  ? Number((error as { status?: unknown }).status) || 500
-                  : 500;
-              return NextResponse.json({ error: message }, { status });
+              return NextResponse.json({ error: message }, { status: 500 });
             }
           } else {
-            // C10A: auto token/chip generation fallback (legacy behavior)
-            // Pending extraction to OrderFulfillmentService in C10D.
-            // Auto generation (fallback)
             for (let i = 0; i < neededChips; i++) {
                const chip = await prisma.chip.create({
                   data: {
@@ -269,8 +251,6 @@ export async function PATCH(req: NextRequest) {
           }
         }
 
-        // C10A: Capacity branch intentionally restricted to non-manual providers.
-        // Manual capacity adjustments belong to canonical /approve flow and must not be duplicated here.
         if (existingTokens === 0 && order.user?.accountId && order.provider !== "manual") {
           await prisma.account.update({
             where: { id: order.user.accountId },
@@ -287,7 +267,6 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (isFulfilling) {
-      // Transition linked chips from 'inventory' to 'sold'
       const orderTokens = await prisma.chipClaimToken.findMany({
         where: { orderId: id },
         select: { chipId: true }
@@ -305,9 +284,6 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    // C10A: Notifications + cache invalidation are side-effects.
-    // Future target (C10E): invoke through explicit orchestration/event helpers.
-    // Trigger Notifications based on status change
     const newStatus = orderStatus || updatedOrder.orderStatus;
     const oldStatus = order.orderStatus;
 
@@ -343,7 +319,6 @@ export async function DELETE(req: NextRequest) {
   const bulk = searchParams.get('bulk');
 
   if (bulk === 'cancelled') {
-    // C6C HARDENING: disable bulk destructive deletion to preserve audit traceability.
     return NextResponse.json(
       {
         error:
@@ -385,7 +360,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Cascade delete is usually configured in Prisma schema, but let's delete items first to be safe
     await prisma.orderItem.deleteMany({ where: { orderId: id } });
     await prisma.order.delete({ where: { id } });
 
