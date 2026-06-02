@@ -29,6 +29,7 @@ function ComprasContent() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"yappy" | "bank_transfer">("yappy");
+  const [showComboList, setShowComboList] = useState(true);
 
   const totalPrice = selectedProduct.price;
 
@@ -132,7 +133,25 @@ function ComprasContent() {
             <p className="text-xs font-bold text-muted-foreground leading-relaxed">Stickers originales de alta resistencia. Vinculación vitalicia a nuestra red de asistencia nacional.</p>
           </div>
           
-          <div className="space-y-3">
+          {/* Mobile: compact card when combo selected and list collapsed */}
+          {!showComboList && selectedProduct.isCombo && (
+            <div className="xl:hidden p-4 rounded-2xl border border-primary bg-primary/5 flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-black uppercase tracking-widest text-primary mb-0.5">Combo Elegido</p>
+                <p className="font-black text-base tracking-tighter truncate">{selectedProduct.name}</p>
+                <p className="text-sm font-bold text-muted-foreground mt-0.5">${selectedProduct.price.toFixed(2)}</p>
+              </div>
+              <button
+                onClick={() => setShowComboList(true)}
+                className="shrink-0 px-4 py-2.5 bg-white border border-border rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all"
+              >
+                Cambiar
+              </button>
+            </div>
+          )}
+          
+          {/* Full combo list — always visible on desktop, toggleable on mobile */}
+          <div className={`${!showComboList ? "hidden xl:block" : ""} space-y-3`}>
             {packages.map(pkg => (
               <div key={pkg.id} className={`relative p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border-2 transition-all group overflow-hidden ${selectedProduct.packageId === pkg.id ? 'border-primary bg-primary/5 shadow-lg' : 'border-border bg-white hover:border-primary/20'}`}>
                 <div className="flex justify-between items-start mb-3 relative z-10">
@@ -151,7 +170,14 @@ function ComprasContent() {
                         isCombo: true,
                         packageId: pkg.id
                      });
-                     window.scrollTo({ top: 0, behavior: 'smooth' });
+                     // On mobile: collapse the combo list and scroll to form
+                     if (window.innerWidth < 1280) {
+                       setShowComboList(false);
+                       // Scroll to form section
+                       setTimeout(() => {
+                         document.querySelector('[data-order-form]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                       }, 100);
+                     }
                    }}
                    className={`w-full py-3 md:py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
                      selectedProduct.packageId === pkg.id 
@@ -176,7 +202,7 @@ function ComprasContent() {
 
         {/* Order Form */}
         <div className="flex-1 space-y-6">
-          <div className="p-6 sm:p-8 md:p-12 rounded-[2rem] md:rounded-[4rem] border border-border bg-card shadow-xl shadow-black/5 relative overflow-hidden transition-all duration-300">
+          <div data-order-form className="p-6 sm:p-8 md:p-12 rounded-[2rem] md:rounded-[4rem] border border-border bg-card shadow-xl shadow-black/5 relative overflow-hidden transition-all duration-300">
              {selectedProduct.isCombo && (
                <div className="absolute top-0 right-0 px-4 md:px-6 py-1.5 md:py-2 bg-indigo-600 text-white font-black text-[10px] md:text-[11px] uppercase tracking-widest rounded-bl-[1.5rem] md:rounded-bl-[2rem]">
                  Combo Seleccionado
