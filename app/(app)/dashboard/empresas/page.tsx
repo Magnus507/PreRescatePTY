@@ -1039,7 +1039,7 @@ export default function EmpresasPage() {
       };
 
       return (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-2xl mx-auto space-y-6 px-4 sm:px-6 overflow-x-hidden">
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
               <Building2 className="h-6 w-6 text-indigo-600" />
@@ -1072,7 +1072,7 @@ export default function EmpresasPage() {
           {/* Corporate Medical Profile — styled like ProfileCard from Perfiles Médicos */}
           {corpProfile && (
             <div className={`group overflow-hidden rounded-[2.5rem] border transition-all hover:shadow-2xl hover:shadow-indigo-500/5 border-indigo-200/50 bg-indigo-500/[0.03] ${isDisabled ? 'opacity-70' : ''}`}>
-              <div className="p-8 flex flex-col md:flex-row items-start gap-8">
+              <div className="p-4 sm:p-8 flex flex-col md:flex-row items-start gap-4 sm:gap-8">
                 <div className="relative flex flex-col items-center shrink-0">
                   <div className="h-20 w-20 rounded-[2rem] flex items-center justify-center font-black text-2xl shadow-inner mb-3 bg-indigo-500 text-white">
                     {initials}
@@ -1085,7 +1085,7 @@ export default function EmpresasPage() {
                 <div className="flex-1 space-y-4 w-full">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <div className="flex items-center gap-3 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
                         <h3 className="text-2xl font-black tracking-tight leading-none">
                           {profile?.firstName || corpProfile.firstName || "Pendiente"} {profile?.lastName || corpProfile.lastName || ""}
                         </h3>
@@ -1120,7 +1120,7 @@ export default function EmpresasPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {corporateChip && (
                         <Link href={`/e/${corporateChip.shortCode}`} target="_blank"
                           className="p-3 rounded-xl border border-border hover:bg-slate-100 transition-all text-slate-500" title="Ver Perfil Público">
@@ -1291,12 +1291,12 @@ export default function EmpresasPage() {
 
           {/* Productos empresariales activos */}
           {isPaidActive && (
-            <div className="rounded-[2rem] border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-white p-6 space-y-4">
+            <div className="rounded-[2rem] border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-white p-4 sm:p-6 space-y-4 max-w-full overflow-hidden">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-2xl bg-indigo-500 text-white flex items-center justify-center">
+                <div className="h-12 w-12 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shrink-0">
                   <Package className="h-6 w-6" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="font-black text-lg text-indigo-900">Productos empresariales activos</h3>
                   <p className="text-xs text-muted-foreground">
                     {corporateChip
@@ -1341,12 +1341,12 @@ export default function EmpresasPage() {
                     const icon = FULFILLMENT_ICONS[status] || <Package className="h-4 w-4 text-slate-400" />;
 
                     return (
-                      <div key={item.id} className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-slate-200 bg-white hover:shadow-sm transition-all">
-                        <div className="flex items-center gap-3 min-w-0">
+                      <div key={item.id} className="flex items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl border border-slate-200 bg-white hover:shadow-sm transition-all">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                           <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
                             {icon}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="font-bold text-sm text-slate-900 truncate">
                               {item.product?.name || "Producto"}
                               {item.quantity > 1 && <span className="text-muted-foreground ml-1">x{item.quantity}</span>}
@@ -1358,7 +1358,7 @@ export default function EmpresasPage() {
                             )}
                           </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shrink-0 ${color}`}>
+                        <span className={`px-2 sm:px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shrink-0 whitespace-normal text-center max-w-[45%] ${color}`}>
                           {label}
                         </span>
                       </div>
@@ -1414,7 +1414,7 @@ export default function EmpresasPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-full">
                     <input
                       type="text"
                       value={corporateActivationCode}
@@ -1426,7 +1426,7 @@ export default function EmpresasPage() {
                     <button
                       onClick={handleActivateCorporateChip}
                       disabled={activatingCorporateChip || !corporateActivationCode.trim()}
-                      className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
+                      className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
                     >
                       {activatingCorporateChip ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                       {activatingCorporateChip ? "Activando..." : "Activar chip"}
@@ -1458,19 +1458,19 @@ export default function EmpresasPage() {
           {/* Productos empresariales section */}
           {isPaidActive && (
             <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/30 to-white p-6 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-12 w-12 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
                     <ShoppingCart className="h-6 w-6" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="font-black text-lg">Productos empresariales</h3>
                     <p className="text-xs text-muted-foreground">Solicita stickers, llaveros, tarjetas o accesorios a tu empresa.</p>
                   </div>
                 </div>
                 <button
                   onClick={handleOpenProductRequest}
-                  className="px-5 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 shrink-0"
+                  className="w-full sm:w-auto min-h-[44px] px-5 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shrink-0"
                 >
                   <PlusCircle className="h-4 w-4" /> Solicitar productos
                 </button>
@@ -1754,7 +1754,7 @@ export default function EmpresasPage() {
     }
 
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto space-y-6 px-4 sm:px-6 overflow-x-hidden">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
             <Building2 className="h-6 w-6 text-indigo-600" />
@@ -1790,7 +1790,7 @@ export default function EmpresasPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 sm:px-6 overflow-x-hidden">
       <div className="flex items-center gap-3">
         <Building2 className="h-8 w-8 text-primary" />
         <h1 className="text-3xl font-black">Gestión Empresarial</h1>
@@ -1807,10 +1807,10 @@ export default function EmpresasPage() {
           El perfil empresarial es separado del perfil personal del empleado.
         </p>
       </div>
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 sm:mx-0 px-4 sm:px-0 scrollbar-thin">
         {tabs.map((t) => (
           <button key={t.key} onClick={async () => { setTab(t.key); await loadMembersByTab(t.key); }}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${tab === t.key ? "bg-primary text-white" : "bg-muted"}`}>{t.label}</button>
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 ${tab === t.key ? "bg-primary text-white" : "bg-muted"}`}>{t.label}</button>
         ))}
       </div>
 
@@ -2455,7 +2455,7 @@ export default function EmpresasPage() {
                 </div>
               )}
               {tab === "aprobados" && (
-                <div className="w-full md:w-[420px] space-y-2">
+                <div className="w-full space-y-2">
                   <label className="inline-flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={Boolean(selectedMembers[m.id])} onChange={() => toggleMemberSelection(m.id)} /> Seleccionar para compra</label>
                   {selectedMembers[m.id] && (
                     <div className="rounded-xl border p-3 space-y-2">
@@ -2530,9 +2530,9 @@ export default function EmpresasPage() {
               </div>
             )}
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <p className="font-bold">Total general: ${totalGeneral.toFixed(2)}</p>
-            <button onClick={submitCorporateOrder} disabled={submittingCorporateOrder || !paymentProofUrl} className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50">
+            <button onClick={submitCorporateOrder} disabled={submittingCorporateOrder || !paymentProofUrl} className="min-h-[44px] px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50 w-full sm:w-auto">
               {submittingCorporateOrder ? "Enviando..." : "Enviar compra corporativa"}
             </button>
           </div>
