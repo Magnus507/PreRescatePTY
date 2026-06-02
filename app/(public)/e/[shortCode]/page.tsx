@@ -354,8 +354,9 @@ export default function EmergencyPage() {
     );
   }
 
+  // Corporate profile — route to IndustrialProfileView with mode
   if (profile.organization) {
-    return <IndustrialProfileView profile={profile} scanLocation={scanLocation} />;
+    return <IndustrialProfileView profile={profile} scanLocation={scanLocation} isParamedic={isParamedic} />;
   }
 
   const extras = profile.publicMedicalExtras;

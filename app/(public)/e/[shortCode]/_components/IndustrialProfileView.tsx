@@ -10,6 +10,7 @@ import { formatEmergencyLocation } from "@/domains/shared/services/emergency-loc
 interface IndustrialProfileViewProps {
   profile: any;
   scanLocation?: string;
+  isParamedic: boolean;
 }
 
 function sanitizeTelPhone(phone: string) {
@@ -27,7 +28,7 @@ function normalizeWhatsAppPhone(phone: string) {
   return digits.length === 8 ? `507${digits}` : digits;
 }
 
-export function IndustrialProfileView({ profile, scanLocation = "" }: IndustrialProfileViewProps) {
+export function IndustrialProfileView({ profile, scanLocation = "", isParamedic }: IndustrialProfileViewProps) {
   const org = profile.organization;
   const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
   const extras = profile.publicMedicalExtras;
@@ -50,7 +51,7 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
       {/* Top Warning Banner */}
       <div className="bg-[#DA1A21] py-3 px-6 flex items-center justify-center gap-3">
         <ShieldAlert className="h-5 w-5 text-white" />
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Protocolo de Emergencia Industrial Activo</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{isParamedic ? "Protocolo de Emergencia Industrial Activo" : "Perfil Empresarial — Información Pública de Emergencia"}</span>
       </div>
 
       <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
@@ -108,56 +109,83 @@ export function IndustrialProfileView({ profile, scanLocation = "" }: Industrial
           </div>
         </div>
 
-        {/* Compact medical-first block */}
-        <div className="bg-white border border-slate-200 rounded-[2rem] md:rounded-[3rem] p-5 md:p-7 shadow-lg space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">Resumen médico crítico</h3>
-          <div className="grid grid-cols-1 gap-3">
-            <CompactMedicalRow icon={<ShieldAlert className="h-4 w-4 text-red-500" />} label="Alergias" value={allergiesLabel} tone="red" />
-            <CompactMedicalRow icon={<Activity className="h-4 w-4 text-blue-500" />} label="Condiciones" value={conditionsLabel} tone="blue" />
-            <CompactMedicalRow icon={<Pill className="h-4 w-4 text-emerald-500" />} label="Medicamentos" value={medicationsLabel} tone="emerald" />
-          </div>
-        </div>
-
-        {hasExtras && (
-          <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-700">Información médica adicional</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {extras?.insuranceProvider && (
-                <CompactItem label="Aseguradora" value={extras.insuranceProvider} />
-              )}
-              {extras?.preferredHospital && (
-                <CompactItem label="Hospital preferido" value={extras.preferredHospital} />
-              )}
-              {extras?.primaryDoctorName && (
-                <CompactItem label="Médico tratante" value={extras.primaryDoctorName} />
-              )}
-            </div>
-
-            {extras?.primaryDoctorPhone && (
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Teléfono del médico</p>
-                  <p className="text-sm font-bold text-slate-900">{extras.primaryDoctorPhone}</p>
+        {/* CIVILIAN VIEW (Limited) */}
+        {!isParamedic && (
+          <div className="bg-white border border-slate-200 rounded-[2rem] md:rounded-[3rem] p-5 md:p-7 shadow-lg space-y-4">
+            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">Resumen de emergencia</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="flex items-start gap-2">
+                  <Droplets className="mt-0.5 h-4 w-4 text-red-500" />
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-wide text-slate-700">Tipo de Sangre</p>
+                    <p className="text-sm font-semibold text-slate-900 break-words">{bloodLabel}</p>
+                  </div>
                 </div>
-                <a
-                  href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white"
-                >
-                  <Phone className="h-4 w-4" /> Llamar médico
-                </a>
               </div>
-            )}
-
-            {extras?.emergencyInstructions && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Instrucciones especiales</p>
-                <p className="text-sm font-semibold text-amber-900">{extras.emergencyInstructions}</p>
-              </div>
-            )}
+              <p className="text-xs text-slate-400 font-medium italic px-1">
+                Información pública de emergencia del perfil empresarial.
+                Los datos médicos detallados están disponibles para personal de emergencia.
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Manual Emergency Actions */}
+        {/* PARAMEDIC VIEW (Full medical details) */}
+        {isParamedic && (
+          <>
+            {/* Compact medical-first block */}
+            <div className="bg-white border border-slate-200 rounded-[2rem] md:rounded-[3rem] p-5 md:p-7 shadow-lg space-y-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">Resumen médico crítico</h3>
+              <div className="grid grid-cols-1 gap-3">
+                <CompactMedicalRow icon={<ShieldAlert className="h-4 w-4 text-red-500" />} label="Alergias" value={allergiesLabel} tone="red" />
+                <CompactMedicalRow icon={<Activity className="h-4 w-4 text-blue-500" />} label="Condiciones" value={conditionsLabel} tone="blue" />
+                <CompactMedicalRow icon={<Pill className="h-4 w-4 text-emerald-500" />} label="Medicamentos" value={medicationsLabel} tone="emerald" />
+              </div>
+            </div>
+
+            {hasExtras && (
+              <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
+                <h3 className="text-sm font-black uppercase tracking-widest text-emerald-700">Información médica adicional</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {extras?.insuranceProvider && (
+                    <CompactItem label="Aseguradora" value={extras.insuranceProvider} />
+                  )}
+                  {extras?.preferredHospital && (
+                    <CompactItem label="Hospital preferido" value={extras.preferredHospital} />
+                  )}
+                  {extras?.primaryDoctorName && (
+                    <CompactItem label="Médico tratante" value={extras.primaryDoctorName} />
+                  )}
+                </div>
+
+                {extras?.primaryDoctorPhone && (
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Teléfono del médico</p>
+                      <p className="text-sm font-bold text-slate-900">{extras.primaryDoctorPhone}</p>
+                    </div>
+                    <a
+                      href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white"
+                    >
+                      <Phone className="h-4 w-4" /> Llamar médico
+                    </a>
+                  </div>
+                )}
+
+                {extras?.emergencyInstructions && (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Instrucciones especiales</p>
+                    <p className="text-sm font-semibold text-amber-900">{extras.emergencyInstructions}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Manual Emergency Actions (shown for both views) */}
         <div className="space-y-4">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center mb-6">Acciones Manuales de Emergencia</p>
           <div className="grid grid-cols-1 gap-3">
