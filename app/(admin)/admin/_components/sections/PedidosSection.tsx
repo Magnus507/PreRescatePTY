@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2, ExternalLink, ImageIcon, Building2, Clock, Wrench, CheckCheck, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound } from "lucide-react";
+import { Loader2, PackageSearch, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2, ExternalLink, ImageIcon, Building2, Clock, Wrench, CheckCheck, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle } from "lucide-react";
 const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => ({ default: mod.QRCodeCanvas })), { ssr: false });
 import { toast } from "sonner";
 import Link from "next/link";
@@ -1061,6 +1061,112 @@ export function PedidosSection() {
                         </div>
                      </section>
                   </div>
+
+                  {/* Personalización de accesorios */}
+                  {selectedOrder.items.some(item => item.profile || 
+                    ['sticker','llavero','tarjeta','credencial','brazalete'].includes(item.productType.toLowerCase())
+                  ) && (
+                    <div className="lg:col-span-4 space-y-6">
+                      <section className="space-y-4">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                          <div className="h-1.5 w-6 bg-primary rounded-full" />
+                          Personalización
+                        </h3>
+                        <div className="space-y-3">
+                          {selectedOrder.items.map(item => {
+                            const needsProfile = !!item.profile ||
+                              ['sticker','llavero','tarjeta','credencial','brazalete'].includes(item.productType.toLowerCase());
+                            if (!needsProfile) return null;
+                            const profile = item.profile;
+                            const chip = item.chip;
+                            return (
+                              <div key={item.id} className="bg-white dark:bg-slate-900 p-5 rounded-[1.75rem] border border-border shadow-sm space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+                                    {item.productType}
+                                    <span className="ml-2 text-[9px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">x{item.quantity}</span>
+                                  </p>
+                                </div>
+
+                                {profile ? (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+                                      <div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+                                        <UserRound className="h-5 w-5 text-indigo-600" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-sm text-slate-900">
+                                          {profile.firstName} {profile.lastName}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                          <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                                            {profile.profileType === "personal" ? "Principal" : profile.profileType}
+                                          </span>
+                                          {profile.displayNamePublic && (
+                                            <span className="text-[10px] text-indigo-600 font-mono">
+                                              Alias: {profile.displayNamePublic}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {chip ? (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                                          <div>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-700 mb-0.5">QR a imprimir</p>
+                                            <p className="font-mono text-sm font-bold text-slate-900">/e/{chip.shortCode}</p>
+                                          </div>
+                                          <span className={`px-2 py-1 rounded-full text-[9px] font-bold border ${
+                                            chip.status === "activated" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                                            chip.status === "sold" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                                            "bg-slate-100 text-slate-600 border-slate-200"
+                                          }`}>
+                                            {chip.status}
+                                          </span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <button onClick={async () => {
+                                            const url = `${window.location.origin}/e/${chip.shortCode}`;
+                                            try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
+                                            catch { toast.error("No se pudo copiar"); }
+                                          }} className="flex-1 px-3 py-2 bg-slate-800 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-700 transition-all inline-flex items-center justify-center gap-1.5">
+                                            <Copy className="h-3 w-3" /> Copiar link
+                                          </button>
+                                          <a href={`/e/${chip.shortCode}`} target="_blank" className="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-700 transition-all inline-flex items-center justify-center gap-1.5">
+                                            <ExternalLink className="h-3 w-3" /> Abrir ficha
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                                        <div className="flex items-center gap-2">
+                                          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                                          <p className="text-[10px] font-bold text-amber-700">
+                                            Perfil seleccionado sin chip asignado. Verifica antes de fabricar este accesorio.
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
+                                    <div className="flex items-center gap-2">
+                                      <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                                      <p className="text-[10px] font-bold text-rose-700">
+                                        Producto personalizado sin perfil seleccionado.
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    </div>
+                  )}
 
                   {/* COL 3: Summary & Evidence */}
                   <div className="lg:col-span-4 space-y-6">
