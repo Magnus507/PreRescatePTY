@@ -18,20 +18,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     
-    // 1. Validation
     const validatedData = validateOrThrow(orderCreateSchema, {
       ...body,
-      // Ensure prices and totals come from server-side logic in a real app,
-      // but here we validate types and structures from the body.
       customerName: body.customerName || (user.profile ? `${user.profile.firstName} ${user.profile.lastName}` : "Usuario"),
       customerEmail: user.email,
     });
 
     const nextNumber = await generateOrderNumber("legacy");
 
-    // 3. Atomicity: Update profile and create order in a transaction
     const order = await prisma.$transaction(async (tx) => {
-      // Update user profile with latest shipping info
       if (user.profile && (validatedData.shippingAddress || validatedData.shippingCity)) {
         await tx.profile.update({
           where: { id: user.profile.id },
@@ -46,11 +41,7 @@ export async function POST(req: NextRequest) {
         const productType = item.productType.toUpperCase().replace(/\s+/g, "_");
 
         if (productType === "CHIP_EXTRA") {
-          return {
-            ...item,
-            productType,
-            unitPrice: BUSINESS_RULES.EXTRA_CHIP_PRICE,
-          };
+          return { ...item, productType, unitPrice: BUSINESS_RULES.EXTRA_CHIP_PRICE };
         }
 
         if (productType.startsWith("COMBO_") && validatedData.providerReference) {
@@ -58,13 +49,8 @@ export async function POST(req: NextRequest) {
             where: { id: validatedData.providerReference },
             select: { price: true },
           });
-
           if (pkg) {
-            return {
-              ...item,
-              productType,
-              unitPrice: pkg.price,
-            };
+            return { ...item, productType, unitPrice: pkg.price };
           }
         }
 
@@ -76,15 +62,48 @@ export async function POST(req: NextRequest) {
               { name: item.productType },
             ],
           },
-          select: { name: true, price: true },
+          select: { name: true, price: true, requiresPersonalization: true },
         });
 
         if (storeProduct) {
-          return {
-            ...item,
-            productType: storeProduct.name,
-            unitPrice: storeProduct.price,
-          };
+          const itemAny = item as Record<string, unknown>;
+          
+          if (storeProduct.requiresPersonalization) {
+            const profileId = itemAny.profileId as string | undefined;
+            if (!profileId) {
+              throw new Error(`El producto "${storeProduct.name}" requiere seleccionar un perfil médico.`);
+            }
+
+            const profile = await tx.profile.findFirst({
+              where: {
+                id: profileId,
+                accountId: user.accountId || undefined,
+                profileType: { not: "corporate" },
+              },
+              include: {
+                assignedChips: {
+                  where: { status: { in: ["activated", "sold", "assigned_reserved"] } },
+                  take: 1,
+                  select: { id: true, shortCode: true },
+                },
+              },
+            });
+
+            if (!profile) {
+              throw new Error(`El perfil seleccionado no es válido o es corporativo.`);
+            }
+
+            const chip = profile.assignedChips[0] || null;
+            return {
+              ...item,
+              profileId,
+              chipId: chip?.id || null,
+              productType: storeProduct.name,
+              unitPrice: storeProduct.price,
+            } as typeof item & { profileId?: string; chipId?: string | null };
+          }
+
+          return { ...item, productType: storeProduct.name, unitPrice: storeProduct.price };
         }
 
         throw new Error("Producto invalido o no disponible");
@@ -114,7 +133,9 @@ export async function POST(req: NextRequest) {
               productType: item.productType,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
-              totalPrice: item.unitPrice * item.quantity
+              totalPrice: item.unitPrice * item.quantity,
+              profileId: (item as any).profileId || null,
+              chipId: (item as any).chipId || null,
             }))
           }
         }
@@ -133,7 +154,6 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  // MANUAL FLOW P0 HARDENING
   const userId = session.user.id;
   const providerFilter = new URL(req.url).searchParams.get("provider");
   const safeProvider = ["manual", "stripe", "admin"].includes(String(providerFilter))
@@ -153,11 +173,11 @@ export async function GET(req: NextRequest) {
           chip: {
             select: {
               serialPublic: true,
-              shortCode: true
-            }
-          }
-        }
-      } 
+              shortCode: true,
+            },
+          },
+        },
+      },
     }
   });
 

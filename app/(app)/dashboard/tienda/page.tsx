@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight } from "lucide-react";
+import { ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -16,6 +16,15 @@ interface Product {
   productType: string;
   estimatedProductionTime: string | null;
   requiresPersonalization: boolean;
+}
+
+interface ProfileOption {
+  id: string;
+  firstName: string;
+  lastName: string;
+  profileType: string;
+  displayNamePublic?: string | null;
+  assignedChips?: { id: string; shortCode: string }[];
 }
 
 interface PaymentConfig {
@@ -37,6 +46,9 @@ export default function TiendaPage() {
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUploaded, setProofUploaded] = useState(false);
+  const [profileOptions, setProfileOptions] = useState<ProfileOption[]>([]);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
   const router = useRouter();
 
   const [shippingData, setShippingData] = useState({
@@ -61,24 +73,59 @@ export default function TiendaPage() {
       });
   }, []);
 
+  const loadProfiles = async () => {
+    if (!selectedProduct?.requiresPersonalization) return;
+    setProfileLoading(true);
+    try {
+      const res = await fetch("/api/users/perfiles-medicos");
+      const data = await res.json();
+      const profiles: ProfileOption[] = [];
+      if (data.ownProfile) {
+        profiles.push({ ...data.ownProfile, profileType: "personal" });
+      }
+      if (data.familyProfiles) {
+        profiles.push(...data.familyProfiles.map((p: any) => ({ ...p, profileType: "family" })));
+      }
+      setProfileOptions(profiles);
+      // Auto-select first profile or one with chip
+      const withChip = profiles.find(p => p.assignedChips && p.assignedChips.length > 0);
+      setSelectedProfileId(withChip?.id || profiles[0]?.id || "");
+    } catch {
+      toast.error("Error al cargar perfiles");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
     
     setCreatingOrder(true);
     try {
+      const body: any = {
+        items: [{
+          productType: selectedProduct.id,
+          quantity: 1,
+          unitPrice: selectedProduct.price,
+        }],
+        shippingAddress: shippingData.address,
+        shippingCity: shippingData.city,
+        shippingNotes: shippingData.notes
+      };
+
+      if (selectedProduct.requiresPersonalization) {
+        if (!selectedProfileId) {
+          toast.error("Selecciona un perfil médico para este accesorio.");
+          setCreatingOrder(false);
+          return;
+        }
+        body.items[0].profileId = selectedProfileId;
+      }
+
       const res = await fetch("/api/orders", {
         method: "POST",
-        body: JSON.stringify({
-          items: [{
-            productType: selectedProduct.id,
-            quantity: 1,
-            unitPrice: selectedProduct.price,
-          }],
-          shippingAddress: shippingData.address,
-          shippingCity: shippingData.city,
-          shippingNotes: shippingData.notes
-        }),
+        body: JSON.stringify(body),
         headers: { "Content-Type": "application/json" }
       });
 
@@ -95,6 +142,16 @@ export default function TiendaPage() {
       toast.error("Error de conexión");
     } finally {
       setCreatingOrder(false);
+    }
+  };
+
+  const handleOpenCheckout = (product: Product) => {
+    setSelectedProduct(product);
+    setShowCheckout(true);
+    setSelectedProfileId("");
+    setProfileOptions([]);
+    if (product.requiresPersonalization) {
+      loadProfiles();
     }
   };
 
@@ -206,7 +263,6 @@ export default function TiendaPage() {
                     </span>
                  </div>
                  {p.image ? (
-                   // eslint-disable-next-line @next/next/no-img-element
                    <img src={`/api/image-proxy?bucket=general&path=${encodeURIComponent(p.image.split('/').slice(-2).join('/'))}`} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" onError={(e) => { if (p.image) e.currentTarget.src = p.image; }} />
                  ) : (
                    <Store className="h-20 w-20 md:h-24 md:w-24 text-slate-200 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700" />
@@ -238,10 +294,7 @@ export default function TiendaPage() {
                       <p className="text-3xl font-black text-primary italic leading-none">${p.price.toFixed(2)}</p>
                    </div>
                    <button 
-                     onClick={() => {
-                        setSelectedProduct(p);
-                        setShowCheckout(true);
-                     }}
+                     onClick={() => handleOpenCheckout(p)}
                      className="bg-slate-900 dark:bg-primary text-white px-8 py-4 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:shadow-2xl hover:shadow-primary/40 active:scale-95 transition-all flex items-center gap-2"
                    >
                      Solicitar <ShoppingCart className="h-4 w-4" />
@@ -296,6 +349,75 @@ export default function TiendaPage() {
                        <X className="h-6 w-6" />
                     </button>
                  </div>
+
+                 {/* Profile Selector for personalized products */}
+                 {selectedProduct.requiresPersonalization && (
+                   <div className="space-y-3">
+                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">
+                       <UserRound className="h-3.5 w-3.5 inline mr-1" />
+                       ¿Para quién es este accesorio?
+                     </p>
+                     {profileLoading ? (
+                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                         <Loader2 className="h-4 w-4 animate-spin" /> Cargando perfiles...
+                       </div>
+                     ) : profileOptions.length === 0 ? (
+                       <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-700 font-medium">
+                         No tienes perfiles médicos configurados. Crea uno en Mis Perfiles Médicos antes de continuar.
+                       </div>
+                     ) : (
+                       <div className="space-y-2">
+                         {profileOptions.map((profile) => {
+                           const chip = profile.assignedChips?.[0];
+                           const isSelected = selectedProfileId === profile.id;
+                           return (
+                             <button
+                               key={profile.id}
+                               type="button"
+                               onClick={() => setSelectedProfileId(profile.id)}
+                               className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${
+                                 isSelected
+                                   ? "border-primary bg-primary/5"
+                                   : "border-slate-200 hover:border-slate-300 bg-slate-50"
+                               }`}
+                             >
+                               <div className="flex items-center justify-between gap-3">
+                                 <div className="flex items-center gap-3 min-w-0">
+                                   <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                     isSelected ? "bg-primary text-white" : "bg-slate-200 text-slate-500"
+                                   }`}>
+                                     <UserRound className="h-5 w-5" />
+                                   </div>
+                                   <div className="min-w-0">
+                                     <p className="font-bold text-sm truncate">
+                                       {profile.firstName} {profile.lastName}
+                                     </p>
+                                     <div className="flex items-center gap-2 mt-0.5">
+                                       <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                                         {profile.profileType === "personal" ? "Principal" : "Familiar"}
+                                       </span>
+                                     </div>
+                                   </div>
+                                 </div>
+                                 <div className="shrink-0 text-right">
+                                   {chip ? (
+                                     <span className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
+                                       /e/{chip.shortCode}
+                                     </span>
+                                   ) : (
+                                     <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
+                                       Sin chip activo
+                                     </span>
+                                   )}
+                                 </div>
+                               </div>
+                             </button>
+                           );
+                         })}
+                       </div>
+                     )}
+                   </div>
+                 )}
 
                  <div className="space-y-6">
                     <div className="space-y-2">

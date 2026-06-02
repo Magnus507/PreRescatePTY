@@ -159,6 +159,7 @@ model Profile {
   organizationMembers     OrganizationMember[]
   corporateProfileOf     OrganizationMember?  @relation("CorporateProfileOwner")
   digitalPass             DigitalPass?
+  orderItems              OrderItem[]    @relation("OrderItemProfile")
 
   @@index([accountId]) // Dashboard: list profiles per account
   @@index([userId]) // Already unique, but explicit for clarity in joins
@@ -235,6 +236,7 @@ model Chip {
   owner             User?            @relation(fields: [ownerUserId], references: [id])
   assignedProfile   Profile?         @relation(fields: [assignedProfileId], references: [id])
   account           Account?         @relation(fields: [accountId], references: [id])
+  orderItems        OrderItem[]      @relation("OrderItemChip")
 
   @@index([accountId]) // Dashboard: count active chips per account
   @@index([ownerUserId]) // Activation: find chips by owner
@@ -585,12 +587,18 @@ model OrderItem {
   quantity    Int      @default(1)
   unitPrice   Float
   totalPrice  Float
+  profileId   String?
+  chipId      String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  profile Profile? @relation("OrderItemProfile", fields: [profileId], references: [id])
+  chip    Chip?    @relation("OrderItemChip", fields: [chipId], references: [id])
 
   @@index([orderId])
+  @@index([profileId])
+  @@index([chipId])
 }
 
 model CorporateOrderEmployeeItem {
