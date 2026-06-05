@@ -70,63 +70,31 @@ export async function PATCH(req: NextRequest) {
       return ApiResponse.error(validation.error.issues[0].message, { status: 400 });
     }
     const body = validation.data;
-    const {
-      firstName, lastName, displayNamePublic, birthDate, sex,
-      bloodType, allergies, chronicConditions, medications,
-      additionalNotes, phone, nationalId,
-      address, city,
-      isInsured,
-      insuranceProvider,
-      insurancePolicyNumber,
-      preferredHospital,
-      insuranceEmergencyPhone,
-      primaryDoctorName,
-      primaryDoctorPhone,
-      showInsuranceProviderPublic,
-      showPreferredHospitalPublic,
-      showPrimaryDoctorPublic,
-      showPrimaryDoctorPhonePublic,
-      showAdditionalNotesPublic,
-    } = body;
     const profileVisibilityStatus = (raw as Record<string, unknown>).profileVisibilityStatus as string;
+
+    // Only pass fields that this endpoint is allowed to modify.
+    // Never pass medical fields (bloodType, allergies, etc.) even if present.
+    const allowedUpdate: Record<string, unknown> = {};
+    if (body.firstName !== undefined) allowedUpdate.firstName = body.firstName;
+    if (body.lastName !== undefined) allowedUpdate.lastName = body.lastName;
+    if (body.displayNamePublic !== undefined) allowedUpdate.displayNamePublic = body.displayNamePublic;
+    if (body.phone !== undefined) allowedUpdate.phone = body.phone;
+    if (body.nationalId !== undefined) allowedUpdate.nationalId = body.nationalId;
+    if (body.address !== undefined) allowedUpdate.address = body.address;
+    if (body.city !== undefined) allowedUpdate.city = body.city;
+    if (body.sex !== undefined) allowedUpdate.sex = body.sex;
+    if (body.birthDate !== undefined) allowedUpdate.birthDate = body.birthDate;
+    if (profileVisibilityStatus !== undefined) allowedUpdate.profileVisibilityStatus = profileVisibilityStatus;
 
     // Get old values for audit
     const oldProfile = await prisma.profile.findUnique({ where: { userId } });
 
-    const profile = await ProfileRepository.upsertByUserId(userId, {
-      firstName,
-      lastName,
-      displayNamePublic,
-      birthDate,
-      sex,
-      bloodType,
-      allergies,
-      chronicConditions,
-      medications,
-      additionalNotes,
-      profileVisibilityStatus,
-      phone,
-      nationalId,
-      address,
-      city,
-      isInsured,
-      insuranceProvider,
-      insurancePolicyNumber,
-      preferredHospital,
-      insuranceEmergencyPhone,
-      primaryDoctorName,
-      primaryDoctorPhone,
-      showInsuranceProviderPublic,
-      showPreferredHospitalPublic,
-      showPrimaryDoctorPublic,
-      showPrimaryDoctorPhonePublic,
-      showAdditionalNotesPublic,
-    });
+    const profile = await ProfileRepository.upsertByUserId(userId, allowedUpdate);
 
-    if (phone !== undefined) {
+    if (body.phone !== undefined) {
       await prisma.user.update({
         where: { id: userId },
-        data: { phone }
+        data: { phone: body.phone }
       });
     }
 

@@ -164,21 +164,26 @@ export class ProfileRepository {
    * Update a profile with encrypted fields.
    */
   static async update(id: string, data: Partial<Profile>) {
-    const updateData: any = { ...data };
+    // Strip undefined values to prevent silent overwrite with empty string
+    const filtered: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) filtered[key] = value;
+    }
+    const updateData: any = { ...filtered };
     
-    if ("bloodType" in data) updateData.bloodType = encrypt(data.bloodType || "");
-    if ("allergies" in data) updateData.allergies = encrypt(data.allergies || "");
-    if ("chronicConditions" in data) updateData.chronicConditions = encrypt(data.chronicConditions || "");
-    if ("medications" in data) updateData.medications = encrypt(data.medications || "");
-    if ("additionalNotes" in data) updateData.additionalNotes = encrypt(data.additionalNotes || "");
-    if ("nationalId" in data) updateData.nationalId = encrypt(data.nationalId || "");
-    if ("address" in data) updateData.address = encrypt(data.address || "");
-    if ("insuranceProvider" in data) updateData.insuranceProvider = encrypt(data.insuranceProvider || "");
-    if ("insurancePolicyNumber" in data) updateData.insurancePolicyNumber = encrypt(data.insurancePolicyNumber || "");
-    if ("preferredHospital" in data) updateData.preferredHospital = encrypt(data.preferredHospital || "");
-    if ("insuranceEmergencyPhone" in data) updateData.insuranceEmergencyPhone = encrypt(data.insuranceEmergencyPhone || "");
-    if ("primaryDoctorName" in data) updateData.primaryDoctorName = encrypt(data.primaryDoctorName || "");
-    if ("primaryDoctorPhone" in data) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
+    if (data.bloodType !== undefined) updateData.bloodType = encrypt(data.bloodType || "");
+    if (data.allergies !== undefined) updateData.allergies = encrypt(data.allergies || "");
+    if (data.chronicConditions !== undefined) updateData.chronicConditions = encrypt(data.chronicConditions || "");
+    if (data.medications !== undefined) updateData.medications = encrypt(data.medications || "");
+    if (data.additionalNotes !== undefined) updateData.additionalNotes = encrypt(data.additionalNotes || "");
+    if (data.nationalId !== undefined) updateData.nationalId = encrypt(data.nationalId || "");
+    if (data.address !== undefined) updateData.address = encrypt(data.address || "");
+    if (data.insuranceProvider !== undefined) updateData.insuranceProvider = encrypt(data.insuranceProvider || "");
+    if (data.insurancePolicyNumber !== undefined) updateData.insurancePolicyNumber = encrypt(data.insurancePolicyNumber || "");
+    if (data.preferredHospital !== undefined) updateData.preferredHospital = encrypt(data.preferredHospital || "");
+    if (data.insuranceEmergencyPhone !== undefined) updateData.insuranceEmergencyPhone = encrypt(data.insuranceEmergencyPhone || "");
+    if (data.primaryDoctorName !== undefined) updateData.primaryDoctorName = encrypt(data.primaryDoctorName || "");
+    if (data.primaryDoctorPhone !== undefined) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
 
     const profile = await prisma.profile.update({
       where: { id },
@@ -223,20 +228,25 @@ export class ProfileRepository {
       profileVisibilityStatus: data.profileVisibilityStatus,
     };
 
-    const updateData: any = { ...data };
-    if ("bloodType" in data) updateData.bloodType = encrypt(data.bloodType || "");
-    if ("allergies" in data) updateData.allergies = encrypt(data.allergies || "");
-    if ("chronicConditions" in data) updateData.chronicConditions = encrypt(data.chronicConditions || "");
-    if ("medications" in data) updateData.medications = encrypt(data.medications || "");
-    if ("additionalNotes" in data) updateData.additionalNotes = encrypt(data.additionalNotes || "");
-    if ("nationalId" in data) updateData.nationalId = encrypt(data.nationalId || "");
-    if ("address" in data) updateData.address = encrypt(data.address || "");
-    if ("insuranceProvider" in data) updateData.insuranceProvider = encrypt(data.insuranceProvider || "");
-    if ("insurancePolicyNumber" in data) updateData.insurancePolicyNumber = encrypt(data.insurancePolicyNumber || "");
-    if ("preferredHospital" in data) updateData.preferredHospital = encrypt(data.preferredHospital || "");
-    if ("insuranceEmergencyPhone" in data) updateData.insuranceEmergencyPhone = encrypt(data.insuranceEmergencyPhone || "");
-    if ("primaryDoctorName" in data) updateData.primaryDoctorName = encrypt(data.primaryDoctorName || "");
-    if ("primaryDoctorPhone" in data) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
+    // Strip undefined values to prevent silent overwrite with empty string
+    const filtered: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) filtered[key] = value;
+    }
+    const updateData: any = { ...filtered };
+    if (data.bloodType !== undefined) updateData.bloodType = encrypt(data.bloodType || "");
+    if (data.allergies !== undefined) updateData.allergies = encrypt(data.allergies || "");
+    if (data.chronicConditions !== undefined) updateData.chronicConditions = encrypt(data.chronicConditions || "");
+    if (data.medications !== undefined) updateData.medications = encrypt(data.medications || "");
+    if (data.additionalNotes !== undefined) updateData.additionalNotes = encrypt(data.additionalNotes || "");
+    if (data.nationalId !== undefined) updateData.nationalId = encrypt(data.nationalId || "");
+    if (data.address !== undefined) updateData.address = encrypt(data.address || "");
+    if (data.insuranceProvider !== undefined) updateData.insuranceProvider = encrypt(data.insuranceProvider || "");
+    if (data.insurancePolicyNumber !== undefined) updateData.insurancePolicyNumber = encrypt(data.insurancePolicyNumber || "");
+    if (data.preferredHospital !== undefined) updateData.preferredHospital = encrypt(data.preferredHospital || "");
+    if (data.insuranceEmergencyPhone !== undefined) updateData.insuranceEmergencyPhone = encrypt(data.insuranceEmergencyPhone || "");
+    if (data.primaryDoctorName !== undefined) updateData.primaryDoctorName = encrypt(data.primaryDoctorName || "");
+    if (data.primaryDoctorPhone !== undefined) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
 
     const profile = await prisma.profile.upsert({
       where: { userId },
