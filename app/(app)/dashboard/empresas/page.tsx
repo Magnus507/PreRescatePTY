@@ -764,54 +764,61 @@ export default function EmpresasPage() {
       toast.error("No se encontró perfil empresarial");
       return;
     }
-    setCorpEditProfileId(corpProfileId);
-    setCorpEditLoading(true);
-    setShowCorpEditor(true);
-    setCorpEditError("");
-    setCorpContactForm({ ...emptyCorpContactForm });
-    loadCorpContacts(corpProfileId);
-    try {
-      const res = await fetch(`/api/users/perfiles-medicos/${corpProfileId}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "No se pudo cargar");
-      const p = json.profile;
-      setCorpEditForm({
-        firstName: p.firstName || "",
-        lastName: p.lastName || "",
-        displayNamePublic: p.displayNamePublic || "",
-        birthDate: p.birthDate ? new Date(p.birthDate).toISOString().split("T")[0] : "",
-        sex: p.sex || "",
-        bloodType: p.bloodType || "O+",
-        allergies: p.allergies || "",
-        chronicConditions: p.chronicConditions || "",
-        medications: p.medications || "",
-        additionalNotes: p.additionalNotes || "",
-        phone: p.phone || "",
-        nationalId: p.nationalId || "",
-        isInsured: !!p.isInsured,
-        insuranceProvider: p.insuranceProvider || "",
-        insurancePolicyNumber: p.insurancePolicyNumber || "",
-        preferredHospital: p.preferredHospital || "",
-        insuranceEmergencyPhone: p.insuranceEmergencyPhone || "",
-        primaryDoctorName: p.primaryDoctorName || "",
-        primaryDoctorPhone: p.primaryDoctorPhone || "",
-        showInsuranceProviderPublic: !!p.showInsuranceProviderPublic,
-        showPreferredHospitalPublic: !!p.showPreferredHospitalPublic,
-        showPrimaryDoctorPublic: !!p.showPrimaryDoctorPublic,
-        showPrimaryDoctorPhonePublic: !!p.showPrimaryDoctorPhonePublic,
-        showAdditionalNotesPublic: !!p.showAdditionalNotesPublic,
-      });
-    } catch (err: any) {
-      setCorpEditError(err.message || "Error al cargar perfil");
-      toast.error(err.message || "Error al cargar perfil empresarial");
-    } finally {
-      setCorpEditLoading(false);
-    }
+      setCorpEditProfileId(corpProfileId);
+      setCorpEditLoading(true);
+      setCorpEditError("");
+      setCorpEditForm({ ...emptyProfileForm });
+      setShowCorpEditor(true);
+      setCorpContactForm({ ...emptyCorpContactForm });
+      loadCorpContacts(corpProfileId);
+      try {
+        const res = await fetch(`/api/users/perfiles-medicos/${corpProfileId}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "No se pudo cargar");
+        const p = json.profile;
+        setCorpEditForm({
+          firstName: p.firstName || "",
+          lastName: p.lastName || "",
+          displayNamePublic: p.displayNamePublic || "",
+          birthDate: p.birthDate ? new Date(p.birthDate).toISOString().split("T")[0] : "",
+          sex: p.sex || "",
+          bloodType: p.bloodType || "O+",
+          allergies: p.allergies || "",
+          chronicConditions: p.chronicConditions || "",
+          medications: p.medications || "",
+          additionalNotes: p.additionalNotes || "",
+          phone: p.phone || "",
+          nationalId: p.nationalId || "",
+          isInsured: !!p.isInsured,
+          insuranceProvider: p.insuranceProvider || "",
+          insurancePolicyNumber: p.insurancePolicyNumber || "",
+          preferredHospital: p.preferredHospital || "",
+          insuranceEmergencyPhone: p.insuranceEmergencyPhone || "",
+          primaryDoctorName: p.primaryDoctorName || "",
+          primaryDoctorPhone: p.primaryDoctorPhone || "",
+          showInsuranceProviderPublic: !!p.showInsuranceProviderPublic,
+          showPreferredHospitalPublic: !!p.showPreferredHospitalPublic,
+          showPrimaryDoctorPublic: !!p.showPrimaryDoctorPublic,
+          showPrimaryDoctorPhonePublic: !!p.showPrimaryDoctorPhonePublic,
+          showAdditionalNotesPublic: !!p.showAdditionalNotesPublic,
+        });
+        setCorpEditError(""); // Clear any previous error on success
+      } catch (err: any) {
+        setCorpEditForm({ ...emptyProfileForm }); // Do NOT keep stale data on error
+        setCorpEditError(err.message || "Error al cargar perfil");
+        toast.error(err.message || "Error al cargar perfil empresarial");
+      } finally {
+        setCorpEditLoading(false);
+      }
   };
 
   const handleCorpEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!corpEditProfileId) return;
+    if (corpEditLoading) {
+      toast.error("Espera a que termine de cargar el perfil antes de guardar.");
+      return;
+    }
     setCorpEditError("");
     setCorpEditSaving(true);
     try {
@@ -1724,8 +1731,12 @@ export default function EmpresasPage() {
                 </div>
                 <div className="px-4 sm:px-8 py-4 sm:py-6 overflow-y-auto pb-28 sm:pb-10">
                   {corpEditLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <div className="flex flex-col items-center justify-center py-16 gap-6">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                      <div className="text-center space-y-2">
+                        <p className="font-black text-lg tracking-tight text-foreground">Cargando información médica empresarial...</p>
+                        <p className="text-sm text-muted-foreground max-w-xs">Espera un momento antes de editar tu perfil.</p>
+                      </div>
                     </div>
                   ) : (
                     <form onSubmit={handleCorpEdit} className="space-y-6">
@@ -1737,10 +1748,10 @@ export default function EmpresasPage() {
                       <div className="flex gap-6 pt-8 border-t border-border/50">
                         <button type="button" onClick={() => setShowCorpEditor(false)}
                           className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
-                        <button type="submit" disabled={corpEditSaving}
+                        <button type="submit" disabled={corpEditLoading || corpEditSaving}
                           className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
-                          {corpEditSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                          Guardar perfil empresarial
+                          {corpEditSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : corpEditLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                          {corpEditSaving ? "Guardando..." : corpEditLoading ? "Cargando perfil..." : "Guardar perfil empresarial"}
                         </button>
                       </div>
                     </form>
