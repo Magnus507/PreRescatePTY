@@ -344,17 +344,22 @@ export default function ConfiguracionPage() {
                   <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
                      <div>
                         <p className="font-black text-slate-900">Contraseña</p>
-                        <p className="text-xs text-slate-500 font-medium mt-1">Sincronizada con el último cambio.</p>
+                        <p className="text-xs text-slate-500 font-medium mt-1">Te enviaremos instrucciones para crear una nueva contraseña.</p>
                      </div>
-                     <button className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all">Cambiar</button>
+                     <Link
+                       href="/forgot-password"
+                       className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
+                     >
+                       Restablecer contraseña
+                     </Link>
                   </div>
 
                   <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
                      <div>
-                        <p className="font-black text-slate-900">Sesiones Activas</p>
-                        <p className="text-xs text-slate-500 font-medium mt-1">Solo este dispositivo está conectado.</p>
+                        <p className="font-black text-slate-900">Gestión de sesiones</p>
+                        <p className="text-xs text-slate-500 font-medium mt-1">Muy pronto podrás consultar y cerrar sesiones abiertas desde otros dispositivos.</p>
                      </div>
-                     <span className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full uppercase">Seguro</span>
+                     <span className="text-[10px] font-black text-slate-500 bg-slate-200 px-3 py-1 rounded-full uppercase">Próximamente</span>
                   </div>
                </div>
             </Section>
@@ -364,9 +369,17 @@ export default function ConfiguracionPage() {
           {activeTab === "notificaciones" && (
             <Section title="Preferencias de Alertamiento" icon={Smartphone} color="bg-indigo-600">
                <div className="space-y-4">
-                  <Toggle label="Notificaciones por SMS" description="Recibir alertas de geoposición por texto." defaultChecked />
-                  <Toggle label="Notificaciones por Email" description="Recibir el reporte completo del escaneo por correo." defaultChecked />
-                  <Toggle label="Sonido de Alerta Crítica" description="Activar sonido en tiempo real en el dashboard." defaultChecked />
+                  <div className="p-6 rounded-3xl bg-indigo-50 border border-indigo-100 flex items-center gap-4">
+                     <div className="px-3 py-1.5 rounded-full bg-indigo-200 text-indigo-700 text-[9px] font-black uppercase tracking-widest border border-indigo-200">
+                        Próximamente
+                     </div>
+                     <p className="text-sm text-indigo-800/70 font-medium">
+                        Estamos preparando controles personalizados para tus notificaciones.
+                     </p>
+                  </div>
+                  <Toggle label="Notificaciones por SMS" description="Recibir alertas de geoposición por texto." defaultChecked disabled />
+                  <Toggle label="Notificaciones por Email" description="Recibir el reporte completo del escaneo por correo." defaultChecked disabled />
+                  <Toggle label="Sonido de Alerta Crítica" description="Activar sonido en tiempo real en el dashboard." defaultChecked disabled />
                </div>
             </Section>
           )}
@@ -478,19 +491,21 @@ function Toggle({
   label,
   description,
   defaultChecked,
+  disabled,
 }: {
   label: string;
   description: string;
   defaultChecked?: boolean;
+  disabled?: boolean;
 }) {
   const [checked, setChecked] = useState(defaultChecked);
   return (
     <div 
-      onClick={() => setChecked(!checked)}
-      className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100 cursor-pointer hover:bg-slate-100/50 transition-all group"
+      onClick={() => { if (!disabled) setChecked(!checked); }}
+      className={`flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100 transition-all group ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100/50'}`}
     >
        <div className="max-w-xs">
-          <p className="font-black text-slate-900">{label}</p>
+          <p className={`font-black ${disabled ? 'text-slate-500' : 'text-slate-900'}`}>{label}</p>
           <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">{description}</p>
        </div>
        <div className={`w-14 h-8 rounded-full p-1 transition-all ${checked ? "bg-primary" : "bg-slate-300"}`}>
