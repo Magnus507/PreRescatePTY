@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, Phone, ShieldCheck, Users, ShoppingCart, Package, Minus, PlusCircle, Copy } from "lucide-react";
+import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, Phone, ShieldCheck, Users, ShoppingCart, Package, Minus, PlusCircle, Copy, ChevronLeft } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
 
 type CorporateTab =
@@ -1047,6 +1047,7 @@ export default function EmpresasPage() {
 
       return (
         <div className="max-w-2xl mx-auto space-y-6 px-4 sm:px-6 overflow-x-hidden">
+          <div className={showCorpEditor ? "hidden md:block" : "block"}>
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
               <Building2 className="h-6 w-6 text-indigo-600" />
@@ -1714,51 +1715,95 @@ export default function EmpresasPage() {
             </div>
           )}
 
+          </div>
+
           {/* Corporate Profile Editor Modal */}
           {showCorpEditor && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-              <div className="bg-card w-full max-w-none sm:max-w-5xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/20 flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden">
-                <div className="sticky top-0 z-10 px-4 sm:px-8 py-4 sm:py-6 border-b border-border flex items-center justify-between shrink-0 bg-card/95 backdrop-blur">
+            <>
+              {/* Mobile inline editor */}
+              <div className="block md:hidden">
+                <div className="flex items-center gap-3 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowCorpEditor(false)}
+                    className="h-10 w-10 rounded-xl border border-border flex items-center justify-center hover:bg-accent transition-all shrink-0"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
                   <div>
-                    <h3 className="font-black text-lg sm:text-2xl tracking-tight">Perfil médico empresarial</h3>
-                    <p className="text-xs text-muted-foreground font-medium mt-1">
+                    <h2 className="text-2xl font-black tracking-tight">
+                      Editar Perfil Médico Empresarial
+                    </h2>
+                    <p className="text-xs text-muted-foreground font-medium">
                       Este perfil pertenece a tu beneficio empresarial. No afecta tu perfil personal.
                     </p>
                   </div>
-                  <button onClick={() => setShowCorpEditor(false)} className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-border flex items-center justify-center hover:bg-accent transition-colors">
-                    <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </button>
                 </div>
-                <div className="px-4 sm:px-8 py-4 sm:py-6 overflow-y-auto pb-28 sm:pb-10">
-                  {corpEditLoading ? (
-                    <div className="flex flex-col items-center justify-center py-16 gap-6">
-                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                      <div className="text-center space-y-2">
-                        <p className="font-black text-lg tracking-tight text-foreground">Cargando información médica empresarial...</p>
-                        <p className="text-sm text-muted-foreground max-w-xs">Espera un momento antes de editar tu perfil.</p>
-                      </div>
+
+                {corpEditLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-6">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    <div className="text-center space-y-2">
+                      <p className="font-black text-lg tracking-tight text-foreground">Cargando información médica empresarial...</p>
+                      <p className="text-sm text-muted-foreground max-w-xs">Espera un momento antes de editar tu perfil.</p>
                     </div>
-                  ) : (
-                    <form onSubmit={handleCorpEdit} className="space-y-6">
-                      {corpEditError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{corpEditError}</p>}
-                      <MedicalProfileForm
-                        form={corpEditForm}
-                        onChange={(field, val) => setCorpEditForm((prev: any) => ({ ...prev, [field]: val }))}
-                      />
-                      <div className="flex gap-6 pt-8 border-t border-border/50">
-                        <button type="button" onClick={() => setShowCorpEditor(false)}
-                          className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
-                        <button type="submit" disabled={corpEditLoading || corpEditSaving}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
-                          {corpEditSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : corpEditLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                          {corpEditSaving ? "Guardando..." : corpEditLoading ? "Cargando perfil..." : "Guardar perfil empresarial"}
-                        </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleCorpEdit} className="space-y-6">
+                    {corpEditError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{corpEditError}</p>}
+                    <MedicalProfileForm
+                      form={corpEditForm}
+                      onChange={(field, val) => setCorpEditForm((prev: any) => ({ ...prev, [field]: val }))}
+                    />
+                  </form>
+                )}
+              </div>
+
+              {/* Desktop modal */}
+              <div className="hidden md:block fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+                <div className="bg-card w-full max-w-none sm:max-w-5xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/20 flex flex-col max-h-[92vh] sm:max-h-[90vh] overflow-hidden">
+                  <div className="sticky top-0 z-10 px-4 sm:px-8 py-4 sm:py-6 border-b border-border flex items-center justify-between shrink-0 bg-card/95 backdrop-blur">
+                    <div>
+                      <h3 className="font-black text-lg sm:text-2xl tracking-tight">Perfil médico empresarial</h3>
+                      <p className="text-xs text-muted-foreground font-medium mt-1">
+                        Este perfil pertenece a tu beneficio empresarial. No afecta tu perfil personal.
+                      </p>
+                    </div>
+                    <button onClick={() => setShowCorpEditor(false)} className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-border flex items-center justify-center hover:bg-accent transition-colors">
+                      <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </button>
+                  </div>
+                  <div className="px-4 sm:px-8 py-4 sm:py-6 overflow-y-auto pb-28 sm:pb-10">
+                    {corpEditLoading ? (
+                      <div className="flex flex-col items-center justify-center py-16 gap-6">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        <div className="text-center space-y-2">
+                          <p className="font-black text-lg tracking-tight text-foreground">Cargando información médica empresarial...</p>
+                          <p className="text-sm text-muted-foreground max-w-xs">Espera un momento antes de editar tu perfil.</p>
+                        </div>
                       </div>
-                    </form>
-                  )}
+                    ) : (
+                      <form onSubmit={handleCorpEdit} className="space-y-6">
+                        {corpEditError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{corpEditError}</p>}
+                        <MedicalProfileForm
+                          form={corpEditForm}
+                          onChange={(field, val) => setCorpEditForm((prev: any) => ({ ...prev, [field]: val }))}
+                        />
+                        <div className="flex gap-6 pt-8 border-t border-border/50">
+                          <button type="button" onClick={() => setShowCorpEditor(false)}
+                            className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
+                          <button type="submit" disabled={corpEditLoading || corpEditSaving}
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
+                            {corpEditSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : corpEditLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            {corpEditSaving ? "Guardando..." : corpEditLoading ? "Cargando perfil..." : "Guardar perfil empresarial"}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       );
