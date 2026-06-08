@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
-  Plus, Pencil, Trash2, Loader2, Save, X, 
+  Plus, Pencil, Trash2, Loader2, Save, X, ChevronLeft,
   UserRound, Phone, ChevronUp, AlertCircle,
   ShieldCheck, Activity, Users, PlusCircle, Smartphone, Zap, ExternalLink,
   Building2
@@ -384,6 +384,7 @@ export default function FamiliaPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-12">
+      <div className={(showAdd || editProfile) ? "hidden md:block" : "block"}>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-4xl font-black tracking-tighter mb-1 uppercase italic">Perfiles Médicos</h1>
@@ -471,43 +472,106 @@ export default function FamiliaPage() {
         </div>
       )}
 
-      {/* Modals */}
+      </div>
+
+      {/* ── ADD PROFILE: Mobile inline / Desktop modal ── */}
       {showAdd && (
-        <Modal title="Añadir Perfil Médico" onClose={() => setShowAdd(false)}>
-          <form onSubmit={handleAdd} className="space-y-6">
-            {addError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{addError}</p>}
-            <MedicalProfileForm 
-               form={addForm} 
-               onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val }))} 
-            />
-            <div className="flex gap-6 pt-8 border-t border-border/50">
-              <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
-              <button type="submit" disabled={addSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
-                {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Guardar Perfil Médico
+        <>
+          {/* Mobile: inline form (no modal, no overlay) */}
+          <div className="block md:hidden animate-in fade-in slide-in-from-left-4 duration-500">
+            <div className="flex items-center gap-3 mb-6">
+              <button
+                type="button"
+                onClick={() => { setShowAdd(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className="h-10 w-10 rounded-xl border border-border flex items-center justify-center hover:bg-accent transition-all shrink-0"
+              >
+                <ChevronLeft className="h-5 w-5" />
               </button>
+              <div>
+                <h2 className="text-2xl font-black tracking-tight">Añadir Perfil Médico</h2>
+                <p className="text-xs text-muted-foreground font-medium">Completa los datos que podrían ayudar en una emergencia.</p>
+              </div>
             </div>
-          </form>
-        </Modal>
+            <form onSubmit={handleAdd} className="space-y-6">
+              {addError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{addError}</p>}
+              <MedicalProfileForm
+                form={addForm}
+                onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val }))}
+              />
+              {/* No parent buttons here — wizard handles submit internally */}
+            </form>
+          </div>
+
+          {/* Desktop: modal (unchanged) */}
+          <div className="hidden md:block">
+            <Modal title="Añadir Perfil Médico" onClose={() => setShowAdd(false)}>
+              <form onSubmit={handleAdd} className="space-y-6">
+                {addError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{addError}</p>}
+                <MedicalProfileForm
+                  form={addForm}
+                  onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val }))}
+                />
+                <div className="flex gap-6 pt-8 border-t border-border/50">
+                  <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
+                  <button type="submit" disabled={addSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
+                    {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    Guardar Perfil Médico
+                  </button>
+                </div>
+              </form>
+            </Modal>
+          </div>
+        </>
       )}
 
+      {/* ── EDIT PROFILE: Mobile inline / Desktop modal ── */}
       {editProfile && (
-        <Modal title={`Perfil Médico: ${editProfile.firstName}`} onClose={() => setEditProfile(null)}>
-          <form onSubmit={handleEdit} className="space-y-6">
-            {editError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{editError}</p>}
-            <MedicalProfileForm 
-               form={editForm} 
-               onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val }))} 
-            />
-            <div className="flex gap-6 pt-8 border-t border-border/50">
-              <button type="button" onClick={() => setEditProfile(null)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
-              <button type="submit" disabled={editSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
-                {editSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Actualizar Perfil
+        <>
+          {/* Mobile: inline form */}
+          <div className="block md:hidden animate-in fade-in slide-in-from-left-4 duration-500">
+            <div className="flex items-center gap-3 mb-6">
+              <button
+                type="button"
+                onClick={() => { setEditProfile(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className="h-10 w-10 rounded-xl border border-border flex items-center justify-center hover:bg-accent transition-all shrink-0"
+              >
+                <ChevronLeft className="h-5 w-5" />
               </button>
+              <div>
+                <h2 className="text-2xl font-black tracking-tight">Editar Perfil Médico: {editProfile.firstName}</h2>
+                <p className="text-xs text-muted-foreground font-medium">Actualiza los datos de {editProfile.firstName}.</p>
+              </div>
             </div>
-          </form>
-        </Modal>
+            <form onSubmit={handleEdit} className="space-y-6">
+              {editError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{editError}</p>}
+              <MedicalProfileForm
+                form={editForm}
+                onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val }))}
+              />
+              {/* No parent buttons here — wizard handles submit internally */}
+            </form>
+          </div>
+
+          {/* Desktop: modal (unchanged) */}
+          <div className="hidden md:block">
+            <Modal title={`Perfil Médico: ${editProfile.firstName}`} onClose={() => setEditProfile(null)}>
+              <form onSubmit={handleEdit} className="space-y-6">
+                {editError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{editError}</p>}
+                <MedicalProfileForm
+                  form={editForm}
+                  onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val }))}
+                />
+                <div className="flex gap-6 pt-8 border-t border-border/50">
+                  <button type="button" onClick={() => setEditProfile(null)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
+                  <button type="submit" disabled={editSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
+                    {editSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Actualizar Perfil
+                  </button>
+                </div>
+              </form>
+            </Modal>
+          </div>
+        </>
       )}
 
       {addingContactToProfile && (

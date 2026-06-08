@@ -356,7 +356,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
       {/* Step content */}
       <div className="min-h-[240px] transition-all duration-300">
         {step === 1 && (
-          <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
             <SectionHeader
               icon={<User className="h-5 w-5" />}
               iconBg="bg-primary/10 text-primary"
@@ -368,7 +368,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         )}
 
         {step === 2 && (
-          <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
             <SectionHeader
               icon={<Heart className="h-5 w-5" />}
               iconBg="bg-red-500/10 text-red-600"
@@ -381,7 +381,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
         {step === 3 && (
           <div className="space-y-4">
-            <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
               <SectionHeader
                 icon={<Shield className="h-5 w-5" />}
                 iconBg="bg-blue-500/10 text-blue-600"
@@ -390,7 +390,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
               />
               {renderInsuranceFields()}
             </div>
-            <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
               <SectionHeader
                 icon={<Stethoscope className="h-5 w-5" />}
                 iconBg="bg-emerald-500/10 text-emerald-600"
@@ -399,7 +399,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
               />
               {renderDoctorFields()}
             </div>
-            <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
               <SectionHeader
                 icon={<FileText className="h-5 w-5" />}
                 iconBg="bg-slate-500/10 text-slate-600"
@@ -412,7 +412,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         )}
 
         {step === 4 && (
-          <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
             <SectionHeader
               icon={<Eye className="h-5 w-5" />}
               iconBg="bg-slate-500/10 text-slate-600"
