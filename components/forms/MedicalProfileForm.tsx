@@ -424,38 +424,46 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         )}
       </div>
 
-      {/* Wizard navigation buttons */}
-      <div className="flex gap-3 pt-2">
-        {canGoPrev ? (
-          <button
-            type="button"
-            onClick={goPrev}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl border-2 border-border font-black text-sm hover:bg-accent active:scale-[0.98] transition-all"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Atrás
-          </button>
-        ) : (
-          <div className="flex-1" />
-        )}
+      {/* Prevent Enter key from submitting the parent form during wizard navigation */}
+      <div onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}>
+        {/* Wizard navigation buttons */}
+        <div className="flex gap-3 pt-2">
+          {canGoPrev ? (
+            <button
+              type="button"
+              onClick={goPrev}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl border-2 border-border font-black text-sm hover:bg-accent active:scale-[0.98] transition-all"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Atrás
+            </button>
+          ) : (
+            <div className="flex-1" />
+          )}
 
-        {canGoNext ? (
-          <button
-            type="button"
-            onClick={goNext}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            Siguiente
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        ) : (
-          <button
-            type="submit"
-            className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            Guardar Perfil Médico
-          </button>
-        )}
+          {canGoNext ? (
+            <button
+              type="button"
+              onClick={goNext}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              Siguiente
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                // Submit the parent form programmatically — only on explicit click
+                const form = (e.target as HTMLElement).closest("form");
+                if (form) form.requestSubmit();
+              }}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              Guardar Perfil Médico
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
