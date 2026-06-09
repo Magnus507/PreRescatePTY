@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight, UserRound } from "lucide-react";
+import { ChevronLeft, ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -210,6 +210,8 @@ export default function TiendaPage() {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
+      <div className={(showCheckout || showSuccessModal) ? "hidden md:block" : "block"}>
+
       {/* Hero Section */}
       <div className="relative h-[300px] rounded-[3rem] overflow-hidden bg-slate-900 group shadow-2xl shadow-slate-900/20">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/60 to-transparent z-10" />
@@ -318,9 +320,172 @@ export default function TiendaPage() {
         </div>
       </div>
 
-      {/* Checkout Modal */}
+      </div>
+
+      {/* Mobile inline checkout */}
       {showCheckout && selectedProduct && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-xl animate-in fade-in duration-300">
+        <div className="block md:hidden animate-in fade-in slide-in-from-left-4 duration-500">
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => setShowCheckout(false)}
+              className="h-10 w-10 rounded-xl border border-border flex items-center justify-center hover:bg-accent transition-all shrink-0"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div>
+              <h2 className="text-2xl font-black tracking-tight">
+                {selectedProduct.name}
+              </h2>
+              <p className="text-xs text-muted-foreground font-medium">
+                ${selectedProduct.price.toFixed(2)} — {selectedProduct.estimatedProductionTime || "Envío gratis"}. Completa los datos para solicitarlo.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleCreateOrder} className="space-y-6">
+            {/* Profile Selector for personalized products */}
+            {selectedProduct.requiresPersonalization && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">
+                  <UserRound className="h-3.5 w-3.5 inline mr-1" />
+                  ¿Para quién es este accesorio?
+                </p>
+                {profileLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Cargando perfiles...
+                  </div>
+                ) : profileOptions.length === 0 ? (
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-700 font-medium">
+                    No tienes perfiles médicos configurados. Crea uno en Mis Perfiles Médicos antes de continuar.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {profileOptions.map((profile) => {
+                      const chip = profile.assignedChips?.[0];
+                      const isSelected = selectedProfileId === profile.id;
+                      return (
+                        <button
+                          key={profile.id}
+                          type="button"
+                          onClick={() => setSelectedProfileId(profile.id)}
+                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${
+                            isSelected
+                              ? "border-primary bg-primary/5"
+                              : "border-slate-200 hover:border-slate-300 bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                isSelected ? "bg-primary text-white" : "bg-slate-200 text-slate-500"
+                              }`}>
+                                <UserRound className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-bold text-sm truncate">
+                                  {profile.firstName} {profile.lastName}
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                                    {profile.profileType === "personal" ? "Principal" : "Familiar"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              {chip ? (
+                                <span className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
+                                  /e/{chip.shortCode}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
+                                  Sin chip activo
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Dirección Exacta</label>
+                <div className="relative">
+                  <MapPin className="absolute left-5 top-5 h-5 w-5 text-slate-400" />
+                  <textarea
+                    required
+                    rows={2}
+                    value={shippingData.address}
+                    onChange={e => setShippingData({...shippingData, address: e.target.value})}
+                    placeholder="Calle, No. de Casa, Edificio, Apartamento..."
+                    className="w-full bg-muted/30 rounded-2xl border border-border pl-14 pr-6 py-5 text-sm font-bold placeholder:opacity-40 focus:ring-4 focus:ring-primary/10 transition-all resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Ciudad / Provincia</label>
+                  <input
+                    required
+                    type="text"
+                    value={shippingData.city}
+                    onChange={e => setShippingData({...shippingData, city: e.target.value})}
+                    placeholder="Panamá, Chitré..."
+                    className="w-full bg-muted/30 rounded-2xl border border-border px-6 py-5 text-sm font-bold placeholder:opacity-40 focus:ring-4 focus:ring-primary/10 transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Referencia de Pago</label>
+                  <div className="w-full bg-slate-900 text-white rounded-2xl px-6 py-5 flex items-center gap-3">
+                    <CreditCard className="h-4 w-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Yappy Manual</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Notas Especiales</label>
+                <input
+                  type="text"
+                  value={shippingData.notes}
+                  onChange={e => setShippingData({...shippingData, notes: e.target.value})}
+                  placeholder="Cerca de la farmacia, color de casa..."
+                  className="w-full bg-muted/30 rounded-2xl border border-border px-6 py-5 text-sm font-bold placeholder:opacity-40 focus:ring-4 focus:ring-primary/10 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 space-y-3">
+              <div className="flex items-center justify-between px-2">
+                <span className="text-sm font-medium text-muted-foreground">Total</span>
+                <span className="text-2xl font-black text-primary">${selectedProduct.price.toFixed(2)}</span>
+              </div>
+              <button
+                type="submit"
+                disabled={creatingOrder}
+                className="w-full py-5 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {creatingOrder ? <Loader2 className="h-5 w-5 animate-spin" /> : <Package className="h-5 w-5" />}
+                {creatingOrder ? "Confirmando..." : "Confirmar Pedido"}
+              </button>
+              <p className="text-[9px] text-center text-muted-foreground font-bold uppercase opacity-60">
+                Al confirmar, tu pedido aparecerá en revisión por el equipo administrativo.
+              </p>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Desktop checkout modal */}
+      {showCheckout && selectedProduct && (
+        <div className="hidden md:block fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-xl animate-in fade-in duration-300">
            <div className="bg-white dark:bg-slate-950 w-full max-w-2xl rounded-[3rem] shadow-2xl border border-white/10 relative overflow-hidden flex flex-col md:flex-row">
               <div className="hidden md:flex w-1/3 bg-slate-50 dark:bg-slate-900 p-10 flex-col justify-between border-r border-slate-100 dark:border-slate-800">
                  <div>
@@ -489,9 +654,102 @@ export default function TiendaPage() {
         </div>
       )}
 
-      {/* Success / Payment Instructions Modal */}
+      {/* Mobile inline success */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-900/95 backdrop-blur-2xl animate-in zoom-in-95 duration-300">
+        <div className="block md:hidden animate-in fade-in slide-in-from-left-4 duration-500">
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => { setShowSuccessModal(false); router.push("/dashboard/pedidos"); }}
+              className="h-10 w-10 rounded-xl border border-border flex items-center justify-center hover:bg-accent transition-all shrink-0"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div>
+              <h2 className="text-2xl font-black tracking-tight">¡Pedido Recibido!</h2>
+              <p className="text-xs text-muted-foreground font-medium">
+                Tu orden ha sido registrada. Puedes realizar el pago y subir tu comprobante aquí mismo o después desde Mis Pedidos.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {/* Payment info */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-6 bg-muted/30 rounded-[2rem] border border-border text-center">
+                <p className="text-[10px] font-black uppercase text-indigo-500 mb-2">Yappy</p>
+                <div className="h-24 w-24 bg-white dark:bg-slate-800 rounded-2xl mx-auto mb-3 flex items-center justify-center border border-indigo-100 dark:border-indigo-900 overflow-hidden">
+                  {paymentConfig?.yappy_qr_url ? (
+                    <img src={paymentConfig.yappy_qr_url} alt="QR" className="h-full w-full object-contain p-2" />
+                  ) : (
+                    <QrCode className="h-8 w-8 text-indigo-400 opacity-20" />
+                  )}
+                </div>
+                <p className="text-md font-black text-indigo-600">{paymentConfig?.yappy_handle || '@...'}</p>
+              </div>
+              <div className="p-6 bg-muted/30 rounded-[2rem] border border-border text-center flex flex-col justify-center">
+                <p className="text-[10px] font-black uppercase text-emerald-500 mb-3">ACH / Banco</p>
+                <p className="text-[11px] font-black text-slate-700 dark:text-slate-300 leading-tight">
+                  {paymentConfig?.bank_name || 'BANCO'}<br/>
+                  {paymentConfig?.bank_account_type || 'CUENTA'}<br/>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-mono text-sm tracking-widest">{paymentConfig?.bank_account_number || '...'}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Upload proof */}
+            <div className={`p-6 rounded-2xl border-2 transition-all ${proofUploaded ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
+              {proofUploaded ? (
+                <div className="flex items-center justify-center gap-3">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                  <p className="font-bold text-emerald-700">Comprobante enviado. Tu pago está en revisión.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sube tu comprobante de pago</p>
+                  <p className="text-[10px] text-muted-foreground">Selecciona una imagen o captura del comprobante de tu pago.</p>
+                  <div className="flex items-center justify-center gap-3">
+                    <input
+                      id="proof-upload-tienda-mobile"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      onChange={handleUploadProof}
+                      disabled={uploadingProof}
+                    />
+                    <label
+                      htmlFor="proof-upload-tienda-mobile"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all disabled:opacity-50"
+                    >
+                      {uploadingProof ? (
+                        <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</>
+                      ) : (
+                        <><Upload className="h-4 w-4" /> Seleccionar archivo</>
+                      )}
+                    </label>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground">Máx 5MB. Formatos: JPG, PNG, WebP.</p>
+                </div>
+              )}
+            </div>
+
+            <p className="text-[9px] text-muted-foreground text-center">
+              También puedes subir tu comprobante después desde <button onClick={() => router.push("/dashboard/pedidos")} className="underline font-bold text-primary">Mis Pedidos</button>.
+            </p>
+
+            <button
+              onClick={() => router.push("/dashboard/pedidos")}
+              className="w-full py-5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2"
+            >
+              Ir a Mis Pedidos <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop success modal */}
+      {showSuccessModal && (
+        <div className="hidden md:block fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-900/95 backdrop-blur-2xl animate-in zoom-in-95 duration-300">
            <div className="bg-white dark:bg-slate-950 w-full max-w-xl rounded-[3.5rem] shadow-2xl relative overflow-hidden p-12 text-center border border-white/10">
               <div className="h-20 w-20 bg-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-emerald-500/20 animate-bounce">
                  <CheckCircle2 className="h-10 w-10 text-white" />
