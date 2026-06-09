@@ -1111,7 +1111,7 @@ export function PedidosSection() {
                                       </div>
                                     </div>
 
-                                    {chip ? (
+                                      {chip ? (
                                       <div className="space-y-2">
                                         <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200">
                                           <div>
@@ -1126,6 +1126,29 @@ export function PedidosSection() {
                                             {chip.status}
                                           </span>
                                         </div>
+                                        {/* QR visual + download */}
+                                        {typeof window !== "undefined" && (
+                                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 inline-flex items-center gap-4 w-full">
+                                            <div className="bg-white p-1.5 rounded-lg border border-slate-100">
+                                              <QRCodeCanvas value={`${window.location.origin}/e/${chip.shortCode}`} size={72} />
+                                            </div>
+                                            <div>
+                                              <button onClick={() => {
+                                                const canvas = document.querySelector(`#qr-personalization-${item.id}`) as HTMLCanvasElement | null;
+                                                if (canvas) {
+                                                  const url = canvas.toDataURL("image/png");
+                                                  const a = document.createElement("a");
+                                                  a.href = url; a.download = `qr-${chip.shortCode}.png`; a.click();
+                                                }
+                                              }} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-slate-50 inline-flex items-center gap-1.5">
+                                                <Download className="h-3.5 w-3.5" /> Descargar QR
+                                              </button>
+                                              <div className="hidden">
+                                                <QRCodeCanvas id={`qr-personalization-${item.id}`} value={`${window.location.origin}/e/${chip.shortCode}`} size={256} />
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
                                         <div className="flex gap-2">
                                           <button onClick={async () => {
                                             const url = `${window.location.origin}/e/${chip.shortCode}`;
