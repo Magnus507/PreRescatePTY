@@ -30,6 +30,33 @@ export async function GET() {
       corporateOrderItems: {
         select: { id: true },
       },
+      orderItems: {
+        where: {
+          order: {
+            paymentStatus: { not: "rejected" },
+            orderStatus: { not: "cancelled" },
+          },
+        },
+        include: {
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              orderStatus: true,
+              paymentStatus: true,
+              createdAt: true,
+            },
+          },
+        },
+        select: {
+          id: true,
+          productType: true,
+          quantity: true,
+          totalPrice: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 

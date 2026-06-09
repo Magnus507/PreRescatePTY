@@ -16,6 +16,21 @@ interface ProfileOption {
   userId: string | null;
 }
 
+interface ChipAccessory {
+  id: string;
+  productType: string;
+  quantity: number;
+  totalPrice: number;
+  createdAt: string;
+  order: {
+    id: string;
+    orderNumber: string;
+    orderStatus: string;
+    paymentStatus: string;
+    createdAt: string;
+  };
+}
+
 interface ChipData {
   id: string;
   serialPublic: string;
@@ -28,6 +43,7 @@ interface ChipData {
   assignedProfileId: string | null;
   assignedProfile: { id: string; firstName: string; lastName: string; userId: string | null } | null;
   _count: { scanEvents: number };
+  orderItems: ChipAccessory[];
 }
 
 export default function ChipsPage() {
@@ -294,6 +310,44 @@ export default function ChipsPage() {
                        </div>
                     </div>
                   </div>
+
+                  {/* Accessories linked to this chip */}
+                  {chip.orderItems && chip.orderItems.length > 0 && (
+                    <div className="w-full pt-6 border-t border-slate-100">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3 text-center md:text-left">Accesorios vinculados</p>
+                      <div className="space-y-2">
+                        {chip.orderItems.map((acc) => {
+                          const orderStatusLabel = acc.order.orderStatus === "completed" ? "Completado" :
+                            acc.order.orderStatus === "shipped" ? "Enviado" :
+                            acc.order.orderStatus === "pending" ? "Pendiente" :
+                            acc.order.orderStatus;
+                          return (
+                            <div key={acc.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-900 truncate">{acc.productType}</p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  x{acc.quantity} · ${acc.totalPrice.toFixed(2)}
+                                  {acc.order.orderNumber && <span className="ml-1">· #{acc.order.orderNumber}</span>}
+                                </p>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0 ${
+                                acc.order.orderStatus === "completed" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                                acc.order.orderStatus === "shipped" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                                "bg-slate-100 text-slate-600 border-slate-200"
+                              }`}>
+                                {orderStatusLabel}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {chip.orderItems && chip.orderItems.length === 0 && (
+                    <div className="w-full pt-6 border-t border-slate-100">
+                      <p className="text-[10px] font-medium text-slate-400 text-center md:text-left italic">Aún no tienes accesorios vinculados a este chip.</p>
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-3 w-full md:w-64">
                      <a
