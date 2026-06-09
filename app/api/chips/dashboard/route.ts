@@ -19,49 +19,66 @@ export async function GET() {
     return NextResponse.json({ chips: [], state });
   }
 
-  const chips = await prisma.chip.findMany({
-    where: { accountId: state.accountId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: { select: { scanEvents: true } },
-      assignedProfile: {
-        select: { id: true, firstName: true, lastName: true, userId: true, profileType: true },
-      },
-      corporateOrderItems: {
-        select: { id: true },
-      },
-      orderItems: {
-        where: {
-          order: {
-            paymentStatus: { not: "rejected" },
-            orderStatus: { not: "cancelled" },
-          },
+  let chips;
+  try {
+    chips = await prisma.chip.findMany({
+      where: { accountId: state.accountId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { scanEvents: true } },
+        assignedProfile: {
+          select: { id: true, firstName: true, lastName: true, userId: true, profileType: true },
         },
-        include: {
-          order: {
-            select: {
-              id: true,
-              orderNumber: true,
-              orderStatus: true,
-              paymentStatus: true,
-              createdAt: true,
+        corporateOrderItems: {
+          select: { id: true },
+        },
+        orderItems: {
+          where: {
+            order: {
+              paymentStatus: { not: "rejected" },
+              orderStatus: { not: "cancelled" },
             },
           },
+          select: {
+            id: true,
+            productType: true,
+            quantity: true,
+            totalPrice: true,
+            createdAt: true,
+            order: {
+              select: {
+                id: true,
+                orderNumber: true,
+                orderStatus: true,
+                paymentStatus: true,
+                createdAt: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
         },
-        select: {
-          id: true,
-          productType: true,
-          quantity: true,
-          totalPrice: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "desc" },
       },
-    },
-  });
+    });
+  } catch (queryError) {
+    console.error("CHIP_DASHBOARD_QUERY_ERROR", queryError);
+    // Fallback: query without orderItems to ensure chips still load
+    chips = await prisma.chip.findMany({
+      where: { accountId: state.accountId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { scanEvents: true } },
+        assignedProfile: {
+          select: { id: true, firstName: true, lastName: true, userId: true, profileType: true },
+        },
+        corporateOrderItems: {
+          select: { id: true },
+        },
+      },
+    });
+  }
 
   // Filtrar chips para excluir chips corporativos
-  const personalChips = chips.filter((chip) => {
+  const personalChips = (chips || []).filter((chip) => {
     const isCorporateProfile = chip.assignedProfile?.profileType === "corporate";
     const hasCorporateOrderItems = chip.corporateOrderItems && chip.corporateOrderItems.length > 0;
 
