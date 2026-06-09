@@ -436,6 +436,7 @@ export function PedidosSection() {
     const isCorporatePaymentApproved =
       selectedOrder.paymentStatus === "paid" &&
       selectedOrder.adminReviewStatus === "approved";
+    const needed = calculateNeededChips(selectedOrder);
     return (
       <div className="space-y-5 animate-in fade-in slide-in-from-bottom-5 duration-500 blur-none">
          {/* Integrated Admin Dashboard Header */}
@@ -896,6 +897,7 @@ export function PedidosSection() {
 
                   {/* COL 2: Fulfillment & Picking */}
                   <div className="lg:col-span-4 space-y-6 bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[2rem] border border-border/60">
+                     {needed > 0 ? (
                      <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                            <div className="h-1.5 w-6 bg-primary rounded-full" />
@@ -997,6 +999,11 @@ export function PedidosSection() {
                            </div>
                         )}
                      </section>
+                     ) : (
+                        <div className="text-center py-8">
+                           <p className="text-sm text-muted-foreground">Pedido de accesorios personalizados — no requiere picking físico.</p>
+                        </div>
+                     )}
                   </div>
 
                   <div className="lg:col-span-4 space-y-6">
