@@ -212,7 +212,7 @@ export async function POST(
   return NextResponse.json({ contact: mapped }, { status: 201 });
 }
 
-// DELETE: De-associate a guardian from a profile (DO NOT DELETE FROM ACCOUNT POOL)
+// DELETE: De-associate a guardian from a profile (preserve Contact in pool for other profiles)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ profileId: string }> }
@@ -236,21 +236,24 @@ export async function DELETE(
   
   if (!link) return NextResponse.json({ error: "Vínculo no encontrado" }, { status: 404 });
 
-  // We delete the Contact record completely, which cascades to delete the profile link
-  await prisma.contact.delete({ where: { id: contactId } });
+  // Delete only the ProfileContact link — preserve the Contact record
+  // so it remains available for other profiles linked to the same contact.
+  await prisma.profileContact.deleteMany({
+    where: { profileId, contactId },
+  });
 
   await prisma.auditLog.create({
     data: {
       actorUserId: userId,
       accountId: profile?.accountId || null,
-      entityType: "contact",
-      entityId: contactId,
-      action: "delete_contact",
+      entityType: "profileContact",
+      entityId: `${profileId}_${contactId}`,
+      action: "unlink_guardian",
       oldValuesJson: JSON.stringify(link),
     },
   });
 
-  return NextResponse.json({ message: "Contacto eliminado permanentemente" });
+  return NextResponse.json({ message: "Guardian desvinculado del perfil" });
 }
 
 // PATCH: Update specific link preferences and contact info
