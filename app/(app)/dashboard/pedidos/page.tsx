@@ -16,6 +16,21 @@ interface OrderItem {
   productType: string;
   quantity: number;
   totalPrice: number;
+  profileId?: string | null;
+  chipId?: string | null;
+  profile?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    displayNamePublic?: string | null;
+    profileType: string;
+  } | null;
+  chip?: {
+    id: string;
+    shortCode: string;
+    serialPublic: string;
+    status: string;
+  } | null;
 }
 
 interface ChipClaimToken {
@@ -332,12 +347,72 @@ function PedidosContent() {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      {items.length > 0
-                        ? `${items[0].productType} • ${items[0].quantity} chip${items[0].quantity === 1 ? "" : "s"} incluido${items[0].quantity === 1 ? "" : "s"}`
-                        : "Combo no especificado"}
-                    </p>
+                  {/* Items detail — accesorios personalizados */}
+                  <div className="space-y-3 pt-4 border-t border-slate-100">
+                    {items.map((item) => {
+                      const hasProfile = !!item.profile;
+                      const hasChip = !!item.chip?.shortCode;
+                      return (
+                        <div key={item.id} className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[11px] font-bold">{item.productType}</span>
+                              <span className="text-[9px] font-bold bg-muted px-2 py-0.5 rounded-full">x{item.quantity}</span>
+                              <span className="text-[10px] font-bold text-muted-foreground">${(item.totalPrice || 0).toFixed(2)}</span>
+                            </div>
+
+                            {/* Personalized for a profile */}
+                            {hasProfile && item.profile && (
+                              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
+                                <span className="text-indigo-600 font-semibold">
+                                  Personalizado para: {item.profile.firstName} {item.profile.lastName}
+                                  {item.profile.displayNamePublic && (
+                                    <span className="text-muted-foreground ml-1">({item.profile.displayNamePublic})</span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Chip / QR info */}
+                            {hasChip && item.chip && (
+                              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                                  QR: /e/{item.chip.shortCode}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const url = `${window.location.origin}/e/${item.chip!.shortCode}`;
+                                    try { await navigator.clipboard.writeText(url); toast.success("Link copiado"); }
+                                    catch { toast.error("No se pudo copiar"); }
+                                  }}
+                                  className="text-[9px] px-2 py-0.5 border border-border rounded-md hover:bg-accent transition-colors"
+                                >
+                                  Copiar link
+                                </button>
+                                <a
+                                  href={`/e/${item.chip.shortCode}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[9px] px-2 py-0.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                                >
+                                  Abrir ficha
+                                </a>
+                              </div>
+                            )}
+
+                            {/* Profile exists but no chip */}
+                            {hasProfile && !hasChip && (
+                              <div className="mt-1.5">
+                                <span className="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+                                  Este accesorio aún no tiene chip/QR asociado.
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );

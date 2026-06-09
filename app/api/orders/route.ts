@@ -167,7 +167,27 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { createdAt: "desc" },
     include: { 
-      items: true, 
+      items: {
+        include: {
+          profile: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              displayNamePublic: true,
+              profileType: true,
+            },
+          },
+          chip: {
+            select: {
+              id: true,
+              shortCode: true,
+              serialPublic: true,
+              status: true,
+            },
+          },
+        },
+      },
       chipClaimTokens: {
         include: {
           chip: {
