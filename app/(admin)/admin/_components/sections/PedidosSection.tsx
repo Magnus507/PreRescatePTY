@@ -224,7 +224,10 @@ export function PedidosSection() {
   }, [selectedOrder]);
 
   const calculateNeededChips = (order: Order) => {
-    return order.items.reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
+    // Exclude personalized accessories (items with profile or chip) — they don't need new chip picking
+    return order.items
+      .filter((item) => !item.profile && !item.chip)
+      .reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
   };
 
   const handleStatusChange = async (id: string, newStatus: string, actionText: string) => {

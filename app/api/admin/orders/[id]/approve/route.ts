@@ -140,8 +140,53 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Usuario sin cuenta asociada" }, { status: 400 });
   }
 
+  // Detectar órdenes de accesorios personalizados (sin packageId, con profileId/chipId en items)
+  const isPersonalizedAccessoryOrder =
+    !order.packageId &&
+    order.items.length > 0 &&
+    order.items.every((item) => item.profileId || item.chipId);
 
-  // Validar paquete por order.packageId
+  if (isPersonalizedAccessoryOrder) {
+    // Aprobar orden de accesorio personalizado sin picking ni capacity
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.order.update({
+          where: { id },
+          data: {
+            paymentStatus: "paid",
+            orderStatus: "completed",
+            adminReviewStatus: "approved",
+            adminReviewedAt: new Date(),
+            adminReviewedById: adminId,
+            adminReviewNotes: notes,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            accountId: user.accountId!,
+            actorUserId: adminId,
+            entityType: "Order",
+            entityId: order.id,
+            action: "accessory_order_approved",
+            newValuesJson: null,
+            oldValuesJson: null,
+          },
+        });
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Error al aprobar accesorio";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+
+    if (order.userId) {
+      await AccountStateService.invalidateCache(order.userId);
+    }
+
+    return NextResponse.json({ orderId: order.id });
+  }
+
+  // Validar paquete por order.packageId (solo para órdenes de paquete/chips)
   if (!order.packageId) {
     return NextResponse.json({ error: "Orden sin packageId" }, { status: 400 });
   }
