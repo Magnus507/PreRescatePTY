@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { 
   History, AlertCircle, CheckCircle, 
   ChevronRight, Building2, Shield, LayoutDashboard, User, Cpu, Users, UsersRound,
@@ -495,11 +496,11 @@ function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, 
       if (res.ok) {
         onPhotoUpdate?.();
       } else {
-        alert("Error al subir la foto");
+        toast.error("Error al subir la foto");
       }
     } catch (err) {
       console.error(err);
-      alert("Error en la conexión");
+      toast.error("Error en la conexión");
     } finally {
       setUploading(false);
     }

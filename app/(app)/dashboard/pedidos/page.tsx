@@ -114,6 +114,11 @@ function PedidosContent() {
   };
 
   const handleCancel = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (order && (order.orderStatus === "shipped" || order.orderStatus === "completed")) {
+      toast.error("Este pedido ya fue procesado y no puede cancelarse desde el panel.");
+      return;
+    }
     if(!confirm("¿Cancelar pedido?")) return;
     setUploadingFor(orderId);
     await fetch(`/api/orders/${orderId}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }), headers: { "Content-Type": "application/json" } });

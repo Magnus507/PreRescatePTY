@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight, UserRound } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight, UserRound, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -367,8 +368,14 @@ export default function TiendaPage() {
                     <Loader2 className="h-4 w-4 animate-spin" /> Cargando perfiles...
                   </div>
                 ) : profileOptions.length === 0 ? (
-                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-700 font-medium">
-                    No tienes perfiles médicos configurados. Crea uno en Mis Perfiles Médicos antes de continuar.
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-700 font-medium space-y-3">
+                    <p>Necesitas crear un perfil médico antes de solicitar accesorios personalizados.</p>
+                    <Link
+                      href="/dashboard/perfiles-medicos"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-700 transition-all"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Crear perfil médico
+                    </Link>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -543,8 +550,14 @@ export default function TiendaPage() {
                          <Loader2 className="h-4 w-4 animate-spin" /> Cargando perfiles...
                        </div>
                      ) : profileOptions.length === 0 ? (
-                       <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-700 font-medium">
-                         No tienes perfiles médicos configurados. Crea uno en Mis Perfiles Médicos antes de continuar.
+                       <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-700 font-medium space-y-3">
+                         <p>Necesitas crear un perfil médico antes de solicitar accesorios personalizados.</p>
+                         <Link
+                           href="/dashboard/perfiles-medicos"
+                           className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-700 transition-all"
+                         >
+                           <Plus className="h-3.5 w-3.5" /> Crear perfil médico
+                         </Link>
                        </div>
                      ) : (
                        <div className="space-y-2">
