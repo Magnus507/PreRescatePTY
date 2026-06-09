@@ -2,6 +2,8 @@ import type { Prisma } from "@prisma/client";
 
 type OrderItemLike = {
   quantity?: number | null;
+  profileId?: string | null;
+  chipId?: string | null;
 };
 
 type PackageLike = {
@@ -74,7 +76,10 @@ type AssignDirectTokenResult = {
  */
 export class OrderFulfillmentService {
   static calculatePurchasedChips(orderItems: OrderItemLike[]): number {
-    return orderItems.reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
+    // Exclude personalized accessories (items with profileId or chipId) — they don't count as new chips
+    return orderItems
+      .filter((item) => !item.profileId && !item.chipId)
+      .reduce((sum, item) => sum + Math.max(0, item.quantity || 0), 0);
   }
 
   static calculatePurchasedProfiles(pkg: PackageLike): number {
