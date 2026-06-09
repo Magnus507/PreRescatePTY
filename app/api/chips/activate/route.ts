@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import {
   ACTIVATABLE_CHIP_STATUSES,
@@ -20,6 +21,19 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id;
+
+  // Rate limit: 5 activation attempts per minute per user
+  const limiter = await rateLimit("chip-activate", userId, {
+    limit: 5,
+    windowMs: 60_000,
+  });
+  if (!limiter.allowed) {
+    return NextResponse.json(
+      { error: "Demasiados intentos de activación. Intenta nuevamente en un minuto." },
+      { status: 429 }
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const parsedBody = chipActivationSchema.safeParse(body);
 

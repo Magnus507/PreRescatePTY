@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 import { generateOrderNumber } from "@/lib/order-number";
 import { orderCreateSchema, validateOrThrow } from "@/lib/validations";
 import { BUSINESS_RULES } from "@/domains/shared/constants";
@@ -11,6 +12,19 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const userId = session.user.id;
+
+  // Rate limit: 10 order creations per minute per user
+  const limiter = await rateLimit("order-create", userId, {
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!limiter.allowed) {
+    return NextResponse.json(
+      { error: "Demasiados pedidos en poco tiempo. Intenta nuevamente en un minuto." },
+      { status: 429 }
+    );
+  }
+
   const user = await prisma.user.findUnique({ where: { id: userId }, include: { profile: true } });
   
   if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 400 });
