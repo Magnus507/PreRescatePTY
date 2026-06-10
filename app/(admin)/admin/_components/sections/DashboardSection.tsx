@@ -4,13 +4,13 @@ import { AdminTab } from "../../_hooks/useAdminManager";
 
 // ─── Reusable Components ────────────────────────────────────────────────────
 
-function AlertCard({ label, value, icon: Icon, color, bgColor, tab, ctaLabel }: {
-  label: string; value: number; icon: React.ElementType; color: string; bgColor: string; tab: AdminTab; ctaLabel: string;
+function AlertCard({ label, value, icon: Icon, color, bgColor, tab, ctaLabel, subtitle, setTab }: {
+  label: string; value: number; icon: React.ElementType; color: string; bgColor: string; tab: AdminTab; ctaLabel: string; subtitle?: string; setTab: (t: AdminTab) => void;
 }) {
   const hasAlert = value > 0;
   return (
     <div
-      onClick={() => {}}
+      onClick={() => setTab(tab)}
       className={`relative p-6 rounded-[2rem] border transition-all duration-300 cursor-pointer group overflow-hidden ${
         hasAlert
           ? `border-${color.replace("text-", "")}/20 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl`
@@ -37,10 +37,11 @@ function AlertCard({ label, value, icon: Icon, color, bgColor, tab, ctaLabel }: 
           {value}
         </p>
         <p className="text-xs font-bold text-slate-500 mt-1">{label}</p>
+        {subtitle && <p className="text-[10px] font-medium text-slate-400 mt-0.5">{subtitle}</p>}
       </div>
       {hasAlert && (
         <button
-          onClick={(e) => { e.stopPropagation(); }}
+          onClick={(e) => { e.stopPropagation(); setTab(tab); }}
           className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
         >
           {ctaLabel} <ArrowRight className="h-3 w-3" />
@@ -164,13 +165,18 @@ export function DashboardSection({
   const mov = stats.movement;
   const p = stats.productivity;
 
+  // Combined attention count: payments under review + pending corporate requests
+  const pendingAttention = comm.paymentsUnderReview + corp.pendingRequests;
+
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
       {/* ─── Header ──────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
-            <LayoutDashboard className="h-8 w-8 text-primary" /> Dashboard de Control
+          <h1 className="text-3xl font-black tracking-tighter">
+            <span className="text-[#dc2626]">Pre</span>{" "}
+            <span className="text-slate-900">Rescue</span>{" "}
+            <span className="text-[#dc2626]">ID</span>
           </h1>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Centro operativo de PreRescue ID</p>
         </div>
@@ -193,24 +199,17 @@ export function DashboardSection({
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
           <AlertCircle className="h-4 w-4" /> Centro de Alertas
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           <AlertCard
             label="Pagos por revisar"
-            value={comm.paymentsUnderReview}
+            value={pendingAttention}
             icon={ShoppingCart}
             color="text-amber-600"
             bgColor="bg-amber-50"
             tab="pedidos"
             ctaLabel="Ir a Pedidos"
-          />
-          <AlertCard
-            label="Solicitudes empresariales"
-            value={corp.pendingRequests}
-            icon={Building2}
-            color="text-blue-600"
-            bgColor="bg-blue-50"
-            tab="empresas"
-            ctaLabel="Ir a Empresas"
+            subtitle="Pagos y solicitudes pendientes"
+            setTab={setTab}
           />
           <AlertCard
             label="Pedidos en producción"
@@ -220,6 +219,7 @@ export function DashboardSection({
             bgColor="bg-violet-50"
             tab="pedidos"
             ctaLabel="Ir a Pedidos"
+            setTab={setTab}
           />
           <AlertCard
             label="Chips disponibles"
@@ -229,6 +229,7 @@ export function DashboardSection({
             bgColor="bg-emerald-50"
             tab="inventory"
             ctaLabel="Ir a Inventario"
+            setTab={setTab}
           />
         </div>
       </div>
