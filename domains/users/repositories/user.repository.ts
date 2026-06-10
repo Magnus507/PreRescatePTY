@@ -80,7 +80,6 @@ export class UserRepository {
               firstName: true,
               lastName: true,
               bloodType: true,
-              nationalId: true,
             }
           },
           consent: {

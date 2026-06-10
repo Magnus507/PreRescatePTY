@@ -23,6 +23,23 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function maskPhone(phone: string | null | undefined) {
+  if (!phone) return "—";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 4) return phone;
+  return "••••" + digits.slice(-4);
+}
+
+function statusLabel(status: string) {
+  switch (status) {
+    case "active": return { text: "Activa", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" };
+    case "blocked": return { text: "Bloqueada", className: "bg-red-500/10 text-red-600 border-red-500/20" };
+    case "suspended": return { text: "Suspendida", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" };
+    case "pending": return { text: "Pendiente", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" };
+    default: return { text: status || "Desconocido", className: "bg-slate-100 text-slate-400 border-slate-200" };
+  }
+}
+
 export function UsersSection({
   users,
   total,
@@ -82,22 +99,22 @@ export function UsersSection({
            <p className="text-xs font-black uppercase tracking-widest opacity-40">Accediendo al directorio...</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-border overflow-hidden shadow-xl shadow-slate-200/40 dark:shadow-none">
+        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-border shadow-xl shadow-slate-200/40 dark:shadow-none">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[900px]">
               <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
                 <tr>
-                  <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Usuario</th>
-                  <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Perfil Médico</th>
-                  <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Activaciones</th>
-                  <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Estado</th>
-                  <th className="px-8 py-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Acciones</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Usuario</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Perfil Médico</th>
+                  <th className="px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Activaciones</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Estado</th>
+                  <th className="px-6 py-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredUsers.map((u: UserAdmin) => (
                   <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all cursor-pointer group" onClick={() => setSelectedUser(u)}>
-                    <td className="px-8 py-6">
+                    <td className="px-6 py-5">
                       <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm border border-indigo-100 dark:border-indigo-500/20 shadow-sm transition-transform group-hover:scale-105">
                           {u.email[0]}
@@ -108,7 +125,7 @@ export function UsersSection({
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-6 py-5">
                       <div className="flex flex-col gap-1.5">
                         <p className="text-xs font-black text-slate-700 dark:text-slate-300 tracking-tight">
                           {(u.profile?.firstName || u.profile?.lastName) 
@@ -116,7 +133,7 @@ export function UsersSection({
                             : <span className="text-slate-400 font-bold italic">Nombre no configurado</span>}
                         </p>
                         <div className="flex items-center gap-2">
-                           <span className="text-[10px] font-bold text-slate-400">{u.phone || "—"}</span>
+                           <span className="text-[10px] font-bold text-slate-400">{maskPhone(u.phone)}</span>
                            {u.profile?.bloodType && (
                              <span className="px-2 py-0.5 bg-red-50 dark:bg-red-500/10 text-red-600 text-[9px] font-black rounded-lg border border-red-100 dark:border-red-500/20">
                                {u.profile.bloodType}
@@ -125,22 +142,23 @@ export function UsersSection({
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6 text-center">
+                    <td className="px-6 py-5 text-center">
                       <div className={`inline-flex flex-col items-center justify-center min-w-[36px] px-3 py-1.5 ${u._count.chips > 0 ? 'bg-indigo-50 border-indigo-100 text-indigo-700' : 'bg-slate-100 border-slate-200 text-slate-400'} border rounded-xl`}>
                         <span className="text-sm font-black">{u._count.chips}</span>
                       </div>
                     </td>
-                    <td className="px-8 py-6">
-                      <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                          u._count.chips > 0 
-                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
-                            : "bg-slate-100 text-slate-400 border-slate-200"
-                        }`}>
-                        {u._count.chips > 0 ? 'Activa' : 'Inactiva'}
-                      </span>
+                    <td className="px-6 py-5">
+                      {(() => {
+                        const s = statusLabel(u.status);
+                        return (
+                          <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${s.className}`}>
+                            {s.text}
+                          </span>
+                        );
+                      })()}
                     </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-5 text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();

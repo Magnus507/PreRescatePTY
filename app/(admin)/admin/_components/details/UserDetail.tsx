@@ -89,12 +89,12 @@ export const UserDetailView: React.FC<UserDetailProps> = ({
                               <Phone className="h-4 w-4 text-slate-300" /> {user.phone || profile?.phone || "No registrado"}
                            </p>
                         </div>
-                        <div className="space-y-1">
-                           <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Cédula / ID / DNI</p>
-                           <p className="font-bold text-slate-900 flex items-center gap-2">
-                              <HeartPulse className="h-4 w-4 text-slate-300" /> {profile?.nationalId || "No registrada"}
-                           </p>
-                        </div>
+                         <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em]">Cédula / ID / DNI</p>
+                            <p className="font-bold text-slate-900 flex items-center gap-2">
+                               <HeartPulse className="h-4 w-4 text-slate-300" /> Cédula no disponible desde esta vista
+                            </p>
+                         </div>
                      </div>
                   </div>
                </div>
