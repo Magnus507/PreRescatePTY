@@ -292,7 +292,7 @@ export async function POST(req: NextRequest) {
             data: {
                 chipId: chip.id,
                 activationCode,
-                expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+                expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 10), // 10 años para chips físicos
             },
         });
 

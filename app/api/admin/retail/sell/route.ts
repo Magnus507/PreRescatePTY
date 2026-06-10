@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
 
       for (const chip of chips) {
         const activationCode = await generateUniqueActivationCode();
-        const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 365 días
+        const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000 * 10); // 10 años para chips físicos
 
         await tx.chipClaimToken.create({
           data: {

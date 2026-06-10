@@ -131,7 +131,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ chipId
   }
 
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000 * 10); // 10 años para chips físicos
   const activationCode = await getUniqueActivationCode();
   const orderNumber = await generateOrderNumber("manual");
 

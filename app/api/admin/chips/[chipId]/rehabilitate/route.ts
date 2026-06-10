@@ -54,7 +54,7 @@ export async function POST(
     }
 
     const newActivationCode = await getUniqueActivationCode();
-    const newExpiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    const newExpiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 10); // 10 años para chips físicos
     const now = new Date();
 
     const oldValues = {

@@ -220,7 +220,7 @@ export async function PATCH(req: NextRequest) {
                   orderId: id,
                   assignedChipIds: normalizedAssignedChipIds,
                   purchasedChips: purchasedChipLimit,
-                  tokenExpiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+                  tokenExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 10), // 10 años para chips físicos
                 });
               });
             } catch (error: unknown) {
