@@ -178,7 +178,7 @@ export function DashboardSection({
             <span className="text-slate-900">Rescue</span>{" "}
             <span className="text-[#dc2626]">ID</span>
           </h1>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Centro operativo de PreRescue ID</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Métricas críticas y monitoreo de salud del ecosistema</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
