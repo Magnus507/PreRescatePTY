@@ -99,7 +99,7 @@ export function UsersSection({
                 <tr>
                   <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Usuario</th>
                   <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Perfil Médico</th>
-                  <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Cuenta</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Capacidad</th>
                   <th className="px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Hardware</th>
                   <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Estado</th>
                   <th className="px-6 py-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Acciones</th>
@@ -140,10 +140,10 @@ export function UsersSection({
                     <td className="px-6 py-5">
                       <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] font-black text-slate-700 dark:text-slate-300">
-                          {u.account?.package?.name || "Sin paquete"}
+                          {u.account?.maxChipsAllocated ?? 0} chips
                         </span>
                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                          {u.account?.accountType || "individual"}
+                          {u._count.chips} usados · {u.account?.accountType || "individual"}
                         </span>
                       </div>
                     </td>
