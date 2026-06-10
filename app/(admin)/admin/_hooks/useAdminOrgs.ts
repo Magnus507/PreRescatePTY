@@ -108,38 +108,6 @@ export function useAdminOrgs() {
     }
   }, []);
 
-  const assignBulkChips = useCallback(async (orgId: string, count: number) => {
-    if (!confirm(`¿Transferir ${count} chips desde el inventario vírgen?`)) return;
-    setCreating(true);
-    try {
-      const res = await orgsService.assignChipsBulk(orgId, count);
-      toast.success(res.message);
-      await loadOrgDetail(orgId);
-      return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error en asignación masiva");
-      return false;
-    } finally {
-      setCreating(false);
-    }
-  }, [loadOrgDetail]);
-
-  const assignChipByShortCode = useCallback(async (orgId: string, shortCode: string) => {
-    if (!shortCode) return;
-    setCreating(true);
-    try {
-      const res = await orgsService.assignChipByShortCode(orgId, shortCode);
-      toast.success(res.message);
-      await loadOrgDetail(orgId);
-      return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al asignar chip");
-      return false;
-    } finally {
-      setCreating(false);
-    }
-  }, [loadOrgDetail]);
-
   const addMember = useCallback(async (orgId: string, memberData: any) => {
     setCreating(true);
     try {
@@ -185,8 +153,6 @@ export function useAdminOrgs() {
     loadPackages,
     createOrg,
     deleteOrg,
-    assignBulkChips,
-    assignChipByShortCode,
     addMember,
     updateOrganization
   };

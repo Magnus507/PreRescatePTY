@@ -18,14 +18,6 @@ export const orgsService = {
     return adminClient.delete<{ message: string }>(`/api/admin/organizations/${id}`);
   },
 
-  async assignChipsBulk(orgId: string, count: number) {
-    return adminClient.post<{ message: string }>(`/api/admin/organizations/${orgId}/assign-bulk`, { count });
-  },
-
-  async assignChipByShortCode(orgId: string, shortCode: string) {
-    return adminClient.post<{ message: string }>(`/api/admin/organizations/${orgId}/assign-chip`, { shortCode });
-  },
-
   async addMember(orgId: string, data: any) {
     return adminClient.post<{ user: UserAdmin }>(`/api/admin/organizations/${orgId}/users`, data);
   },
