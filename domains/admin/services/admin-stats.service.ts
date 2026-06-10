@@ -42,6 +42,32 @@ export interface AdminDashboardStats {
     percentage: number;
   };
   alerts: DashboardAlert[];
+  // ─── Dashboard v2: Centro de Control Ejecutivo ─────────────────────────
+  ecosystem: {
+    usersActive: number;
+    usersBlocked: number;
+    profilesCorporate: number;
+    profilesWithoutChip: number;
+    organizationsTotal: number;
+  };
+  commerce: {
+    paymentsUnderReview: number;
+    ordersProcessing: number;
+    ordersShipped: number;
+    ordersCompleted: number;
+    ordersToday: number;
+    ordersThisMonth: number;
+  };
+  corporate: {
+    organizationsTotal: number;
+    organizationsActive: number;
+    pendingRequests: number;
+    activeMembers: number;
+  };
+  movement: {
+    newUsersToday: number;
+    activationsThisMonth: number;
+  };
 }
 
 export class AdminStatsService {
@@ -49,6 +75,10 @@ export class AdminStatsService {
    * Retrieves all consolidated statistics for the admin overview.
    */
   static async getDashboardStats(): Promise<AdminDashboardStats> {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
     const [
       totalUsers, 
       totalChips, 
@@ -69,6 +99,22 @@ export class AdminStatsService {
       newUsersToday,
       inactiveActivatedChips,
       storageRaw,
+      // ─── Dashboard v2 queries ──────────────────────────────────────────
+      usersActive,
+      usersBlocked,
+      profilesCorporate,
+      profilesWithoutChip,
+      organizationsTotal,
+      paymentsUnderReview,
+      ordersProcessing,
+      ordersShipped,
+      ordersCompleted,
+      ordersToday,
+      ordersThisMonth,
+      organizationsActive,
+      pendingRequests,
+      activeMembers,
+      activationsThisMonth,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.chip.count(),
@@ -109,7 +155,7 @@ export class AdminStatsService {
       }),
       prisma.user.count({
         where: {
-          createdAt: { gte: new Date(new Date().setHours(0,0,0,0)) }
+          createdAt: { gte: startOfToday }
         }
       }),
       prisma.chip.count({
@@ -127,7 +173,30 @@ export class AdminStatsService {
         const errorMessage = err instanceof Error ? err.message : String(err);
         logger.error("Storage query error (likely permission or schema):", errorMessage);
         return [{ total: "0" }];
-      })
+      }),
+      // ─── Dashboard v2: Ecosystem ──────────────────────────────────────
+      prisma.user.count({ where: { status: "active" } }),
+      prisma.user.count({ where: { status: "blocked" } }),
+      prisma.profile.count({ where: { profileType: "corporate" } }),
+      prisma.profile.count({
+        where: {
+          assignedChips: { none: {} }
+        }
+      }),
+      prisma.organization.count(),
+      // ─── Dashboard v2: Commerce ───────────────────────────────────────
+      prisma.order.count({ where: { paymentStatus: "under_review" } }),
+      prisma.order.count({ where: { orderStatus: "processing" } }),
+      prisma.order.count({ where: { orderStatus: "shipped" } }),
+      prisma.order.count({ where: { orderStatus: "completed" } }),
+      prisma.order.count({ where: { createdAt: { gte: startOfToday } } }),
+      prisma.order.count({ where: { createdAt: { gte: startOfMonth } } }),
+      // ─── Dashboard v2: Corporate ──────────────────────────────────────
+      prisma.organization.count({ where: { status: "active" } }),
+      prisma.organizationMember.count({ where: { corporateStatus: "pending_company_review" } }),
+      prisma.organizationMember.count({ where: { corporateStatus: "active" } }),
+      // ─── Dashboard v2: Movement ───────────────────────────────────────
+      prisma.chip.count({ where: { activatedAt: { gte: startOfMonth } } }),
     ]);
 
     const usedBytes = Number(storageRaw[0]?.total || 0);
@@ -164,49 +233,36 @@ export class AdminStatsService {
         totalBytes,
         percentage
       },
-      alerts: [] // We will populate this below
+      alerts: [], // We will populate this below
+      // ─── Dashboard v2: Centro de Control Ejecutivo ────────────────────
+      ecosystem: {
+        usersActive,
+        usersBlocked,
+        profilesCorporate,
+        profilesWithoutChip,
+        organizationsTotal,
+      },
+      commerce: {
+        paymentsUnderReview,
+        ordersProcessing,
+        ordersShipped,
+        ordersCompleted,
+        ordersToday,
+        ordersThisMonth,
+      },
+      corporate: {
+        organizationsTotal,
+        organizationsActive,
+        pendingRequests,
+        activeMembers,
+      },
+      movement: {
+        newUsersToday,
+        activationsThisMonth,
+      },
     };
 
-    // ─── Alert Engine ────────────────────────────────────────────────────────
-    const alerts: DashboardAlert[] = [];
-
-    if (percentage > 80) {
-      alerts.push({
-        id: "storage-limit",
-        type: percentage > 95 ? "critical" : "warning",
-        category: "storage",
-        title: "Almacenamiento Crítico",
-        message: `El sistema ha superado el ${percentage}% de su capacidad (Plan Gratuito). Peligro de interrupción de carga de imágenes.`,
-        actionLabel: "Ver Limpieza",
-        actionUrl: "?tab=governance"
-      });
-    }
-
-    if (pendingOrders > 0) {
-      alerts.push({
-        id: "pending-orders",
-        type: "warning",
-        category: "orders",
-        title: "Pedidos Pendientes",
-        message: `Hay ${pendingOrders} pedidos esperando validación de pago. Los clientes esperan sus códigos.`,
-        actionLabel: "Validar ahora",
-        actionUrl: "?tab=pedidos"
-      });
-    }
-
-    if (inactiveActivatedChips > 0) {
-      alerts.push({
-        id: "orphan-chips",
-        type: "info",
-        category: "hardware",
-        title: "Chips sin Perfil",
-        message: `Hay ${inactiveActivatedChips} chips activados que aún no tienen un perfil médico asociado.`,
-        actionLabel: "Ver Listado",
-        actionUrl: "?tab=chips"
-      });
-    }
-
-    stats.alerts = alerts;
+    // Alert engine removed — alerts are now computed in the DashboardSection UI
     return stats;
   }
 }

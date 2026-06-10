@@ -1,50 +1,112 @@
-import { Activity, Clock, Cpu, LayoutDashboard, Loader2, QrCode, RefreshCw, Scan as ScanIcon, Smartphone, Users, Zap, ShieldCheck, ExternalLink, ChevronRight, Building2, AlertCircle, TrendingUp, HelpCircle, Package, ShoppingCart } from "lucide-react";
+import { Activity, Clock, Cpu, LayoutDashboard, Loader2, RefreshCw, Users, Zap, ShieldCheck, ChevronRight, Building2, AlertCircle, Package, ShoppingCart, CheckCircle2, Eye, ArrowRight, TrendingUp } from "lucide-react";
 import { ScanEvent, UserAdmin, OrganizationAdmin, AdminStats } from "../../_types/admin";
-import { toast } from "sonner";
 import { AdminTab } from "../../_hooks/useAdminManager";
 
-interface StatCardProps {
-  label: string;
-  value: number;
-  icon: React.ElementType;
-  color: string;
-  trend?: string;
-}
+// ─── Reusable Components ────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon: Icon, color, trend }: StatCardProps) {
+function AlertCard({ label, value, icon: Icon, color, bgColor, tab, ctaLabel }: {
+  label: string; value: number; icon: React.ElementType; color: string; bgColor: string; tab: AdminTab; ctaLabel: string;
+}) {
+  const hasAlert = value > 0;
   return (
-    <div className="p-6 rounded-[2rem] border border-border bg-card card-hover group overflow-hidden relative">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-current opacity-[0.03] -mr-12 -mt-12 rounded-full group-hover:scale-110 transition-transform" />
-      <div className="flex items-center justify-between mb-4">
-        <div className={`h-10 w-10 rounded-xl ${color.replace('text-', 'bg-')}/10 flex items-center justify-center`}>
-          <Icon className={`h-5 w-5 ${color}`} />
+    <div
+      onClick={() => {}}
+      className={`relative p-6 rounded-[2rem] border transition-all duration-300 cursor-pointer group overflow-hidden ${
+        hasAlert
+          ? `border-${color.replace("text-", "")}/20 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl`
+          : "border-emerald-200/50 bg-emerald-50/50 dark:bg-emerald-950/20"
+      }`}
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className={`h-12 w-12 rounded-2xl ${bgColor} flex items-center justify-center`}>
+          <Icon className={`h-6 w-6 ${color}`} />
         </div>
-        {trend && (
-           <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-600 px-2 py-1 rounded-lg">
-              +{trend} HOY
-           </span>
+        {hasAlert && (
+          <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest ${bgColor} ${color}`}>
+            Requiere atención
+          </span>
+        )}
+        {!hasAlert && (
+          <span className="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-600">
+            <CheckCircle2 className="h-3 w-3 inline mr-1" />Todo al día
+          </span>
         )}
       </div>
-      <div className="flex flex-col">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">{label}</p>
-        <p className={`text-4xl font-black tracking-tighter ${color}`}>{value.toLocaleString()}</p>
+      <div className="mb-3">
+        <p className={`text-5xl font-black tracking-tighter ${hasAlert ? color : "text-emerald-600"}`}>
+          {value}
+        </p>
+        <p className="text-xs font-bold text-slate-500 mt-1">{label}</p>
+      </div>
+      {hasAlert && (
+        <button
+          onClick={(e) => { e.stopPropagation(); }}
+          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+        >
+          {ctaLabel} <ArrowRight className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function KpiCard({ label, value, icon: Icon, color, bgColor, sublabel }: {
+  label: string; value: number; icon: React.ElementType; color: string; bgColor: string; sublabel?: string;
+}) {
+  return (
+    <div className="p-5 rounded-[1.5rem] border border-border bg-white dark:bg-slate-900 shadow-sm">
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`h-8 w-8 rounded-xl ${bgColor} flex items-center justify-center`}>
+          <Icon className={`h-4 w-4 ${color}`} />
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+      </div>
+      <p className={`text-3xl font-black tracking-tighter ${color}`}>{value.toLocaleString()}</p>
+      {sublabel && <p className="text-[10px] font-medium text-slate-400 mt-1">{sublabel}</p>}
+    </div>
+  );
+}
+
+function HardwareBar({ totalChips, activated, inventory, sold, suspended }: {
+  totalChips: number; activated: number; inventory: number; sold: number; suspended: number;
+}) {
+  const safeTotal = totalChips || 1;
+  return (
+    <div className="p-8 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-border shadow-sm">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Distribución de Hardware</p>
+          <p className="text-3xl font-black tracking-tighter">{totalChips.toLocaleString()} <span className="text-sm font-bold text-slate-400">Chips Totales</span></p>
+        </div>
+      </div>
+      <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full flex overflow-hidden mb-4">
+        <div className="bg-emerald-500 h-full transition-all" style={{ width: `${(activated / safeTotal) * 100}%` }} title={`Activos: ${activated}`} />
+        <div className="bg-amber-500 h-full transition-all" style={{ width: `${(sold / safeTotal) * 100}%` }} title={`Vendidos: ${sold}`} />
+        <div className="bg-blue-500 h-full transition-all" style={{ width: `${(inventory / safeTotal) * 100}%` }} title={`Inventario: ${inventory}`} />
+        <div className="bg-red-500 h-full transition-all" style={{ width: `${(suspended / safeTotal) * 100}%` }} title={`Suspendidos: ${suspended}`} />
+      </div>
+      <div className="flex flex-wrap items-center gap-5 text-[10px] font-black uppercase tracking-widest">
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"/><span className="text-emerald-700">{activated} Activos</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"/><span className="text-amber-700">{sold} Vendidos</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"/><span className="text-blue-700">{inventory} Inventario</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"/><span className="text-red-700">{suspended} Suspendidos</span></div>
       </div>
     </div>
   );
 }
 
-function BarRow({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+function QuickLink({ label, icon: Icon, tab, setTab }: { label: string; icon: React.ElementType; tab: AdminTab; setTab: (t: AdminTab) => void }) {
   return (
-    <div>
-      <div className="flex justify-between text-[11px] font-bold mb-1.5 px-0.5">
-        <span className="text-slate-600 dark:text-slate-400">{label}</span>
-        <span className="font-black text-slate-900 dark:text-white">{value} <span className="text-slate-400 opacity-60 font-medium">({pct}%)</span></span>
+    <button
+      onClick={() => setTab(tab)}
+      className="flex items-center gap-3 p-4 rounded-[1.5rem] border border-border bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:border-primary/30 transition-all group"
+    >
+      <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+        <Icon className="h-5 w-5 text-slate-500 group-hover:text-primary transition-colors" />
       </div>
-      <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
-        <div className={`h-full rounded-full transition-all duration-1000 shadow-sm ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
+      <span className="text-xs font-black uppercase tracking-widest text-slate-600 group-hover:text-slate-900 transition-colors">{label}</span>
+      <ChevronRight className="h-4 w-4 text-slate-300 ml-auto group-hover:text-primary group-hover:translate-x-1 transition-all" />
+    </button>
   );
 }
 
@@ -52,6 +114,8 @@ function formatDate(d: string) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" });
 }
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 
 interface DashboardSectionProps {
   stats: AdminStats | null;
@@ -94,127 +158,182 @@ export function DashboardSection({
     );
   }
 
-  const p = stats.productivity || { pendingOrders: 0, usersWithoutChips: 0, newUsersToday: 0, inactiveActivatedChips: 0 };
+  const eco = stats.ecosystem;
+  const comm = stats.commerce;
+  const corp = stats.corporate;
+  const mov = stats.movement;
+  const p = stats.productivity;
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
-      {/* Storage Alert Banner */}
-      {stats.storageUsage && stats.storageUsage.percentage >= 80 && (
-        <div className="p-6 rounded-[2rem] bg-red-600 text-white flex items-center justify-between shadow-xl shadow-red-200 animate-pulse">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center">
-              <AlertCircle className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-black uppercase tracking-tighter italic">Alerta de Almacenamiento Crítica</p>
-              <p className="text-xs font-bold text-red-100 italic">El sistema ha alcanzado el {stats.storageUsage.percentage}% de su capacidad de archivos en Supabase.</p>
-            </div>
-          </div>
-          <div className="text-right">
-             <p className="text-2xl font-black">{stats.storageUsage.percentage}%</p>
-             <p className="text-[10px] uppercase font-black tracking-widest text-red-100">Plan Gratuito Limite</p>
+      {/* ─── Header ──────────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+            <LayoutDashboard className="h-8 w-8 text-primary" /> Dashboard de Control
+          </h1>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Centro operativo de PreRescue ID</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+            <span className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Operativo</span>
+          </span>
+          <button
+            onClick={loadData}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-border text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
+          >
+            <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} /> Actualizar
+          </button>
+        </div>
+      </div>
+
+      {/* ─── A. Centro de Alertas ────────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" /> Centro de Alertas
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <AlertCard
+            label="Pagos por revisar"
+            value={comm.paymentsUnderReview}
+            icon={ShoppingCart}
+            color="text-amber-600"
+            bgColor="bg-amber-50"
+            tab="pedidos"
+            ctaLabel="Ir a Pedidos"
+          />
+          <AlertCard
+            label="Solicitudes empresariales"
+            value={corp.pendingRequests}
+            icon={Building2}
+            color="text-blue-600"
+            bgColor="bg-blue-50"
+            tab="empresas"
+            ctaLabel="Ir a Empresas"
+          />
+          <AlertCard
+            label="Pedidos en producción"
+            value={comm.ordersProcessing}
+            icon={Package}
+            color="text-violet-600"
+            bgColor="bg-violet-50"
+            tab="pedidos"
+            ctaLabel="Ir a Pedidos"
+          />
+          <AlertCard
+            label="Chips disponibles"
+            value={stats.chipsByStatus.inventory}
+            icon={Cpu}
+            color="text-emerald-600"
+            bgColor="bg-emerald-50"
+            tab="inventory"
+            ctaLabel="Ir a Inventario"
+          />
+        </div>
+      </div>
+
+      {/* ─── B. Salud del Ecosistema ─────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
+          <Users className="h-4 w-4" /> Salud del Ecosistema
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+          <KpiCard label="Usuarios totales" value={stats.totalUsers} icon={Users} color="text-indigo-600" bgColor="bg-indigo-50"
+            sublabel={`${eco.usersActive} activos / ${eco.usersBlocked} bloqueados`} />
+          <KpiCard label="Perfiles registrados" value={stats.totalProfiles} icon={ShieldCheck} color="text-purple-600" bgColor="bg-purple-50"
+            sublabel={`${eco.profilesCorporate} corporativos`} />
+          <KpiCard label="Chips activos" value={stats.chipsByStatus.activated} icon={Cpu} color="text-emerald-600" bgColor="bg-emerald-50"
+            sublabel={`${eco.profilesWithoutChip} perfiles sin chip`} />
+          <KpiCard label="Empresas registradas" value={eco.organizationsTotal} icon={Building2} color="text-blue-600" bgColor="bg-blue-50"
+            sublabel={`${corp.organizationsActive} activas`} />
+        </div>
+      </div>
+
+      {/* ─── C. Hardware ─────────────────────────────────────────────── */}
+      <HardwareBar
+        totalChips={stats.totalChips}
+        activated={stats.chipsByStatus.activated}
+        inventory={stats.chipsByStatus.inventory}
+        sold={stats.chipsByStatus.sold}
+        suspended={stats.chipsByStatus.suspended}
+      />
+
+      {/* ─── D. Operación Comercial ──────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
+          <Activity className="h-4 w-4" /> Operación Comercial
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
+          <KpiCard label="Pendientes" value={p.pendingOrders} icon={Clock} color="text-amber-600" bgColor="bg-amber-50" />
+          <KpiCard label="En revisión" value={comm.paymentsUnderReview} icon={Eye} color="text-blue-600" bgColor="bg-blue-50" />
+          <KpiCard label="En producción" value={comm.ordersProcessing} icon={Package} color="text-violet-600" bgColor="bg-violet-50" />
+          <KpiCard label="Enviados" value={comm.ordersShipped} icon={Zap} color="text-cyan-600" bgColor="bg-cyan-50" />
+          <KpiCard label="Completados" value={comm.ordersCompleted} icon={CheckCircle2} color="text-emerald-600" bgColor="bg-emerald-50" />
+        </div>
+      </div>
+
+      {/* ─── E. Corporativo ──────────────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
+          <Building2 className="h-4 w-4" /> Corporativo
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+          <KpiCard label="Empresas registradas" value={corp.organizationsTotal} icon={Building2} color="text-blue-600" bgColor="bg-blue-50" />
+          <KpiCard label="Empresas activas" value={corp.organizationsActive} icon={CheckCircle2} color="text-emerald-600" bgColor="bg-emerald-50" />
+          <KpiCard label="Solicitudes pendientes" value={corp.pendingRequests} icon={AlertCircle} color="text-amber-600" bgColor="bg-amber-50" />
+          <KpiCard label="Colaboradores activos" value={corp.activeMembers} icon={Users} color="text-violet-600" bgColor="bg-violet-50" />
+        </div>
+      </div>
+
+      {/* ─── F. Movimiento ───────────────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" /> Movimiento
+          <span className="text-[9px] font-medium text-slate-300 ml-2">(sin monetización aún — FASE 2)</span>
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+          <KpiCard label="Pedidos hoy" value={comm.ordersToday} icon={ShoppingCart} color="text-indigo-600" bgColor="bg-indigo-50" />
+          <KpiCard label="Pedidos este mes" value={comm.ordersThisMonth} icon={Package} color="text-purple-600" bgColor="bg-purple-50" />
+          <KpiCard label="Usuarios nuevos hoy" value={mov.newUsersToday} icon={Users} color="text-emerald-600" bgColor="bg-emerald-50" />
+          <KpiCard label="Activaciones este mes" value={mov.activationsThisMonth} icon={Zap} color="text-amber-600" bgColor="bg-amber-50" />
+        </div>
+      </div>
+
+      {/* ─── G. Accesos Directos ─────────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5">Accesos Directos</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <QuickLink label="Pedidos" icon={ShoppingCart} tab="pedidos" setTab={setTab} />
+          <QuickLink label="Inventario" icon={Package} tab="inventory" setTab={setTab} />
+          <QuickLink label="Empresas" icon={Building2} tab="empresas" setTab={setTab} />
+          <QuickLink label="Productos" icon={Zap} tab="tienda" setTab={setTab} />
+          <QuickLink label="Usuarios" icon={Users} tab="users" setTab={setTab} />
+        </div>
+      </div>
+
+      {/* ─── H. Nuevos Miembros Recientes ────────────────────────────── */}
+      {recentUsers && recentUsers.length > 0 && (
+        <div className="p-8 rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 shadow-sm">
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center justify-between">
+            <span>Nuevos Miembros</span>
+            <span className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {recentUsers.map((u) => (
+              <div key={u.id} onClick={() => { setSelectedUser(u); loadUsers(); }} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-transparent hover:border-primary/30 transition-all cursor-pointer group flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center font-black text-xs text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                  {u.email[0].toUpperCase()}
+                </div>
+                <div className="overflow-hidden min-w-0">
+                  <p className="text-xs font-black truncate">{u.email}</p>
+                  <p className="text-[10px] font-medium text-slate-400">{formatDate(u.createdAt)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-6">
-        <StatCard label="Usuarios Totales" value={stats.totalUsers} icon={Users} color="text-indigo-600" trend={p.newUsersToday > 0 ? p.newUsersToday.toString() : undefined} />
-        <StatCard label="Chips Activos (En Red)" value={stats.chipsByStatus.activated} icon={Cpu} color="text-emerald-500" />
-      </div>
-
-      {/* Hardware Distribution Bar */}
-      <div className="p-8 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-border shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
-         <div className="w-full md:w-1/3">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Distribución de Hardware</p>
-            <p className="text-2xl font-black tracking-tighter">{stats.totalChips.toLocaleString()} <span className="text-sm font-bold text-slate-400">Chips Totales</span></p>
-         </div>
-         <div className="w-full md:w-2/3 flex flex-col gap-3">
-            <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full flex overflow-hidden">
-               <div className="bg-emerald-500 h-full" style={{ width: `${(stats.chipsByStatus.activated / stats.totalChips) * 100}%` }} title="Activos" />
-               <div className="bg-amber-500 h-full" style={{ width: `${(stats.chipsByStatus.sold / stats.totalChips) * 100}%` }} title="Vendidos" />
-               <div className="bg-blue-500 h-full" style={{ width: `${(stats.chipsByStatus.inventory / stats.totalChips) * 100}%` }} title="Inventario" />
-               <div className="bg-destructive h-full" style={{ width: `${(stats.chipsByStatus.suspended / stats.totalChips) * 100}%` }} title="Suspendidos" />
-            </div>
-            <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"/> <span className="text-emerald-700">{stats.chipsByStatus.activated} Activos</span></div>
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"/> <span className="text-amber-700">{stats.chipsByStatus.sold} Vendidos</span></div>
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"/> <span className="text-blue-700">{stats.chipsByStatus.inventory} Inventario</span></div>
-            </div>
-         </div>
-      </div>
-
-      {/* Main Analysis Area */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        
-        {/* Productivity & Pending Tasks (Center/Left) */}
-        <div className="space-y-10">
-          {/* TASKS CARD */}
-          <div className="p-10 rounded-[3rem] bg-slate-900 text-white relative overflow-hidden shadow-2xl card-hover">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl -mr-16 -mt-16" />
-             <h3 className="text-xl font-black uppercase tracking-tighter italic mb-8 flex items-center gap-3">
-                <AlertCircle className="h-6 w-6 text-primary" /> Pendientes Críticos
-             </h3>
-             
-             <div className="space-y-6">
-                <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 group hover:bg-white/10 transition-colors cursor-pointer" onClick={() => setTab("pedidos")}>
-                   <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
-                         <ShoppingCart className="h-5 w-5" />
-                      </div>
-                      <div>
-                         <p className="text-xs font-black uppercase tracking-widest text-slate-300">Pagos por Validar</p>
-                         <p className="text-[10px] text-slate-500 font-bold">Órdenes CHIPS+ esperando aprobación</p>
-                      </div>
-                   </div>
-                   <span className="text-3xl font-black text-primary italic">{p.pendingOrders}</span>
-                </div>
-
-                <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 group hover:bg-white/10 transition-colors">
-                   <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500">
-                         <Activity className="h-5 w-5" />
-                      </div>
-                      <div>
-                         <p className="text-xs font-black uppercase tracking-widest text-slate-300">Chips Sin Perfil</p>
-                         <p className="text-[10px] text-slate-500 font-bold">Activamos, pero no han llenado datos</p>
-                      </div>
-                   </div>
-                   <span className="text-3xl font-black text-amber-500 italic">{p.inactiveActivatedChips}</span>
-                </div>
-             </div>
-          </div>
-        </div>
-
-        {/* Right Sidebar: Quick Stats & New Users */}
-        <div className="space-y-10">
-          
-          {/* USERS LIST CARD */}
-          <div className="p-8 rounded-[3rem] border border-border bg-white dark:bg-slate-900 shadow-xl overflow-hidden relative card-hover">
-             <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12" />
-             <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-8 px-2 flex items-center justify-between">
-                <span>Nuevos Miembros</span>
-                <span className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-             </h3>
-             <div className="space-y-4">
-               {recentUsers?.map((u) => (
-                 <div key={u.id} onClick={() => { setSelectedUser(u); loadUsers(); }} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-transparent hover:border-primary/30 hover:bg-gradient-to-r hover:from-white hover:to-slate-50 dark:hover:from-slate-800 dark:hover:to-slate-800/80 transition-all duration-300 cursor-pointer group flex items-center justify-between hover:shadow-glow-sm">
-                   <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center font-black text-xs text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                        {u.email[0].toUpperCase()}
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="text-xs font-black truncate w-32">{u.email}</p>
-                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">{formatDate(u.createdAt)}</p>
-                      </div>
-                   </div>
-                   <ChevronRight className="h-4 w-4 text-slate-200 group-hover:text-primary transition-all" />
-                 </div>
-               ))}
-             </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

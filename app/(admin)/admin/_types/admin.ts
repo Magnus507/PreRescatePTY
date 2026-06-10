@@ -148,6 +148,32 @@ export interface AdminStats {
     percentage: number;
   };
   alerts: SystemAlert[];
+  // ─── Dashboard v2: Centro de Control Ejecutivo ─────────────────────────
+  ecosystem: {
+    usersActive: number;
+    usersBlocked: number;
+    profilesCorporate: number;
+    profilesWithoutChip: number;
+    organizationsTotal: number;
+  };
+  commerce: {
+    paymentsUnderReview: number;
+    ordersProcessing: number;
+    ordersShipped: number;
+    ordersCompleted: number;
+    ordersToday: number;
+    ordersThisMonth: number;
+  };
+  corporate: {
+    organizationsTotal: number;
+    organizationsActive: number;
+    pendingRequests: number;
+    activeMembers: number;
+  };
+  movement: {
+    newUsersToday: number;
+    activationsThisMonth: number;
+  };
 }
 
 export interface SystemAlert {
