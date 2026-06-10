@@ -16,17 +16,37 @@ class ApiClient {
         },
       });
 
-      const data = await res.json();
+      // Read body as text first to avoid crash on empty/invalid JSON
+      const text = await res.text();
+      let data: any = null;
+
+      // Attempt JSON parse only if body is non-empty and content-type is JSON
+      if (text.length > 0) {
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            // Body is not valid JSON — keep data as null
+            data = null;
+          }
+        }
+      }
 
       if (!res.ok) {
         throw new ApiError(
-          data.error || "Error inesperado en el servidor",
+          data?.error || data?.message || res.statusText || "Error inesperado en el servidor",
           res.status,
-          data.details || null
+          data?.details || null
         );
       }
 
-      return data;
+      // If response is OK but body was empty, return null cast to T
+      if (data === null) {
+        return null as unknown as T;
+      }
+
+      return data as T;
     } catch (error) {
       if (error instanceof ApiError) throw error;
       
