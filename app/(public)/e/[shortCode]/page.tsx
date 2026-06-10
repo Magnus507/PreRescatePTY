@@ -7,7 +7,8 @@ import Link from "next/link";
 import { 
   Heart, Phone, AlertTriangle, Droplets, Pill, 
   Activity, User, MessageCircle, Loader2, Calendar,
-  ShieldCheck, MapPin, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick
+  ShieldCheck, MapPin, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick,
+  Brain, Footprints, Baby
 } from "lucide-react";
 import { IndustrialProfileView } from "./_components/IndustrialProfileView";
 import { formatEmergencyLocation } from "@/domains/shared/services/emergency-location";
@@ -25,6 +26,16 @@ interface EmergencyProfile {
   medications: string;
   photoUrl: string | null;
   isVerifiedAdmin?: boolean;
+  isMinor?: boolean;
+  vulnerabilityStatus?: {
+    hasCognitiveImpairment: boolean | null;
+    hasWanderingRisk: boolean | null;
+    isNonVerbal: boolean | null;
+    communicationAssistance: string | null;
+  } | null;
+  safeReturn?: {
+    instructions: string | null;
+  } | null;
   emergencyContacts: {
     fullName: string;
     relationship: string;
@@ -79,6 +90,78 @@ function normalizeSexLabel(sex: string) {
   return "No reportado";
 }
 
+/** v2: Special assistance badges shown below the patient name */
+function SpecialAssistanceBadges({ profile }: { profile: EmergencyProfile }) {
+  const vs = profile.vulnerabilityStatus;
+  const badges: { label: string; color: string; icon: ReactNode }[] = [];
+
+  if (profile.isMinor) {
+    badges.push({ label: "Menor de edad", color: "bg-blue-100 text-blue-700 border-blue-200", icon: <Baby className="h-3.5 w-3.5" /> });
+  }
+  if (vs?.hasCognitiveImpairment) {
+    badges.push({ label: "Persona vulnerable", color: "bg-amber-100 text-amber-700 border-amber-200", icon: <Brain className="h-3.5 w-3.5" /> });
+  }
+  if (vs?.hasWanderingRisk) {
+    badges.push({ label: "Riesgo de desorientación", color: "bg-orange-100 text-orange-700 border-orange-200", icon: <Footprints className="h-3.5 w-3.5" /> });
+  }
+  if (vs?.isNonVerbal) {
+    badges.push({ label: "Comunicación asistida", color: "bg-violet-100 text-violet-700 border-violet-200", icon: <MessageCircle className="h-3.5 w-3.5" /> });
+  }
+
+  if (badges.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-3">
+      {badges.map((b, i) => (
+        <span key={i} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-black uppercase tracking-widest ${b.color}`}>
+          {b.icon}
+          {b.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** v2: Safe return instructions card */
+function SafeReturnCard({ safeReturn }: { safeReturn: EmergencyProfile["safeReturn"] }) {
+  if (!safeReturn?.instructions) return null;
+  return (
+    <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-teal-200 shadow-xl shadow-teal-100/50 space-y-4">
+      <div className="flex items-center gap-4">
+        <div className="h-12 w-12 bg-teal-50 rounded-2xl flex items-center justify-center border border-teal-100">
+          <Footprints className="h-7 w-7 text-teal-600" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Retorno Seguro</h2>
+          <p className="text-xs text-teal-600 font-bold uppercase tracking-widest mt-1">Instrucciones de apoyo</p>
+        </div>
+      </div>
+      <p className="text-sm text-slate-500 font-medium leading-relaxed">
+        Esta persona puede requerir apoyo para contactar a su familia o regresar a un lugar seguro.
+      </p>
+      <div className="p-4 rounded-2xl bg-teal-50 border border-teal-200">
+        <p className="text-sm font-semibold text-teal-900 leading-relaxed whitespace-pre-wrap">{safeReturn.instructions}</p>
+      </div>
+    </div>
+  );
+}
+
+/** v2: Communication assistance card (paramedic view) */
+function CommunicationAssistanceCard({ vulnerabilityStatus }: { vulnerabilityStatus: EmergencyProfile["vulnerabilityStatus"] }) {
+  if (!vulnerabilityStatus?.isNonVerbal || !vulnerabilityStatus.communicationAssistance) return null;
+  return (
+    <div className="bg-white border border-violet-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 bg-violet-50 rounded-xl flex items-center justify-center border border-violet-100">
+          <MessageCircle className="h-5 w-5 text-violet-600" />
+        </div>
+        <h3 className="text-sm font-black uppercase tracking-widest text-violet-700">Instrucciones de comunicación</h3>
+      </div>
+      <p className="text-sm font-semibold text-slate-900 leading-relaxed">{vulnerabilityStatus.communicationAssistance}</p>
+    </div>
+  );
+}
+
 /** Reusable profile hero card shared by citizen + paramedic views */
 function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfile; isParamedic?: boolean }) {
   const hasAllergies = profile.allergies && profile.allergies.trim() && !profile.allergies.toLowerCase().includes("no report");
@@ -123,12 +206,20 @@ function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfil
             <p className="text-sm font-black text-slate-400 mb-4 mt-1 uppercase tracking-widest">ALIAS: {profile.displayName}</p>
           )}
 
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3">
+          {/* v2: Special assistance badges */}
+          <SpecialAssistanceBadges profile={profile} />
+
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 mt-3">
             <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-[#DA1A21] text-white rounded-xl md:rounded-2xl shadow-lg shadow-red-200">
               <Droplets className="h-4 w-4 md:h-5 md:w-5 fill-white" />
               <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SANGRE: {profile.bloodType}</span>
             </div>
-            {profile.age !== null && (
+            {profile.isMinor ? (
+              <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-blue-600 text-white rounded-xl md:rounded-2xl shadow-lg shadow-blue-200">
+                <Baby className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Menor de edad</span>
+              </div>
+            ) : profile.age !== null && (
               <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-900 text-white rounded-xl md:rounded-2xl shadow-lg shadow-slate-200">
                 <Calendar className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Edad: {profile.age}</span>
@@ -467,6 +558,7 @@ export default function EmergencyPage() {
         {!isParamedic && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-1000">
             <PatientMedicalCard profile={profile} />
+            <SafeReturnCard safeReturn={profile.safeReturn} />
             <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 space-y-8">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100"><AlertTriangle className="h-7 w-7 text-amber-500" /></div>
@@ -588,6 +680,12 @@ export default function EmergencyPage() {
           </div>
         </div>
         )}
+
+        {/* v2: Communication assistance (paramedic view) */}
+        {isParamedic && <CommunicationAssistanceCard vulnerabilityStatus={profile.vulnerabilityStatus} />}
+
+        {/* v2: Safe return (paramedic view) */}
+        {isParamedic && <SafeReturnCard safeReturn={profile.safeReturn} />}
 
         {/* Medical extras — paramedic view (keeps original format) */}
         {isParamedic && hasExtras && (

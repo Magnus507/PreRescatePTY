@@ -5,7 +5,7 @@ import { BLOOD_TYPES } from "@/lib/constants";
 import {
   User, Activity, Heart, ShieldAlert, Pill, FileText,
   Shield, Stethoscope, ChevronLeft, ChevronRight,
-  Eye, AlertCircle, Info,
+  Eye, AlertCircle, Info, Brain, Footprints, MessageCircle,
 } from "lucide-react";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 import React from "react";
@@ -36,6 +36,15 @@ interface ProfileFormProps {
     showPrimaryDoctorPublic: boolean;
     showPrimaryDoctorPhonePublic: boolean;
     showAdditionalNotesPublic: boolean;
+    // v2 special assistance
+    hasCognitiveImpairment?: boolean;
+    hasWanderingRisk?: boolean;
+    isNonVerbal?: boolean;
+    communicationAssistance?: string;
+    safeReturnInstructions?: string;
+    showVulnerabilityStatusPublic?: boolean;
+    showCommunicationStatusPublic?: boolean;
+    showSafeReturnPublic?: boolean;
   };
   onChange: (field: string, value: string | boolean) => void;
   disabled?: boolean;
@@ -50,7 +59,8 @@ const STEPS = [
   { id: 1, title: "Identidad", description: "Tu nombre y datos de contacto", icon: User },
   { id: 2, title: "Alerta médica", description: "Información crítica para emergencias", icon: Heart },
   { id: 3, title: "Seguro y médico", description: "Información adicional para tu protección", icon: Shield },
-  { id: 4, title: "Privacidad", description: "Controla qué ven al escanear tu chip", icon: Eye },
+  { id: 4, title: "Asistencia", description: "Información de vulnerabilidad y comunicación", icon: Brain },
+  { id: 5, title: "Privacidad", description: "Controla qué ven al escanear tu chip", icon: Eye },
 ] as const;
 
 // ──────────────────────────────────────────────
@@ -208,6 +218,37 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas adicionales" value={form.additionalNotes} onChange={(v: string) => update("additionalNotes", v)} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
   );
 
+  const renderSpecialAssistanceFields = () => (
+    <div className="space-y-3">
+      <ToggleField label="Deterioro cognitivo / Alzheimer / demencia" checked={form.hasCognitiveImpairment ?? false} onChange={(v) => update("hasCognitiveImpairment", v)} />
+      <ToggleField label="Riesgo de desorientación o extravío" checked={form.hasWanderingRisk ?? false} onChange={(v) => update("hasWanderingRisk", v)} />
+      <ToggleField label="Persona no verbal o con comunicación asistida" checked={form.isNonVerbal ?? false} onChange={(v) => update("isNonVerbal", v)} />
+      {form.isNonVerbal && (
+        <TextAreaField
+          icon={<MessageCircle className="h-4 w-4" />}
+          label="Instrucciones de comunicación"
+          value={form.communicationAssistance || ""}
+          onChange={(v: string) => update("communicationAssistance", v)}
+          placeholder="Ej. Usa pictogramas, entiende frases cortas, comunicarse con calma..."
+          color="text-violet-600"
+        />
+      )}
+    </div>
+  );
+
+  const renderSafeReturnFields = () => (
+    <div className="space-y-3">
+      <TextAreaField
+        icon={<Footprints className="h-4 w-4" />}
+        label="Instrucciones de retorno seguro"
+        value={form.safeReturnInstructions || ""}
+        onChange={(v: string) => update("safeReturnInstructions", v)}
+        placeholder="Ej. Si la persona está desorientada, llamar primero a su contacto principal. No dejarla sola..."
+        color="text-teal-600"
+      />
+    </div>
+  );
+
   const renderPrivacyToggles = () => (
     <div className="space-y-3">
       <div className="flex items-start gap-2 text-[11px] font-semibold text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2.5 mb-2">
@@ -222,6 +263,18 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         <ToggleField label="Mostrar médico tratante" checked={form.showPrimaryDoctorPublic} onChange={(v) => update("showPrimaryDoctorPublic", v)} />
         <ToggleField label="Mostrar teléfono del médico" checked={form.showPrimaryDoctorPhonePublic} onChange={(v) => update("showPrimaryDoctorPhonePublic", v)} />
         <ToggleField label="Mostrar notas adicionales" checked={form.showAdditionalNotesPublic} onChange={(v) => update("showAdditionalNotesPublic", v)} />
+      </div>
+
+      <div className="flex items-start gap-2 text-[11px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2.5 mt-4">
+        <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+        <span>
+          Estos datos pueden ser sensibles. Solo actívalos si deseas que aparezcan cuando alguien escanee el QR/NFC.
+        </span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <ToggleField label="Mostrar alerta de persona vulnerable en la ficha pública" checked={form.showVulnerabilityStatusPublic ?? false} onChange={(v) => update("showVulnerabilityStatusPublic", v)} />
+        <ToggleField label="Mostrar información de comunicación asistida en la ficha pública" checked={form.showCommunicationStatusPublic ?? false} onChange={(v) => update("showCommunicationStatusPublic", v)} />
+        <ToggleField label="Mostrar instrucciones de retorno seguro en la ficha pública" checked={form.showSafeReturnPublic ?? false} onChange={(v) => update("showSafeReturnPublic", v)} />
       </div>
     </div>
   );
@@ -251,14 +304,9 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
   );
 
   // ── WIZARD MODE ──
-  // The root element has data-wizard-active so the adjacent sibling CSS selector
-  // can hide the parent's footer buttons (Cancelar/Guardar) that sit after this component.
 
   const renderWizard = () => (
     <div className={`space-y-5 ${disabled ? "opacity-60 pointer-events-none" : ""}`} data-wizard-active={isWizard ? "true" : undefined}>
-      {/* Hide parent's submit buttons via adjacent sibling selector.
-          The parent always renders <MedicalProfileForm /> then <div class="flex gap-6 pt-8 border-t border-border/50"> with Cancel/Guardar.
-          This CSS hides that sibling when wizard mode is active (mobile). */}
       {isWizard && <style>{`
         [data-wizard-active="true"] + div.flex.gap-6 {
           display: none !important;
@@ -267,7 +315,6 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
       {/* Step indicator + progress bar */}
       <div className="space-y-3">
-        {/* Step circles */}
         <div className="flex items-center justify-between">
           {STEPS.map((s, idx) => (
             <React.Fragment key={s.id}>
@@ -343,8 +390,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         );
       })()}
 
-      {/* Info banner (shown on steps 1-3) */}
-      {step <= 3 && (
+      {/* Info banner (shown on steps 1-4) */}
+      {step <= 4 && (
         <div className="flex items-start gap-2 text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl px-3 py-2.5">
           <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>
@@ -412,6 +459,29 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         )}
 
         {step === 4 && (
+          <div className="space-y-4">
+            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
+              <SectionHeader
+                icon={<Brain className="h-5 w-5" />}
+                iconBg="bg-violet-500/10 text-violet-600"
+                title="Asistencia especial"
+                description="Información opcional para ayudar en situaciones de desorientación, vulnerabilidad o comunicación asistida."
+              />
+              {renderSpecialAssistanceFields()}
+            </div>
+            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
+              <SectionHeader
+                icon={<Footprints className="h-5 w-5" />}
+                iconBg="bg-teal-500/10 text-teal-600"
+                title="Retorno seguro"
+                description="Instrucciones para situaciones de desorientación."
+              />
+              {renderSafeReturnFields()}
+            </div>
+          </div>
+        )}
+
+        {step === 5 && (
           <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
             <SectionHeader
               icon={<Eye className="h-5 w-5" />}
@@ -454,7 +524,6 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
             <button
               type="button"
               onClick={(e) => {
-                // Submit the parent form programmatically — only on explicit click
                 const form = (e.target as HTMLElement).closest("form");
                 if (form) form.requestSubmit();
               }}
@@ -468,7 +537,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     </div>
   );
 
-  // ── GRID MODE (identical to original) ──
+  // ── GRID MODE ──
 
   const renderGrid = () => (
     <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 ${disabled ? "opacity-60 pointer-events-none" : ""}`}>
@@ -543,6 +612,33 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
           {renderAdditionalNotesField()}
         </div>
 
+        {/* Special Assistance Section */}
+        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center">
+              <Brain className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-base md:text-lg tracking-tight text-violet-700">Asistencia especial</h3>
+              <p className="text-xs text-muted-foreground">Información opcional para vulnerabilidad o comunicación asistida.</p>
+            </div>
+          </div>
+          {renderSpecialAssistanceFields()}
+        </div>
+
+        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
+              <Footprints className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-base md:text-lg tracking-tight text-teal-700">Retorno seguro</h3>
+              <p className="text-xs text-muted-foreground">Instrucciones para situaciones de desorientación.</p>
+            </div>
+          </div>
+          {renderSafeReturnFields()}
+        </div>
+
         <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
           <h3 className="font-black text-base tracking-tight">Privacidad y visibilidad</h3>
           <p className="text-xs text-muted-foreground font-medium">
@@ -564,7 +660,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 }
 
 // ──────────────────────────────────────────────
-// INTERNAL COMPONENTS (unchanged)
+// INTERNAL COMPONENTS
 // ──────────────────────────────────────────────
 
 function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (val: boolean) => void }) {

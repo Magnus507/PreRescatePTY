@@ -56,6 +56,15 @@ interface FamilyProfile {
   showPrimaryDoctorPublic: boolean;
   showPrimaryDoctorPhonePublic: boolean;
   showAdditionalNotesPublic: boolean;
+  // v2 special assistance
+  hasCognitiveImpairment: boolean;
+  hasWanderingRisk: boolean;
+  isNonVerbal: boolean;
+  communicationAssistance: string | null;
+  safeReturnInstructions: string | null;
+  showVulnerabilityStatusPublic: boolean;
+  showCommunicationStatusPublic: boolean;
+  showSafeReturnPublic: boolean;
   assignedChips: AssignedChip[];
   profileType?: string;
 }
@@ -83,6 +92,15 @@ const emptyForm = {
   showPrimaryDoctorPublic: false,
   showPrimaryDoctorPhonePublic: false,
   showAdditionalNotesPublic: false,
+  // v2 special assistance
+  hasCognitiveImpairment: false,
+  hasWanderingRisk: false,
+  isNonVerbal: false,
+  communicationAssistance: "",
+  safeReturnInstructions: "",
+  showVulnerabilityStatusPublic: false,
+  showCommunicationStatusPublic: false,
+  showSafeReturnPublic: false,
 };
 
 const emptyContactForm = {
@@ -202,6 +220,15 @@ export default function FamiliaPage() {
       showPrimaryDoctorPublic: !!profile.showPrimaryDoctorPublic,
       showPrimaryDoctorPhonePublic: !!profile.showPrimaryDoctorPhonePublic,
       showAdditionalNotesPublic: !!profile.showAdditionalNotesPublic,
+      // v2 special assistance
+      hasCognitiveImpairment: !!profile.hasCognitiveImpairment,
+      hasWanderingRisk: !!profile.hasWanderingRisk,
+      isNonVerbal: !!profile.isNonVerbal,
+      communicationAssistance: profile.communicationAssistance || "",
+      safeReturnInstructions: profile.safeReturnInstructions || "",
+      showVulnerabilityStatusPublic: !!profile.showVulnerabilityStatusPublic,
+      showCommunicationStatusPublic: !!profile.showCommunicationStatusPublic,
+      showSafeReturnPublic: !!profile.showSafeReturnPublic,
     });
     setEditError("");
   }
