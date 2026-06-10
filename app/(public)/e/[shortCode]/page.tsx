@@ -207,6 +207,7 @@ export default function EmergencyPage() {
   const [loading, setLoading] = useState(true);
   const [isParamedic, setIsParamedic] = useState<boolean | null>(null);
   const [scanLocation, setScanLocation] = useState("");
+  const [whatsappUrls, setWhatsappUrls] = useState<Record<number, string>>({});
   const [scanTime] = useState(new Date().toLocaleString("es-PA", { 
     timeZone: "America/Panama",
     hour: '2-digit', 
@@ -272,6 +273,60 @@ export default function EmergencyPage() {
 
     load();
   }, [shortCode, normalizedSource]);
+
+  // Recompute WhatsApp URLs when scanLocation or profile updates
+  useEffect(() => {
+    if (!profile) return;
+    const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
+    const publicProfileUrl = `${window.location.origin}/e/${shortCode}`;
+    const locInfo = formatEmergencyLocation(scanLocation);
+    const urls: Record<number, string> = {};
+    profile.emergencyContacts.forEach((contact, idx) => {
+      const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
+      let message: string;
+      if (locInfo.mapsUrl) {
+        message = [
+          `Hola ${contact.fullName}, ${personName} podría necesitar ayuda.`,
+          `Su ficha PreRescue ID fue escaneada recientemente.`,
+          ``,
+          `Ubicación aproximada:`,
+          locInfo.mapsUrl,
+          ``,
+          `Ficha PreRescue ID:`,
+          publicProfileUrl,
+          ``,
+          `Por favor intenta contactarle o verifica si necesita asistencia.`,
+        ].join("\n");
+      } else if (scanLocation) {
+        message = [
+          `Hola ${contact.fullName}, ${personName} podría necesitar ayuda.`,
+          `Su ficha PreRescue ID fue escaneada recientemente.`,
+          ``,
+          `Ubicación aproximada:`,
+          scanLocation,
+          ``,
+          `Ficha PreRescue ID:`,
+          publicProfileUrl,
+          ``,
+          `Por favor intenta contactarle o verifica si necesita asistencia.`,
+        ].join("\n");
+      } else {
+        message = [
+          `Hola ${contact.fullName}, ${personName} podría necesitar ayuda.`,
+          `Su ficha PreRescue ID fue escaneada recientemente.`,
+          ``,
+          `No se pudo obtener ubicación exacta.`,
+          ``,
+          `Ficha PreRescue ID:`,
+          publicProfileUrl,
+          ``,
+          `Por favor intenta contactarle o verifica si necesita asistencia.`,
+        ].join("\n");
+      }
+      urls[idx] = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
+    });
+    setWhatsappUrls(urls);
+  }, [scanLocation, profile, shortCode]);
 
   if (loading) {
     return (
@@ -504,13 +559,7 @@ export default function EmergencyPage() {
               {profile.emergencyContacts.length > 0 ? (
                 profile.emergencyContacts.map((contact, idx) => {
                   const contactPhone = sanitizeTelPhone(contact.phone);
-                  const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
-                  const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
-                  const locInfo = formatEmergencyLocation(scanLocation);
-                  const whatsappMessage = locInfo.text
-                    ? `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente.\n\n${locInfo.text}\n\nPor favor intenta contactarle o verifica si necesita asistencia.`
-                    : `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente. Por favor intenta contactarle o verifica si necesita asistencia.`;
-                  const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+                  const whatsappUrl = whatsappUrls[idx] || "";
                   return (
                     <div key={idx} className="p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8 shadow-sm">
                       <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row w-full md:w-auto">
@@ -581,13 +630,7 @@ export default function EmergencyPage() {
               <div className="grid grid-cols-1 gap-6">
                 {profile.emergencyContacts.map((contact, idx) => {
                   const contactPhone = sanitizeTelPhone(contact.phone);
-                  const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
-                  const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
-                  const locInfo = formatEmergencyLocation(scanLocation);
-                  const whatsappMessage = locInfo.text
-                    ? `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente.\n\n${locInfo.text}\n\nPor favor intenta contactarle o verifica si necesita asistencia.`
-                    : `Hola ${contact.fullName}, ${personName} podría necesitar ayuda. Su ficha PreRescue ID fue escaneada recientemente. Por favor intenta contactarle o verifica si necesita asistencia.`;
-                  const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+                  const whatsappUrl = whatsappUrls[idx] || "";
                   return (
                     <div key={idx} className="p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8 shadow-sm">
                       <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row w-full md:w-auto">
