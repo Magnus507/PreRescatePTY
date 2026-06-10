@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { decrypt } from "@/lib/encryption";
 
 export class UserRepository {
   /**
@@ -89,6 +90,17 @@ export class UserRepository {
       }),
       prisma.user.count({ where }),
     ]);
+
+    // Decrypt sensitive profile fields for admin display
+    users.forEach(u => {
+      if (u.profile?.bloodType) {
+        try {
+          u.profile.bloodType = decrypt(u.profile.bloodType);
+        } catch {
+          u.profile.bloodType = "Pendiente";
+        }
+      }
+    });
 
     return { users, total };
   }

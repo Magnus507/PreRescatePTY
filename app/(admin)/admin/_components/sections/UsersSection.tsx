@@ -23,13 +23,6 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function maskPhone(phone: string | null | undefined) {
-  if (!phone) return "—";
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 4) return phone;
-  return "••••" + digits.slice(-4);
-}
-
 function statusLabel(status: string) {
   switch (status) {
     case "active": return { text: "Activa", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" };
@@ -101,12 +94,13 @@ export function UsersSection({
       ) : (
         <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-border shadow-xl shadow-slate-200/40 dark:shadow-none">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[900px]">
+            <table className="w-full text-sm min-w-[1050px]">
               <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Usuario</th>
                   <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Perfil Médico</th>
-                  <th className="px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Activaciones</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Cuenta</th>
+                  <th className="px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Hardware</th>
                   <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Estado</th>
                   <th className="px-6 py-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Acciones</th>
                 </tr>
@@ -133,13 +127,24 @@ export function UsersSection({
                             : <span className="text-slate-400 font-bold italic">Nombre no configurado</span>}
                         </p>
                         <div className="flex items-center gap-2">
-                           <span className="text-[10px] font-bold text-slate-400">{maskPhone(u.phone)}</span>
-                           {u.profile?.bloodType && (
+                           {u.profile?.bloodType ? (
                              <span className="px-2 py-0.5 bg-red-50 dark:bg-red-500/10 text-red-600 text-[9px] font-black rounded-lg border border-red-100 dark:border-red-500/20">
                                {u.profile.bloodType}
                              </span>
+                           ) : (
+                             <span className="text-[10px] font-bold text-slate-400 italic">Sin tipo</span>
                            )}
                         </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-black text-slate-700 dark:text-slate-300">
+                          {u.account?.package?.name || "Sin paquete"}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                          {u.account?.accountType || "individual"}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-5 text-center">
