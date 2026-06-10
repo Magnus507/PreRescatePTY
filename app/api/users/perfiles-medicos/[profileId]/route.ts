@@ -87,6 +87,15 @@ export async function PATCH(
     showPrimaryDoctorPublic,
     showPrimaryDoctorPhonePublic,
     showAdditionalNotesPublic,
+    // v2 special assistance
+    hasCognitiveImpairment,
+    hasWanderingRisk,
+    isNonVerbal,
+    communicationAssistance,
+    safeReturnInstructions,
+    showVulnerabilityStatusPublic,
+    showCommunicationStatusPublic,
+    showSafeReturnPublic,
   } = safeBody;
 
   // Parse birthDate string to Date (schema now uses DateTime)
@@ -119,6 +128,14 @@ export async function PATCH(
     ...(showPrimaryDoctorPublic !== undefined && { showPrimaryDoctorPublic }),
     ...(showPrimaryDoctorPhonePublic !== undefined && { showPrimaryDoctorPhonePublic }),
     ...(showAdditionalNotesPublic !== undefined && { showAdditionalNotesPublic }),
+    ...(hasCognitiveImpairment !== undefined && { hasCognitiveImpairment }),
+    ...(hasWanderingRisk !== undefined && { hasWanderingRisk }),
+    ...(isNonVerbal !== undefined && { isNonVerbal }),
+    ...(communicationAssistance !== undefined && { communicationAssistance }),
+    ...(safeReturnInstructions !== undefined && { safeReturnInstructions }),
+    ...(showVulnerabilityStatusPublic !== undefined && { showVulnerabilityStatusPublic }),
+    ...(showCommunicationStatusPublic !== undefined && { showCommunicationStatusPublic }),
+    ...(showSafeReturnPublic !== undefined && { showSafeReturnPublic }),
   });
 
   // Sync phone number to User table if this profile is the main user's profile

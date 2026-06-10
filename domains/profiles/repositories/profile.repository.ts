@@ -23,6 +23,8 @@ export class ProfileRepository {
       insuranceEmergencyPhone: decrypt(profile.insuranceEmergencyPhone || ""),
       primaryDoctorName: decrypt(profile.primaryDoctorName || ""),
       primaryDoctorPhone: decrypt(profile.primaryDoctorPhone || ""),
+      communicationAssistance: decrypt(profile.communicationAssistance || ""),
+      safeReturnInstructions: decrypt(profile.safeReturnInstructions || ""),
     };
   }
 
@@ -102,6 +104,15 @@ export class ProfileRepository {
     showPrimaryDoctorPublic?: boolean;
     showPrimaryDoctorPhonePublic?: boolean;
     showAdditionalNotesPublic?: boolean;
+    // v2 special assistance
+    hasCognitiveImpairment?: boolean;
+    hasWanderingRisk?: boolean;
+    isNonVerbal?: boolean;
+    communicationAssistance?: string;
+    safeReturnInstructions?: string;
+    showVulnerabilityStatusPublic?: boolean;
+    showCommunicationStatusPublic?: boolean;
+    showSafeReturnPublic?: boolean;
   }) {
     const profile = await prisma.profile.create({
       data: {
@@ -119,12 +130,20 @@ export class ProfileRepository {
         insuranceEmergencyPhone: encrypt(data.insuranceEmergencyPhone || ""),
         primaryDoctorName: encrypt(data.primaryDoctorName || ""),
         primaryDoctorPhone: encrypt(data.primaryDoctorPhone || ""),
+        communicationAssistance: encrypt(data.communicationAssistance || ""),
+        safeReturnInstructions: encrypt(data.safeReturnInstructions || ""),
         isInsured: data.isInsured ?? false,
         showInsuranceProviderPublic: data.showInsuranceProviderPublic ?? false,
         showPreferredHospitalPublic: data.showPreferredHospitalPublic ?? false,
         showPrimaryDoctorPublic: data.showPrimaryDoctorPublic ?? false,
         showPrimaryDoctorPhonePublic: data.showPrimaryDoctorPhonePublic ?? false,
         showAdditionalNotesPublic: data.showAdditionalNotesPublic ?? false,
+        hasCognitiveImpairment: data.hasCognitiveImpairment ?? false,
+        hasWanderingRisk: data.hasWanderingRisk ?? false,
+        isNonVerbal: data.isNonVerbal ?? false,
+        showVulnerabilityStatusPublic: data.showVulnerabilityStatusPublic ?? false,
+        showCommunicationStatusPublic: data.showCommunicationStatusPublic ?? false,
+        showSafeReturnPublic: data.showSafeReturnPublic ?? false,
         userId: null,
       },
     });
@@ -184,6 +203,8 @@ export class ProfileRepository {
     if (data.insuranceEmergencyPhone !== undefined) updateData.insuranceEmergencyPhone = encrypt(data.insuranceEmergencyPhone || "");
     if (data.primaryDoctorName !== undefined) updateData.primaryDoctorName = encrypt(data.primaryDoctorName || "");
     if (data.primaryDoctorPhone !== undefined) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
+    if (data.communicationAssistance !== undefined) updateData.communicationAssistance = encrypt(data.communicationAssistance || "");
+    if (data.safeReturnInstructions !== undefined) updateData.safeReturnInstructions = encrypt(data.safeReturnInstructions || "");
 
     const profile = await prisma.profile.update({
       where: { id },
@@ -214,12 +235,20 @@ export class ProfileRepository {
       insuranceEmergencyPhone: encrypt(data.insuranceEmergencyPhone || ""),
       primaryDoctorName: encrypt(data.primaryDoctorName || ""),
       primaryDoctorPhone: encrypt(data.primaryDoctorPhone || ""),
+      communicationAssistance: encrypt(data.communicationAssistance || ""),
+      safeReturnInstructions: encrypt(data.safeReturnInstructions || ""),
       isInsured: data.isInsured ?? false,
       showInsuranceProviderPublic: data.showInsuranceProviderPublic ?? false,
       showPreferredHospitalPublic: data.showPreferredHospitalPublic ?? false,
       showPrimaryDoctorPublic: data.showPrimaryDoctorPublic ?? false,
       showPrimaryDoctorPhonePublic: data.showPrimaryDoctorPhonePublic ?? false,
       showAdditionalNotesPublic: data.showAdditionalNotesPublic ?? false,
+      hasCognitiveImpairment: data.hasCognitiveImpairment ?? false,
+      hasWanderingRisk: data.hasWanderingRisk ?? false,
+      isNonVerbal: data.isNonVerbal ?? false,
+      showVulnerabilityStatusPublic: data.showVulnerabilityStatusPublic ?? false,
+      showCommunicationStatusPublic: data.showCommunicationStatusPublic ?? false,
+      showSafeReturnPublic: data.showSafeReturnPublic ?? false,
       displayNamePublic: data.displayNamePublic,
       birthDate: data.birthDate,
       sex: data.sex,
@@ -247,6 +276,8 @@ export class ProfileRepository {
     if (data.insuranceEmergencyPhone !== undefined) updateData.insuranceEmergencyPhone = encrypt(data.insuranceEmergencyPhone || "");
     if (data.primaryDoctorName !== undefined) updateData.primaryDoctorName = encrypt(data.primaryDoctorName || "");
     if (data.primaryDoctorPhone !== undefined) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
+    if (data.communicationAssistance !== undefined) updateData.communicationAssistance = encrypt(data.communicationAssistance || "");
+    if (data.safeReturnInstructions !== undefined) updateData.safeReturnInstructions = encrypt(data.safeReturnInstructions || "");
 
     const profile = await prisma.profile.upsert({
       where: { userId },

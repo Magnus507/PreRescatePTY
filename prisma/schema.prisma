@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_URL")
 }
 
 model Product {
@@ -138,6 +138,17 @@ model Profile {
   showPrimaryDoctorPublic      Boolean         @default(false)
   showPrimaryDoctorPhonePublic Boolean         @default(false)
   showAdditionalNotesPublic    Boolean         @default(false)
+
+  // === ASISTENCIA ESPECIAL v2 ===
+  hasCognitiveImpairment           Boolean   @default(false)
+  hasWanderingRisk                 Boolean   @default(false)
+  isNonVerbal                      Boolean   @default(false)
+  communicationAssistance          String?
+  safeReturnInstructions           String?
+  showVulnerabilityStatusPublic    Boolean   @default(false)
+  showCommunicationStatusPublic    Boolean   @default(false)
+  showSafeReturnPublic             Boolean   @default(false)
+
   phone                   String?
   nationalId              String?              @default("")
   address                 String?              @db.Text

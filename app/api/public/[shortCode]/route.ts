@@ -218,13 +218,22 @@ export async function GET(
     const demoShortCode = await ConfigRepository.get("demo_profile_shortcode");
     const isDemo = demoShortCode === shortCode || shortCode === "44R6DBNQ" || shortCode === "DEMO-ADMIN-VIP";
 
+    // Calculate isMinor from birthDate (never stored in DB)
+    const calculatedAge = calculateAge(profile.birthDate);
+    const isMinor = calculatedAge !== null && calculatedAge < 18;
+
+    // Decrypt v2 fields
+    const decryptedCommunicationAssistance = decrypt(profile.communicationAssistance || "");
+    const decryptedSafeReturnInstructions = decrypt(profile.safeReturnInstructions || "");
+
     // Build public-safe response (NO email, NO birthdate, NO internal IDs)
     const publicProfile = {
       firstName: profile.firstName,
       lastName: profile.lastName,
       displayName: profile.displayNamePublic || `${profile.firstName} ${profile.lastName.charAt(0)}.`,
       sex: profile.sex || "No reportado",
-      age: calculateAge(profile.birthDate),
+      age: isMinor ? null : calculatedAge, // Hide exact age for minors
+      isMinor, // Always computed, never stored
       profileType: profile.profileType,
       bloodType: decryptedBloodType,
       allergies: decryptedAllergies || "No reportadas",
@@ -258,6 +267,20 @@ export async function GET(
         primaryDoctorPhone: profile.showPrimaryDoctorPhonePublic ? (decryptedPrimaryDoctorPhone || null) : null,
         emergencyInstructions: profile.showAdditionalNotesPublic ? (decryptedAdditionalNotes || null) : null,
       },
+
+      // v2 — Vulnerability status (only shown based on privacy toggles)
+      // Corporate profiles are excluded from these fields
+      ...(profile.profileType !== "corporate" && {
+        vulnerabilityStatus: profile.showVulnerabilityStatusPublic ? {
+          hasCognitiveImpairment: profile.hasCognitiveImpairment,
+          hasWanderingRisk: profile.hasWanderingRisk,
+          isNonVerbal: profile.showCommunicationStatusPublic ? profile.isNonVerbal : null,
+          communicationAssistance: profile.showCommunicationStatusPublic ? (decryptedCommunicationAssistance || null) : null,
+        } : null,
+        safeReturn: profile.showSafeReturnPublic ? {
+          instructions: decryptedSafeReturnInstructions || null,
+        } : null,
+      }),
     };
 
     return publicJson(req, { profile: publicProfile });

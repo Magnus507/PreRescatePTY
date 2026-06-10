@@ -85,6 +85,17 @@ export const profileUpdateSchema = z.object({
   showPrimaryDoctorPublic: z.boolean().optional(),
   showPrimaryDoctorPhonePublic: z.boolean().optional(),
   showAdditionalNotesPublic: z.boolean().optional(),
+
+  // v2 — Asistencia especial
+  hasCognitiveImpairment: z.boolean().optional(),
+  hasWanderingRisk: z.boolean().optional(),
+  isNonVerbal: z.boolean().optional(),
+  communicationAssistance: z.string().max(500).optional().nullable(),
+  safeReturnInstructions: z.string().max(1000).optional().nullable(),
+  showVulnerabilityStatusPublic: z.boolean().optional(),
+  showCommunicationStatusPublic: z.boolean().optional(),
+  showSafeReturnPublic: z.boolean().optional(),
+
   phone: z.string().max(20).optional().nullable(),
   nationalId: z.string().max(50).optional().nullable(),
   address: z.string().max(500).optional().nullable(),
