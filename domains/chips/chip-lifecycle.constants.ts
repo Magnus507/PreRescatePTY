@@ -1,5 +1,6 @@
 export const CHIP_STATUS = {
   INVENTORY: "inventory",
+  CONSIGNED: "consigned",    // ← NUEVO: en punto de venta externo, no vendido
   SOLD: "sold",
   ACTIVATED: "activated",
   SUSPENDED: "suspended",
@@ -16,6 +17,7 @@ export const CHIP_SERVICE_STATUS = {
 
 export const ACTIVATABLE_CHIP_STATUSES = [
   CHIP_STATUS.INVENTORY,
+  CHIP_STATUS.CONSIGNED,     // ← NUEVO: puede activarse desde punto de venta
   CHIP_STATUS.SOLD,
 ] as const;
 
@@ -30,6 +32,7 @@ export const PUBLIC_ACTIVE_CHIP_STATUSES = [
 
 export const UNAVAILABLE_INVENTORY_STATUSES = [
   CHIP_STATUS.SOLD,
+  CHIP_STATUS.CONSIGNED,     // ← NUEVO: no disponible en bodega
   CHIP_STATUS.ACTIVATED,
   CHIP_STATUS.SUSPENDED,
   CHIP_STATUS.DAMAGED,

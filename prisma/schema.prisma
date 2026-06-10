@@ -247,12 +247,31 @@ model Chip {
   owner             User?            @relation(fields: [ownerUserId], references: [id])
   assignedProfile   Profile?         @relation(fields: [assignedProfileId], references: [id])
   account           Account?         @relation(fields: [accountId], references: [id])
+  pointOfSaleId     String?
+  consignedAt       DateTime?
   orderItems        OrderItem[]      @relation("OrderItemChip")
+  pointOfSale       PointOfSale?     @relation(fields: [pointOfSaleId], references: [id], onDelete: SetNull)
 
   @@index([accountId]) // Dashboard: count active chips per account
   @@index([ownerUserId]) // Activation: find chips by owner
   @@index([status]) // Cron: filter chips by status for expiry job
   @@index([serviceEndDate]) // Cron: filter chips near expiry
+  @@index([pointOfSaleId]) // Consignment: stock by point of sale
+}
+
+model PointOfSale {
+  id          String   @id @default(cuid())
+  name        String
+  address     String?
+  contactName String?
+  contactPhone String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  chips Chip[]
+
+  @@index([isActive])
 }
 
 model Organization {
