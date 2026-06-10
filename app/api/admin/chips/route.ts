@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
   const serviceStatus = searchParams.get("serviceStatus");
   const view = searchParams.get("view");
   const search = searchParams.get("search");
+  const pointOfSaleId = searchParams.get("pointOfSaleId");
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
   const now = new Date();
@@ -83,6 +84,12 @@ export async function GET(req: NextRequest) {
     ];
   } else if (view === "damaged") {
     where.status = { in: ["damaged", "lost"] };
+  } else if (view === "pointOfSale") {
+    where.status = "consigned";
+  }
+
+  if (pointOfSaleId) {
+    where.pointOfSaleId = pointOfSaleId;
   }
 
   if (status) {
@@ -131,6 +138,9 @@ export async function GET(req: NextRequest) {
               take: 1
             }
           }
+        },
+        pointOfSale: {
+          select: { id: true, name: true },
         },
         claimTokens: {
           select: {
@@ -182,6 +192,14 @@ export async function GET(req: NextRequest) {
     return {
       ...chip,
       activationCode: latestToken?.activationCode || null,
+      pointOfSaleId: chip.pointOfSaleId,
+      consignedAt: chip.consignedAt,
+      pointOfSale: chip.pointOfSale
+        ? {
+            id: chip.pointOfSale.id,
+            name: chip.pointOfSale.name,
+          }
+        : null,
       latestToken: latestToken
         ? {
             id: latestToken.id,

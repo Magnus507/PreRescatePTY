@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Circle, Copy, Cpu, Loader2, Package, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ChipAdmin } from "../../_types/admin";
-import { chipsService } from "../../_services/domains/chips.service";
+import { chipsService, PointOfSaleOption } from "../../_services/domains/chips.service";
 import { usersService, AdminUserProfileOption } from "../../_services/domains/users.service";
 import { UserAdmin } from "../../_types/admin";
 import { CreateBatchSection } from "./CreateBatchSection";
 
-type InventoryView = "available" | "reserved" | "activated" | "returned" | "damaged";
+type InventoryView = "available" | "reserved" | "activated" | "returned" | "damaged" | "pointOfSale";
 
 interface InventorySectionProps {
   chips: ChipAdmin[];
@@ -51,6 +51,7 @@ interface InventoryItem extends ChipAdmin {
 
 const TABS: { key: InventoryView; label: string }[] = [
   { key: "available", label: "Disponibles" },
+  { key: "pointOfSale", label: "En punto de venta" },
   { key: "reserved", label: "Vendidos / Reservados" },
   { key: "activated", label: "Activados" },
   { key: "returned", label: "Revertidos / Devueltos" },
@@ -72,6 +73,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<"list" | "create">("list");
   const [activeView, setActiveView] = useState<InventoryView>("available");
   const [physicalFilter, setPhysicalFilter] = useState<"all" | "physical" | "digital">("all");
+  const [pointOfSaleFilter, setPointOfSaleFilter] = useState("");
   const [query, setQuery] = useState("");
   const [loadingView, setLoadingView] = useState(false);
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -81,7 +83,13 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     activated: 0,
     returned: 0,
     damaged: 0,
+    pointOfSale: 0,
   });
+  const [selectedChipIds, setSelectedChipIds] = useState<string[]>([]);
+  const [pointsOfSale, setPointsOfSale] = useState<PointOfSaleOption[]>([]);
+  const [consignModalOpen, setConsignModalOpen] = useState(false);
+  const [selectedPointOfSaleId, setSelectedPointOfSaleId] = useState("");
+  const [consignmentSubmitting, setConsignmentSubmitting] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignSubmitting, setAssignSubmitting] = useState(false);
   const [assignChip, setAssignChip] = useState<InventoryItem | null>(null);
@@ -109,8 +117,10 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
         limit: 100,
         search: search || undefined,
         view,
+        pointOfSaleId: view === "pointOfSale" ? pointOfSaleFilter || undefined : undefined,
       });
       setItems((res.items || res.chips || []) as InventoryItem[]);
+      setSelectedChipIds([]);
     } catch {
       toast.error("Error al cargar inventario");
     } finally {
@@ -136,7 +146,14 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   useEffect(() => {
     if (activeSubTab !== "list") return;
     loadView(activeView, query);
-  }, [activeView, activeSubTab]);
+  }, [activeView, activeSubTab, pointOfSaleFilter]);
+
+  useEffect(() => {
+    if (activeSubTab !== "list" || isPrintRole) return;
+    chipsService.getPointsOfSale()
+      .then((res) => setPointsOfSale(res.points || []))
+      .catch(() => toast.error("No se pudieron cargar los puntos de venta"));
+  }, [activeSubTab, isPrintRole]);
 
   useEffect(() => {
     if (activeSubTab === "list") {
@@ -162,6 +179,101 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     }
     return result;
   }, [items, query, physicalFilter, activeView]);
+
+  const selectedChips = useMemo(
+    () => items.filter((chip) => selectedChipIds.includes(chip.id)),
+    [items, selectedChipIds]
+  );
+
+  const toggleSelected = (chip: InventoryItem) => {
+    if (activeView === "available" && (!chip.isPhysical || chip.status !== "inventory")) {
+      toast.error("Solo se pueden seleccionar chips físicos disponibles");
+      return;
+    }
+    if (activeView === "pointOfSale" && chip.status !== "consigned") {
+      toast.error("Solo se pueden seleccionar chips consignados");
+      return;
+    }
+    setSelectedChipIds((current) =>
+      current.includes(chip.id) ? current.filter((id) => id !== chip.id) : [...current, chip.id]
+    );
+  };
+
+  const validateSinglePointOfSale = () => {
+    const pointIds = [...new Set(selectedChips.map((chip) => chip.pointOfSaleId).filter(Boolean))];
+    if (selectedChips.length === 0) {
+      toast.error("Selecciona al menos un chip");
+      return null;
+    }
+    if (pointIds.length !== 1) {
+      toast.error("Todos los chips seleccionados deben pertenecer al mismo punto de venta");
+      return null;
+    }
+    return pointIds[0] as string;
+  };
+
+  const handleOpenConsignModal = () => {
+    if (selectedChips.length === 0) return toast.error("Selecciona al menos un chip físico disponible");
+    if (selectedChips.some((chip) => !chip.isPhysical || chip.status !== "inventory")) {
+      return toast.error("No se permite consignar chips digitales o no disponibles");
+    }
+    setSelectedPointOfSaleId("");
+    setConsignModalOpen(true);
+  };
+
+  const handleConsignSelected = async () => {
+    if (!selectedPointOfSaleId) return toast.error("Selecciona un punto de venta existente");
+    setConsignmentSubmitting(true);
+    try {
+      const res = await chipsService.consignToPointOfSale(selectedPointOfSaleId, selectedChipIds);
+      toast.success(`${res.consigned} chip(s) consignado(s) a ${res.pointOfSale.name}`);
+      setConsignModalOpen(false);
+      setSelectedChipIds([]);
+      await loadView(activeView, query);
+      await loadSummary();
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudieron consignar los chips");
+    } finally {
+      setConsignmentSubmitting(false);
+    }
+  };
+
+  const handleReturnSelected = async () => {
+    const pointId = validateSinglePointOfSale();
+    if (!pointId) return;
+    if (!window.confirm("¿Devolver los chips seleccionados al inventario central?")) return;
+    setConsignmentSubmitting(true);
+    try {
+      const res = await chipsService.returnFromPointOfSale(pointId, selectedChipIds);
+      toast.success(`${res.returned} chip(s) devuelto(s) desde ${res.pointOfSale.name}`);
+      setSelectedChipIds([]);
+      await loadView(activeView, query);
+      await loadSummary();
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudieron devolver los chips");
+    } finally {
+      setConsignmentSubmitting(false);
+    }
+  };
+
+  const handleMarkLostSelected = async () => {
+    const pointId = validateSinglePointOfSale();
+    if (!pointId) return;
+    const reason = window.prompt("Motivo opcional para marcar como perdidos:") || undefined;
+    if (!window.confirm("Esta acción marcará los chips seleccionados como perdidos. ¿Continuar?")) return;
+    setConsignmentSubmitting(true);
+    try {
+      const res = await chipsService.markLostFromPointOfSale(pointId, selectedChipIds, reason);
+      toast.success(`${res.lost} chip(s) marcado(s) como perdidos`);
+      setSelectedChipIds([]);
+      await loadView(activeView, query);
+      await loadSummary();
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudieron marcar como perdidos");
+    } finally {
+      setConsignmentSubmitting(false);
+    }
+  };
 
   const copy = (value?: string | null) => {
     if (!value) return;
@@ -403,8 +515,9 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
             ))}
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
             <Card label="Disponibles" value={summary.available} tone="blue" />
+            <Card label="Punto de venta" value={summary.pointOfSale} tone="purple" />
             <Card label="Vendidos/Reservados" value={summary.reserved} tone="amber" />
             <Card label="Activados" value={summary.activated} tone="emerald" />
             <Card label="Revertidos (est.)" value={summary.returned} tone="indigo" />
@@ -431,6 +544,57 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
               <RefreshCw className={`h-4 w-4 ${loadingView ? "animate-spin text-primary" : "text-slate-400"}`} />
             </button>
           </div>
+
+          {!isPrintRole && (activeView === "available" || activeView === "pointOfSale") && (
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                {activeView === "pointOfSale" && (
+                  <select
+                    value={pointOfSaleFilter}
+                    onChange={(e) => setPointOfSaleFilter(e.target.value)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold outline-none"
+                  >
+                    <option value="">Todos los puntos existentes</option>
+                    {pointsOfSale.map((point) => (
+                      <option key={point.id} value={point.id}>{point.name}</option>
+                    ))}
+                  </select>
+                )}
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                  {selectedChipIds.length} seleccionado(s)
+                </span>
+              </div>
+
+              {activeView === "available" && (
+                <button
+                  onClick={handleOpenConsignModal}
+                  disabled={selectedChipIds.length === 0 || consignmentSubmitting}
+                  className="px-4 py-2.5 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Consignar seleccionados
+                </button>
+              )}
+
+              {activeView === "pointOfSale" && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleReturnSelected}
+                    disabled={selectedChipIds.length === 0 || consignmentSubmitting}
+                    className="px-4 py-2.5 rounded-xl bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Devolver seleccionados
+                  </button>
+                  <button
+                    onClick={handleMarkLostSelected}
+                    disabled={selectedChipIds.length === 0 || consignmentSubmitting}
+                    className="px-4 py-2.5 rounded-xl bg-red-100 text-red-700 text-[10px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Marcar perdidos
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Subtabs Físicos / Digitales solo en vista Disponibles */}
           {activeView === "available" && (
@@ -505,11 +669,23 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
 
                   {activeView === "available" && (
                     <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
+                      {!isPrintRole && <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Sel.</th>}
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Etiqueta interna</th>
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">ID público</th>
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Serial</th>
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Código activación</th>
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Lote</th>
+                      <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
+                    </tr>
+                  )}
+
+                  {activeView === "pointOfSale" && (
+                    <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-border">
+                      {!isPrintRole && <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Sel.</th>}
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">ID público</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Serial</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Punto de venta</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Consignado</th>
                       <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
                     </tr>
                   )}
@@ -591,6 +767,18 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
 
                       {activeView === "available" && (
                         <>
+                          {!isPrintRole && (
+                            <td className="px-6 py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedChipIds.includes(c.id)}
+                                disabled={!c.isPhysical || c.status !== "inventory"}
+                                onChange={() => toggleSelected(c)}
+                                className="h-4 w-4 rounded border-slate-300"
+                                title={!c.isPhysical ? "No se permite consignar digitales" : "Seleccionar"}
+                              />
+                            </td>
+                          )}
                           <td className="px-6 py-4">
                             <input
                               type="text"
@@ -638,6 +826,35 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                                 <Trash2 className="h-4 w-4" />
                               </button>
                               {/* PRE-LAUNCH: Botón Asignar directo oculto */}
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {activeView === "pointOfSale" && (
+                        <>
+                          {!isPrintRole && (
+                            <td className="px-6 py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedChipIds.includes(c.id)}
+                                onChange={() => toggleSelected(c)}
+                                className="h-4 w-4 rounded border-slate-300"
+                              />
+                            </td>
+                          )}
+                          <td className="px-6 py-4">
+                            <div className="font-black text-slate-900 dark:text-white">{c.shortCode}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs font-mono text-slate-500">#{c.serialPublic}</td>
+                          <td className="px-6 py-4 text-xs font-bold">{c.pointOfSale?.name || "—"}</td>
+                          <td className="px-6 py-4 text-xs">{formatDateTime(c.consignedAt)}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => copy(c.shortCode)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar ID público">
+                                <Copy className="h-4 w-4" />
+                              </button>
+                              <button onClick={() => loadChipDetail(c.id)} className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-primary/10 text-primary">Ver</button>
                             </div>
                           </td>
                         </>
@@ -710,6 +927,42 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
             </div>
           </div>
 
+          {consignModalOpen && !isPrintRole && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-border p-6 shadow-2xl">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">Consignar chips</h3>
+                <p className="mt-1 text-xs text-slate-500 font-medium">
+                  Selecciona un punto de venta existente para consignar {selectedChipIds.length} chip(s) físico(s).
+                </p>
+                <select
+                  value={selectedPointOfSaleId}
+                  onChange={(e) => setSelectedPointOfSaleId(e.target.value)}
+                  className="mt-4 w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold outline-none"
+                >
+                  <option value="">Seleccionar punto existente</option>
+                  {pointsOfSale.map((point) => (
+                    <option key={point.id} value={point.id}>{point.name}</option>
+                  ))}
+                </select>
+                <div className="mt-6 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setConsignModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleConsignSelected}
+                    disabled={!selectedPointOfSaleId || consignmentSubmitting}
+                    className="px-4 py-2 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {consignmentSubmitting ? "Consignando..." : "Consignar"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
 {/* PRE-LAUNCH: Modal Asignar directo completamente oculto */}
         </>
       )}
@@ -717,13 +970,14 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   );
 };
 
-function Card({ label, value, tone }: { label: string; value: number; tone: "blue" | "amber" | "emerald" | "indigo" | "red" }) {
+function Card({ label, value, tone }: { label: string; value: number; tone: "blue" | "amber" | "emerald" | "indigo" | "red" | "purple" }) {
   const styles: Record<typeof tone, string> = {
     blue: "bg-blue-500/10 border-blue-500/20 text-blue-700",
     amber: "bg-amber-500/10 border-amber-500/20 text-amber-700",
     emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-700",
     indigo: "bg-indigo-500/10 border-indigo-500/20 text-indigo-700",
     red: "bg-red-500/10 border-red-500/20 text-red-700",
+    purple: "bg-purple-500/10 border-purple-500/20 text-purple-700",
   };
   return (
     <div className={`px-4 py-3 rounded-2xl border ${styles[tone]}`}>

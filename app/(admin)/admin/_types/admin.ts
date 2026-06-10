@@ -22,7 +22,7 @@ export interface EmergencyContact {
 
 // ─── Chip Domain ───────────────────────────────────────────────────────────
 
-export type ChipStatus = "activated" | "inventory" | "sold" | "suspended" | "pending";
+export type ChipStatus = "activated" | "inventory" | "sold" | "suspended" | "pending" | "consigned";
 export type ServiceStatus = "active" | "limited" | "suspended" | "expired";
 
 export interface ChipAdmin {
@@ -42,6 +42,9 @@ export interface ChipAdmin {
   productType: string;
   nicheType: string;
   internalLabel?: string | null;
+  pointOfSaleId?: string | null;
+  consignedAt?: string | null;
+  pointOfSale?: { id: string; name: string } | null;
   createdAt: string;
   isPhysical: boolean;
   owner?: { email: string } | null;

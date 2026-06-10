@@ -1,6 +1,14 @@
 import { adminClient } from "../apiClient";
 import { ChipAdmin, ChipDetail } from "../../_types/admin";
 
+export interface PointOfSaleOption {
+  id: string;
+  name: string;
+  address?: string | null;
+  isActive?: boolean;
+  _count?: { chips: number };
+}
+
 export const chipsService = {
   async getChips(params: { 
     limit?: number; 
@@ -9,7 +17,8 @@ export const chipsService = {
     search?: string; 
     accountId?: string;
     excludeStatus?: string;
-    view?: "available" | "reserved" | "activated" | "returned" | "damaged";
+    view?: "available" | "reserved" | "activated" | "returned" | "damaged" | "pointOfSale";
+    pointOfSaleId?: string;
   }, signal?: AbortSignal) {
     // Sanitize params to remove undefined/null/empty values
     const cleanParams = Object.fromEntries(
@@ -44,6 +53,31 @@ export const chipsService = {
 
   async updatePhysicalStatus(id: string, isPhysical: boolean) {
     return adminClient.patch<{ chip: ChipAdmin }>(`/api/admin/chips/${id}`, { isPhysical });
+  },
+
+  async getPointsOfSale() {
+    return adminClient.get<{ points: PointOfSaleOption[] }>("/api/admin/points-of-sale?isActive=true");
+  },
+
+  async consignToPointOfSale(pointOfSaleId: string, chipIds: string[]) {
+    return adminClient.post<{ ok: boolean; consigned: number; pointOfSale: { id: string; name: string }; chipIds: string[] }>(
+      `/api/admin/points-of-sale/${pointOfSaleId}/consign`,
+      { chipIds }
+    );
+  },
+
+  async returnFromPointOfSale(pointOfSaleId: string, chipIds: string[]) {
+    return adminClient.post<{ ok: boolean; returned: number; pointOfSale: { id: string; name: string }; chipIds: string[] }>(
+      `/api/admin/points-of-sale/${pointOfSaleId}/return`,
+      { chipIds }
+    );
+  },
+
+  async markLostFromPointOfSale(pointOfSaleId: string, chipIds: string[], reason?: string) {
+    return adminClient.post<{ ok: boolean; lost: number; pointOfSale: { id: string; name: string }; chipIds: string[] }>(
+      `/api/admin/points-of-sale/${pointOfSaleId}/mark-lost`,
+      { chipIds, reason }
+    );
   },
 
   async rehabilitateChip(id: string) {
