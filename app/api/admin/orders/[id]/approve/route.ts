@@ -147,6 +147,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     order.items.every((item) => item.profileId || item.chipId);
 
   if (isPersonalizedAccessoryOrder) {
+    // Validar que todos los items tengan chipId
+    const itemsWithoutChip = order.items.filter(item => !item.chipId);
+    if (itemsWithoutChip.length > 0) {
+      return NextResponse.json(
+        { error: "No se puede aprobar un accesorio personalizado sin chip asociado." },
+        { status: 400 }
+      );
+    }
+
     // Aprobar orden de accesorio personalizado sin picking ni capacity
     try {
       await prisma.$transaction(async (tx) => {

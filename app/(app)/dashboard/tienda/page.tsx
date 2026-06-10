@@ -130,11 +130,9 @@ export default function TiendaPage() {
         const selectedProfile = profileOptions.find(p => p.id === selectedProfileId);
         const hasChip = !!selectedProfile?.assignedChips?.[0];
         if (!hasChip) {
-          const ok = confirm("Este perfil todavía no tiene un chip/QR activo asociado. Puedes continuar, pero el accesorio quedará pendiente de vinculación de QR antes de fabricarse. ¿Deseas continuar?");
-          if (!ok) {
-            setCreatingOrder(false);
-            return;
-          }
+          toast.error("Este perfil no tiene un chip activo. Activa un chip antes de solicitar accesorios personalizados.");
+          setCreatingOrder(false);
+          return;
         }
       }
 

@@ -94,24 +94,29 @@ export async function POST(req: NextRequest) {
                 accountId: user.accountId || undefined,
                 profileType: { not: "corporate" },
               },
-              include: {
-                assignedChips: {
-                  where: { status: { in: ["activated", "sold", "assigned_reserved"] } },
-                  take: 1,
-                  select: { id: true, shortCode: true },
+                include: {
+                  assignedChips: {
+                    where: { status: "activated" },
+                    take: 1,
+                    select: { id: true, shortCode: true },
+                  },
                 },
-              },
             });
 
             if (!profile) {
               throw new Error(`El perfil seleccionado no es válido o es corporativo.`);
             }
 
-            const chip = profile.assignedChips[0] || null;
+            const chip = profile.assignedChips[0];
+            if (!chip) {
+              throw new Error(
+                `Este perfil no tiene un chip activo asociado. Debes activar un chip antes de comprar accesorios personalizados.`
+              );
+            }
             return {
               ...item,
               profileId,
-              chipId: chip?.id || null,
+              chipId: chip.id,
               productType: storeProduct.name,
               unitPrice: storeProduct.price,
             } as typeof item & { profileId?: string; chipId?: string | null };
