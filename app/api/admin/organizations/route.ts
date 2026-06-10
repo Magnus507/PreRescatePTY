@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { ACCOUNT_TYPES } from "@/domains/shared/constants";
 import { prisma } from "@/lib/prisma";
-import { SITE_URL } from "@/lib/constants";
-import { getUniqueShortCode, getUniqueSerialPublic, getUniqueActivationCode } from "@/lib/identifiers";
+// SITE_URL removed — no longer needed for chip creation during org setup
+// getUniqueShortCode/getUniqueSerialPublic/getUniqueActivationCode removed — chips are assigned post-creation
 import bcrypt from "bcryptjs";
 import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
@@ -116,19 +116,7 @@ export async function POST(req: Request) {
     }
     const resolvedCompanyCode = normalizedCode || await generateUniqueCompanyCode(displayName || legalName);
 
-    const batchId = `ORG-${Date.now().toString(36).toUpperCase()}`;
-
-    // Pre-generate identifying codes for chips to avoid transaction rollback due to collisions
-    const chipDataBatch: { shortCode: string; serialPublic: string; activationCode: string }[] = [];
-    for (let i = 0; i < chipCount; i++) {
-      chipDataBatch.push({
-        shortCode: await getUniqueShortCode(),
-        serialPublic: await getUniqueSerialPublic(),
-        activationCode: await getUniqueActivationCode(),
-      });
-    }
-
-    // Transaction for Account and Organization (extended timeout for batch chip creation)
+    // Transaction for Account and Organization (no chips created — assigned post-creation)
     const newOrg = await prisma.$transaction(async (tx) => {
       const account = await tx.account.create({
         data: {
@@ -182,37 +170,15 @@ export async function POST(req: Request) {
         }
       });
 
-      // Automatically generate chips for the new organization using pre-generated safe codes
-      for (const codes of chipDataBatch) {
-        const { shortCode, serialPublic, activationCode } = codes;
-    
-        const chip = await tx.chip.create({
-          data: {
-            serialPublic,
-            shortCode,
-            nfcUrl: `${SITE_URL}/e/${shortCode}?source=nfc`,
-            qrUrl: `${SITE_URL}/e/${shortCode}`,
-            batchId: batchId,
-            productType: "sticker_nfc_qr",
-            status: "inventory",
-            accountId: account.id // Assigned to this organization's account
-          },
-        });
-    
-        // Create activation token
-        await tx.chipClaimToken.create({
-          data: {
-            chipId: chip.id,
-            activationCode,
-            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Valid for 1 year to activate
-          },
-        });
-      }
+      // NOTE: Chips are no longer created automatically when a company is set up.
+      // Chips are assigned later via inventory/assign-bulk/assign-chip endpoints.
 
       return org;
-    }, { timeout: 30000 }); // 30s timeout for batch chip creation
+    }, { timeout: 10000 }); // 10s timeout — no batch chip creation needed
 
-    return NextResponse.json({ organization: newOrg, batchId, chipCount, ownerEmail }, { status: 201 });
+    // Chips are NOT created during org setup — they are assigned later.
+    // maxChipsAllocated remains as the capacity cap for future chip assignments.
+    return NextResponse.json({ organization: newOrg, ownerEmail, maxChipsAllocated: chipCount }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating org", error);
     return NextResponse.json({ 
