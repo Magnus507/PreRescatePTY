@@ -234,6 +234,7 @@ function AdminDashboard() {
           bulkAssignCount={bulkAssignCount}
           setBulkAssignCount={setBulkAssignCount}
           onBulkAssign={(e) => { e.preventDefault(); admin.orgs.assignBulkChips(org.id, bulkAssignCount); }}
+          onUpdateOrg={admin.orgs.updateOrganization}
           formatDate={formatDate}
           statusColor={statusColor}
         />

@@ -30,6 +30,10 @@ export const orgsService = {
     return adminClient.post<{ user: UserAdmin }>(`/api/admin/organizations/${orgId}/users`, data);
   },
 
+  async updateOrganization(orgId: string, data: any) {
+    return adminClient.patch<{ organization: OrganizationAdmin }>(`/api/admin/organizations/${orgId}`, data);
+  },
+
   // Metadata
   async getPackages(signal?: AbortSignal) {
     return adminClient.get<{ packages: any[] }>("/api/admin/packages", { signal });

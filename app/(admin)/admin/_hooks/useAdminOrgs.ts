@@ -155,6 +155,22 @@ export function useAdminOrgs() {
     }
   }, [loadOrgDetail]);
 
+  const updateOrganization = useCallback(async (orgId: string, data: any) => {
+    setCreating(true);
+    try {
+      await orgsService.updateOrganization(orgId, data);
+      toast.success("Organización actualizada");
+      setOrgsLoadedAt(null); // Force reload
+      await loadOrgDetail(orgId);
+      return true;
+    } catch (e: any) {
+      toast.error(e.message || "Error al actualizar organización");
+      return false;
+    } finally {
+      setCreating(false);
+    }
+  }, [loadOrgDetail]);
+
   return {
     loading: loadingList || loadingDetail,
     loadingList,
@@ -171,6 +187,7 @@ export function useAdminOrgs() {
     deleteOrg,
     assignBulkChips,
     assignChipByShortCode,
-    addMember
+    addMember,
+    updateOrganization
   };
 }

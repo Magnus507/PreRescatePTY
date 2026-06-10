@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   ChevronLeft, Building2, Users, Cpu, Plus, Eye, Trash2, 
   Activity, Zap, Info, Shield, Mail, Globe, MapPin, Phone, Calendar
 } from 'lucide-react';
 import { OrganizationAdmin, ChipAdmin, UserAdmin } from '../../_types/admin';
+import { OrgEditModal } from '../modals/OrgEditModal';
 
 interface OrgDetailProps {
   org: OrganizationAdmin;
@@ -20,6 +21,7 @@ interface OrgDetailProps {
   bulkAssignCount: number;
   setBulkAssignCount: (v: number) => void;
   onBulkAssign: (e: any) => void;
+  onUpdateOrg: (orgId: string, data: any) => Promise<boolean>;
   formatDate: (d: string) => string;
   statusColor: (s: string) => string;
 }
@@ -27,9 +29,20 @@ interface OrgDetailProps {
 export const OrgDetailView: React.FC<OrgDetailProps> = ({ 
   org, onBack, onAction, onAddUser, onCreateBatch, onDeleteOrg, onDeleteMember,
   onLoadChip, onAssignChip, assignShortCode, setAssignShortCode,
-  bulkAssignCount, setBulkAssignCount, onBulkAssign,
+  bulkAssignCount, setBulkAssignCount, onBulkAssign, onUpdateOrg,
   formatDate, statusColor
 }) => {
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+
+  const handleUpdateOrg = async (data: any) => {
+    setEditLoading(true);
+    try {
+      return await onUpdateOrg(org.id, data);
+    } finally {
+      setEditLoading(false);
+    }
+  };
   // Safe Access Patterns
   const chips = org.account?.chips || [];
   const members = org.account?.users || [];
@@ -77,7 +90,10 @@ export const OrgDetailView: React.FC<OrgDetailProps> = ({
               </div>
 
               <div className="flex flex-col gap-3 shrink-0">
-                 <button className="px-6 py-3 bg-white text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-lg active:scale-95">Editar Información</button>
+                 <button 
+                 onClick={() => setShowEditModal(true)}
+                 className="px-6 py-3 bg-white text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-lg active:scale-95"
+               >Editar Información</button>
                  <button 
                    onClick={() => onDeleteOrg(org.id, org.legalName)}
                    className="px-6 py-3 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-500/10 active:scale-95"
@@ -251,6 +267,13 @@ export const OrgDetailView: React.FC<OrgDetailProps> = ({
            </div>
         </div>
       </div>
+      <OrgEditModal 
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSubmit={handleUpdateOrg}
+        loading={editLoading}
+        org={org}
+      />
     </div>
   );
 };
