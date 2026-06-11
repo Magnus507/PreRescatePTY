@@ -75,6 +75,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
   // ── Responsive detection ──
   const [isMobile, setIsMobile] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
     setIsMobile(mq.matches);
@@ -573,9 +574,12 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
             <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <User className="h-5 w-5" />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="font-black text-base md:text-lg tracking-tight">Identidad</h3>
               <p className="text-xs text-muted-foreground">Datos base para identificar a la persona.</p>
+            </div>
+            <div className="shrink-0">
+              {renderAgeBadge()}
             </div>
           </div>
           {renderIdentityFields()}
@@ -664,14 +668,23 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         </div>
 
         <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <h3 className="font-black text-base tracking-tight">Privacidad y visibilidad</h3>
-          <p className="text-xs text-muted-foreground font-medium">
-            Qué puede ver quien escanee tu chip.
-          </p>
-          <p className="text-xs text-muted-foreground font-medium">
-            Estos datos podrán ser vistos por cualquier persona que escanee tu chip en una emergencia.
-          </p>
-          {renderPrivacyToggles()}
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="font-black text-base tracking-tight">Privacidad y visibilidad</h3>
+              <p className="text-xs text-muted-foreground font-medium">Qué puede ver quien escanee tu chip.</p>
+            </div>
+            <div className="ml-4">
+              <button type="button" onClick={() => setShowPrivacy((s) => !s)} className="text-sm font-bold text-primary px-3 py-2 rounded-xl border border-primary/10 bg-primary/5">
+                {showPrivacy ? 'Ocultar opciones' : 'Mostrar opciones'}
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground font-medium">Estos datos podrán ser vistos por cualquier persona que escanee tu chip en una emergencia.</p>
+          {showPrivacy ? (
+            renderPrivacyToggles()
+          ) : (
+            <div className="text-sm text-muted-foreground italic">Opciones de privacidad ocultas. Pulsa "Mostrar opciones" para editar.</div>
+          )}
         </div>
       </div>
 
