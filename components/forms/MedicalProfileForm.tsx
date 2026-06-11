@@ -36,6 +36,9 @@ interface ProfileFormProps {
     showPrimaryDoctorPublic: boolean;
     showPrimaryDoctorPhonePublic: boolean;
     showAdditionalNotesPublic: boolean;
+    // top-level toggles to reveal conditional assistance fields
+    enableSpecialAssistance?: boolean;
+    enableSafeReturn?: boolean;
     // v2 special assistance
     hasCognitiveImpairment?: boolean;
     hasWanderingRisk?: boolean;
@@ -111,6 +114,15 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    // If minor, display a protective badge instead of exact age
+    if (age < 18) {
+      return (
+        <div className="px-3 py-1 bg-blue-100 rounded-lg text-[10px] font-black text-blue-700 border border-blue-200">
+          Menor de edad
+        </div>
+      );
+    }
+
     return (
       <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-black text-slate-500">
         EDAD: {age} AÑOS
@@ -220,32 +232,44 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
   const renderSpecialAssistanceFields = () => (
     <div className="space-y-3">
-      <ToggleField label="Deterioro cognitivo / Alzheimer / demencia" checked={form.hasCognitiveImpairment ?? false} onChange={(v) => update("hasCognitiveImpairment", v)} />
-      <ToggleField label="Riesgo de desorientación o extravío" checked={form.hasWanderingRisk ?? false} onChange={(v) => update("hasWanderingRisk", v)} />
-      <ToggleField label="Persona no verbal o con comunicación asistida" checked={form.isNonVerbal ?? false} onChange={(v) => update("isNonVerbal", v)} />
-      {form.isNonVerbal && (
-        <TextAreaField
-          icon={<MessageCircle className="h-4 w-4" />}
-          label="Instrucciones de comunicación"
-          value={form.communicationAssistance || ""}
-          onChange={(v: string) => update("communicationAssistance", v)}
-          placeholder="Ej. Usa pictogramas, entiende frases cortas, comunicarse con calma..."
-          color="text-violet-600"
-        />
+      <ToggleField label="Asistencia especial" checked={form.enableSpecialAssistance ?? false} onChange={(v) => update("enableSpecialAssistance", v)} />
+
+      {form.enableSpecialAssistance && (
+        <div className="space-y-3">
+          <ToggleField label="Deterioro cognitivo / Alzheimer / demencia" checked={form.hasCognitiveImpairment ?? false} onChange={(v) => update("hasCognitiveImpairment", v)} />
+          <ToggleField label="Riesgo de desorientación o extravío" checked={form.hasWanderingRisk ?? false} onChange={(v) => update("hasWanderingRisk", v)} />
+          <ToggleField label="Persona no verbal o con comunicación asistida" checked={form.isNonVerbal ?? false} onChange={(v) => update("isNonVerbal", v)} />
+          {form.isNonVerbal && (
+            <TextAreaField
+              icon={<MessageCircle className="h-4 w-4" />}
+              label="Instrucciones de comunicación"
+              value={form.communicationAssistance || ""}
+              onChange={(v: string) => update("communicationAssistance", v)}
+              placeholder="Ej. Usa pictogramas, entiende frases cortas, comunicarse con calma..."
+              color="text-violet-600"
+            />
+          )}
+        </div>
       )}
     </div>
   );
 
   const renderSafeReturnFields = () => (
     <div className="space-y-3">
-      <TextAreaField
-        icon={<Footprints className="h-4 w-4" />}
-        label="Instrucciones de retorno seguro"
-        value={form.safeReturnInstructions || ""}
-        onChange={(v: string) => update("safeReturnInstructions", v)}
-        placeholder="Ej. Si la persona está desorientada, llamar primero a su contacto principal. No dejarla sola..."
-        color="text-teal-600"
-      />
+      <ToggleField label="Retorno seguro" checked={form.enableSafeReturn ?? false} onChange={(v) => update("enableSafeReturn", v)} />
+
+      {form.enableSafeReturn && (
+        <div>
+          <TextAreaField
+            icon={<Footprints className="h-4 w-4" />}
+            label="Instrucciones de retorno seguro"
+            value={form.safeReturnInstructions || ""}
+            onChange={(v: string) => update("safeReturnInstructions", v)}
+            placeholder="Ej. Si la persona está desorientada, llamar primero a su contacto principal. No dejarla sola..."
+            color="text-teal-600"
+          />
+        </div>
+      )}
     </div>
   );
 

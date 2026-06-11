@@ -377,7 +377,7 @@ export default function DashboardPage() {
             )}
 
            {(state.isFamily || state.isOrganization) && familyProfiles && familyProfiles.map((p) => (
-             <ProfileCard key={p.id} profile={p} isOwn={false} color="border-border bg-card shadow-sm" badge="text-muted-foreground bg-muted" userEmail={userEmail} isOrganization={state.isOrganization} />
+             <ProfileCard key={p.id} profile={p} isOwn={false} color="border-border bg-card shadow-sm" badge="text-muted-foreground bg-muted" userEmail={userEmail} isOrganization={state.isOrganization} onPhotoUpdate={refreshData} />
            ))}
            
            {!state.isFamily && familyProfiles?.length > 0 && (
@@ -470,10 +470,10 @@ function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, 
   const [uploading, setUploading] = useState(false);
 
   const handlePhotoClick = (e: React.MouseEvent) => {
-    if (!isOwn) return;
+    if (!onPhotoUpdate) return;
     e.preventDefault();
     e.stopPropagation();
-    const input = document.getElementById('profile-photo-input') as HTMLInputElement;
+    const input = document.getElementById(`profile-photo-input-${profile.id}`) as HTMLInputElement;
     input?.click();
   };
 
@@ -486,6 +486,7 @@ function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, 
     formData.append("file", file);
     formData.append("type", "profile");
     formData.append("bucket", "profile-photos");
+    formData.append("profileId", profile.id);
 
     try {
       const res = await fetch("/api/upload", {
@@ -543,7 +544,7 @@ function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, 
           </div>
           <input 
             type="file" 
-            id="profile-photo-input" 
+            id={`profile-photo-input-${profile.id}`} 
             className="hidden" 
             accept="image/*"
             onChange={handleFileChange}

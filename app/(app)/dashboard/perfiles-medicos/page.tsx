@@ -3,12 +3,14 @@
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { 
   Plus, Pencil, Trash2, Loader2, Save, X, ChevronLeft,
   UserRound, Phone, ChevronUp, AlertCircle,
   ShieldCheck, Activity, Users, PlusCircle, Smartphone, Zap, ExternalLink,
   Building2
 } from "lucide-react";
+import { Camera } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
 
 interface AssignedChip {
@@ -44,6 +46,7 @@ interface FamilyProfile {
   additionalNotes: string;
   phone: string | null;
   nationalId: string | null;
+  photoUrl?: string | null;
   isInsured: boolean;
   insuranceProvider: string | null;
   insurancePolicyNumber: string | null;
@@ -479,6 +482,7 @@ export default function FamiliaPage() {
               onUpdateLink={(contactId, data) => handleUpdateLink(ownProfile.id, contactId, data)}
               isOwn
               profileId={ownProfile.id}
+              onPhotoUpdate={() => loadProfiles()}
               onStartAddContact={() => { setAddingContactToProfile(ownProfile.id); setContactError(""); setContactForm({...emptyContactForm}); }}
             />
           )}
@@ -501,6 +505,7 @@ export default function FamiliaPage() {
               isAssigning={assigningChip === profile.id}
               onUpdateLink={(contactId, data) => handleUpdateLink(profile.id, contactId, data)}
               profileId={profile.id}
+              onPhotoUpdate={() => loadProfiles()}
               onStartAddContact={() => { setAddingContactToProfile(profile.id); setContactError(""); setContactForm({...emptyContactForm}); }}
             />
           ))}
@@ -710,6 +715,7 @@ interface ProfileCardProps {
   onUpdateLink: (id: string, data: any) => void;
   isOwn?: boolean;
   profileId: string;
+  onPhotoUpdate?: () => void;
   onStartAddContact: () => void;
 }
 
@@ -719,19 +725,68 @@ function ProfileCard({
    contacts, onDeleteContact, deletingContact,
    availableChips, onAssignChip, isAssigning,
    onUpdateLink, isOwn, profileId,
-   onStartAddContact
+   onStartAddContact,
+   onPhotoUpdate
 }: ProfileCardProps) {
   const initials = profile.firstName && profile.lastName 
     ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
     : (isOwn ? "TÚ" : "??");
 
+  const [uploading, setUploading] = useState(false);
+
+  const handlePhotoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const input = document.getElementById(`profile-photo-input-${profile.id}`) as HTMLInputElement | null;
+    input?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", "profile");
+    formData.append("bucket", "profile-photos");
+    formData.append("profileId", profile.id);
+
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (res.ok) {
+        toast.success("Foto subida");
+        onPhotoUpdate?.();
+      } else {
+        toast.error("Error al subir la foto");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error en la conexión");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className={`group overflow-hidden rounded-[2.5rem] border transition-all hover:shadow-2xl hover:shadow-primary/5 ${contactsExpanded ? 'ring-2 ring-primary/20' : ''} ${isOwn ? 'border-primary/20 bg-primary/5' : 'border-border bg-card'}`}>
       <div className="p-8 flex flex-col md:flex-row items-start gap-8">
          <div className="relative flex flex-col items-center shrink-0">
-            <div className={`h-20 w-20 rounded-[2rem] flex items-center justify-center font-black text-2xl shadow-inner mb-3 ${isOwn ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
-               {initials}
+            <div
+              onClick={handlePhotoClick}
+              className={`h-20 w-20 rounded-[2rem] overflow-hidden mb-3 relative flex items-center justify-center font-black text-2xl shadow-inner cursor-pointer ${isOwn ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}
+            >
+               {profile.photoUrl ? (
+                 <Image src={profile.photoUrl} alt="Avatar" fill className="object-cover" />
+               ) : (
+                 <div className="w-full h-full flex items-center justify-center">{initials}</div>
+               )}
+               {isOwn && (
+                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                   {uploading ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <Camera className="h-5 w-5 text-white" />}
+                 </div>
+               )}
             </div>
+            <input type="file" id={`profile-photo-input-${profile.id}`} className="hidden" accept="image/*" onChange={handleFileChange} />
             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
                {isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
             </span>

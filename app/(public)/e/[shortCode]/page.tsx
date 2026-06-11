@@ -146,6 +146,13 @@ function SafeReturnCard({ safeReturn }: { safeReturn: EmergencyProfile["safeRetu
   );
 }
 
+function parseLatLngFromLocation(location: string | null | undefined) {
+  if (!location) return null;
+  const match = location.trim().match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+  if (!match) return null;
+  return { lat: match[1], lng: match[2] };
+}
+
 /** v2: Communication assistance card (paramedic view) */
 function CommunicationAssistanceCard({ vulnerabilityStatus }: { vulnerabilityStatus: EmergencyProfile["vulnerabilityStatus"] }) {
   if (!vulnerabilityStatus?.isNonVerbal || !vulnerabilityStatus.communicationAssistance) return null;
@@ -159,6 +166,106 @@ function CommunicationAssistanceCard({ vulnerabilityStatus }: { vulnerabilitySta
       </div>
       <p className="text-sm font-semibold text-slate-900 leading-relaxed">{vulnerabilityStatus.communicationAssistance}</p>
     </div>
+  );
+}
+
+function PublicSpecialAssistanceCard({ profile, scanLocation, whatsappUrls }: { profile: EmergencyProfile; scanLocation: string; whatsappUrls: Record<number, string> }) {
+  const vulnerability = profile.vulnerabilityStatus;
+  const hasVulnerability = !!(
+    vulnerability?.hasCognitiveImpairment ||
+    vulnerability?.hasWanderingRisk ||
+    vulnerability?.isNonVerbal
+  );
+  const hasCommunicationInstructions = !!(vulnerability?.isNonVerbal && vulnerability.communicationAssistance);
+  const hasSafeReturn = !!profile.safeReturn?.instructions;
+  const shouldRender = profile.isMinor || hasVulnerability || hasSafeReturn;
+  const locationCoords = parseLatLngFromLocation(scanLocation);
+  const googleMapsUrl = locationCoords ? `https://maps.google.com/?q=${locationCoords.lat},${locationCoords.lng}` : null;
+  const wazeUrl = locationCoords ? `https://waze.com/ul?ll=${locationCoords.lat},${locationCoords.lng}&navigate=yes` : null;
+
+  if (!shouldRender) return null;
+
+  return (
+    <section id="special-assistance" className="bg-white border border-amber-200 rounded-[3rem] p-6 shadow-xl shadow-amber-100/50 space-y-6">
+      <div className="flex items-start gap-4">
+        <div className="h-12 w-12 rounded-3xl bg-amber-50 flex items-center justify-center border border-amber-100">
+          <Lightbulb className="h-6 w-6 text-amber-700" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900">Asistencia especial / Retorno seguro</h2>
+          <p className="text-sm font-bold uppercase tracking-widest text-amber-700">Accede rápidamente al protocolo y contactos prioritarios.</p>
+        </div>
+      </div>
+
+      <SpecialAssistanceBadges profile={profile} />
+
+      <div className="grid gap-3">
+        {profile.isMinor && (
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-black uppercase tracking-widest text-blue-700">Menor de edad</div>
+        )}
+        {vulnerability?.hasCognitiveImpairment && (
+          <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-black uppercase tracking-widest text-amber-800">Puede tener deterioro cognitivo</div>
+        )}
+        {vulnerability?.hasWanderingRisk && (
+          <div className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm font-black uppercase tracking-widest text-orange-800">Riesgo de desorientación</div>
+        )}
+        {vulnerability?.isNonVerbal && (
+          <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-black uppercase tracking-widest text-violet-800">Comunicación asistida</div>
+        )}
+      </div>
+
+      {hasCommunicationInstructions && (
+        <div className="rounded-[2rem] bg-violet-50 border border-violet-100 p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-violet-700 mb-2">Instrucciones de comunicación</p>
+          <p className="text-sm font-semibold text-slate-900 leading-relaxed whitespace-pre-wrap">{vulnerability.communicationAssistance}</p>
+        </div>
+      )}
+
+      {hasSafeReturn && (
+        <div className="rounded-[2rem] bg-teal-50 border border-teal-100 p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-teal-700 mb-2">Retorno Seguro</p>
+          <p className="text-sm font-semibold text-slate-900 leading-relaxed whitespace-pre-wrap">{profile.safeReturn?.instructions}</p>
+        </div>
+      )}
+
+      {(googleMapsUrl || wazeUrl) && (
+        <div className="grid sm:grid-cols-2 gap-3">
+          {googleMapsUrl && (
+            <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 px-4 py-3 uppercase text-sm font-black text-white bg-slate-900 rounded-2xl shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all">Google Maps</a>
+          )}
+          {wazeUrl && (
+            <a href={wazeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 px-4 py-3 uppercase text-sm font-black text-white bg-[#2C2C2C] rounded-2xl shadow-lg shadow-slate-200 hover:bg-[#111] transition-all">Waze</a>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Contactos de emergencia</p>
+          <div className="space-y-3">
+            {profile.emergencyContacts.map((contact, idx) => {
+              const phone = sanitizeTelPhone(contact.phone);
+              const whatsapp = whatsappUrls[idx] || `https://wa.me/${phone}`;
+              return (
+                <div key={idx} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-tight text-slate-900">{contact.fullName}</p>
+                      <p className="text-xs uppercase tracking-widest text-slate-500 mt-1">{contact.relationship}</p>
+                      <p className="text-sm font-semibold text-slate-700 mt-2">{contact.phone}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
+                      <a href={`tel:${phone}`} className="inline-flex items-center justify-center gap-2 px-3 py-3 text-xs font-black uppercase tracking-widest text-white bg-slate-900 rounded-2xl hover:bg-slate-800 transition-all">Llamar</a>
+                      <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 px-3 py-3 text-xs font-black uppercase tracking-widest text-white bg-[#25D366] rounded-2xl hover:bg-[#128C7E] transition-all">WhatsApp</a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -208,6 +315,18 @@ function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfil
 
           {/* v2: Special assistance badges */}
           <SpecialAssistanceBadges profile={profile} />
+
+          {(
+            profile.isMinor ||
+            profile.vulnerabilityStatus?.hasCognitiveImpairment ||
+            profile.vulnerabilityStatus?.hasWanderingRisk ||
+            profile.vulnerabilityStatus?.isNonVerbal ||
+            !!profile.safeReturn?.instructions
+          ) && (
+            <a href="#special-assistance" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-amber-500 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-amber-200 hover:bg-amber-600 transition-all">
+              <MousePointerClick className="h-4 w-4" /> Asistencia especial / Retorno seguro
+            </a>
+          )}
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 mt-3">
             <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-[#DA1A21] text-white rounded-xl md:rounded-2xl shadow-lg shadow-red-200">
@@ -558,6 +677,7 @@ export default function EmergencyPage() {
         {!isParamedic && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-1000">
             <PatientMedicalCard profile={profile} />
+            <PublicSpecialAssistanceCard profile={profile} scanLocation={scanLocation} whatsappUrls={whatsappUrls} />
             <SafeReturnCard safeReturn={profile.safeReturn} />
             <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 space-y-8">
               <div className="flex items-center gap-4">
