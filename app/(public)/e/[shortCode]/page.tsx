@@ -316,17 +316,7 @@ function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfil
           {/* v2: Special assistance badges */}
           <SpecialAssistanceBadges profile={profile} />
 
-          {(
-            profile.isMinor ||
-            profile.vulnerabilityStatus?.hasCognitiveImpairment ||
-            profile.vulnerabilityStatus?.hasWanderingRisk ||
-            profile.vulnerabilityStatus?.isNonVerbal ||
-            !!profile.safeReturn?.instructions
-          ) && (
-            <a href="#special-assistance" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-amber-500 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-amber-200 hover:bg-amber-600 transition-all">
-              <MousePointerClick className="h-4 w-4" /> Asistencia especial / Retorno seguro
-            </a>
-          )}
+          {/* Special assistance CTA removed from patient card — entry moved to initial screen */}
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 mt-3">
             <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-[#DA1A21] text-white rounded-xl md:rounded-2xl shadow-lg shadow-red-200">
@@ -415,7 +405,7 @@ export default function EmergencyPage() {
   const [isUnactivated, setIsUnactivated] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [isParamedic, setIsParamedic] = useState<boolean | null>(null);
+  const [view, setView] = useState<'unknown' | 'paramedic' | 'citizen' | 'special'>('unknown');
   const [scanLocation, setScanLocation] = useState("");
   const [whatsappUrls, setWhatsappUrls] = useState<Record<number, string>>({});
   const [scanTime] = useState(new Date().toLocaleString("es-PA", { 
@@ -596,7 +586,7 @@ export default function EmergencyPage() {
     );
   }
 
-  if (isParamedic === null) {
+  if (view === 'unknown') {
     return (
       <div className="min-h-screen bg-[#DA1A21] flex flex-col items-center justify-center p-6 text-white font-sans relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
@@ -610,8 +600,17 @@ export default function EmergencyPage() {
           </div>
           <div className="space-y-4"><p className="text-xl font-medium text-white leading-relaxed px-4">¿Eres personal capacitado en <span className="font-black underline decoration-white/40">primera respuesta médica</span>?</p></div>
           <div className="grid grid-cols-1 gap-5">
-            <button onClick={() => setIsParamedic(true)} className="group relative w-full bg-white text-[#DA1A21] py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3">SÍ, soy Paramédico <ShieldCheck className="h-8 w-8" /></button>
-            <button onClick={() => setIsParamedic(false)} className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest">No, soy un Ciudadano</button>
+            <button onClick={() => setView('paramedic')} className="group relative w-full bg-white text-[#DA1A21] py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3">SÍ, soy Paramédico <ShieldCheck className="h-8 w-8" /></button>
+            <button onClick={() => setView('citizen')} className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest">No, soy un Ciudadano</button>
+            {(
+              profile?.isMinor ||
+              profile?.vulnerabilityStatus?.hasCognitiveImpairment ||
+              profile?.vulnerabilityStatus?.hasWanderingRisk ||
+              profile?.vulnerabilityStatus?.isNonVerbal ||
+              !!profile?.safeReturn?.instructions
+            ) && (
+              <button onClick={() => setView('special')} className="inline-flex items-center justify-center gap-2 w-full py-6 bg-amber-500 text-white rounded-[2.5rem] font-black text-lg shadow-2xl hover:bg-amber-600 active:scale-95 transition-all uppercase tracking-wider">ASISTENCIA ESPECIAL / RETORNO SEGURO</button>
+            )}
           </div>
           <div className="pt-4 flex items-center justify-center gap-10 opacity-40"><div className="h-px bg-white flex-1" /><Droplets className="h-5 w-5" /><div className="h-px bg-white flex-1" /></div>
           <p className="text-xs text-white/40 font-black uppercase tracking-[0.35em] -mt-4">PreRescate Panamá</p>
@@ -622,7 +621,89 @@ export default function EmergencyPage() {
 
   // Corporate profile — route to IndustrialProfileView only for actual corporate profiles
   if (profile.profileType === "corporate") {
-    return <IndustrialProfileView profile={profile} scanLocation={scanLocation} isParamedic={isParamedic} />;
+    return <IndustrialProfileView profile={profile} scanLocation={scanLocation} isParamedic={view === 'paramedic'} />;
+  }
+
+  // Special assistance dedicated view
+  if (view === 'special') {
+    return (
+      <div className="min-h-screen bg-slate-50 font-sans pb-24 selection:bg-red-100">
+        <div className="bg-white border-b border-slate-200 sticky top-0 z-50 backdrop-blur-lg bg-white/90">
+          <div className="max-w-4xl mx-auto p-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {profile.isVerifiedAdmin && (
+                <Link href="/" className="group h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm" title="Volver al Inicio">
+                  <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
+                </Link>
+              )}
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-[#DA1A21] rounded-lg flex items-center justify-center shadow-lg shadow-red-100"><Heart className="h-4 w-4 text-white fill-white animate-pulse" /></div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Estado de Rescate</p>
+                  <p className="text-xs font-black text-[#DA1A21] uppercase tracking-tight leading-none">Emergencia Crítica</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+              <Clock className="h-3 w-3 text-slate-500" />
+              <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">{scanTime}</span>
+            </div>
+          </div>
+        </div>
+
+        <main className="max-w-4xl mx-auto p-4 space-y-6">
+          <PatientMedicalCard profile={profile} isParamedic={false} />
+          <PublicSpecialAssistanceCard profile={profile} scanLocation={scanLocation} whatsappUrls={whatsappUrls} />
+          <SafeReturnCard safeReturn={profile.safeReturn} />
+
+          {/* Emergency contacts (same as citizen) */}
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
+            <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-emerald-50 h-12 w-12 rounded-2xl p-2.5 border border-emerald-100 flex items-center justify-center"><Heart className="h-8 w-8 text-emerald-600 fill-emerald-600 animate-pulse" /></div>
+                  <div>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Contactos de Rescate</h2>
+                    <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1">Contactos de emergencia registrados</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6">
+                {profile.emergencyContacts.length > 0 ? (
+                  profile.emergencyContacts.map((contact, idx) => {
+                    const contactPhone = sanitizeTelPhone(contact.phone);
+                    const whatsappUrl = whatsappUrls[idx] || "";
+                    return (
+                      <div key={idx} className="p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8 shadow-sm">
+                        <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row w-full md:w-auto">
+                          <div className="h-12 w-12 md:h-16 md:w-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-xl md:text-2xl shadow-lg shadow-emerald-100 shrink-0">{contact.fullName[0].toUpperCase()}</div>
+                          <div>
+                            <p className="font-black text-slate-900 uppercase tracking-tight text-xl md:text-2xl leading-none mb-1">{contact.fullName}</p>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full border border-emerald-200">
+                              <ShieldCheck className="h-3 w-3 text-emerald-700" />
+                              <span className="text-[10px] text-emerald-700 font-black uppercase tracking-widest">{contact.relationship}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 sm:flex items-center gap-3 w-full md:w-auto">
+                          <a href={`tel:${contactPhone}`} className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-glow-sm transition-all active:scale-95 shadow-xl shadow-emerald-100/50 btn-premium"><Phone className="h-4 w-4 fill-white" /> Llamar</a>
+                          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-[#25D366] text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all active:scale-95 shadow-xl shadow-emerald-100"><MessageCircle className="h-4 w-4 fill-white" /> WhatsApp</a>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-10 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">No hay contactos registrados</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   const extras = profile.publicMedicalExtras;
@@ -674,10 +755,9 @@ export default function EmergencyPage() {
         </a>
 
         {/* Civil Protocol View */}
-        {!isParamedic && (
+        {view === 'citizen' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-            <PatientMedicalCard profile={profile} />
-            <PublicSpecialAssistanceCard profile={profile} scanLocation={scanLocation} whatsappUrls={whatsappUrls} />
+            <PatientMedicalCard profile={profile} isParamedic={false} />
             <SafeReturnCard safeReturn={profile.safeReturn} />
             <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 space-y-8">
               <div className="flex items-center gap-4">
@@ -698,7 +778,7 @@ export default function EmergencyPage() {
                   <div className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
                   <p className="text-sm font-black text-slate-400 uppercase">Usa las acciones manuales de emergencia</p>
                 </div>
-                <button onClick={() => setIsParamedic(true)} className="flex min-h-11 items-center gap-2 group text-xs font-black text-[#A11218] bg-red-50 px-6 py-3 rounded-xl hover:bg-[#DA1A21] hover:text-white transition-all uppercase tracking-tighter">
+                <button onClick={() => setView('paramedic')} className="flex min-h-11 items-center gap-2 group text-xs font-black text-[#A11218] bg-red-50 px-6 py-3 rounded-xl hover:bg-[#DA1A21] hover:text-white transition-all uppercase tracking-tighter">
                   Soy personal médico <ShieldCheck className="h-4 w-4" />
                 </button>
               </div>
@@ -707,7 +787,7 @@ export default function EmergencyPage() {
         )}
 
         {/* Medical Section (PARAMEDICS ONLY) */}
-        {isParamedic && (
+        {view === 'paramedic' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-top-10 duration-1000">
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-[#DA1A21] to-red-600 rounded-[3.5rem] blur opacity-15 group-hover:opacity-25 transition duration-1000" />
@@ -754,7 +834,7 @@ export default function EmergencyPage() {
         )}
 
         {/* EMERGENCY CONTACTS — citizen view only */}
-        {!isParamedic && (
+        {view === 'citizen' && (
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
           <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
@@ -802,13 +882,13 @@ export default function EmergencyPage() {
         )}
 
         {/* v2: Communication assistance (paramedic view) */}
-        {isParamedic && <CommunicationAssistanceCard vulnerabilityStatus={profile.vulnerabilityStatus} />}
+        {view === 'paramedic' && <CommunicationAssistanceCard vulnerabilityStatus={profile.vulnerabilityStatus} />}
 
         {/* v2: Safe return (paramedic view) */}
-        {isParamedic && <SafeReturnCard safeReturn={profile.safeReturn} />}
+        {view === 'paramedic' && <SafeReturnCard safeReturn={profile.safeReturn} />}
 
         {/* Medical extras — paramedic view (keeps original format) */}
-        {isParamedic && hasExtras && (
+        {view === 'paramedic' && hasExtras && (
           <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
             <h3 className="text-sm font-black uppercase tracking-widest text-emerald-700">Información médica adicional</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -832,7 +912,7 @@ export default function EmergencyPage() {
         )}
 
         {/* Paramedic emergency contacts at end */}
-        {isParamedic && profile.emergencyContacts.length > 0 && (
+        {view === 'paramedic' && profile.emergencyContacts.length > 0 && (
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
             <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
