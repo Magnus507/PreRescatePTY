@@ -193,6 +193,14 @@ export default function FamiliaPage() {
     }
   }
 
+  function normalizeProfilePayload(form: typeof addForm) {
+    return {
+      ...form,
+      sex: form.sex || null,
+      birthDate: form.birthDate || null,
+    };
+  }
+
   function openEdit(profile: FamilyProfile) {
     setEditProfile(profile);
     setEditForm({
@@ -241,7 +249,7 @@ export default function FamiliaPage() {
       const res = await fetch("/api/users/perfiles-medicos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(addForm),
+        body: JSON.stringify(normalizeProfilePayload(addForm)),
       });
       setAddSaving(false);
       if (res.ok) {
@@ -268,7 +276,7 @@ export default function FamiliaPage() {
       const res = await fetch(`/api/users/perfiles-medicos/${editProfile.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(normalizeProfilePayload(editForm)),
       });
       setEditSaving(false);
       if (res.ok) {
@@ -411,7 +419,7 @@ export default function FamiliaPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-12">
-      <div className={(showAdd || editProfile) ? "hidden md:block" : "block"}>
+      <div className={(showAdd || editProfile) ? "hidden" : "block"}>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-4xl font-black tracking-tighter mb-1 uppercase italic">Perfiles Médicos</h1>
@@ -529,16 +537,24 @@ export default function FamiliaPage() {
             </form>
           </div>
 
-          {/* Desktop: modal (unchanged) */}
-          <div className="hidden md:block">
-            <Modal title="Añadir Perfil Médico" onClose={() => setShowAdd(false)}>
+          <div className="hidden md:block animate-in fade-in slide-in-from-left-4 duration-500">
+            <div className="max-w-5xl mx-auto space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-3xl font-black tracking-tight">Añadir Perfil Médico</h2>
+                  <p className="text-sm text-muted-foreground">Completa los datos que podrían ayudar en una emergencia.</p>
+                </div>
+                <button type="button" onClick={() => setShowAdd(false)} className="h-12 px-5 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">
+                  Cerrar
+                </button>
+              </div>
               <form onSubmit={handleAdd} className="space-y-6">
                 {addError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{addError}</p>}
                 <MedicalProfileForm
                   form={addForm}
                   onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val }))}
                 />
-                <div className="flex gap-6 pt-8 border-t border-border/50">
+                <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-border/50">
                   <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
                   <button type="submit" disabled={addSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
                     {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
@@ -546,7 +562,7 @@ export default function FamiliaPage() {
                   </button>
                 </div>
               </form>
-            </Modal>
+            </div>
           </div>
         </>
       )}
@@ -579,16 +595,24 @@ export default function FamiliaPage() {
             </form>
           </div>
 
-          {/* Desktop: modal (unchanged) */}
-          <div className="hidden md:block">
-            <Modal title={`Perfil Médico: ${editProfile.firstName}`} onClose={() => setEditProfile(null)}>
+          <div className="hidden md:block animate-in fade-in slide-in-from-left-4 duration-500">
+            <div className="max-w-5xl mx-auto space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-3xl font-black tracking-tight">Editar Perfil Médico: {editProfile.firstName}</h2>
+                  <p className="text-sm text-muted-foreground">Actualiza los datos de {editProfile.firstName}.</p>
+                </div>
+                <button type="button" onClick={() => setEditProfile(null)} className="h-12 px-5 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">
+                  Cerrar
+                </button>
+              </div>
               <form onSubmit={handleEdit} className="space-y-6">
                 {editError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{editError}</p>}
                 <MedicalProfileForm
                   form={editForm}
                   onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val }))}
                 />
-                <div className="flex gap-6 pt-8 border-t border-border/50">
+                <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-border/50">
                   <button type="button" onClick={() => setEditProfile(null)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
                   <button type="submit" disabled={editSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
                     {editSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -596,7 +620,7 @@ export default function FamiliaPage() {
                   </button>
                 </div>
               </form>
-            </Modal>
+            </div>
           </div>
         </>
       )}
