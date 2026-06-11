@@ -25,6 +25,10 @@ export class ProfileRepository {
       primaryDoctorPhone: decrypt(profile.primaryDoctorPhone || ""),
       communicationAssistance: decrypt(profile.communicationAssistance || ""),
       safeReturnInstructions: decrypt(profile.safeReturnInstructions || ""),
+      safeReturnLocationName: decrypt(profile.safeReturnLocationName || ""),
+      safeReturnAddress: decrypt(profile.safeReturnAddress || ""),
+      safeReturnContactName: decrypt(profile.safeReturnContactName || ""),
+      safeReturnContactPhone: decrypt(profile.safeReturnContactPhone || ""),
     };
   }
 
@@ -110,9 +114,16 @@ export class ProfileRepository {
     isNonVerbal?: boolean;
     communicationAssistance?: string;
     safeReturnInstructions?: string;
+    safeReturnLocationName?: string;
+    safeReturnAddress?: string;
+    safeReturnLat?: number;
+    safeReturnLng?: number;
+    safeReturnContactName?: string;
+    safeReturnContactPhone?: string;
     showVulnerabilityStatusPublic?: boolean;
     showCommunicationStatusPublic?: boolean;
     showSafeReturnPublic?: boolean;
+    showSafeReturnLocationPublic?: boolean;
   }) {
     const profile = await prisma.profile.create({
       data: {
@@ -132,6 +143,13 @@ export class ProfileRepository {
         primaryDoctorPhone: encrypt(data.primaryDoctorPhone || ""),
         communicationAssistance: encrypt(data.communicationAssistance || ""),
         safeReturnInstructions: encrypt(data.safeReturnInstructions || ""),
+        safeReturnLocationName: encrypt(data.safeReturnLocationName || ""),
+        safeReturnAddress: encrypt(data.safeReturnAddress || ""),
+        safeReturnLat: data.safeReturnLat,
+        safeReturnLng: data.safeReturnLng,
+        safeReturnContactName: encrypt(data.safeReturnContactName || ""),
+        safeReturnContactPhone: encrypt(data.safeReturnContactPhone || ""),
+        showSafeReturnLocationPublic: data.showSafeReturnLocationPublic ?? false,
         isInsured: data.isInsured ?? false,
         showInsuranceProviderPublic: data.showInsuranceProviderPublic ?? false,
         showPreferredHospitalPublic: data.showPreferredHospitalPublic ?? false,
@@ -205,6 +223,13 @@ export class ProfileRepository {
     if (data.primaryDoctorPhone !== undefined) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
     if (data.communicationAssistance !== undefined) updateData.communicationAssistance = encrypt(data.communicationAssistance || "");
     if (data.safeReturnInstructions !== undefined) updateData.safeReturnInstructions = encrypt(data.safeReturnInstructions || "");
+    if (data.safeReturnLocationName !== undefined) updateData.safeReturnLocationName = encrypt(data.safeReturnLocationName || "");
+    if (data.safeReturnAddress !== undefined) updateData.safeReturnAddress = encrypt(data.safeReturnAddress || "");
+    if (data.safeReturnLat !== undefined) updateData.safeReturnLat = data.safeReturnLat;
+    if (data.safeReturnLng !== undefined) updateData.safeReturnLng = data.safeReturnLng;
+    if (data.safeReturnContactName !== undefined) updateData.safeReturnContactName = encrypt(data.safeReturnContactName || "");
+    if (data.safeReturnContactPhone !== undefined) updateData.safeReturnContactPhone = encrypt(data.safeReturnContactPhone || "");
+    if (data.showSafeReturnLocationPublic !== undefined) updateData.showSafeReturnLocationPublic = data.showSafeReturnLocationPublic;
 
     const profile = await prisma.profile.update({
       where: { id },
@@ -237,6 +262,13 @@ export class ProfileRepository {
       primaryDoctorPhone: encrypt(data.primaryDoctorPhone || ""),
       communicationAssistance: encrypt(data.communicationAssistance || ""),
       safeReturnInstructions: encrypt(data.safeReturnInstructions || ""),
+      safeReturnLocationName: encrypt(data.safeReturnLocationName || ""),
+      safeReturnAddress: encrypt(data.safeReturnAddress || ""),
+      safeReturnLat: data.safeReturnLat,
+      safeReturnLng: data.safeReturnLng,
+      safeReturnContactName: encrypt(data.safeReturnContactName || ""),
+      safeReturnContactPhone: encrypt(data.safeReturnContactPhone || ""),
+      showSafeReturnLocationPublic: data.showSafeReturnLocationPublic ?? false,
       isInsured: data.isInsured ?? false,
       showInsuranceProviderPublic: data.showInsuranceProviderPublic ?? false,
       showPreferredHospitalPublic: data.showPreferredHospitalPublic ?? false,
@@ -278,6 +310,13 @@ export class ProfileRepository {
     if (data.primaryDoctorPhone !== undefined) updateData.primaryDoctorPhone = encrypt(data.primaryDoctorPhone || "");
     if (data.communicationAssistance !== undefined) updateData.communicationAssistance = encrypt(data.communicationAssistance || "");
     if (data.safeReturnInstructions !== undefined) updateData.safeReturnInstructions = encrypt(data.safeReturnInstructions || "");
+    if (data.safeReturnLocationName !== undefined) updateData.safeReturnLocationName = encrypt(data.safeReturnLocationName || "");
+    if (data.safeReturnAddress !== undefined) updateData.safeReturnAddress = encrypt(data.safeReturnAddress || "");
+    if (data.safeReturnLat !== undefined) updateData.safeReturnLat = data.safeReturnLat;
+    if (data.safeReturnLng !== undefined) updateData.safeReturnLng = data.safeReturnLng;
+    if (data.safeReturnContactName !== undefined) updateData.safeReturnContactName = encrypt(data.safeReturnContactName || "");
+    if (data.safeReturnContactPhone !== undefined) updateData.safeReturnContactPhone = encrypt(data.safeReturnContactPhone || "");
+    if (data.showSafeReturnLocationPublic !== undefined) updateData.showSafeReturnLocationPublic = data.showSafeReturnLocationPublic;
 
     const profile = await prisma.profile.upsert({
       where: { userId },

@@ -225,6 +225,10 @@ export async function GET(
     // Decrypt v2 fields
     const decryptedCommunicationAssistance = decrypt(profile.communicationAssistance || "");
     const decryptedSafeReturnInstructions = decrypt(profile.safeReturnInstructions || "");
+    const decryptedSafeReturnLocationName = decrypt(profile.safeReturnLocationName || "");
+    const decryptedSafeReturnAddress = decrypt(profile.safeReturnAddress || "");
+    const decryptedSafeReturnContactName = decrypt(profile.safeReturnContactName || "");
+    const decryptedSafeReturnContactPhone = decrypt(profile.safeReturnContactPhone || "");
 
     // Build public-safe response (NO email, NO birthdate, NO internal IDs)
     const publicProfile = {
@@ -279,6 +283,14 @@ export async function GET(
         } : null,
         safeReturn: profile.showSafeReturnPublic ? {
           instructions: decryptedSafeReturnInstructions || null,
+          ...(profile.showSafeReturnLocationPublic ? {
+            locationName: decryptedSafeReturnLocationName || null,
+            address: decryptedSafeReturnAddress || null,
+            lat: profile.safeReturnLat,
+            lng: profile.safeReturnLng,
+            contactName: decryptedSafeReturnContactName || null,
+            contactPhone: decryptedSafeReturnContactPhone || null,
+          } : {}),
         } : null,
       }),
     };

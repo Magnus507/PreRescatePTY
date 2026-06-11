@@ -95,6 +95,23 @@ export const profileUpdateSchema = z.object({
   showVulnerabilityStatusPublic: z.boolean().optional(),
   showCommunicationStatusPublic: z.boolean().optional(),
   showSafeReturnPublic: z.boolean().optional(),
+  safeReturnLocationName: z.string().max(150).optional().nullable(),
+  safeReturnAddress: z.string().max(500).optional().nullable(),
+  safeReturnLat: z.coerce.number()
+    .finite()
+    .min(-90, "Latitud debe estar entre -90 y 90")
+    .max(90)
+    .optional()
+    .nullable(),
+  safeReturnLng: z.coerce.number()
+    .finite()
+    .min(-180, "Longitud debe estar entre -180 y 180")
+    .max(180)
+    .optional()
+    .nullable(),
+  safeReturnContactName: z.string().max(120).optional().nullable(),
+  safeReturnContactPhone: z.string().max(30).optional().nullable(),
+  showSafeReturnLocationPublic: z.boolean().optional(),
 
   phone: z.string().max(20).optional().nullable(),
   nationalId: z.string().max(50).optional().nullable(),

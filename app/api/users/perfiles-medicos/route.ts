@@ -135,9 +135,16 @@ export async function POST(req: NextRequest) {
       isNonVerbal,
       communicationAssistance,
       safeReturnInstructions,
+      safeReturnLocationName,
+      safeReturnAddress,
+      safeReturnLat,
+      safeReturnLng,
+      safeReturnContactName,
+      safeReturnContactPhone,
       showVulnerabilityStatusPublic,
       showCommunicationStatusPublic,
       showSafeReturnPublic,
+      showSafeReturnLocationPublic,
     } = safeBody;
 
     if (!firstName || !lastName) {
@@ -182,9 +189,16 @@ export async function POST(req: NextRequest) {
       isNonVerbal: isNonVerbal ?? undefined,
       communicationAssistance: communicationAssistance ?? undefined,
       safeReturnInstructions: safeReturnInstructions ?? undefined,
+      safeReturnLocationName: safeReturnLocationName ?? undefined,
+      safeReturnAddress: safeReturnAddress ?? undefined,
+      safeReturnLat: safeReturnLat ?? undefined,
+      safeReturnLng: safeReturnLng ?? undefined,
+      safeReturnContactName: safeReturnContactName ?? undefined,
+      safeReturnContactPhone: safeReturnContactPhone ?? undefined,
       showVulnerabilityStatusPublic: showVulnerabilityStatusPublic ?? undefined,
       showCommunicationStatusPublic: showCommunicationStatusPublic ?? undefined,
       showSafeReturnPublic: showSafeReturnPublic ?? undefined,
+      showSafeReturnLocationPublic: showSafeReturnLocationPublic ?? undefined,
     });
 
     // Record audit log

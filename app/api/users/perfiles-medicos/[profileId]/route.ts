@@ -72,9 +72,20 @@ export async function PATCH(
 
   const safeBody = validation.data;
   const {
-    firstName, lastName, displayNamePublic, birthDate: rawBirthDate, sex,
-    bloodType, allergies, chronicConditions, medications, additionalNotes, phone,
-    nationalId, address, city,
+    firstName,
+    lastName,
+    displayNamePublic,
+    birthDate: rawBirthDate,
+    sex,
+    bloodType,
+    allergies,
+    chronicConditions,
+    medications,
+    additionalNotes,
+    phone,
+    nationalId,
+    address,
+    city,
     isInsured,
     insuranceProvider,
     insurancePolicyNumber,
@@ -93,15 +104,21 @@ export async function PATCH(
     isNonVerbal,
     communicationAssistance,
     safeReturnInstructions,
+    safeReturnLocationName,
+    safeReturnAddress,
+    safeReturnLat,
+    safeReturnLng,
+    safeReturnContactName,
+    safeReturnContactPhone,
     showVulnerabilityStatusPublic,
     showCommunicationStatusPublic,
     showSafeReturnPublic,
+    showSafeReturnLocationPublic,
   } = safeBody;
 
-  // Parse birthDate string to Date (schema now uses DateTime)
-  const birthDate = rawBirthDate !== undefined ? (rawBirthDate ? new Date(rawBirthDate) : null) : undefined;
+  const birthDate = rawBirthDate ? new Date(rawBirthDate) : undefined;
 
-  const updated = await ProfileRepository.update(profileId, {
+  const updatedProfile = await ProfileRepository.update(profileId, {
     ...(firstName !== undefined && { firstName }),
     ...(lastName !== undefined && { lastName }),
     ...(displayNamePublic !== undefined && { displayNamePublic }),
@@ -133,38 +150,25 @@ export async function PATCH(
     ...(isNonVerbal !== undefined && { isNonVerbal }),
     ...(communicationAssistance !== undefined && { communicationAssistance }),
     ...(safeReturnInstructions !== undefined && { safeReturnInstructions }),
+    ...(safeReturnLocationName !== undefined && { safeReturnLocationName }),
+    ...(safeReturnAddress !== undefined && { safeReturnAddress }),
+    ...(safeReturnLat !== undefined && { safeReturnLat }),
+    ...(safeReturnLng !== undefined && { safeReturnLng }),
+    ...(safeReturnContactName !== undefined && { safeReturnContactName }),
+    ...(safeReturnContactPhone !== undefined && { safeReturnContactPhone }),
     ...(showVulnerabilityStatusPublic !== undefined && { showVulnerabilityStatusPublic }),
     ...(showCommunicationStatusPublic !== undefined && { showCommunicationStatusPublic }),
     ...(showSafeReturnPublic !== undefined && { showSafeReturnPublic }),
-  });
-
-  // Sync phone number to User table if this profile is the main user's profile
-  if (existing.userId && phone !== undefined) {
-    await prisma.user.update({
-      where: { id: existing.userId },
-      data: { phone }
-    });
-  }
-
-  await prisma.auditLog.create({
-    data: {
-      actorUserId: userId,
-      accountId: existing.accountId,
-      entityType: "profile",
-      entityId: profileId,
-      action: "update_family_profile",
-      oldValuesJson: JSON.stringify(existing),
-      newValuesJson: JSON.stringify(body),
-    },
+    ...(showSafeReturnLocationPublic !== undefined && { showSafeReturnLocationPublic }),
   });
 
   await AccountStateService.invalidateCache(userId);
-  return NextResponse.json({ profile: updated });
+
+  return NextResponse.json({ profile: updatedProfile });
 }
 
-// DELETE: remove a family profile (only if no chips assigned)
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ profileId: string }> }
 ) {
   const session = await getServerSession(authOptions);
@@ -174,9 +178,6 @@ export async function DELETE(
 
   const userId = (session.user as { id: string }).id;
   const { profileId } = await params;
-
-
-  // Management of profiles is allowed regardless of service state.
 
   const existing = await getAuthorizedProfile(userId, profileId);
   if (!existing) {
