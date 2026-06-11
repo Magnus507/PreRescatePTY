@@ -603,10 +603,7 @@ export default function EmergencyPage() {
             <button onClick={() => setView('paramedic')} className="group relative w-full bg-white text-[#DA1A21] py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3">SÍ, soy Paramédico <ShieldCheck className="h-8 w-8" /></button>
             <button onClick={() => setView('citizen')} className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest">No, soy un Ciudadano</button>
             {(
-              profile?.isMinor ||
-              profile?.vulnerabilityStatus?.hasCognitiveImpairment ||
-              profile?.vulnerabilityStatus?.hasWanderingRisk ||
-              profile?.vulnerabilityStatus?.isNonVerbal ||
+              (profile?.vulnerabilityStatus) ||
               !!profile?.safeReturn?.instructions
             ) && (
               <button onClick={() => setView('special')} className="inline-flex items-center justify-center gap-2 w-full py-6 bg-amber-500 text-white rounded-[2.5rem] font-black text-lg shadow-2xl hover:bg-amber-600 active:scale-95 transition-all uppercase tracking-wider">ASISTENCIA ESPECIAL / RETORNO SEGURO</button>

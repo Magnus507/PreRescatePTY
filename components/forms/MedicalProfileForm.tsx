@@ -48,6 +48,9 @@ interface ProfileFormProps {
     showVulnerabilityStatusPublic?: boolean;
     showCommunicationStatusPublic?: boolean;
     showSafeReturnPublic?: boolean;
+    // Reusable address fields (no lat/lng currently in schema)
+    address?: string;
+    city?: string;
   };
   onChange: (field: string, value: string | boolean) => void;
   disabled?: boolean;
@@ -233,7 +236,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
   const renderSpecialAssistanceFields = () => (
     <div className="space-y-3">
-      <ToggleField label="Asistencia especial" checked={form.enableSpecialAssistance ?? false} onChange={(v) => update("enableSpecialAssistance", v)} />
+      <ToggleField label="Asistencia especial" checked={form.enableSpecialAssistance ?? false} onChange={(v) => { update("enableSpecialAssistance", v); if (v) { update("showVulnerabilityStatusPublic", true); update("showCommunicationStatusPublic", true); } }} />
 
       {form.enableSpecialAssistance && (
         <div className="space-y-3">
@@ -257,7 +260,13 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
   const renderSafeReturnFields = () => (
     <div className="space-y-3">
-      <ToggleField label="Retorno seguro" checked={form.enableSafeReturn ?? false} onChange={(v) => update("enableSafeReturn", v)} />
+      <ToggleField label="Retorno seguro" checked={form.enableSafeReturn ?? false} onChange={(v) => {
+        update("enableSafeReturn", v);
+        if (v) {
+          // auto-enable public visibility for safe return when user activates the feature
+          update("showSafeReturnPublic", true);
+        }
+      }} />
 
       {form.enableSafeReturn && (
         <div>
@@ -269,6 +278,10 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
             placeholder="Ej. Si la persona está desorientada, llamar primero a su contacto principal. No dejarla sola..."
             color="text-teal-600"
           />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+            <Field label="Dirección de Retorno Seguro (opcional)" value={form.address || ""} onChange={(v: string) => update("address", v)} placeholder="Calle, número, referencia" />
+            <Field label="Ciudad" value={form.city || ""} onChange={(v: string) => update("city", v)} placeholder="Ciudad" />
+          </div>
         </div>
       )}
     </div>
