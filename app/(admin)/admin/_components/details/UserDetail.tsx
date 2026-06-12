@@ -1,15 +1,15 @@
 import React from 'react';
 import { 
   ChevronLeft, Shield, Activity, ShieldCheck, ShieldOff, 
-  RotateCcw, RefreshCw, Zap, Building2, ChevronRight, Mail, Phone,
-  Calendar, Briefcase, GraduationCap, HeartPulse
+  RotateCcw, RefreshCw, Zap, ChevronRight, Mail, Phone,
+  Calendar, Briefcase, HeartPulse
 } from 'lucide-react';
 import { UserAdmin } from '../../_types/admin';
 
 interface UserDetailProps {
   user: UserAdmin;
   onBack: () => void;
-  onAction: (userId: string, action: string, data: any) => void;
+  onAction: (userId: string, action: string, data: Record<string, unknown>) => void;
   onRefresh: () => void;
   onViewInventory: (accountId: string) => void; // Added
   onOpenComboSelector: () => void; // Added
@@ -210,7 +210,7 @@ export const UserDetailView: React.FC<UserDetailProps> = ({
                          className="w-full flex items-center justify-between p-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl border border-indigo-400/30 transition-all shadow-lg active:scale-95"
                        >
                           <span className="text-[10px] font-black uppercase tracking-widest">Convertir a Empresa</span>
-                          <Building2 className="h-4 w-4 opacity-60" />
+                          <Zap className="h-4 w-4 opacity-60" />
                        </button>
                    )}
 

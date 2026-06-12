@@ -58,7 +58,7 @@ export async function GET() {
 
   if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
 
-  let requests = user.profile?.organizationMembers || [];
+  const requests = user.profile?.organizationMembers || [];
 
   // Nota: corporateProfile debe ser creado por el endpoint de approve
   // (members/[id]) o por join-request. Este endpoint solo reporta el estado

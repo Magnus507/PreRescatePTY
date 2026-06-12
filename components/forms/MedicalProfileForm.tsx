@@ -45,9 +45,16 @@ interface ProfileFormProps {
     isNonVerbal?: boolean;
     communicationAssistance?: string;
     safeReturnInstructions?: string;
+    safeReturnLocationName?: string;
+    safeReturnAddress?: string;
+    safeReturnLat?: string | number | null;
+    safeReturnLng?: string | number | null;
+    safeReturnContactName?: string;
+    safeReturnContactPhone?: string;
     showVulnerabilityStatusPublic?: boolean;
     showCommunicationStatusPublic?: boolean;
     showSafeReturnPublic?: boolean;
+    showSafeReturnLocationPublic?: boolean;
     // Reusable address fields (no lat/lng currently in schema)
     address?: string;
     city?: string;
@@ -265,22 +272,47 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         if (v) {
           // auto-enable public visibility for safe return when user activates the feature
           update("showSafeReturnPublic", true);
+          update("showSafeReturnLocationPublic", true);
         }
       }} />
 
       {form.enableSafeReturn && (
-        <div>
-          <TextAreaField
-            icon={<Footprints className="h-4 w-4" />}
-            label="Instrucciones de retorno seguro"
-            value={form.safeReturnInstructions || ""}
-            onChange={(v: string) => update("safeReturnInstructions", v)}
-            placeholder="Ej. Si la persona está desorientada, llamar primero a su contacto principal. No dejarla sola..."
-            color="text-teal-600"
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-            <Field label="Dirección de Retorno Seguro (opcional)" value={form.address || ""} onChange={(v: string) => update("address", v)} placeholder="Calle, número, referencia" />
-            <Field label="Ciudad" value={form.city || ""} onChange={(v: string) => update("city", v)} placeholder="Ciudad" />
+        <div className="p-3 md:p-4 rounded-2xl border border-border bg-muted/20">
+          <h4 className="font-black text-sm text-teal-700">Ubicación de Retorno Seguro</h4>
+          <p className="text-xs text-muted-foreground mt-1">Esta es la ubicación donde debe ser llevada la persona en caso de encontrarse extraviada.</p>
+
+          <div className="mt-3 space-y-3">
+            {/* Sección A: Nombre del lugar + Dirección */}
+            <div>
+              <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección A</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Nombre del lugar" value={form.safeReturnLocationName || ""} onChange={(v: string) => update("safeReturnLocationName", v)} placeholder="Ej: Casa de tía María" />
+                <Field label="Dirección" value={form.safeReturnAddress || ""} onChange={(v: string) => update("safeReturnAddress", v)} placeholder="Calle, número, referencia" />
+              </div>
+            </div>
+
+            {/* Sección B: Coordenadas */}
+            <div>
+              <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección B</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Latitud" value={String(form.safeReturnLat ?? "")} onChange={(v: string) => update("safeReturnLat", v)} placeholder="Ej: 8.9833" />
+                <Field label="Longitud" value={String(form.safeReturnLng ?? "")} onChange={(v: string) => update("safeReturnLng", v)} placeholder="Ej: -79.5167" />
+              </div>
+              {(!form.safeReturnLat || !form.safeReturnLng) && (
+                <div className="mt-2 text-xs text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2">
+                  <Info className="inline-block mr-2 align-text-top" /> Los mapas Google Maps y Waze no estarán disponibles sin coordenadas.
+                </div>
+              )}
+            </div>
+
+            {/* Sección C: Responsable */}
+            <div>
+              <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección C</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Responsable del lugar" value={form.safeReturnContactName || ""} onChange={(v: string) => update("safeReturnContactName", v)} placeholder="Ej: Tía María García" />
+                <Field label="Teléfono del responsable" value={form.safeReturnContactPhone || ""} onChange={(v: string) => update("safeReturnContactPhone", v)} placeholder="+507 6612-3456" />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -696,7 +728,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
           {showPrivacy ? (
             renderPrivacyToggles()
           ) : (
-            <div className="text-sm text-muted-foreground italic">Opciones de privacidad ocultas. Pulsa "Mostrar opciones" para editar.</div>
+            <div className="text-sm text-muted-foreground italic">Opciones de privacidad ocultas. Pulsa &quot;Mostrar opciones&quot; para editar.</div>
           )}
         </div>
       </div>

@@ -89,9 +89,10 @@ export async function PATCH(
     await prisma.$transaction(async (tx) => {
       // 1. Null out corporateProfileId before deleting the Profile
       if (corporateProfileId) {
+        const updateData: { corporateProfileId: string | null } = { corporateProfileId: null };
         await tx.organizationMember.update({
           where: { id },
-          data: { corporateProfileId: null } as any,
+          data: updateData,
         });
 
         // 2. Delete the corporate Profile (no other references after step 1)

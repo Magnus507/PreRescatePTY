@@ -3,10 +3,19 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
+export interface OrgEditPayload {
+  legalName: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  taxId: string;
+  status: "active" | "suspended" | "archived";
+}
+
 interface OrgEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => Promise<boolean>;
+  onSubmit: (data: OrgEditPayload) => Promise<boolean>;
   loading: boolean;
   org: {
     id: string;
@@ -20,7 +29,7 @@ interface OrgEditModalProps {
 }
 
 export function OrgEditModal({ isOpen, onClose, onSubmit, loading, org }: OrgEditModalProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<OrgEditPayload>({
     legalName: "",
     contactEmail: "",
     contactPhone: "",
@@ -37,7 +46,10 @@ export function OrgEditModal({ isOpen, onClose, onSubmit, loading, org }: OrgEdi
         contactPhone: org.contactPhone || "",
         address: org.address || "",
         taxId: org.taxId || "",
-        status: org.status || "active",
+        status:
+          org.status === "active" || org.status === "suspended" || org.status === "archived"
+            ? org.status
+            : "active",
       });
     }
   }, [isOpen, org]);
@@ -72,7 +84,7 @@ export function OrgEditModal({ isOpen, onClose, onSubmit, loading, org }: OrgEdi
                <select 
                  className="w-full bg-muted/50 border-none rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium appearance-none"
                  value={formData.status}
-                 onChange={e => setFormData({...formData, status: e.target.value})}
+                 onChange={e => setFormData({...formData, status: e.target.value as OrgEditPayload['status']})}
                >
                  <option value="active">Activa</option>
                  <option value="suspended">Suspendida</option>

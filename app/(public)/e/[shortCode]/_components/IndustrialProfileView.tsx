@@ -3,12 +3,47 @@
 import { 
   Phone, ShieldAlert, Activity,
   User, ShieldCheck, Building2, MapPin,
-  Droplets, MessageCircle, Zap, Calendar, Pill
+  Droplets, MessageCircle, Calendar, Pill
 } from "lucide-react";
+import Image from "next/image";
 import { formatEmergencyLocation } from "@/domains/shared/services/emergency-location";
 
+interface IndustrialProfileEmergencyContact {
+  fullName?: string;
+  phone: string;
+  relationship?: string;
+}
+
+interface IndustrialProfileMedicalExtras {
+  insuranceProvider?: string | null;
+  preferredHospital?: string | null;
+  primaryDoctorName?: string | null;
+  primaryDoctorPhone?: string | null;
+  emergencyInstructions?: string | null;
+}
+
+interface IndustrialProfile {
+  organization?: {
+    name: string;
+    location?: string | null;
+    department?: string | null;
+  } | null;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  photoUrl?: string | null;
+  publicMedicalExtras?: IndustrialProfileMedicalExtras;
+  age?: string | number | null;
+  sex?: string | null;
+  bloodType?: string | null;
+  allergies?: string | null;
+  chronicConditions?: string | null;
+  medications?: string | null;
+  emergencyContacts: IndustrialProfileEmergencyContact[];
+}
+
 interface IndustrialProfileViewProps {
-  profile: any;
+  profile: IndustrialProfile;
   scanLocation?: string;
   isParamedic: boolean;
 }
@@ -77,9 +112,9 @@ export function IndustrialProfileView({ profile, scanLocation = "", isParamedic 
         <div className="bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-200 shadow-xl p-5 md:p-8">
           <div className="flex flex-col md:flex-row items-center gap-5 md:gap-8 text-center md:text-left">
             <div className="relative">
-              <div className="h-28 w-28 md:h-36 md:w-36 rounded-[1.8rem] bg-slate-100 border-4 border-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
+              <div className="relative h-28 w-28 md:h-36 md:w-36 rounded-[1.8rem] bg-slate-100 border-4 border-slate-200 flex items-center justify-center overflow-hidden shadow-lg">
                 {profile.photoUrl ? (
-                  <img src={profile.photoUrl} alt={profile.displayName} className="h-full w-full object-cover" />
+                  <Image src={profile.photoUrl} alt={profile.displayName || "Perfil"} fill className="object-cover" unoptimized />
                 ) : (
                   <User className="h-14 w-14 text-slate-400" />
                 )}
@@ -91,7 +126,7 @@ export function IndustrialProfileView({ profile, scanLocation = "", isParamedic 
 
             <div className="flex-1 space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-700 text-[10px] font-black uppercase tracking-widest">
-                <Building2 className="h-3 w-3" /> {org.name}
+                <Building2 className="h-3 w-3" /> {org?.name || "Organización"}
               </div>
               <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-none text-slate-900">
                 {profile.firstName} <br />
@@ -103,9 +138,9 @@ export function IndustrialProfileView({ profile, scanLocation = "", isParamedic 
               <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-2">
                 <div className="flex items-center gap-2 text-slate-500">
                   <MapPin className="h-4 w-4" />
-                  <span className="text-xs font-bold uppercase tracking-widest">{org.location || "Sede Central"}</span>
+                  <span className="text-xs font-bold uppercase tracking-widest">{org?.location || "Sede Central"}</span>
                 </div>
-                <div className="text-xs font-black uppercase tracking-widest text-slate-400">{org.department || "Operaciones"}</div>
+                <div className="text-xs font-black uppercase tracking-widest text-slate-400">{org?.department || "Operaciones"}</div>
               </div>
             </div>
           </div>
@@ -206,7 +241,7 @@ export function IndustrialProfileView({ profile, scanLocation = "", isParamedic 
         <div className="space-y-4">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] text-center mb-6">Familiares / Contactos Personales</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {profile.emergencyContacts.map((contact: any, i: number) => {
+            {profile.emergencyContacts.map((contact: IndustrialProfileEmergencyContact, i: number) => {
               const contactPhone = sanitizeTelPhone(contact.phone);
               const whatsappPhone = normalizeWhatsAppPhone(contact.phone);
               const locInfo = formatEmergencyLocation(scanLocation);

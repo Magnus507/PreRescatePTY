@@ -10,7 +10,7 @@ export async function GET() {
     }
 
     return NextResponse.json({ shortCode });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ shortCode: "44R6DBNQ" });
   }
 }

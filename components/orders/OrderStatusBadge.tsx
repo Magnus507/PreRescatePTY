@@ -4,7 +4,6 @@ import {
   Clock,
   ShoppingBag,
   Truck,
-  Loader2,
 } from "lucide-react";
 import { getOrderStatusLabel } from "@/lib/order-status";
 

@@ -11,9 +11,16 @@ interface BatchCreateModalProps {
   onSuccess: () => void;
 }
 
+interface BatchCreateResult {
+  membersCreated: number;
+  department: string;
+  tempPassword: string;
+  emails: string[];
+}
+
 export function BatchCreateModal({ isOpen, onClose, orgId, orgName, onSuccess }: BatchCreateModalProps) {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<BatchCreateResult | null>(null);
   const [formData, setFormData] = useState({
     departmentName: "",
     quantity: 10,
@@ -35,17 +42,17 @@ export function BatchCreateModal({ isOpen, onClose, orgId, orgName, onSuccess }:
         body: JSON.stringify(formData)
       });
 
-      const data = await res.json();
+      const data = await res.json() as BatchCreateResult | { error?: string };
 
-      if (!res.ok) {
-        alert("Error: " + (data.error || "Error desconocido"));
-        setLoading(false);
+      if (!res.ok || "error" in data) {
+        const errorMessage = "error" in data ? data.error : "Error desconocido";
+        alert("Error: " + (errorMessage || "Error desconocido"));
         return;
       }
 
-      setResult(data);
+      setResult(data as BatchCreateResult);
       onSuccess();
-    } catch (err) {
+    } catch {
       alert("Error de conexión");
     } finally {
       setLoading(false);

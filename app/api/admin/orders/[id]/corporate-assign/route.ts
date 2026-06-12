@@ -160,7 +160,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "No se pudo asignar chip" }, { status: error?.status || 500 });
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    const status = (e as unknown as { status?: number }).status || 500;
+    return NextResponse.json({ error: e.message || "No se pudo asignar chip" }, { status });
   }
 }

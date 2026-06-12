@@ -77,7 +77,7 @@ export async function PATCH(
   const body = await req.json();
   const { legalName, displayName, contactEmail, contactPhone, taxId, address, status, packageId, maxChips, companyCode } = body;
 
-  const updateData: any = {};
+  const updateData: Partial<{ legalName: string; displayName: string; contactEmail: string; contactPhone: string; taxId: string; address: string; status: string; companyCode: string | null }> = {};
   if (legalName !== undefined) updateData.legalName = legalName;
   if (displayName !== undefined) updateData.displayName = displayName;
   if (contactEmail !== undefined) updateData.contactEmail = contactEmail;

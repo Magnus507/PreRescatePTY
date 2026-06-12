@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           data: { passwordHash },
         });
 
-        await (prisma as any).appNotification.create({
+        await prisma.appNotification.create({
           data: {
             userId,
             title: "Seguridad Actualizada",
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
 
-        await (prisma as any).appNotification.create({
+        await prisma.appNotification.create({
           data: {
             userId,
             title: "Cuenta Corporativa Activada",
@@ -190,7 +190,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         await AccountStateService.invalidateCache(userId);
 
-        await (prisma as any).appNotification.create({
+        await prisma.appNotification.create({
           data: {
             userId,
             title: "Plan de Protección Actualizado",
@@ -241,7 +241,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
 
-        await (prisma as any).appNotification.create({
+        await prisma.appNotification.create({
           data: {
             userId,
             title: "Chips Adicionales Añadidos",
@@ -389,7 +389,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         await AccountStateService.invalidateCache(userId);
 
-        await (prisma as any).appNotification.create({
+        await prisma.appNotification.create({
           data: {
             userId,
             title: "Ajuste de Cuenta Aplicado",
@@ -432,14 +432,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           await tx.passwordResetToken.deleteMany({ where: { email: user.email } });
           
           // 3. Delete Scan Events related to this user's account or profiles
-          const profiles = await tx.profile.findMany({ 
-            where: { 
-              OR: [
-                { userId }, 
-                user.accountId ? { accountId: user.accountId } : {}
-              ].filter(Boolean) as any
-            } 
-          });
+          const orConditions: Array<{ userId: string } | { accountId: string }> = [{ userId }];
+          if (user.accountId) orConditions.push({ accountId: user.accountId });
+          const profiles = await tx.profile.findMany({ where: { OR: orConditions } });
           const profileIds = profiles.map(p => p.id);
           
           if (profileIds.length > 0) {
@@ -486,10 +481,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       default:
         return NextResponse.json({ error: "Acción administrativa no reconocida" }, { status: 400 });
     }
-  } catch (error: any) {
-    console.error("Admin Action Error:", error);
+  } catch (err: unknown) {
+    console.error("Admin Action Error:", err);
+    const e = err instanceof Error ? err : new Error(String(err));
     return NextResponse.json({ 
-      error: error.message || "Error interno al procesar la acción administrativa" 
+      error: e.message || "Error interno al procesar la acción administrativa" 
     }, { status: 500 });
   }
 }

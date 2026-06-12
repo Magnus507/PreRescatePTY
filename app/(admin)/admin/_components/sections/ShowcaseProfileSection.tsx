@@ -3,17 +3,52 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { 
-  ShieldCheck, Heart, User, Phone, Plus, Trash2, 
+  ShieldCheck, Heart, User, Plus, Trash2, 
   Save, Loader2, Sparkles, QrCode, ExternalLink, Activity,
   Droplets, AlertTriangle, Pill, MessageCircle, Crown
 } from "lucide-react";
 
+interface ShowcaseProfileContactSource {
+  contact: {
+    id: string;
+    fullName: string;
+    phone: string;
+    relationship: string;
+  };
+}
+
+interface ShowcaseProfile {
+  firstName: string;
+  lastName: string;
+  bloodType: string;
+  allergies: string;
+  chronicConditions: string;
+  medications: string;
+  additionalNotes: string;
+  photoUrl: string;
+  contacts?: ShowcaseProfileContactSource[];
+}
+
+interface ShowcaseChip {
+  shortCode: string;
+  internalLabel: string;
+  serialPublic?: string;
+  qrUrl?: string;
+}
+
+interface ShowcaseContact {
+  id?: string;
+  fullName: string;
+  phone: string;
+  relationship: string;
+}
+
 export function ShowcaseProfileSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
-  const [chip, setChip] = useState<any>(null);
-  const [contacts, setContacts] = useState<any[]>([]);
+  const [profile, setProfile] = useState<ShowcaseProfile | null>(null);
+  const [chip, setChip] = useState<ShowcaseChip | null>(null);
+  const [contacts, setContacts] = useState<ShowcaseContact[]>([]);
 
   useEffect(() => {
     loadProfile();
@@ -22,11 +57,11 @@ export function ShowcaseProfileSection() {
   const loadProfile = async () => {
     try {
       const res = await fetch("/api/admin/showcase");
-      const data = await res.json();
+      const data: { profile?: ShowcaseProfile; chip?: ShowcaseChip } = await res.json();
       if (data.profile) {
         setProfile(data.profile);
-        setChip(data.chip);
-        const contactsList = (data.profile.contacts || []).map((pc: any) => ({
+        setChip(data.chip ?? null);
+        const contactsList = (data.profile.contacts || []).map((pc) => ({
            id: pc.contact.id,
            fullName: pc.contact.fullName,
            phone: pc.contact.phone,
@@ -36,7 +71,7 @@ export function ShowcaseProfileSection() {
       } else {
         throw new Error("No hay data");
       }
-    } catch (e) {
+    } catch {
       console.warn("Usando fallback de emergencia para Showcase");
       // Fallback for demo stability
       setProfile({
@@ -66,10 +101,10 @@ export function ShowcaseProfileSection() {
         body: JSON.stringify({ ...profile, contacts }),
         headers: { "Content-Type": "application/json" }
       });
-      const data = await res.json();
+      const data: { profile?: ShowcaseProfile } = await res.json();
       if (res.ok && data.profile) {
         setProfile(data.profile);
-        const contactsList = (data.profile.contacts || []).map((pc: any) => ({
+        const contactsList = (data.profile.contacts || []).map((pc) => ({
           id: pc.contact.id,
           fullName: pc.contact.fullName,
           phone: pc.contact.phone,
@@ -80,7 +115,7 @@ export function ShowcaseProfileSection() {
       } else {
         toast.error("Error al guardar cambios");
       }
-    } catch (e) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setSaving(false);
@@ -108,6 +143,8 @@ export function ShowcaseProfileSection() {
       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Cargando Infraestructura Showcase...</p>
     </div>
   );
+
+  if (!profile) return null;
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-5 duration-700">
@@ -154,6 +191,7 @@ export function ShowcaseProfileSection() {
                   <div className="relative inline-block">
                      <div className="w-32 h-32 rounded-[2rem] bg-slate-100 mx-auto flex items-center justify-center overflow-hidden border-4 border-white shadow-xl relative">
                         {profile.photoUrl ? (
+                           // eslint-disable-next-line @next/next/no-img-element
                            <img src={profile.photoUrl} alt="demo" className="w-full h-full object-cover" />
                         ) : (
                            <User className="h-12 w-12 text-slate-300" />
@@ -191,6 +229,7 @@ export function ShowcaseProfileSection() {
 
                      <div className="h-32 w-32 bg-white rounded-2xl mx-auto shadow-md p-2 flex items-center justify-center border border-slate-100 overflow-hidden">
                         {chip?.qrUrl ? (
+                           // eslint-disable-next-line @next/next/no-img-element
                            <img src={chip.qrUrl} alt="QR Code" className="max-w-[90%] max-h-[90%] object-contain" />
                         ) : (
                            <QrCode className="h-10 w-10 text-slate-100" />

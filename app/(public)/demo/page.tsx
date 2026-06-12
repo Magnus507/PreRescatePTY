@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 export default function DemoPage() {
@@ -37,7 +38,7 @@ export default function DemoPage() {
               <p className="mt-4 text-slate-300 max-w-lg">Estamos preparando una experiencia interactiva que muestra cómo funciona la app para primeros respondedores y usuarios. Esto solo toma unos segundos.</p>
 
               <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
-                <a href="/" className="inline-flex items-center gap-3 rounded-2xl bg-white/5 px-5 py-3 text-sm font-black text-white hover:bg-white/10 transition">Ir al inicio</a>
+                <Link href="/" className="inline-flex items-center gap-3 rounded-2xl bg-white/5 px-5 py-3 text-sm font-black text-white hover:bg-white/10 transition">Ir al inicio</Link>
                 <a href="/registro" className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand to-red-700 px-5 py-3 text-sm font-black text-white shadow-button hover:shadow-button-hover transition">Crear cuenta</a>
               </div>
             </div>

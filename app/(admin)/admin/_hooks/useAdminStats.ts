@@ -18,8 +18,8 @@ export function useAdminStats() {
       setRecentScans(data.recentScans);
       setRecentUsers(data.recentUsers);
       setRecentOrgs(data.recentOrgs);
-    } catch (e: any) {
-      toast.error(e.message || "Error al cargar estadísticas del sistema");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al cargar estadísticas del sistema");
     } finally {
       setLoading(false);
     }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
-import { Building2, Loader2, CheckCircle2, ExternalLink, Globe, Save, Upload, Download, QrCode, Camera } from "lucide-react";
+import { Building2, Loader2, ExternalLink, Save, Upload, Download, QrCode, Camera } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 
 type CorporatePublicProfile = {
@@ -68,8 +69,8 @@ export default function EmpresaPerfilPage() {
       if (!res.ok) throw new Error(json.error || "No se pudo cargar");
       setProfile(json.profile || null);
       if (json.companyCode) setCompanyCode(json.companyCode);
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo cargar el perfil");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo cargar el perfil");
     } finally {
       setLoading(false);
     }
@@ -83,19 +84,20 @@ export default function EmpresaPerfilPage() {
       if (!res.ok) throw new Error(json.error || "No se pudo crear");
       setProfile(json.profile);
       toast.success("Perfil empresarial creado");
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo crear el perfil");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo crear el perfil");
     } finally {
       setLoading(false);
     }
   };
 
+  type PublicProfilePayload = CorporatePublicProfile & { companyCode?: string };
+
   const saveProfile = async () => {
     if (!profile) return;
     setSaving(true);
     try {
-      const body: any = { ...profile };
-      // Include companyCode in the PATCH payload
+      const body: PublicProfilePayload = { ...profile };
       if (companyCode) {
         body.companyCode = companyCode;
       }
@@ -109,8 +111,8 @@ export default function EmpresaPerfilPage() {
       if (!res.ok) throw new Error(json.error || "No se pudo guardar");
       setProfile(json.profile);
       toast.success("Perfil empresarial actualizado");
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo guardar");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo guardar");
     } finally {
       setSaving(false);
     }
@@ -146,14 +148,14 @@ export default function EmpresaPerfilPage() {
       if (!res.ok) throw new Error(json.error || "No se pudo guardar logo");
       setProfile(json.profile);
       toast.success("Logo actualizado");
-    } catch (err: any) {
-      toast.error(err?.message || "Error al subir logo");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al subir logo");
     } finally {
       setUploadingLogo(false);
     }
   };
 
-  const updateField = (key: keyof CorporatePublicProfile, value: any) => {
+  const updateField = (key: keyof CorporatePublicProfile, value: CorporatePublicProfile[keyof CorporatePublicProfile]) => {
     if (!profile) return;
     setProfile({ ...profile, [key]: value });
   };
@@ -236,11 +238,13 @@ export default function EmpresaPerfilPage() {
           </div>
           <div className="p-5 flex flex-col items-center gap-4">
             {profile.logoUrl ? (
-              <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center">
-                <img
+              <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 relative">
+                <Image
                   src={profile.logoUrl}
                   alt="Logo"
-                  className="object-contain h-full w-full p-2"
+                  className="object-contain p-2"
+                  fill
+                  sizes="112px"
                   onError={(e) => { e.currentTarget.style.display = "none"; }}
                 />
               </div>

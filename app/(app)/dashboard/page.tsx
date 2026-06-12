@@ -7,16 +7,14 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { 
-  History, AlertCircle, CheckCircle, 
-  ChevronRight, Building2, Shield, LayoutDashboard, User, Cpu, Users, UsersRound,
-  School, Settings, CreditCard,
-  LogOut, ShieldCheck, Plus, Zap, Heart, 
+  AlertCircle, CheckCircle, 
+  ChevronRight, Building2, Shield, ShieldCheck, Plus, Zap, Heart, 
   Activity, ArrowUpRight, Smartphone, Bell, Loader2, ExternalLink, ShieldAlert, Truck,
-  Camera, Upload
+  Camera
 } from "lucide-react";
 
 import { AccountState } from "@/domains/accounts/account.types";
-import { BUSINESS_RULES, ACCOUNT_TYPES } from "@/domains/shared/constants";
+import { BUSINESS_RULES } from "@/domains/shared/constants";
 
 interface ChipData {
   id: string;
@@ -56,14 +54,11 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [dataLoadedAt, setDataLoadedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showAddChipsModal, setShowAddChipsModal] = useState(false);
-  const [addChipsQty, setAddChipsQty] = useState(1);
-  const [buying, setBuying] = useState(false);
+  
 
   // Check if data is stale (default 5 minutes = 300000ms)
-  const isDataStale = (maxAgeMs = 300000) => !dataLoadedAt || Date.now() - dataLoadedAt > maxAgeMs;
+  
 
   const refreshData = async () => {
     try {
@@ -79,7 +74,6 @@ export default function DashboardPage() {
         ...familiaJson,
         notifications: notifyJson.notifications || []
       });
-      setDataLoadedAt(Date.now());
     } catch (e) {
       console.error(e);
     } finally {
@@ -148,7 +142,6 @@ export default function DashboardPage() {
 
   const { state, ownProfile, familyProfiles } = data;
   const isEmployee = state.isCorporate && !state.isOwner;
-  const { setupChecklist } = state;
   const userEmail = session?.user?.email;
 
   const CHIP_PRICE = BUSINESS_RULES.EXTRA_CHIP_PRICE;
@@ -594,30 +587,3 @@ function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, 
   );
 }
 
-function MiniStat({ icon: Icon, label, value, color, href }: { icon: any; label: string; value: string; color: string; href?: string }) {
-  const Card = (
-    <div className="p-5 rounded-[1.8rem] border border-border bg-card transition-all hover:bg-accent/30 group cursor-pointer">
-       <div className="flex items-center gap-3 mb-2">
-          <div className={`h-8 w-8 rounded-xl bg-muted group-hover:scale-110 transition-all flex items-center justify-center ${color}`}>
-            <Icon className="h-4 w-4" />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
-       </div>
-       <p className="text-3xl font-black tracking-tighter">{value}</p>
-    </div>
-  );
-
-  if (href) return <Link href={href}>{Card}</Link>;
-  return Card;
-}
-
-function SetupItem({ done, label, href }: { done: boolean; label: string; href: string }) {
-  return (
-    <Link href={href} className="flex items-center gap-3 group">
-      <div className={`h-6 w-6 rounded-full flex items-center justify-center transition-colors ${done ? "bg-success text-white" : "bg-amber-500 text-white"}`}>
-        {done ? <CheckCircle className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
-      </div>
-      <span className={`text-sm font-semibold group-hover:underline ${done ? "text-success/70" : "text-amber-900 dark:text-amber-500"}`}>{label}</span>
-    </Link>
-  );
-}

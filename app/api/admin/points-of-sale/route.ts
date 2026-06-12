@@ -85,8 +85,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const now = new Date();
-
     const point = await prisma.$transaction(async (tx) => {
       const created = await tx.pointOfSale.create({
         data: { name, address, contactName, contactPhone },

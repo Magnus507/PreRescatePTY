@@ -9,7 +9,7 @@ import { RejectionReasonBox } from "./_components/RejectionReasonBox";
 import { PaymentInstructions } from "./_components/PaymentInstructions";
 import { PaymentProofForm } from "./_components/PaymentProofForm";
 import { toast } from "sonner";
-import { canCustomerCancelManual, canSubmitManualProof, getOrderStatusLabel, isManualOrderFinal } from "@/lib/order-status";
+import { canCustomerCancelManual, canSubmitManualProof, isManualOrderFinal } from "@/lib/order-status";
 
 interface OrderItem {
   id: string;
@@ -62,6 +62,15 @@ interface Order {
   shippingNotes: string | null;
 }
 
+interface PaymentConfig {
+  yappy_qr_url?: string | null;
+  yappy_handle?: string | null;
+  bank_name?: string | null;
+  bank_account_type?: string | null;
+  bank_account_number?: string | null;
+  bank_account_name?: string | null;
+}
+
 function PedidosContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,12 +79,12 @@ function PedidosContent() {
   const [paymentRefDraft, setPaymentRefDraft] = useState<Record<string, string>>({});
   
   // Shipping states for updates
-  const [shippingAddress, setShippingAddress] = useState("");
-  const [shippingCity, setShippingCity] = useState("");
-  const [shippingNotes, setShippingNotes] = useState("");
+  const [, setShippingAddress] = useState("");
+  const [, setShippingCity] = useState("");
+  const [, setShippingNotes] = useState("");
   
   // Dynamic instructions
-  const [paymentConfig, setPaymentConfig] = useState<any>(null);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -97,7 +106,7 @@ function PedidosContent() {
       const res = await fetch(`/api/orders?_t=${Date.now()}`);
       const data = await res.json();
       setOrders(data.orders || []);
-    } catch (e) {
+    } catch {
       toast.error("Error al cargar pedidos");
     } finally {
       setLoading(false);
@@ -201,11 +210,6 @@ function PedidosContent() {
     } finally {
       setUploadingFor(null);
     }
-  };
-
-  const getStatusDisplay = (status: string, paymentStatus?: string) => {
-    const label = getOrderStatusLabel(status, paymentStatus);
-    return { label };
   };
 
   if (loading) {

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChevronLeft, ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight, UserRound, Plus } from "lucide-react";
@@ -26,6 +27,22 @@ interface ProfileOption {
   profileType: string;
   displayNamePublic?: string | null;
   assignedChips?: { id: string; shortCode: string }[];
+}
+
+type ProfileOptionSource = Omit<ProfileOption, "profileType">;
+
+interface CreateOrderItem {
+  productType: string;
+  quantity: number;
+  unitPrice: number;
+  profileId?: string;
+}
+
+interface CreateOrderBody {
+  items: CreateOrderItem[];
+  shippingAddress: string;
+  shippingCity: string;
+  shippingNotes: string;
 }
 
 interface PaymentConfig {
@@ -81,13 +98,13 @@ export default function TiendaPage() {
     try {
       const res = await fetch("/api/users/perfiles-medicos");
       const json = await res.json();
-      const payload = json.data ?? json;
+      const payload: { ownProfile?: ProfileOptionSource; familyProfiles?: ProfileOptionSource[] } = json.data ?? json;
       const profiles: ProfileOption[] = [];
       if (payload.ownProfile) {
         profiles.push({ ...payload.ownProfile, profileType: "personal" });
       }
       if (Array.isArray(payload.familyProfiles)) {
-        profiles.push(...payload.familyProfiles.map((p: any) => ({ ...p, profileType: "family" })));
+        profiles.push(...payload.familyProfiles.map((p: ProfileOptionSource) => ({ ...p, profileType: "family" })));
       }
       setProfileOptions(profiles);
       if (profiles.length > 0) {
@@ -107,7 +124,7 @@ export default function TiendaPage() {
     
     setCreatingOrder(true);
     try {
-      const body: any = {
+      const body: CreateOrderBody = {
         items: [{
           productType: selectedProduct.id,
           quantity: 1,
@@ -280,7 +297,13 @@ export default function TiendaPage() {
                     </span>
                  </div>
                  {p.image ? (
-                   <img src={`/api/image-proxy?bucket=general&path=${encodeURIComponent(p.image.split('/').slice(-2).join('/'))}`} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" onError={(e) => { if (p.image) e.currentTarget.src = p.image; }} />
+                   <Image
+                     src={`/api/image-proxy?bucket=general&path=${encodeURIComponent(p.image.split('/').slice(-2).join('/'))}`}
+                     alt={p.name}
+                     fill
+                     className="object-cover group-hover:scale-110 transition-transform duration-700"
+                     onError={(e) => { if (p.image) e.currentTarget.src = p.image; }}
+                   />
                  ) : (
                    <Store className="h-20 w-20 md:h-24 md:w-24 text-slate-200 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700" />
                  )}
@@ -702,7 +725,14 @@ export default function TiendaPage() {
                 <p className="text-[10px] font-black uppercase text-indigo-500 mb-2">Yappy</p>
                 <div className="h-24 w-24 bg-white dark:bg-slate-800 rounded-2xl mx-auto mb-3 flex items-center justify-center border border-indigo-100 dark:border-indigo-900 overflow-hidden">
                   {paymentConfig?.yappy_qr_url ? (
-                    <img src={paymentConfig.yappy_qr_url} alt="QR" className="h-full w-full object-contain p-2" />
+                    <Image
+                      src={paymentConfig.yappy_qr_url}
+                      alt="QR"
+                      width={96}
+                      height={96}
+                      unoptimized
+                      className="h-full w-full object-contain p-2"
+                    />
                   ) : (
                     <QrCode className="h-8 w-8 text-indigo-400 opacity-20" />
                   )}
@@ -787,7 +817,14 @@ export default function TiendaPage() {
                     <p className="text-[10px] font-black uppercase text-indigo-500 mb-2">Yappy</p>
                     <div className="h-24 w-24 bg-white dark:bg-slate-800 rounded-2xl mx-auto mb-3 flex items-center justify-center border border-indigo-100 dark:border-indigo-900 overflow-hidden">
                        {paymentConfig?.yappy_qr_url ? (
-                          <img src={paymentConfig.yappy_qr_url} alt="QR" className="h-full w-full object-contain p-2" />
+                          <Image
+                            src={paymentConfig.yappy_qr_url}
+                            alt="QR"
+                            width={96}
+                            height={96}
+                            unoptimized
+                            className="h-full w-full object-contain p-2"
+                          />
                        ) : (
                           <QrCode className="h-8 w-8 text-indigo-400 opacity-20" />
                        )}

@@ -1,6 +1,16 @@
 import { adminClient } from "../apiClient";
 import { UserAdmin, AdminAccount } from "../../_types/admin";
 
+export interface AdminCreatePayload {
+  email: string;
+  password: string;
+  role: "admin" | "superadmin" | "imprenta";
+}
+
+export interface AdminUpdatePayload {
+  role: "admin" | "superadmin" | "imprenta";
+}
+
 export interface AdminUserProfileOption {
   id: string;
   firstName: string;
@@ -12,13 +22,13 @@ export interface AdminUserProfileOption {
 export const usersService = {
   async getUsers(params: { limit?: number; search?: string }, signal?: AbortSignal) {
     const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== "")
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")
     );
-    const query = new URLSearchParams(cleanParams as any).toString();
+    const query = new URLSearchParams(cleanParams as Record<string, string>).toString();
     return adminClient.get<{ users: UserAdmin[]; total: number }>(`/api/admin/users?${query}`, { signal });
   },
 
-  async runUserAction(userId: string, action: string, data: any) {
+  async runUserAction(userId: string, action: string, data: unknown) {
     return adminClient.post<{ message: string }>(`/api/admin/users/${userId}/actions`, { action, data });
   },
 
@@ -34,11 +44,11 @@ export const usersService = {
     return adminClient.get<{ admins: AdminAccount[] }>("/api/admin/admins", { signal });
   },
 
-  async createAdmin(data: any) {
+  async createAdmin(data: AdminCreatePayload) {
     return adminClient.post<{ admin: AdminAccount }>("/api/admin/admins", data);
   },
 
-  async updateAdmin(id: string, data: { role?: string; status?: string }) {
+  async updateAdmin(id: string, data: AdminUpdatePayload) {
     return adminClient.patch<{ admin: AdminAccount }>(`/api/admin/admins/${id}`, data);
   },
 

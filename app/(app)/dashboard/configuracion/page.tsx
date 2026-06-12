@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import Image from "next/image";
 import { 
   Shield, Lock, Bell, CreditCard,
   Trash2, Save, Loader2, User, Smartphone, Camera, Upload
@@ -233,7 +234,15 @@ export default function ConfiguracionPage() {
                   <div className="relative group">
                     <div className="h-32 w-32 rounded-[2.5rem] bg-indigo-50 border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden">
                       {photoUrl ? (
-                         <img src={`/api/image-proxy?bucket=profile-photos&path=${encodeURIComponent(photoUrl.split('/').slice(-2).join('/'))}`} alt="Perfil" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.src = photoUrl; }} />
+                         <div className="relative h-full w-full">
+                           <Image
+                             src={`/api/image-proxy?bucket=profile-photos&path=${encodeURIComponent(photoUrl.split('/').slice(-2).join('/'))}`}
+                             alt="Perfil"
+                             className="object-cover"
+                             fill
+                             onError={(e) => { e.currentTarget.src = photoUrl; }}
+                           />
+                         </div>
                       ) : (
                          <User className="h-12 w-12 text-indigo-300" />
                       )}

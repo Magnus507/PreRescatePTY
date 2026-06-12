@@ -6,10 +6,9 @@ import { Loader2 } from "lucide-react";
 interface OrgCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => Promise<boolean>;
+  onSubmit: (data: Record<string, unknown>) => Promise<boolean>;
   loading: boolean;
 }
-
 export function OrgCreateModal({ isOpen, onClose, onSubmit, loading }: OrgCreateModalProps) {
   const [formData, setFormData] = useState({ 
     legalName: "", displayName: "", contactEmail: "", 

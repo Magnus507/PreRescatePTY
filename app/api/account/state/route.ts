@@ -17,10 +17,11 @@ export async function GET() {
     const state = await AccountStateService.getAccountState(userId);
     
     return NextResponse.json(state);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : undefined;
     if (
-      error?.message === ACCOUNT_STATE_ERRORS.USER_NOT_FOUND ||
-      error?.message === ACCOUNT_STATE_ERRORS.ADMIN_ACCESS_CLIENT_DASHBOARD
+      err?.message === ACCOUNT_STATE_ERRORS.USER_NOT_FOUND ||
+      err?.message === ACCOUNT_STATE_ERRORS.ADMIN_ACCESS_CLIENT_DASHBOARD
     ) {
       return NextResponse.json({ error: "Sesión inválida o usuario eliminado" }, { status: 401 });
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Cpu, Users, History, UsersRound,
   Building2, ChevronRight, Settings, CreditCard,
   LogOut, Home, ShoppingCart, Store, Package,
-  Loader2, ShieldCheck, Scan, Menu, X
+  Loader2, Scan, Menu, X
 } from "lucide-react";
 import { AccountState } from "@/domains/accounts/account.types";
 import { ScanMonitor } from "./_components/ScanMonitor";
@@ -21,7 +21,8 @@ const consumerNavItems = [
   { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
 ];
 
-const consumerSecondaryItems: { href: string; label: string; icon: React.ElementType }[] = [];
+// secondary nav currently empty — reserved for future items
+// const consumerSecondaryItems: { href: string; label: string; icon: React.ElementType }[] = [];
 
 const consumerProtectionItems = [
   { href: "/dashboard/perfiles-medicos", label: "Perfiles Médicos", icon: UsersRound },
@@ -73,14 +74,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
-  const refreshState = () => {
+  const refreshState = useCallback(() => {
     if (status === "authenticated") {
       fetch("/api/account/state")
         .then(r => r.json())
         .then(data => setState(data))
-        .catch(err => console.error("Error loading account state", err));
+        .catch((err: unknown) => console.error("Error loading account state", err));
     }
-  };
+  }, [status]);
 
   useEffect(() => {
     refreshState();
@@ -98,7 +99,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       window.removeEventListener('focus', refreshState);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [status]);
+  }, [refreshState]);
 
   useEffect(() => {
     setIsMoreMenuOpen(false);
@@ -133,6 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
         { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
       ];
+  // Mobile menu handled via lucide icons imported above (Menu/X)
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#050812] selection:bg-primary selection:text-white">

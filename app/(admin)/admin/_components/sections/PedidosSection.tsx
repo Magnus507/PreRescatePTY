@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, View, CheckCircle2, Truck, RefreshCw, QrCode, Trash2, ExternalLink, Building2, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle } from "lucide-react";
+import { Loader2, View, CheckCircle2, Truck, RefreshCw, Trash2, ExternalLink, Building2, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle } from "lucide-react";
 const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => ({ default: mod.QRCodeCanvas })), { ssr: false });
 import { toast } from "sonner";
 import Link from "next/link";
@@ -97,6 +97,7 @@ interface Order {
     }
   }[];
   corporateEmployeeItems?: CorporateEmployeeItem[];
+  organizationMemberId?: string;
 }
 
 export function PedidosSection() {
@@ -109,15 +110,7 @@ export function PedidosSection() {
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'paid' | 'rejected' | 'completed'>('all');
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
-  useEffect(() => {
-    loadOrdersRef.current = loadOrders;
-  }, [loadOrders]);
-
-  async function loadOrders(options?: { silent?: boolean }) {
+  const loadOrders = useCallback(async (options?: { silent?: boolean }) => {
     const isSilent = options?.silent ?? false;
     if (!isSilent) setLoading(true);
     if (isSilent) setRefreshing(true);
@@ -129,19 +122,27 @@ export function PedidosSection() {
         const refreshedSelectedOrder = (data.orders || []).find((o: Order) => o.id === selectedOrder.id) || null;
         setSelectedOrder(refreshedSelectedOrder);
       }
-    } catch (e) {
+    } catch {
       toast.error(isSilent ? "No se pudo actualizar pedidos" : "Error al cargar pedidos");
     } finally {
       if (!isSilent) setLoading(false);
       if (isSilent) setRefreshing(false);
     }
-  }
+  }, [selectedOrder]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  useEffect(() => {
+    loadOrdersRef.current = loadOrders;
+  }, [loadOrders]);
 
   useEffect(() => {
     if (selectedOrder) {
       setReviewNote(selectedOrder.adminReviewNotes || "");
     }
-  }, [selectedOrder?.id, selectedOrder?.adminReviewNotes]);
+  }, [selectedOrder]);
 
   useEffect(() => {
     const handleWindowFocus = () => {
@@ -159,7 +160,7 @@ export function PedidosSection() {
     }, 30000);
 
     return () => window.clearInterval(interval);
-  }, [selectedOrder]);
+  }, [selectedOrder, loadOrders]);
 
   const handleStatusChange = async (id: string, newStatus: string, actionText: string) => {
     const isCompleted = newStatus === "completed";
@@ -186,7 +187,7 @@ export function PedidosSection() {
       } else {
         toast.error("Error al actualizar la orden");
       }
-    } catch (e) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setUpdating(false);
@@ -222,7 +223,7 @@ export function PedidosSection() {
       } else {
         toast.error("Error al actualizar la revisión");
       }
-    } catch (e) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setUpdating(false);
@@ -241,7 +242,7 @@ export function PedidosSection() {
       } else {
         toast.error("Error al eliminar órdenes");
       }
-    } catch (e) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setUpdating(false);
@@ -350,7 +351,7 @@ export function PedidosSection() {
                        </div>
                         <div className="bg-white rounded-xl p-4 border border-blue-100">
                           <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Colaboradores</p>
-                          <p className="font-bold text-2xl">{new Set(((selectedOrder as any).corporateEmployeeItems || []).map((item: any) => item.organizationMemberId).filter(Boolean)).size}</p>
+                          <p className="font-bold text-2xl">{new Set((selectedOrder?.corporateEmployeeItems ?? []).map((item) => item.organizationMember?.id).filter(Boolean)).size}</p>
                         </div>
                        <div className="bg-white rounded-xl p-4 border border-blue-100">
                          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Total</p>
@@ -377,6 +378,7 @@ export function PedidosSection() {
                      <div className="rounded-[2rem] border border-slate-200 p-5 bg-white">
                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary mb-3">Comprobante de pago</h3>
                        <div className="aspect-video max-w-md rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
+                         {/* eslint-disable-next-line @next/next/no-img-element */}
                          <img 
                            src={`/api/image-proxy?bucket=payment-proofs&path=${encodeURIComponent(selectedOrder.paymentProofUrl!.split('/').slice(-2).join('/'))}`} 
                            alt="Pago" 
@@ -438,7 +440,7 @@ export function PedidosSection() {
                    )}
 
                     {/* Colaboradores — grouped by collaborator */}
-                    {!isCorporatePaymentApproved && (selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (
+                    {!isCorporatePaymentApproved && (selectedOrder?.corporateEmployeeItems?.length ?? 0) > 0 && (
                       <div className="rounded-[2rem] border border-amber-200 bg-amber-50/50 p-6 space-y-4">
                         <div className="flex items-center gap-3">
                           <div className="h-1.5 w-6 bg-amber-500 rounded-full" />
@@ -452,8 +454,8 @@ export function PedidosSection() {
                         <p className="text-[10px] text-amber-600">Puedes revisar el comprobante y aprobar o rechazar el pago arriba.</p>
                       </div>
                     )}
-                    {isCorporatePaymentApproved && (selectedOrder as any).corporateEmployeeItems && (selectedOrder as any).corporateEmployeeItems.length > 0 && (() => {
-                      const items = (selectedOrder as any).corporateEmployeeItems as CorporateEmployeeItem[];
+                    {isCorporatePaymentApproved && (selectedOrder?.corporateEmployeeItems?.length ?? 0) > 0 && (() => {
+                      const items = selectedOrder?.corporateEmployeeItems ?? [];
                       const groups = new Map<string, CorporateEmployeeItem[]>();
                       for (const item of items) {
                         const mid = item.organizationMember?.id || "unknown";
@@ -504,7 +506,7 @@ export function PedidosSection() {
                             })();
                             const mainChip = 
                               groupItems.find(i => i.chip)?.chip || 
-                              groupItems.find(i => (i as any).existingCorporateChip)?.existingCorporateChip || 
+                              groupItems.find(i => i.existingCorporateChip)?.existingCorporateChip || 
                               null;
 
                             return (
@@ -650,7 +652,7 @@ export function PedidosSection() {
                            </div>
                            {selectedOrder.shippingNotes && (
                               <div className="p-3 bg-muted/50 rounded-xl border border-dashed border-border">
-                                 <p className="text-[10px] font-bold text-muted-foreground italic leading-relaxed">"{selectedOrder.shippingNotes}"</p>
+                                 <p className="text-[10px] font-bold text-muted-foreground italic leading-relaxed">&quot;{selectedOrder.shippingNotes}&quot;</p>
                               </div>
                            )}
                         </div>
@@ -906,6 +908,7 @@ export function PedidosSection() {
                         </h3>
                         {selectedOrder.paymentProofUrl ? (
                            <div className="aspect-video w-full rounded-[1.5rem] border border-border overflow-hidden bg-slate-100 shadow-sm cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img 
                                 src={`/api/image-proxy?bucket=payment-proofs&path=${encodeURIComponent(selectedOrder.paymentProofUrl!.split('/').slice(-2).join('/'))}`} 
                                 alt="Pago" 
@@ -992,17 +995,17 @@ export function PedidosSection() {
          </div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-fit">
-            {[
+            {([
               { id: 'all', label: 'Todos' },
               { id: 'pending', label: 'Pending' },
               { id: 'under_review', label: 'Under Review' },
               { id: 'paid', label: 'Paid' },
               { id: 'rejected', label: 'Rejected' },
               { id: 'completed', label: 'Completados' }
-            ].map(tab => (
+            ] as const).map(tab => (
               <button 
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                  {tab.label}

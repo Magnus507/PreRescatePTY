@@ -1,9 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import { QrCode, Banknote } from "lucide-react";
 
+interface PaymentConfig {
+  yappy_qr_url?: string | null;
+  yappy_handle?: string | null;
+  bank_name?: string | null;
+  bank_account_type?: string | null;
+  bank_account_number?: string | null;
+  bank_account_name?: string | null;
+}
+
 interface PaymentInstructionsProps {
-  paymentConfig: Record<string, any> | null;
+  paymentConfig: PaymentConfig | null;
 }
 
 /**
@@ -16,7 +26,13 @@ export function PaymentInstructions({ paymentConfig }: PaymentInstructionsProps)
       <div className="p-6 rounded-3xl bg-white border border-border flex flex-col items-center gap-3 shadow-sm transition-all hover:scale-[1.02]">
         <div className="h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
           {paymentConfig?.yappy_qr_url ? (
-            <img src={paymentConfig.yappy_qr_url} alt="QR" className="h-full w-full object-contain p-1" />
+            <Image
+              src={paymentConfig.yappy_qr_url}
+              alt="QR"
+              className="h-full w-full object-contain p-1"
+              width={48}
+              height={48}
+            />
           ) : (
             <QrCode className="h-6 w-6" />
           )}

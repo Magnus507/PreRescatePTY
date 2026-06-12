@@ -1,8 +1,8 @@
 "use client";
 
 import { toast } from "sonner";
-import { AlertCircle, Shield, Database, HardDrive, Bell, CheckCircle2, ChevronRight, Activity, Zap, RefreshCw, Loader2 } from "lucide-react";
-import { AdminStats, SystemAlert } from "../../_types/admin";
+import { AlertCircle, Shield, Database, HardDrive, CheckCircle2, ChevronRight, Activity, Zap, RefreshCw, Loader2 } from "lucide-react";
+import { AdminStats } from "../../_types/admin";
 
 interface GovernanceSectionProps {
   stats: AdminStats | null;

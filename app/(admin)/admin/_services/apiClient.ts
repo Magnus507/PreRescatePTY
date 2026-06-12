@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(public message: string, public status: number, public details?: any) {
+  constructor(public message: string, public status: number, public details?: unknown) {
     super(message);
     this.name = "ApiError";
   }
@@ -18,7 +18,8 @@ class ApiClient {
 
       // Read body as text first to avoid crash on empty/invalid JSON
       const text = await res.text();
-      let data: any = null;
+      type ApiErrorPayload = { error?: string; message?: string; details?: unknown };
+      let data: unknown = null;
 
       // Attempt JSON parse only if body is non-empty and content-type is JSON
       if (text.length > 0) {
@@ -34,10 +35,11 @@ class ApiClient {
       }
 
       if (!res.ok) {
+        const errorPayload = data as ApiErrorPayload;
         throw new ApiError(
-          data?.error || data?.message || res.statusText || "Error inesperado en el servidor",
+          errorPayload.error || errorPayload.message || res.statusText || "Error inesperado en el servidor",
           res.status,
-          data?.details || null
+          errorPayload.details || null
         );
       }
 
@@ -67,7 +69,7 @@ class ApiClient {
     return this.fetcher<T>(url, { ...options, method: "GET" });
   }
 
-  post<T>(url: string, body?: any, options?: RequestInit) {
+  post<T>(url: string, body?: unknown, options?: RequestInit) {
     return this.fetcher<T>(url, { 
       ...options, 
       method: "POST", 
@@ -75,7 +77,7 @@ class ApiClient {
     });
   }
 
-  patch<T>(url: string, body?: any, options?: RequestInit) {
+  patch<T>(url: string, body?: unknown, options?: RequestInit) {
     return this.fetcher<T>(url, { 
       ...options, 
       method: "PATCH", 

@@ -3,8 +3,7 @@
 import { toast } from "sonner";
 import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { Search, Loader2, Activity, Store, Rocket, Sparkles, Smartphone, Wallet, Zap, Fingerprint } from "lucide-react";
+import { Search, Loader2, Activity } from "lucide-react";
 
 // Domain & Hooks
 import { useAdminManager } from "./_hooks/useAdminManager";
@@ -65,7 +64,6 @@ function serviceColor(s: string) {
 
 export default function AdminPage() {
   const { data: session, status: authStatus } = useSession();
-  const router = useRouter();
 
   // Redirection is handled by middleware and AdminLayout
 
@@ -95,7 +93,6 @@ function AdminDashboard() {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const isPrintRole = role === 'imprenta';
-  const isFounder = session?.user?.email === "admin@prerescatepty.com";
 
   const dynamicLabels: Record<string, { title: string; subtitle: string; placeholder: string }> = {
     dashboard: { 
@@ -346,7 +343,6 @@ function AdminDashboard() {
           {admin.tab === "empresas" && (
             <OrganizationsSection 
               organizations={admin.orgs.organizations}
-              tab={admin.tab}
               loading={admin.orgs.loading}
               setShowOrgModal={setShowOrgModal}
               loadOrgDetail={admin.orgs.loadOrgDetail}

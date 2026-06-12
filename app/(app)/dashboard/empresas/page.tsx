@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, Phone, ShieldCheck, Users, ShoppingCart, Package, Minus, PlusCircle, Copy, ChevronLeft } from "lucide-react";
+import { Building2, CheckCircle2, Loader2, XCircle, Briefcase, Clock, Ban, Archive, ArrowRight, Upload, Pencil, Smartphone, ExternalLink, Plus, Save, Activity, AlertCircle, UserRound, ShieldCheck, Users, ShoppingCart, Package, Minus, PlusCircle, Copy, ChevronLeft } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
 
 type CorporateTab =
@@ -16,45 +16,191 @@ type CorporateTab =
   | "suspendidos"
   | "archivados";
 
-type CorporatePublicProfile = {
+type MemberProfile = {
+  firstName?: string;
+  lastName?: string;
+  bloodType?: string | null;
+  user?: { email?: string } | null;
+};
+
+type CorporateMember = {
   id: string;
+  employeeNationalId?: string | null;
+  employeeAge?: string | null;
+  employeePhone?: string | null;
+  employeePosition?: string | null;
+  employeeDepartment?: string | null;
+  employeeInternalId?: string | null;
+  employeeNote?: string | null;
+  profile?: MemberProfile | null;
+  corporateStatus?: string | null;
+};
+
+type CorporateProduct = {
+  id: string;
+  name?: string;
+  price?: number;
+  isActive?: boolean;
+  requiresPersonalization?: boolean;
+  productType?: string;
+  estimatedProductionTime?: string;
+};
+
+type MemberProductSelection = {
+  productId: string;
+  quantity: number;
+  note: string;
+};
+
+type CorporateContact = {
+  id: string;
+  fullName: string;
+  relationship: string;
+  phone: string;
+  email: string;
+};
+
+type CorporateContactForm = Omit<CorporateContact, "id">;
+
+type CompanyRequestItem = {
+  id: string;
+  quantity: number;
+  subtotal?: number;
+  unitPrice?: number;
+  note?: string;
+  product?: { name?: string };
+};
+
+type CompanyRequest = {
+  id: string;
+  status: string;
+  orderId?: string | null;
+  items?: CompanyRequestItem[];
+  organizationMember?: {
+    profile?: MemberProfile | null;
+    employeePosition?: string | null;
+    employeeDepartment?: string | null;
+    employeeNationalId?: string | null;
+  };
+  rejectionReason?: string;
+  createdAt?: string;
+  companyReviewedAt?: string;
+};
+
+type CorporateOrderItem = {
+  id: string;
+  organizationMemberId: string;
+  quantity: number;
+  subtotal?: number;
+  fulfillmentStatus?: string | null;
+  chip?: { shortCode?: string } | null;
+  activatedAt?: string | null;
+  product?: { id?: string; name?: string };
+  organizationMember?: {
+    profile?: MemberProfile | null;
+    employeePosition?: string | null;
+    employeeDepartment?: string | null;
+    employeeNationalId?: string | null;
+  };
+};
+
+type CorporateOrder = {
+  id: string;
+  paymentStatus?: string;
+  adminReviewStatus?: string;
+  orderType?: string;
+  orderStatus?: string;
+  orderNumber?: string;
+  amount?: number;
+  createdAt?: string;
+  corporateEmployeeItems?: CorporateOrderItem[];
+  paymentProofUrl?: string;
+  corporateDeliveryStatus?: string;
+  estimatedDeliveryDate?: string;
+  deliveryNote?: string;
+};
+
+type CorporateChip = {
   shortCode: string;
-  status: "draft" | "active" | "hidden";
-  displayName: string | null;
-  legalName: string | null;
-  ruc: string | null;
-  industry: string | null;
-  description: string | null;
-  slogan: string | null;
-  phone: string | null;
-  whatsapp: string | null;
-  email: string | null;
-  website: string | null;
-  address: string | null;
-  mainServices: string | null;
-  mainProducts: string | null;
-  securityContactName: string | null;
-  securityPhone: string | null;
-  emergencyProcedure: string | null;
-  customEmployeeMessage: string | null;
-  showCompanyCode: boolean;
-  showDisplayName: boolean;
-  showLegalName: boolean;
-  showRuc: boolean;
-  showIndustry: boolean;
-  showDescription: boolean;
-  showSlogan: boolean;
-  showPhone: boolean;
-  showWhatsapp: boolean;
-  showEmail: boolean;
-  showWebsite: boolean;
-  showAddress: boolean;
-  showMainServices: boolean;
-  showMainProducts: boolean;
-  showSecurityContactName: boolean;
-  showSecurityPhone: boolean;
-  showEmergencyProcedure: boolean;
-  showCustomEmployeeMessage: boolean;
+  fulfillmentStatus?: string | null;
+  status?: string | null;
+};
+
+type ApiObjectResponse<T> = T & {
+  error?: string;
+  message?: string;
+  url?: string;
+  orderNumber?: string;
+};
+
+type MembersResponse = ApiObjectResponse<{ members: CorporateMember[] }>;
+
+type ProductsResponse = ApiObjectResponse<{ products: CorporateProduct[] }>;
+type CompanyRequestsResponse = ApiObjectResponse<{ requests: CompanyRequest[] }>;
+type OrdersResponse = ApiObjectResponse<{ orders: CorporateOrder[] }>;
+
+type MyStatusResponse = ApiObjectResponse<MyStatus>;
+
+type ActiveRequestOrderItem = {
+  id: string;
+  quantity?: number;
+  product?: { name?: string; productType?: string };
+  chip?: CorporateChip | null;
+  fulfillmentStatus?: string | null;
+};
+
+type ActiveRequest = {
+  corporateStatus: string;
+  corporateProfile?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+  };
+  corporateOrderItems?: ActiveRequestOrderItem[];
+  organization?: { displayName?: string; legalName?: string };
+};
+
+type MyStatus = {
+  requests?: ActiveRequest[];
+};
+
+// ApiListResponse removed (unused in this file)
+
+type CorporateProfilePayload = typeof emptyProfileForm & {
+  enableSpecialAssistance?: boolean;
+  enableSafeReturn?: boolean;
+  hasCognitiveImpairment?: boolean;
+  hasWanderingRisk?: boolean;
+  isNonVerbal?: boolean;
+  communicationAssistance?: string;
+  safeReturnInstructions?: string;
+  safeReturnLocationName?: string;
+  safeReturnAddress?: string;
+  safeReturnLat?: string | number | null;
+  safeReturnLng?: string | number | null;
+  safeReturnContactName?: string;
+  safeReturnPhone?: string;
+  showVulnerabilityStatusPublic?: boolean;
+  showCommunicationStatusPublic?: boolean;
+  showSafeReturnPublic?: boolean;
+  showSafeReturnLocationPublic?: boolean;
+  address?: string;
+  city?: string;
+};
+// CorpEditFormField removed (unused in this file)
+
+type JoinFormState = {
+  companyCode: string;
+  firstName: string;
+  lastName: string;
+  employeeNationalId: string;
+  employeeAge: string;
+  employeePhone: string;
+  employeePosition: string;
+  employeeDepartment: string;
+  employeeInternalId: string;
+  employeeNote: string;
 };
 
 type RequestStatus =
@@ -144,28 +290,23 @@ export default function EmpresasPage() {
   const [loading, setLoading] = useState(true);
   const [isCorporateAccount, setIsCorporateAccount] = useState(false);
 
-  const [myStatus, setMyStatus] = useState<any>(null);
-  const [members, setMembers] = useState<any[]>([]);
+  const [myStatus, setMyStatus] = useState<MyStatus | null>(null);
+  const [members, setMembers] = useState<CorporateMember[]>([]);
   const [tab, setTab] = useState<CorporateTab>("aprobados");
-  const [publicProfile, setPublicProfile] = useState<CorporatePublicProfile | null>(null);
-  const [publicLoading, setPublicLoading] = useState(false);
-  const [savingPublic, setSavingPublic] = useState(false);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<CorporateProduct[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<Record<string, boolean>>({});
-  const [memberProducts, setMemberProducts] = useState<Record<string, { productId: string; quantity: number }[]>>({});
+  const [memberProducts, setMemberProducts] = useState<Record<string, MemberProductSelection[]>>({});
   const [paymentProofUrl, setPaymentProofUrl] = useState("");
   const [submittingCorporateOrder, setSubmittingCorporateOrder] = useState(false);
-  const [corporateOrders, setCorporateOrders] = useState<any[]>([]);
+  const [corporateOrders, setCorporateOrders] = useState<CorporateOrder[]>([]);
   const [companyCodeError, setCompanyCodeError] = useState("");
   const [submittingJoin, setSubmittingJoin] = useState(false);
   const [proofFileUploading, setProofFileUploading] = useState(false);
-  const [proofFileName, setProofFileName] = useState("");
   const [proofUploadedName, setProofUploadedName] = useState("");
-  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
   // Corporate profile editor
   const [showCorpEditor, setShowCorpEditor] = useState(false);
-  const [corpEditForm, setCorpEditForm] = useState({ ...emptyProfileForm });
+  const [corpEditForm, setCorpEditForm] = useState<CorporateProfilePayload>({ ...emptyProfileForm });
   const [corpEditProfileId, setCorpEditProfileId] = useState<string | null>(null);
   const [corpEditSaving, setCorpEditSaving] = useState(false);
   const [corpEditLoading, setCorpEditLoading] = useState(false);
@@ -174,8 +315,8 @@ export default function EmpresasPage() {
   const [corpFullProfile, setCorpFullProfile] = useState<CorpFullProfile | null>(null);
 
   // Corporate emergency contacts
-  const [corpContacts, setCorpContacts] = useState<any[]>([]);
-  const [corpContactForm, setCorpContactForm] = useState({ ...emptyCorpContactForm });
+  const [corpContacts, setCorpContacts] = useState<CorporateContact[]>([]);
+  const [corpContactForm, setCorpContactForm] = useState<CorporateContactForm>({ ...emptyCorpContactForm });
   const [savingCorpContact, setSavingCorpContact] = useState(false);
   const [deletingCorpContactId, setDeletingCorpContactId] = useState<string | null>(null);
   const [showCorpContacts, setShowCorpContacts] = useState(false);
@@ -186,14 +327,14 @@ export default function EmpresasPage() {
   const [showAllProductRequests, setShowAllProductRequests] = useState(false);
   const [corporateActivationCode, setCorporateActivationCode] = useState("");
   const [activatingCorporateChip, setActivatingCorporateChip] = useState(false);
-  const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<CorporateProduct[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Record<string, { productId: string; quantity: number; note: string }>>({});
   const [submittingRequest, setSubmittingRequest] = useState(false);
-  const [myRequests, setMyRequests] = useState<any[]>([]);
+  const [myRequests, setMyRequests] = useState<CompanyRequest[]>([]);
   const [myRequestsLoading, setMyRequestsLoading] = useState(false);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<JoinFormState>({
     companyCode: "",
     firstName: "",
     lastName: "",
@@ -206,44 +347,7 @@ export default function EmpresasPage() {
     employeeNote: "",
   });
 
-  const loadAll = async () => {
-    setLoading(true);
-    try {
-      const my = await fetch("/api/organizations/my-status");
-      const myJson = await my.json();
-      if (my.ok) {
-        setMyStatus(myJson);
-        // Load full decrypted corporate profile
-        const active = (myJson.requests || []).find((r: any) =>
-          ["pending_company_review", "approved_unpaid", "paid_active", "suspended", "archived"].includes(r.corporateStatus)
-        );
-        if (active?.corporateProfile?.id) {
-          loadCorpFullProfile(active.corporateProfile.id);
-          loadCorpContacts(active.corporateProfile.id);
-        }
-      }
-
-      // Check if user has corporate account
-      const corp = await fetch("/api/organizations/members?status=approved_unpaid");
-      if (corp.ok) {
-        setIsCorporateAccount(true);
-        const corpJson = await corp.json();
-        setMembers(corpJson.members || []);
-        await loadPublicProfile();
-        const productsRes = await fetch("/api/products");
-        const productsJson = await productsRes.json();
-        if (productsRes.ok) setProducts((productsJson.products || []).filter((p: any) => p.isActive));
-      } else {
-        setIsCorporateAccount(false);
-      }
-    } catch {
-      toast.error("Error al cargar módulo empresarial");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadCorpFullProfile = async (profileId: string) => {
+  const loadCorpFullProfile = useCallback(async (profileId: string) => {
     try {
       const res = await fetch(`/api/users/perfiles-medicos/${profileId}`);
       if (!res.ok) return;
@@ -264,9 +368,9 @@ export default function EmpresasPage() {
     } catch {
       // silent — card will show minimal data from my-status
     }
-  };
+  }, []);
 
-  const loadCorpContacts = async (profileId: string) => {
+  const loadCorpContacts = useCallback(async (profileId: string) => {
     try {
       const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts`);
       if (res.ok) {
@@ -276,7 +380,43 @@ export default function EmpresasPage() {
     } catch {
       // silent
     }
-  };
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const my = await fetch("/api/organizations/my-status");
+      const myJson = await my.json() as MyStatusResponse;
+      if (my.ok) {
+        setMyStatus(myJson);
+        // Load full decrypted corporate profile
+        const active = (myJson.requests || []).find((r) =>
+          ["pending_company_review", "approved_unpaid", "paid_active", "suspended", "archived"].includes(r.corporateStatus)
+        );
+        if (active?.corporateProfile?.id) {
+          loadCorpFullProfile(active.corporateProfile.id);
+          loadCorpContacts(active.corporateProfile.id);
+        }
+      }
+
+      // Check if user has corporate account
+      const corp = await fetch("/api/organizations/members?status=approved_unpaid");
+      if (corp.ok) {
+        setIsCorporateAccount(true);
+        const corpJson = await corp.json() as MembersResponse;
+        setMembers(corpJson.members || []);
+        const productsRes = await fetch("/api/products");
+        const productsJson = await productsRes.json() as ProductsResponse;
+        if (productsRes.ok) setProducts((productsJson.products || []).filter((p: { isActive?: boolean }) => p.isActive));
+      } else {
+        setIsCorporateAccount(false);
+      }
+    } catch {
+      toast.error("Error al cargar módulo empresarial");
+    } finally {
+      setLoading(false);
+    }
+  }, [loadCorpFullProfile, loadCorpContacts]);
 
   const handleAddCorpContact = async () => {
     const profileId = activeRequest?.corporateProfile?.id;
@@ -336,60 +476,6 @@ export default function EmpresasPage() {
     }
   };
 
-  const loadPublicProfile = async () => {
-    setPublicLoading(true);
-    try {
-      const res = await fetch("/api/organizations/public-profile");
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "No se pudo cargar el perfil público");
-      setPublicProfile(json.profile || null);
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo cargar el perfil público");
-    } finally {
-      setPublicLoading(false);
-    }
-  };
-
-  const createPublicProfile = async () => {
-    try {
-      setPublicLoading(true);
-      const res = await fetch("/api/organizations/public-profile", { method: "POST" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "No se pudo crear el perfil");
-      setPublicProfile(json.profile);
-      toast.success("Perfil empresarial creado");
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo crear el perfil");
-    } finally {
-      setPublicLoading(false);
-    }
-  };
-
-  const savePublicProfile = async () => {
-    if (!publicProfile) return;
-    try {
-      setSavingPublic(true);
-      const res = await fetch("/api/organizations/public-profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(publicProfile),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "No se pudo guardar");
-      setPublicProfile(json.profile);
-      toast.success("Perfil empresarial actualizado");
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo guardar");
-    } finally {
-      setSavingPublic(false);
-    }
-  };
-
-  const updateProfileField = (key: keyof CorporatePublicProfile, value: any) => {
-    if (!publicProfile) return;
-    setPublicProfile({ ...publicProfile, [key]: value });
-  };
-
   const toggleMemberSelection = (memberId: string) => {
     setSelectedMembers((prev) => ({ ...prev, [memberId]: !prev[memberId] }));
     setMemberProducts((prev) => prev[memberId] ? prev : { ...prev, [memberId]: [] });
@@ -406,21 +492,21 @@ export default function EmpresasPage() {
           [memberId]: current.map((p) => p.productId === productId ? { ...p, quantity: p.quantity + 1 } : p),
         };
       }
-      return { ...prev, [memberId]: [...current, { productId, quantity: 1 }] };
+      return { ...prev, [memberId]: [...current, { productId, quantity: 1, note: "" }] };
     });
-  };
-
-  const updateMemberProductQty = (memberId: string, productId: string, quantity: number) => {
-    setMemberProducts((prev) => ({
-      ...prev,
-      [memberId]: (prev[memberId] || []).map((p) => p.productId === productId ? { ...p, quantity: Math.max(1, quantity) } : p),
-    }));
   };
 
   const removeMemberProduct = (memberId: string, productId: string) => {
     setMemberProducts((prev) => ({
       ...prev,
-      [memberId]: (prev[memberId] || []).filter((p) => p.productId !== productId),
+      [memberId]: (prev[memberId] || []).filter((p: { productId?: string }) => p.productId !== productId),
+    }));
+  };
+
+  const updateMemberProductQty = (memberId: string, productId: string, qty: number) => {
+    setMemberProducts((prev) => ({
+      ...prev,
+      [memberId]: (prev[memberId] || []).map((p: MemberProductSelection) => p.productId === productId ? { ...p, quantity: Math.max(1, qty) } : p),
     }));
   };
 
@@ -455,8 +541,8 @@ export default function EmpresasPage() {
       setPaymentProofUrl("");
       setProofUploadedName("");
       await loadMembersByTab("aprobados");
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo enviar compra corporativa");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "No se pudo enviar compra corporativa");
     } finally {
       setSubmittingCorporateOrder(false);
     }
@@ -475,7 +561,7 @@ export default function EmpresasPage() {
 
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [loadAll]);
 
   // Load catalog when employee becomes paid_active
   const [shouldLoadCatalog, setShouldLoadCatalog] = useState(false);
@@ -487,12 +573,12 @@ export default function EmpresasPage() {
           fetch("/api/products"),
           fetch("/api/organizations/product-requests/my"),
         ]);
-        if (prodRes.ok) {
-          const prodJson = await prodRes.json();
-          setCatalogProducts((prodJson.products || []).filter((p: any) => p.isActive));
+          if (prodRes.ok) {
+            const prodJson = await prodRes.json() as ProductsResponse;
+          setCatalogProducts((prodJson.products || []).filter((p: { isActive?: boolean }) => p.isActive));
         }
         if (reqRes.ok) {
-          const reqJson = await reqRes.json();
+          const reqJson = await reqRes.json() as CompanyRequestsResponse;
           setMyRequests(reqJson.requests || []);
         }
       } catch {
@@ -506,7 +592,7 @@ export default function EmpresasPage() {
   }, [shouldLoadCatalog]);
 
   // Company product requests
-  const [companyRequests, setCompanyRequests] = useState<any[]>([]);
+  const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
   const [companyRequestsLoading, setCompanyRequestsLoading] = useState(false);
   const [reviewingRequest, setReviewingRequest] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -542,9 +628,9 @@ export default function EmpresasPage() {
 
   const selectedApprovedTotal = useMemo(() => {
     return companyRequests
-      .filter((r: any) => selectedApprovedRequestIds.includes(r.id))
-      .reduce((sum: number, r: any) => {
-        return sum + (r.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+      .filter((r) => selectedApprovedRequestIds.includes(r.id))
+      .reduce((sum: number, r) => {
+        return sum + (r.items || []).reduce((s: number, i) => s + (i.subtotal || 0), 0);
       }, 0);
   }, [companyRequests, selectedApprovedRequestIds]);
 
@@ -553,12 +639,12 @@ export default function EmpresasPage() {
   };
 
   const selectAllApproved = () => {
-    const approved = companyRequests.filter((r: any) => r.status === "approved_pending_payment" && !r.orderId);
-    const allSelected = approved.every((r: any) => selectedApprovedRequests[r.id]);
+    const approved = companyRequests.filter((r) => r.status === "approved_pending_payment" && !r.orderId);
+    const allSelected = approved.every((r) => selectedApprovedRequests[r.id]);
     if (allSelected) {
       const next: Record<string, boolean> = {};
       for (const key of Object.keys(selectedApprovedRequests)) {
-        if (!approved.find((r: any) => r.id === key)) next[key] = true;
+        if (!approved.find((r) => r.id === key)) next[key] = true;
       }
       setSelectedApprovedRequests(next);
     } else {
@@ -595,8 +681,8 @@ export default function EmpresasPage() {
       setOrderProofName("");
       await loadCompanyRequests();
       await loadMembersByTab("pagos_enviados");
-    } catch (err: any) {
-      toast.error(err.message || "No se pudo crear la orden");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "No se pudo crear la orden");
     } finally {
       setSubmittingOrderFromRequests(false);
     }
@@ -618,8 +704,8 @@ export default function EmpresasPage() {
       await loadCompanyRequests();
       setShowRejectModal(null);
       setRejectReason("");
-    } catch (err: any) {
-      toast.error(err.message || "Error al procesar solicitud");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error al procesar solicitud");
     } finally {
       setReviewingRequest(null);
     }
@@ -650,13 +736,13 @@ export default function EmpresasPage() {
         fetch(`/api/organizations/members?status=${status}`),
         fetch("/api/organizations/corporate-orders"),
       ]);
-      const membersJson = await membersRes.json();
-      const ordersJson = await ordersRes.json();
+      const membersJson = await membersRes.json() as MembersResponse;
+      const ordersJson = await ordersRes.json() as OrdersResponse;
       if (ordersRes.ok) setCorporateOrders(ordersJson.orders || []);
 
       if (membersRes.ok) {
         const pendingOrders = (ordersJson.orders || []).filter(
-          (o: any) =>
+          (o) =>
             o.orderType === "corporate_employee_purchase" &&
             (o.adminReviewStatus === "pending" || o.paymentStatus === "under_review") &&
             o.orderStatus !== "cancelled" &&
@@ -669,13 +755,13 @@ export default function EmpresasPage() {
           }
         }
         const filtered = (membersJson.members || []).filter(
-          (m: any) => !pendingMemberIds.has(m.id)
+          (m) => !pendingMemberIds.has(m.id)
         );
         setMembers(filtered);
       }
     } else if (status) {
       const res = await fetch(`/api/organizations/members?status=${status}`);
-      const json = await res.json();
+      const json = await res.json() as MembersResponse;
       if (res.ok) setMembers(json.members || []);
     }
   };
@@ -711,8 +797,8 @@ export default function EmpresasPage() {
       toast.success(json.message || "Solicitud enviada");
       setForm({ ...form, companyCode: form.companyCode.toUpperCase().trim() });
       await loadAll();
-    } catch (err: any) {
-      if (!companyCodeError) toast.error(err?.message || "No se pudo enviar solicitud");
+    } catch (err: unknown) {
+      if (!companyCodeError) toast.error(err instanceof Error ? err.message : "No se pudo enviar solicitud");
     } finally {
       setSubmittingJoin(false);
     }
@@ -750,8 +836,8 @@ export default function EmpresasPage() {
       if (!res.ok) throw new Error(json.error || "No se pudo cancelar");
       toast.success("Compra cancelada");
       await loadMembersByTab("pagos_enviados");
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo cancelar");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "No se pudo cancelar");
     } finally {
       setCancellingOrder(null);
     }
@@ -803,10 +889,11 @@ export default function EmpresasPage() {
           showAdditionalNotesPublic: !!p.showAdditionalNotesPublic,
         });
         setCorpEditError(""); // Clear any previous error on success
-      } catch (err: any) {
+      } catch (err: unknown) {
         setCorpEditForm({ ...emptyProfileForm }); // Do NOT keep stale data on error
-        setCorpEditError(err.message || "Error al cargar perfil");
-        toast.error(err.message || "Error al cargar perfil empresarial");
+        const message = err instanceof Error ? err.message : "Error al cargar perfil";
+        setCorpEditError(message);
+        toast.error(message || "Error al cargar perfil empresarial");
       } finally {
         setCorpEditLoading(false);
       }
@@ -833,16 +920,16 @@ export default function EmpresasPage() {
       setShowCorpEditor(false);
       // Reload
       const my = await fetch("/api/organizations/my-status");
-      const myJson = await my.json();
+      const myJson = await my.json() as MyStatusResponse;
       if (my.ok) {
         setMyStatus(myJson);
-        const active = (myJson.requests || []).find((r: any) =>
+        const active = (myJson.requests || []).find((r) =>
           ["pending_company_review", "approved_unpaid", "paid_active", "suspended", "archived"].includes(r.corporateStatus)
         );
         if (active?.corporateProfile?.id) loadCorpFullProfile(active.corporateProfile.id);
       }
-    } catch (err: any) {
-      setCorpEditError(err.message || "Error de conexión");
+    } catch (err: unknown) {
+      setCorpEditError(err instanceof Error ? err.message : "Error de conexión");
     } finally {
       setCorpEditSaving(false);
     }
@@ -850,7 +937,7 @@ export default function EmpresasPage() {
 
   const activeRequest = useMemo(() => {
     const reqs = myStatus?.requests || [];
-    return reqs.find((r: any) =>
+    return reqs.find((r) =>
       ["pending_company_review", "approved_unpaid", "paid_active", "suspended", "archived"].includes(r.corporateStatus)
     );
   }, [myStatus]);
@@ -886,17 +973,12 @@ export default function EmpresasPage() {
       const corpProfile = activeRequest.corporateProfile;
       const isPaidActive = activeRequest.corporateStatus === "paid_active";
       const canEdit = isPaidActive;
-      const corporateChipItem = activeRequest.corporateOrderItems?.find((item: any) => item?.chip) || null;
+      const corporateChipItem = (activeRequest.corporateOrderItems ?? []).find((item) => item?.chip) || null;
       const corporateChip = corporateChipItem?.chip || null;
       const corporateFulfillmentStatus = corporateChipItem?.fulfillmentStatus || null;
-      const hasCorporateOrderItems = activeRequest.corporateOrderItems?.length > 0;
+      const hasCorporateOrderItems = (activeRequest.corporateOrderItems ?? []).length > 0;
       
-      // Calcular estado de protección empresarial
-      const corporateProtectionStatus = (() => {
-        if (!corporateChip) return "pending_assignment";
-        if (corporateFulfillmentStatus === "delivered" || corporateFulfillmentStatus === "activated") return "active";
-        return "assigned_pending_delivery";
-      })();
+      // Calcular estado de protección empresarial (not used directly here)
       const isDisabled = !isPaidActive;
       const profile = corpFullProfile;
       const initials = profile?.firstName && profile?.lastName
@@ -914,7 +996,7 @@ export default function EmpresasPage() {
           ]);
           if (prodRes.ok) {
             const prodJson = await prodRes.json();
-            setCatalogProducts((prodJson.products || []).filter((p: any) => p.isActive));
+            setCatalogProducts((prodJson.products || []).filter((p: { isActive?: boolean }) => p.isActive));
           }
           if (reqRes.ok) {
             const reqJson = await reqRes.json();
@@ -934,7 +1016,7 @@ export default function EmpresasPage() {
         setShowProductRequest(true);
       };
 
-      const handleToggleProduct = (product: any) => {
+      const handleToggleProduct = (product: CorporateProduct & { requiresPersonalization?: boolean; productType?: string }) => {
         if (selectedItems[product.id]) {
           const next = { ...selectedItems };
           delete next[product.id];
@@ -980,15 +1062,15 @@ export default function EmpresasPage() {
           setShowProductRequest(false);
           setSelectedItems({});
           await loadCatalogAndRequests();
-        } catch (err: any) {
-          toast.error(err.message || "Error al enviar solicitud");
+        } catch (err: unknown) {
+          toast.error(err instanceof Error ? err.message : "Error al enviar solicitud");
         } finally {
           setSubmittingRequest(false);
         }
       };
 
       const requestTotal = Object.values(selectedItems).reduce((sum, item) => {
-        const prod = catalogProducts.find((p: any) => p.id === item.productId);
+        const prod = catalogProducts.find((p) => p.id === item.productId);
         return sum + (prod?.price || 0) * item.quantity;
       }, 0);
 
@@ -1013,14 +1095,14 @@ export default function EmpresasPage() {
           toast.success("¡Chip empresarial activado! Tu protección empresarial ya está activa.");
           setCorporateActivationCode("");
           await loadAll();
-          const active = (myStatus?.requests || []).find((r: any) =>
+          const active = (myStatus?.requests || []).find((r) =>
             ["pending_company_review", "approved_unpaid", "paid_active", "suspended", "archived"].includes(r.corporateStatus)
           );
           if (active?.corporateProfile?.id) {
             loadCorpFullProfile(active.corporateProfile.id);
             loadCorpContacts(active.corporateProfile.id);
           }
-        } catch (err) {
+        } catch {
           toast.error("Error de conexión al activar chip");
         } finally {
           setActivatingCorporateChip(false);
@@ -1197,7 +1279,7 @@ export default function EmpresasPage() {
               {/* Lista de contactos existentes */}
               {corpContacts.length > 0 && (
                 <div className="space-y-2">
-                  {corpContacts.map((c: any) => (
+                  {corpContacts.map((c) => (
                     <div key={c.id} className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-slate-200 bg-white hover:shadow-sm transition-all">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
@@ -1315,9 +1397,9 @@ export default function EmpresasPage() {
               </div>
 
               {/* Lista de productos corporativos */}
-              {activeRequest.corporateOrderItems && activeRequest.corporateOrderItems.length > 0 ? (
+              {(activeRequest.corporateOrderItems ?? []).length > 0 ? (
                 <div className="space-y-2">
-                  {(showAllCorporateProducts ? activeRequest.corporateOrderItems : activeRequest.corporateOrderItems.slice(0, 3)).map((item: any) => {
+                  {(showAllCorporateProducts ? (activeRequest.corporateOrderItems ?? []) : (activeRequest.corporateOrderItems ?? []).slice(0, 3)).map((item) => {
                     // NOTE: FULFILLMENT_LABELS etc defined inside map for readability — same as original
                     const FULFILLMENT_LABELS: Record<string, string> = {
                       pending_assignment: "Pendiente de asignación",
@@ -1357,7 +1439,7 @@ export default function EmpresasPage() {
                           <div className="min-w-0 flex-1">
                             <p className="font-bold text-sm text-slate-900 truncate">
                               {item.product?.name || "Producto"}
-                              {item.quantity > 1 && <span className="text-muted-foreground ml-1">x{item.quantity}</span>}
+                              {(item.quantity ?? 0) > 1 && <span className="text-muted-foreground ml-1">x{item.quantity ?? 1}</span>}
                             </p>
                             {item.product?.productType && (
                               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
@@ -1372,12 +1454,12 @@ export default function EmpresasPage() {
                       </div>
                     );
                   })}
-                  {activeRequest.corporateOrderItems.length > 3 && (
+                  {(activeRequest.corporateOrderItems ?? []).length > 3 && (
                     <button
                       onClick={() => setShowAllCorporateProducts(!showAllCorporateProducts)}
                       className="w-full py-2.5 rounded-xl border border-indigo-200 bg-white text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all"
                     >
-                      {showAllCorporateProducts ? "Contraer productos" : `Ver todos los productos (${activeRequest.corporateOrderItems.length})`}
+                      {showAllCorporateProducts ? "Contraer productos" : `Ver todos los productos (${(activeRequest.corporateOrderItems ?? []).length})`}
                     </button>
                   )}
                 </div>
@@ -1403,9 +1485,9 @@ export default function EmpresasPage() {
               )}
 
               {/* Activar chip empresarial — card compacta */}
-              {corporateChip && corporateChip.status !== "activated" &&
-                activeRequest.corporateOrderItems?.some((item: any) =>
-                  ["assigned_reserved", "delivered", "ready_for_assignment"].includes(item.fulfillmentStatus)
+                {corporateChip && corporateChip.status !== "activated" &&
+                  (activeRequest.corporateOrderItems ?? []).some((item) =>
+                  ["assigned_reserved", "delivered", "ready_for_assignment"].includes(item.fulfillmentStatus ?? "")
                 ) && (
                 <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/50 to-white p-5 space-y-3">
                   <div className="flex items-center gap-3">
@@ -1524,8 +1606,8 @@ export default function EmpresasPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {(showAllProductRequests ? myRequests : myRequests.slice(0, 2)).map((req: any) => {
-                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                  {(showAllProductRequests ? myRequests : myRequests.slice(0, 2)).map((req) => {
+                    const reqTotal = (req.items || []).reduce((s: number, i) => s + (i.subtotal || 0), 0);
                     const statusLabel = PRODUCT_STATUS_LABELS[req.status] || req.status;
                     const statusColor = PRODUCT_STATUS_COLORS[req.status] || "bg-slate-100 text-slate-600 border-slate-200";
                     return (
@@ -1533,14 +1615,14 @@ export default function EmpresasPage() {
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Clock className="h-3.5 w-3.5" />
-                            {new Date(req.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "short", day: "numeric" })}
+                            {req.createdAt ? new Date(req.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "short", day: "numeric" }) : "—"}
                           </div>
                           <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${statusColor}`}>
                             {statusLabel}
                           </span>
                         </div>
                         <div className="divide-y divide-slate-100">
-                          {(req.items || []).map((item: any) => (
+                          {(req.items || []).map((item) => (
                             <div key={item.id} className="flex items-center justify-between py-2 text-sm">
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className="font-semibold text-slate-900 truncate">{item.product?.name || "Producto"}</span>
@@ -1603,7 +1685,7 @@ export default function EmpresasPage() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {catalogProducts.map((product: any) => {
+                      {catalogProducts.map((product) => {
                         const isSelected = !!selectedItems[product.id];
                         const sel = selectedItems[product.id];
                         return (
@@ -1636,7 +1718,7 @@ export default function EmpresasPage() {
                             </div>
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xl font-black text-primary">${product.price.toFixed(2)}</p>
+                                <p className="text-xl font-black text-primary">${product.price !== undefined ? product.price.toFixed(2) : "0.00"}</p>
                                 {product.estimatedProductionTime && (
                                   <p className="text-[10px] text-muted-foreground mt-0.5">
                                     Fabricación: {product.estimatedProductionTime}
@@ -1753,7 +1835,7 @@ export default function EmpresasPage() {
                     {corpEditError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{corpEditError}</p>}
                     <MedicalProfileForm
                       form={corpEditForm}
-                      onChange={(field, val) => setCorpEditForm((prev: any) => ({ ...prev, [field]: val }))}
+                      onChange={(field, val) => setCorpEditForm((prev) => ({ ...prev, [field]: val }))}
                     />
                   </form>
                 )}
@@ -1787,7 +1869,7 @@ export default function EmpresasPage() {
                         {corpEditError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{corpEditError}</p>}
                         <MedicalProfileForm
                           form={corpEditForm}
-                          onChange={(field, val) => setCorpEditForm((prev: any) => ({ ...prev, [field]: val }))}
+                          onChange={(field, val) => setCorpEditForm((prev: CorporateProfilePayload) => ({ ...prev, [field]: val }))}
                         />
                         <div className="flex gap-6 pt-8 border-t border-border/50">
                           <button type="button" onClick={() => setShowCorpEditor(false)}
@@ -1852,7 +1934,7 @@ export default function EmpresasPage() {
         <h1 className="text-3xl font-black">Gestión Empresarial</h1>
       </div>
 
-      /* Guidance banner */
+      {/* Guidance banner */}
       <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 space-y-1">
         <p className="text-xs font-semibold text-indigo-800 flex items-center gap-2">
           <Building2 className="h-4 w-4" /> Gestión de colaboradores y productos
@@ -1898,15 +1980,15 @@ export default function EmpresasPage() {
           ) : (
             <div className="space-y-6">
               {/* Pending requests */}
-              {companyRequests.filter((r: any) => r.status === "pending_company_approval").length > 0 && (
+              {companyRequests.filter((r) => r.status === "pending_company_approval").length > 0 && (
                 <div className="space-y-4">
                   <h3 className="text-sm font-black text-amber-800 uppercase tracking-widest flex items-center gap-2">
-                    <Clock className="h-4 w-4" /> Pendientes de revisión ({companyRequests.filter((r: any) => r.status === "pending_company_approval").length})
+                    <Clock className="h-4 w-4" /> Pendientes de revisión ({companyRequests.filter((r) => r.status === "pending_company_approval").length})
                   </h3>
-                  {companyRequests.filter((r: any) => r.status === "pending_company_approval").map((req: any) => {
+                  {companyRequests.filter((r) => r.status === "pending_company_approval").map((req) => {
                     const member = req.organizationMember;
                     const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
-                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    const reqTotal = (req.items || []).reduce((s: number, i) => s + (i.subtotal || 0), 0);
                     return (
                       <div key={req.id} className="rounded-2xl border border-amber-200 bg-white shadow-md overflow-hidden">
                         <div className="p-5 bg-amber-50/50 border-b border-amber-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -1920,7 +2002,7 @@ export default function EmpresasPage() {
                                 {member?.employeePosition && `${member.employeePosition} · `}
                                 {member?.employeeNationalId && `Céd: ${member.employeeNationalId}`}
                                 {!member?.employeePosition && !member?.employeeNationalId && (
-                                  <>Solicitado {new Date(req.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "short", day: "numeric" })}</>
+                                  <>Solicitado {req.createdAt ? new Date(req.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "short", day: "numeric" }) : "—"}</>
                                 )}
                               </p>
                             </div>
@@ -1932,7 +2014,7 @@ export default function EmpresasPage() {
                         </div>
                         <div className="p-5 space-y-4">
                           <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
-                            {(req.items || []).map((item: any) => (
+                            {(req.items || []).map((item) => (
                               <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50/50 transition-colors">
                                 <div className="flex items-center gap-3 min-w-0">
                                   <div className="h-7 w-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black shrink-0">
@@ -1947,9 +2029,9 @@ export default function EmpresasPage() {
                               </div>
                             ))}
                           </div>
-                          {req.items?.some((i: any) => i.note) && (
+                          {req.items?.some((i) => i.note) && (
                             <div className="space-y-1">
-                              {req.items.filter((i: any) => i.note).map((i: any) => (
+                              {req.items.filter((i) => i.note).map((i) => (
                                 <p key={i.id} className="text-[10px] text-muted-foreground italic">Nota para {i.product?.name}: {i.note}</p>
                               ))}
                             </div>
@@ -1980,23 +2062,23 @@ export default function EmpresasPage() {
               )}
 
               {/* Approved requests — selectable for payment */}
-              {companyRequests.filter((r: any) => r.status === "approved_pending_payment").length > 0 && (
+              {companyRequests.filter((r) => r.status === "approved_pending_payment").length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-sm font-black text-blue-800 uppercase tracking-widest flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" /> Aprobadas — pendientes de pago ({companyRequests.filter((r: any) => r.status === "approved_pending_payment").length})
+                      <CheckCircle2 className="h-4 w-4" /> Aprobadas — pendientes de pago ({companyRequests.filter((r) => r.status === "approved_pending_payment").length})
                     </h3>
                     <button
                       onClick={selectAllApproved}
                       className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest"
                     >
-                      {companyRequests.filter((r: any) => r.status === "approved_pending_payment" && !r.orderId).every((r: any) => selectedApprovedRequests[r.id]) ? "Deseleccionar" : "Seleccionar todas"}
+                      {companyRequests.filter((r) => r.status === "approved_pending_payment" && !r.orderId).every((r) => selectedApprovedRequests[r.id]) ? "Deseleccionar" : "Seleccionar todas"}
                     </button>
                   </div>
-                  {companyRequests.filter((r: any) => r.status === "approved_pending_payment").map((req: any) => {
+                  {companyRequests.filter((r) => r.status === "approved_pending_payment").map((req) => {
                     const member = req.organizationMember;
                     const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
-                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    const reqTotal = (req.items || []).reduce((s: number, i) => s + (i.subtotal || 0), 0);
                     const alreadyLinked = !!req.orderId;
                     return (
                       <div key={req.id} className={`rounded-2xl border bg-white p-5 space-y-3 shadow-sm transition-all ${
@@ -2028,7 +2110,7 @@ export default function EmpresasPage() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {(req.items || []).map((item: any) => (
+                          {(req.items || []).map((item) => (
                             <span key={item.id} className="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 text-[10px] font-semibold border border-blue-100">
                               {item.product?.name || "Producto"} × {item.quantity}
                             </span>
@@ -2119,15 +2201,15 @@ export default function EmpresasPage() {
               )}
 
               {/* Payment under review */}
-              {companyRequests.filter((r: any) => r.status === "payment_under_review").length > 0 && (
+              {companyRequests.filter((r) => r.status === "payment_under_review").length > 0 && (
                 <div className="space-y-4">
                   <h3 className="text-sm font-black text-indigo-800 uppercase tracking-widest flex items-center gap-2">
-                    <Clock className="h-4 w-4" /> Pagos en revisión ({companyRequests.filter((r: any) => r.status === "payment_under_review").length})
+                    <Clock className="h-4 w-4" /> Pagos en revisión ({companyRequests.filter((r) => r.status === "payment_under_review").length})
                   </h3>
-                  {companyRequests.filter((r: any) => r.status === "payment_under_review").map((req: any) => {
+                  {companyRequests.filter((r) => r.status === "payment_under_review").map((req) => {
                     const member = req.organizationMember;
                     const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
-                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    const reqTotal = (req.items || []).reduce((s: number, i) => s + (i.subtotal || 0), 0);
                     return (
                       <div key={req.id} className="rounded-2xl border border-indigo-200 bg-indigo-50/30 p-5 space-y-3 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
@@ -2143,7 +2225,7 @@ export default function EmpresasPage() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {(req.items || []).map((item: any) => (
+                          {(req.items || []).map((item) => (
                             <span key={item.id} className="px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[10px] font-semibold border border-indigo-100">
                               {item.product?.name || "Producto"} × {item.quantity}
                             </span>
@@ -2156,15 +2238,15 @@ export default function EmpresasPage() {
               )}
 
               {/* Paid / approved */}
-              {companyRequests.filter((r: any) => r.status === "paid_approved").length > 0 && (
+              {companyRequests.filter((r) => r.status === "paid_approved").length > 0 && (
                 <div className="space-y-4">
                   <h3 className="text-sm font-black text-emerald-800 uppercase tracking-widest flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" /> Pagos aprobados ({companyRequests.filter((r: any) => r.status === "paid_approved").length})
+                    <CheckCircle2 className="h-4 w-4" /> Pagos aprobados ({companyRequests.filter((r) => r.status === "paid_approved").length})
                   </h3>
-                  {companyRequests.filter((r: any) => r.status === "paid_approved").map((req: any) => {
+                  {companyRequests.filter((r) => r.status === "paid_approved").map((req) => {
                     const member = req.organizationMember;
                     const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
-                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    const reqTotal = (req.items || []).reduce((s: number, i) => s + (i.subtotal || 0), 0);
                     return (
                       <div key={req.id} className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5 space-y-3 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
@@ -2180,7 +2262,7 @@ export default function EmpresasPage() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {(req.items || []).map((item: any) => (
+                          {(req.items || []).map((item) => (
                             <span key={item.id} className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-100">
                               {item.product?.name || "Producto"} × {item.quantity}
                             </span>
@@ -2193,15 +2275,15 @@ export default function EmpresasPage() {
               )}
 
               {/* Rejected requests */}
-              {companyRequests.filter((r: any) => r.status === "rejected_by_company").length > 0 && (
+              {companyRequests.filter((r) => r.status === "rejected_by_company").length > 0 && (
                 <div className="space-y-4">
                   <h3 className="text-sm font-black text-rose-800 uppercase tracking-widest flex items-center gap-2">
-                    <XCircle className="h-4 w-4" /> Rechazadas ({companyRequests.filter((r: any) => r.status === "rejected_by_company").length})
+                    <XCircle className="h-4 w-4" /> Rechazadas ({companyRequests.filter((r) => r.status === "rejected_by_company").length})
                   </h3>
-                  {companyRequests.filter((r: any) => r.status === "rejected_by_company").map((req: any) => {
+                  {companyRequests.filter((r) => r.status === "rejected_by_company").map((req) => {
                     const member = req.organizationMember;
                     const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
-                    const reqTotal = (req.items || []).reduce((s: number, i: any) => s + (i.subtotal || 0), 0);
+                    const reqTotal = (req.items || []).reduce((s: number, i) => s + (i.subtotal || 0), 0);
                     return (
                       <div key={req.id} className="rounded-2xl border border-rose-200 bg-white p-5 space-y-3 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
@@ -2217,7 +2299,7 @@ export default function EmpresasPage() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {(req.items || []).map((item: any) => (
+                          {(req.items || []).map((item) => (
                             <span key={item.id} className="px-2 py-1 rounded-lg bg-rose-50 text-rose-700 text-[10px] font-semibold border border-rose-100">
                               {item.product?.name || "Producto"} × {item.quantity}
                             </span>
@@ -2287,12 +2369,12 @@ export default function EmpresasPage() {
             <p className="text-xs font-semibold text-amber-800 flex items-center gap-2">
               <Clock className="h-4 w-4" /> Compras corporativas enviadas con comprobante y pendientes de revisión por PreRescue ID.
             </p>
-            <p className="text-[10px] text-amber-700/70 leading-relaxed">
-              Los colaboradores incluidos en estas órdenes <strong>no aparecen en "Aprobados sin pagar"</strong> hasta que PreRescue ID apruebe o cancele el pago.
-              Si el pago es aprobado, pasarán directamente a <strong>"Pagados / activos"</strong>.
+              <p className="text-[10px] text-amber-700/70 leading-relaxed">
+              Los colaboradores incluidos en estas órdenes <strong>Aprobados sin pagar</strong> hasta que PreRescue ID apruebe o cancele el pago.
+              Si el pago es aprobado, pasarán directamente a <strong>Pagados / activos</strong>.
             </p>
           </div>
-          {corporateOrders.filter((o: any) => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").length === 0 ? (
+          {corporateOrders.filter((o) => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").length === 0 ? (
             <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center">
               <div className="h-16 w-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-400">
                 <Clock className="h-8 w-8" />
@@ -2301,9 +2383,9 @@ export default function EmpresasPage() {
               <p className="text-sm text-muted-foreground">Todas las compras corporativas han sido procesadas o aún no se han enviado.</p>
             </div>
           ) : (
-            corporateOrders.filter((o: any) => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").map((order: any) => {
-              const totalMembers = new Set((order.corporateEmployeeItems || []).map((item: any) => item.organizationMemberId).filter(Boolean)).size;
-              const memberNames = [...new Set((order.corporateEmployeeItems || []).map((item: any) => 
+            corporateOrders.filter((o) => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending").map((order) => {
+              const totalMembers = new Set((order.corporateEmployeeItems || []).map((item) => item.organizationMemberId).filter(Boolean)).size;
+              const memberNames = [...new Set((order.corporateEmployeeItems || []).map((item) => 
                 `${item.organizationMember?.profile?.firstName || ""} ${item.organizationMember?.profile?.lastName || ""}`
               ).filter(Boolean))];
               return (
@@ -2322,7 +2404,7 @@ export default function EmpresasPage() {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground flex items-center gap-2 ml-1">
-                          {new Date(order.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
                         </p>
                       </div>
                       <div className="flex items-center gap-4">
@@ -2360,7 +2442,7 @@ export default function EmpresasPage() {
                         <span className="w-16 text-center">Cant.</span>
                         <span className="w-24 text-right">Subtotal</span>
                       </div>
-                      {order.corporateEmployeeItems?.map((item: any, idx: number) => {
+                      {order.corporateEmployeeItems?.map((item, idx: number) => {
                         const m = item.organizationMember;
                         const name = m?.profile ? `${m.profile.firstName || ""} ${m.profile.lastName || ""}`.trim() : "—";
                         return (
@@ -2415,7 +2497,7 @@ export default function EmpresasPage() {
 
                       <div className="flex items-center gap-2">
                         {order.deliveryNote && (
-                          <span className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">"{order.deliveryNote}"</span>
+                          <span className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">&quot;{order.deliveryNote}&quot;</span>
                         )}
                         <button
                           onClick={() => handleCancelOrder(order.id)}
@@ -2434,18 +2516,18 @@ export default function EmpresasPage() {
           )}
 
           {/* Additional info card for already-approved/rejected orders */}
-          {corporateOrders.filter((o: any) => o.adminReviewStatus === "approved" || o.paymentStatus === "rejected").length > 0 && (
+          {corporateOrders.filter((o) => o.adminReviewStatus === "approved" || o.paymentStatus === "rejected").length > 0 && (
             <details className="group">
               <summary className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors py-2">
-                Mostrar {corporateOrders.filter((o: any) => o.adminReviewStatus === "approved" || o.paymentStatus === "rejected").length} orden(es) procesada(s)
+                Mostrar {corporateOrders.filter((o) => o.adminReviewStatus === "approved" || o.paymentStatus === "rejected").length} orden(es) procesada(s)
               </summary>
               <div className="mt-3 space-y-3">
-                {corporateOrders.filter((o: any) => o.adminReviewStatus === "approved" || o.paymentStatus === "rejected").map((order: any) => (
+                {corporateOrders.filter((o) => o.adminReviewStatus === "approved" || o.paymentStatus === "rejected").map((order) => (
                   <div key={order.id} className="rounded-2xl border border-slate-200 p-4 bg-slate-50/50">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-bold text-sm">Orden #{order.orderNumber}</p>
-                        <p className="text-[10px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
+                        <p className="text-[10px] text-muted-foreground">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}</p>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-[9px] font-bold border ${
                         order.adminReviewStatus === "approved" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
@@ -2463,9 +2545,9 @@ export default function EmpresasPage() {
 
       {tab === "pagados" && (
         <div className="space-y-4">
-          {members.map((m: any) => {
-            const memberOrders = corporateOrders.filter((o: any) => o.corporateEmployeeItems?.some((item: any) => item.organizationMemberId === m.id));
-            const allItems = memberOrders.flatMap((o: any) => o.corporateEmployeeItems || []);
+          {members.map((m) => {
+            const memberOrders = corporateOrders.filter((o) => o.corporateEmployeeItems?.some((item) => item.organizationMemberId === m.id));
+            const allItems = memberOrders.flatMap((o) => o.corporateEmployeeItems || []);
             const profileComplete = Boolean(m.profile?.firstName && m.profile?.lastName && m.profile?.bloodType && m.profile?.bloodType !== "Pendiente");
             const fulfillmentStatus = allItems[0]?.fulfillmentStatus || "pending_assignment";
             const chip = allItems[0]?.chip;
@@ -2475,7 +2557,7 @@ export default function EmpresasPage() {
                   <div className="space-y-1">
                     <p className="font-semibold">{m.profile?.firstName} {m.profile?.lastName}</p>
                     <p className="text-sm text-muted-foreground">{m.profile?.user?.email}</p>
-                    <div className="flex flex-wrap gap-2 mt-1">{allItems.map((item: any) => <span key={item.id} className="text-xs bg-muted px-2 py-0.5 rounded">{item.product?.name || "Producto"} x{item.quantity}</span>)}</div>
+                    <div className="flex flex-wrap gap-2 mt-1">{allItems.map((item) => <span key={item.id} className="text-xs bg-muted px-2 py-0.5 rounded">{item.product?.name || "Producto"} x{item.quantity}</span>)}</div>
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs">
                     <span className={`px-2 py-1 rounded-full border font-semibold ${profileComplete ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>Perfil: {profileComplete ? "Completado" : "Pendiente"}</span>
@@ -2494,7 +2576,7 @@ export default function EmpresasPage() {
       )}
 
       <div className="space-y-3">
-        {members.map((m: any) => (
+        {members.map((m) => (
           <div key={m.id} className="rounded-2xl border p-4 bg-card">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
@@ -2517,12 +2599,12 @@ export default function EmpresasPage() {
                     <div className="rounded-xl border p-3 space-y-2">
                       <select className="w-full border rounded-lg px-2 py-2 text-sm" defaultValue="" onChange={(e) => { addProductToMember(m.id, e.target.value); e.currentTarget.value = ""; }}>
                         <option value="">Agregar producto activo...</option>
-                        {products.map((p: any) => <option key={p.id} value={p.id}>{p.name} (${p.price.toFixed(2)})</option>)}
+                        {products.map((p) => <option key={p.id} value={p.id}>{p.name} (${(p.price ?? 0).toFixed(2)})</option>)}
                       </select>
-                      {(memberProducts[m.id] || []).map((item: any) => {
-                        const product = products.find((p: any) => p.id === item.productId);
+                      {(memberProducts[m.id] || []).map((item) => {
+                        const product = products.find((p) => p.id === item.productId);
                         if (!product) return null;
-                        return (<div key={item.productId} className="flex items-center gap-2 text-sm"><span className="flex-1">{product.name}</span><input type="number" min={1} value={item.quantity} onChange={(e) => updateMemberProductQty(m.id, item.productId, Number(e.target.value))} className="w-16 border rounded px-2 py-1" /><span className="w-20 text-right">${(product.price * item.quantity).toFixed(2)}</span><button onClick={() => removeMemberProduct(m.id, item.productId)} className="text-rose-600">Quitar</button></div>);
+                        return (<div key={item.productId} className="flex items-center gap-2 text-sm"><span className="flex-1">{product.name}</span><input type="number" min={1} value={item.quantity} onChange={(e) => updateMemberProductQty(m.id, item.productId, Number(e.target.value))} className="w-16 border rounded px-2 py-1" /><span className="w-20 text-right">${((product.price ?? 0) * item.quantity).toFixed(2)}</span><button onClick={() => removeMemberProduct(m.id, item.productId)} className="text-rose-600">Quitar</button></div>);
                       })}
                       <p className="text-xs font-semibold text-right">Subtotal: ${getMemberSubtotal(m.id).toFixed(2)}</p>
                     </div>
@@ -2560,26 +2642,73 @@ export default function EmpresasPage() {
       {tab === "aprobados" && (
         <div className="rounded-2xl border p-4 space-y-3">
           <p className="text-sm text-muted-foreground">Arma la compra corporativa para empleados aprobados sin pagar.</p>
-          <div className={`p-4 rounded-xl border-2 transition-all ${paymentProofUrl ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
+          <div className={`p-4 rounded-xl border-2 transition-all ${paymentProofUrl ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-dashed border-slate-200"}`}>
             {paymentProofUrl ? (
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0"><CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" /><span className="text-sm font-semibold text-emerald-700 truncate">{proofUploadedName || "Comprobante adjuntado"}</span></div>
-                <button onClick={() => { setPaymentProofUrl(""); setProofUploadedName(""); }} className="text-xs text-rose-600 font-semibold hover:underline shrink-0">Quitar</button>
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <span className="text-sm font-semibold text-emerald-700 truncate">{proofUploadedName || "Comprobante adjuntado"}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setPaymentProofUrl("");
+                    setProofUploadedName("");
+                  }}
+                  className="text-xs text-rose-600 font-semibold hover:underline shrink-0"
+                >
+                  Quitar
+                </button>
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Comprobante de pago</p>
                 <p className="text-[10px] text-muted-foreground">Selecciona una imagen o captura del comprobante.</p>
                 <div className="flex items-center gap-3">
-                  <input id="corporate-proof-upload" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={proofFileUploading}
+                  <input
+                    id="corporate-proof-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={proofFileUploading}
                     onChange={async (e) => {
-                      const file = e.target.files?.[0]; if (!file) return;
-                      if (file.size > 5 * 1024 * 1024) { toast.error("El archivo es muy pesado (máx 5MB)"); return; }
-                      setProofFileName(file.name); setProofFileUploading(true);
-                      try { const formData = new FormData(); formData.append("file", file); formData.append("type", "payment"); formData.append("bucket", "payment-proofs"); const uploadRes = await fetch("/api/upload", { method: "POST", body: formData }); if (!uploadRes.ok) throw new Error("Error al subir archivo"); const { url } = await uploadRes.json(); setPaymentProofUrl(url); setProofUploadedName(file.name); toast.success("Comprobante adjuntado"); } catch { toast.error("Error al subir el comprobante"); } finally { setProofFileUploading(false); }
-                    }} />
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error("El archivo es muy pesado (máx 5MB)");
+                        return;
+                      }
+                      setProofFileUploading(true);
+                      try {
+                        const formData = new FormData();
+                        formData.append("file", file);
+                        formData.append("type", "payment");
+                        formData.append("bucket", "payment-proofs");
+                        const uploadRes = await fetch("/api/upload", {
+                          method: "POST",
+                          body: formData,
+                        });
+                        if (!uploadRes.ok) throw new Error("Error al subir archivo");
+                        const { url } = await uploadRes.json();
+                        setPaymentProofUrl(url);
+                        setProofUploadedName(file.name);
+                        toast.success("Comprobante adjuntado");
+                      } catch {
+                        toast.error("Error al subir el comprobante");
+                      } finally {
+                        setProofFileUploading(false);
+                      }
+                    }}
+                  />
                   <label htmlFor="corporate-proof-upload" className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all">
-                    {proofFileUploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</> : <><Upload className="h-4 w-4" /> Seleccionar archivo</>}
+                    {proofFileUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Subiendo...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" /> Seleccionar archivo
+                      </>
+                    )}
                   </label>
                 </div>
                 <p className="text-[9px] text-muted-foreground">Máx 5MB. Formatos: JPG, PNG, WebP.</p>
@@ -2587,8 +2716,12 @@ export default function EmpresasPage() {
             )}
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <p className="font-bold">Total general: ${totalGeneral.toFixed(2)}</p>
-            <button onClick={submitCorporateOrder} disabled={submittingCorporateOrder || !paymentProofUrl} className="min-h-[44px] px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50 w-full sm:w-auto">
+            <p className="font-bold">Total general: {totalGeneral.toFixed(2)}</p>
+            <button
+              onClick={submitCorporateOrder}
+              disabled={submittingCorporateOrder || !paymentProofUrl}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50 w-full sm:w-auto"
+            >
               {submittingCorporateOrder ? "Enviando..." : "Enviar compra corporativa"}
             </button>
           </div>
@@ -2597,10 +2730,20 @@ export default function EmpresasPage() {
     </div>
   );
 }
-
+;
 // ==================== SHARED JOIN FORM ====================
-function JoinForm({ form, setForm, companyCodeError, submittingJoin, handleSubmitJoin }: {
-  form: any; setForm: any; companyCodeError: string; submittingJoin: boolean; handleSubmitJoin: (e: React.FormEvent) => Promise<void>;
+function JoinForm({
+  form,
+  setForm,
+  companyCodeError,
+  submittingJoin,
+  handleSubmitJoin,
+}: {
+  form: JoinFormState;
+  setForm: React.Dispatch<React.SetStateAction<JoinFormState>>;
+  companyCodeError: string;
+  submittingJoin: boolean;
+  handleSubmitJoin: (e: React.FormEvent) => Promise<void>;
 }) {
   return (
     <form onSubmit={handleSubmitJoin} className="rounded-2xl border p-5 bg-card space-y-5">
@@ -2608,19 +2751,19 @@ function JoinForm({ form, setForm, companyCodeError, submittingJoin, handleSubmi
         <label className="text-sm font-semibold">Código empresarial <span className="text-rose-500">*</span></label>
         <input className={`w-full border-2 rounded-xl px-4 py-3 text-lg font-bold tracking-widest text-center uppercase ${companyCodeError ? "border-rose-300 bg-rose-50 focus:border-rose-500 focus:ring-rose-500" : "border-indigo-200 bg-indigo-50/30 focus:border-indigo-400 focus:ring-indigo-400"} outline-none transition-all`}
           placeholder="Ejemplo: ACP2026" value={form.companyCode}
-          onChange={(e) => { const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); setForm((prev: any) => ({ ...prev, companyCode: val })); }} maxLength={20} required autoComplete="off" />
+          onChange={(e) => { const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); setForm((prev) => ({ ...prev, companyCode: val })); }} maxLength={20} required autoComplete="off" />
         {companyCodeError && <p className="text-xs font-medium text-rose-600 flex items-center gap-1 mt-1"><XCircle className="h-3.5 w-3.5" />{companyCodeError}</p>}
       </div>
       <div className="border-t border-dashed border-slate-200" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cédula / ID</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="8-000-0000" value={form.employeeNationalId} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeNationalId: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Edad</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="25" type="number" min={1} max={120} value={form.employeeAge} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeAge: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Teléfono</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="+507 6000-0000" value={form.employeePhone} onChange={(e) => setForm((prev: any) => ({ ...prev, employeePhone: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cargo</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Operador, Supervisor" value={form.employeePosition} onChange={(e) => setForm((prev: any) => ({ ...prev, employeePosition: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Departamento</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Logística, RRHH" value={form.employeeDepartment} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeDepartment: e.target.value }))} /></div>
-        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">ID laboral interno</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Opcional" value={form.employeeInternalId} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeInternalId: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cédula / ID</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="8-000-0000" value={form.employeeNationalId} onChange={(e) => setForm((prev) => ({ ...prev, employeeNationalId: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Edad</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="25" type="number" min={1} max={120} value={form.employeeAge} onChange={(e) => setForm((prev) => ({ ...prev, employeeAge: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Teléfono</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="+507 6000-0000" value={form.employeePhone} onChange={(e) => setForm((prev) => ({ ...prev, employeePhone: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Cargo</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Operador, Supervisor" value={form.employeePosition} onChange={(e) => setForm((prev) => ({ ...prev, employeePosition: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Departamento</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Ej: Logística, RRHH" value={form.employeeDepartment} onChange={(e) => setForm((prev) => ({ ...prev, employeeDepartment: e.target.value }))} /></div>
+        <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">ID laboral interno</label><input className="w-full border rounded-xl px-3 py-2.5" placeholder="Opcional" value={form.employeeInternalId} onChange={(e) => setForm((prev) => ({ ...prev, employeeInternalId: e.target.value }))} /></div>
       </div>
-      <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Nota opcional</label><textarea className="w-full border rounded-xl px-3 py-2.5" placeholder="..." rows={2} value={form.employeeNote} onChange={(e) => setForm((prev: any) => ({ ...prev, employeeNote: e.target.value }))} /></div>
+      <div className="space-y-1.5"><label className="text-xs font-medium text-muted-foreground">Nota opcional</label><textarea className="w-full border rounded-xl px-3 py-2.5" placeholder="..." rows={2} value={form.employeeNote} onChange={(e) => setForm((prev) => ({ ...prev, employeeNote: e.target.value }))} /></div>
       <button type="submit" disabled={submittingJoin} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-black text-sm hover:shadow-lg hover:shadow-indigo-600/20 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/10 disabled:opacity-50 inline-flex items-center justify-center gap-2">
         {submittingJoin ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando solicitud...</> : <>Enviar solicitud <ArrowRight className="h-4 w-4" /></>}
       </button>

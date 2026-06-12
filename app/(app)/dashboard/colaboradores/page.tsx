@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Users, Loader2, Search, XCircle, CheckCircle2, Ban, Archive, ShieldCheck } from "lucide-react";
+import { Users, Loader2, Search, XCircle, CheckCircle2, Ban } from "lucide-react";
 
 type TabFilter = "todos" | "pending_company_review" | "paid_active" | "approved_unpaid" | "suspended" | "archived" | "rejected_by_company";
 
@@ -103,8 +103,9 @@ export default function ColaboradoresPage() {
       toast.success(json.message || "Acción completada");
       // Reload current tab
       await handleTabChange(activeTab);
-    } catch (err: any) {
-      toast.error(err?.message || "Error de conexión");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error de conexión";
+      toast.error(message);
     } finally {
       setActingOn(null);
     }

@@ -25,7 +25,7 @@ export default function TerminosPage() {
                 <p className="text-sm text-brand uppercase tracking-[0.35em] font-black">Versión 1.0 — Última actualización: Marzo 2026</p>
 
                 <h2>1. Aceptación de los Términos</h2>
-                <p>Al registrarte y utilizar los servicios de PreRescate PTY ("el Servicio"), aceptas estos Términos y Condiciones en su totalidad. Si no estás de acuerdo, no debes usar el Servicio.</p>
+                <p>Al registrarte y utilizar los servicios de PreRescate PTY (&quot;el Servicio&quot;), aceptas estos Términos y Condiciones en su totalidad. Si no estás de acuerdo, no debes usar el Servicio.</p>
 
                 <h2>2. Descripción del Servicio</h2>
                 <p>PreRescate PTY es un sistema de identificación de emergencia que permite a los usuarios crear un perfil médico digital vinculado a un chip NFC y código QR. El Servicio permite que terceros accedan a la información médica esencial del usuario al escanear el chip en situaciones de emergencia.</p>

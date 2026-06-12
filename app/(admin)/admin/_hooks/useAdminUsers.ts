@@ -8,6 +8,16 @@ export interface GetUsersParams {
   search?: string;
 }
 
+interface AdminCreatePayload {
+  email: string;
+  password: string;
+  role: "admin" | "superadmin" | "imprenta";
+}
+
+interface AdminUpdatePayload {
+  role: "admin" | "superadmin" | "imprenta";
+}
+
 export function useAdminUsers() {
   const [loadingList, setLoadingList] = useState(false);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
@@ -15,10 +25,10 @@ export function useAdminUsers() {
 
   const [users, setUsers] = useState<UserAdmin[]>([]);
   const [total, setTotal] = useState(0);
-  const [usersLoadedAt, setUsersLoadedAt] = useState<number | null>(null);
+  const [, setUsersLoadedAt] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserAdmin | null>(null);
   const [adminUsers, setAdminUsers] = useState<AdminAccount[]>([]);
-  const [adminsLoadedAt, setAdminsLoadedAt] = useState<number | null>(null);
+  const [, setAdminsLoadedAt] = useState<number | null>(null);
   
   // Abort Controllers
   const userListAbort = useRef<AbortController | null>(null);
@@ -33,9 +43,6 @@ export function useAdminUsers() {
   }, []);
 
   // Check if data is stale (default 5 minutes)
-  const isUsersStale = (maxAgeMs = 300000) => !usersLoadedAt || Date.now() - usersLoadedAt > maxAgeMs;
-  const isAdminsStale = (maxAgeMs = 300000) => !adminsLoadedAt || Date.now() - adminsLoadedAt > maxAgeMs;
-
   const loadUsers = useCallback(async (params: GetUsersParams = {}) => {
     if (userListAbort.current) userListAbort.current.abort();
     userListAbort.current = new AbortController();
@@ -46,9 +53,9 @@ export function useAdminUsers() {
       setUsers(data.users);
       setTotal(data.total);
       setUsersLoadedAt(Date.now()); // Track when data was loaded
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      toast.error(e.message || "Error al cargar usuarios");
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      toast.error(error instanceof Error ? error.message : "Error al cargar usuarios");
     } finally {
       setLoadingList(false);
     }
@@ -58,14 +65,14 @@ export function useAdminUsers() {
     if (!selectedUser) return;
     try {
       const data = await usersService.getUsers({ search: selectedUser.email });
-      const updated = data.users.find((u: any) => u.id === selectedUser.id);
+      const updated = data.users.find((u) => u.id === selectedUser.id);
       if (updated) setSelectedUser(updated);
-    } catch (e) {
-      console.error("Error refreshing selected user:", e);
+    } catch (error: unknown) {
+      console.error("Error refreshing selected user:", error);
     }
   }, [selectedUser]);
 
-  const handleAdminAction = useCallback(async (userId: string, action: string, data: any) => {
+  const handleAdminAction = useCallback(async (userId: string, action: string, data: Record<string, unknown>) => {
     setCreating(true);
     try {
       const result = await usersService.runUserAction(userId, action, data);
@@ -80,8 +87,8 @@ export function useAdminUsers() {
         await reloadSelectedUser();
       }
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al ejecutar acción");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al ejecutar acción");
       return false;
     } finally {
       setCreating(false);
@@ -98,8 +105,8 @@ export function useAdminUsers() {
       toast.success(`Usuario ${newStatus === "active" ? "activado" : "bloqueado"}`);
       await reloadSelectedUser();
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al actualizar estado");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al actualizar estado");
       return false;
     } finally {
       setCreating(false);
@@ -115,38 +122,38 @@ export function useAdminUsers() {
       const data = await usersService.getAdminAccounts(adminListAbort.current.signal);
       setAdminUsers(data.admins);
       setAdminsLoadedAt(Date.now()); // Track when data was loaded
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      toast.error(e.message || "Error al cargar administradores");
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      toast.error(error instanceof Error ? error.message : "Error al cargar administradores");
     } finally {
       setLoadingAdmins(false);
     }
   }, []);
 
-  const createAdmin = useCallback(async (data: any) => {
+  const createAdmin = useCallback(async (data: AdminCreatePayload) => {
     setCreating(true);
     try {
       await usersService.createAdmin(data);
       toast.success("Nueva cuenta administrativa creada");
       await loadAdminAccounts();
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al crear administrador");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al crear administrador");
       return false;
     } finally {
       setCreating(false);
     }
   }, [loadAdminAccounts]);
 
-  const updateAdmin = useCallback(async (id: string, data: any) => {
+  const updateAdmin = useCallback(async (id: string, data: AdminUpdatePayload) => {
     setCreating(true);
     try {
       await usersService.updateAdmin(id, data);
       toast.success("Permisos actualizados");
       await loadAdminAccounts();
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al actualizar administrador");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al actualizar administrador");
       return false;
     } finally {
       setCreating(false);
@@ -161,8 +168,8 @@ export function useAdminUsers() {
       toast.success("Administrador eliminado");
       await loadAdminAccounts();
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al eliminar administrador");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al eliminar administrador");
       return false;
     } finally {
       setCreating(false);

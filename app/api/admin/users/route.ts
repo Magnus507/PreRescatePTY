@@ -56,11 +56,12 @@ export async function PATCH(req: NextRequest) {
 
     const user = await UserRepository.updateStatus(id!, status);
     return NextResponse.json({ user });
-  } catch (error: any) {
-    if (error.code === 'P2025') {
+  } catch (err: unknown) {
+    const e = err as { code?: string };
+    if (e.code === 'P2025') {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
-    console.error("Admin Users PATCH Error:", error);
+    console.error("Admin Users PATCH Error:", err);
     return NextResponse.json({ error: "Error al actualizar usuario" }, { status: 500 });
   }
 }

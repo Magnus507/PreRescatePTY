@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { USER_ROLES } from "@/domains/shared/constants";
+// USER_ROLES not used here
 import { TOKEN_RESERVED_WHERE } from "@/domains/chips/token-lifecycle.helpers";
 
 async function isAdmin() {
@@ -12,7 +12,7 @@ async function isAdmin() {
   return role === "admin" || role === "superadmin" || role === "imprenta";
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

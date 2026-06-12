@@ -1,7 +1,7 @@
 "use client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Mail, MapPin, Phone, Clock, Send, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Mail, Phone, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -28,7 +28,8 @@ export default function ContactoPage() {
       } else {
         toast.error(data.error || "Error al enviar mensaje");
       }
-    } catch (e: any) {
+    } catch (err: unknown) {
+      console.error(err);
       toast.error("Error de conexión");
     } finally {
       setLoading(false);

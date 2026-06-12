@@ -1,33 +1,33 @@
 import React, { useState } from 'react';
 import { 
-  ChevronLeft, Building2, Users, Cpu, Plus, Eye, Trash2, 
-  Activity, Zap, Info, Shield, Mail, Globe, MapPin, Phone, Calendar
+  ChevronLeft, Users, Cpu, Eye, Trash2, 
+  Zap, Mail, MapPin, Phone, Calendar
 } from 'lucide-react';
 import { OrganizationAdmin, ChipAdmin, UserAdmin } from '../../_types/admin';
-import { OrgEditModal } from '../modals/OrgEditModal';
+import { OrgEditModal, OrgEditPayload } from '../modals/OrgEditModal';
 
 interface OrgDetailProps {
   org: OrganizationAdmin;
   onBack: () => void;
-  onAction: (userId: string, action: string, data: any) => void;
+  onAction: (userId: string, action: string, data: Record<string, unknown>) => void;
   onAddUser: () => void;
   onDeleteOrg: (id: string, name: string) => void;
   onDeleteMember: (id: string, email: string) => void;
   onLoadChip: (id: string) => void;
-  onUpdateOrg: (orgId: string, data: any) => Promise<boolean>;
+  onUpdateOrg: (orgId: string, data: OrgEditPayload) => Promise<boolean>;
   formatDate: (d: string) => string;
   statusColor: (s: string) => string;
 }
 
 export const OrgDetailView: React.FC<OrgDetailProps> = ({ 
-  org, onBack, onAction, onAddUser, onDeleteOrg, onDeleteMember,
+  org, onBack, onDeleteOrg, onDeleteMember,
   onLoadChip, onUpdateOrg,
   formatDate, statusColor
 }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
 
-  const handleUpdateOrg = async (data: any) => {
+  const handleUpdateOrg = async (data: OrgEditPayload) => {
     setEditLoading(true);
     try {
       return await onUpdateOrg(org.id, data);

@@ -5,6 +5,21 @@ import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
 
+type AppNotificationCreateArgs = {
+  data: {
+    userId: string;
+    title: string;
+    message: string;
+    type: string;
+  };
+};
+
+type PrismaWithAppNotification = {
+  appNotification: {
+    create: (args: AppNotificationCreateArgs) => Promise<unknown>;
+  };
+};
+
 export const dynamic = "force-dynamic";
 
 export async function GET(
@@ -83,7 +98,7 @@ export async function GET(
     const session = await getServerSession(authOptions);
     const adminEmail = session?.user?.email || "Administrador";
 
-    await (prisma as any).appNotification.create({
+    await prisma.appNotification.create({
       data: {
         userId: chip.ownerUserId,
         title: "Acceso Administrativo",
@@ -128,7 +143,7 @@ export async function PATCH(
       return NextResponse.json({ message: "Chip eliminado permanentemente" });
     }
 
-    const updateData: any = {};
+    const updateData: Partial<{ status: string; serviceStatus: string; accountId: string | null; isPhysical: boolean; assignedProfileId: string | null }> = {};
     if (status) updateData.status = status;
     if (serviceStatus) updateData.serviceStatus = serviceStatus;
     if (accountId !== undefined) updateData.accountId = accountId;
@@ -140,7 +155,7 @@ export async function PATCH(
         updateData.serviceStatus = "inactive";
         
         if (ownerUserId) {
-            await (prisma as any).appNotification.create({
+            await (prisma as unknown as PrismaWithAppNotification).appNotification.create({
                 data: {
                     userId: ownerUserId,
                     title: "Cupo Liberado",
@@ -160,8 +175,9 @@ export async function PATCH(
     if (ownerUserId) await AccountStateService.invalidateCache(ownerUserId);
 
     return NextResponse.json({ chip });
-  } catch (e: any) {
-    console.error(e);
+  } catch (err: unknown) {
+    console.error(err);
+    const e = err instanceof Error ? err : new Error(String(err));
     return NextResponse.json({ error: e.message || "Error al actualizar chip" }, { status: 500 });
   }
 }

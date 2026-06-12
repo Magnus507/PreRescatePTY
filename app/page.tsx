@@ -12,7 +12,7 @@ import { TrustSection } from "@/components/home/TrustSection";
 import PricingSection from "@/components/home/PricingSection";
 import {
   ChevronRight, ArrowUpRight, Shield, HeartPulse, 
-  Activity, Bell, CheckCircle, Smartphone, QrCode, Scan
+  Activity, Bell, CheckCircle, Smartphone, Scan
 } from "lucide-react";
 
 export default function Home() {
@@ -341,9 +341,10 @@ export default function Home() {
                          
                          <div className="flex-1 w-full flex items-center justify-center p-4 md:p-6">
                             <div className="w-full h-full bg-white rounded-2xl flex items-center justify-center relative group/qr">
-                               <img 
+                               <Image 
                                  src="/api/public/qr?data=https://www.prerescatepty.com/e/DEMO-ADMIN-VIP?demo=true" 
                                  alt="Demo QR" 
+                                 fill 
                                  className="max-w-[85%] max-h-[85%] object-contain group-hover:scale-110 transition-transform duration-700" 
                                />
                                <div className="absolute inset-0 bg-red-600/5 opacity-0 group-hover/qr:opacity-100 transition-opacity pointer-events-none" />

@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
       customerEmail: user.email,
     });
 
+    type OrderItemWithOptionalRefs = { profileId?: string | null; chipId?: string | null };
+
     const nextNumber = await generateOrderNumber("legacy");
 
     const order = await prisma.$transaction(async (tx) => {
@@ -148,14 +150,17 @@ export async function POST(req: NextRequest) {
           customerDocument: validatedData.customerDocument || null,
           providerReference: validatedData.providerReference || null,
           items: {
-            create: pricedItems.map(item => ({
-              productType: item.productType,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalPrice: item.unitPrice * item.quantity,
-              profileId: (item as any).profileId || null,
-              chipId: (item as any).chipId || null,
-            }))
+            create: pricedItems.map(item => {
+              const itemWithRefs = item as OrderItemWithOptionalRefs;
+              return {
+                productType: item.productType,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                totalPrice: item.unitPrice * item.quantity,
+                profileId: itemWithRefs.profileId ?? null,
+                chipId: itemWithRefs.chipId ?? null,
+              };
+            })
           }
         }
       });

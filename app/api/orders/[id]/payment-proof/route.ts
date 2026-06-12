@@ -72,7 +72,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   }
 
 
-  const updateData: Record<string, any> = {
+  const updateData: {
+    paymentStatus: "under_review";
+    orderStatus: "processing";
+    adminReviewStatus: "pending";
+    paymentProofUrl?: string;
+    manualPaymentReference?: string;
+  } = {
     paymentStatus: "under_review",
     orderStatus: "processing",
     adminReviewStatus: "pending",

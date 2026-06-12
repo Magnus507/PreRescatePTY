@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { AlertCircle, MapPin, Zap } from 'lucide-react';
+import { AlertCircle, MapPin } from 'lucide-react';
 
 /**
  * ScanMonitor Component
  * Polls the scans API to detect new events and show immediate alerts.
  */
 export function ScanMonitor() {
-  const [lastScanId, setLastScanId] = useState<string | null>(null);
   const lastScanIdRef = useRef<string | null>(null);
   const isFirstLoad = useRef(true);
 
@@ -23,18 +22,16 @@ export function ScanMonitor() {
         if (!latestScan) return;
 
         if (isFirstLoad.current) {
-          setLastScanId(latestScan.id);
           lastScanIdRef.current = latestScan.id;
           isFirstLoad.current = false;
           return;
         }
 
         if (latestScan.id !== lastScanIdRef.current) {
-          setLastScanId(latestScan.id);
           lastScanIdRef.current = latestScan.id;
           
           // Sound effect or high-priority toast
-          toast.custom((t) => (
+          toast.custom(() => (
             <div className="bg-[#DA1A21] text-white p-6 rounded-[2rem] shadow-2xl flex items-start gap-4 animate-in slide-in-from-right duration-500 border-2 border-white/20">
               <div className="bg-white/20 p-3 rounded-2xl">
                 <AlertCircle className="h-6 w-6 animate-pulse" />
@@ -53,8 +50,8 @@ export function ScanMonitor() {
             </div>
           ), { duration: 10000, position: 'top-right' });
         }
-      } catch (e) {
-        console.error("Scan monitor error", e);
+      } catch {
+        console.error("Scan monitor error");
       }
     };
 

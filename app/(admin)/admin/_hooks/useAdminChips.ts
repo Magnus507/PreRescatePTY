@@ -19,7 +19,7 @@ export function useAdminChips() {
 
   const [chips, setChips] = useState<ChipAdmin[]>([]);
   const [total, setTotal] = useState(0);
-  const [chipsLoadedAt, setChipsLoadedAt] = useState<number | null>(null);
+  const [, setChipsLoadedAt] = useState<number | null>(null);
   const [selectedChip, setSelectedChip] = useState<ChipDetail | null>(null);
   
   // Abort Controllers for request cancelling
@@ -34,9 +34,6 @@ export function useAdminChips() {
     };
   }, []);
 
-  // Check if data is stale (default 5 minutes = 300000ms)
-  const isChipsStale = (maxAgeMs = 300000) => !chipsLoadedAt || Date.now() - chipsLoadedAt > maxAgeMs;
-
   const loadChips = useCallback(async (params: GetChipsParams = {}) => {
     if (listAbortController.current) {
       listAbortController.current.abort();
@@ -50,9 +47,9 @@ export function useAdminChips() {
       setChips(data.chips);
       setTotal(data.total);
       setChipsLoadedAt(Date.now()); // Track when data was loaded
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      toast.error(e.message || "Error al cargar dispositivos");
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      toast.error(error instanceof Error ? error.message : "Error al cargar dispositivos");
     } finally {
       setLoadingList(false);
     }
@@ -69,9 +66,9 @@ export function useAdminChips() {
     try {
       const data = await chipsService.getChipDetail(id, detailAbortController.current.signal);
       setSelectedChip(data.chip);
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      toast.error(e.message || "No se pudo cargar el detalle del chip");
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      toast.error(error instanceof Error ? error.message : "No se pudo cargar el detalle del chip");
     } finally {
       setLoadingDetail(false);
     }
@@ -91,8 +88,8 @@ export function useAdminChips() {
         await loadChipDetail(id);
       }
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al reactivar dispositivo");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al reactivar dispositivo");
       return false;
     } finally {
       setCreating(false);
@@ -107,8 +104,8 @@ export function useAdminChips() {
       toast.success("Chip eliminado del sistema");
       setChipsLoadedAt(null); // Force reload on next load
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al eliminar dispositivo");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al eliminar dispositivo");
       return false;
     } finally {
       setCreating(false);
@@ -121,8 +118,8 @@ export function useAdminChips() {
       const data = await chipsService.createBatch(count, labelBase, labelStart);
       toast.success(`Lote de ${count} chips generado`);
       return data.chips;
-    } catch (e: any) {
-      toast.error(e.message || "Error al generar lote");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al generar lote");
       return null;
     } finally {
       setCreating(false);

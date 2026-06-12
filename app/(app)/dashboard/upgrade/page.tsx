@@ -1,16 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Check, Shield, Zap, Users, Building2, ChevronRight, ArrowRight, Loader2 } from "lucide-react";
+import { useEffect, useState, type SVGProps } from "react";
+import { Check, Users, Building2, ChevronRight, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { PACKAGE_THEMES } from "@/domains/shared/constants";
+
+interface UpgradeState {
+  packageId?: string | null;
+}
+
+interface UpgradePackage {
+  id: string;
+  name: string;
+  price: number;
+  description?: string | null;
+  color?: string | null;
+  icon?: string | null;
+  recommended?: boolean;
+  maxChips: number;
+  maxProfiles: number;
+  allowsFamilyProfiles?: boolean;
+  allowsOrganizationModule?: boolean;
+  serviceDurationMonths: number;
+  accountType?: string | null;
+}
 
 export default function UpgradePage() {
   const router = useRouter();
-  const [state, setState] = useState<any>(null);
-  const [packages, setPackages] = useState<any[]>([]);
+  const [state, setState] = useState<UpgradeState | null>(null);
+  const [packages, setPackages] = useState<UpgradePackage[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,8 +40,8 @@ export default function UpgradePage() {
           fetch("/api/public/packages")
         ]);
         
-        const stateData = await stateRes.json();
-        const pkgsData = await pkgsRes.json();
+        const stateData = await stateRes.json() as UpgradeState;
+        const pkgsData = await pkgsRes.json() as { packages?: UpgradePackage[] };
         
         setState(stateData);
         setPackages(pkgsData.packages || []);
@@ -36,7 +55,7 @@ export default function UpgradePage() {
     fetchData();
   }, []);
 
-  const getColorClass = (colorKey: string | null) => {
+  const getColorClass = (colorKey?: string | null) => {
     const theme = PACKAGE_THEMES[colorKey || "standard"];
     return theme?.styles || PACKAGE_THEMES.standard.styles;
   };
@@ -189,7 +208,7 @@ export default function UpgradePage() {
   );
 }
 
-function CreditCard(props: any) {
+function CreditCard(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}

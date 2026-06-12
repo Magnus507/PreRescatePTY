@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Store, Plus, Package, DollarSign, Trash2, Edit3, Loader2, X, Image as ImageIcon, Clock, CheckCircle2, AlertTriangle, Upload } from "lucide-react";
+import { Store, Plus, Package, DollarSign, Trash2, Loader2, X, Clock, AlertTriangle, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 interface Product {
@@ -61,7 +61,7 @@ export function TiendaSection() {
       const res = await fetch("/api/admin/products");
       const data = await res.json();
       if (data.products) setProducts(data.products);
-    } catch (e) {
+    } catch {
       toast.error("Error al cargar productos");
     } finally {
       setLoading(false);
@@ -94,7 +94,7 @@ export function TiendaSection() {
       } else {
         toast.error("Error al guardar producto");
       }
-    } catch (e) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setSaving(false);
@@ -109,7 +109,7 @@ export function TiendaSection() {
         toast.success("Producto eliminado");
         loadProducts();
       }
-    } catch (e) {
+    } catch {
       toast.error("Error al eliminar");
     }
   };
@@ -163,12 +163,12 @@ export function TiendaSection() {
         {products.map(p => (
           <div key={p.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all group flex flex-col">
             <div className="aspect-video bg-slate-50 dark:bg-slate-800 flex items-center justify-center relative group-hover:bg-slate-100 transition-colors overflow-hidden">
-               {p.image ? (
-                 // eslint-disable-next-line @next/next/no-img-element
-                 <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
-               ) : (
-                 <Store className="h-12 w-12 text-slate-200" />
-               )}
+                 {p.image ? (
+                   // eslint-disable-next-line @next/next/no-img-element
+                   <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                 ) : (
+                   <Store className="h-12 w-12 text-slate-200" />
+                 )}
                <div className="absolute top-4 right-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm">
                   {p.category}
                </div>
@@ -366,6 +366,7 @@ export function TiendaSection() {
                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-2 block">Imagen del Producto</label>
                        {formData.image ? (
                          <div className="relative">
+                           {/* eslint-disable-next-line @next/next/no-img-element */}
                            <img src={formData.image} alt="Preview" className="w-full h-48 object-cover rounded-2xl border border-slate-200" />
                            <button type="button" onClick={() => setFormData({...formData, image: ""})}
                              className="absolute top-2 right-2 p-2 bg-white/90 rounded-xl shadow-md hover:bg-white transition-all">

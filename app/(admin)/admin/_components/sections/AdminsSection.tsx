@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { Shield, ShieldCheck, User, Mail, Trash2, Plus, X, Loader2, Key, ShieldAlert, Crown } from 'lucide-react';
 import { AdminAccount } from '../../_types/admin';
+import type { AdminCreatePayload, AdminUpdatePayload } from '../../_services/domains/users.service';
+
+type AdminRole = 'admin' | 'superadmin' | 'imprenta';
 
 interface AdminsSectionProps {
   admins: AdminAccount[];
   loading: boolean;
   creating: boolean;
   loadAdmins?: () => void;
-  onUpdateAdmin: (id: string, data: any) => void;
-  onDeleteAdmin: (id: string, email: string) => void;
-  onCreateAdmin: (data: any) => void;
+  onUpdateAdmin: (id: string, data: AdminUpdatePayload) => Promise<boolean>;
+  onDeleteAdmin: (id: string, email: string) => Promise<boolean | void>;
+  onCreateAdmin: (data: AdminCreatePayload) => Promise<boolean>;
 }
 
 export const AdminsSection: React.FC<AdminsSectionProps> = ({ 
   admins, loading, creating, loadAdmins, onUpdateAdmin, onDeleteAdmin, onCreateAdmin 
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({ email: '', password: '', role: 'admin' });
+  const [newAdmin, setNewAdmin] = useState<AdminCreatePayload>({ email: '', password: '', role: 'admin' });
 
   if (loading) {
     return (
@@ -32,15 +35,6 @@ export const AdminsSection: React.FC<AdminsSectionProps> = ({
     onCreateAdmin(newAdmin);
     setShowAddModal(false);
     setNewAdmin({ email: '', password: '', role: 'admin' });
-  };
-
-  const handleToggleRole = (id: string, currentRole: string) => {
-    let newRole = 'admin';
-    if (currentRole === 'admin') newRole = 'superadmin';
-    else if (currentRole === 'superadmin') newRole = 'imprenta';
-    else newRole = 'admin';
-    
-    onUpdateAdmin(id, { role: newRole });
   };
 
   return (
@@ -126,7 +120,7 @@ export const AdminsSection: React.FC<AdminsSectionProps> = ({
                   <div className="flex-1 relative">
                       <select 
                         value={admin.role}
-                        onChange={(e) => onUpdateAdmin(admin.id, { role: e.target.value })}
+                        onChange={(e) => onUpdateAdmin(admin.id, { role: e.target.value as AdminRole })}
                         className="w-full py-4 pl-6 pr-10 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all appearance-none cursor-pointer border-none focus:ring-2 focus:ring-primary/20"
                       >
                         <option value="admin">Administrador</option>
@@ -213,7 +207,7 @@ export const AdminsSection: React.FC<AdminsSectionProps> = ({
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">Rango de Acceso</label>
                   <select 
                     value={newAdmin.role}
-                    onChange={e => setNewAdmin({...newAdmin, role: e.target.value})}
+                    onChange={e => setNewAdmin({...newAdmin, role: e.target.value as AdminRole})}
                     className="w-full px-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-primary/20 font-bold text-sm appearance-none cursor-pointer"
                   >
                     <option value="admin">Operador Estándar</option>

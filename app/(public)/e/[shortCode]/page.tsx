@@ -2,12 +2,13 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import Image from "next/image";
+// Image optimization is intentionally not used here to preserve markup control
+// and avoid layout shifts; using native <img> is acceptable for public QR view.
 import Link from "next/link";
 import { 
   Heart, Phone, AlertTriangle, Droplets, Pill, 
   Activity, User, MessageCircle, Loader2, Calendar,
-  ShieldCheck, MapPin, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick,
+  ShieldCheck, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick,
   Brain, Footprints, Baby
 } from "lucide-react";
 import { IndustrialProfileView } from "./_components/IndustrialProfileView";
@@ -55,19 +56,7 @@ interface EmergencyProfile {
   };
 }
 
-interface ChipMetadata {
-  shortCode: string;
-  serialPublic: string;
-  internalLabel: string;
-  productType: string;
-  batchId?: string;
-  originalStatus?: string;
-}
-
-type SummaryProfile = Pick<
-  EmergencyProfile,
-  "bloodType" | "age" | "sex" | "allergies" | "chronicConditions" | "medications"
->;
+// ChipMetadata not currently used in this view — remove to satisfy lint
 
 function sanitizeTelPhone(phone: string) {
   return phone.replace(/[^\d+]/g, "");
@@ -82,12 +71,6 @@ function normalizeWhatsAppPhone(phone: string) {
       : trimmed;
   const digits = withoutInternationalPrefix.replace(/\D/g, "");
   return digits.length === 8 ? `507${digits}` : digits;
-}
-
-function normalizeSexLabel(sex: string) {
-  if (sex === "M") return "Masculino";
-  if (sex === "F") return "Femenino";
-  return "No reportado";
 }
 
 /** v2: Special assistance badges shown below the patient name */
@@ -278,8 +261,15 @@ function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfil
       <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-white shadow-2xl flex flex-col md:flex-row items-center gap-5 md:gap-8 overflow-hidden">
         {profile.photoUrl ? (
           <div className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border-[4px] md:border-[6px] border-slate-50 shadow-2xl flex-shrink-0 relative group-hover:scale-105 transition-transform duration-500">
-            <img src={profile.photoUrl} alt={`Foto de ${profile.firstName}`} className="w-full h-full object-cover"
-              onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${profile.firstName}&background=DA1A21&color=fff&size=200`; }} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={profile.photoUrl}
+              alt={`Foto de ${profile.firstName}`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = `https://ui-avatars.com/api/?name=${profile.firstName}&background=DA1A21&color=fff&size=200`;
+              }}
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
           </div>
         ) : (
@@ -372,24 +362,6 @@ function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfil
             </div>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function CriticalMedicalSummary({ profile }: { profile: SummaryProfile }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-[2rem] p-4 shadow-lg space-y-3">
-      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Resumen Médico Crítico</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <SummaryChip icon={<Droplets className="h-4 w-4 text-red-600" />} label={`Sangre: ${profile.bloodType || "No reportado"}`} tone="red" />
-        <SummaryChip icon={<Calendar className="h-4 w-4 text-slate-700" />} label={`Edad: ${profile.age ?? "No reportado"}`} tone="slate" />
-        <SummaryChip icon={<User className="h-4 w-4 text-slate-700" />} label={`Sexo: ${normalizeSexLabel(profile.sex)}`} tone="slate" />
-      </div>
-      <div className="grid grid-cols-1 gap-2">
-        <SummaryRow icon={<AlertTriangle className="h-4 w-4 text-amber-500" />} title="Alergias" value={profile.allergies || "No reportado"} />
-        <SummaryRow icon={<Activity className="h-4 w-4 text-blue-500" />} title="Condiciones" value={profile.chronicConditions || "No reportado"} />
-        <SummaryRow icon={<Pill className="h-4 w-4 text-emerald-500" />} title="Medicamentos" value={profile.medications || "No reportado"} />
       </div>
     </div>
   );
@@ -791,8 +763,15 @@ export default function EmergencyPage() {
               <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-white shadow-2xl flex flex-col md:flex-row items-center gap-5 md:gap-8 overflow-hidden">
                 {profile.photoUrl ? (
                   <div className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border-[4px] md:border-[6px] border-slate-50 shadow-2xl flex-shrink-0 relative group-hover:scale-105 transition-transform duration-500">
-                    <img src={profile.photoUrl} alt={`Foto de ${profile.firstName}`} className="w-full h-full object-cover"
-                      onError={(e) => { e.currentTarget.src = "https://ui-avatars.com/api/?name=" + profile.firstName + "&background=DA1A21&color=fff&size=200"; }} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={profile.photoUrl}
+                      alt={`Foto de ${profile.firstName}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${profile.firstName}&background=DA1A21&color=fff&size=200`;
+                      }}
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
                   </div>
                 ) : (
@@ -1005,17 +984,6 @@ const InstructionItem = ({ number, title, desc }: { number: string; title: strin
   <div className="group flex gap-5 p-6 rounded-[2.2rem] bg-slate-50 border border-slate-100 hover:bg-white hover:shadow-xl hover:border-[#DA1A21]/20 transition-all duration-500">
     <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center font-black text-2xl flex-shrink-0 shadow-inner group-hover:bg-red-50 group-hover:text-[#DA1A21] transition-colors">{number}</div>
     <div><h3 className="font-black text-slate-900 uppercase tracking-tighter text-lg leading-tight">{title}</h3><p className="text-xs text-slate-500 leading-relaxed mt-2 font-medium">{desc}</p></div>
-  </div>
-);
-
-const SummaryChip = ({ icon, label, tone }: { icon: ReactNode; label: string; tone: "red" | "slate" }) => {
-  const toneClass = tone === "red" ? "bg-red-50 border-red-100 text-slate-900" : "bg-slate-100 border-slate-200 text-slate-900";
-  return (<div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${toneClass}`}>{icon}<p className="text-xs font-black uppercase tracking-tight">{label}</p></div>);
-};
-
-const SummaryRow = ({ icon, title, value }: { icon: ReactNode; title: string; value: string }) => (
-  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-    <div className="flex items-start gap-2"><div className="mt-0.5">{icon}</div><div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</p><p className="text-sm font-bold text-slate-900 break-words">{value}</p></div></div>
   </div>
 );
 

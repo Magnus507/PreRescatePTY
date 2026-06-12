@@ -95,7 +95,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "La cuenta maestra no puede ser modificada" }, { status: 403 });
   }
 
-  const updateData: any = {};
+  const updateData: Partial<{ status: string; adminRole: string }> = {};
   if (validated.status) updateData.status = validated.status as string;
   if (validated.role) updateData.adminRole = validated.role as string;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { 
   Save, 
   Loader2, 
@@ -9,8 +9,6 @@ import {
   Mail, 
   Globe, 
   Upload, 
-  CheckCircle2, 
-  AlertCircle 
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,27 +28,27 @@ export function SettingsSection() {
     demo_profile_shortcode: ""
   });
 
-  useEffect(() => {
-    loadConfigs();
-  }, []);
-
-  async function loadConfigs() {
+  const loadConfigs = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/config");
       const data = await res.json();
       if (data.configs) {
-        setConfigs({
-          ...configs,
+        setConfigs(prev => ({
+          ...prev,
           ...data.configs
-        });
+        }));
       }
-    } catch (e) {
+    } catch {
       toast.error("Error al cargar configuraciones");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    loadConfigs();
+  }, [loadConfigs]);
 
   async function handleSave() {
     try {
@@ -66,7 +64,7 @@ export function SettingsSection() {
       } else {
         toast.error("Error al guardar ajustes");
       }
-    } catch (e) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setSaving(false);
@@ -94,7 +92,7 @@ export function SettingsSection() {
       
       setConfigs(prev => ({ ...prev, yappy_qr_url: url }));
       toast.success("QR actualizado");
-    } catch (err) {
+    } catch {
       toast.error("Error al subir el QR");
     } finally {
       setUploadingQR(false);
@@ -163,6 +161,7 @@ export function SettingsSection() {
                   <div className="flex items-center gap-6">
                      <div className="h-32 w-32 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-dashed border-border flex items-center justify-center overflow-hidden relative group/qr">
                         {configs.yappy_qr_url ? (
+                           // eslint-disable-next-line @next/next/no-img-element
                            <img src={configs.yappy_qr_url} alt="QR Yappy" className="w-full h-full object-contain p-2" />
                         ) : (
                            <QrCode className="h-8 w-8 opacity-10" />

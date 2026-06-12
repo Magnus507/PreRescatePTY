@@ -12,6 +12,13 @@ import {
 } from "@/domains/chips/chip-lifecycle.constants";
 import { chipActivationSchema } from "@/lib/validations";
 
+type CorporateItemWithMember = {
+  organizationMember: {
+    corporateProfileId: string | null;
+    corporateStatus: string | null;
+  } | null;
+} | null;
+
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
@@ -148,13 +155,13 @@ export async function POST(req: NextRequest) {
             include: { profile: { include: { user: true } } },
           },
         },
-      }) as any;
+      }) as CorporateItemWithMember;
 
       let assignedProfileId: string;
 
       if (corporateItem) {
         // === CORPORATE ACTIVATION FLOW ===
-        const member = corporateItem.organizationMember as any;
+        const member = corporateItem.organizationMember;
 
         if (!member) {
           throw Object.assign(

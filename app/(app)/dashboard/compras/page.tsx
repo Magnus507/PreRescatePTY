@@ -2,16 +2,23 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, ShoppingCart, Truck, Package } from "lucide-react";
+import { Loader2, ShoppingCart, Package } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { BUSINESS_RULES } from "@/domains/shared/constants";
+
+type PurchasePackage = {
+  id: string;
+  name: string;
+  price: number;
+  maxChips: number;
+};
 
 function ComprasContent() {
   const searchParams = useSearchParams();
   const packageIdParam = searchParams.get("packageId");
 
-  const [packages, setPackages] = useState<any[]>([]);
+  const [packages, setPackages] = useState<PurchasePackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState({
     id: "chip-extra", 
@@ -58,8 +65,8 @@ function ComprasContent() {
       const res = await fetch("/api/public/packages");
       const data = await res.json();
       setPackages(data.packages || []);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error("Error cargando paquetes");
     } finally {
       setLoading(false);
     }
@@ -104,7 +111,7 @@ function ComprasContent() {
       } else {
         toast.error("Error al crear el pedido");
       }
-    } catch (e) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setIsOrdering(false);

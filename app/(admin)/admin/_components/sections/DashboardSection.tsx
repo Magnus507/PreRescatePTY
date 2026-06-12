@@ -1,5 +1,5 @@
-import { Activity, Clock, Cpu, LayoutDashboard, Loader2, RefreshCw, Users, Zap, ShieldCheck, ChevronRight, Building2, AlertCircle, Package, ShoppingCart, CheckCircle2, Eye, ArrowRight, TrendingUp } from "lucide-react";
-import { ScanEvent, UserAdmin, OrganizationAdmin, AdminStats } from "../../_types/admin";
+import { Activity, Clock, Cpu, RefreshCw, Users, Zap, ShieldCheck, ChevronRight, Building2, AlertCircle, Package, ShoppingCart, CheckCircle2, Eye, ArrowRight, TrendingUp } from "lucide-react";
+import { UserAdmin, AdminStats, ScanEvent, OrganizationAdmin } from "../../_types/admin";
 import { AdminTab } from "../../_hooks/useAdminManager";
 
 // ─── Reusable Components ────────────────────────────────────────────────────
@@ -120,31 +120,26 @@ function formatDate(d: string) {
 
 interface DashboardSectionProps {
   stats: AdminStats | null;
-  recentScans: ScanEvent[];
+  recentScans?: ScanEvent[];
   recentUsers: UserAdmin[];
-  recentOrgs: OrganizationAdmin[];
+  recentOrgs?: OrganizationAdmin[];
   loading: boolean;
   loadData: () => void;
-  loadChipDetail: (id: string) => void;
   setSelectedUser: (u: UserAdmin | null) => void;
-  setSelectedOrg: (o: OrganizationAdmin | null) => void;
+  setSelectedOrg?: (org: OrganizationAdmin | null) => void;
   loadUsers: () => void;
-  loadOrgDetail: (id: string) => void;
+  loadChipDetail?: (id: string) => void;
+  loadOrgDetail?: (id: string) => void;
   setTab: (t: AdminTab) => void;
 }
 
 export function DashboardSection({ 
   stats, 
-  recentScans, 
   recentUsers, 
-  recentOrgs, 
   loading, 
   loadData, 
-  loadChipDetail,
   setSelectedUser,
-  setSelectedOrg,
   loadUsers,
-  loadOrgDetail,
   setTab
 }: DashboardSectionProps) {
   if (!stats) {

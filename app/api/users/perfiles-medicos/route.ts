@@ -30,7 +30,15 @@ export async function GET() {
     const familyProfiles = allProfiles.filter((p) => p && p.userId !== userId);
 
     // Fetch corporate profiles linked via OrganizationMember.corporateProfileId
-    let corporateProfiles: any[] = [];
+    type CorporateProfileView = {
+      id: string | null;
+      organizationId: string;
+      organizationMemberId: string;
+      organizationName: string;
+      corporateStatus: string;
+      profile: Record<string, unknown> | null;
+    };
+    let corporateProfiles: CorporateProfileView[] = [];
     try {
       const { prisma } = await import("@/lib/prisma");
       const user = await prisma.user.findUnique({
@@ -51,16 +59,16 @@ export async function GET() {
         });
 
         corporateProfiles = corporateMembers.map((m) => {
-          const corpProfile = m.corporateProfile as any;
-          const org = m.organization as any;
+          const corpProfile = m.corporateProfile as Record<string, unknown> | null;
+          const org = m.organization as Record<string, unknown> | null;
           return {
-            id: corpProfile?.id || null,
+            id: (corpProfile && (corpProfile.id as string)) || null,
             organizationId: m.organizationId,
             organizationMemberId: m.id,
-            organizationName: org?.displayName || org?.legalName || "Empresa",
+            organizationName: (org && ((org.displayName as string) || (org.legalName as string))) || "Empresa",
             corporateStatus: m.corporateStatus,
             profile: corpProfile,
-          };
+          } as CorporateProfileView;
         });
       }
     } catch (corpErr) {
@@ -116,7 +124,7 @@ export async function POST(req: NextRequest) {
     const { 
       firstName, lastName, displayNamePublic, birthDate: rawBirthDate, sex, bloodType, phone,
       allergies, chronicConditions, medications, additionalNotes,
-      nationalId, address, city,
+      nationalId, address,
       isInsured,
       insuranceProvider,
       insurancePolicyNumber,

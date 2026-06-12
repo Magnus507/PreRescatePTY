@@ -119,7 +119,17 @@ export async function GET(
     }
 
     const profile = chip.assignedProfile;
-    let orgMember = profile.organizationMembers?.[0] || null;
+
+    // Use a local minimal type for organization member to avoid assigning
+    // wider Prisma types into narrower inferred types elsewhere.
+    type OrgMemberMinimal = {
+      organization?: { legalName?: string | null; displayName?: string | null } | null;
+      location?: { name?: string; address?: string | null; city?: string | null } | null;
+      department?: { name?: string } | null;
+      corporateStatus?: string | null;
+    } | null;
+
+    let orgMember: OrgMemberMinimal = profile.organizationMembers?.[0] || null;
 
     // Check if this is a corporate profile with inactive benefit.
     // For corporate profiles, the organization member relationship is stored
@@ -163,10 +173,11 @@ export async function GET(
 
       // Build organization from the corporate member record instead of profile.organizationMembers
       orgMember = {
-        organization: corporateMember.organization,
-        location: corporateMember.location,
-        department: corporateMember.department,
-      } as any;
+        organization: corporateMember.organization ?? null,
+        location: corporateMember.location ?? null,
+        department: corporateMember.department ?? null,
+        corporateStatus: corporateMember.corporateStatus ?? null,
+      };
     }
 
     // Decrypt sensitive fields
@@ -251,7 +262,7 @@ export async function GET(
       // not exposed from the public emergency profile.
       // Organization data is ONLY included for corporate profiles.
       organization: orgMember && profile.profileType === "corporate" ? {
-        name: orgMember.organization.legalName,
+        name: orgMember.organization?.legalName || null,
         location: orgMember.location
           ? `${orgMember.location.name}${orgMember.location.city ? `, ${orgMember.location.city}` : ""}`
           : null,

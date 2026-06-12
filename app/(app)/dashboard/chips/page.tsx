@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { 
   Cpu, ExternalLink, Pause, Play, UserRound, 
   ChevronRight, Activity, ShieldCheck, Zap,
-  Smartphone, Loader2, Shield, X, PlusCircle, List
+  Smartphone, Loader2, Shield, List
 } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 interface ProfileOption {
   id: string;
@@ -49,7 +48,6 @@ interface ChipData {
 export default function ChipsPage() {
   const [activeTab, setActiveTab] = useState<"list" | "activate">("list");
   const [chips, setChips] = useState<ChipData[]>([]);
-  const [chipsLoadedAt, setChipsLoadedAt] = useState<number | null>(null);
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
@@ -73,7 +71,6 @@ export default function ChipsPage() {
       const familyData = await familyRes.json();
 
       setChips(chipData.chips || []);
-      setChipsLoadedAt(Date.now());
       
       const own = familyData.ownProfile ? [{ ...familyData.ownProfile, _own: true }] : [];
       const fam = familyData.familyProfiles || [];
@@ -88,8 +85,8 @@ export default function ChipsPage() {
         const ownProfile = own[0];
         setActivationProfileId(ownProfile ? ownProfile.id : allProfiles[0].id);
       }
-    } catch (e) {
-      console.error("Error loading chips page:", e);
+    } catch {
+      console.error("Error loading chips page:");
     } finally {
       setLoading(false);
     }
@@ -126,7 +123,7 @@ export default function ChipsPage() {
       setActivationCode("");
       setActivationProfileId("");
       await loadData();
-    } catch (err) {
+    } catch {
       setActivationError("Error de conexión");
     } finally {
       setActivating(false);

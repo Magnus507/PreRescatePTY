@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { 
-  Shield, Eye, EyeOff, Loader2, ArrowRight, 
-  Lock, Mail, HeartPulse, CheckCircle2, ShieldAlert
+  Eye, EyeOff, CheckCircle2, ShieldAlert
 } from "lucide-react";
 
 function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
@@ -43,7 +42,6 @@ export default function LoginPage() {
 }
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

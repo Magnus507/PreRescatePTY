@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Loader2, Plus, Trash2, GraduationCap, Briefcase } from "lucide-react";
+import { Building2, Loader2, Plus, Trash2, Briefcase } from "lucide-react";
 import { AdminTab } from "../../_hooks/useAdminManager";
 
 interface OrganizationAdmin {
@@ -17,7 +17,6 @@ interface OrganizationAdmin {
 
 interface OrganizationsSectionProps {
   organizations: OrganizationAdmin[];
-  tab: string;
   loading: boolean;
   setShowOrgModal: (val: boolean) => void;
   loadOrgDetail: (id: string) => void;
@@ -33,7 +32,6 @@ function formatDate(d: string) {
 
 export function OrganizationsSection({
   organizations,
-  tab,
   loading,
   setShowOrgModal,
   loadOrgDetail,

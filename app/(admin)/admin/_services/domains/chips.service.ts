@@ -22,9 +22,9 @@ export const chipsService = {
   }, signal?: AbortSignal) {
     // Sanitize params to remove undefined/null/empty values
     const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== "")
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")
     );
-    const query = new URLSearchParams(cleanParams as any).toString();
+    const query = new URLSearchParams(cleanParams as Record<string, string>).toString();
     return adminClient.get<{
       chips: ChipAdmin[];
       items?: ChipAdmin[];

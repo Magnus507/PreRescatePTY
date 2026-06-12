@@ -5,10 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { 
-  Shield, Eye, EyeOff, Loader2, ArrowRight, 
+  Shield, Loader2, ArrowRight, 
   Lock, Mail, HeartPulse, CheckCircle2, ShieldAlert,
   User, Phone
 } from "lucide-react";
+
+type PackageSummary = {
+  id: string;
+  name: string;
+  price: number;
+};
 
 export default function RegistroPage() {
   return (
@@ -23,14 +29,13 @@ function RegistroForm() {
   const searchParams = useSearchParams();
   const packageId = searchParams.get("package");
   
-  const [selectedPkg, setSelectedPkg] = useState<any>(null);
+  const [selectedPkg, setSelectedPkg] = useState<PackageSummary | null>(null);
   const [form, setForm] = useState({ 
     email: "", 
     phone: "", 
     password: "", 
     confirm: ""
   });
-  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -40,14 +45,14 @@ function RegistroForm() {
       fetch("/api/public/packages")
         .then(res => res.json())
         .then(data => {
-          const pkg = data.packages?.find((p: any) => p.id === packageId);
+          const pkg = data.packages?.find((p: PackageSummary) => p.id === packageId);
           if (pkg) setSelectedPkg(pkg);
         })
         .catch(err => console.error("Error loading package summary:", err));
     }
   }, [packageId]);
 
-  function update(field: string, value: any) {
+  function update(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
@@ -127,7 +132,7 @@ function RegistroForm() {
       } else {
         router.push("/login?email=" + encodeURIComponent(form.email));
       }
-    } catch (err) {
+    } catch {
       setError("Error de conexión. Inténtalo de nuevo.");
       setLoading(false);
     }
@@ -269,7 +274,7 @@ function RegistroForm() {
                       <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
                     </div>
                     <input
-                      type={showPw ? "text" : "password"}
+                      type="password"
                       required
                       value={form.password}
                       onChange={(e) => update("password", e.target.value)}

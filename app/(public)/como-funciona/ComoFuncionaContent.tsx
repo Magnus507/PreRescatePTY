@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Shield, Smartphone, QrCode, UserCheck, Bell, Scan, CheckCircle, Activity, Heart, ArrowUpRight } from "lucide-react";
+import { QrCode, UserCheck, Bell, Scan, CheckCircle, Activity, ArrowUpRight } from "lucide-react";
 
 export default function ComoFuncionaContent() {
   return (

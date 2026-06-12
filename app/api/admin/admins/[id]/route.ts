@@ -46,7 +46,7 @@ export async function PATCH(
         createdAt: admin.createdAt 
       } 
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Error al actualizar administrador" }, { status: 500 });
   }
 }
@@ -76,7 +76,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ message: "Administrador eliminado correctamente" });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Error al eliminar administrador" }, { status: 500 });
   }
 }

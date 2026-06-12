@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -32,27 +33,27 @@ export async function GET(req: Request) {
 
   const whereStatus = status && allowedStatuses.includes(status) ? status : undefined;
 
-  const where: any = {
-    organizationId: organization.id,
-  };
-
+  let whereObj: Prisma.OrganizationMemberWhereInput = { organizationId: organization.id };
   if (whereStatus) {
-    where.corporateStatus = whereStatus;
+    whereObj = { ...whereObj, corporateStatus: whereStatus };
   }
 
   // Search by name, email, or cédula
   if (search) {
     const searchUpper = search.toUpperCase();
-    where.OR = [
-      { profile: { firstName: { contains: searchUpper, mode: "insensitive" } } },
-      { profile: { lastName: { contains: searchUpper, mode: "insensitive" } } },
-      { profile: { user: { email: { contains: search, mode: "insensitive" } } } },
-      { employeeNationalId: { contains: search, mode: "insensitive" } },
-    ];
+    whereObj = {
+      ...whereObj,
+      OR: [
+        { profile: { firstName: { contains: searchUpper, mode: "insensitive" } } },
+        { profile: { lastName: { contains: searchUpper, mode: "insensitive" } } },
+        { profile: { user: { email: { contains: search, mode: "insensitive" } } } },
+        { employeeNationalId: { contains: search, mode: "insensitive" } },
+      ],
+    };
   }
 
   const members = await prisma.organizationMember.findMany({
-    where,
+    where: whereObj,
     include: {
       profile: {
         select: {

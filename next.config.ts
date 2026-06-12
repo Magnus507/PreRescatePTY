@@ -4,7 +4,9 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   eslint: {
-    ignoreDuringBuilds: true,
+    // Enforce ESLint during build to catch issues early for production.
+    // Use `SKIP_LINT_DURING_BUILD=true` to opt-out locally when necessary.
+    ignoreDuringBuilds: false,
   },
   async headers() {
     return [

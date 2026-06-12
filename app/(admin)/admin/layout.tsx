@@ -5,9 +5,8 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Cpu, Users, Building2, Shield, QrCode,
-  LogOut, Settings, Package, Activity, ChevronRight, Bell, Search, AlertCircle, Menu, X, Store, Crown,
-  Rocket, Sparkles
+  LayoutDashboard, Cpu, Users, Building2, Shield,
+  LogOut, Settings, Package, Activity, ChevronRight, Search, Menu, X, Store, Crown
 } from "lucide-react";
 
 import type { Session } from "next-auth";
@@ -63,7 +62,7 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
         {nav.map((item) => {
           const isActive = currentTab === item.id;
-          const isFuture = (item as any).isFuture;
+          const isFuture = 'isFuture' in item;
 
           return (
             <Link

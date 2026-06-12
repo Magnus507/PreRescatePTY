@@ -2,7 +2,7 @@
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Check, Zap, ShieldAlert, ArrowUpRight } from "lucide-react";
+import { Check, Zap, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import PricingSection from "@/components/home/PricingSection";

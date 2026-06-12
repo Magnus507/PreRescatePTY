@@ -1,10 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Circle, Copy, Cpu, Loader2, Package, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ChipAdmin } from "../../_types/admin";
 import { chipsService, PointOfSaleOption } from "../../_services/domains/chips.service";
-import { usersService, AdminUserProfileOption } from "../../_services/domains/users.service";
-import { UserAdmin } from "../../_types/admin";
 import { CreateBatchSection } from "./CreateBatchSection";
 
 type InventoryView = "available" | "reserved" | "activated" | "returned" | "damaged" | "pointOfSale";
@@ -90,27 +88,8 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   const [consignModalOpen, setConsignModalOpen] = useState(false);
   const [selectedPointOfSaleId, setSelectedPointOfSaleId] = useState("");
   const [consignmentSubmitting, setConsignmentSubmitting] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignSubmitting, setAssignSubmitting] = useState(false);
-  const [assignChip, setAssignChip] = useState<InventoryItem | null>(null);
-  const [assignUsers, setAssignUsers] = useState<UserAdmin[]>([]);
-  const [assignUserSearch, setAssignUserSearch] = useState("");
-  const [assignProfiles, setAssignProfiles] = useState<AdminUserProfileOption[]>([]);
-  const [assignLoadingProfiles, setAssignLoadingProfiles] = useState(false);
-  const [assignForm, setAssignForm] = useState({
-    targetUserId: "",
-    targetProfileId: "",
-    reason: "replacement" as "replacement" | "courtesy" | "warranty" | "internal_test" | "same_customer_reassign",
-    notes: "",
-    capacityMode: "deny_if_no_capacity" as "deny_if_no_capacity" | "consume_existing" | "grant_exception",
-  });
-  const [assignResult, setAssignResult] = useState<{
-    orderNumber: string;
-    activationCode: string;
-    expiresAt: string;
-  } | null>(null);
 
-  const loadView = async (view: InventoryView, search = "") => {
+  const loadView = useCallback(async (view: InventoryView, search = "") => {
     setLoadingView(true);
     try {
       const res = await chipsService.getChips({
@@ -126,14 +105,21 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     } finally {
       setLoadingView(false);
     }
-  };
+  }, [pointOfSaleFilter]);
 
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async () => {
     try {
       const responses = await Promise.all(
         TABS.map((tab) => chipsService.getChips({ limit: 1, view: tab.key }))
       );
-      const next = { ...summary };
+      const next: Record<InventoryView, number> = {
+        available: 0,
+        reserved: 0,
+        activated: 0,
+        returned: 0,
+        damaged: 0,
+        pointOfSale: 0,
+      };
       TABS.forEach((tab, idx) => {
         next[tab.key] = responses[idx].total || 0;
       });
@@ -141,12 +127,12 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     } catch {
       // silent: summary is informative
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (activeSubTab !== "list") return;
     loadView(activeView, query);
-  }, [activeView, activeSubTab, pointOfSaleFilter]);
+  }, [activeView, activeSubTab, pointOfSaleFilter, query, loadView]);
 
   useEffect(() => {
     if (activeSubTab !== "list" || isPrintRole) return;
@@ -159,7 +145,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     if (activeSubTab === "list") {
       loadSummary();
     }
-  }, [activeSubTab]);
+  }, [activeSubTab, loadSummary]);
 
   const filtered = useMemo(() => {
     let result = items;
@@ -231,8 +217,8 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
       setSelectedChipIds([]);
       await loadView(activeView, query);
       await loadSummary();
-    } catch (e: any) {
-      toast.error(e?.message || "No se pudieron consignar los chips");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "No se pudieron consignar los chips");
     } finally {
       setConsignmentSubmitting(false);
     }
@@ -249,8 +235,8 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
       setSelectedChipIds([]);
       await loadView(activeView, query);
       await loadSummary();
-    } catch (e: any) {
-      toast.error(e?.message || "No se pudieron devolver los chips");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "No se pudieron devolver los chips");
     } finally {
       setConsignmentSubmitting(false);
     }
@@ -268,8 +254,8 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
       setSelectedChipIds([]);
       await loadView(activeView, query);
       await loadSummary();
-    } catch (e: any) {
-      toast.error(e?.message || "No se pudieron marcar como perdidos");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "No se pudieron marcar como perdidos");
     } finally {
       setConsignmentSubmitting(false);
     }
@@ -318,98 +304,11 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
       toast.success(`Chip rehabilitado. Nuevo código: ${res.token.activationCode}`);
       await loadView(activeView, query);
       await loadSummary();
-    } catch (e: any) {
-      toast.error(e?.message || "No se pudo rehabilitar el chip");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "No se pudo rehabilitar el chip");
     }
   };
 
-  const loadAssignUsers = async (search = "") => {
-    const res = await usersService.getUsers({ limit: 100, search: search || undefined });
-    setAssignUsers(res.users || []);
-  };
-
-  const openAssignModal = async (chip: InventoryItem) => {
-    setAssignChip(chip);
-    setAssignOpen(true);
-    setAssignResult(null);
-    setAssignProfiles([]);
-    setAssignForm({
-      targetUserId: "",
-      targetProfileId: "",
-      reason: "replacement",
-      notes: "",
-      capacityMode: "deny_if_no_capacity",
-    });
-    try {
-      await loadAssignUsers();
-    } catch {
-      toast.error("No se pudieron cargar los clientes");
-    }
-  };
-
-  const loadProfilesForUser = async (userId: string) => {
-    setAssignLoadingProfiles(true);
-    try {
-      const profiles = await usersService.getUserProfiles(userId);
-      setAssignProfiles(profiles || []);
-    } catch (e: any) {
-      setAssignProfiles([]);
-      toast.error(e?.message || "No se pudieron cargar los perfiles del cliente");
-    } finally {
-      setAssignLoadingProfiles(false);
-    }
-  };
-
-  const handleAssignSubmit = async () => {
-    if (!assignChip) return;
-    if (!assignForm.targetUserId) {
-      toast.error("Selecciona un cliente");
-      return;
-    }
-    if (!assignForm.targetProfileId) {
-      toast.error("Selecciona un perfil médico");
-      return;
-    }
-    if (!assignForm.reason) {
-      toast.error("Selecciona un motivo");
-      return;
-    }
-    if (assignForm.capacityMode === "grant_exception" && !assignForm.notes.trim()) {
-      toast.error("Debes agregar notas para grant_exception");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      "Esta acción generará una orden administrativa $0 y reservará el chip para el cliente seleccionado."
-    );
-    if (!confirmed) return;
-
-    setAssignSubmitting(true);
-    try {
-      const res = await chipsService.assignDirect(assignChip.id, {
-        targetUserId: assignForm.targetUserId,
-        targetProfileId: assignForm.targetProfileId,
-        reason: assignForm.reason,
-        notes: assignForm.notes || undefined,
-        capacityMode: assignForm.capacityMode,
-        autoActivate: false,
-      });
-
-      setAssignResult({
-        orderNumber: res.order?.orderNumber || "—",
-        activationCode: res.token?.activationCode || "",
-        expiresAt: res.token?.expiresAt || "",
-      });
-
-      toast.success("Chip asignado directamente");
-      await loadView(activeView, query);
-      await loadSummary();
-    } catch (e: any) {
-      toast.error(e?.message || "No se pudo asignar el chip");
-    } finally {
-      setAssignSubmitting(false);
-    }
-  };
 
   const formatDate = (value?: string | null) => {
     if (!value) return "—";

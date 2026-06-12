@@ -2,7 +2,7 @@
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Shield, ChevronRight, Zap, CheckCircle, Activity, Heart, ArrowUpRight, Check, Plus } from "lucide-react";
+import { Heart } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 

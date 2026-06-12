@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { orgsService } from "../_services/domains/orgs.service";
 import { OrganizationAdmin } from "../_types/admin";
+import type { OrgEditPayload } from "../_components/modals/OrgEditModal";
 import { toast } from "sonner";
 
 export function useAdminOrgs() {
@@ -9,9 +10,9 @@ export function useAdminOrgs() {
   const [creating, setCreating] = useState(false);
 
   const [organizations, setOrganizations] = useState<OrganizationAdmin[]>([]);
-  const [orgsLoadedAt, setOrgsLoadedAt] = useState<number | null>(null);
+  const [, setOrgsLoadedAt] = useState<number | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<OrganizationAdmin | null>(null);
-  const [packages, setPackages] = useState<any[]>([]);
+  const [packages, setPackages] = useState<unknown[]>([]);
   
   // Abort Controllers
   const listAbort = useRef<AbortController | null>(null);
@@ -27,9 +28,6 @@ export function useAdminOrgs() {
     };
   }, []);
 
-  // Check if data is stale (default 5 minutes)
-  const isOrgsStale = (maxAgeMs = 300000) => !orgsLoadedAt || Date.now() - orgsLoadedAt > maxAgeMs;
-
   const loadOrganizations = useCallback(async () => {
     if (listAbort.current) listAbort.current.abort();
     listAbort.current = new AbortController();
@@ -39,9 +37,9 @@ export function useAdminOrgs() {
       const data = await orgsService.getOrganizations(listAbort.current.signal);
       setOrganizations(data.organizations);
       setOrgsLoadedAt(Date.now()); // Track when data was loaded
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      toast.error(e.message || "Error al cargar organizaciones");
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      toast.error(error instanceof Error ? error.message : "Error al cargar organizaciones");
     } finally {
       setLoadingList(false);
     }
@@ -55,9 +53,9 @@ export function useAdminOrgs() {
     try {
       const data = await orgsService.getOrgDetail(id, detailAbort.current.signal);
       setSelectedOrg(data.organization);
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      toast.error(e.message || "No se pudo cargar el detalle de la empresa");
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      toast.error(error instanceof Error ? error.message : "No se pudo cargar el detalle de la empresa");
     } finally {
       setLoadingDetail(false);
     }
@@ -70,21 +68,21 @@ export function useAdminOrgs() {
     try {
       const data = await orgsService.getPackages(packageAbort.current.signal);
       setPackages(data.packages);
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      console.error("Error loading packages:", e);
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      console.error("Error loading packages:", error);
     }
   }, []);
 
-  const createOrg = useCallback(async (orgData: any) => {
+  const createOrg = useCallback(async (orgData: Record<string, unknown>) => {
     setCreating(true);
     try {
       await orgsService.createOrganization(orgData);
       toast.success("Organización creada exitosamente");
       setOrgsLoadedAt(null); // Force reload
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al crear organización");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al crear organización");
       return false;
     } finally {
       setCreating(false);
@@ -100,30 +98,30 @@ export function useAdminOrgs() {
       setSelectedOrg(null);
       setOrgsLoadedAt(null); // Force reload
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al eliminar organización");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al eliminar organización");
       return false;
     } finally {
       setCreating(false);
     }
   }, []);
 
-  const addMember = useCallback(async (orgId: string, memberData: any) => {
+  const addMember = useCallback(async (orgId: string, memberData: Record<string, unknown>) => {
     setCreating(true);
     try {
       await orgsService.addMember(orgId, memberData);
       toast.success("Miembro añadido a la organización");
       await loadOrgDetail(orgId);
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al añadir miembro");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al añadir miembro");
       return false;
     } finally {
       setCreating(false);
     }
   }, [loadOrgDetail]);
 
-  const updateOrganization = useCallback(async (orgId: string, data: any) => {
+  const updateOrganization = useCallback(async (orgId: string, data: OrgEditPayload) => {
     setCreating(true);
     try {
       await orgsService.updateOrganization(orgId, data);
@@ -131,8 +129,8 @@ export function useAdminOrgs() {
       setOrgsLoadedAt(null); // Force reload
       await loadOrgDetail(orgId);
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Error al actualizar organización");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error al actualizar organización");
       return false;
     } finally {
       setCreating(false);

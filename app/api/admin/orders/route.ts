@@ -14,7 +14,7 @@ async function isAdmin() {
   return role === USER_ROLES.ADMIN || role === USER_ROLES.SUPERADMIN;
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

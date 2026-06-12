@@ -46,7 +46,7 @@ function ResetPasswordForm() {
       } else {
         toast.error(data.error || "Ocurrió un error");
       }
-    } catch (e: any) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setLoading(false);

@@ -156,9 +156,10 @@ export async function POST(
         expiresAt: result.newToken.expiresAt,
       },
     });
-  } catch (error: any) {
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
     return NextResponse.json(
-      { error: error?.message || "Error rehabilitando chip" },
+      { error: e.message || "Error rehabilitando chip" },
       { status: 500 }
     );
   }

@@ -77,7 +77,7 @@ export async function PATCH(req: NextRequest) {
     if (!user || !user.profile) return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
 
     // Update Profile
-    const updatedProfile = await prisma.profile.update({
+    await prisma.profile.update({
       where: { id: user.profile.id },
       data: {
         firstName: body.firstName,

@@ -28,7 +28,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
 
     return NextResponse.json({ product, message: "Producto actualizado" });
-  } catch (error) {
+  } catch (err: unknown) {
+    console.error("Error updating product:", err);
     return NextResponse.json({ error: "Error al actualizar producto" }, { status: 500 });
   }
 }
@@ -41,7 +42,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const { id } = await params;
     await prisma.product.delete({ where: { id } });
     return NextResponse.json({ message: "Producto eliminado" });
-  } catch (error) {
+  } catch (err: unknown) {
+    console.error("Error deleting product:", err);
     return NextResponse.json({ error: "Error al eliminar producto" }, { status: 500 });
   }
 }

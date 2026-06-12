@@ -45,6 +45,12 @@ export function UsersSection({
 }: UsersSectionProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'inactive'>('all');
 
+  const tabs: Array<{ id: 'all' | 'active' | 'inactive'; label: string }> = [
+    { id: 'all', label: 'Todos' },
+    { id: 'active', label: 'Activos' },
+    { id: 'inactive', label: 'Sin Chip' }
+  ];
+
   const filteredUsers = users.filter(u => {
     if (activeTab === 'active') return u._count.chips > 0;
     if (activeTab === 'inactive') return u._count.chips === 0;
@@ -66,14 +72,10 @@ export function UsersSection({
         </div>
         <div className="flex items-center gap-3">
            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mr-4">
-              {[
-                { id: 'all', label: 'Todos' },
-                { id: 'active', label: 'Activos' },
-                { id: 'inactive', label: 'Sin Chip' }
-              ].map(tab => (
+              {tabs.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   {tab.label}

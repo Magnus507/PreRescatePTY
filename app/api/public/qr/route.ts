@@ -33,8 +33,9 @@ export async function GET(req: NextRequest) {
         "X-Content-Type-Options": "nosniff"
       },
     });
-  } catch (error: any) {
-    logger.error("[QR_GENERATOR] Critical failure", error.message);
-    return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    logger.error("[QR_GENERATOR] Critical failure", e.message);
+    return new NextResponse(`Internal Server Error: ${e.message}`, { status: 500 });
   }
 }

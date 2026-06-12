@@ -6,9 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { 
   Plus, Pencil, Trash2, Loader2, Save, X, ChevronLeft,
-  UserRound, Phone, ChevronUp, AlertCircle,
-  ShieldCheck, Activity, Users, PlusCircle, Smartphone, Zap, ExternalLink,
-  Building2
+  UserRound, Phone, AlertCircle,
+  ShieldCheck, Activity, PlusCircle, Smartphone, ExternalLink,
 } from "lucide-react";
 import { Camera } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
@@ -78,6 +77,10 @@ interface FamilyState {
   maxProfilesAllocated: number;
 }
 
+interface ChipsApiResponse {
+  chips?: Array<AssignedChip & { assignedProfileId?: string | null; status?: string }>;
+}
+
 const emptyForm = {
   firstName: "", lastName: "", displayNamePublic: "", birthDate: "",
   sex: "", bloodType: "O+", allergies: "", chronicConditions: "",
@@ -113,7 +116,6 @@ const emptyContactForm = {
 
 export default function FamiliaPage() {
   const [familyProfiles, setFamilyProfiles] = useState<FamilyProfile[]>([]);
-  const [profilesLoadedAt, setProfilesLoadedAt] = useState<number | null>(null);
   const [ownProfile, setOwnProfile] = useState<FamilyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<FamilyState | null>(null);
@@ -138,7 +140,6 @@ export default function FamiliaPage() {
   const [contactForm, setContactForm] = useState({ ...emptyContactForm });
   const [contactSaving, setContactSaving] = useState(false);
   const [contactError, setContactError] = useState("");
-  const [deletingContact, setDeletingContact] = useState<string | null>(null);
   const [availableChips, setAvailableChips] = useState<AssignedChip[]>([]);
   const [assigningChip, setAssigningChip] = useState<string | null>(null);
   const [addingContactToProfile, setAddingContactToProfile] = useState<string | null>(null);
@@ -155,18 +156,19 @@ export default function FamiliaPage() {
         fetch("/api/chips/dashboard")
       ]);
       
-      const pData = await profilesRes.json();
-      const cData = await chipsRes.json();
+      const pData = await profilesRes.json() as { ownProfile: FamilyProfile | null; familyProfiles?: FamilyProfile[]; state?: FamilyState };
+      const cData = await chipsRes.json() as ChipsApiResponse;
 
       setOwnProfile(pData.ownProfile);
       setFamilyProfiles(pData.familyProfiles || []);
-      setProfilesLoadedAt(Date.now());
-      setState(pData.state);
+      if (pData.state) {
+        setState(pData.state);
+      }
 
-      setAvailableChips((cData.chips || []).filter((c: any) => !c.assignedProfileId && c.status === "activated"));
+      setAvailableChips((cData.chips || []).filter((c) => !c.assignedProfileId && c.status === "activated"));
       
-    } catch (e) {
-      console.error("Error loading family profiles:", e);
+    } catch {
+      console.error("Error loading family profiles:");
       toast.error("Error al cargar los perfiles médicos");
     } finally {
       setLoading(false);
@@ -189,7 +191,7 @@ export default function FamiliaPage() {
         const data = await res.json();
         toast.error(data.error || "Error al vincular chip");
       }
-    } catch (e) {
+    } catch {
       toast.error("Error de conexión");
     } finally {
       setAssigningChip(null);
@@ -264,7 +266,7 @@ export default function FamiliaPage() {
         const data = await res.json();
         setAddError(data.error || "Error al crear perfil");
       }
-    } catch (error) {
+    } catch {
       setAddSaving(false);
       setAddError("Error de conexión al servidor");
     }
@@ -290,7 +292,7 @@ export default function FamiliaPage() {
         const data = await res.json();
         setEditError(data.error || "Error al guardar");
       }
-    } catch (error) {
+    } catch {
       setEditSaving(false);
       setEditError("Error de conexión");
     }
@@ -309,7 +311,7 @@ export default function FamiliaPage() {
         const data = await res.json();
         toast.error(data.error || "Error al eliminar");
       }
-    } catch (error) {
+    } catch {
       setDeleting(null);
       toast.error("Error de conexión");
     }
@@ -328,8 +330,8 @@ export default function FamiliaPage() {
         const data = await res.json();
         const fetchedContacts = data.contacts || [];
         setContacts((prev) => ({ ...prev, [profileId]: fetchedContacts }));
-      } catch (e) {
-        console.error("Error loading contacts:", e);
+      } catch {
+        console.error("Error loading contacts:");
       } finally {
         setContactsLoading(null);
       }
@@ -363,7 +365,7 @@ export default function FamiliaPage() {
         setContactError(data.error || "Error al añadir contacto");
         return false;
       }
-    } catch (error) {
+    } catch {
       setContactSaving(false);
       setContactError("Error de conexión");
       return false;
@@ -372,12 +374,10 @@ export default function FamiliaPage() {
 
   async function handleDeleteContact(profileId: string, contactId: string) {
     if (!confirm("¿Deseas eliminar permanentemente a este guardián?")) return;
-    setDeletingContact(contactId);
     try {
       const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts?id=${contactId}`, {
         method: "DELETE",
       });
-      setDeletingContact(null);
       if (res.ok) {
         setContacts((prev) => ({
           ...prev,
@@ -385,30 +385,9 @@ export default function FamiliaPage() {
         }));
         toast.success("Guardián eliminado permanentemente");
       }
-    } catch (error) {
-      setDeletingContact(null);
+    } catch {
       toast.error("Error de conexión");
     }
-  }
-
-  async function handleUpdateLink(profileId: string, contactId: string, data: any) {
-     try {
-       const res = await fetch(`/api/users/perfiles-medicos/${profileId}/contacts`, {
-         method: "PATCH",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ id: contactId, ...data }),
-       });
-       if (res.ok) {
-          const result = await res.json();
-          setContacts(prev => ({
-            ...prev,
-            [profileId]: (prev[profileId] || []).map(c => c.id === contactId ? result.contact : c)
-          }));
-          toast.success("Vínculo actualizado");
-       }
-     } catch (e) {
-       toast.error("Error al actualizar vínculo");
-     }
   }
 
   if (loading) {
@@ -475,13 +454,10 @@ export default function FamiliaPage() {
               contacts={contacts[ownProfile.id] || []}
               contactsLoading={contactsLoading === ownProfile.id}
               onDeleteContact={(contactId) => handleDeleteContact(ownProfile.id, contactId)}
-              deletingContact={deletingContact}
               availableChips={availableChips}
               onAssignChip={(chipId) => handleAssignChip(ownProfile.id, chipId)}
               isAssigning={assigningChip === ownProfile.id}
-              onUpdateLink={(contactId, data) => handleUpdateLink(ownProfile.id, contactId, data)}
               isOwn
-              profileId={ownProfile.id}
               onPhotoUpdate={() => loadProfiles()}
               onStartAddContact={() => { setAddingContactToProfile(ownProfile.id); setContactError(""); setContactForm({...emptyContactForm}); }}
             />
@@ -499,12 +475,9 @@ export default function FamiliaPage() {
               contacts={contacts[profile.id] || []}
               contactsLoading={contactsLoading === profile.id}
               onDeleteContact={(contactId) => handleDeleteContact(profile.id, contactId)}
-              deletingContact={deletingContact}
               availableChips={availableChips}
               onAssignChip={(chipId) => handleAssignChip(profile.id, chipId)}
               isAssigning={assigningChip === profile.id}
-              onUpdateLink={(contactId, data) => handleUpdateLink(profile.id, contactId, data)}
-              profileId={profile.id}
               onPhotoUpdate={() => loadProfiles()}
               onStartAddContact={() => { setAddingContactToProfile(profile.id); setContactError(""); setContactForm({...emptyContactForm}); }}
             />
@@ -708,13 +681,10 @@ interface ProfileCardProps {
   contacts: EmergencyContact[];
   contactsLoading: boolean;
   onDeleteContact: (id: string) => void;
-  deletingContact: string | null;
   availableChips: AssignedChip[];
   onAssignChip: (chipId: string) => void;
   isAssigning: boolean;
-  onUpdateLink: (id: string, data: any) => void;
   isOwn?: boolean;
-  profileId: string;
   onPhotoUpdate?: () => void;
   onStartAddContact: () => void;
 }
@@ -722,9 +692,9 @@ interface ProfileCardProps {
 function ProfileCard({
    profile, onEdit, onDelete, isDeleting,
    contactsExpanded, onToggleContacts,
-   contacts, onDeleteContact, deletingContact,
+   contacts, onDeleteContact,
    availableChips, onAssignChip, isAssigning,
-   onUpdateLink, isOwn, profileId,
+   isOwn,
    onStartAddContact,
    onPhotoUpdate
 }: ProfileCardProps) {
@@ -759,8 +729,8 @@ function ProfileCard({
       } else {
         toast.error("Error al subir la foto");
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      console.error("Error uploading profile photo");
       toast.error("Error en la conexión");
     } finally {
       setUploading(false);

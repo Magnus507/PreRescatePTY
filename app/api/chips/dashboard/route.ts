@@ -162,7 +162,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   let newStatus = chip.status;
-  let updateData: any = {};
+  let updateData: Partial<{ status: string; ownerUserId?: string | null }> = {};
   
   if (action === "suspend" && chip.status === "activated") {
     newStatus = "suspended";

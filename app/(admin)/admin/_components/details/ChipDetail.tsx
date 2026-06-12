@@ -1,12 +1,13 @@
 import React from 'react';
+import type { ChipDetail, ScanEvent } from '../../_types/admin';
 import { 
-  ChevronLeft, Cpu, RefreshCw, Loader2, User, Bell, 
-  MapPin, Scan as ScanIcon, Copy, Printer, CheckCircle2, Package, Trash2
+  ChevronLeft, Cpu, RefreshCw, Loader2, User, 
+  MapPin, Scan as ScanIcon, Printer
 } from 'lucide-react';
 import Image from 'next/image';
 
 interface ChipDetailProps {
-  chip: any;
+  chip: ChipDetail;
   loading: boolean;
   reactivating: boolean;
   onBack: () => void;
@@ -132,7 +133,7 @@ export const ChipDetailView: React.FC<ChipDetailProps> = ({
            </div>
            
            <div className="space-y-3">
-              {chip.scanEvents && chip.scanEvents.length > 0 ? chip.scanEvents.map((scan: any) => (
+              {chip.scanEvents && chip.scanEvents.length > 0 ? chip.scanEvents.map((scan: ScanEvent) => (
                 <div key={scan.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
                   <div className="flex items-center gap-4">
                     <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${scan.sourceType === "nfc" ? "bg-indigo-600 text-white" : "bg-emerald-600 text-white"}`}>
@@ -175,7 +176,7 @@ function InfoRow({ label, value, mono, badge }: { label: string; value: string; 
   );
 }
 
-function Activity(props: any) {
+function Activity(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}

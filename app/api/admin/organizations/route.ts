@@ -34,7 +34,7 @@ async function generateUniqueCompanyCode(base: string) {
   return `EMP${Date.now().toString(36).toUpperCase()}`.slice(0, 16);
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
 
@@ -179,11 +179,12 @@ export async function POST(req: Request) {
     // Chips are NOT created during org setup — they are assigned later.
     // maxChipsAllocated remains as the capacity cap for future chip assignments.
     return NextResponse.json({ organization: newOrg, ownerEmail, maxChipsAllocated: chipCount }, { status: 201 });
-  } catch (error: any) {
-    console.error("Error creating org", error);
+  } catch (err: unknown) {
+    console.error("Error creating org", err);
+    const e = err instanceof Error ? err : new Error(String(err));
     return NextResponse.json({ 
       error: "Error creating organization", 
-      details: error?.message || String(error)
+      details: e.message || String(err)
     }, { status: 500 });
   }
 }

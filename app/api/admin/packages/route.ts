@@ -60,8 +60,9 @@ export async function POST(req: Request) {
       }
     });
     return NextResponse.json({ pkg });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
 
@@ -92,7 +93,8 @@ export async function PATCH(req: Request) {
       data
     });
     return NextResponse.json({ pkg });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
