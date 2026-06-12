@@ -149,6 +149,15 @@ model Profile {
   showCommunicationStatusPublic    Boolean   @default(false)
   showSafeReturnPublic             Boolean   @default(false)
 
+  // === RETORNO SEGURO — UBICACIÓN FIJA Y CONTACTO ===
+  safeReturnLocationName           String?
+  safeReturnAddress                String?    @db.Text
+  safeReturnLat                    Float?
+  safeReturnLng                    Float?
+  safeReturnContactName            String?
+  safeReturnContactPhone           String?
+  showSafeReturnLocationPublic     Boolean   @default(false)
+
   phone                   String?
   nationalId              String?              @default("")
   address                 String?              @db.Text
