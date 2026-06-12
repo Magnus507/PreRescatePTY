@@ -6,7 +6,7 @@ Actualmente este directorio empieza como documentación de dominio. No reemplaza
 
 Mapa completo actual:
 
-- `docs/architecture/fichas-medicas.md`
+- `docs/01-arquitectura/fichas-medicas.md`
 
 ---
 

@@ -15,7 +15,7 @@ types/            # Tipos TypeScript
 ```
 
 ## Carpetas docs existentes (problemático)
-- `docs/architecture/` - Entrypoints técnicos
+- `docs/01-arquitectura/` - Arquitectura técnica por dominio
 - `docs/analysis/` - Análisis previos  
 - `docs/audit/` - Auditorías completadas
 - `docs/qa/` - QA parcial

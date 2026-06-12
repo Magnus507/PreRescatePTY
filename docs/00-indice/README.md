@@ -27,7 +27,7 @@ Bienvenido al índice principal de documentación del proyecto PreRescatePTY.
 | Carpeta | Contenido | Notas |
 |---------|-----------|-------|
 | [`analysis/`](../analysis/) | 18 archivos de análisis por módulo | Pendiente de consolidar con `02-mapa-funcional/` |
-| [`architecture/`](../architecture/) | 14 archivos de arquitectura por dominio | Pendiente de consolidar con `01-arquitectura/` |
+| ~~`architecture/`~~ | Consolidado en `01-arquitectura/` | ✅ Movido a `01-arquitectura/` (10 archivos + 3 subdirectorios) |
 | [`qa/`](../qa/) | 6 archivos de QA, checklists, runbooks | Naming por revisar en futuro |
 | [`logic/`](../logic/) | 4 archivos de lógica de negocio (estados, máquinas) | Contenido estable |
 | [`obsidian/`](../obsidian/) | 4 notas estilo Obsidian | Contenido estable |
@@ -100,7 +100,7 @@ Bienvenido al índice principal de documentación del proyecto PreRescatePTY.
 
 - [ ] Evaluar `INSTRUCTIONS.md` (permanecer en root o mover a `docs/`)
 - [ ] Consolidar `docs/analysis/` con `docs/02-mapa-funcional/`
-- [ ] Consolidar `docs/architecture/` con `docs/01-arquitectura/`
+- [x] Consolidar `docs/architecture/` con `docs/01-arquitectura/`
 - [ ] Revisar naming de `docs/qa/` en futuro
 
 ---

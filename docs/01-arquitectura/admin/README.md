@@ -6,7 +6,7 @@ Actualmente este directorio empieza como documentación de dominio. No reemplaza
 
 Mapa completo actual:
 
-- `docs/architecture/admin.md`
+- `docs/01-arquitectura/admin.md`
 
 Catálogo de secciones:
 
@@ -182,9 +182,9 @@ Por eso, cuando algo se cambie en `inventory`, también se debe revisar `feature
 - `features/chips/fields.md`
 - `features/fichas-medicas/README.md`
 - `features/fichas-medicas/fields.md`
-- `docs/architecture/chips.md`
-- `docs/architecture/fichas-medicas.md`
-- `docs/architecture/admin.md`
+- `docs/01-arquitectura/chips.md`
+- `docs/01-arquitectura/fichas-medicas.md`
+- `docs/01-arquitectura/admin.md`
 
 ---
 

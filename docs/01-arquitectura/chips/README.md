@@ -6,7 +6,7 @@ Actualmente este directorio empieza como documentación de dominio. No reemplaza
 
 Mapa completo actual:
 
-- `docs/architecture/chips.md`
+- `docs/01-arquitectura/chips.md`
 
 Catálogo de campos:
 
@@ -42,7 +42,7 @@ La documentación de fichas médicas está en:
 
 - `features/fichas-medicas/README.md`
 - `features/fichas-medicas/fields.md`
-- `docs/architecture/fichas-medicas.md`
+- `docs/01-arquitectura/fichas-medicas.md`
 
 ---
 
