@@ -17,17 +17,22 @@ Bienvenido al índice principal de documentación del proyecto PreRescatePTY.
 | Carpeta | Descripción |
 |---------|-------------|
 | [`00-indice/`](../00-indice/) | Este índice y guías de inicio |
-| [`01-arquitectura/`](../01-arquitectura/) | Arquitectura general, diagramas, estructura del proyecto |
-| [`02-mapa-funcional/`](../02-mapa-funcional/) | Mapas de funcionalidad por dominio (website, admin, cliente, chips, etc.) |
+| [`01-arquitectura/`](../01-arquitectura/) | Arquitectura general, diagramas, estructura del proyecto (canónica) |
+| [`02-mapa-funcional/`](../02-mapa-funcional/) | Mapas de funcionalidad por dominio (canónico) |
 | [`03-auditorias/`](../03-auditorias/) | Auditorías técnicas, RBAC, flujos corporativos, historial de reorganización |
 | [`04-operaciones/`](../04-operaciones/) | Runbooks, deploy, variables de entorno, bitácora, quick reference |
 
-### Carpetas pendientes de consolidación
+### Carpetas archivadas
 
 | Carpeta | Contenido | Notas |
 |---------|-----------|-------|
-| ~~`analysis/`~~ | Consolidado en `02-mapa-funcional/` | ✅ Movido (7 archivos directos + 5 admin/ + 5 cliente/) |
-| ~~`architecture/`~~ | Consolidado en `01-arquitectura/` | ✅ Movido a `01-arquitectura/` (10 archivos + 3 subdirectorios) |
+| [`_archivado/analysis/`](../_archivado/analysis/) | 6 archivos de análisis duplicados (Panel, Web) | Archivados en D2A |
+| [`_archivado/architecture/`](../_archivado/architecture/) | 4 planes históricos de refactor | Archivados en D2B |
+
+### Carpetas pendientes de revisión
+
+| Carpeta | Contenido | Notas |
+|---------|-----------|-------|
 | [`qa/`](../qa/) | 6 archivos de QA, checklists, runbooks | Naming por revisar en futuro |
 | [`logic/`](../logic/) | 4 archivos de lógica de negocio (estados, máquinas) | Contenido estable |
 | [`obsidian/`](../obsidian/) | 4 notas estilo Obsidian | Contenido estable |
@@ -93,16 +98,17 @@ Bienvenido al índice principal de documentación del proyecto PreRescatePTY.
 - **Scripts reorganizados y endurecidos** — fase de scripts cerrada
 - **Migración safeReturn normalizada** — incidente resuelto
 - **Docs raíz parcialmente limpiados** — 3 archivos movidos a `docs/`
+- **Docs consolidados** — `docs/analysis/` y `docs/architecture/` eliminados; contenido movido a `02-mapa-funcional/`, `01-arquitectura/` y `_archivado/`
 
 ---
 
 ## ⏳ Pendientes
 
 - [ ] Evaluar `INSTRUCTIONS.md` (permanecer en root o mover a `docs/`)
-- [ ] Consolidar `docs/analysis/` con `docs/02-mapa-funcional/`
+- [x] Consolidar `docs/analysis/` con `docs/02-mapa-funcional/`
 - [x] Consolidar `docs/architecture/` con `docs/01-arquitectura/`
 - [ ] Revisar naming de `docs/qa/` en futuro
 
 ---
 
-*Última actualización: 2026-06-12 — Micro-fase C1/C2 de limpieza de docs*
+*Última actualización: 2026-06-12 — Micro-fase D2B de consolidación de docs*
