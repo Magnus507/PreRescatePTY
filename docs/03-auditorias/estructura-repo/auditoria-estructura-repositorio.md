@@ -60,7 +60,7 @@
 
 ### Auditorías
 - `docs/audit/` - Auditorías completadas
-- `docs/qa/` - QA incompleto
+- `docs/05-qa/` - QA incompleto
 - Múltiples `.md` en raíz con auditorías
 
 ### Bitácoras/planes

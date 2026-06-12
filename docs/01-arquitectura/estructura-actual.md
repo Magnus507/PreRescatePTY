@@ -18,7 +18,7 @@ types/            # Tipos TypeScript
 - `docs/01-arquitectura/` - Arquitectura técnica por dominio
 - `docs/analysis/` - Análisis previos  
 - `docs/audit/` - Auditorías completadas
-- `docs/qa/` - QA parcial
+- `docs/05-qa/` - QA parcial
 - `docs/cleanup/` - Tareas de limpieza
 - `docs/logic/` - Documentación de lógica
 - `docs/obsidian/` - Notas Obsidian

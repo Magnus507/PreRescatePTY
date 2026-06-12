@@ -2,7 +2,7 @@
 
 - Fecha/hora ejecución: 2026-05-28 (America/Panama)
 - Tipo de ejecución: **Dry-run técnico** (sin credenciales reales ni datos operativos productivos)
-- Fuente: `docs/qa/prelaunch-e2e-runbook.md`
+- Fuente: `docs/05-qa/prelaunch-e2e-runbook.md`
 - Alcance: validación técnica de rutas, guardrails, compilación y consistencia de flujo; sin evidencia funcional real de usuario final.
 
 ---

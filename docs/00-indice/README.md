@@ -33,7 +33,7 @@ Bienvenido al índice principal de documentación del proyecto PreRescatePTY.
 
 | Carpeta | Contenido | Notas |
 |---------|-----------|-------|
-| [`qa/`](../qa/) | 6 archivos de QA, checklists, runbooks | Naming por revisar en futuro |
+| [`05-qa/`](../05-qa/) | 6 archivos de QA, checklists, runbooks | ✅ Renombrado en D3A |
 | [`logic/`](../logic/) | 4 archivos de lógica de negocio (estados, máquinas) | Contenido estable |
 | [`obsidian/`](../obsidian/) | 4 notas estilo Obsidian | Contenido estable |
 | [`production/`](../production/) | 2 archivos de readiness y rate limiting | Contenido estable |
@@ -107,7 +107,7 @@ Bienvenido al índice principal de documentación del proyecto PreRescatePTY.
 - [ ] Evaluar `INSTRUCTIONS.md` (permanecer en root o mover a `docs/`)
 - [x] Consolidar `docs/analysis/` con `docs/02-mapa-funcional/`
 - [x] Consolidar `docs/architecture/` con `docs/01-arquitectura/`
-- [ ] Revisar naming de `docs/qa/` en futuro
+- [x] Revisar naming de `docs/qa/` → `docs/05-qa/`
 
 ---
 
