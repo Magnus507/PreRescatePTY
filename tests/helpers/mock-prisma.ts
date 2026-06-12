@@ -13,6 +13,7 @@ function createMockDelegate() {
     findMany: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({}),
     update: vi.fn().mockResolvedValue({}),
+    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     upsert: vi.fn().mockResolvedValue({}),
     delete: vi.fn().mockResolvedValue({}),
     count: vi.fn().mockResolvedValue(0),
@@ -105,6 +106,8 @@ export function resetMockPrisma(): void {
       d.create.mockResolvedValue({})
       d.update.mockReset()
       d.update.mockResolvedValue({})
+      d.updateMany.mockReset()
+      d.updateMany.mockResolvedValue({ count: 0 })
       d.upsert.mockReset()
       d.upsert.mockResolvedValue({})
       d.delete.mockReset()
