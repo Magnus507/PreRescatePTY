@@ -1,7 +1,17 @@
 const { createClient } = require("@supabase/supabase-js");
 
-const supabaseUrl = "https://fikidmfquaxhlayxctsa.supabase.co";
-const supabaseServiceKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpa2lkbWZxdWF4aGxheXhjdHNhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTA4ODU1MiwiZXhwIjoyMDkwNjY0NTUyfQ.J6IcWol7VQrHq2nOdat8iL7z3S6gT4C7TfQYteHKJso";
+// ── Environment variable validation ──────────────────────────────
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("❌ FALTA VARIABLES DE ENTORNO REQUERIDAS:");
+  if (!supabaseUrl) console.error("   - SUPABASE_URL");
+  if (!supabaseServiceKey) console.error("   - SUPABASE_SERVICE_ROLE_KEY");
+  console.error("\nEjecute:");
+  console.error("  SUPABASE_URL=<url> SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/setup-storage.js");
+  process.exit(1);
+}
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

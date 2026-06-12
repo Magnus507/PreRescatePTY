@@ -2,9 +2,18 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+const CONFIRMATION_ENV = "CONFIRM_CORPORATE_BACKFILL";
+const REQUIRED_VALUE = "YES_CREATE_CORPORATE_PROFILES";
+const DRY_RUN = process.env[CONFIRMATION_ENV] !== REQUIRED_VALUE;
+
 async function main() {
   console.log("\n🔧 P1 Fase C — Backfill de perfiles corporativos legacy");
-  console.log("   Modo: REAL (escritura)\n");
+  console.log(`   Modo: ${DRY_RUN ? "🔍 DRY RUN (solo lectura)" : "✏️  REAL (escritura)"}\n`);
+
+  if (DRY_RUN) {
+    console.log("   Para ejecutar escritura real, establezca:");
+    console.log(`   ${CONFIRMATION_ENV}=${REQUIRED_VALUE}\n`);
+  }
 
   // Find all OrganizationMembers without a corporateProfileId
   const legacyMembers = await prisma.organizationMember.findMany({
@@ -22,6 +31,7 @@ async function main() {
 
   let created = 0;
   let skipped = 0;
+  let wouldCreate = 0;
   const anomalies: string[] = [];
 
   for (const member of legacyMembers) {
@@ -37,6 +47,12 @@ async function main() {
     }
 
     try {
+      if (DRY_RUN) {
+        console.log(`   🔍 [DRY RUN] Se crearía perfil corporativo para: ${label}`);
+        wouldCreate++;
+        continue;
+      }
+
       // Create corporate profile with only minimal safe data
       const corporateProfile = await prisma.profile.create({
         data: {
@@ -68,7 +84,12 @@ async function main() {
 
   console.log(`\n📊 Resumen:`);
   console.log(`   Miembros legacy: ${legacyMembers.length}`);
-  console.log(`   Perfiles corporativos creados: ${created}`);
+  if (DRY_RUN) {
+    console.log(`   Perfiles que se crearían: ${wouldCreate}`);
+    console.log(`   (Ejecutar con ${CONFIRMATION_ENV}=${REQUIRED_VALUE} para escritura real)`);
+  } else {
+    console.log(`   Perfiles corporativos creados: ${created}`);
+  }
   console.log(`   Saltados/con error: ${skipped}`);
 
   if (anomalies.length > 0) {
