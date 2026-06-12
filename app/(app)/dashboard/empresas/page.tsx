@@ -399,9 +399,13 @@ export default function EmpresasPage() {
         }
       }
 
-      // Check if user has corporate account
-      const corp = await fetch("/api/organizations/members?status=approved_unpaid");
-      if (corp.ok) {
+      // Only fetch members if user has an organization affiliation
+      const hasOrg = myJson.requests && myJson.requests.length > 0;
+      let corp: Response | null = null;
+      if (hasOrg) {
+        corp = await fetch("/api/organizations/members?status=approved_unpaid");
+      }
+      if (corp?.ok) {
         setIsCorporateAccount(true);
         const corpJson = await corp.json() as MembersResponse;
         setMembers(corpJson.members || []);
