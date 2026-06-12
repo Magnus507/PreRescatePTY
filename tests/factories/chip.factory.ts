@@ -70,3 +70,36 @@ export function createMockChip(overrides: Partial<MockChip> = {}): MockChip {
 export function resetChipCounter(): void {
   chipCounter = 0
 }
+
+// ─── ChipClaimToken factory ─────────────────────────────────────────────────
+
+export interface MockChipClaimToken {
+  id: string
+  chipId: string
+  activationCode: string
+  orderId: string | null
+  expiresAt: Date
+  usedAt: Date | null
+  createdAt: Date
+}
+
+let tokenCounter = 0
+
+export function createMockChipClaimToken(overrides: Partial<MockChipClaimToken> = {}): MockChipClaimToken {
+  tokenCounter++
+  const id = `token-${tokenCounter}`
+  return {
+    id,
+    chipId: 'chip-1',
+    activationCode: `ACT${String(tokenCounter).padStart(6, '0')}`,
+    orderId: null,
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+    usedAt: null,
+    createdAt: new Date('2026-01-01'),
+    ...overrides,
+  }
+}
+
+export function resetTokenCounter(): void {
+  tokenCounter = 0
+}

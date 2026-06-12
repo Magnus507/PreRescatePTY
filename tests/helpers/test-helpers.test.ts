@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mockPrisma, resetMockPrisma } from './mock-prisma'
 import { createMockSession } from './mock-auth'
-import { createMockChip, resetChipCounter } from '../factories/chip.factory'
+import { createMockChip, createMockChipClaimToken, resetChipCounter, resetTokenCounter } from '../factories/chip.factory'
 import { createMockUser, createMockAdminUser, createMockSuperAdminUser, resetUserCounter } from '../factories/user.factory'
 import { createMockProfile, resetProfileCounter } from '../factories/profile.factory'
 import { createMockOrder, createMockOrderItem, resetOrderCounter } from '../factories/order.factory'
+import { createMockAccount, resetAccountCounter } from '../factories/account.factory'
 import { resetAllMocks } from './reset-mocks'
 
 describe('mockPrisma', () => {
@@ -158,13 +159,79 @@ describe('order factory', () => {
   })
 })
 
+describe('chip claim token factory', () => {
+  beforeEach(() => {
+    resetTokenCounter()
+  })
+
+  it('creates mock token with defaults', () => {
+    const token = createMockChipClaimToken()
+    expect(token.id).toBe('token-1')
+    expect(token.activationCode).toBe('ACT000001')
+    expect(token.usedAt).toBeNull()
+    expect(token.orderId).toBeNull()
+  })
+
+  it('applies overrides', () => {
+    const token = createMockChipClaimToken({
+      activationCode: 'CUSTOM123',
+      usedAt: new Date(),
+      orderId: 'order-1',
+    })
+    expect(token.activationCode).toBe('CUSTOM123')
+    expect(token.usedAt).toBeInstanceOf(Date)
+    expect(token.orderId).toBe('order-1')
+  })
+
+  it('generates unique IDs', () => {
+    const t1 = createMockChipClaimToken()
+    const t2 = createMockChipClaimToken()
+    expect(t1.id).not.toBe(t2.id)
+    expect(t1.activationCode).not.toBe(t2.activationCode)
+  })
+})
+
+describe('account factory', () => {
+  beforeEach(() => {
+    resetAccountCounter()
+  })
+
+  it('creates mock account with defaults', () => {
+    const account = createMockAccount()
+    expect(account.id).toBe('account-1')
+    expect(account.accountType).toBe('personal')
+    expect(account.status).toBe('active')
+    expect(account.maxChipsAllocated).toBe(3)
+    expect(account.maxProfilesAllocated).toBe(1)
+  })
+
+  it('applies overrides', () => {
+    const account = createMockAccount({
+      accountType: 'company',
+      maxChipsAllocated: 10,
+      status: 'inactive',
+    })
+    expect(account.accountType).toBe('company')
+    expect(account.maxChipsAllocated).toBe(10)
+    expect(account.status).toBe('inactive')
+  })
+
+  it('generates unique IDs', () => {
+    const a1 = createMockAccount()
+    const a2 = createMockAccount()
+    expect(a1.id).not.toBe(a2.id)
+  })
+})
+
 describe('resetAllMocks', () => {
   it('resets all mocks and counters', async () => {
     // Create some data
     createMockChip()
+    createMockChipClaimToken()
     createMockUser()
     createMockProfile()
     createMockOrder()
+    createMockAccount()
     await mockPrisma.chip.findUnique({ where: { id: 'test' } })
 
     // Reset
@@ -174,8 +241,14 @@ describe('resetAllMocks', () => {
     const chip = createMockChip()
     expect(chip.id).toBe('chip-1')
 
+    const token = createMockChipClaimToken()
+    expect(token.id).toBe('token-1')
+
     const user = createMockUser()
     expect(user.id).toBe('user-1')
+
+    const account = createMockAccount()
+    expect(account.id).toBe('account-1')
 
     // Verify mock calls are cleared
     expect(mockPrisma.chip.findUnique).toHaveBeenCalledTimes(0)
