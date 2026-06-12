@@ -276,3 +276,6 @@ En `app/(app)/dashboard/empresas/page.tsx`, en la función `openCorporateProfile
 5. Typecheck + build para confirmar.
 
 **No tocar ningún otro módulo.** El resto del panel cliente ya fue auditado y congelado.
+
+---
+*Originalmente en: docs/audit/*

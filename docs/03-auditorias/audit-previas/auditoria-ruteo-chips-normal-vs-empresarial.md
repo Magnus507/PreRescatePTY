@@ -256,3 +256,6 @@ Changes:
 3. Ensure the IndustrialProfileView receives the correct contacts.
 
 NOT modifying Prisma schema, NOT creating migrations, NOT touching Supabase.
+
+---
+*Originalmente en: docs/audit/*

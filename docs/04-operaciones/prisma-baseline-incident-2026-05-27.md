@@ -62,3 +62,7 @@ Durante todo el procedimiento se mantuvieron estas garantías:
 - Preferir `prisma migrate deploy` + baseline controlado (`migrate resolve`) en entornos con historial parcial.
 - Nunca aceptar prompts tipo **“All data will be lost”** en este contexto.
 - Documentar explícitamente migraciones manuales y/o no-op para trazabilidad operativa.
+
+
+---
+*Originalmente en: docs/operations/*

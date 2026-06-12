@@ -599,3 +599,6 @@ El panel cliente queda funcionalmente completo para el cierre:
 ### Listo para pasar a panel admin
 
 El panel cliente está listo para pasar al desarrollo del panel admin. Los flujos críticos (registro → perfil → dispositivo → compra → activación) están completos y funcionales. Los problemas P0 fueron corregidos y verificados. El backlog técnico restante es mejorable sin impacto en la funcionalidad core.
+
+---
+*Originalmente en: docs/audit/*

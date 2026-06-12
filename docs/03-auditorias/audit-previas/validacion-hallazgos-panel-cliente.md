@@ -170,3 +170,6 @@ Se recomienda:
 | Riesgos descartados | **3** (API pública, suspensión corporate, race condition) |
 | Módulos listos para congelar | **13 de 14** |
 | Módulo que requiere atención | Configuración (P2, no bloqueante) |
+
+---
+*Originalmente en: docs/audit/*

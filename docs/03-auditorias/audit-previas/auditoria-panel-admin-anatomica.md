@@ -809,3 +809,6 @@ El Panel Admin tiene:
 - lib/rbac.ts
 - lib/order-status.ts
 - prisma/schema.prisma
+
+---
+*Originalmente en: docs/audit/*

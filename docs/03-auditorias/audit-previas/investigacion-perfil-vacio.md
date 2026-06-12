@@ -209,3 +209,6 @@ Confirmar que `ENCRYPTION_KEY` es idéntica en todos los entornos. Si es distint
 4. Commit + push.
 
 **No modificar ningún otro módulo.** El resto del panel cliente está listo para congelar.
+
+---
+*Originalmente en: docs/audit/*

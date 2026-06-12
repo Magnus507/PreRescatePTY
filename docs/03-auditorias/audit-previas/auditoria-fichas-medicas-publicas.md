@@ -402,3 +402,6 @@ La lógica debe:
 | `app/(public)/e/[shortCode]/page.tsx` | Página principal de ficha — requiere cambios en bifurcación corporate |
 | `app/(public)/e/[shortCode]/_components/IndustrialProfileView.tsx` | Vista empresarial — requiere toggle ciudadano/paramédico |
 | `app/api/public/[shortCode]/route.ts` | API pública — requiere retornar location/department |
+
+---
+*Originalmente en: docs/audit/*
