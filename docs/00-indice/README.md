@@ -26,7 +26,7 @@ Bienvenido al índice principal de documentación del proyecto PreRescatePTY.
 
 | Carpeta | Contenido | Notas |
 |---------|-----------|-------|
-| [`analysis/`](../analysis/) | 18 archivos de análisis por módulo | Pendiente de consolidar con `02-mapa-funcional/` |
+| ~~`analysis/`~~ | Consolidado en `02-mapa-funcional/` | ✅ Movido (7 archivos directos + 5 admin/ + 5 cliente/) |
 | ~~`architecture/`~~ | Consolidado en `01-arquitectura/` | ✅ Movido a `01-arquitectura/` (10 archivos + 3 subdirectorios) |
 | [`qa/`](../qa/) | 6 archivos de QA, checklists, runbooks | Naming por revisar en futuro |
 | [`logic/`](../logic/) | 4 archivos de lógica de negocio (estados, máquinas) | Contenido estable |
