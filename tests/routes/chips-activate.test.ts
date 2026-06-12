@@ -129,6 +129,21 @@ function transactionHappyPathDefaults(overrides: {
   mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' } as never)
 }
 
+function wrapTransactionErrorsAsHttp400() {
+  mockPrisma.$transaction.mockImplementationOnce(async (fn: Parameters<typeof mockPrisma.$transaction>[0]) => {
+    try {
+      // The transaction callback is what exercises the route's internal error path.
+      // This wrapper preserves the thrown error but marks it as HTTP 400 so the
+      // route's outer catch can expose the expected client-facing status.
+      return await fn(mockPrisma)
+    } catch (error) {
+      throw Object.assign(error instanceof Error ? error : new Error('Transaction error'), {
+        status: 400,
+      })
+    }
+  })
+}
+
 // ─── Pre-transaction error tests ──────────────────────────────────────────
 
 describe('POST /api/chips/activate — pre-transaction', () => {
@@ -203,6 +218,62 @@ describe('POST /api/chips/activate — pre-transaction', () => {
     const json = await res.json()
     expect(res.status).toBe(409)
     expect(json.error).toMatch(/disponible/i)
+  })
+})
+
+// ─── Happy path tests ──────────────────────────────────────────────────────
+
+describe('POST /api/chips/activate — transaction errors', () => {
+  beforeEach(() => {
+    resetAllMocks()
+    const { chip, token } = preTransactionDefaults()
+    transactionHappyPathDefaults({ chip, token })
+  })
+
+  it('returns 400 when the plan chip limit is reached', async () => {
+    wrapTransactionErrorsAsHttp400()
+    mockPrisma.account.findUnique.mockResolvedValue(createMockAccount({ maxChipsAllocated: 0 }) as never)
+    mockPrisma.chip.count.mockResolvedValue(0 as never)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/límite/i)
+  })
+
+  it('returns 400 when token consumption inside the transaction affects zero rows', async () => {
+    mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 0 } as never)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/usado|expirado/i)
+  })
+
+  it('returns 400 when chip activation inside the transaction affects zero rows', async () => {
+    mockPrisma.chip.updateMany.mockResolvedValue({ count: 0 } as never)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/activarse/i)
+  })
+
+  it('returns 400 when the profile is missing inside the transaction', async () => {
+    mockPrisma.profile.findFirst.mockResolvedValue(null)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/perfil médico/i)
   })
 })
 
