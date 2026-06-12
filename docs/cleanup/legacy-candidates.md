@@ -36,7 +36,7 @@
 | `app/(public)/e/[shortCode]/page.tsx` | OFFICIAL | Vista pública compacta/triage + estados unactivated/error | Alto | N/A (no eliminar) | N/A | Crítica |
 | `app/(public)/e/[shortCode]/_components/IndustrialProfileView.tsx` | OFFICIAL | Vista pública industrial en producción | Alto | N/A (no eliminar) | N/A | Crítica |
 | `app/(admin)/admin/_components/sections/InventorySection.tsx` | OFFICIAL | UI real de tabs de inventario (“Almacén Central”) | Alto | N/A (no eliminar) | N/A | Crítica |
-| `docs/architecture/order-fulfillment-refactor-plan.md` (secciones C4..C7 históricas) | DO NOT TOUCH YET | Historial de estabilización y decisiones | Bajo | Solo archivar al finalizar C10 y cierre de deuda | Plan C10 consolidado + changelog | Baja |
+| `docs/_archivado/architecture/order-fulfillment-refactor-plan.md` (secciones C4..C7 históricas) | ✅ Archivado | Historial de estabilización y decisiones | Bajo | Archivado en D2B | Plan C10 consolidado + changelog | Baja |
 
 ---
 
