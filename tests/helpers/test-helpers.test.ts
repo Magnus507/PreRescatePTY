@@ -6,6 +6,18 @@ import { createMockUser, createMockAdminUser, createMockSuperAdminUser, resetUse
 import { createMockProfile, resetProfileCounter } from '../factories/profile.factory'
 import { createMockOrder, createMockOrderItem, resetOrderCounter } from '../factories/order.factory'
 import { createMockAccount, resetAccountCounter } from '../factories/account.factory'
+import {
+  createMockOrganization,
+  resetOrganizationCounter,
+} from '../factories/organization.factory'
+import {
+  createMockOrganizationMember,
+  resetOrganizationMemberCounter,
+} from '../factories/organization-member.factory'
+import {
+  createMockCorporateOrderEmployeeItem,
+  resetCorporateOrderEmployeeItemCounter,
+} from '../factories/corporate-order-employee-item.factory'
 import { resetAllMocks } from './reset-mocks'
 
 describe('mockPrisma', () => {
@@ -223,6 +235,91 @@ describe('account factory', () => {
   })
 })
 
+describe('organization factory', () => {
+  beforeEach(() => {
+    resetOrganizationCounter()
+  })
+
+  it('creates mock organization with defaults', () => {
+    const org = createMockOrganization()
+    expect(org.id).toBe('org-1')
+    expect(org.legalName).toBe('Empresa 1')
+    expect(org.organizationType).toBe('company')
+    expect(org.status).toBe('active')
+  })
+
+  it('applies overrides', () => {
+    const org = createMockOrganization({
+      organizationType: 'school',
+      status: 'inactive',
+    })
+    expect(org.organizationType).toBe('school')
+    expect(org.status).toBe('inactive')
+  })
+
+  it('generates unique IDs', () => {
+    const o1 = createMockOrganization()
+    const o2 = createMockOrganization()
+    expect(o1.id).not.toBe(o2.id)
+  })
+})
+
+describe('organization member factory', () => {
+  beforeEach(() => {
+    resetOrganizationMemberCounter()
+  })
+
+  it('creates mock member with defaults', () => {
+    const member = createMockOrganizationMember()
+    expect(member.id).toBe('member-1')
+    expect(member.corporateStatus).toBe('paid_active')
+    expect(member.memberStatus).toBe('active')
+  })
+
+  it('applies overrides', () => {
+    const member = createMockOrganizationMember({
+      corporateStatus: 'pending_company_review',
+      position: 'Supervisor',
+    })
+    expect(member.corporateStatus).toBe('pending_company_review')
+    expect(member.position).toBe('Supervisor')
+  })
+
+  it('generates unique IDs', () => {
+    const m1 = createMockOrganizationMember()
+    const m2 = createMockOrganizationMember()
+    expect(m1.id).not.toBe(m2.id)
+  })
+})
+
+describe('corporate order employee item factory', () => {
+  beforeEach(() => {
+    resetCorporateOrderEmployeeItemCounter()
+  })
+
+  it('creates mock corporate item with defaults', () => {
+    const item = createMockCorporateOrderEmployeeItem()
+    expect(item.id).toBe('corp-item-1')
+    expect(item.fulfillmentStatus).toBe('pending_assignment')
+    expect(item.unitPrice).toBe(25.0)
+  })
+
+  it('applies overrides', () => {
+    const item = createMockCorporateOrderEmployeeItem({
+      fulfillmentStatus: 'activated',
+      chipId: 'chip-42',
+    })
+    expect(item.fulfillmentStatus).toBe('activated')
+    expect(item.chipId).toBe('chip-42')
+  })
+
+  it('generates unique IDs', () => {
+    const i1 = createMockCorporateOrderEmployeeItem()
+    const i2 = createMockCorporateOrderEmployeeItem()
+    expect(i1.id).not.toBe(i2.id)
+  })
+})
+
 describe('resetAllMocks', () => {
   it('resets all mocks and counters', async () => {
     // Create some data
@@ -232,6 +329,9 @@ describe('resetAllMocks', () => {
     createMockProfile()
     createMockOrder()
     createMockAccount()
+    createMockOrganization()
+    createMockOrganizationMember()
+    createMockCorporateOrderEmployeeItem()
     await mockPrisma.chip.findUnique({ where: { id: 'test' } })
 
     // Reset
@@ -249,6 +349,15 @@ describe('resetAllMocks', () => {
 
     const account = createMockAccount()
     expect(account.id).toBe('account-1')
+
+    const org = createMockOrganization()
+    expect(org.id).toBe('org-1')
+
+    const member = createMockOrganizationMember()
+    expect(member.id).toBe('member-1')
+
+    const item = createMockCorporateOrderEmployeeItem()
+    expect(item.id).toBe('corp-item-1')
 
     // Verify mock calls are cleared
     expect(mockPrisma.chip.findUnique).toHaveBeenCalledTimes(0)
