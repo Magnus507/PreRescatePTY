@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { resolveImageSrc } from "@/lib/resolve-image-src";
 import Link from "next/link";
 import { ChevronLeft, ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight, UserRound, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -298,11 +299,11 @@ export default function TiendaPage() {
                  </div>
                  {p.image ? (
                    <Image
-                     src={`/api/image-proxy?bucket=general&path=${encodeURIComponent(p.image.split('/').slice(-2).join('/'))}`}
+                     src={resolveImageSrc(p.image, "general")}
                      alt={p.name}
                      fill
                      className="object-cover group-hover:scale-110 transition-transform duration-700"
-                     onError={(e) => { if (p.image) e.currentTarget.src = p.image; }}
+                     onError={(e) => { if (p.image && e.currentTarget.src !== p.image) e.currentTarget.src = p.image; }}
                    />
                  ) : (
                    <Store className="h-20 w-20 md:h-24 md:w-24 text-slate-200 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700" />

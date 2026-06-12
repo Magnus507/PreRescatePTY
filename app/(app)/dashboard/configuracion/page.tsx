@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import Image from "next/image";
+import { resolveImageSrc } from "@/lib/resolve-image-src";
 import { 
   Shield, Lock, Bell, CreditCard,
   Trash2, Save, Loader2, User, Smartphone, Camera, Upload
@@ -236,11 +237,11 @@ export default function ConfiguracionPage() {
                       {photoUrl ? (
                          <div className="relative h-full w-full">
                            <Image
-                             src={`/api/image-proxy?bucket=profile-photos&path=${encodeURIComponent(photoUrl.split('/').slice(-2).join('/'))}`}
+                             src={resolveImageSrc(photoUrl, "profile-photos")}
                              alt="Perfil"
                              className="object-cover"
                              fill
-                             onError={(e) => { e.currentTarget.src = photoUrl; }}
+                             onError={(e) => { if (e.currentTarget.src !== photoUrl) e.currentTarget.src = photoUrl; }}
                            />
                          </div>
                       ) : (

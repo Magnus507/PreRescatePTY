@@ -7,6 +7,7 @@ const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => ({ defau
 import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
+import { resolveImageSrc } from "@/lib/resolve-image-src";
 
 interface CorporateEmployeeItem {
   id: string;
@@ -380,10 +381,10 @@ export function PedidosSection() {
                        <div className="aspect-video max-w-md rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
                          {/* eslint-disable-next-line @next/next/no-img-element */}
                          <img 
-                           src={`/api/image-proxy?bucket=payment-proofs&path=${encodeURIComponent(selectedOrder.paymentProofUrl!.split('/').slice(-2).join('/'))}`} 
+                           src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")} 
                            alt="Pago" 
                            className="object-contain w-full h-full p-2" 
-                           onError={(e) => { e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
+                           onError={(e) => { if (e.currentTarget.src !== selectedOrder.paymentProofUrl) e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
                          />
                        </div>
                      </div>
@@ -910,10 +911,10 @@ export function PedidosSection() {
                            <div className="aspect-video w-full rounded-[1.5rem] border border-border overflow-hidden bg-slate-100 shadow-sm cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img 
-                                src={`/api/image-proxy?bucket=payment-proofs&path=${encodeURIComponent(selectedOrder.paymentProofUrl!.split('/').slice(-2).join('/'))}`} 
+                                src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")} 
                                 alt="Pago" 
                                 className="object-contain w-full h-full p-2" 
-                                onError={(e) => { e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
+                                onError={(e) => { if (e.currentTarget.src !== selectedOrder.paymentProofUrl) e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
                               />
                            </div>
                         ) : (
