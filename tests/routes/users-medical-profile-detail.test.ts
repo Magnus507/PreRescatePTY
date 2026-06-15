@@ -112,6 +112,30 @@ function createUpdatedProfile(overrides: Record<string, unknown> = {}) {
   })
 }
 
+/**
+ * Creates a DELETE request for the medical profile detail route.
+ */
+function createDeleteRequest(): NextRequest {
+  return new NextRequest('http://localhost/api/users/perfiles-medicos/profile-1', {
+    method: 'DELETE',
+  })
+}
+
+/**
+ * Base mock for a deletable family profile (userId null, profileType personal).
+ */
+function createDeletableProfile(overrides: Record<string, unknown> = {}) {
+  return createMockProfile({
+    id: TEST_PROFILE_ID,
+    userId: null,
+    accountId: TEST_ACCOUNT_ID,
+    firstName: 'Family',
+    lastName: 'Member',
+    profileType: 'personal',
+    ...overrides,
+  })
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
@@ -504,5 +528,123 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
     expect(json.profile).toBeDefined()
     expect(json.profile.firstName).toBe('UpdatedName')
     expect(json.profile.lastName).toBe('UpdatedLast')
+  })
+
+  // ─── DELETE ownership ───────────────────────────────────────────────────
+
+  it('18. DELETE returns 404 when the profile does not belong to the authenticated user\'s account', async () => {
+    authorizeAsUser()
+    mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
+    mockPrisma.profile.findFirst.mockResolvedValue(null as never)
+
+    const req = createDeleteRequest()
+    const res = await DELETE(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(404)
+    expect(json.error).toMatch(/no encontrado/i)
+    expect(mockPrisma.profile.delete).not.toHaveBeenCalled()
+  })
+
+  // ─── DELETE guard: own profile ──────────────────────────────────────────
+
+  it('19. DELETE returns 400 when trying to delete own profile', async () => {
+    authorizeAsUser()
+    // The profile has userId === session.user.id (own profile)
+    const ownProfile = createDeletableProfile({ userId: TEST_USER_ID })
+    mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
+    mockPrisma.profile.findFirst.mockResolvedValue(ownProfile as never)
+
+    const req = createDeleteRequest()
+    const res = await DELETE(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/propio perfil/i)
+    expect(mockPrisma.profile.delete).not.toHaveBeenCalled()
+  })
+
+  // ─── DELETE guard: corporate profile ────────────────────────────────────
+
+  it('20. DELETE returns 400 when profileType is corporate', async () => {
+    authorizeAsUser()
+    const corpProfile = createDeletableProfile({ profileType: 'corporate' })
+    mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
+    mockPrisma.profile.findFirst.mockResolvedValue(corpProfile as never)
+
+    const req = createDeleteRequest()
+    const res = await DELETE(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/empresarial/i)
+    expect(mockPrisma.profile.delete).not.toHaveBeenCalled()
+  })
+
+  // ─── DELETE guard: org member link ──────────────────────────────────────
+
+  it('21. DELETE returns 400 when an OrganizationMember references the profile as corporateProfileId', async () => {
+    authorizeAsUser()
+    const profile = createDeletableProfile()
+    mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
+    mockPrisma.profile.findFirst.mockResolvedValue(profile as never)
+    // OrganizationMember exists with this corporateProfileId
+    mockPrisma.organizationMember.findFirst.mockResolvedValue({ id: 'om-1' } as never)
+
+    const req = createDeleteRequest()
+    const res = await DELETE(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/empresarial|beneficio/i)
+    expect(mockPrisma.profile.delete).not.toHaveBeenCalled()
+  })
+
+  // ─── DELETE guard: assigned chips ───────────────────────────────────────
+
+  it('22. DELETE returns 400 when one or more non-inventory chips are assigned to the profile', async () => {
+    authorizeAsUser()
+    const profile = createDeletableProfile()
+    mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
+    mockPrisma.profile.findFirst.mockResolvedValue(profile as never)
+    mockPrisma.organizationMember.findFirst.mockResolvedValue(null as never)
+    // Chips are assigned to this profile
+    mockPrisma.chip.count.mockResolvedValue(2 as never)
+
+    const req = createDeleteRequest()
+    const res = await DELETE(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/chips|desasigna/i)
+    expect(mockPrisma.profile.delete).not.toHaveBeenCalled()
+  })
+
+  // ─── DELETE happy path ──────────────────────────────────────────────────
+
+  it('23. DELETE succeeds for an eligible family profile', async () => {
+    authorizeAsUser()
+    const profile = createDeletableProfile()
+    mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
+    mockPrisma.profile.findFirst.mockResolvedValue(profile as never)
+    mockPrisma.organizationMember.findFirst.mockResolvedValue(null as never)
+    mockPrisma.chip.count.mockResolvedValue(0 as never)
+    mockPrisma.profile.delete.mockResolvedValue(profile as never)
+    mockInvalidateCache.mockResolvedValue(undefined as never)
+
+    const req = createDeleteRequest()
+    const res = await DELETE(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.message).toMatch(/eliminado/i)
+
+    // Verify prisma.profile.delete was called with the correct id
+    expect(mockPrisma.profile.delete).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: TEST_PROFILE_ID } })
+    )
+
+    // Verify cache invalidation
+    expect(mockInvalidateCache).toHaveBeenCalledWith(TEST_USER_ID)
   })
 })
