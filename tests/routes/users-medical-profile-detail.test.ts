@@ -88,6 +88,30 @@ function setupAuthorizedProfile(dbProfile: ReturnType<typeof createMockProfile> 
   mockProfileUpdate.mockResolvedValue(profile as never)
 }
 
+/**
+ * Creates a PATCH request for the medical profile detail route.
+ */
+function createPatchRequest(body: Record<string, unknown>): NextRequest {
+  return new NextRequest('http://localhost/api/users/perfiles-medicos/profile-1', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * A reusable updated profile snapshot returned by ProfileRepository.update.
+ */
+function createUpdatedProfile(overrides: Record<string, unknown> = {}) {
+  return createMockProfile({
+    id: TEST_PROFILE_ID,
+    userId: null,
+    accountId: TEST_ACCOUNT_ID,
+    firstName: 'Updated',
+    lastName: 'Profile',
+    ...overrides,
+  })
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
@@ -233,5 +257,252 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
     expect(json.profile.id).toBe(TEST_PROFILE_ID)
     expect(json.profile.firstName).toBe('Family')
     expect(json.profile.lastName).toBe('Member')
+  })
+
+  // ─── PATCH validation ───────────────────────────────────────────────────
+
+  it('8. PATCH returns 400 for invalid body', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+
+    const req = createPatchRequest({ safeReturnLat: 999 }) // outside -90..90 range
+    const res = await PATCH(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toBeDefined()
+  })
+
+  // ─── PATCH field groups ─────────────────────────────────────────────────
+
+  it('9. PATCH updates standard personal fields successfully', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+    const updated = createUpdatedProfile({ firstName: 'Updated', lastName: 'Name' })
+    mockProfileUpdate.mockResolvedValue(updated as never)
+
+    const req = createPatchRequest({
+      firstName: 'Updated',
+      lastName: 'Name',
+      displayNamePublic: 'Display',
+      phone: '+50760009999',
+      birthDate: '1990-05-15',
+      sex: 'M',
+    })
+    const res = await PATCH(req, routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockProfileUpdate).toHaveBeenCalledWith(
+      TEST_PROFILE_ID,
+      expect.objectContaining({
+        firstName: 'Updated',
+        lastName: 'Name',
+        displayNamePublic: 'Display',
+        phone: '+50760009999',
+        sex: 'M',
+      })
+    )
+  })
+
+  it('10. PATCH updates medical fields successfully', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+    const updated = createUpdatedProfile({ bloodType: 'AB+' })
+    mockProfileUpdate.mockResolvedValue(updated as never)
+
+    const req = createPatchRequest({
+      bloodType: 'AB+',
+      allergies: 'None',
+      chronicConditions: 'Hypertension',
+      medications: 'Aspirin',
+      additionalNotes: 'Allergic to penicillin',
+    })
+    const res = await PATCH(req, routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockProfileUpdate).toHaveBeenCalledWith(
+      TEST_PROFILE_ID,
+      expect.objectContaining({
+        bloodType: 'AB+',
+        allergies: 'None',
+        chronicConditions: 'Hypertension',
+        medications: 'Aspirin',
+        additionalNotes: 'Allergic to penicillin',
+      })
+    )
+  })
+
+  it('11. PATCH updates insurance and doctor fields successfully', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+    const updated = createUpdatedProfile({ isInsured: true })
+    mockProfileUpdate.mockResolvedValue(updated as never)
+
+    const req = createPatchRequest({
+      isInsured: true,
+      insuranceProvider: 'Seguros Panamá',
+      insurancePolicyNumber: 'POL-12345',
+      preferredHospital: 'Hospital Nacional',
+      primaryDoctorName: 'Dr. López',
+      primaryDoctorPhone: '+50760001111',
+    })
+    const res = await PATCH(req, routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockProfileUpdate).toHaveBeenCalledWith(
+      TEST_PROFILE_ID,
+      expect.objectContaining({
+        isInsured: true,
+        insuranceProvider: 'Seguros Panamá',
+        insurancePolicyNumber: 'POL-12345',
+        preferredHospital: 'Hospital Nacional',
+        primaryDoctorName: 'Dr. López',
+        primaryDoctorPhone: '+50760001111',
+      })
+    )
+  })
+
+  it('12. PATCH updates vulnerability and communication fields successfully', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+    const updated = createUpdatedProfile({ hasCognitiveImpairment: true })
+    mockProfileUpdate.mockResolvedValue(updated as never)
+
+    const req = createPatchRequest({
+      hasCognitiveImpairment: true,
+      hasWanderingRisk: false,
+      isNonVerbal: true,
+      communicationAssistance: 'Picture cards',
+    })
+    const res = await PATCH(req, routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockProfileUpdate).toHaveBeenCalledWith(
+      TEST_PROFILE_ID,
+      expect.objectContaining({
+        hasCognitiveImpairment: true,
+        hasWanderingRisk: false,
+        isNonVerbal: true,
+        communicationAssistance: 'Picture cards',
+      })
+    )
+  })
+
+  it('13. PATCH updates safeReturn fields successfully', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+    const updated = createUpdatedProfile({ safeReturnInstructions: 'Go to nearest hospital' })
+    mockProfileUpdate.mockResolvedValue(updated as never)
+
+    const req = createPatchRequest({
+      safeReturnInstructions: 'Go to nearest hospital',
+      safeReturnLocationName: 'Home',
+      safeReturnAddress: 'Calle 123, Panamá',
+      safeReturnLat: 8.9824,
+      safeReturnLng: -79.5199,
+      safeReturnContactName: 'Maria',
+      safeReturnContactPhone: '+50760009999',
+    })
+    const res = await PATCH(req, routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockProfileUpdate).toHaveBeenCalledWith(
+      TEST_PROFILE_ID,
+      expect.objectContaining({
+        safeReturnInstructions: 'Go to nearest hospital',
+        safeReturnLocationName: 'Home',
+        safeReturnAddress: 'Calle 123, Panamá',
+        safeReturnLat: 8.9824,
+        safeReturnLng: -79.5199,
+        safeReturnContactName: 'Maria',
+        safeReturnContactPhone: '+50760009999',
+      })
+    )
+  })
+
+  it('14. PATCH updates privacy flags successfully', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+    const updated = createUpdatedProfile({ showInsuranceProviderPublic: true })
+    mockProfileUpdate.mockResolvedValue(updated as never)
+
+    const req = createPatchRequest({
+      showInsuranceProviderPublic: true,
+      showPreferredHospitalPublic: false,
+      showPrimaryDoctorPublic: true,
+      showAdditionalNotesPublic: false,
+      showVulnerabilityStatusPublic: true,
+      showCommunicationStatusPublic: false,
+      showSafeReturnPublic: true,
+      showSafeReturnLocationPublic: false,
+    })
+    const res = await PATCH(req, routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockProfileUpdate).toHaveBeenCalledWith(
+      TEST_PROFILE_ID,
+      expect.objectContaining({
+        showInsuranceProviderPublic: true,
+        showPreferredHospitalPublic: false,
+        showPrimaryDoctorPublic: true,
+        showAdditionalNotesPublic: false,
+        showVulnerabilityStatusPublic: true,
+        showCommunicationStatusPublic: false,
+        showSafeReturnPublic: true,
+        showSafeReturnLocationPublic: false,
+      })
+    )
+  })
+
+  // ─── PATCH side effects ─────────────────────────────────────────────────
+
+  it('15. PATCH calls ProfileRepository.update with the expected profileId and validated payload', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+
+    const req = createPatchRequest({ firstName: 'Test', lastName: 'User' })
+    const res = await PATCH(req, routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockProfileUpdate).toHaveBeenCalledWith(
+      TEST_PROFILE_ID,
+      expect.objectContaining({
+        firstName: 'Test',
+        lastName: 'User',
+      })
+    )
+  })
+
+  it('16. PATCH invalidates AccountStateService cache with the authenticated userId', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+
+    const req = createPatchRequest({ firstName: 'Test' })
+    const res = await PATCH(req, routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockInvalidateCache).toHaveBeenCalledWith(TEST_USER_ID)
+  })
+
+  it('17. PATCH returns the updated profile in the response', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+    const updatedProfile = createMockProfile({
+      id: TEST_PROFILE_ID,
+      userId: null,
+      accountId: TEST_ACCOUNT_ID,
+      firstName: 'UpdatedName',
+      lastName: 'UpdatedLast',
+    })
+    mockProfileUpdate.mockResolvedValue(updatedProfile as never)
+
+    const req = createPatchRequest({ firstName: 'UpdatedName', lastName: 'UpdatedLast' })
+    const res = await PATCH(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.profile).toBeDefined()
+    expect(json.profile.firstName).toBe('UpdatedName')
+    expect(json.profile.lastName).toBe('UpdatedLast')
   })
 })
