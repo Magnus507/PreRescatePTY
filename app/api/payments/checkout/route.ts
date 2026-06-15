@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
       pkg.price, 
       successUrl, 
       cancelUrl,
-      pkg.id  // ← packageId included in Stripe metadata for webhook activation
+      pkg.id,
+      pkg.updatedAt?.toISOString()
     );
 
     return NextResponse.json({ url });

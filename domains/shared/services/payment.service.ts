@@ -15,9 +15,23 @@ function getStripeClient() {
 export class PaymentService {
   /**
    * Create Stripe Checkout Session
+   * Captures immutable financial snapshot in Stripe metadata:
+   * - expected_amount_cents: integer cents derived from DB price
+   * - expected_currency: lowercase currency string
+   * - package_version: package updatedAt for price-change detection
    */
-  static async createCheckoutSession(userId: string, planName: string, priceAmount: number, successUrl: string, cancelUrl: string, packageId: string) {
+  static async createCheckoutSession(
+    userId: string,
+    planName: string,
+    priceAmount: number,
+    successUrl: string,
+    cancelUrl: string,
+    packageId: string,
+    packageVersion?: string
+  ) {
     const stripe = getStripeClient();
+    const expectedAmountCents = Math.round(priceAmount * 100);
+    const expectedCurrency = "usd";
 
     try {
       const session = await stripe.checkout.sessions.create({
@@ -25,21 +39,26 @@ export class PaymentService {
         line_items: [
           {
             price_data: {
-              currency: "usd",
+              currency: expectedCurrency,
               product_data: {
                 name: `Plan ${planName} - PreRescue ID`,
                 description: `Suscripción al plan ${planName}`,
               },
-              unit_amount: Math.round(priceAmount * 100), // Stripe expects cents
+              unit_amount: expectedAmountCents,
             },
             quantity: 1,
           },
         ],
-        mode: "payment", // Adjust to 'subscription' if using recurring Stripe logic
+        mode: "payment",
         success_url: successUrl,
         cancel_url: cancelUrl,
         client_reference_id: userId,
-        metadata: { packageId }, // ← Required for webhook to know which plan to activate
+        metadata: {
+          packageId,
+          expected_amount_cents: String(expectedAmountCents),
+          expected_currency: expectedCurrency,
+          package_version: packageVersion || new Date().toISOString(),
+        },
       });
 
       return { url: session.url };
