@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import { mockPrisma } from '../helpers/mock-prisma'
 import { resetAllMocks } from '../helpers/reset-mocks'
-import { createMockChip } from '../factories/chip.factory'
+import { createMockChip, createMockChipClaimToken } from '../factories/chip.factory'
 import { createMockUser } from '../factories/user.factory'
 import { createMockProfile } from '../factories/profile.factory'
 import { createMockAccount } from '../factories/account.factory'
@@ -36,6 +36,7 @@ vi.mock('@/lib/identifiers', () => ({
 // ─── Imports after mocks ────────────────────────────────────────────────────
 import { POST } from '@/app/api/admin/chips/[chipId]/assign-direct/route'
 import { requireRole } from '@/lib/rbac'
+import { OrderFulfillmentService } from '@/domains/orders/services/order-fulfillment.service'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -222,5 +223,48 @@ describe('POST /api/admin/chips/[chipId]/assign-direct — preconditions', () =>
     expect(res.status).toBe(400)
     const json = await res.json()
     expect(json.error).toMatch(/no pertenece/i)
+  })
+
+  it('9. returns 409 when the chip has an active reservation in another order', async () => {
+    authorizeAsAdmin()
+    setupPreTransactionMocks()
+    // Simulate an active token reserved for another order
+    const activeToken = createMockChipClaimToken({
+      chipId: 'chip-1',
+      orderId: 'other-order-1',
+      usedAt: null,
+      expiresAt: new Date(Date.now() + 86400000),
+    })
+    mockPrisma.chipClaimToken.findFirst.mockResolvedValue(activeToken as never)
+
+    const req = createAssignDirectRequest(validRequestBody())
+    const res = await POST(req, routeParams())
+
+    expect(res.status).toBe(409)
+    const json = await res.json()
+    expect(json.error).toMatch(/reserva activa/i)
+
+    // Verify the route never reached the transaction / fulfillment service
+    expect(OrderFulfillmentService.assignDirectReserveChipAndToken).not.toHaveBeenCalled()
+  })
+
+  it('10. returns 400 when account capacity is insufficient and capacityMode is deny_if_no_capacity', async () => {
+    authorizeAsAdmin()
+    setupPreTransactionMocks()
+    // Set account with limited capacity (1 chip) and already at capacity
+    mockPrisma.account.findUnique.mockResolvedValue(
+      createMockAccount({ id: 'target-account-id', maxChipsAllocated: 1 }) as never
+    )
+    mockPrisma.chip.count.mockResolvedValue(1 as never) // 1 used, limit is 1 → 0 available
+
+    const req = createAssignDirectRequest(validRequestBody())
+    const res = await POST(req, routeParams())
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/cupo disponible/i)
+
+    // Verify the route never reached the transaction / fulfillment service
+    expect(OrderFulfillmentService.assignDirectReserveChipAndToken).not.toHaveBeenCalled()
   })
 })
