@@ -58,7 +58,8 @@ export async function GET(
     }
 
     // ----- FAST TRACK FOR DEMO PROFILES -----
-    const isDemoCode = ["DEMO-ADMIN-VIP", "44R6DBNQ", "demo", "DEMO", "showcase"].includes(shortCode);
+    const DEMO_SHORT_CODE = "DEMO-ADMIN-VIP";
+    const isDemoCode = shortCode === DEMO_SHORT_CODE;
     if (isDemoCode) {
       const demoProfile = {
         firstName: "Carlos",
@@ -71,7 +72,8 @@ export async function GET(
         chronicConditions: "Hipertensión controlada",
         medications: "Lisinopril 10mg",
         photoUrl: "https://fikidmfquaxhlayxctsa.supabase.co/storage/v1/object/public/profile-photos/demo-admin.png",
-        isVerifiedAdmin: true,
+        isVerifiedAdmin: false,
+        isDemo: true,
         emergencyContacts: [
           { fullName: "María de Rodriguez", relationship: "Esposa", phone: "+507 6612-3456" },
           { fullName: "Dr. Mendoza (Cardiólogo)", relationship: "Médico Cabecera", phone: "+507 6677-8899" }
@@ -227,7 +229,7 @@ export async function GET(
 
     // Check if this is the Verified Admin Demo
     const demoShortCode = await ConfigRepository.get("demo_profile_shortcode");
-    const isDemo = demoShortCode === shortCode || shortCode === "44R6DBNQ" || shortCode === "DEMO-ADMIN-VIP";
+    const isDemo = demoShortCode === shortCode || shortCode === "DEMO-ADMIN-VIP";
 
     // Calculate isMinor from birthDate (never stored in DB)
     const calculatedAge = calculateAge(profile.birthDate);
