@@ -164,8 +164,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ 
-      error: error.message || "Error interno en el servidor de carga",
-      details: error.message
+      error: "No se pudo procesar la imagen"
     }, { status: 500 });
   }
 }
