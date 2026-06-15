@@ -6,6 +6,8 @@ import { createMockChip, createMockChipClaimToken } from '../factories/chip.fact
 import { createMockProfile } from '../factories/profile.factory'
 import { createMockAccount } from '../factories/account.factory'
 import { createMockSession } from '../helpers/mock-auth'
+import { createMockOrganizationMember } from '../factories/organization-member.factory'
+import { createMockCorporateOrderEmployeeItem } from '../factories/corporate-order-employee-item.factory'
 import { CHIP_STATUS } from '@/domains/chips/chip-lifecycle.constants'
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
@@ -221,7 +223,7 @@ describe('POST /api/chips/activate — pre-transaction', () => {
   })
 })
 
-// ─── Happy path tests ──────────────────────────────────────────────────────
+// ─── Transaction error tests ──────────────────────────────────────────────
 
 describe('POST /api/chips/activate — transaction errors', () => {
   beforeEach(() => {
@@ -345,6 +347,323 @@ describe('POST /api/chips/activate — happy path', () => {
           entityType: 'chip',
           action: 'activate',
         }),
+      })
+    )
+  })
+})
+
+// ─── Corporate flow tests ─────────────────────────────────────────────────
+
+describe('POST /api/chips/activate — corporate flow', () => {
+  beforeEach(() => {
+    resetAllMocks()
+  })
+
+  /**
+   * Sets up a full corporate happy-path scenario.
+   * Must be called inside each test's body AFTER resetAllMocks/preTransactionDefaults.
+   */
+  function setupCorporateHappyPath() {
+    const { chip, token } = preTransactionDefaults()
+    const account = createMockAccount({ maxChipsAllocated: 3 })
+    const member = createMockOrganizationMember({
+      corporateProfileId: 'corp-profile-1',
+      corporateStatus: 'paid_active',
+    })
+    const corporateProfile = createMockProfile({
+      id: 'corp-profile-1',
+      userId: 'test-user-id',
+      accountId: 'test-account-id',
+      profileType: 'corporate',
+      firstName: 'Empresa',
+      lastName: 'Corp',
+      bloodType: 'A+',
+    })
+    const corpItem = createMockCorporateOrderEmployeeItem({ chipId: chip.id })
+
+    mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.account.findUnique.mockResolvedValue(account as never)
+    mockPrisma.chip.count.mockResolvedValue(0 as never)
+    mockPrisma.corporateOrderEmployeeItem.findFirst.mockResolvedValue({
+      ...corpItem,
+      organizationMember: member,
+    } as never)
+    // Reset profile.findUnique to control the exact call sequence
+    mockPrisma.profile.findUnique.mockReset()
+    // Call 1: pre-transaction personal profile lookup
+    mockPrisma.profile.findUnique.mockResolvedValueOnce({
+      id: 'profile-1',
+      firstName: 'Juan',
+      lastName: 'Perez',
+      bloodType: 'O+',
+      userId: 'test-user-id',
+    } as never)
+    // Call 2: in-transaction corporate profile lookup
+    mockPrisma.profile.findUnique.mockResolvedValueOnce(corporateProfile as never)
+    // Call 3: in-transaction user profile accountId check
+    mockPrisma.profile.findUnique.mockResolvedValueOnce({ id: 'user-profile-1', accountId: 'test-account-id' } as never)
+    mockPrisma.chip.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.corporateOrderEmployeeItem.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' } as never)
+
+    return { chip, token, corporateProfile, member, corpItem }
+  }
+
+  // ── Corporate happy path ──
+
+  it('1. returns 200 for successful corporate chip activation', async () => {
+    setupCorporateHappyPath()
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(200)
+    expect(json.message).toMatch(/exitosamente/i)
+  })
+
+  // ── Corporate error: missing organizationMember ──
+
+  it('2. returns 400 when organizationMember is missing', async () => {
+    const { chip } = preTransactionDefaults()
+    const account = createMockAccount({ maxChipsAllocated: 3 })
+    const corpItem = createMockCorporateOrderEmployeeItem({ chipId: chip.id })
+
+    mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.account.findUnique.mockResolvedValue(account as never)
+    mockPrisma.chip.count.mockResolvedValue(0 as never)
+    mockPrisma.corporateOrderEmployeeItem.findFirst.mockResolvedValue({
+      ...corpItem,
+      organizationMember: null,
+    } as never)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/vinculado/i)
+  })
+
+  // ── Corporate error: invalid corporateStatus ──
+
+  it('3. returns 403 when corporateStatus is not paid_active', async () => {
+    const { chip } = preTransactionDefaults()
+    const account = createMockAccount({ maxChipsAllocated: 3 })
+    const member = createMockOrganizationMember({
+      corporateProfileId: 'corp-profile-1',
+      corporateStatus: 'suspended',
+    })
+    const corpItem = createMockCorporateOrderEmployeeItem({ chipId: chip.id })
+
+    mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.account.findUnique.mockResolvedValue(account as never)
+    mockPrisma.chip.count.mockResolvedValue(0 as never)
+    mockPrisma.corporateOrderEmployeeItem.findFirst.mockResolvedValue({
+      ...corpItem,
+      organizationMember: member,
+    } as never)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(403)
+    expect(json.error).toMatch(/activo/i)
+  })
+
+  // ── Corporate error: missing corporateProfileId ──
+
+  it('4. returns 400 when corporateProfileId is missing', async () => {
+    const { chip } = preTransactionDefaults()
+    const account = createMockAccount({ maxChipsAllocated: 3 })
+    const member = createMockOrganizationMember({
+      corporateProfileId: null,
+      corporateStatus: 'paid_active',
+    })
+    const corpItem = createMockCorporateOrderEmployeeItem({ chipId: chip.id })
+
+    mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.account.findUnique.mockResolvedValue(account as never)
+    mockPrisma.chip.count.mockResolvedValue(0 as never)
+    mockPrisma.corporateOrderEmployeeItem.findFirst.mockResolvedValue({
+      ...corpItem,
+      organizationMember: member,
+    } as never)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/configurado/i)
+  })
+
+  // ── Corporate error: corporate profile not found ──
+
+  it('5. returns 400 when corporate profile is not found', async () => {
+    const { chip } = preTransactionDefaults()
+    const account = createMockAccount({ maxChipsAllocated: 3 })
+    const member = createMockOrganizationMember({
+      corporateProfileId: 'corp-profile-1',
+      corporateStatus: 'paid_active',
+    })
+    const corpItem = createMockCorporateOrderEmployeeItem({ chipId: chip.id })
+
+    mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.account.findUnique.mockResolvedValue(account as never)
+    mockPrisma.chip.count.mockResolvedValue(0 as never)
+    mockPrisma.corporateOrderEmployeeItem.findFirst.mockResolvedValue({
+      ...corpItem,
+      organizationMember: member,
+    } as never)
+    // Reset and sequence profile.findUnique calls
+    mockPrisma.profile.findUnique.mockReset()
+    // Call 1: pre-transaction personal profile
+    mockPrisma.profile.findUnique.mockResolvedValueOnce({
+      id: 'profile-1',
+      firstName: 'Juan',
+      lastName: 'Perez',
+      bloodType: 'O+',
+      userId: 'test-user-id',
+    } as never)
+    // Call 2: in-transaction corporate profile — not found
+    mockPrisma.profile.findUnique.mockResolvedValueOnce(null as never)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/perfil empresarial/i)
+  })
+
+  // ── Corporate error: profileType is not corporate ──
+
+  it('6. returns 400 when profileType is not corporate', async () => {
+    const { chip } = preTransactionDefaults()
+    const account = createMockAccount({ maxChipsAllocated: 3 })
+    const member = createMockOrganizationMember({
+      corporateProfileId: 'corp-profile-1',
+      corporateStatus: 'paid_active',
+    })
+    const corpItem = createMockCorporateOrderEmployeeItem({ chipId: chip.id })
+    const personalProfile = createMockProfile({
+      id: 'corp-profile-1',
+      profileType: 'personal',
+    })
+
+    mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.account.findUnique.mockResolvedValue(account as never)
+    mockPrisma.chip.count.mockResolvedValue(0 as never)
+    mockPrisma.corporateOrderEmployeeItem.findFirst.mockResolvedValue({
+      ...corpItem,
+      organizationMember: member,
+    } as never)
+    // Reset and sequence profile.findUnique calls
+    mockPrisma.profile.findUnique.mockReset()
+    // Call 1: pre-transaction personal profile
+    mockPrisma.profile.findUnique.mockResolvedValueOnce({
+      id: 'profile-1',
+      firstName: 'Juan',
+      lastName: 'Perez',
+      bloodType: 'O+',
+      userId: 'test-user-id',
+    } as never)
+    // Call 2: in-transaction corporate profile — wrong type
+    mockPrisma.profile.findUnique.mockResolvedValueOnce(personalProfile as never)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/perfil empresarial/i)
+  })
+
+  // ── Corporate error: accountId mismatch ──
+
+  it('7. returns 403 when corporate profile accountId differs from user profile accountId', async () => {
+    const { chip } = preTransactionDefaults()
+    const account = createMockAccount({ maxChipsAllocated: 3 })
+    const member = createMockOrganizationMember({
+      corporateProfileId: 'corp-profile-1',
+      corporateStatus: 'paid_active',
+    })
+    const corpItem = createMockCorporateOrderEmployeeItem({ chipId: chip.id })
+    const corporateProfile = createMockProfile({
+      id: 'corp-profile-1',
+      accountId: 'corp-account-id',
+      profileType: 'corporate',
+    })
+
+    mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.account.findUnique.mockResolvedValue(account as never)
+    mockPrisma.chip.count.mockResolvedValue(0 as never)
+    mockPrisma.corporateOrderEmployeeItem.findFirst.mockResolvedValue({
+      ...corpItem,
+      organizationMember: member,
+    } as never)
+    // Reset and sequence profile.findUnique calls
+    mockPrisma.profile.findUnique.mockReset()
+    // Call 1: pre-transaction personal profile
+    mockPrisma.profile.findUnique.mockResolvedValueOnce({
+      id: 'profile-1',
+      firstName: 'Juan',
+      lastName: 'Perez',
+      bloodType: 'O+',
+      userId: 'test-user-id',
+    } as never)
+    // Call 2: in-transaction corporate profile — different account
+    mockPrisma.profile.findUnique.mockResolvedValueOnce(corporateProfile as never)
+    // Call 3: in-transaction user profile — different account
+    mockPrisma.profile.findUnique.mockResolvedValueOnce({ id: 'user-profile-1', accountId: 'user-account-id' } as never)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(403)
+    expect(json.error).toMatch(/pertenece/i)
+  })
+
+  // ── Corporate error: incomplete medical profile ──
+
+  it('8. returns 400 when corporate medical profile is incomplete', async () => {
+    setupCorporateHappyPath()
+    // Override isMedicalProfileComplete: first call (personal) returns true,
+    // second call (corporate) returns false
+    vi.mocked(AccountStateService.isMedicalProfileComplete)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false)
+
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/perfil empresarial/i)
+  })
+
+  // ── Corporate side-effect: marks item as activated ──
+
+  it('9. marks CorporateOrderEmployeeItem as activated on success', async () => {
+    const { chip } = setupCorporateHappyPath()
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(200)
+    expect(mockPrisma.corporateOrderEmployeeItem.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ chipId: chip.id }),
+        data: expect.objectContaining({ fulfillmentStatus: 'activated' }),
+      })
+    )
+  })
+
+  // ── Corporate side-effect: uses corporateProfileId as assignedProfileId ──
+
+  it('10. uses the corporateProfileId as the assigned profile', async () => {
+    const { chip } = setupCorporateHappyPath()
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+    const json = await res.json()
+    expect(res.status).toBe(200)
+    expect(mockPrisma.chip.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: chip.id }),
+        data: expect.objectContaining({ assignedProfileId: 'corp-profile-1' }),
       })
     )
   })
