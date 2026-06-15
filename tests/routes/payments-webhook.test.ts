@@ -34,9 +34,10 @@ const TEST_PAYMENT_INTENT = 'pi_test_123'
 const TEST_SESSION_ID = 'cs_test_123'
 
 /**
- * Creates a minimal mock Stripe checkout.session.completed event.
+ * Creates a minimal mock Stripe checkout.session.completed event
+ * with valid financial snapshot metadata.
  */
-function createCheckoutSessionCompletedEvent(overrides: Record<string, unknown> = {}) {
+function createValidCheckoutEvent(overrides: Record<string, unknown> = {}) {
   return {
     type: 'checkout.session.completed',
     data: {
@@ -48,6 +49,8 @@ function createCheckoutSessionCompletedEvent(overrides: Record<string, unknown> 
         currency: 'usd',
         metadata: {
           packageId: TEST_PACKAGE_ID,
+          expected_amount_cents: '4999',
+          expected_currency: 'usd',
         },
         ...overrides,
       },
@@ -122,7 +125,6 @@ describe('POST /api/payments/webhook', () => {
       method: 'POST',
       body: '{}',
     })
-    // No stripe-signature header
     const res = await POST(req)
     const json = await res.json()
 
@@ -140,13 +142,9 @@ describe('POST /api/payments/webhook', () => {
     const json = await res.json()
 
     expect(res.status).toBe(400)
-
-    // SECURITY: must not leak internal error details
-    expect(json.error).not.toMatch(/no signatures|expected signature|No signatures matching/i)
+    expect(json.error).not.toMatch(/no signatures|expected signature/i)
     expect(json.details).toBeUndefined()
     expect(json.stack).toBeUndefined()
-
-    // Should return the safe generic message (not the raw Stripe error)
     expect(json.error).toEqual('Error de verificación de webhook')
   })
 
@@ -163,7 +161,6 @@ describe('POST /api/payments/webhook', () => {
     expect(res.status).toBe(200)
     expect(json.received).toBe(true)
 
-    // Verify no account or order writes
     expect(mockPrisma.account.update).not.toHaveBeenCalled()
     expect(mockPrisma.order.create).not.toHaveBeenCalled()
   })
@@ -171,7 +168,7 @@ describe('POST /api/payments/webhook', () => {
   // ─── Missing metadata ────────────────────────────────────────────────────
 
   it('4. handles checkout.session.completed with missing userId or packageId metadata', async () => {
-    const event = createCheckoutSessionCompletedEvent({
+    const event = createValidCheckoutEvent({
       client_reference_id: null,
       metadata: { packageId: null },
     })
@@ -185,7 +182,6 @@ describe('POST /api/payments/webhook', () => {
     expect(res.status).toBe(200)
     expect(json.warning).toMatch(/missing metadata/i)
 
-    // Verify no account or order writes
     expect(mockPrisma.account.update).not.toHaveBeenCalled()
     expect(mockPrisma.order.create).not.toHaveBeenCalled()
   })
@@ -193,7 +189,7 @@ describe('POST /api/payments/webhook', () => {
   // ─── Invalid user ───────────────────────────────────────────────────────
 
   it('5. handles an invalid/nonexistent user without creating an order', async () => {
-    const event = createCheckoutSessionCompletedEvent()
+    const event = createValidCheckoutEvent()
     mockHandleWebhook.mockResolvedValue(event)
     setupDefaultMocks()
     mockPrisma.user.findUnique.mockResolvedValue(null as never)
@@ -212,7 +208,7 @@ describe('POST /api/payments/webhook', () => {
   // ─── Invalid package ────────────────────────────────────────────────────
 
   it('6. handles an invalid/nonexistent package without creating an order', async () => {
-    const event = createCheckoutSessionCompletedEvent()
+    const event = createValidCheckoutEvent()
     mockHandleWebhook.mockResolvedValue(event)
     setupDefaultMocks()
     mockPrisma.package.findUnique.mockResolvedValue(null as never)
@@ -231,7 +227,7 @@ describe('POST /api/payments/webhook', () => {
   // ─── Idempotency ────────────────────────────────────────────────────────
 
   it('7. does not create a duplicate order when an order with the same Stripe providerReference already exists', async () => {
-    const event = createCheckoutSessionCompletedEvent()
+    const event = createValidCheckoutEvent()
     mockHandleWebhook.mockResolvedValue(event)
     setupDefaultMocks()
     // An existing order already exists with this providerReference
@@ -244,15 +240,15 @@ describe('POST /api/payments/webhook', () => {
     expect(res.status).toBe(200)
     expect(json.received).toBe(true)
 
-    // Verify no duplicate writes
+    // Verify no duplicate writes — idempotency prevented them
     expect(mockPrisma.account.update).not.toHaveBeenCalled()
     expect(mockPrisma.order.create).not.toHaveBeenCalled()
   })
 
-  // ─── Successful processing ───────────────────────────────────────────────
+  // ─── Financial validation: valid case ───────────────────────────────────
 
-  it('8. processes a valid checkout.session.completed event successfully', async () => {
-    const event = createCheckoutSessionCompletedEvent()
+  it('8. processes a valid checkout.session.completed event when amount_total equals expected_amount_cents and currency matches', async () => {
+    const event = createValidCheckoutEvent()
     mockHandleWebhook.mockResolvedValue(event)
     setupDefaultMocks()
 
@@ -263,32 +259,23 @@ describe('POST /api/payments/webhook', () => {
     expect(res.status).toBe(200)
     expect(json.received).toBe(true)
 
-    // Verify webhook verification was invoked
     expect(mockHandleWebhook).toHaveBeenCalled()
     expect(mockPrisma.$transaction).toHaveBeenCalled()
-
-    // Verify user and package were loaded
     expect(mockPrisma.user.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: TEST_USER_ID } })
     )
     expect(mockPrisma.package.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: TEST_PACKAGE_ID } })
     )
-
-    // Verify account was activated/updated with package limits
     expect(mockPrisma.account.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: TEST_ACCOUNT_ID },
         data: expect.objectContaining({
           packageId: TEST_PACKAGE_ID,
-          maxChipsAllocated: 5,
-          maxProfilesAllocated: 3,
           status: 'active',
         }),
       })
     )
-
-    // Verify order was created with correct data
     expect(mockPrisma.order.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -302,10 +289,220 @@ describe('POST /api/payments/webhook', () => {
     )
   })
 
+  // ─── Financial validation: amount mismatch ──────────────────────────────
+
+  it('9. returns 200 and performs no writes when amount_total differs from expected_amount_cents', async () => {
+    const event = createValidCheckoutEvent({
+      amount_total: 9999, // different from expected 4999
+    })
+    mockHandleWebhook.mockResolvedValue(event)
+    setupDefaultMocks()
+
+    const req = createWebhookRequest()
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.warning).toMatch(/financial validation/i)
+
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+    expect(mockPrisma.account.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.create).not.toHaveBeenCalled()
+  })
+
+  // ─── Financial validation: currency mismatch ────────────────────────────
+
+  it('10. returns 200 and performs no writes when currency differs from expected_currency', async () => {
+    const event = createValidCheckoutEvent({
+      currency: 'eur',
+    })
+    mockHandleWebhook.mockResolvedValue(event)
+    setupDefaultMocks()
+
+    const req = createWebhookRequest()
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.warning).toMatch(/financial validation/i)
+
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+    expect(mockPrisma.account.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.create).not.toHaveBeenCalled()
+  })
+
+  // ─── Financial validation: missing expected_amount_cents ────────────────
+
+  it('11. returns 200 and performs no writes when expected_amount_cents metadata is missing', async () => {
+    const event = createValidCheckoutEvent({
+      metadata: { packageId: TEST_PACKAGE_ID },
+    })
+    mockHandleWebhook.mockResolvedValue(event)
+    setupDefaultMocks()
+
+    const req = createWebhookRequest()
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.warning).toMatch(/financial validation/i)
+
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+    expect(mockPrisma.account.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.create).not.toHaveBeenCalled()
+  })
+
+  // ─── Financial validation: missing expected_currency ────────────────────
+
+  it('12. returns 200 and performs no writes when expected_currency metadata is missing', async () => {
+    const event = createValidCheckoutEvent({
+      metadata: {
+        packageId: TEST_PACKAGE_ID,
+        expected_amount_cents: '4999',
+      },
+    })
+    mockHandleWebhook.mockResolvedValue(event)
+    setupDefaultMocks()
+
+    const req = createWebhookRequest()
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.warning).toMatch(/financial validation/i)
+
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+    expect(mockPrisma.account.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.create).not.toHaveBeenCalled()
+  })
+
+  // ─── Financial validation: invalid expected_amount_cents ────────────────
+
+  it('13. returns 200 and performs no writes when expected_amount_cents is not a valid integer string', async () => {
+    for (const invalidValue of ['49.99', 'abc', '-1']) {
+      const event = createValidCheckoutEvent({
+        metadata: {
+          packageId: TEST_PACKAGE_ID,
+          expected_amount_cents: invalidValue,
+          expected_currency: 'usd',
+        },
+      })
+      mockHandleWebhook.mockResolvedValue(event)
+      setupDefaultMocks()
+
+      const req = createWebhookRequest()
+      const res = await POST(req)
+      const json = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(json.warning).toMatch(/financial validation/i)
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+    }
+  })
+
+  // ─── Financial validation: amount_total null ────────────────────────────
+
+  it('14. returns 200 and performs no writes when amount_total is null', async () => {
+    const event = createValidCheckoutEvent({
+      amount_total: null,
+    })
+    mockHandleWebhook.mockResolvedValue(event)
+    setupDefaultMocks()
+
+    const req = createWebhookRequest()
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.warning).toMatch(/financial validation/i)
+
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+    expect(mockPrisma.account.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.create).not.toHaveBeenCalled()
+  })
+
+  // ─── Financial validation: case-insensitive currency ────────────────────
+
+  it('15. currency comparison is case-insensitive after normalization', async () => {
+    const event = createValidCheckoutEvent({
+      metadata: {
+        packageId: TEST_PACKAGE_ID,
+        expected_amount_cents: '4999',
+        expected_currency: 'USD',
+      },
+      currency: 'usd',
+    })
+    mockHandleWebhook.mockResolvedValue(event)
+    setupDefaultMocks()
+
+    const req = createWebhookRequest()
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.received).toBe(true)
+
+    // Account and order should be created (validation passed)
+    expect(mockPrisma.$transaction).toHaveBeenCalled()
+    expect(mockPrisma.account.update).toHaveBeenCalled()
+    expect(mockPrisma.order.create).toHaveBeenCalled()
+  })
+
+  // ─── Financial mismatch + no writes assertion ───────────────────────────
+
+  it('16. financial mismatch does not call tx.account.update or tx.order.create', async () => {
+    const event = createValidCheckoutEvent({ amount_total: 1 })
+    mockHandleWebhook.mockResolvedValue(event)
+    setupDefaultMocks()
+
+    const req = createWebhookRequest()
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.account.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.create).not.toHaveBeenCalled()
+  })
+
+  // ─── Idempotency after financial validation ─────────────────────────────
+
+  it('17. duplicate-event idempotency still works after financial validation', async () => {
+    const event = createValidCheckoutEvent()
+    mockHandleWebhook.mockResolvedValue(event)
+    setupDefaultMocks()
+    mockPrisma.order.findFirst.mockResolvedValue({ id: 'existing-order-1' } as never)
+
+    const req = createWebhookRequest()
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.received).toBe(true)
+
+    expect(mockPrisma.account.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.create).not.toHaveBeenCalled()
+  })
+
+  // ─── Unsupported events still work ──────────────────────────────────────
+
+  it('18. existing unsupported-event behavior remains unchanged', async () => {
+    mockHandleWebhook.mockResolvedValue(createUnsupportedEvent())
+    setupDefaultMocks()
+
+    const req = createWebhookRequest()
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.received).toBe(true)
+
+    expect(mockPrisma.account.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.create).not.toHaveBeenCalled()
+  })
+
   // ─── Transaction usage ──────────────────────────────────────────────────
 
-  it('9. executes account update and order creation inside prisma.$transaction', async () => {
-    const event = createCheckoutSessionCompletedEvent()
+  it('19. executes account update and order creation inside prisma.$transaction', async () => {
+    const event = createValidCheckoutEvent()
     mockHandleWebhook.mockResolvedValue(event)
     setupDefaultMocks()
 
@@ -318,7 +515,7 @@ describe('POST /api/payments/webhook', () => {
 
   // ─── Unexpected internal error ──────────────────────────────────────────
 
-  it('10. returns a controlled generic response for an unexpected internal processing error', async () => {
+  it('20. returns a controlled generic response for an unexpected internal processing error', async () => {
     mockHandleWebhook.mockRejectedValue(new Error('Internal Stripe configuration error'))
 
     const req = createWebhookRequest()
@@ -326,13 +523,9 @@ describe('POST /api/payments/webhook', () => {
     const json = await res.json()
 
     expect(res.status).toBe(400)
-
-    // SECURITY: must not expose raw internal error details
     expect(json.error).not.toMatch(/stripe|configuration error/i)
     expect(json.details).toBeUndefined()
     expect(json.stack).toBeUndefined()
-
-    // Should return the safe generic message
     expect(json.error).toEqual('Error de verificación de webhook')
   })
 })

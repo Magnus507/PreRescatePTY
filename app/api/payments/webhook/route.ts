@@ -28,6 +28,42 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true, warning: "Missing metadata" });
       }
 
+      // ── Financial snapshot validation ────────────────────────────────
+      const expectedAmountCentsStr = session.metadata?.expected_amount_cents;
+      const expectedCurrency = session.metadata?.expected_currency;
+      const amountTotal = session.amount_total;
+      const sessionCurrency = session.currency;
+
+      const expectedAmountCents = expectedAmountCentsStr
+        ? Number(expectedAmountCentsStr)
+        : NaN;
+
+      const isAmountValid =
+        expectedAmountCentsStr &&
+        /^\d+$/.test(expectedAmountCentsStr) &&
+        Number.isFinite(expectedAmountCents) &&
+        expectedAmountCents >= 0 &&
+        typeof amountTotal === 'number' &&
+        amountTotal === expectedAmountCents;
+
+      const isCurrencyValid =
+        expectedCurrency &&
+        sessionCurrency &&
+        expectedCurrency.toLowerCase() === sessionCurrency.toLowerCase();
+
+      if (!isAmountValid || !isCurrencyValid) {
+        logger.error("[Webhook] Financial validation failed", {
+          sessionId: session.id,
+          userId,
+          packageId,
+          expectedAmountCents: expectedAmountCentsStr,
+          receivedAmountCents: amountTotal,
+          expectedCurrency,
+          receivedCurrency: sessionCurrency,
+        });
+        return NextResponse.json({ received: true, warning: "Financial validation failed" });
+      }
+
       // 1. Validate the user and package exist
       const [user, pkg] = await Promise.all([
         prisma.user.findUnique({ where: { id: userId }, select: { id: true, accountId: true } }),
