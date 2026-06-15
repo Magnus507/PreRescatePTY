@@ -7,6 +7,7 @@ import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfill
 import { canAdminApproveManual } from "@/lib/order-status";
 import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const ApproveSchema = z.object({
   adminReviewNotes: z.string().optional(),
@@ -185,7 +186,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Error al aprobar accesorio";
-      return NextResponse.json({ error: message }, { status: 500 });
+      logger.error("[Admin Approve] Accessory order error:", message);
+      return NextResponse.json({ error: "No se pudo aprobar el accesorio" }, { status: 500 });
     }
 
     if (order.userId) {
@@ -291,7 +293,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       ? Number((error as { status?: unknown }).status) || 500
       : 500;
     const message = error instanceof Error ? error.message : "Error al aprobar orden";
-    return NextResponse.json({ error: message }, { status });
+    logger.error("[Admin Approve] Order approval error:", message);
+    return NextResponse.json({ error: "No se pudo aprobar la orden" }, { status });
   }
 
   // Invalidar caché de AccountStateService para el usuario afectado
