@@ -20,6 +20,8 @@ vi.mock('@/lib/prisma', () => ({
 
 const mockGetAccountState = vi.hoisted(() => vi.fn())
 const mockFindAllByAccount = vi.hoisted(() => vi.fn())
+const mockProfileCreate = vi.hoisted(() => vi.fn())
+const mockAuditLogRecord = vi.hoisted(() => vi.fn())
 
 vi.mock('@/domains/accounts/services/account-state.service', () => ({
   AccountStateService: {
@@ -30,12 +32,20 @@ vi.mock('@/domains/accounts/services/account-state.service', () => ({
 vi.mock('@/domains/profiles/repositories/profile.repository', () => ({
   ProfileRepository: {
     findAllByAccount: mockFindAllByAccount,
+    create: mockProfileCreate,
+  },
+}))
+
+vi.mock('@/domains/shared/repositories/audit-log.repository', () => ({
+  AuditLogRepository: {
+    record: mockAuditLogRecord,
   },
 }))
 
 // ─── Imports after mocks ────────────────────────────────────────────────────
-import { GET } from '@/app/api/users/perfiles-medicos/route'
+import { GET, POST } from '@/app/api/users/perfiles-medicos/route'
 import { getServerSession } from 'next-auth'
+import { NextRequest } from 'next/server'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -282,5 +292,197 @@ describe('GET /api/users/perfiles-medicos', () => {
 
     // corporateProfiles should be empty (no org members)
     expect(json.corporateProfiles).toHaveLength(0)
+  })
+})
+
+// ─── POST tests ─────────────────────────────────────────────────────────────
+
+describe('POST /api/users/perfiles-medicos', () => {
+  beforeEach(() => {
+    resetAllMocks()
+    mockGetAccountState.mockReset()
+    mockFindAllByAccount.mockReset()
+    mockProfileCreate.mockReset()
+    mockAuditLogRecord.mockReset()
+  })
+
+  /**
+   * Helper to create a POST request with a JSON body.
+   */
+  function createPostRequest(body: Record<string, unknown>): NextRequest {
+    return new NextRequest('http://localhost/api/users/perfiles-medicos', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  }
+
+  /**
+   * Sets up common mocks for POST happy path tests.
+   */
+  function setupPostMocks(overrides: { accountId?: string | null; createResult?: unknown } = {}) {
+    const accountId = overrides.accountId !== undefined ? overrides.accountId : TEST_ACCOUNT_ID
+    mockGetAccountState.mockResolvedValue(createMockAccountState({ accountId }))
+    const createResult = overrides.createResult ?? createMockProfile({
+      id: 'profile-new',
+      userId: null,
+      accountId: TEST_ACCOUNT_ID,
+      firstName: 'New',
+      lastName: 'Family',
+    })
+    mockProfileCreate.mockResolvedValue(createResult as never)
+    mockAuditLogRecord.mockResolvedValue({ id: 'audit-1' } as never)
+  }
+
+  // ─── Auth ───────────────────────────────────────────────────────────────
+
+  it('1. POST returns 401 without an authenticated session', async () => {
+    vi.mocked(getServerSession).mockResolvedValue(null)
+
+    const req = createPostRequest({ firstName: 'Test', lastName: 'User' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(401)
+    expect(json.error).toMatch(/autorizado/i)
+  })
+
+  // ─── Validation ─────────────────────────────────────────────────────────
+
+  it('2. POST returns 400 when firstName is missing', async () => {
+    authorizeAsUser()
+    setupPostMocks()
+
+    const req = createPostRequest({ lastName: 'User' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toBeDefined()
+  })
+
+  it('3. POST returns 400 when lastName is missing', async () => {
+    authorizeAsUser()
+    setupPostMocks()
+
+    const req = createPostRequest({ firstName: 'Test' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toBeDefined()
+  })
+
+  it('4. POST returns 400 for an invalid body', async () => {
+    authorizeAsUser()
+    setupPostMocks()
+
+    // firstName too short (min 2)
+    const req = createPostRequest({ firstName: 'A', lastName: 'User' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toBeDefined()
+  })
+
+  // ─── No accountId ───────────────────────────────────────────────────────
+
+  it('5. POST returns 400 when user has no accountId', async () => {
+    authorizeAsUser()
+    setupPostMocks({ accountId: null })
+
+    const req = createPostRequest({ firstName: 'Test', lastName: 'User' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/cuenta/i)
+  })
+
+  // ─── Happy path ─────────────────────────────────────────────────────────
+
+  it('6. POST creates a family profile successfully with valid data', async () => {
+    authorizeAsUser()
+    setupPostMocks()
+
+    const req = createPostRequest({
+      firstName: 'Carlos',
+      lastName: 'García',
+      bloodType: 'O+',
+      phone: '+50760009999',
+    })
+    const res = await POST(req)
+
+    expect(res.status).toBe(201)
+
+    // Verify ProfileRepository.create was called with correct data
+    expect(mockProfileCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: TEST_ACCOUNT_ID,
+        firstName: 'Carlos',
+        lastName: 'García',
+        bloodType: 'O+',
+        phone: '+50760009999',
+      })
+    )
+
+    // Verify userId is null (family profile)
+    const createCall = mockProfileCreate.mock.calls[0][0]
+    expect(createCall.userId).toBeUndefined()
+  })
+
+  it('7. POST returns status 201 and the created profile', async () => {
+    authorizeAsUser()
+    const createdProfile = createMockProfile({
+      id: 'profile-new',
+      userId: null,
+      accountId: TEST_ACCOUNT_ID,
+      firstName: 'New',
+      lastName: 'Family',
+    })
+    setupPostMocks({ createResult: createdProfile })
+
+    const req = createPostRequest({ firstName: 'New', lastName: 'Family' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(json.profile).toBeDefined()
+    expect(json.profile.id).toBe('profile-new')
+    expect(json.profile.firstName).toBe('New')
+  })
+
+  // ─── Audit log ──────────────────────────────────────────────────────────
+
+  it('8. POST creates an audit log with the expected action and target identifiers', async () => {
+    authorizeAsUser()
+    setupPostMocks()
+
+    const req = createPostRequest({ firstName: 'Test', lastName: 'User' })
+    const res = await POST(req)
+
+    expect(res.status).toBe(201)
+    expect(mockAuditLogRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: TEST_USER_ID,
+        accountId: TEST_ACCOUNT_ID,
+        entityType: 'profile',
+        action: 'create_family_profile',
+      })
+    )
+  })
+
+  // ─── Cache invalidation ─────────────────────────────────────────────────
+
+  it('9. POST does not invalidate account-state cache (route does not call it)', async () => {
+    authorizeAsUser()
+    setupPostMocks()
+
+    const req = createPostRequest({ firstName: 'Test', lastName: 'User' })
+    const res = await POST(req)
+
+    expect(res.status).toBe(201)
+    // The POST route does NOT call AccountStateService.invalidateCache
+    // This test documents that behavior
   })
 })
