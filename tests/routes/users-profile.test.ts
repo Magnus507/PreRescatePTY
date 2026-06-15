@@ -123,6 +123,32 @@ function authorizeAsUser(): void {
   )
 }
 
+/**
+ * Creates a PATCH request with the given body.
+ */
+function createPatchRequest(body: Record<string, unknown>): NextRequest {
+  return new NextRequest('http://localhost/api/users/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * Sets up common mocks for PATCH happy path tests.
+ */
+function setupPatchMocks(overrides: { oldProfile?: unknown; upsertResult?: unknown } = {}) {
+  const oldProfile = overrides.oldProfile ?? createMockProfile({ userId: TEST_USER_ID, accountId: 'test-account-id' })
+  const upsertResult = overrides.upsertResult ?? createMockProfile({ userId: TEST_USER_ID, accountId: 'test-account-id', firstName: 'Updated' })
+
+  mockPrisma.profile.findUnique.mockResolvedValue(oldProfile as never)
+  mockUpsertByUserId.mockResolvedValue(upsertResult as never)
+  mockPrisma.user.update.mockResolvedValue({} as never)
+  mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' } as never)
+  mockInvalidateCache.mockResolvedValue(undefined as never)
+
+  return { oldProfile, upsertResult }
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe('GET/PATCH /api/users/profile', () => {
@@ -244,5 +270,283 @@ describe('GET/PATCH /api/users/profile', () => {
 
     expect(res.status).toBe(200)
     expect(json.isServiceActive).toBe(false)
+  })
+
+  // ─── PATCH validation ───────────────────────────────────────────────────
+
+  it('7. PATCH returns 400 for invalid body', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+
+    const req = createPatchRequest({ firstName: 'A' }) // too short (min 2)
+    const res = await PATCH(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toBeDefined()
+  })
+
+  // ─── PATCH happy path ───────────────────────────────────────────────────
+
+  it('8. PATCH updates allowed fields successfully', async () => {
+    authorizeAsUser()
+    const { upsertResult } = setupPatchMocks()
+
+    const body = {
+      firstName: 'Carlos',
+      lastName: 'García',
+      displayNamePublic: 'Carlitos',
+      phone: '+50760009999',
+      nationalId: '8-999-999',
+      address: 'Calle 123',
+      city: 'Panamá',
+      sex: 'M',
+      birthDate: '1990-05-15',
+    }
+    const req = createPatchRequest(body)
+    const res = await PATCH(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.profile).toBeDefined()
+
+    // Verify upsertByUserId was called with the allowed fields
+    expect(mockUpsertByUserId).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      expect.objectContaining({
+        firstName: 'Carlos',
+        lastName: 'García',
+        displayNamePublic: 'Carlitos',
+        phone: '+50760009999',
+        nationalId: '8-999-999',
+        address: 'Calle 123',
+        city: 'Panamá',
+        sex: 'M',
+      })
+    )
+  })
+
+  it('9. PATCH returns the updated profile', async () => {
+    authorizeAsUser()
+    const updatedProfile = createMockProfile({
+      userId: TEST_USER_ID,
+      accountId: 'test-account-id',
+      firstName: 'Updated',
+      lastName: 'User',
+    })
+    setupPatchMocks({ upsertResult: updatedProfile })
+
+    const req = createPatchRequest({ firstName: 'Updated', lastName: 'User' })
+    const res = await PATCH(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.profile).toBeDefined()
+    expect(json.profile.firstName).toBe('Updated')
+    expect(json.profile.lastName).toBe('User')
+  })
+
+  // ─── Phone synchronization ──────────────────────────────────────────────
+
+  it('10. PATCH synchronizes phone to prisma.user.update when phone is present', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+
+    const req = createPatchRequest({ phone: '+50760001111' })
+    const res = await PATCH(req)
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: TEST_USER_ID },
+        data: { phone: '+50760001111' },
+      })
+    )
+  })
+
+  it('11. PATCH does not call prisma.user.update when phone is absent', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+
+    const req = createPatchRequest({ firstName: 'NoPhone' })
+    const res = await PATCH(req)
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.user.update).not.toHaveBeenCalled()
+  })
+
+  // ─── Audit log ──────────────────────────────────────────────────────────
+
+  it('12. PATCH creates audit log with action "update" when oldProfile exists', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+
+    const req = createPatchRequest({ firstName: 'Test' })
+    const res = await PATCH(req)
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: TEST_USER_ID,
+          entityType: 'profile',
+          action: 'update',
+        }),
+      })
+    )
+  })
+
+  it('13. PATCH creates audit log with action "create" when oldProfile does not exist', async () => {
+    authorizeAsUser()
+
+    // Explicitly configure all mocks for this test to ensure isolation.
+    // The key: prisma.profile.findUnique must return null (no existing profile).
+    mockPrisma.profile.findUnique.mockResolvedValue(null as never)
+    mockUpsertByUserId.mockResolvedValue(
+      createMockProfile({ userId: TEST_USER_ID, accountId: 'test-account-id', firstName: 'New' }) as never
+    )
+    mockPrisma.user.update.mockResolvedValue({} as never)
+    mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' } as never)
+    mockInvalidateCache.mockResolvedValue(undefined as never)
+
+    const req = createPatchRequest({ firstName: 'New' })
+    const res = await PATCH(req)
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: TEST_USER_ID,
+          entityType: 'profile',
+          action: 'create',
+        }),
+      })
+    )
+  })
+
+  // ─── Cache invalidation ─────────────────────────────────────────────────
+
+  it('14. PATCH invalidates AccountStateService cache with userId', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+
+    const req = createPatchRequest({ firstName: 'Test' })
+    const res = await PATCH(req)
+
+    expect(res.status).toBe(200)
+    expect(mockInvalidateCache).toHaveBeenCalledWith(TEST_USER_ID)
+  })
+
+  // ─── Medical fields ignored ─────────────────────────────────────────────
+
+  it('15. PATCH ignores medical fields even if supplied', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+
+    const req = createPatchRequest({
+      firstName: 'Test',
+      lastName: 'User',
+      bloodType: 'B+',
+      allergies: 'Peanuts',
+      chronicConditions: 'Diabetes',
+      medications: 'Insulin',
+      additionalNotes: 'Critical info',
+    })
+    const res = await PATCH(req)
+
+    expect(res.status).toBe(200)
+
+    // Verify upsertByUserId was called WITHOUT medical fields
+    const upsertCall = mockUpsertByUserId.mock.calls[0]
+    const upsertData = upsertCall[1] as Record<string, unknown>
+    expect(upsertData.bloodType).toBeUndefined()
+    expect(upsertData.allergies).toBeUndefined()
+    expect(upsertData.chronicConditions).toBeUndefined()
+    expect(upsertData.medications).toBeUndefined()
+    expect(upsertData.additionalNotes).toBeUndefined()
+  })
+
+  // ─── Medical privacy flags ignored ──────────────────────────────────────
+
+  it('16. PATCH ignores medical privacy flags even if supplied', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+
+    const req = createPatchRequest({
+      firstName: 'Test',
+      lastName: 'User',
+      showInsuranceProviderPublic: true,
+      showPreferredHospitalPublic: true,
+      showPrimaryDoctorPublic: true,
+      showPrimaryDoctorPhonePublic: true,
+      showAdditionalNotesPublic: true,
+    })
+    const res = await PATCH(req)
+
+    expect(res.status).toBe(200)
+
+    const upsertCall = mockUpsertByUserId.mock.calls[0]
+    const upsertData = upsertCall[1] as Record<string, unknown>
+    expect(upsertData.showInsuranceProviderPublic).toBeUndefined()
+    expect(upsertData.showPreferredHospitalPublic).toBeUndefined()
+    expect(upsertData.showPrimaryDoctorPublic).toBeUndefined()
+    expect(upsertData.showPrimaryDoctorPhonePublic).toBeUndefined()
+    expect(upsertData.showAdditionalNotesPublic).toBeUndefined()
+  })
+
+  // ─── SafeReturn fields ignored ──────────────────────────────────────────
+
+  it('17. PATCH ignores safeReturn fields even if supplied', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+
+    const req = createPatchRequest({
+      firstName: 'Test',
+      lastName: 'User',
+      safeReturnInstructions: 'Go to hospital',
+      safeReturnLocationName: 'Hospital',
+      safeReturnAddress: 'Calle 1',
+      safeReturnLat: 9.0,
+      safeReturnLng: -79.5,
+      safeReturnContactName: 'John',
+      safeReturnContactPhone: '+50760001234',
+      showSafeReturnPublic: true,
+      showSafeReturnLocationPublic: true,
+    })
+    const res = await PATCH(req)
+
+    expect(res.status).toBe(200)
+
+    const upsertCall = mockUpsertByUserId.mock.calls[0]
+    const upsertData = upsertCall[1] as Record<string, unknown>
+    expect(upsertData.safeReturnInstructions).toBeUndefined()
+    expect(upsertData.safeReturnLocationName).toBeUndefined()
+    expect(upsertData.safeReturnAddress).toBeUndefined()
+    expect(upsertData.safeReturnLat).toBeUndefined()
+    expect(upsertData.safeReturnLng).toBeUndefined()
+    expect(upsertData.safeReturnContactName).toBeUndefined()
+    expect(upsertData.safeReturnContactPhone).toBeUndefined()
+    expect(upsertData.showSafeReturnPublic).toBeUndefined()
+    expect(upsertData.showSafeReturnLocationPublic).toBeUndefined()
+  })
+
+  // ─── profileVisibilityStatus ────────────────────────────────────────────
+
+  it('18. PATCH applies profileVisibilityStatus from the raw body', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+
+    const req = createPatchRequest({
+      firstName: 'Test',
+      lastName: 'User',
+      profileVisibilityStatus: 'hidden',
+    })
+    const res = await PATCH(req)
+
+    expect(res.status).toBe(200)
+
+    const upsertCall = mockUpsertByUserId.mock.calls[0]
+    const upsertData = upsertCall[1] as Record<string, unknown>
+    expect(upsertData.profileVisibilityStatus).toBe('hidden')
   })
 })
