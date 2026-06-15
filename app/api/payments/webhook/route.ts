@@ -93,6 +93,6 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const error = err as Error;
     logger.error("[Webhook] Error", error.message);
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: "Error de verificación de webhook" }, { status: 400 });
   }
 }
