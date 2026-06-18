@@ -27,6 +27,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.prerescatepty.com"),
   title: {
     default: "PreRescue ID — Identificación Médica de Emergencia con QR y NFC",
     template: "%s | PreRescue ID",

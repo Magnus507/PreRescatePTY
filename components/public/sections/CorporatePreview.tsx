@@ -24,12 +24,12 @@ export default function CorporatePreview() {
             <p className="text-lg text-[#A0AEC0] font-medium leading-relaxed mb-8">
               Las cuentas corporativas permiten gestionar miembros, perfiles y asignación de chips desde un panel administrativo.
             </p>
-            <Link
-              href="/contacto"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 bg-white/5 text-[#EFF4FF] font-bold hover:bg-white/10 transition-all backdrop-blur-sm"
-            >
-              Solicitar información
-            </Link>
+              <Link
+                href="/empresas"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 text-[#EFF4FF] font-bold hover:bg-white/20 transition-all border border-white/10"
+              >
+                Ver página corporativa
+              </Link>
           </motion.div>
 
           <motion.div

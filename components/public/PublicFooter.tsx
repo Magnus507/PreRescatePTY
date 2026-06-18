@@ -9,6 +9,7 @@ const footerColumns = [
       { href: "/como-funciona", label: "Cómo Funciona" },
       { href: "/para-quien-es", label: "Para Quién Es" },
       { href: "/comprar", label: "Comprar" },
+      { href: "/empresas", label: "Empresas" },
       { href: "/demo", label: "Demo" },
       { href: "/faq", label: "Preguntas Frecuentes" },
     ],
