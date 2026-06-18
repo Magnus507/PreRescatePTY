@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
@@ -9,6 +9,13 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-serif",
+  style: ["italic", "normal"],
 });
 
 export const viewport: Viewport = {
@@ -21,18 +28,32 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "PreRescue ID — Identificación de Emergencia",
+    default: "PreRescue ID — Identificación Médica de Emergencia con QR y NFC",
     template: "%s | PreRescue ID",
   },
   description:
-    "Sistema panameño de identificación de emergencia con Chip NFC + QR y perfil médico accesible al instante. Protege lo que más importa.",
+    "Identificación médica de emergencia con QR y NFC. Consulta información autorizada sin instalar una aplicación. Pago único y 2 años de vigencia.",
   keywords: [
-    "emergencia", "socorro", "NFC", "QR", "Panamá",
-    "identificación médica", "rescate", "seguridad", "salud",
+    "identificación médica", "emergencia", "NFC", "QR", "Panamá",
+    "perfil médico", "alergias", "tipo de sangre", "seguridad",
   ],
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",
+  },
+  openGraph: {
+    title: "PreRescue ID — Identificación Médica de Emergencia con QR y NFC",
+    description:
+      "Identificación médica de emergencia con QR y NFC. Consulta información autorizada sin instalar una aplicación.",
+    type: "website",
+    locale: "es_PA",
+    siteName: "PreRescue ID",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PreRescue ID — Identificación Médica de Emergencia con QR y NFC",
+    description:
+      "Identificación médica de emergencia con QR y NFC. Sin aplicación. Sin batería.",
   },
 };
 
@@ -46,7 +67,7 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
         <Toaster />
         <Analytics />
