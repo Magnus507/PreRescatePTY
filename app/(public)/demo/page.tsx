@@ -1,31 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, QrCode, MessageCircle, Eye } from "lucide-react";
 
 export default function DemoPage() {
-  const router = useRouter();
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/public/demo");
-        const data = await res.json();
-        if (data.shortCode) {
-          router.replace(`/e/${data.shortCode}?demo=true`);
-        } else {
-          router.replace("/");
-        }
-      } catch {
-        router.replace("/");
-      }
-    }
-    load();
-  }, [router]);
 
   useEffect(() => {
     const demoUrl = `${window.location.origin}/e/DEMO-ADMIN-VIP?demo=true`;
