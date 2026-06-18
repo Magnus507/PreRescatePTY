@@ -169,6 +169,20 @@ export default function ComoFuncionaContent() {
           </div>
         </section>
 
+        {/* Service expiration */}
+        <section className="py-24 md:py-32 bg-[#05070D]">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+            <div className="glass-card-w2a rounded-3xl p-8 md:p-10">
+              <h2 className="text-[clamp(1.5rem,3vw,2rem)] font-black tracking-tighter leading-[0.95] text-[#EFF4FF] mb-4">
+                Vigencia del servicio
+              </h2>
+              <p className="text-lg text-[#A0AEC0] font-medium leading-relaxed">
+                El servicio tiene una vigencia de 2 años desde la activación. Antes de finalizar este período se informarán las opciones disponibles para continuar el servicio. Actualmente no existe renovación automática.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* Privacy */}
         <section className="py-24 md:py-32 bg-[#F4F6F8] text-[#1A1D23]">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">

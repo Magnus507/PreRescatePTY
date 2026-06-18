@@ -62,6 +62,28 @@ const faqs: FAQ[] = [
   // Limitaciones del servicio
   { q: "¿PreRescue ID reemplaza la atención médica?", a: "No. PreRescue ID es una herramienta de identificación de emergencia. No reemplaza la atención médica profesional ni garantiza ningún resultado.", category: "Limitaciones del servicio" },
   { q: "¿Qué pasa si el respondedor no tiene internet?", a: "Sin conexión a internet, el perfil no se puede cargar. El sticker no almacena información localmente.", category: "Limitaciones del servicio" },
+
+  // Envíos
+  { q: "¿Realizan entregas en Panamá?", a: "Sí, realizamos entregas dentro de Panamá, sujetas a la cobertura del transportista. El costo y plazo estimado se informan antes de confirmar el pedido.", category: "Envíos" },
+  { q: "¿Cuánto tarda el envío?", a: "El despacho toma 1 a 3 días hábiles después de la confirmación del pago. La entrega toma 1 a 5 días hábiles después del despacho, según destino y transportista.", category: "Envíos" },
+  { q: "¿El envío está incluido en el precio?", a: "El costo de entrega se informa antes de confirmar el pedido. No ofrecemos envío gratuito garantizado.", category: "Envíos" },
+
+  // Devoluciones
+  { q: "¿Puedo cancelar mi pedido?", a: "Sí, puedes cancelar el pedido antes de que sea entregado al transportista. Una vez entregado, no se puede cancelar.", category: "Devoluciones" },
+  { q: "¿Puedo devolver un producto?", a: "Los productos sin abrir, sin usar y sin activar podrán devolverse dentro de los 7 días calendario posteriores a su recepción, en su empaque original.", category: "Devoluciones" },
+
+  // Garantía y reemplazos
+  { q: "¿Qué ocurre si el chip presenta un defecto?", a: "Si el chip presenta un defecto de fabricación, está cubierto por la garantía de 1 año. Contáctanos para evaluar el caso y gestionar el reemplazo o la solución correspondiente.", category: "Garantía y reemplazos" },
+  { q: "¿Qué cubre la garantía?", a: "Cubre defectos de fabricación como NFC ilegible, código QR ilegible por defecto de impresión, o fallo del adhesivo en el primer uso cuando se siguieron las instrucciones. No cubre pérdida, robo, daños por uso inadecuado o instalación incorrecta.", category: "Garantía y reemplazos" },
+  { q: "¿Qué pasa si pierdo el chip?", a: "Los chips perdidos deben adquirirse al precio vigente. El perfil médico puede transferirse a un chip nuevo después de verificar la identidad y desactivar el chip anterior.", category: "Garantía y reemplazos" },
+  { q: "¿Puedo transferir mi perfil a otro chip?", a: "Sí, el perfil puede transferirse a un chip nuevo después de verificar la identidad del titular y desactivar el chip anterior.", category: "Garantía y reemplazos" },
+
+  // Vigencia y renovación
+  { q: "¿Qué ocurre después de los 2 años?", a: "El servicio tiene una vigencia de 2 años desde la activación. Antes de finalizar este período se informarán las opciones disponibles para continuar el servicio. Actualmente no existe renovación automática.", category: "Vigencia y renovación" },
+  { q: "¿La renovación es automática?", a: "No. Actualmente no existe renovación automática. Se informarán las opciones disponibles antes del vencimiento.", category: "Vigencia y renovación" },
+
+  // Impuestos
+  { q: "¿Los precios incluyen impuestos?", a: "Los impuestos aplicables, si corresponden, se mostrarán antes de completar el pago.", category: "Impuestos" },
 ];
 
 const categories = [
@@ -74,9 +96,14 @@ const categories = [
   "Perfiles familiares",
   "Compra y pagos",
   "Vigencia",
+  "Vigencia y renovación",
   "Uso internacional",
   "Empresas",
   "Limitaciones del servicio",
+  "Envíos",
+  "Devoluciones",
+  "Garantía y reemplazos",
+  "Impuestos",
 ];
 
 export default function FAQContent() {

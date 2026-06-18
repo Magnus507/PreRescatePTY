@@ -244,6 +244,57 @@ export default function ComprarContent() {
           </div>
         </section>
 
+        {/* Policy summary */}
+        <section className="py-16 bg-[#05070D]">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+            <h2 className="text-2xl font-black text-[#EFF4FF] mb-8 text-center">
+              Información comercial
+            </h2>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="glass-card-w2a rounded-2xl p-6">
+                <h3 className="text-lg font-bold text-[#EFF4FF] mb-3">Envíos</h3>
+                <p className="text-sm text-[#A0AEC0] leading-relaxed">
+                  Realizamos entregas dentro de Panamá, sujetas a la cobertura del transportista. El costo y plazo estimado se informan antes de confirmar el pedido. Despacho: 1 a 3 días hábiles. Entrega: 1 a 5 días hábiles según destino.
+                </p>
+                <Link href="/legal/envios" className="inline-block mt-4 text-sm text-[#DA1A21] hover:text-white underline">
+                  Ver política de envíos
+                </Link>
+              </div>
+
+              <div className="glass-card-w2a rounded-2xl p-6">
+                <h3 className="text-lg font-bold text-[#EFF4FF] mb-3">Devoluciones</h3>
+                <p className="text-sm text-[#A0AEC0] leading-relaxed">
+                  Puedes cancelar antes del despacho. Productos sin abrir, sin usar y sin activar: 7 días calendario para devolución. Chips activados no son reembolsables por cambio de opinión.
+                </p>
+                <Link href="/legal/reembolsos" className="inline-block mt-4 text-sm text-[#DA1A21] hover:text-white underline">
+                  Ver política de reembolsos
+                </Link>
+              </div>
+
+              <div className="glass-card-w2a rounded-2xl p-6">
+                <h3 className="text-lg font-bold text-[#EFF4FF] mb-3">Garantía</h3>
+                <p className="text-sm text-[#A0AEC0] leading-relaxed">
+                  Garantía de 1 año por defectos de fabricación. Cubre NFC ilegible, QR ilegible por defecto de impresión y fallos de adhesivo en primer uso. No cubre pérdida, robo o daños por uso inadecuado.
+                </p>
+                <Link href="/legal/garantia" className="inline-block mt-4 text-sm text-[#DA1A21] hover:text-white underline">
+                  Ver garantía y reemplazos
+                </Link>
+              </div>
+
+              <div className="glass-card-w2a rounded-2xl p-6">
+                <h3 className="text-lg font-bold text-[#EFF4FF] mb-3">Vigencia del servicio</h3>
+                <p className="text-sm text-[#A0AEC0] leading-relaxed">
+                  El servicio tiene una vigencia de 2 años desde la activación. Antes de finalizar este período se informarán las opciones disponibles para continuar el servicio. Actualmente no existe renovación automática.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#6B7280] text-center mt-8">
+              Provisional commercial wording — pending legal review
+            </p>
+          </div>
+        </section>
+
         {/* Corporate contact */}
         <section className="py-24 md:py-32 bg-[#F4F6F8] text-[#1A1D23]">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">

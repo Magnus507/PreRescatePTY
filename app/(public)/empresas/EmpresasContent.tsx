@@ -38,7 +38,9 @@ const faqs = [
   { q: "¿Cómo se asignan los chips?", a: "Desde el panel administrativo se pueden asignar identificaciones a los miembros de la organización." },
   { q: "¿Se necesita una aplicación?", a: "No. El perfil se consulta desde cualquier navegador al escanear el código QR o el chip NFC." },
   { q: "¿El sticker necesita batería?", a: "No. El chip NFC se activa con la energía del celular que lo escanea." },
-  { q: "¿Cómo solicito información?", a: "Puedes contactarnos a través del formulario en /contacto o escribirnos directamente." },
+  { q: "¿Cómo solicito información?", a: "Para consultas corporativas, utiliza el formulario de contacto en /contacto y selecciona el asunto relacionado con empresas. Te responderemos lo antes posible." },
+  { q: "¿Hay precios corporativos?", a: "Los precios y opciones se informan según las necesidades de cada organización. Contáctanos para recibir información detallada." },
+  { q: "¿Cuál es el tiempo de respuesta?", a: "Responderemos tan pronto como sea posible. Proporciona toda la información relevante sobre tu organización en el formulario de contacto." },
 ];
 
 export default function EmpresasContent() {

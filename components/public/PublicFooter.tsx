@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { Heart } from "lucide-react";
+import { Heart, Cookie } from "lucide-react";
 
 const footerColumns = [
   {
@@ -33,6 +35,10 @@ const footerColumns = [
     links: [
       { href: "/legal/terminos", label: "Términos y Condiciones" },
       { href: "/legal/privacidad", label: "Política de Privacidad" },
+      { href: "/legal/envios", label: "Política de Envíos" },
+      { href: "/legal/reembolsos", label: "Cancelaciones y Reembolsos" },
+      { href: "/legal/garantia", label: "Garantía y Reemplazos" },
+      { href: "/legal/cookies", label: "Política de Cookies" },
     ],
   },
 ];
@@ -96,6 +102,18 @@ export default function PublicFooter() {
             <div className="flex items-center gap-1">
               Hecho con <Heart className="h-3 w-3 text-[#DA1A21]" /> para cuidar lo que importa
             </div>
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                const event = new CustomEvent("openCookiePreferences");
+                window.dispatchEvent(event);
+              }}
+              className="inline-flex items-center gap-2 text-xs text-[#A0AEC0] hover:text-[#EFF4FF] transition-colors"
+            >
+              <Cookie className="h-3 w-3" />
+              Preferencias de cookies
+            </button>
           </div>
         </div>
 

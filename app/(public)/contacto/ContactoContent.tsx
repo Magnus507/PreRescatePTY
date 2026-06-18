@@ -3,7 +3,7 @@
 import PublicNavbar from "@/components/public/PublicNavbar";
 import PublicFooter from "@/components/public/PublicFooter";
 import PageHero from "@/components/public/PageHero";
-import { Mail, Phone, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Mail, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -52,10 +52,9 @@ export default function ContactoPage() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] items-start">
               <div className="space-y-10">
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
                   {[
-                    { icon: Mail, title: "Soporte por correo", caption: "Te responderemos lo antes posible.", accent: "from-blue-500 to-cyan-500" },
-                    { icon: Phone, title: "Línea directa", caption: "+507 6000-0000 disponible para emergencias.", accent: "from-emerald-500 to-teal-400" },
+                    { icon: Mail, title: "Formulario de contacto", caption: "Envíanos tu consulta mediante el formulario. Responderemos tan pronto como sea posible.", accent: "from-blue-500 to-cyan-500" },
                     { icon: ShieldAlert, title: "Soporte legal", caption: "Asesoría para compra institucional y protocolos Ley 81.", accent: "from-brand to-red-700" },
                   ].map((item) => (
                     <div key={item.title} className="glass-card-w2a rounded-[2.5rem] p-8 transition-all hover:border-white/20">
@@ -70,22 +69,10 @@ export default function ContactoPage() {
 
                 <div className="relative overflow-hidden rounded-[3rem] border border-white/10 bg-[#0c1630]/95 p-10 shadow-premium">
                   <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(218,26,33,0.18),_transparent_40%)] opacity-50 pointer-events-none" />
-                  <div className="relative z-10 grid gap-6 sm:grid-cols-2">
-                    <div>
-                      <span className="text-sm uppercase tracking-[0.35em] text-[#DA1A21] font-black">Soporte Premium</span>
-                      <h2 className="mt-4 text-4xl font-black tracking-tight text-white">Atención rápida, confiable y segura</h2>
-                      <p className="mt-4 text-slate-300 leading-relaxed">Nuestro equipo te acompaña en cada paso de la implementación.</p>
-                    </div>
-                    <div className="grid gap-4">
-                      <div className="rounded-3xl bg-white/5 border border-white/10 p-5">
-                        <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">Días hábiles</p>
-                        <p className="mt-2 text-xl font-black text-white">Lun - Vie</p>
-                      </div>
-                      <div className="rounded-3xl bg-white/5 border border-white/10 p-5">
-                        <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">Disponibilidad</p>
-                        <p className="mt-2 text-xl font-black text-white">Lunes a viernes</p>
-                      </div>
-                    </div>
+                  <div className="relative z-10">
+                    <span className="text-sm uppercase tracking-[0.35em] text-[#DA1A21] font-black">Compromiso</span>
+                    <h2 className="mt-4 text-4xl font-black tracking-tight text-white">Atención confiable y segura</h2>
+                    <p className="mt-4 text-slate-300 leading-relaxed">Nuestro equipo revisa cada consulta y responde lo antes posible a través del formulario de contacto.</p>
                   </div>
                 </div>
               </div>
@@ -136,8 +123,8 @@ export default function ContactoPage() {
                 )}
 
                 <div className="mt-8 rounded-[2rem] bg-slate-950/80 border border-white/10 p-6 text-sm text-slate-300">
-                  <p className="uppercase tracking-[0.2em] text-slate-500 font-black">¿Te apuras?</p>
-                  <p className="mt-3 font-black text-white">Llámanos ahora: <a href="tel:+5076000000" className="text-[#DA1A21] hover:text-white">+507 6000-0000</a></p>
+                  <p className="uppercase tracking-[0.2em] text-slate-500 font-black">Tiempo de respuesta</p>
+                  <p className="mt-3 text-slate-300">Responderemos tan pronto como sea posible. Para consultas urgentes, proporciona toda la información relevante en el formulario.</p>
                 </div>
               </div>
             </div>

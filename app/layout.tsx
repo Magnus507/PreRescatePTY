@@ -3,8 +3,7 @@ import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import CookieConsentProvider from "@/components/public/CookieConsentProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -81,8 +80,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
         <Toaster />
-        <Analytics />
-        <SpeedInsights />
+        <CookieConsentProvider />
         <script
           dangerouslySetInnerHTML={{
             __html: `
