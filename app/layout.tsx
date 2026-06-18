@@ -49,12 +49,22 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_PA",
     siteName: "PreRescue ID",
+    url: "https://www.prerescatepty.com",
+    images: [
+      {
+        url: "/og/pre-rescue-social-card.png",
+        width: 1200,
+        height: 630,
+        alt: "PreRescue ID — Identificación médica con QR y NFC",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "PreRescue ID — Identificación Médica de Emergencia con QR y NFC",
     description:
       "Identificación médica de emergencia con QR y NFC. Sin aplicación. Sin batería.",
+    images: ["/og/pre-rescue-social-card.png"],
   },
 };
 

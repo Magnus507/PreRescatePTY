@@ -134,7 +134,7 @@ function LoginContent() {
   return (
     <main className="min-h-screen relative overflow-hidden bg-[#050812] text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.14),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(218,26,33,0.12),_transparent_28%)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(218,26,33,0.03)_0%,_transparent_70%)] pointer-events-none" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] items-center">

@@ -141,14 +141,14 @@ function RegistroForm() {
   return (
     <main className="min-h-screen bg-[#050812] text-white relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.14),_transparent_25%),radial-gradient(circle_at_bottom_right,_rgba(218,26,33,0.12),_transparent_28%)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(218,26,33,0.03)_0%,_transparent_70%)] pointer-events-none" />
       <div className="relative z-10">
 
       <div className="mx-auto w-full max-w-7xl rounded-[3rem] border border-white/10 bg-white/5 shadow-2xl shadow-blue-500/20 backdrop-blur-xl overflow-hidden flex flex-col md:flex-row min-h-[85vh]">
         
         {/* Left Side: Branding & Account Types */}
         <div className="hidden md:flex md:w-[40%] bg-slate-950/95 p-12 text-white flex-col justify-between relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(218,26,33,0.04)_0%,_transparent_70%)] mix-blend-overlay"></div>
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-transparent to-emerald-600/10"></div>
           
           <div className="relative z-10">

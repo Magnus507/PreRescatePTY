@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen relative overflow-hidden bg-[#050812] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(218,26,33,0.14),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.12),_transparent_26%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(218,26,33,0.03)_0%,_transparent_70%)]" />
 
       <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10">
         <div className="w-full max-w-lg glass-premium border border-white/10 shadow-premium backdrop-blur-3xl p-8 rounded-[2.5rem] overflow-hidden">
