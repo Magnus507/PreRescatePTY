@@ -28,7 +28,7 @@ export default function DemoPage() {
   }, [router]);
 
   useEffect(() => {
-    const demoUrl = `${window.location.origin}/e/DEMO-ADMIN-VIP`;
+    const demoUrl = `${window.location.origin}/e/DEMO-ADMIN-VIP?demo=true`;
     fetch(`/api/public/qr?data=${encodeURIComponent(demoUrl)}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed");
@@ -137,19 +137,27 @@ export default function DemoPage() {
             </div>
 
             {/* CTAs */}
-            <div className="mt-12 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4">
-              <Link
-                href="/comprar"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-[#DA1A21] font-bold text-lg hover:bg-slate-100 transition-all shadow-xl"
-              >
-                Crear tu propio perfil
-              </Link>
-              <Link
-                href="/para-quien-es"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border-2 border-white/30 bg-white/10 text-white font-bold text-lg hover:bg-white/20 transition-all backdrop-blur-sm"
-              >
-                Para Quién Es
-              </Link>
+            <div className="mt-12 space-y-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4">
+                <Link
+                  href="/e/DEMO-ADMIN-VIP?demo=true"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-[#DA1A21] font-bold text-lg hover:bg-slate-100 transition-all shadow-xl"
+                >
+                  Abrir perfil de demostración
+                  <span className="text-xs opacity-70">(nueva pestaña)</span>
+                </Link>
+                <Link
+                  href="/comprar"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border-2 border-white/30 bg-white/10 text-white font-bold text-lg hover:bg-white/20 transition-all backdrop-blur-sm"
+                >
+                  Crear tu propio perfil
+                </Link>
+              </div>
+              <p className="text-center text-sm text-slate-400">
+                El perfil se abrirá en una pestaña nueva para que puedas conservar esta guía.
+              </p>
             </div>
           </div>
         </div>

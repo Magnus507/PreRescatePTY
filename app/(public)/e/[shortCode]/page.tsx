@@ -9,7 +9,7 @@ import {
   Heart, Phone, AlertTriangle, Droplets, Pill, 
   Activity, User, MessageCircle, Loader2, Calendar,
   ShieldCheck, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick,
-  Brain, Footprints, Baby
+  Brain, Footprints, Baby, Eye
 } from "lucide-react";
 import { IndustrialProfileView } from "./_components/IndustrialProfileView";
 import { formatEmergencyLocation } from "@/domains/shared/services/emergency-location";
@@ -387,6 +387,7 @@ export default function EmergencyPage() {
     day: '2-digit',
     month: 'short'
   }));
+  const isCanonicalDemo = shortCode === "DEMO-ADMIN-VIP" && searchParams.get("demo") === "true";
 
   useEffect(() => {
     async function load() {
@@ -710,6 +711,22 @@ export default function EmergencyPage() {
       </div>
 
       <main className="max-w-4xl mx-auto p-4 space-y-6">
+        {isCanonicalDemo && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-amber-50 border border-amber-200">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center border border-amber-200">
+                <Eye className="h-4 w-4 text-amber-700" />
+              </div>
+              <p className="text-sm font-black uppercase tracking-widest text-amber-800">Perfil ficticio de demostración</p>
+            </div>
+            <Link
+              href="/demo"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-amber-200 text-amber-800 text-xs font-black uppercase tracking-widest hover:bg-amber-100 transition-all"
+            >
+              Volver a la guía de la demo
+            </Link>
+          </div>
+        )}
         {/* PANIC CALL 911 */}
         <a href="tel:911" className="flex items-center justify-between gap-4 w-full bg-gradient-to-r from-brand to-red-700 text-white p-6 rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(218,26,33,0.4)] hover:shadow-glow-md transition-all active:scale-95 group relative overflow-hidden btn-premium animate-pulse-subtle">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-[#DA1A21]/20" />
