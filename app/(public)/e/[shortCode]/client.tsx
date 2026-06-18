@@ -267,7 +267,15 @@ function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfil
               alt={`Foto de ${profile.firstName}`}
               className="w-full h-full object-cover"
               onError={(e) => {
-                e.currentTarget.src = `https://ui-avatars.com/api/?name=${profile.firstName}&background=DA1A21&color=fff&size=200`;
+                e.currentTarget.style.display = "none";
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  const fallback = document.createElement("div");
+                  fallback.className = "w-full h-full flex items-center justify-center bg-[#DA1A21] text-white font-black text-4xl uppercase";
+                  fallback.textContent = (profile.firstName?.[0] || "") + (profile.lastName?.[0] || "");
+                  fallback.setAttribute("aria-label", `Foto de ${profile.firstName}`);
+                  parent.appendChild(fallback);
+                }
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
@@ -786,7 +794,15 @@ export default function EmergencyPage() {
                       alt={`Foto de ${profile.firstName}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${profile.firstName}&background=DA1A21&color=fff&size=200`;
+                        e.currentTarget.style.display = "none";
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          const fallback = document.createElement("div");
+                          fallback.className = "w-full h-full flex items-center justify-center bg-[#DA1A21] text-white font-black text-4xl uppercase";
+                          fallback.textContent = (profile.firstName?.[0] || "") + (profile.lastName?.[0] || "");
+                          fallback.setAttribute("aria-label", `Foto de ${profile.firstName}`);
+                          parent.appendChild(fallback);
+                        }
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
