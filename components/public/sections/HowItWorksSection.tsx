@@ -40,7 +40,7 @@ export default function HowItWorksSection() {
               transition={{ duration: 0.5, delay: i * 0.1 }}
               className="relative bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-md transition-all"
             >
-              <div className="text-5xl font-black text-slate-100 mb-4">{step.num}</div>
+              <div className="text-5xl font-black text-slate-200 mb-4">{step.num}</div>
               <div className="h-12 w-12 rounded-xl bg-[#DA1A21]/10 flex items-center justify-center mb-4">
                 <step.icon className="h-6 w-6 text-[#DA1A21]" />
               </div>

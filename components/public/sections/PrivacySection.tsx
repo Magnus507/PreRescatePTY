@@ -13,7 +13,7 @@ const privacyPoints = [
 
 export default function PrivacySection() {
   return (
-    <section className="relative py-24 md:py-32 bg-[#05070D] overflow-hidden">
+    <section className="relative py-16 md:py-24 bg-[#05070D] overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(218,26,33,0.06),_transparent_60%)]" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

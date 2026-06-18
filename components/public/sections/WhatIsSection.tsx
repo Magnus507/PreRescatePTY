@@ -23,7 +23,7 @@ const features = [
 
 export default function WhatIsSection() {
   return (
-    <section className="relative py-24 md:py-32 bg-[#05070D] overflow-hidden">
+    <section className="relative py-16 md:py-24 bg-[#05070D] overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(16,185,129,0.06),_transparent_60%)]" />
 

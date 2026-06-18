@@ -6,7 +6,7 @@ import { Building2 } from "lucide-react";
 
 export default function CorporatePreview() {
   return (
-    <section className="relative py-24 md:py-32 bg-[#05070D] overflow-hidden">
+    <section className="relative py-16 md:py-24 bg-[#05070D] overflow-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <motion.div

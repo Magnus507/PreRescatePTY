@@ -6,7 +6,7 @@ import { ArrowUpRight } from "lucide-react";
 
 export default function FinalCTA() {
   return (
-    <section className="relative py-24 md:py-32 bg-[#DA1A21] overflow-hidden">
+    <section className="relative py-16 md:py-24 bg-[#DA1A21] overflow-hidden">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_50%,_white,_transparent_50%)]" />

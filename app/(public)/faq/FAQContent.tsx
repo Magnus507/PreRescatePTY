@@ -1,87 +1,183 @@
 "use client";
 
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { Heart } from "lucide-react";
+import PublicNavbar from "@/components/public/PublicNavbar";
+import PublicFooter from "@/components/public/PublicFooter";
+import PageHero from "@/components/public/PageHero";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { ChevronDown, MessageCircle } from "lucide-react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+
+interface FAQ {
+  q: string;
+  a: string;
+  category: string;
+}
+
+const faqs: FAQ[] = [
+  // Producto
+  { q: "¿Qué es PreRescue ID?", a: "Es un sistema de identificación médica de emergencia. Un sticker con NFC y código QR que permite consultar información médica autorizada al escanearlo.", category: "Producto" },
+  { q: "¿Qué información se muestra al escanear?", a: "Nombre, tipo de sangre, alergias, condiciones médicas, medicamentos y contactos de emergencia. Tú controlas qué campos son visibles.", category: "Producto" },
+  { q: "¿El sticker necesita batería?", a: "No. El sticker no tiene batería. El chip NFC se activa con la energía del celular que lo escanea.", category: "Producto" },
+
+  // QR y NFC
+  { q: "¿Cómo funciona el código QR?", a: "Cualquier celular con cámara puede escanear el código QR. La cámara abre automáticamente el perfil de emergencia en el navegador.", category: "QR y NFC" },
+  { q: "¿Cómo funciona el chip NFC?", a: "Los celulares con NFC pueden leer el chip al acercarlo. El perfil se abre automáticamente, sin necesidad de abrir la cámara.", category: "QR y NFC" },
+  { q: "¿Qué celulares son compatibles?", a: "La mayoría de los smartphones actuales soportan NFC. El código QR funciona con cualquier celular con cámara.", category: "QR y NFC" },
+
+  // Internet y dispositivos
+  { q: "¿Se necesita internet?", a: "El dispositivo que escanea necesita conexión a internet para cargar el perfil médico. El sticker no necesita batería ni conexión.", category: "Internet y dispositivos" },
+  { q: "¿Funciona fuera de Panamá?", a: "Sí. El perfil se carga desde internet, por lo que funciona en cualquier país con conexión.", category: "Internet y dispositivos" },
+  { q: "¿Necesito instalar una aplicación?", a: "No. El perfil se abre en el navegador del celular. No requiere instalar ninguna aplicación.", category: "Internet y dispositivos" },
+
+  // Privacidad
+  { q: "¿Qué información es pública?", a: "Solo la información que tú autorizas. Tu correo electrónico y fecha de nacimiento completa no se muestran públicamente.", category: "Privacidad" },
+  { q: "¿Cómo protegen mis datos?", a: "La información sensible está cifrada. Cumplimos con la Ley 81 de Protección de Datos Personales de Panamá.", category: "Privacidad" },
+  { q: "¿Puedo eliminar mi cuenta?", a: "Puedes solicitar la eliminación de tu cuenta desde la configuración. La cuenta se desactiva y la información personal y médica sensible se elimina o anonimiza. Determinados registros administrativos, contables y de auditoría pueden conservarse cuando exista una obligación legal o una necesidad legítima de seguridad y trazabilidad.", category: "Privacidad" },
+
+  // WhatsApp y contactos
+  { q: "¿Qué pasa cuando alguien escanea mi chip?", a: "El perfil muestra botones para contactar manualmente a tus familiares por WhatsApp o llamada. El respondedor debe iniciar la acción.", category: "WhatsApp y contactos" },
+  { q: "¿Se envían notificaciones automáticas?", a: "No. No se envían notificaciones automáticas al escanear. El respondedor debe presionar el botón de WhatsApp o llamada para contactar.", category: "WhatsApp y contactos" },
+  { q: "¿Se envía mi ubicación automáticamente?", a: "No. La ubicación aproximada puede incluirse solo si el respondedor otorga permiso de ubicación en su navegador. No se envía información automáticamente.", category: "WhatsApp y contactos" },
+
+  // Perfiles familiares
+  { q: "¿Puedo tener más de un perfil?", a: "Sí. Dependiendo del plan, puedes gestionar múltiples perfiles médicos desde tu cuenta.", category: "Perfiles familiares" },
+  { q: "¿Puedo comprar un chip para mi hijo?", a: "Sí. Puedes crear y gestionar perfiles médicos para niños y adultos mayores desde tu cuenta.", category: "Perfiles familiares" },
+
+  // Compra y pagos
+  { q: "¿Qué métodos de pago aceptan?", a: "Puedes pagar con tarjeta a través de Stripe o enviar un comprobante de pago manual mediante los métodos disponibles en la plataforma.", category: "Compra y pagos" },
+  { q: "¿Hay mensualidades?", a: "No. Todos los planes son de pago único con 2 años de vigencia desde la activación.", category: "Compra y pagos" },
+  { q: "¿Cuánto tiempo dura el servicio?", a: "Cada plan incluye 2 años de cobertura desde la fecha de activación del chip.", category: "Compra y pagos" },
+
+  // Vigencia
+  { q: "¿Qué pasa cuando se vence el servicio?", a: "El perfil deja de estar disponible para consulta pública. Puedes renovar el servicio para continuar la cobertura.", category: "Vigencia" },
+  { q: "¿Puedo actualizar mi información?", a: "Sí. Puedes editar tu perfil médico en cualquier momento desde tu panel de control.", category: "Vigencia" },
+
+  // Uso internacional
+  { q: "¿Funciona en otros países?", a: "Sí. El perfil se carga desde internet, por lo que funciona en cualquier país con conexión a internet.", category: "Uso internacional" },
+
+  // Empresas
+  { q: "¿Ofrecen planes empresariales?", a: "Sí. Disponemos de planes corporativos con panel administrativo para gestionar miembros y chips. Escríbenos para más información.", category: "Empresas" },
+
+  // Limitaciones del servicio
+  { q: "¿PreRescue ID reemplaza la atención médica?", a: "No. PreRescue ID es una herramienta de identificación de emergencia. No reemplaza la atención médica profesional ni garantiza ningún resultado.", category: "Limitaciones del servicio" },
+  { q: "¿Qué pasa si el respondedor no tiene internet?", a: "Sin conexión a internet, el perfil no se puede cargar. El sticker no almacena información localmente.", category: "Limitaciones del servicio" },
+];
+
+const categories = [
+  "Todas",
+  "Producto",
+  "QR y NFC",
+  "Internet y dispositivos",
+  "Privacidad",
+  "WhatsApp y contactos",
+  "Perfiles familiares",
+  "Compra y pagos",
+  "Vigencia",
+  "Uso internacional",
+  "Empresas",
+  "Limitaciones del servicio",
+];
 
 export default function FAQContent() {
-  const faqs = [
-    { q: "¿Qué es en esencia PreRescue ID PTY?", a: "Es el sistema definitivo de identificación médica para Panamá. Imprimimos nuestro núcleo en un sticker con chip NFC y código QR. En caso de accidentes automovilísticos, cualquier paramédico al escanearlo verá en tiempo real tu tipo de sangre, alergias, y disparará alertas directas a tu familia." },
-    { q: "¿Obligo a las personas a instalar una APP para leerme?", a: "Absolutamente NO. Esa es la magia total del sistema; está basado íntegramente en Web-Clips y estandarización de chips de tap-to-read del sistema operativo abierto. Pasas el celular por el chip, y se abrirá nuestro entorno HTTPS cifrado sin apps externas." },
-    { q: "¿Quién tiene acceso a mi registro?", a: "Tus datos completos solo están asegurados por ti en el Dashboard mediante Auth Cifrado. Al mundo público, sólo se le emite la 'ficha médica', la cual solo muestra a quienes escaneen tu sticker físico." },
-    { q: "¿Qué sucede si sufro un hackeo y mi sticker cae en manos ajenas?", a: "Para empezar el código es criptográfico por unidad. Pero si alguien te lo robara, puedes entrar a tu Dashboard presionar 'Suspender Ficha', e inmediatamente tu sticker en físico se volverá un plástico inútil sin valor en segundos." },
-    { q: "¿Están sujetos a leyes en Panamá?", a: "Nos adherimos al 100% bajo la reglamentación ANTAI y la Ley 81 de Protección de Datos Personales, garantizando la trazabilidad, rectificación y retención ética de logs." },
-    { q: "¿Ofrecen cobertura a Colegios?", a: "Sí, disponemos de la versión Colegial mediante la cual entidades educativas pueden expedir chips de la plataforma bajo el manejo directo de su módulo corporativo hacia estudiantes." },
-  ];
+  const [activeCategory, setActiveCategory] = useState("Todas");
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const filtered = activeCategory === "Todas" ? faqs : faqs.filter((f) => f.category === activeCategory);
+
+  const toggle = (index: number) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
 
   return (
-    <div className="bg-background selection:bg-[#DA1A21]/30 selection:text-[#DA1A21] min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-grow">
-        
-        {/* HERO SECTION */}
-        <section className="relative pt-32 pb-20 bg-[#050814] text-white overflow-hidden">
-           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/40 via-[#050814] to-[#050814]" />
-           <div className="absolute inset-0 noise-bg opacity-20 mix-blend-overlay" />
-           <div className="absolute -top-48 -left-48 w-96 h-96 bg-brand rounded-full mix-blend-multiply filter blur-[128px] opacity-20" />
-           
-           <div className="relative z-10 text-center max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-             <motion.div 
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 backdrop-blur-md px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] mb-8 shadow-2xl"
-             >
-                <div className="h-2 w-2 rounded-full bg-brand animate-pulse" />
-                <span className="text-slate-300">Base de Conocimientos</span>
-             </motion.div>
-             <motion.h1 
-               initial={{ opacity: 0, y: 20 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: 0.1 }}
-               className="text-5xl sm:text-7xl font-black tracking-tighter mb-8 leading-[0.95]"
-             >
-               Resolviendo <span className="text-brand">Dudas</span>
-             </motion.h1>
-             <motion.p 
-               initial={{ opacity: 0, y: 20 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: 0.2 }}
-               className="text-lg sm:text-xl text-slate-400 font-medium max-w-2xl mx-auto"
-             >
-               Transparencia total sobre la tecnología que protege tu vida.
-             </motion.p>
-           </div>
+    <div className="min-h-screen font-sans antialiased">
+      <PublicNavbar />
+      <main id="main-content">
+        <PageHero
+          eyebrow="Preguntas frecuentes"
+          title="Resolviendo dudas"
+          description="Transparencia total sobre la tecnología y el servicio."
+        />
+
+        <section className="py-24 md:py-32 bg-[#05070D]">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            {/* Category navigation */}
+            <div className="flex flex-wrap justify-center gap-2 mb-12">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => { setActiveCategory(cat); setOpenIndex(null); }}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                    activeCategory === cat
+                      ? "bg-[#DA1A21] text-white"
+                      : "bg-white/5 text-[#A0AEC0] hover:bg-white/10"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* FAQ list */}
+            <div className="max-w-3xl mx-auto space-y-4">
+              <AnimatePresence mode="wait">
+                {filtered.map((faq) => {
+                  const globalIndex = faqs.indexOf(faq);
+                  const isOpen = openIndex === globalIndex;
+                  return (
+                    <motion.div
+                      key={faq.q}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="glass-card-w2a rounded-2xl overflow-hidden"
+                    >
+                      <button
+                        onClick={() => toggle(globalIndex)}
+                        aria-expanded={isOpen}
+                        className="w-full flex items-center justify-between p-6 text-left"
+                      >
+                        <span className="text-base font-bold text-[#EFF4FF] pr-4">{faq.q}</span>
+                        <ChevronDown className={`h-5 w-5 text-[#10B981] shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                      </button>
+                      <AnimatePresence>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <p className="px-6 pb-6 text-sm text-[#A0AEC0] leading-relaxed">{faq.a}</p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+
+            {/* Contact CTA */}
+            <div className="mt-16 max-w-2xl mx-auto glass-card-w2a rounded-3xl p-8 md:p-10 text-center">
+              <MessageCircle className="h-10 w-10 mx-auto text-[#DA1A21] mb-4" />
+              <h3 className="text-xl font-black text-[#EFF4FF] mb-2">¿Aún con dudas?</h3>
+              <p className="text-sm text-[#A0AEC0] mb-6">
+                Escríbenos y te ayudaremos a resolver tus preguntas sobre el producto o el servicio.
+              </p>
+              <Link
+                href="/contacto"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#DA1A21] text-white font-bold hover:bg-[#B9141B] transition-all"
+              >
+                Contactar
+              </Link>
+            </div>
+          </div>
         </section>
-
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-24">
-
-          <div className="space-y-6">
-            {faqs.map((faq, i) => (
-              <div key={i} className="group overflow-hidden rounded-[2.5rem] bg-card/90 border border-white/10 glass-card glass-card-hover shadow-premium transition-all duration-300">
-                <div className="p-8">
-                  <h3 className="text-xl font-black mb-3 flex items-start gap-4">
-                    <span className="flex-shrink-0 w-10 h-10 rounded-3xl bg-brand/10 text-brand flex items-center justify-center text-sm font-black">{i + 1}</span>
-                    <span className="leading-tight mt-1">{faq.q}</span>
-                  </h3>
-                  <p className="text-muted-foreground font-medium text-base leading-relaxed pl-12">{faq.a}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-16 bg-white/5 border border-white/10 p-10 rounded-[3rem] text-center glass-card shadow-premium">
-             <Heart className="h-10 w-10 mx-auto text-[#DA1A21] mb-4" />
-             <h4 className="text-2xl font-black tracking-tighter mb-2">¿Aún con dudas?</h4>
-             <p className="text-muted-foreground font-medium mb-6">Nuestro equipo corporativo en Panamá está a tu disposición en cualquier momento para guiarte en una compra corporativa o familiar.</p>
-             <Link href="/contacto" className="btn-premium inline-flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-brand to-red-700 text-white font-black hover:shadow-button-hover transition-all">
-               Hablar con un asesor
-             </Link>
-          </div>
-        </div>
       </main>
-      <Footer />
+      <PublicFooter />
     </div>
   );
 }
