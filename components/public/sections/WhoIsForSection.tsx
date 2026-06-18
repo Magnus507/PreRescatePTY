@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { Users, Baby, Heart, Shield, Brain, Stethoscope, Bike, Building2 } from "lucide-react";
 
 const audiences = [
@@ -28,9 +29,15 @@ export default function WhoIsForSection() {
           <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] text-[#EFF4FF] mb-4">
             Diseñado para distintas personas y situaciones
           </h2>
-          <p className="text-lg text-[#A0AEC0] font-medium max-w-2xl mx-auto">
+          <p className="text-lg text-[#A0AEC0] font-medium max-w-2xl mx-auto mb-8">
             Un solo sistema, múltiples formas de proteger lo que importa.
           </p>
+          <Link
+            href="/para-quien-es"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 text-[#EFF4FF] font-bold hover:bg-white/20 transition-all border border-white/10"
+          >
+            Ver todos los casos de uso
+          </Link>
         </motion.div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

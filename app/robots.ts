@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/admin/', '/api/', '/dashboard/'],
     },
-    sitemap: 'https://www.prerescate.com/sitemap.xml',
+    sitemap: 'https://www.prerescatepty.com/sitemap.xml',
   };
 }

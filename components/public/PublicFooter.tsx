@@ -7,6 +7,7 @@ const footerColumns = [
     title: "Producto",
     links: [
       { href: "/como-funciona", label: "Cómo Funciona" },
+      { href: "/para-quien-es", label: "Para Quién Es" },
       { href: "/comprar", label: "Comprar" },
       { href: "/demo", label: "Demo" },
       { href: "/faq", label: "Preguntas Frecuentes" },
