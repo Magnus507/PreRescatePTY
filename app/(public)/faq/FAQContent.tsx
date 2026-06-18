@@ -124,6 +124,8 @@ export default function FAQContent() {
                 {filtered.map((faq) => {
                   const globalIndex = faqs.indexOf(faq);
                   const isOpen = openIndex === globalIndex;
+                  const buttonId = `faq-button-${globalIndex}`;
+                  const panelId = `faq-panel-${globalIndex}`;
                   return (
                     <motion.div
                       key={faq.q}
@@ -134,12 +136,15 @@ export default function FAQContent() {
                       className="glass-card-w2a rounded-2xl overflow-hidden"
                     >
                       <button
+                        type="button"
                         onClick={() => toggle(globalIndex)}
                         aria-expanded={isOpen}
-                        className="w-full flex items-center justify-between p-6 text-left"
+                        aria-controls={panelId}
+                        id={buttonId}
+                        className="w-full flex items-center justify-between p-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05070D]"
                       >
                         <span className="text-base font-bold text-[#EFF4FF] pr-4">{faq.q}</span>
-                        <ChevronDown className={`h-5 w-5 text-[#10B981] shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        <ChevronDown className={`h-5 w-5 text-[#10B981] shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
                       </button>
                       <AnimatePresence>
                         {isOpen && (
@@ -150,7 +155,14 @@ export default function FAQContent() {
                             transition={{ duration: 0.2 }}
                             className="overflow-hidden"
                           >
-                            <p className="px-6 pb-6 text-sm text-[#A0AEC0] leading-relaxed">{faq.a}</p>
+                            <div
+                              id={panelId}
+                              role="region"
+                              aria-labelledby={buttonId}
+                              className="px-6 pb-6"
+                            >
+                              <p className="text-sm text-[#A0AEC0] leading-relaxed">{faq.a}</p>
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
