@@ -106,7 +106,7 @@ export default function PublicFooter() {
           <div className="mt-4">
             <button
               onClick={() => {
-                const event = new CustomEvent("openCookiePreferences");
+                const event = new CustomEvent("prerescue:open-cookie-preferences");
                 window.dispatchEvent(event);
               }}
               className="inline-flex items-center gap-2 text-xs text-[#A0AEC0] hover:text-[#EFF4FF] transition-colors"
