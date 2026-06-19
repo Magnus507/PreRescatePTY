@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
 import { resolveImageSrc } from "@/lib/resolve-image-src";
+import { PaymentConfirmModal } from "../modals/PaymentConfirmModal";
+import { ReceiptModal } from "../modals/ReceiptModal";
+import { formatShippingAddress, getPaymentMethodLabel, getPaymentStatusLabel, getOrderStatusLabel } from "../../_utils/order-helpers";
 
 interface CorporateEmployeeItem {
   id: string;
@@ -110,6 +113,8 @@ export function PedidosSection() {
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'paid' | 'rejected' | 'completed'>('all');
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const [paymentModal, setPaymentModal] = useState<{ type: "approve" | "reject"; orderId: string } | null>(null);
+  const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
 
   const loadOrders = useCallback(async (options?: { silent?: boolean }) => {
     const isSilent = options?.silent ?? false;
@@ -185,8 +190,15 @@ export function PedidosSection() {
         toast.success(`Orden actualizada a '${actionText}'`);
         setSelectedOrder(null);
         loadOrders();
+      } else if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.message || "El pedido cambió de estado o no cumple los requisitos para esta acción.");
+      } else if (res.status === 403) {
+        toast.error("No tienes permiso para actualizar este pedido.");
+      } else if (res.status === 404) {
+        toast.error("El pedido ya no está disponible.");
       } else {
-        toast.error("Error al actualizar la orden");
+        toast.error("No se pudo actualizar el pedido. Inténtalo nuevamente.");
       }
     } catch {
       toast.error("Error de conexión");
@@ -200,16 +212,15 @@ export function PedidosSection() {
       toast.error("La revisión manual solo aplica a órdenes con provider manual.");
       return;
     }
+    setPaymentModal({ type: action, orderId: id });
+  };
 
-    const confirmMessage = action === "approve"
-      ? "¿Aprobar el pago y marcar esta orden como pagada?"
-      : "¿Rechazar el pago y devolver la orden a pendiente?";
-
-    if (!confirm(confirmMessage)) return;
+  const handlePaymentConfirm = async () => {
+    if (!paymentModal || !selectedOrder) return;
+    const action = paymentModal.type;
     setUpdating(true);
-
     try {
-      const res = await fetch(`/api/admin/orders/${id}/${action}`, {
+      const res = await fetch(`/api/admin/orders/${paymentModal.orderId}/${action}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -218,14 +229,18 @@ export function PedidosSection() {
       });
 
       if (res.ok) {
-        toast.success(action === "approve" ? "Pago aprobado" : "Pago rechazado");
+        toast.success(action === "approve" ? "Pago aprobado correctamente." : "Pago rechazado correctamente.");
+        setPaymentModal(null);
         setSelectedOrder(null);
         loadOrders();
       } else {
-        toast.error("Error al actualizar la revisión");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "Error al actualizar la revisión");
       }
-    } catch {
-      toast.error("Error de conexión");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "No se pudo actualizar el pago. Inténtalo nuevamente.";
+      toast.error(message);
+      throw err;
     } finally {
       setUpdating(false);
     }
@@ -647,8 +662,7 @@ export function PedidosSection() {
                                  <Truck className="h-6 w-6" />
                               </div>
                               <div>
-                                 <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-1">{selectedOrder.shippingCity || "Panamá"}</p>
-                                 <p className="text-base font-bold leading-tight tracking-tight">{selectedOrder.shippingAddress || "Recojo en sucursal"}</p>
+                                 <p className="text-base font-bold leading-tight tracking-tight">{formatShippingAddress(selectedOrder)}</p>
                               </div>
                            </div>
                            {selectedOrder.shippingNotes && (
@@ -660,41 +674,6 @@ export function PedidosSection() {
                      </section>
                   </div>
 
-                   {/* COL 2: Activation Info */}
-                   <div className="lg:col-span-4 space-y-6 bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[2rem] border border-border/60">
-                      <section className="space-y-4">
-                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
-                            <div className="h-1.5 w-6 bg-primary rounded-full" />
-                            Vinculación de Chips
-                         </h3>
-                         <div className="p-6 bg-indigo-50 rounded-[1.75rem] border border-indigo-100 shadow-inner space-y-3">
-                            <div className="flex items-center gap-3">
-                               <div className="h-10 w-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                                  <CheckCircle2 className="h-5 w-5 text-indigo-600" />
-                               </div>
-                               <p className="text-[11px] font-black uppercase tracking-widest text-indigo-800 leading-tight">Activación Automática</p>
-                            </div>
-                            <p className="text-xs font-medium text-indigo-700/70 leading-relaxed">
-                               Los chips se vinculan automáticamente cuando el cliente activa su código desde su cuenta.
-                            </p>
-                            <div className="pt-2 space-y-2">
-                               <div className="flex items-center gap-2 text-[10px] text-indigo-600/60 font-bold">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                                  Admin aprueba pago
-                               </div>
-                               <div className="flex items-center gap-2 text-[10px] text-indigo-600/60 font-bold">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                                  Cliente recibe producto físico
-                               </div>
-                               <div className="flex items-center gap-2 text-[10px] text-indigo-600/60 font-bold">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                                  Cliente activa con código → chip vinculado automáticamente
-                               </div>
-                            </div>
-                         </div>
-                      </section>
-                   </div>
-
                   <div className="lg:col-span-4 space-y-6">
                      <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
@@ -704,7 +683,7 @@ export function PedidosSection() {
                         <div className="bg-white dark:bg-slate-900 p-5 rounded-[1.75rem] border border-border shadow-sm space-y-3">
                            <div>
                               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Método de Pago</p>
-                              <p className="text-base font-black text-slate-900 dark:text-white">{selectedOrder.paymentMethod ? selectedOrder.paymentMethod.replace("_", " ").toUpperCase() : "Manual"}</p>
+                              <p className="text-base font-black text-slate-900 dark:text-white">{getPaymentMethodLabel(selectedOrder.paymentMethod)}</p>
                            </div>
                            <div>
                               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Referencia Manual</p>
@@ -713,11 +692,11 @@ export function PedidosSection() {
                            <div className="grid grid-cols-2 gap-3">
                               <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
                                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de orden</p>
-                                 <p className="text-sm font-bold uppercase mt-2">{selectedOrder.orderStatus}</p>
+                                 <p className="text-sm font-bold uppercase mt-2">{getOrderStatusLabel(selectedOrder.orderStatus)}</p>
                               </div>
                               <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
                                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de pago</p>
-                                 <p className="text-sm font-bold uppercase mt-2">{selectedOrder.paymentStatus}</p>
+                                 <p className="text-sm font-bold uppercase mt-2">{getPaymentStatusLabel(selectedOrder.paymentStatus)}</p>
                               </div>
                            </div>
                            <div>
@@ -760,6 +739,28 @@ export function PedidosSection() {
                         </div>
                      </section>
                   </div>
+
+                  {/* Payment Confirmation Modal */}
+                  {paymentModal && selectedOrder && (
+                    <PaymentConfirmModal
+                      type={paymentModal.type}
+                      orderNumber={selectedOrder.orderNumber}
+                      note={reviewNote}
+                      onConfirm={handlePaymentConfirm}
+                      onCancel={() => setPaymentModal(null)}
+                      isProcessing={updating}
+                      onNoteChange={setReviewNote}
+                    />
+                  )}
+
+                  {/* Receipt Modal */}
+                  {receiptModalOrder && (
+                    <ReceiptModal
+                      receiptUrl={receiptModalOrder.paymentProofUrl}
+                      orderNumber={receiptModalOrder.orderNumber}
+                      onClose={() => setReceiptModalOrder(null)}
+                    />
+                  )}
 
                   {/* Personalización de accesorios */}
                   {selectedOrder.items.some(item => item.profile || 
@@ -908,7 +909,7 @@ export function PedidosSection() {
                            Comprobante
                         </h3>
                         {selectedOrder.paymentProofUrl ? (
-                           <div className="aspect-video w-full rounded-[1.5rem] border border-border overflow-hidden bg-slate-100 shadow-sm cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
+                           <div className="aspect-video w-full rounded-[1.5rem] border border-border overflow-hidden bg-slate-100 shadow-sm cursor-zoom-in" onClick={() => setReceiptModalOrder(selectedOrder)}>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img 
                                 src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")} 
@@ -930,58 +931,72 @@ export function PedidosSection() {
             </div>
 
             {/* Action Bar */}
-            {!isCorporateOrder && <div className="px-6 py-5 border-t border-border bg-muted/30 flex justify-between items-center gap-4">
-               <div className="flex gap-4">
-                  {selectedOrder.orderStatus === "cancelled" && (
-                     <button onClick={async () => {
-                        if(!confirm("¿Eliminar de forma permanente? No se puede deshacer.")) return;
-                        setUpdating(true);
-                        try {
-                          const res = await fetch(`/api/admin/orders?id=${selectedOrder.id}`, { method: "DELETE", cache: "no-store" });
-                          if (res.ok) { toast.success("Orden borrada"); setSelectedOrder(null); loadOrders(); }
-                        } finally { setUpdating(false); }
-                     }} disabled={updating} className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all">
-                        Eliminar Permanente
-                     </button>
-                  )}
-                  {selectedOrder.orderStatus !== "cancelled" && selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && selectedOrder.provider !== "manual" && (
-                    <button onClick={() => handleStatusChange(selectedOrder.id, "cancelled", "Cancelado")} disabled={updating} className="px-6 py-3 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">
-                      Declinar Orden
-                    </button>
-                  )}
-               </div>
-               
-               <div className="flex gap-4">
-                  {selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && selectedOrder.orderStatus !== "cancelled" && (
-                     <>
-                        <button 
-                          onClick={() => handleStatusChange(selectedOrder.id, "shipped", "Enviado")} 
+            {!isCorporateOrder && (() => {
+              const isPaymentApproved = selectedOrder.paymentStatus === "paid" || selectedOrder.adminReviewStatus === "approved";
+              const canShip = selectedOrder.orderStatus !== "cancelled" && selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && isPaymentApproved;
+              const canComplete = selectedOrder.orderStatus === "shipped" && isPaymentApproved;
+              const canCancel = selectedOrder.orderStatus !== "cancelled" && selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && !isPaymentApproved;
+
+              return (
+                <div className="px-6 py-5 border-t border-border bg-muted/30 flex justify-between items-center gap-4">
+                  <div className="flex gap-4">
+                    {selectedOrder.orderStatus === "cancelled" && (
+                       <button onClick={async () => {
+                          if(!confirm("¿Eliminar de forma permanente? No se puede deshacer.")) return;
+                          setUpdating(true);
+                          try {
+                            const res = await fetch(`/api/admin/orders?id=${selectedOrder.id}`, { method: "DELETE", cache: "no-store" });
+                            if (res.ok) { toast.success("Orden borrada"); setSelectedOrder(null); loadOrders(); }
+                          } finally { setUpdating(false); }
+                       }} disabled={updating} className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all">
+                          Eliminar Permanente
+                       </button>
+                    )}
+                    {canCancel && (
+                      <button onClick={() => handleStatusChange(selectedOrder.id, "cancelled", "Cancelado")} disabled={updating} className="px-6 py-3 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">
+                        Declinar Orden
+                      </button>
+                    )}
+                    {!isPaymentApproved && selectedOrder.orderStatus !== "cancelled" && selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && (
+                      <span className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 rounded-xl">
+                        ⚠ Requiere pago aprobado para enviar
+                      </span>
+                    )}
+                   </div>
+
+                  <div className="flex gap-4">
+                    {canShip && (
+                       <>
+                          <button
+                            onClick={() => handleStatusChange(selectedOrder.id, "shipped", "Enviado")}
+                            disabled={updating}
+                            className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40"
+                          >
+                             Marcar como Enviado
+                          </button>
+
+                          <button
+                            onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")}
+                            disabled={updating}
+                            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-lg shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40"
+                          >
+                             Finalizar Pedido
+                          </button>
+                       </>
+                    )}
+                     {canComplete && (
+                        <button
+                           onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")}
                           disabled={updating} 
-                          className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40"
+                          className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all"
                         >
-                           Marcar como Enviado
-                        </button>
-                        
-                        <button 
-                          onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")} 
-                          disabled={updating} 
-                          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-lg shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40"
-                        >
-                           Finalizar Pedido
-                        </button>
-                     </>
-                  )}
-                  {selectedOrder.orderStatus === "shipped" && (
-                     <button 
-                        onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")} 
-                        disabled={updating} 
-                        className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all"
-                      >
-                        Confirmar Entrega Manual
-                     </button>
-                  )}
-               </div>
-            </div>}
+                          Confirmar Entrega Manual
+                       </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
          </div>
       </div>
     );

@@ -175,6 +175,42 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    // ── Fulfillment gating: validate state transitions ──────────────────────
+    const isPaymentApproved = order.paymentStatus === "paid" || order.adminReviewStatus === "approved";
+    const requestedOrderStatus = orderStatus || order.orderStatus;
+    const isShippedTransition = requestedOrderStatus === "shipped" && order.orderStatus !== "shipped";
+    const isCompletedTransition = requestedOrderStatus === "completed" && order.orderStatus !== "completed";
+
+    if ((isShippedTransition || isCompletedTransition) && !isPaymentApproved) {
+      return NextResponse.json(
+        {
+          error: "INVALID_ORDER_TRANSITION",
+          message: "El pedido no puede cambiar a ese estado con el pago o estado actual.",
+        },
+        { status: 409 }
+      );
+    }
+
+    if (isShippedTransition && order.orderStatus !== "processing") {
+      return NextResponse.json(
+        {
+          error: "INVALID_ORDER_TRANSITION",
+          message: "El pedido no puede cambiar a ese estado con el pago o estado actual.",
+        },
+        { status: 409 }
+      );
+    }
+
+    if (isCompletedTransition && order.orderStatus !== "shipped") {
+      return NextResponse.json(
+        {
+          error: "INVALID_ORDER_TRANSITION",
+          message: "El pedido no puede cambiar a ese estado con el pago o estado actual.",
+        },
+        { status: 409 }
+      );
+    }
+
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: {
