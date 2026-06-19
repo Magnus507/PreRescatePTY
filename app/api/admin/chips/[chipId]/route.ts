@@ -131,14 +131,84 @@ export async function PATCH(
     const { ownerUserId, shortCode, status: oldStatus } = originalChip || {};
 
     if (shouldDelete) {
-        // Handle dependencies before deleting the chip to avoid foreign key errors
-        await prisma.$transaction([
-          prisma.chipClaimToken.deleteMany({ where: { chipId } }),
-          prisma.scanEvent.deleteMany({ where: { chipId } }),
-          prisma.notification.deleteMany({ where: { chipId } }),
-          prisma.chip.delete({ where: { id: chipId } })
-        ]);
-        // Invalidate owner's cache after deletion
+        // HARDENED DELETE: Verify chip is safe to delete before any mutation
+        const chipForDeletion = await prisma.chip.findUnique({
+          where: { id: chipId },
+          select: {
+            id: true,
+            status: true,
+            ownerUserId: true,
+            assignedProfileId: true,
+            serviceStartDate: true,
+            serviceEndDate: true,
+            activatedAt: true,
+            pointOfSaleId: true,
+            consignedAt: true,
+            _count: {
+              select: {
+                claimTokens: true,
+                scanEvents: true,
+                notifications: true,
+              },
+            },
+          },
+        });
+
+        if (!chipForDeletion) {
+          return NextResponse.json({ error: "Chip no encontrado" }, { status: 404 });
+        }
+
+        // Build list of reasons why this chip cannot be deleted
+        const reasons: string[] = [];
+
+        if (chipForDeletion.status !== "inventory") {
+          reasons.push("El estado del chip no es 'inventario'");
+        }
+        if (chipForDeletion.ownerUserId) {
+          reasons.push("Tiene un propietario asignado");
+        }
+        if (chipForDeletion.assignedProfileId) {
+          reasons.push("Tiene un perfil clínico asignado");
+        }
+        if (chipForDeletion.serviceStartDate) {
+          reasons.push("Tiene fecha de inicio de servicio");
+        }
+        if (chipForDeletion.serviceEndDate) {
+          reasons.push("Tiene fecha de vencimiento de servicio");
+        }
+        if (chipForDeletion.activatedAt) {
+          reasons.push("Ha sido activado");
+        }
+        if (chipForDeletion.pointOfSaleId) {
+          reasons.push("Está consignado en un punto de venta");
+        }
+        if (chipForDeletion.consignedAt) {
+          reasons.push("Tiene registro de consignación");
+        }
+        if (chipForDeletion._count.claimTokens > 0) {
+          reasons.push("Tiene códigos de activación asociados");
+        }
+        if (chipForDeletion._count.scanEvents > 0) {
+          reasons.push("Tiene historial de escaneos");
+        }
+        if (chipForDeletion._count.notifications > 0) {
+          reasons.push("Tiene historial de notificaciones");
+        }
+
+        if (reasons.length > 0) {
+          return NextResponse.json(
+            {
+              error: "CHIP_NOT_SAFE_TO_DELETE",
+              message: "Este chip no puede eliminarse porque tiene asignaciones, relaciones o historial asociado.",
+              reasons,
+            },
+            { status: 409 }
+          );
+        }
+
+        // Chip is safe to delete: truly virgin inventory record
+        await prisma.chip.delete({ where: { id: chipId } });
+        // Invalidate owner's cache after deletion (if any)
         if (ownerUserId) await AccountStateService.invalidateCache(ownerUserId);
       return NextResponse.json({ message: "Chip eliminado permanentemente" });
     }

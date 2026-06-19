@@ -1,9 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Circle, Copy, Cpu, Loader2, Package, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { CheckCircle2, Copy, Loader2, Package, Plus, QrCode, RefreshCw, Search, Trash2, Link, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { ChipAdmin } from "../../_types/admin";
 import { chipsService, PointOfSaleOption } from "../../_services/domains/chips.service";
 import { CreateBatchSection } from "./CreateBatchSection";
+import { getChipPublicUrl } from "../../_utils/chip-url";
+import { canDeleteInventoryChip } from "../../_utils/delete-eligibility";
+import { QrPreviewModal } from "../modals/QrPreviewModal";
+import { ChipDetailsDrawer } from "../details/ChipDetailsDrawer";
+import { DeleteConfirmModal } from "../modals/DeleteConfirmModal";
 
 type InventoryView = "available" | "reserved" | "activated" | "returned" | "damaged" | "pointOfSale";
 
@@ -88,6 +93,11 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
   const [consignModalOpen, setConsignModalOpen] = useState(false);
   const [selectedPointOfSaleId, setSelectedPointOfSaleId] = useState("");
   const [consignmentSubmitting, setConsignmentSubmitting] = useState(false);
+  const [qrModalChip, setQrModalChip] = useState<InventoryItem | null>(null);
+  const [detailsDrawerChip, setDetailsDrawerChip] = useState<InventoryItem | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [deleteConfirmChip, setDeleteConfirmChip] = useState<InventoryItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadView = useCallback(async (view: InventoryView, search = "") => {
     setLoadingView(true);
@@ -267,17 +277,6 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     toast.success("Código copiado");
   };
 
-  const handleTogglePhysical = async (id: string, currentState: boolean) => {
-    try {
-      await chipsService.updatePhysicalStatus(id, !currentState);
-      toast.success(!currentState ? "Marcado como Físico" : "Marcado como Digital");
-      await loadView(activeView, query);
-      await loadSummary();
-    } catch {
-      toast.error("No se pudo actualizar tipo físico/digital");
-    }
-  };
-
   const handleSaveInternalLabel = async (id: string, value: string) => {
     try {
       await fetch("/api/admin/chips/inventory", {
@@ -330,21 +329,43 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
     });
   };
 
-  const handleDelete = async (chip: InventoryItem) => {
-    const confirmed = window.confirm("Esta acción eliminará el chip disponible del inventario. No se puede deshacer.");
-    if (!confirmed) return;
+  const handleDeleteClick = (chip: InventoryItem) => {
+    const eligibility = canDeleteInventoryChip(chip);
+    if (!eligibility.canDelete) {
+      toast.error(
+        <div>
+          <p className="font-black">No se puede eliminar este chip</p>
+          <p className="text-[10px] mt-1 opacity-80">{eligibility.reasons[0]}</p>
+        </div>
+      );
+      return;
+    }
+    setDeleteConfirmChip(chip);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmChip) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/admin/chips/${chip.id}`, {
+      const res = await fetch(`/api/admin/chips/${deleteConfirmChip.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ delete: true }),
       });
-      if (!res.ok) throw new Error("Error al eliminar");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const message = data?.message || data?.error || "Error al eliminar";
+        throw new Error(message);
+      }
       toast.success("Chip eliminado permanentemente");
+      setDeleteConfirmChip(null);
       await loadView(activeView, query);
       await loadSummary();
-    } catch {
-      toast.error("No se pudo eliminar el chip");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "No se pudo eliminar el chip";
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -571,9 +592,9 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                       {!isPrintRole && <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Sel.</th>}
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Etiqueta interna</th>
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">ID público</th>
-                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Serial</th>
                       <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Código activación</th>
-                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Lote</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Link / QR</th>
                       <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
                     </tr>
                   )}
@@ -675,6 +696,7 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                                 onChange={() => toggleSelected(c)}
                                 className="h-4 w-4 rounded border-slate-300"
                                 title={!c.isPhysical ? "No se permite consignar digitales" : "Seleccionar"}
+                                aria-label={`Seleccionar chip ${c.shortCode}`}
                               />
                             </td>
                           )}
@@ -695,36 +717,70 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                           <td className="px-6 py-4">
                             <div className="font-black text-slate-900 dark:text-white">{c.shortCode}</div>
                           </td>
-                          <td className="px-6 py-4 text-xs font-mono text-slate-500">#{c.serialPublic}</td>
                           <td className="px-6 py-4 font-mono text-xs">{c.activationCode || c.claimTokens?.[0]?.activationCode || "—"}</td>
-                          <td className="px-6 py-4 text-xs">{c.batchId || "—"}</td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                                c.isPhysical
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
+                              {c.isPhysical ? "Físico" : "Digital"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={async () => {
+                                  const url = getChipPublicUrl(c.shortCode);
+                                  try {
+                                    await navigator.clipboard.writeText(url);
+                                    setCopiedLinkId(c.id);
+                                    setTimeout(() => setCopiedLinkId(null), 2000);
+                                    toast.success("Enlace copiado");
+                                  } catch {
+                                    toast.error("No se pudo copiar el enlace");
+                                  }
+                                }}
+                                className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+                                title="Copiar enlace del chip"
+                                aria-label={`Copiar enlace del chip ${c.shortCode}`}
+                              >
+                                {copiedLinkId === c.id ? (
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                ) : (
+                                  <Link className="h-4 w-4" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setQrModalChip(c)}
+                                className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+                                title="Ver QR"
+                                aria-label={`Ver QR del chip ${c.shortCode}`}
+                              >
+                                <QrCode className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => copy(c.shortCode)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar ID público">
-                                <Copy className="h-4 w-4" />
-                              </button>
-                              <button onClick={() => copy(c.activationCode || c.claimTokens?.[0]?.activationCode || null)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar código">
-                                <Copy className="h-4 w-4" />
-                              </button>
                               <button
-                                onClick={() => handleTogglePhysical(c.id, c.isPhysical)}
-                                className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${c.isPhysical ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"}`}
-                                title={c.isPhysical ? "Marcar como digital" : "Marcar como físico"}
+                                onClick={() => setDetailsDrawerChip(c)}
+                                className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                title="Ver detalle"
+                                aria-label={`Ver detalle del chip ${c.shortCode}`}
                               >
-                                {c.isPhysical ? <CheckCircle2 className="h-3.5 w-3.5 inline mr-1" /> : <Circle className="h-3.5 w-3.5 inline mr-1" />}
-                                {c.isPhysical ? "Físico" : "Digital"}
-                              </button>
-                              <button onClick={() => loadChipDetail(c.id)} className="p-2 rounded-lg bg-primary/10 text-primary" title="Ver detalle">
-                                <Cpu className="h-4 w-4" />
+                                <Eye className="h-4 w-4" />
                               </button>
                               <button
-                                onClick={() => handleDelete(c)}
-                                className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200"
+                                onClick={() => handleDeleteClick(c)}
+                                className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
                                 title="Eliminar"
+                                aria-label={`Eliminar chip ${c.shortCode}`}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
-                              {/* PRE-LAUNCH: Botón Asignar directo oculto */}
                             </div>
                           </td>
                         </>
@@ -860,6 +916,40 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* QR Preview Modal */}
+          {qrModalChip && (
+            <QrPreviewModal
+              shortCode={qrModalChip.shortCode}
+              internalLabel={qrModalChip.internalLabel}
+              isPhysical={qrModalChip.isPhysical}
+              onClose={() => setQrModalChip(null)}
+            />
+          )}
+
+          {/* Chip Details Drawer */}
+          {detailsDrawerChip && (
+            <ChipDetailsDrawer
+              chip={detailsDrawerChip}
+              onClose={() => setDetailsDrawerChip(null)}
+              formatDate={formatDate}
+              formatDateTime={formatDateTime}
+            />
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {deleteConfirmChip && (
+            <DeleteConfirmModal
+              chip={{
+                id: deleteConfirmChip.id,
+                shortCode: deleteConfirmChip.shortCode,
+                internalLabel: deleteConfirmChip.internalLabel,
+              }}
+              onConfirm={handleDeleteConfirm}
+              onCancel={() => setDeleteConfirmChip(null)}
+              isDeleting={isDeleting}
+            />
           )}
 
 {/* PRE-LAUNCH: Modal Asignar directo completamente oculto */}
