@@ -108,12 +108,14 @@ export function PedidosSection() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [reviewNote, setReviewNote] = useState("");
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'paid' | 'rejected' | 'completed'>('all');
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
+  const initializedOrderIdRef = useRef<string | null>(null);
 
   const loadOrders = useCallback(async (options?: { silent?: boolean }) => {
     const isSilent = options?.silent ?? false;
@@ -123,17 +125,13 @@ export function PedidosSection() {
       const res = await fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       setOrders(data.orders || []);
-      if (selectedOrder) {
-        const refreshedSelectedOrder = (data.orders || []).find((o: Order) => o.id === selectedOrder.id) || null;
-        setSelectedOrder(refreshedSelectedOrder);
-      }
     } catch {
       toast.error(isSilent ? "No se pudo actualizar pedidos" : "Error al cargar pedidos");
     } finally {
       if (!isSilent) setLoading(false);
       if (isSilent) setRefreshing(false);
     }
-  }, [selectedOrder]);
+  }, []);
 
   useEffect(() => {
     loadOrders();
@@ -143,11 +141,13 @@ export function PedidosSection() {
     loadOrdersRef.current = loadOrders;
   }, [loadOrders]);
 
+  // Initialize review note only when opening a different order
   useEffect(() => {
-    if (selectedOrder) {
+    if (selectedOrder && selectedOrder.id !== initializedOrderIdRef.current) {
+      initializedOrderIdRef.current = selectedOrder.id;
       setReviewNote(selectedOrder.adminReviewNotes || "");
     }
-  }, [selectedOrder]);
+  }, [selectedOrder?.id]);
 
   useEffect(() => {
     const handleWindowFocus = () => {
@@ -159,13 +159,13 @@ export function PedidosSection() {
   }, []);
 
   useEffect(() => {
-    if (selectedOrder) return;
+    if (viewMode === "detail") return;
     const interval = window.setInterval(() => {
       loadOrders({ silent: true });
     }, 30000);
 
     return () => window.clearInterval(interval);
-  }, [selectedOrder, loadOrders]);
+  }, [viewMode, loadOrders]);
 
   const handleStatusChange = async (id: string, newStatus: string, actionText: string) => {
     const isCompleted = newStatus === "completed";
@@ -207,9 +207,11 @@ export function PedidosSection() {
   };
 
   const handleBackToOrders = useCallback(() => {
+    setViewMode("list");
     setSelectedOrder(null);
     setReviewNote("");
     setReviewAction(null);
+    initializedOrderIdRef.current = null;
   }, []);
 
   const handleApprove = async () => {
@@ -339,7 +341,7 @@ export function PedidosSection() {
     );
   }
 
-  if (selectedOrder) {
+  if (viewMode === "detail" && selectedOrder) {
     const isCorporateOrder = selectedOrder.orderType === "corporate_employee_purchase";
     const isCorporatePaymentApproved =
       selectedOrder.paymentStatus === "paid" &&
@@ -1051,7 +1053,7 @@ export function PedidosSection() {
               { id: 'rejected', label: 'Rejected' },
               { id: 'completed', label: 'Completados' }
             ] as const).map(tab => (
-              <button 
+              <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -1159,8 +1161,11 @@ export function PedidosSection() {
                          {o.paymentProofUrl && <p className="text-[9px] font-black text-emerald-600 uppercase mt-1">✓ Pago Subido</p>}
                       </td>
                       <td className="p-3 pr-5">
-                         <button 
-                           onClick={() => setSelectedOrder(o)}
+                         <button
+                           onClick={() => {
+                             setSelectedOrder(o);
+                             setViewMode("detail");
+                           }}
                            className="p-2 border border-border rounded-lg hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-center"
                          >
                             <View className="h-4 w-4" />
