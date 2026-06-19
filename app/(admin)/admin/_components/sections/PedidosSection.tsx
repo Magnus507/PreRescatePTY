@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status";
 import { resolveImageSrc } from "@/lib/resolve-image-src";
-import { PaymentConfirmModal } from "../modals/PaymentConfirmModal";
 import { ReceiptModal } from "../modals/ReceiptModal";
 import { formatShippingAddress, getPaymentMethodLabel, getPaymentStatusLabel } from "../../_utils/order-helpers";
 
@@ -113,8 +112,8 @@ export function PedidosSection() {
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'paid' | 'rejected' | 'completed'>('all');
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
-  const [paymentModal, setPaymentModal] = useState<{ type: "approve" | "reject"; orderId: string } | null>(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
+  const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
 
   const loadOrders = useCallback(async (options?: { silent?: boolean }) => {
     const isSilent = options?.silent ?? false;
@@ -207,42 +206,84 @@ export function PedidosSection() {
     }
   };
 
-  const handleReviewAction = async (id: string, action: "approve" | "reject") => {
-    if (selectedOrder?.provider !== "manual") {
-      toast.error("La revisión manual solo aplica a órdenes con provider manual.");
-      return;
-    }
-    setPaymentModal({ type: action, orderId: id });
-  };
+  const handleBackToOrders = useCallback(() => {
+    setSelectedOrder(null);
+    setReviewNote("");
+    setReviewAction(null);
+  }, []);
 
-  const handlePaymentConfirm = async () => {
-    if (!paymentModal || !selectedOrder) return;
-    const action = paymentModal.type;
+  const handleApprove = async () => {
+    if (!selectedOrder || selectedOrder.provider !== "manual") return;
+    setReviewAction("approve");
     setUpdating(true);
     try {
-      const res = await fetch(`/api/admin/orders/${paymentModal.orderId}/${action}`, {
+      const res = await fetch(`/api/admin/orders/${selectedOrder.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          adminReviewNotes: reviewNote,
+          adminReviewNotes: reviewNote.trim() || undefined,
         }),
       });
 
       if (res.ok) {
-        toast.success(action === "approve" ? "Pago aprobado correctamente." : "Pago rechazado correctamente.");
-        setPaymentModal(null);
+        toast.success("Pago aprobado correctamente.");
         setSelectedOrder(null);
         loadOrders();
-      } else {
+      } else if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "Error al actualizar la revisión");
+        toast.error(data?.message || "El pago ya fue revisado o el pedido cambió de estado.");
+      } else if (res.status === 403) {
+        toast.error("No tienes permiso para revisar este pago.");
+      } else if (res.status === 404) {
+        toast.error("El pedido ya no está disponible.");
+      } else {
+        toast.error("No se pudo actualizar el pago. Inténtalo nuevamente.");
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "No se pudo actualizar el pago. Inténtalo nuevamente.";
-      toast.error(message);
-      throw err;
+    } catch {
+      toast.error("No se pudo actualizar el pago. Inténtalo nuevamente.");
     } finally {
       setUpdating(false);
+      setReviewAction(null);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedOrder || selectedOrder.provider !== "manual") return;
+    const trimmedNote = reviewNote.trim();
+    if (!trimmedNote) {
+      toast.error("Indique el motivo del rechazo.");
+      return;
+    }
+    setReviewAction("reject");
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${selectedOrder.id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminReviewNotes: trimmedNote,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Pago rechazado correctamente.");
+        setSelectedOrder(null);
+        loadOrders();
+      } else if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.message || "El pago ya fue revisado o el pedido cambió de estado.");
+      } else if (res.status === 403) {
+        toast.error("No tienes permiso para revisar este pago.");
+      } else if (res.status === 404) {
+        toast.error("El pedido ya no está disponible.");
+      } else {
+        toast.error("No se pudo actualizar el pago. Inténtalo nuevamente.");
+      }
+    } catch {
+      toast.error("No se pudo actualizar el pago. Inténtalo nuevamente.");
+    } finally {
+      setUpdating(false);
+      setReviewAction(null);
     }
   };
 
@@ -308,9 +349,10 @@ export function PedidosSection() {
          {/* Integrated Admin Dashboard Header */}
          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-               <button 
-                 onClick={() => setSelectedOrder(null)}
-               className="h-10 w-10 flex items-center justify-center bg-white border border-border rounded-xl hover:bg-slate-50 transition-all group"
+               <button
+                 type="button"
+                 onClick={handleBackToOrders}
+                 className="h-10 w-10 flex items-center justify-center bg-white border border-border rounded-xl hover:bg-slate-50 transition-all group"
                >
                   <RefreshCw className="h-5 w-5 text-muted-foreground group-hover:rotate-180 transition-transform duration-500" />
                </button>
@@ -340,8 +382,9 @@ export function PedidosSection() {
                </div>
             </div>
 
-            <button 
-              onClick={() => setSelectedOrder(null)}
+            <button
+              type="button"
+              onClick={handleBackToOrders}
               className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
             >
                Volver al Listado
@@ -421,17 +464,17 @@ export function PedidosSection() {
                        <div className="flex gap-3">
                          <button
                            disabled={updating || !canAdminApproveManual(selectedOrder)}
-                           onClick={() => handleReviewAction(selectedOrder.id, "approve")}
+                           onClick={handleApprove}
                            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                          >
-                           Aprobar pago corporativo
+                           {reviewAction === "approve" ? "Aprobando..." : "Aprobar pago corporativo"}
                          </button>
                          <button
                            disabled={updating || !canAdminRejectManual(selectedOrder)}
-                           onClick={() => handleReviewAction(selectedOrder.id, "reject")}
+                           onClick={handleReject}
                            className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
                          >
-                           Rechazar pago
+                           {reviewAction === "reject" ? "Rechazando..." : "Rechazar pago"}
                          </button>
                        </div>
                      </div>
@@ -759,17 +802,17 @@ export function PedidosSection() {
                                <div className="flex flex-col gap-2">
                                  <button
                                     disabled={updating || !canAdminApproveManual(selectedOrder)}
-                                   onClick={() => handleReviewAction(selectedOrder.id, "approve")}
+                                   onClick={handleApprove}
                                     className="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                                  >
-                                   Aprobar Pago
+                                   {reviewAction === "approve" ? "Aprobando..." : "Aprobar Pago"}
                                  </button>
                                  <button
                                     disabled={updating || !canAdminRejectManual(selectedOrder)}
-                                   onClick={() => handleReviewAction(selectedOrder.id, "reject")}
+                                   onClick={handleReject}
                                     className="w-full px-4 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
                                  >
-                                   Rechazar Pago
+                                   {reviewAction === "reject" ? "Rechazando..." : "Rechazar Pago"}
                                  </button>
                               </div>
                               </>
@@ -777,19 +820,6 @@ export function PedidosSection() {
                         </div>
                      </section>
                   </div>
-
-                  {/* Payment Confirmation Modal */}
-                  {paymentModal && selectedOrder && (
-                    <PaymentConfirmModal
-                      type={paymentModal.type}
-                      orderNumber={selectedOrder.orderNumber}
-                      note={reviewNote}
-                      onConfirm={handlePaymentConfirm}
-                      onCancel={() => setPaymentModal(null)}
-                      isProcessing={updating}
-                      onNoteChange={setReviewNote}
-                    />
-                  )}
 
                   {/* Receipt Modal */}
                   {receiptModalOrder && (
