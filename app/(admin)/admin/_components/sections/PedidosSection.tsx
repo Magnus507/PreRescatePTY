@@ -10,7 +10,7 @@ import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status"
 import { resolveImageSrc } from "@/lib/resolve-image-src";
 import { PaymentConfirmModal } from "../modals/PaymentConfirmModal";
 import { ReceiptModal } from "../modals/ReceiptModal";
-import { formatShippingAddress, getPaymentMethodLabel, getPaymentStatusLabel, getOrderStatusLabel } from "../../_utils/order-helpers";
+import { formatShippingAddress, getPaymentMethodLabel, getPaymentStatusLabel } from "../../_utils/order-helpers";
 
 interface CorporateEmployeeItem {
   id: string;
@@ -348,8 +348,8 @@ export function PedidosSection() {
             </button>
          </div>
 
-         <div className="bg-card w-full overflow-hidden rounded-[2rem] border border-border shadow-lg min-h-[70vh] flex flex-col">
-            <div className="flex-1 p-6 lg:p-8">
+         <div className="flex-1">
+            <div className="space-y-6">
                {/* ==================== CORPORATE ORDER DETAIL ==================== */}
                {isCorporateOrder && (
                  <div className="space-y-6">
@@ -395,10 +395,10 @@ export function PedidosSection() {
                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary mb-3">Comprobante de pago</h3>
                        <div className="aspect-video max-w-md rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                         <img 
-                           src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")} 
-                           alt="Pago" 
-                           className="object-contain w-full h-full p-2" 
+                         <img
+                           src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")}
+                           alt="Pago"
+                           className="object-contain w-full h-full p-2"
                            onError={(e) => { if (e.currentTarget.src !== selectedOrder.paymentProofUrl) e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
                          />
                        </div>
@@ -625,16 +625,15 @@ export function PedidosSection() {
 
                {/* ==================== NORMAL ORDER DETAIL ==================== */}
                {!isCorporateOrder && (
-               <div className="grid grid-cols-1 lg:grid-cols-16 gap-6">
-                  
-                  {/* COL 1: Logistics & Delivery */}
-                  <div className="lg:col-span-4 space-y-6">
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* COL 1: Buyer & Delivery */}
+                  <div className="space-y-6">
                      <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                            <div className="h-1.5 w-6 bg-primary rounded-full" />
                            Destinatario
                         </h3>
-                        <div className="bg-muted/30 p-5 rounded-[1.75rem] border border-border/50 relative overflow-hidden group">
+                        <div className="bg-muted/30 p-5 rounded-[1.75rem] border border-border/50">
                            <p className="text-2xl font-black tracking-tight mb-1 leading-none">{selectedOrder.customerName || "—"}</p>
                            <p className="text-sm font-medium text-muted-foreground">{selectedOrder.customerEmail}</p>
                            <div className="mt-4 flex flex-col gap-2">
@@ -657,54 +656,93 @@ export function PedidosSection() {
                            Dirección de Envío
                         </h3>
                         <div className="bg-white dark:bg-slate-900 p-5 rounded-[1.75rem] border border-border shadow-sm">
-                           <div className="flex items-start gap-3 mb-4">
+                           <div className="flex items-start gap-3">
                               <div className="h-10 w-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500 flex-shrink-0">
                                  <Truck className="h-6 w-6" />
                               </div>
-                              <div>
-                                 <p className="text-base font-bold leading-tight tracking-tight">{formatShippingAddress(selectedOrder)}</p>
-                              </div>
+                              <p className="text-base font-bold leading-tight tracking-tight">{formatShippingAddress(selectedOrder)}</p>
                            </div>
-                           {selectedOrder.shippingNotes && (
-                              <div className="p-3 bg-muted/50 rounded-xl border border-dashed border-border">
-                                 <p className="text-[10px] font-bold text-muted-foreground italic leading-relaxed">&quot;{selectedOrder.shippingNotes}&quot;</p>
-                              </div>
-                           )}
                         </div>
                      </section>
                   </div>
 
-                  <div className="lg:col-span-4 space-y-6">
+                  {/* COL 2: Payment, Receipt, Total, Review */}
+                  <div className="lg:col-span-2 space-y-6">
                      <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                            <div className="h-1.5 w-6 bg-primary rounded-full" />
                            Revisión de Pago
                         </h3>
                         <div className="bg-white dark:bg-slate-900 p-5 rounded-[1.75rem] border border-border shadow-sm space-y-3">
-                           <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Método de Pago</p>
-                              <p className="text-base font-black text-slate-900 dark:text-white">{getPaymentMethodLabel(selectedOrder.paymentMethod)}</p>
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Referencia Manual</p>
-                              <p className="text-sm font-bold text-slate-900 dark:text-white break-all">{selectedOrder.manualPaymentReference || "—"}</p>
-                           </div>
-                           <div className="grid grid-cols-2 gap-3">
-                              <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
-                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de orden</p>
-                                 <p className="text-sm font-bold uppercase mt-2">{getOrderStatusLabel(selectedOrder.orderStatus)}</p>
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Método</p>
+                                 <p className="text-sm font-black text-slate-900 dark:text-white">{getPaymentMethodLabel(selectedOrder.paymentMethod)}</p>
                               </div>
-                              <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-950 border border-border">
-                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado de pago</p>
-                                 <p className="text-sm font-bold uppercase mt-2">{getPaymentStatusLabel(selectedOrder.paymentStatus)}</p>
+                              <div>
+                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Estado del pago</p>
+                                 <p className="text-sm font-black uppercase mt-0.5">{getPaymentStatusLabel(selectedOrder.paymentStatus)}</p>
                               </div>
                            </div>
+                           {selectedOrder.manualPaymentReference && (
+                             <div>
+                               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Referencia</p>
+                               <p className="text-sm font-bold text-slate-900 dark:text-white break-all">{selectedOrder.manualPaymentReference}</p>
+                             </div>
+                           )}
+                        </div>
+                     </section>
+
+                     <section className="space-y-4">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Comprobante
+                        </h3>
+                        {selectedOrder.paymentProofUrl ? (
+                           <div className="bg-white dark:bg-slate-900 p-4 rounded-[1.75rem] border border-border shadow-sm">
+                              <div className="aspect-video max-w-sm rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => setReceiptModalOrder(selectedOrder)}>
+                                 {/* eslint-disable-next-line @next/next/no-img-element */}
+                                 <img
+                                   src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")}
+                                   alt="Pago"
+                                   className="object-contain w-full h-full p-2"
+                                   onError={(e) => { if (e.currentTarget.src !== selectedOrder.paymentProofUrl) e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
+                                 />
+                              </div>
+                              <button onClick={() => setReceiptModalOrder(selectedOrder)} className="mt-3 w-full px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all">
+                                 Ver comprobante
+                              </button>
+                           </div>
+                        ) : (
+                           <div className="bg-white dark:bg-slate-900 p-6 rounded-[1.75rem] border border-border shadow-sm text-center">
+                              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">No se adjuntó comprobante de pago.</p>
+                           </div>
+                        )}
+                     </section>
+
+                     <section className="space-y-4">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Total del Pedido
+                        </h3>
+                        <div className="bg-slate-900 dark:bg-black p-5 rounded-[1.75rem] text-white shadow-lg">
+                           <p className="text-3xl font-black tracking-tighter text-primary">${selectedOrder.amount.toFixed(2)}</p>
+                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mt-1">USD</p>
+                        </div>
+                     </section>
+
+                     <section className="space-y-4">
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
+                           <div className="h-1.5 w-6 bg-primary rounded-full" />
+                           Decisión del Pago
+                        </h3>
+                        <div className="bg-white dark:bg-slate-900 p-5 rounded-[1.75rem] border border-border shadow-sm space-y-3">
                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Notas de revisión</p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Nota de revisión</p>
                               <textarea
                                 value={reviewNote}
                                 onChange={(e) => setReviewNote(e.target.value)}
-                                className="w-full min-h-[90px] rounded-xl border border-border bg-slate-50 dark:bg-slate-950 p-3 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10"
+                                className="w-full min-h-[80px] rounded-xl border border-border bg-slate-50 dark:bg-slate-950 p-3 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10"
                                 placeholder="Agrega una observación para la aprobación o rechazo..."
                               />
                            </div>
@@ -718,18 +756,18 @@ export function PedidosSection() {
                            {selectedOrder.provider === "manual" && canAdminApproveManual(selectedOrder) && (
                               <>
                                <p className="text-[10px] text-amber-700 font-semibold">Recomendado: indique el motivo del rechazo.</p>
-                               <div className="flex flex-col gap-2 sm:flex-row">
+                               <div className="flex flex-col gap-2">
                                  <button
                                     disabled={updating || !canAdminApproveManual(selectedOrder)}
                                    onClick={() => handleReviewAction(selectedOrder.id, "approve")}
-                                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
+                                    className="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                                  >
                                    Aprobar Pago
                                  </button>
                                  <button
                                     disabled={updating || !canAdminRejectManual(selectedOrder)}
                                    onClick={() => handleReviewAction(selectedOrder.id, "reject")}
-                                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
+                                    className="w-full px-4 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
                                  >
                                    Rechazar Pago
                                  </button>
@@ -766,7 +804,7 @@ export function PedidosSection() {
                   {selectedOrder.items.some(item => item.profile || 
                     ['sticker','llavero','tarjeta','credencial','brazalete'].includes(item.productType.toLowerCase())
                   ) && (
-                    <div className="lg:col-span-4 space-y-6">
+                    <div className="lg:col-span-3 space-y-6">
                       <section className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
                           <div className="h-1.5 w-6 bg-primary rounded-full" />
@@ -889,42 +927,6 @@ export function PedidosSection() {
                       </section>
                     </div>
                   )}
-
-                  {/* COL 3: Summary & Evidence */}
-                  <div className="lg:col-span-4 space-y-6">
-                     <section className="space-y-4">
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
-                           <div className="h-1.5 w-6 bg-primary rounded-full" />
-                           Monto Total
-                        </h3>
-                        <div className="bg-slate-900 dark:bg-black p-6 rounded-[1.75rem] text-white shadow-lg">
-                           <p className="text-4xl font-black tracking-tighter text-primary mb-1">${selectedOrder.amount.toFixed(2)}</p>
-                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Dólares Americanos (USD)</p>
-                        </div>
-                     </section>
-
-                     <section className="space-y-4">
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary flex items-center gap-3">
-                           <div className="h-1.5 w-6 bg-primary rounded-full" />
-                           Comprobante
-                        </h3>
-                        {selectedOrder.paymentProofUrl ? (
-                           <div className="aspect-video w-full rounded-[1.5rem] border border-border overflow-hidden bg-slate-100 shadow-sm cursor-zoom-in" onClick={() => setReceiptModalOrder(selectedOrder)}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img 
-                                src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")} 
-                                alt="Pago" 
-                                className="object-contain w-full h-full p-2" 
-                                onError={(e) => { if (e.currentTarget.src !== selectedOrder.paymentProofUrl) e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
-                              />
-                           </div>
-                        ) : (
-                           <div className="p-6 rounded-[1.5rem] border-2 border-dashed border-border text-center text-muted-foreground">
-                              <p className="text-xs font-black uppercase tracking-widest">Sin Comprobante</p>
-                           </div>
-                        )}
-                     </section>
-                  </div>
 
                </div>
                )}

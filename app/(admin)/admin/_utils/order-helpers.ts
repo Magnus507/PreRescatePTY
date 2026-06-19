@@ -7,12 +7,27 @@ export function formatShippingAddress(order: {
   shippingAddress?: string | null;
   shippingNotes?: string | null;
 }): string {
-  const parts = [order.shippingCity, order.shippingAddress, order.shippingNotes]
+  const rawParts = [order.shippingCity, order.shippingAddress, order.shippingNotes]
     .map((part) => (part || "").trim())
     .filter((part) => part.length > 0);
 
-  if (parts.length === 0) return "Dirección no proporcionada";
-  return parts.join(" · ");
+  if (rawParts.length === 0) return "Dirección no proporcionada";
+
+  // Normalize for comparison: lowercase, collapse spaces, strip surrounding quotes
+  const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, " ").replace(/^["']|["']$/g, "").trim();
+
+  const seen = new Set<string>();
+  const uniqueParts: string[] = [];
+
+  for (const part of rawParts) {
+    const key = normalize(part);
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueParts.push(part);
+    }
+  }
+
+  return uniqueParts.join(" · ");
 }
 
 export function getPaymentMethodLabel(method?: string | null): string {

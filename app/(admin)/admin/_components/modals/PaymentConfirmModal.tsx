@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
 interface PaymentConfirmModalProps {
@@ -25,6 +26,12 @@ export const PaymentConfirmModal: React.FC<PaymentConfirmModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
     const modal = modalRef.current;
@@ -77,9 +84,9 @@ export const PaymentConfirmModal: React.FC<PaymentConfirmModalProps> = ({
 
   const isApprove = type === "approve";
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/50 p-4 sm:p-6 overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isProcessing) onCancel();
       }}
@@ -90,7 +97,7 @@ export const PaymentConfirmModal: React.FC<PaymentConfirmModalProps> = ({
         aria-modal="true"
         aria-labelledby="payment-modal-title"
         aria-describedby="payment-modal-desc"
-        className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-border p-6 shadow-2xl"
+        className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-border p-6 shadow-2xl my-[15vh] sm:my-auto max-h-[calc(100vh-2rem)] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -192,4 +199,7 @@ export const PaymentConfirmModal: React.FC<PaymentConfirmModalProps> = ({
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(modalContent, document.body);
 };

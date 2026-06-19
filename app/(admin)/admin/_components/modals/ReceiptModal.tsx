@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ExternalLink, Download, FileText } from "lucide-react";
 
 interface ReceiptModalProps {
@@ -16,6 +17,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
     const modal = modalRef.current;
@@ -76,20 +83,20 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   const isImage = receiptUrl && /\.(jpg|jpeg|png|gif|webp)$/i.test(receiptUrl);
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/70 p-4 sm:p-6 overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="receipt-modal-title"
-        className="w-full max-w-3xl max-h-[90vh] rounded-3xl bg-white dark:bg-slate-900 border border-border shadow-2xl flex flex-col"
-      >
+        <div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="receipt-modal-title"
+          className="w-full max-w-3xl max-h-[calc(100vh-2rem)] rounded-3xl bg-white dark:bg-slate-900 border border-border shadow-2xl flex flex-col my-[15vh] sm:my-auto overflow-y-auto"
+        >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -155,4 +162,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(modalContent, document.body);
 };
