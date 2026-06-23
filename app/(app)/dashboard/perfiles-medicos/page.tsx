@@ -8,6 +8,7 @@ import {
   Plus, Pencil, Trash2, Loader2, Save, X, ChevronLeft,
   UserRound, Phone, AlertCircle,
   ShieldCheck, Activity, PlusCircle, Smartphone, ExternalLink,
+  Brain, Footprints, MessageCircle,
 } from "lucide-react";
 import { Camera } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
@@ -775,22 +776,42 @@ function ProfileCard({
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                     <div className="px-3 py-1.5 rounded-xl bg-primary/5 border border-primary/10 text-[11px] font-black text-primary uppercase flex items-center gap-2">
-                        <Activity className="h-3.5 w-3.5" /> {profile.bloodType}
-                     </div>
-                     {profile.assignedChips.length > 0 ? (
-                       profile.assignedChips.map((c) => (
-                         <div key={c.id} className="px-3 py-1.5 rounded-xl bg-success/5 border border-success/10 text-[11px] font-black text-success uppercase flex items-center gap-2">
-                            <Smartphone className="h-3.5 w-3.5" /> {c.serialPublic}
+                   <div className="flex flex-wrap gap-2">
+                      <div className="px-3 py-1.5 rounded-xl bg-primary/5 border border-primary/10 text-[11px] font-black text-primary uppercase flex items-center gap-2">
+                         <Activity className="h-3.5 w-3.5" /> {profile.bloodType}
+                      </div>
+                      {profile.assignedChips.length > 0 ? (
+                        profile.assignedChips.map((c) => (
+                          <div key={c.id} className="px-3 py-1.5 rounded-xl bg-success/5 border border-success/10 text-[11px] font-black text-success uppercase flex items-center gap-2">
+                             <Smartphone className="h-3.5 w-3.5" /> {c.serialPublic}
+                          </div>
+                        ))
+                      ) : (
+                         <div className="px-3 py-1.5 rounded-xl bg-muted border border-border text-[11px] font-black text-muted-foreground uppercase flex items-center gap-2">
+                            <AlertCircle className="h-3.5 w-3.5" /> Sin Chip
                          </div>
-                       ))
-                     ) : (
-                        <div className="px-3 py-1.5 rounded-xl bg-muted border border-border text-[11px] font-black text-muted-foreground uppercase flex items-center gap-2">
-                           <AlertCircle className="h-3.5 w-3.5" /> Sin Chip
+                      )}
+                      {profile.hasCognitiveImpairment && (
+                        <div className="px-3 py-1.5 rounded-xl bg-amber-100 border border-amber-200 text-[11px] font-black text-amber-700 uppercase flex items-center gap-2">
+                           <Brain className="h-3.5 w-3.5" /> Alzheimer
                         </div>
-                     )}
-                  </div>
+                      )}
+                      {profile.hasWanderingRisk && (
+                        <div className="px-3 py-1.5 rounded-xl bg-orange-100 border border-orange-200 text-[11px] font-black text-orange-700 uppercase flex items-center gap-2">
+                           <Footprints className="h-3.5 w-3.5" /> Desorientación
+                        </div>
+                      )}
+                      {profile.isNonVerbal && (
+                        <div className="px-3 py-1.5 rounded-xl bg-violet-100 border border-violet-200 text-[11px] font-black text-violet-700 uppercase flex items-center gap-2">
+                           <MessageCircle className="h-3.5 w-3.5" /> No verbal
+                        </div>
+                      )}
+                      {profile.safeReturnInstructions && (
+                        <div className="px-3 py-1.5 rounded-xl bg-teal-100 border border-teal-200 text-[11px] font-black text-teal-700 uppercase flex items-center gap-2">
+                           <Footprints className="h-3.5 w-3.5" /> Retorno seguro
+                        </div>
+                      )}
+                   </div>
                </div>
 
                 <div className="flex items-center gap-2">

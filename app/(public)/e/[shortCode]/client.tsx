@@ -579,15 +579,15 @@ export default function EmergencyPage() {
             <div className="bg-white/20 backdrop-blur-xl rounded-[2.5rem] w-28 h-28 flex items-center justify-center mx-auto border border-white/30 shadow-2xl"><Activity className="h-14 w-14 text-white animate-pulse" /></div>
             <div className="space-y-1"><h1 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-none">PRE RESCUE ID</h1></div>
           </div>
-          <div className="space-y-4"><p className="text-xl font-medium text-white leading-relaxed px-4">¿Eres personal capacitado en <span className="font-black underline decoration-white/40">primera respuesta médica</span>?</p></div>
+          <div className="space-y-4"><p className="text-xl font-medium text-white leading-relaxed px-4">¿Cómo puedes ayudar?</p></div>
           <div className="grid grid-cols-1 gap-5">
-            <button onClick={() => setView('paramedic')} className="group relative w-full bg-white text-[#DA1A21] py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3">SÍ, soy Paramédico <ShieldCheck className="h-8 w-8" /></button>
-            <button onClick={() => setView('citizen')} className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest">No, soy un Ciudadano</button>
+            <button onClick={() => setView('paramedic')} className="group relative w-full bg-white text-[#DA1A21] py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3">Emergencia médica <ShieldCheck className="h-8 w-8" /></button>
+            <button onClick={() => setView('citizen')} className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest">Ayuda rápida</button>
             {(
               (profile?.vulnerabilityStatus) ||
               !!profile?.safeReturn?.instructions
             ) && (
-              <button onClick={() => setView('special')} className="inline-flex items-center justify-center gap-2 w-full py-6 bg-amber-500 text-white rounded-[2.5rem] font-black text-lg shadow-2xl hover:bg-amber-600 active:scale-95 transition-all uppercase tracking-wider">ASISTENCIA ESPECIAL / RETORNO SEGURO</button>
+              <button onClick={() => setView('special')} className="inline-flex items-center justify-center gap-2 w-full py-6 bg-amber-500 text-white rounded-[2.5rem] font-black text-lg shadow-2xl hover:bg-amber-600 active:scale-95 transition-all uppercase tracking-wider">Persona perdida / necesita asistencia</button>
             )}
           </div>
           <div className="pt-4 flex items-center justify-center gap-10 opacity-40"><div className="h-px bg-white flex-1" /><Droplets className="h-5 w-5" /><div className="h-px bg-white flex-1" /></div>
@@ -753,6 +753,7 @@ export default function EmergencyPage() {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-1000">
             <PatientMedicalCard profile={profile} isParamedic={false} />
             <SafeReturnCard safeReturn={profile.safeReturn} />
+            <CommunicationAssistanceCard vulnerabilityStatus={profile.vulnerabilityStatus} />
             <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 space-y-8">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100"><AlertTriangle className="h-7 w-7 text-amber-500" /></div>

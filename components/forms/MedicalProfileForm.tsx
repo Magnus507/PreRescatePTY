@@ -243,7 +243,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
   const renderSpecialAssistanceFields = () => (
     <div className="space-y-3">
-      <ToggleField label="Asistencia especial" checked={form.enableSpecialAssistance ?? false} onChange={(v) => { update("enableSpecialAssistance", v); if (v) { update("showVulnerabilityStatusPublic", true); update("showCommunicationStatusPublic", true); } }} />
+      <ToggleField label="Necesidades especiales" checked={form.enableSpecialAssistance ?? false} onChange={(v) => { update("enableSpecialAssistance", v); if (v) { update("showVulnerabilityStatusPublic", true); update("showCommunicationStatusPublic", true); } }} />
 
       {form.enableSpecialAssistance && (
         <div className="space-y-3">
@@ -267,7 +267,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
   const renderSafeReturnFields = () => (
     <div className="space-y-3">
-      <ToggleField label="Retorno seguro" checked={form.enableSafeReturn ?? false} onChange={(v) => {
+      <ToggleField label="Persona perdida / retorno a casa" checked={form.enableSafeReturn ?? false} onChange={(v) => {
         update("enableSafeReturn", v);
         if (v) {
           // auto-enable public visibility for safe return when user activates the feature
