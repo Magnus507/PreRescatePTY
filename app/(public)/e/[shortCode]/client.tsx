@@ -182,24 +182,9 @@ function PublicSpecialAssistanceCard({ profile, scanLocation, whatsappUrls }: { 
 
       <SpecialAssistanceBadges profile={profile} />
 
-      <div className="grid gap-3">
-        {profile.isMinor && (
-          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-black uppercase tracking-widest text-blue-700">Menor de edad</div>
-        )}
-        {vulnerability?.hasCognitiveImpairment && (
-          <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-black uppercase tracking-widest text-amber-800">Puede tener deterioro cognitivo</div>
-        )}
-        {vulnerability?.hasWanderingRisk && (
-          <div className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm font-black uppercase tracking-widest text-orange-800">Riesgo de desorientación</div>
-        )}
-        {vulnerability?.isNonVerbal && (
-          <div className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-black uppercase tracking-widest text-violet-800">Comunicación asistida</div>
-        )}
-      </div>
-
       {hasCommunicationInstructions && (
         <div className="rounded-[2rem] bg-violet-50 border border-violet-100 p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-violet-700 mb-2">Instrucciones de comunicación</p>
+          <p className="text-xs font-black uppercase tracking-widest text-violet-700 mb-2">Cómo ayudar</p>
           <p className="text-sm font-semibold text-slate-900 leading-relaxed whitespace-pre-wrap">{vulnerability.communicationAssistance}</p>
         </div>
       )}
