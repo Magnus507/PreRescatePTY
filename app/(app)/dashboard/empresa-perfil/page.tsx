@@ -530,17 +530,45 @@ export default function EmpresaPerfilPage() {
           {/* Company code field */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Código empresarial</label>
-            <input
-              className="w-full border rounded-xl px-3 py-2.5 text-sm font-bold tracking-widest uppercase"
-              placeholder="Ejemplo: ACP2026"
-              value={companyCode}
-              onChange={(e) => {
-                const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
-                setCompanyCode(val);
-              }}
-              maxLength={20}
-            />
-            <p className="text-xs text-muted-foreground">Este código lo usan tus empleados para solicitar vinculación a tu empresa.</p>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 border rounded-xl px-3 py-2.5 text-sm font-bold tracking-widest uppercase"
+                placeholder="Ejemplo: ACP2026"
+                value={companyCode}
+                onChange={(e) => {
+                  const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+                  setCompanyCode(val);
+                }}
+                maxLength={20}
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!companyCode) return;
+                  try {
+                    await navigator.clipboard.writeText(companyCode);
+                    toast.success("Código copiado al portapapeles");
+                  } catch {
+                    toast.error("No se pudo copiar el código");
+                  }
+                }}
+                className="px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
+              >
+                Copiar código
+              </button>
+            </div>
+            <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 space-y-1">
+              <p className="text-xs font-bold text-indigo-800 uppercase tracking-widest">📌 ¿Para qué sirve este código?</p>
+              <p className="text-xs text-indigo-700">
+                Los empleados usan este código para <strong>solicitar vinculación</strong> a tu empresa desde su Dashboard → Empresas.
+              </p>
+              <p className="text-xs text-indigo-700">
+                Comparte este código <strong>solo en espacios internos</strong> (QR en oficinas, RRHH, comunicación interna). No lo publiques en sitios públicos a menos que quieras recibir solicitudes de cualquier persona.
+              </p>
+              <p className="text-xs text-indigo-600/80">
+                Al enviar el código, el empleado crea una solicitud que tú deberás aprobar o rechazar desde el panel de administración. Solo los empleados con vinculación <strong>activa y pagada</strong> podrán solicitar productos.
+              </p>
+            </div>
           </div>
           <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-200">
             <div className="space-y-1">
@@ -550,10 +578,10 @@ export default function EmpresaPerfilPage() {
                   checked={profile.showCompanyCode}
                   onChange={(e) => updateField("showCompanyCode", e.target.checked)}
                 />
-                Mostrar código empresarial
+                Mostrar código empresarial públicamente
               </label>
               <p className="text-xs text-amber-700">
-                Recomendado solo para espacios internos donde transiten empleados.
+                Si activas esta opción, el código se mostrará en el perfil público de la empresa (<code className="text-[10px]">/empresa/xxx</code>). Recomendado solo si quieres que cualquier empleado pueda solicitarte vinculación sin necesidad de QR interno.
               </p>
             </div>
           </div>

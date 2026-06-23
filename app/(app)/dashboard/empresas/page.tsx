@@ -347,6 +347,23 @@ export default function EmpresasPage() {
     employeeNote: "",
   });
 
+  // Texto explicativo del flujo de vinculación
+  const joinFlowInfo = (
+    <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-2 text-xs text-indigo-900">
+      <p className="font-black uppercase tracking-widest text-[10px]">📋 ¿Cómo funciona la vinculación empresarial?</p>
+      <ol className="list-decimal list-inside space-y-1.5">
+        <li><strong>Obtén el código empresarial</strong> — escanea el QR de tu empresa o solicítalo a tu equipo de RRHH. Cada empresa tiene un código único.</li>
+        <li><strong>Ingresa el código</strong> en el campo de abajo y completa tus datos. Al enviar, se creará una <strong>solicitud de vinculación</strong> pendiente de aprobación.</li>
+        <li><strong>La empresa revisa y aprueba</strong> tu solicitud desde su panel de administración.</li>
+        <li><strong>Una vez aprobada</strong> (estado <em>paid_active</em>), podrás <strong>solicitar productos</strong> (sticker, tarjeta NFC, etc.) si la empresa lo permite.</li>
+      </ol>
+      <div className="border-t border-indigo-200 pt-2 space-y-1">
+        <p className="text-[10px] text-indigo-700">⏳ La empresa debe aprobar tu solicitud antes de que puedas acceder a los beneficios corporativos.</p>
+        <p className="text-[10px] text-indigo-600/80">¿No tienes código? Consulta con tu departamento de RRHH.</p>
+      </div>
+    </div>
+  );
+
   const loadCorpFullProfile = useCallback(async (profileId: string) => {
     try {
       const res = await fetch(`/api/users/perfiles-medicos/${profileId}`);
@@ -1915,6 +1932,7 @@ export default function EmpresasPage() {
             </div>
           </div>
         </div>
+        {joinFlowInfo}
         <JoinForm form={form} setForm={setForm} companyCodeError={companyCodeError} submittingJoin={submittingJoin} handleSubmitJoin={handleSubmitJoin} />
       </div>
     );

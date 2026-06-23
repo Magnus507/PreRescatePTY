@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
+import ClientCompanyCodeSection from "./client";
 
 type PageProps = {
   params: Promise<{ shortCode: string }>;
@@ -125,16 +126,11 @@ export default async function CorporatePublicPage({ params }: PageProps) {
         )}
 
         {profile.showCompanyCode && profile.organization.companyCode && (
-          <section className="rounded-xl border p-4 space-y-2 bg-amber-50 text-sm">
-            <h2 className="font-bold">Código empresarial</h2>
-            <p className="font-mono text-base">{profile.organization.companyCode}</p>
-            <p className="text-muted-foreground">
-              ¿Trabajas en esta empresa? Usa este código para solicitar vinculación con tu cuenta PreRescue ID.
-            </p>
-            {profile.showCustomEmployeeMessage && profile.customEmployeeMessage && (
-              <p>{profile.customEmployeeMessage}</p>
-            )}
-          </section>
+          <ClientCompanyCodeSection
+            companyCode={profile.organization.companyCode}
+            showCustomEmployeeMessage={profile.showCustomEmployeeMessage}
+            customEmployeeMessage={profile.customEmployeeMessage}
+          />
         )}
       </div>
     </main>
