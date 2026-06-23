@@ -241,83 +241,105 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas adicionales" value={form.additionalNotes} onChange={(v: string) => update("additionalNotes", v)} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
   );
 
-  const renderSpecialAssistanceFields = () => (
-    <div className="space-y-3">
-      <ToggleField label="Necesidades especiales" checked={form.enableSpecialAssistance ?? false} onChange={(v) => { update("enableSpecialAssistance", v); if (v) { update("showVulnerabilityStatusPublic", true); update("showCommunicationStatusPublic", true); } }} />
+  const renderSpecialAssistanceFields = () => {
+    const hasChildData = (form.hasCognitiveImpairment === true) || (form.hasWanderingRisk === true) || (form.isNonVerbal === true) || Boolean(form.communicationAssistance?.trim());
+    const isActive = form.enableSpecialAssistance ?? hasChildData;
 
-      {form.enableSpecialAssistance && (
-        <div className="space-y-3">
-          <ToggleField label="Deterioro cognitivo / Alzheimer / demencia" checked={form.hasCognitiveImpairment ?? false} onChange={(v) => update("hasCognitiveImpairment", v)} />
-          <ToggleField label="Riesgo de desorientación o extravío" checked={form.hasWanderingRisk ?? false} onChange={(v) => update("hasWanderingRisk", v)} />
-          <ToggleField label="Persona no verbal o con comunicación asistida" checked={form.isNonVerbal ?? false} onChange={(v) => update("isNonVerbal", v)} />
-          {form.isNonVerbal && (
-            <TextAreaField
-              icon={<MessageCircle className="h-4 w-4" />}
-              label="Instrucciones de comunicación"
-              value={form.communicationAssistance || ""}
-              onChange={(v: string) => update("communicationAssistance", v)}
-              placeholder="Ej. Usa pictogramas, entiende frases cortas, comunicarse con calma..."
-              color="text-violet-600"
-            />
-          )}
-        </div>
-      )}
-    </div>
-  );
+    return (
+      <div className="space-y-3">
+        <ToggleField label="Necesidades especiales" checked={isActive} onChange={(v) => { update("enableSpecialAssistance", v); if (v) { update("showVulnerabilityStatusPublic", true); update("showCommunicationStatusPublic", true); } }} />
 
-  const renderSafeReturnFields = () => (
-    <div className="space-y-3">
-      <ToggleField label="Persona perdida / retorno a casa" checked={form.enableSafeReturn ?? false} onChange={(v) => {
-        update("enableSafeReturn", v);
-        if (v) {
-          // auto-enable public visibility for safe return when user activates the feature
-          update("showSafeReturnPublic", true);
-          update("showSafeReturnLocationPublic", true);
-        }
-      }} />
+        {!isActive && hasChildData && (
+          <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            ⚠️ Esta sección tiene información guardada. Activa el toggle para revisarla.
+          </p>
+        )}
 
-      {form.enableSafeReturn && (
-        <div className="p-3 md:p-4 rounded-2xl border border-border bg-muted/20">
-          <h4 className="font-black text-sm text-teal-700">Ubicación de Retorno Seguro</h4>
-          <p className="text-xs text-muted-foreground mt-1">Esta es la ubicación donde debe ser llevada la persona en caso de encontrarse extraviada.</p>
+        {isActive && (
+          <div className="space-y-3">
+            <ToggleField label="Deterioro cognitivo / Alzheimer / demencia" checked={form.hasCognitiveImpairment ?? false} onChange={(v) => update("hasCognitiveImpairment", v)} />
+            <ToggleField label="Riesgo de desorientación o extravío" checked={form.hasWanderingRisk ?? false} onChange={(v) => update("hasWanderingRisk", v)} />
+            <ToggleField label="Persona no verbal o con comunicación asistida" checked={form.isNonVerbal ?? false} onChange={(v) => update("isNonVerbal", v)} />
+            {form.isNonVerbal && (
+              <TextAreaField
+                icon={<MessageCircle className="h-4 w-4" />}
+                label="Instrucciones de comunicación"
+                value={form.communicationAssistance || ""}
+                onChange={(v: string) => update("communicationAssistance", v)}
+                placeholder="Ej. Usa pictogramas, entiende frases cortas, comunicarse con calma..."
+                color="text-violet-600"
+              />
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
-          <div className="mt-3 space-y-3">
-            {/* Sección A: Nombre del lugar + Dirección */}
-            <div>
-              <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección A</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Nombre del lugar" value={form.safeReturnLocationName || ""} onChange={(v: string) => update("safeReturnLocationName", v)} placeholder="Ej: Casa de tía María" />
-                <Field label="Dirección" value={form.safeReturnAddress || ""} onChange={(v: string) => update("safeReturnAddress", v)} placeholder="Calle, número, referencia" />
-              </div>
-            </div>
+  const renderSafeReturnFields = () => {
+    const hasChildData = Boolean(form.safeReturnInstructions?.trim()) || Boolean(form.safeReturnLocationName?.trim()) || Boolean(form.safeReturnAddress?.trim()) || Boolean(form.safeReturnContactName?.trim()) || Boolean(form.safeReturnContactPhone?.trim()) || form.safeReturnLat != null || form.safeReturnLng != null;
+    const isActive = form.enableSafeReturn ?? hasChildData;
 
-            {/* Sección B: Coordenadas */}
-            <div>
-              <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección B</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Latitud" value={String(form.safeReturnLat ?? "")} onChange={(v: string) => update("safeReturnLat", v)} placeholder="Ej: 8.9833" />
-                <Field label="Longitud" value={String(form.safeReturnLng ?? "")} onChange={(v: string) => update("safeReturnLng", v)} placeholder="Ej: -79.5167" />
-              </div>
-              {(!form.safeReturnLat || !form.safeReturnLng) && (
-                <div className="mt-2 text-xs text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2">
-                  <Info className="inline-block mr-2 align-text-top" /> Los mapas Google Maps y Waze no estarán disponibles sin coordenadas.
+    return (
+      <div className="space-y-3">
+        <ToggleField label="Persona perdida / retorno a casa" checked={isActive} onChange={(v) => {
+          update("enableSafeReturn", v);
+          if (v) {
+            // auto-enable public visibility for safe return when user activates the feature
+            update("showSafeReturnPublic", true);
+            update("showSafeReturnLocationPublic", true);
+          }
+        }} />
+
+        {!isActive && hasChildData && (
+          <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            ⚠️ Esta sección tiene información guardada. Activa el toggle para revisarla.
+          </p>
+        )}
+
+        {isActive && (
+          <div className="p-3 md:p-4 rounded-2xl border border-border bg-muted/20">
+            <h4 className="font-black text-sm text-teal-700">Ubicación de Retorno Seguro</h4>
+            <p className="text-xs text-muted-foreground mt-1">Esta es la ubicación donde debe ser llevada la persona en caso de encontrarse extraviada.</p>
+
+            <div className="mt-3 space-y-3">
+              {/* Sección A: Nombre del lugar + Dirección */}
+              <div>
+                <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección A</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="Nombre del lugar" value={form.safeReturnLocationName || ""} onChange={(v: string) => update("safeReturnLocationName", v)} placeholder="Ej: Casa de tía María" />
+                  <Field label="Dirección" value={form.safeReturnAddress || ""} onChange={(v: string) => update("safeReturnAddress", v)} placeholder="Calle, número, referencia" />
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Sección C: Responsable */}
-            <div>
-              <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección C</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Responsable del lugar" value={form.safeReturnContactName || ""} onChange={(v: string) => update("safeReturnContactName", v)} placeholder="Ej: Tía María García" />
-                <Field label="Teléfono del responsable" value={form.safeReturnContactPhone || ""} onChange={(v: string) => update("safeReturnContactPhone", v)} placeholder="+507 6612-3456" />
+              {/* Sección B: Coordenadas */}
+              <div>
+                <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección B</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="Latitud" value={String(form.safeReturnLat ?? "")} onChange={(v: string) => update("safeReturnLat", v)} placeholder="Ej: 8.9833" />
+                  <Field label="Longitud" value={String(form.safeReturnLng ?? "")} onChange={(v: string) => update("safeReturnLng", v)} placeholder="Ej: -79.5167" />
+                </div>
+                {(!form.safeReturnLat && !form.safeReturnLng) && (
+                  <div className="mt-2 text-xs text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2">
+                    <Info className="inline-block mr-2 align-text-top" /> Los mapas Google Maps y Waze no estarán disponibles sin coordenadas.
+                  </div>
+                )}
+              </div>
+
+              {/* Sección C: Responsable */}
+              <div>
+                <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección C</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="Responsable del lugar" value={form.safeReturnContactName || ""} onChange={(v: string) => update("safeReturnContactName", v)} placeholder="Ej: Tía María García" />
+                  <Field label="Teléfono del responsable" value={form.safeReturnContactPhone || ""} onChange={(v: string) => update("safeReturnContactPhone", v)} placeholder="+507 6612-3456" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   const renderPrivacyToggles = () => (
     <div className="space-y-3">
