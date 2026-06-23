@@ -253,7 +253,7 @@ function PublicSpecialAssistanceCard({ profile, scanLocation, whatsappUrls }: { 
 }
 
 /** Reusable profile hero card shared by citizen + paramedic views */
-function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfile; isParamedic?: boolean }) {
+function PatientMedicalCard({ profile, isParamedic, showAssistanceBadges = true }: { profile: EmergencyProfile; isParamedic?: boolean; showAssistanceBadges?: boolean }) {
   const hasAllergies = profile.allergies && profile.allergies.trim() && !profile.allergies.toLowerCase().includes("no report");
   return (
     <div className="relative group">
@@ -311,10 +311,8 @@ function PatientMedicalCard({ profile, isParamedic }: { profile: EmergencyProfil
             <p className="text-sm font-black text-slate-400 mb-4 mt-1 uppercase tracking-widest">ALIAS: {profile.displayName}</p>
           )}
 
-          {/* v2: Special assistance badges */}
-          <SpecialAssistanceBadges profile={profile} />
-
-          {/* Special assistance CTA removed from patient card — entry moved to initial screen */}
+          {/* v2: Special assistance badges — hidden in special view to avoid duplication */}
+          {showAssistanceBadges && <SpecialAssistanceBadges profile={profile} />}
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 mt-3">
             <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-[#DA1A21] text-white rounded-xl md:rounded-2xl shadow-lg shadow-red-200">
@@ -630,7 +628,7 @@ export default function EmergencyPage() {
         </div>
 
         <main className="max-w-4xl mx-auto p-4 space-y-6">
-          <PatientMedicalCard profile={profile} isParamedic={false} />
+          <PatientMedicalCard profile={profile} isParamedic={false} showAssistanceBadges={false} />
           <PublicSpecialAssistanceCard profile={profile} scanLocation={scanLocation} whatsappUrls={whatsappUrls} />
         </main>
       </div>
