@@ -676,10 +676,44 @@ export const InventorySection: React.FC<InventorySectionProps> = ({
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => copy(c.shortCode)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200" title="Copiar ID público">
-                                <Copy className="h-4 w-4" />
+                              <button
+                                onClick={async () => {
+                                  const url = getChipPublicUrl(c.shortCode);
+                                  try {
+                                    await navigator.clipboard.writeText(url);
+                                    setCopiedLinkId(c.id);
+                                    setTimeout(() => setCopiedLinkId(null), 2000);
+                                    toast.success("Enlace copiado");
+                                  } catch {
+                                    toast.error("No se pudo copiar el enlace");
+                                  }
+                                }}
+                                className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+                                title="Copiar enlace público"
+                                aria-label={`Copiar enlace del chip ${c.shortCode}`}
+                              >
+                                {copiedLinkId === c.id ? (
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                ) : (
+                                  <Link className="h-4 w-4" />
+                                )}
                               </button>
-                              <button onClick={() => loadChipDetail(c.id)} className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-primary/10 text-primary">Ver</button>
+                              <button
+                                onClick={() => setQrModalChip(c)}
+                                className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+                                title="Ver QR"
+                                aria-label={`Ver QR del chip ${c.shortCode}`}
+                              >
+                                <QrCode className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => loadChipDetail(c.id)}
+                                className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                title="Ver detalle"
+                                aria-label={`Ver detalle del chip ${c.shortCode}`}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
                             </div>
                           </td>
                         </>
