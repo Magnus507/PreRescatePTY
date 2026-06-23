@@ -582,7 +582,7 @@ export default function EmergencyPage() {
           <div className="space-y-4"><p className="text-xl font-medium text-white leading-relaxed px-4">¿Cómo puedes ayudar?</p></div>
           <div className="grid grid-cols-1 gap-5">
             <button onClick={() => setView('paramedic')} className="group relative w-full bg-white text-[#DA1A21] py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3">Emergencia médica <ShieldCheck className="h-8 w-8" /></button>
-            <button onClick={() => setView('citizen')} className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest">Ayuda rápida</button>
+            <button onClick={() => setView('citizen')} className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest">Soy un ciudadano</button>
             {(
               (profile?.vulnerabilityStatus) ||
               !!profile?.safeReturn?.instructions
@@ -632,53 +632,6 @@ export default function EmergencyPage() {
         <main className="max-w-4xl mx-auto p-4 space-y-6">
           <PatientMedicalCard profile={profile} isParamedic={false} />
           <PublicSpecialAssistanceCard profile={profile} scanLocation={scanLocation} whatsappUrls={whatsappUrls} />
-          <SafeReturnCard safeReturn={profile.safeReturn} />
-
-          {/* Emergency contacts (same as citizen) */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
-            <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-emerald-50 h-12 w-12 rounded-2xl p-2.5 border border-emerald-100 flex items-center justify-center"><Heart className="h-8 w-8 text-emerald-600 fill-emerald-600 animate-pulse" /></div>
-                  <div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Contactos de Rescate</h2>
-                    <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1">Contactos de emergencia registrados</p>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-6">
-                {profile.emergencyContacts.length > 0 ? (
-                  profile.emergencyContacts.map((contact, idx) => {
-                    const contactPhone = sanitizeTelPhone(contact.phone);
-                    const whatsappUrl = whatsappUrls[idx] || "";
-                    return (
-                      <div key={idx} className="p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8 shadow-sm">
-                        <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row w-full md:w-auto">
-                          <div className="h-12 w-12 md:h-16 md:w-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-xl md:text-2xl shadow-lg shadow-emerald-100 shrink-0">{contact.fullName[0].toUpperCase()}</div>
-                          <div>
-                            <p className="font-black text-slate-900 uppercase tracking-tight text-xl md:text-2xl leading-none mb-1">{contact.fullName}</p>
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full border border-emerald-200">
-                              <ShieldCheck className="h-3 w-3 text-emerald-700" />
-                              <span className="text-[10px] text-emerald-700 font-black uppercase tracking-widest">{contact.relationship}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 sm:flex items-center gap-3 w-full md:w-auto">
-                          <a href={`tel:${contactPhone}`} className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-glow-sm transition-all active:scale-95 shadow-xl shadow-emerald-100/50 btn-premium"><Phone className="h-4 w-4 fill-white" /> Llamar</a>
-                          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-[#25D366] text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all active:scale-95 shadow-xl shadow-emerald-100"><MessageCircle className="h-4 w-4 fill-white" /> WhatsApp</a>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="p-10 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
-                    <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">No hay contactos registrados</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </main>
       </div>
     );
@@ -748,12 +701,10 @@ export default function EmergencyPage() {
           <Share2 className="h-6 w-6 text-white/30" />
         </a>
 
-        {/* Civil Protocol View */}
+        {/* Citizen View — basic safe info + protocol */}
         {view === 'citizen' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-1000">
             <PatientMedicalCard profile={profile} isParamedic={false} />
-            <SafeReturnCard safeReturn={profile.safeReturn} />
-            <CommunicationAssistanceCard vulnerabilityStatus={profile.vulnerabilityStatus} />
             <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 space-y-8">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100"><AlertTriangle className="h-7 w-7 text-amber-500" /></div>
@@ -778,6 +729,48 @@ export default function EmergencyPage() {
                 </button>
               </div>
             </div>
+
+            {/* Emergency contacts — citizen view */}
+            {profile.emergencyContacts.length > 0 && (
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
+                <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-emerald-50 h-12 w-12 rounded-2xl p-2.5 border border-emerald-100 flex items-center justify-center"><Heart className="h-8 w-8 text-emerald-600 fill-emerald-600 animate-pulse" /></div>
+                      <div>
+                        <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Contactos de Rescate</h2>
+                        <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1">Contactos de emergencia registrados</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-6">
+                    {profile.emergencyContacts.map((contact, idx) => {
+                      const contactPhone = sanitizeTelPhone(contact.phone);
+                      const whatsappUrl = whatsappUrls[idx] || "";
+                      return (
+                        <div key={idx} className="p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8 shadow-sm">
+                          <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row w-full md:w-auto">
+                            <div className="h-12 w-12 md:h-16 md:w-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-xl md:text-2xl shadow-lg shadow-emerald-100 shrink-0">{contact.fullName[0].toUpperCase()}</div>
+                            <div>
+                              <p className="font-black text-slate-900 uppercase tracking-tight text-xl md:text-2xl leading-none mb-1">{contact.fullName}</p>
+                              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full border border-emerald-200">
+                                <ShieldCheck className="h-3 w-3 text-emerald-700" />
+                                <span className="text-[10px] text-emerald-700 font-black uppercase tracking-widest">{contact.relationship}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 sm:flex items-center gap-3 w-full md:w-auto">
+                            <a href={`tel:${contactPhone}`} className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-glow-sm transition-all active:scale-95 shadow-xl shadow-emerald-100/50 btn-premium"><Phone className="h-4 w-4 fill-white" /> Llamar</a>
+                            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-[#25D366] text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all active:scale-95 shadow-xl shadow-emerald-100"><MessageCircle className="h-4 w-4 fill-white" /> WhatsApp</a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -843,53 +836,6 @@ export default function EmergencyPage() {
           </div>
         )}
 
-        {/* EMERGENCY CONTACTS — citizen view only */}
-        {view === 'citizen' && (
-        <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
-          <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="bg-emerald-50 h-12 w-12 rounded-2xl p-2.5 border border-emerald-100 flex items-center justify-center"><Heart className="h-8 w-8 text-emerald-600 fill-emerald-600 animate-pulse" /></div>
-                <div>
-                  <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Contactos de Rescate</h2>
-                  <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1">Contactos de emergencia registrados</p>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-6">
-              {profile.emergencyContacts.length > 0 ? (
-                profile.emergencyContacts.map((contact, idx) => {
-                  const contactPhone = sanitizeTelPhone(contact.phone);
-                  const whatsappUrl = whatsappUrls[idx] || "";
-                  return (
-                    <div key={idx} className="p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8 shadow-sm">
-                      <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row w-full md:w-auto">
-                        <div className="h-12 w-12 md:h-16 md:w-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-xl md:text-2xl shadow-lg shadow-emerald-100 shrink-0">{contact.fullName[0].toUpperCase()}</div>
-                        <div>
-                          <p className="font-black text-slate-900 uppercase tracking-tight text-xl md:text-2xl leading-none mb-1">{contact.fullName}</p>
-                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full border border-emerald-200">
-                            <ShieldCheck className="h-3 w-3 text-emerald-700" />
-                            <span className="text-[10px] text-emerald-700 font-black uppercase tracking-widest">{contact.relationship}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 sm:flex items-center gap-3 w-full md:w-auto">
-                        <a href={`tel:${contactPhone}`} className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-glow-sm transition-all active:scale-95 shadow-xl shadow-emerald-100/50 btn-premium"><Phone className="h-4 w-4 fill-white" /> Llamar</a>
-                        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-[#25D366] text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all active:scale-95 shadow-xl shadow-emerald-100"><MessageCircle className="h-4 w-4 fill-white" /> WhatsApp</a>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="p-10 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
-                  <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">No hay contactos registrados</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        )}
 
         {/* v2: Communication assistance (paramedic view) */}
         {view === 'paramedic' && <CommunicationAssistanceCard vulnerabilityStatus={profile.vulnerabilityStatus} />}
