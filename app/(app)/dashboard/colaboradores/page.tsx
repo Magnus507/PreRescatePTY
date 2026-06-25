@@ -54,7 +54,7 @@ export default function ColaboradoresPage() {
   const [actingOn, setActingOn] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showDetail, setShowDetail] = useState(false);
-  const [detailTab, setDetailTab] = useState<"info" | "program" | "history">("info");
+  const [detailTab, setDetailTab] = useState<"info" | "program" | "history" | "kit">("info");
 
   // KPIs calculados desde los miembros cargados
   const kpis = useMemo(() => {
@@ -487,6 +487,17 @@ export default function ColaboradoresPage() {
                 <History className="h-4 w-4 inline mr-2" />
                 Historial
               </button>
+              <button
+                onClick={() => setDetailTab("kit")}
+                className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+                  detailTab === "kit"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-slate-700"
+                }`}
+              >
+                <Package className="h-4 w-4 inline mr-2" />
+                Kit Empresarial
+              </button>
             </div>
 
             {/* Contenido de las tabs */}
@@ -603,33 +614,107 @@ export default function ColaboradoresPage() {
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* Sección Próximamente */}
-            <div className="pt-6 border-t border-slate-200">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">Próximamente</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 opacity-60">
-                  <Package className="h-6 w-6 text-slate-400 mb-2" />
-                  <p className="text-xs font-bold text-slate-600">Kit Empresarial</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Productos asignados</p>
+              {detailTab === "kit" && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Kit Empresarial</h3>
+
+                  {/* Estado del kit */}
+                  <div className="rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                        <Package className="h-6 w-6" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-black text-lg mb-1">Estado del Kit</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Esta funcionalidad estará disponible en las próximas fases del Kit Empresarial.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Productos */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-8 w-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                        <Package className="h-4 w-4" />
+                      </div>
+                      <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Productos</h4>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                      <p className="text-xs font-semibold text-muted-foreground">No disponibles todavía</p>
+                      <p className="text-[10px] text-muted-foreground/70 mt-1">
+                        Los productos asignados aparecerán aquí cuando el módulo esté completo.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Chip */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-8 w-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                        <Smartphone className="h-4 w-4" />
+                      </div>
+                      <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Chip</h4>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                      <p className="text-xs font-semibold text-muted-foreground">No disponible todavía</p>
+                      <p className="text-[10px] text-muted-foreground/70 mt-1">
+                        El chip empresarial y su información de activación se mostrarán aquí.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Pedido asociado */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-8 w-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                        <ClipboardList className="h-4 w-4" />
+                      </div>
+                      <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Pedido asociado</h4>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                      <p className="text-xs font-semibold text-muted-foreground">No disponible todavía</p>
+                      <p className="text-[10px] text-muted-foreground/70 mt-1">
+                        El número de orden y detalles de la compra corporativa se integrarán próximamente.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Solicitudes */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-8 w-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Solicitudes</h4>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                      <p className="text-xs font-semibold text-muted-foreground">No disponibles todavía</p>
+                      <p className="text-[10px] text-muted-foreground/70 mt-1">
+                        Las solicitudes de productos realizadas por el empleado se listarán aquí.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Activaciones */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-8 w-8 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center">
+                        <Truck className="h-4 w-4" />
+                      </div>
+                      <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Activaciones</h4>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                      <p className="text-xs font-semibold text-muted-foreground">No disponibles todavía</p>
+                      <p className="text-[10px] text-muted-foreground/70 mt-1">
+                        El historial de activaciones y fechas se integrará en futuras fases.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 opacity-60">
-                  <FileText className="h-6 w-6 text-slate-400 mb-2" />
-                  <p className="text-xs font-bold text-slate-600">Solicitudes</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Historial de solicitudes</p>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 opacity-60">
-                  <Smartphone className="h-6 w-6 text-slate-400 mb-2" />
-                  <p className="text-xs font-bold text-slate-600">Activaciones</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Chips activados</p>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 opacity-60">
-                  <Truck className="h-6 w-6 text-slate-400 mb-2" />
-                  <p className="text-xs font-bold text-slate-600">Entregas</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Seguimiento de entregas</p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
