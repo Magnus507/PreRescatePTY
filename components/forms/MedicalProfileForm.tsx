@@ -73,7 +73,7 @@ const STEPS = [
   { id: 2, title: "Alerta médica", description: "Información crítica para emergencias", icon: Heart },
   { id: 3, title: "Seguro y médico", description: "Información adicional para tu protección", icon: Shield },
   { id: 4, title: "Asistencia", description: "Información de vulnerabilidad y comunicación", icon: Brain },
-  { id: 5, title: "Privacidad", description: "Controla qué ven al escanear tu chip", icon: Eye },
+  { id: 5, title: "Visibilidad", description: "Controla qué se muestra en Emergencia Médica", icon: Eye },
 ] as const;
 
 // ──────────────────────────────────────────────
@@ -85,7 +85,6 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
   // ── Responsive detection ──
   const [isMobile, setIsMobile] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
     setIsMobile(mq.matches);
@@ -115,6 +114,39 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
   useEffect(() => {
     if (isWizard) setStep(1);
   }, [isWizard]);
+
+  // ── Auto-sync toggles — activate when data field has content and toggle is off ──
+  // Never deactivates a toggle (only false→true, never true→false)
+  useEffect(() => {
+    if (form.insuranceProvider?.trim() && !form.showInsuranceProviderPublic) {
+      update("showInsuranceProviderPublic", true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.insuranceProvider]);
+  useEffect(() => {
+    if (form.preferredHospital?.trim() && !form.showPreferredHospitalPublic) {
+      update("showPreferredHospitalPublic", true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.preferredHospital]);
+  useEffect(() => {
+    if (form.primaryDoctorName?.trim() && !form.showPrimaryDoctorPublic) {
+      update("showPrimaryDoctorPublic", true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.primaryDoctorName]);
+  useEffect(() => {
+    if (form.primaryDoctorPhone?.trim() && !form.showPrimaryDoctorPhonePublic) {
+      update("showPrimaryDoctorPhonePublic", true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.primaryDoctorPhone]);
+  useEffect(() => {
+    if (form.additionalNotes?.trim() && !form.showAdditionalNotesPublic) {
+      update("showAdditionalNotesPublic", true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.additionalNotes]);
 
   // ── Field-set renderers ──
 
@@ -218,9 +250,9 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
       />
       {form.isInsured && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Aseguradora" value={form.insuranceProvider || ""} onChange={(v: string) => update("insuranceProvider", v)} placeholder="Ej: ASSA" />
+          <Field label="Aseguradora" value={form.insuranceProvider || ""} onChange={(v: string) => { update("insuranceProvider", v); }} placeholder="Ej: ASSA" />
           <Field label="Número de Póliza" value={form.insurancePolicyNumber || ""} onChange={(v: string) => update("insurancePolicyNumber", v)} placeholder="Privado" />
-          <Field label="Hospital Preferido" value={form.preferredHospital || ""} onChange={(v: string) => update("preferredHospital", v)} placeholder="Ej: Punta Pacífica" />
+          <Field label="Hospital Preferido" value={form.preferredHospital || ""} onChange={(v: string) => { update("preferredHospital", v); }} placeholder="Ej: Punta Pacífica" />
           <Field label="Teléfono emergencia del seguro" value={form.insuranceEmergencyPhone || ""} onChange={(v: string) => update("insuranceEmergencyPhone", v)} placeholder="Privado" />
           <p className="sm:col-span-2 text-xs text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2">
             La póliza y el teléfono del seguro no se mostrarán públicamente.
@@ -232,13 +264,13 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
   const renderDoctorFields = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <Field label="Nombre del médico" value={form.primaryDoctorName || ""} onChange={(v: string) => update("primaryDoctorName", v)} placeholder="Opcional" />
-      <Field label="Teléfono del médico" value={form.primaryDoctorPhone || ""} onChange={(v: string) => update("primaryDoctorPhone", v)} placeholder="Opcional" />
+      <Field label="Nombre del médico" value={form.primaryDoctorName || ""} onChange={(v: string) => { update("primaryDoctorName", v); }} placeholder="Opcional" />
+      <Field label="Teléfono del médico" value={form.primaryDoctorPhone || ""} onChange={(v: string) => { update("primaryDoctorPhone", v); }} placeholder="Opcional" />
     </div>
   );
 
   const renderAdditionalNotesField = () => (
-    <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas adicionales" value={form.additionalNotes} onChange={(v: string) => update("additionalNotes", v)} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
+    <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas adicionales" value={form.additionalNotes} onChange={(v: string) => { update("additionalNotes", v); }} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
   );
 
   const renderSpecialAssistanceFields = () => {
@@ -341,12 +373,13 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     );
   };
 
-  const renderPrivacyToggles = () => (
+  /** Simplified visibility section — medical fields only, auto-sync, no accordion */
+  const renderMedicalVisibilityToggles = () => (
     <div className="space-y-3">
       <div className="flex items-start gap-2 text-[11px] font-semibold text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2.5 mb-2">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
         <span>
-          Estos controles determinan qué información personal puede ver cualquier persona que escanee tu chip en una emergencia.
+          Los campos completados se mostrarán automáticamente en la ficha de Emergencia Médica. Si deseas ocultar alguno de ellos puedes desactivarlo manualmente.
         </span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -355,18 +388,6 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         <ToggleField label="Mostrar médico tratante" checked={form.showPrimaryDoctorPublic} onChange={(v) => update("showPrimaryDoctorPublic", v)} />
         <ToggleField label="Mostrar teléfono del médico" checked={form.showPrimaryDoctorPhonePublic} onChange={(v) => update("showPrimaryDoctorPhonePublic", v)} />
         <ToggleField label="Mostrar notas adicionales" checked={form.showAdditionalNotesPublic} onChange={(v) => update("showAdditionalNotesPublic", v)} />
-      </div>
-
-      <div className="flex items-start gap-2 text-[11px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2.5 mt-4">
-        <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-        <span>
-          Estos datos pueden ser sensibles. Solo actívalos si deseas que aparezcan cuando alguien escanee el QR/NFC.
-        </span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <ToggleField label="Mostrar alerta de persona vulnerable en la ficha pública" checked={form.showVulnerabilityStatusPublic ?? false} onChange={(v) => update("showVulnerabilityStatusPublic", v)} />
-        <ToggleField label="Mostrar información de comunicación asistida en la ficha pública" checked={form.showCommunicationStatusPublic ?? false} onChange={(v) => update("showCommunicationStatusPublic", v)} />
-        <ToggleField label="Mostrar instrucciones de retorno seguro en la ficha pública" checked={form.showSafeReturnPublic ?? false} onChange={(v) => update("showSafeReturnPublic", v)} />
       </div>
     </div>
   );
@@ -578,10 +599,10 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
             <SectionHeader
               icon={<Eye className="h-5 w-5" />}
               iconBg="bg-slate-500/10 text-slate-600"
-              title="Privacidad y visibilidad"
-              description="Qué puede ver quien escanee tu chip."
+              title="Visibilidad médica"
+              description="Los campos completados se mostrarán automáticamente en la ficha de Emergencia Médica."
             />
-            {renderPrivacyToggles()}
+            {renderMedicalVisibilityToggles()}
           </div>
         )}
       </div>
@@ -734,24 +755,18 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
           {renderSafeReturnFields()}
         </div>
 
+        {/* Simplified Medical Visibility section — no accordion, no hidden state */}
         <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-black text-base tracking-tight">Privacidad y visibilidad</h3>
-              <p className="text-xs text-muted-foreground font-medium">Qué puede ver quien escanee tu chip.</p>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="h-10 w-10 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center">
+              <Eye className="h-5 w-5" />
             </div>
-            <div className="ml-4">
-              <button type="button" onClick={() => setShowPrivacy((s) => !s)} className="text-sm font-bold text-primary px-3 py-2 rounded-xl border border-primary/10 bg-primary/5">
-                {showPrivacy ? 'Ocultar opciones' : 'Mostrar opciones'}
-              </button>
+            <div>
+              <h3 className="font-black text-base tracking-tight">Visibilidad médica</h3>
+              <p className="text-xs text-muted-foreground font-medium">Los campos completados se mostrarán automáticamente en la ficha de Emergencia Médica.</p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground font-medium">Estos datos podrán ser vistos por cualquier persona que escanee tu chip en una emergencia.</p>
-          {showPrivacy ? (
-            renderPrivacyToggles()
-          ) : (
-            <div className="text-sm text-muted-foreground italic">Opciones de privacidad ocultas. Pulsa &quot;Mostrar opciones&quot; para editar.</div>
-          )}
+          {renderMedicalVisibilityToggles()}
         </div>
       </div>
 
