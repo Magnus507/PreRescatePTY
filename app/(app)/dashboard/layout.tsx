@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
-  LayoutDashboard, Cpu, Users, History, UsersRound,
+  LayoutDashboard, Cpu, History, UsersRound,
   Building2, ChevronRight, Settings, CreditCard,
   LogOut, Home, ShoppingCart, Store, Package,
-  Loader2, Scan, Menu, X
+  Loader2, Menu, X
 } from "lucide-react";
 import { AccountState } from "@/domains/accounts/account.types";
 import { ScanMonitor } from "./_components/ScanMonitor";
