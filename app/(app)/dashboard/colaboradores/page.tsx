@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Users, Loader2, Search, XCircle, CheckCircle2, Ban } from "lucide-react";
 
-type TabFilter = "todos" | "pending_company_review" | "paid_active" | "approved_unpaid" | "suspended" | "archived" | "rejected_by_company";
+type TabFilter = "todos" | "pending_company_review" | "paid_active" | "approved_unpaid" | "suspended" | "archived" | "rejected_by_company" | "empleados";
 
 type Member = {
   id: string;
@@ -22,29 +22,27 @@ type Member = {
   } | null;
 };
 
-const STATUS_INFO: Record<string, { label: string; color: string; bg: string }> = {
+  const STATUS_INFO: Record<string, { label: string; color: string; bg: string }> = {
   paid_active: { label: "Activo", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
-  approved_unpaid: { label: "Aprobado sin pagar", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
+  approved_unpaid: { label: "Aprobado", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
   pending_company_review: { label: "Pendiente", color: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
   rejected_by_company: { label: "Rechazado", color: "text-rose-700", bg: "bg-rose-50 border-rose-200" },
   suspended: { label: "Suspendido", color: "text-red-700", bg: "bg-red-50 border-red-200" },
   archived: { label: "Eliminado / Archivado", color: "text-slate-600", bg: "bg-slate-50 border-slate-200" },
 };
 
-const TABS: { key: TabFilter; label: string }[] = [
-  { key: "todos", label: "Todos" },
-  { key: "pending_company_review", label: "Solicitantes" },
-  { key: "paid_active", label: "Activos" },
-  { key: "approved_unpaid", label: "Aprobados sin pagar" },
-  { key: "suspended", label: "Suspendidos" },
-  { key: "archived", label: "Archivados" },
-  { key: "rejected_by_company", label: "Rechazados" },
+const TABS: { key: TabFilter; label: string; description: string }[] = [
+  { key: "pending_company_review", label: "Solicitantes", description: "Personas que ingresaron el código empresarial y esperan aprobación" },
+  { key: "empleados", label: "Empleados", description: "Personas aprobadas o activas dentro del programa empresarial" },
+  { key: "suspended", label: "Suspendidos", description: "Colaboradores con acceso temporal suspendido" },
+  { key: "archived", label: "Archivados", description: "Colaboradores eliminados del sistema" },
+  { key: "rejected_by_company", label: "Rechazados", description: "Solicitudes rechazadas por la empresa" },
 ];
 
 export default function ColaboradoresPage() {
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
-  const [activeTab, setActiveTab] = useState<TabFilter>("todos");
+  const [activeTab, setActiveTab] = useState<TabFilter>("pending_company_review");
   const [search, setSearch] = useState("");
   const [actingOn, setActingOn] = useState<string | null>(null);
 
@@ -56,7 +54,9 @@ export default function ColaboradoresPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (statusFilter) params.set("status", statusFilter);
+      if (statusFilter && statusFilter !== "empleados") {
+        params.set("status", statusFilter);
+      }
       const res = await fetch(`/api/organizations/members?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -71,7 +71,10 @@ export default function ColaboradoresPage() {
 
   const handleTabChange = async (tab: TabFilter) => {
     setActiveTab(tab);
-    if (tab === "todos") {
+    if (tab === "empleados") {
+      // Empleados = approved_unpaid + paid_active
+      await loadMembers("empleados");
+    } else if (tab === "todos") {
       await loadMembers();
     } else {
       await loadMembers(tab);
@@ -111,7 +114,7 @@ export default function ColaboradoresPage() {
     }
   };
 
-  // Filter by search
+  // Filter by search (name, email, cédula, teléfono, cargo, departamento)
   const filtered = members.filter((m) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -119,7 +122,10 @@ export default function ColaboradoresPage() {
       m.profile?.firstName?.toLowerCase().includes(q) ||
       m.profile?.lastName?.toLowerCase().includes(q) ||
       m.profile?.user?.email?.toLowerCase().includes(q) ||
-      m.employeeNationalId?.toLowerCase().includes(q)
+      m.employeeNationalId?.toLowerCase().includes(q) ||
+      m.employeePhone?.toLowerCase().includes(q) ||
+      m.employeePosition?.toLowerCase().includes(q) ||
+      m.employeeDepartment?.toLowerCase().includes(q)
     );
   });
 
@@ -146,20 +152,28 @@ export default function ColaboradoresPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => handleTabChange(t.key)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
-              activeTab === t.key
-                ? "bg-primary text-white shadow-md"
-                : "bg-muted hover:bg-slate-200 text-muted-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="space-y-3">
+        <div className="flex gap-2 overflow-x-auto">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => handleTabChange(t.key)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
+                activeTab === t.key
+                  ? "bg-primary text-white shadow-md"
+                  : "bg-muted hover:bg-slate-200 text-muted-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {(() => {
+          const currentTab = TABS.find(t => t.key === activeTab);
+          return currentTab?.description ? (
+            <p className="text-xs text-muted-foreground px-1">{currentTab.description}</p>
+          ) : null;
+        })()}
       </div>
 
       {/* Search */}
@@ -167,7 +181,7 @@ export default function ColaboradoresPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Buscar por nombre, email o cédula..."
+          placeholder="Buscar por nombre, email, cédula, cargo o departamento..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40"
@@ -201,6 +215,9 @@ export default function ColaboradoresPage() {
                       {m.employeePosition && <span>Cargo: {m.employeePosition}</span>}
                       {m.employeeDepartment && <span>Depto: {m.employeeDepartment}</span>}
                     </div>
+                    <p className="text-[10px] text-muted-foreground/70 mt-1">
+                      Solicitado: {new Date((m as unknown as { createdAt: string }).createdAt).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
                   </div>
 
                   {/* Actions */}
