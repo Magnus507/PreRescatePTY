@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
-import { Users, Loader2, Search, XCircle, CheckCircle2, Ban } from "lucide-react";
+import { Users, Loader2, Search, XCircle, CheckCircle2, Ban, Info, ClipboardList, History, Package, FileText, Smartphone, Truck } from "lucide-react";
 
 type TabFilter = "todos" | "pending_company_review" | "paid_active" | "approved_unpaid" | "suspended" | "archived" | "rejected_by_company" | "empleados";
 
@@ -52,6 +52,9 @@ export default function ColaboradoresPage() {
   const [activeTab, setActiveTab] = useState<TabFilter>("pending_company_review");
   const [search, setSearch] = useState("");
   const [actingOn, setActingOn] = useState<string | null>(null);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [detailTab, setDetailTab] = useState<"info" | "program" | "history">("info");
 
   // KPIs calculados desde los miembros cargados
   const kpis = useMemo(() => {
@@ -103,6 +106,17 @@ export default function ColaboradoresPage() {
     } else {
       await loadMembers(tab);
     }
+  };
+
+  const openDetail = (member: Member) => {
+    setSelectedMember(member);
+    setShowDetail(true);
+    setDetailTab("info");
+  };
+
+  const closeDetail = () => {
+    setShowDetail(false);
+    setSelectedMember(null);
   };
 
   const handleAction = async (memberId: string, action: "suspend" | "unsuspend" | "archive" | "restore" | "reject" | "delete_forever" | "approve") => {
@@ -300,7 +314,7 @@ export default function ColaboradoresPage() {
             return (
               <div key={m.id} className="rounded-2xl border border-slate-200 p-5 bg-white shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1 cursor-pointer" onClick={() => openDetail(m)}>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold">{m.profile?.firstName} {m.profile?.lastName}</p>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${status.bg} ${status.color}`}>
@@ -321,6 +335,13 @@ export default function ColaboradoresPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => openDetail(m)}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors inline-flex items-center gap-1"
+                      title="Ver ficha 360"
+                    >
+                      <Info className="h-3.5 w-3.5" /> Ver
+                    </button>
                     {actingOn === m.id ? (
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     ) : (
@@ -408,6 +429,212 @@ export default function ColaboradoresPage() {
           })
         )}
       </div>
+
+      {/* Drawer Colaborador 360 */}
+      {showDetail && selectedMember && (
+      <>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80]" onClick={closeDetail} />
+        <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl z-[90] overflow-y-auto">
+          <div className="p-6 md:p-8 space-y-6">
+            {/* Header del drawer */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
+                  <Users className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black">{selectedMember.profile?.firstName} {selectedMember.profile?.lastName}</h2>
+                  <p className="text-sm text-muted-foreground">{selectedMember.profile?.user?.email}</p>
+                </div>
+              </div>
+              <button onClick={closeDetail} className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Tabs del drawer */}
+            <div className="flex gap-2 border-b border-slate-200">
+              <button
+                onClick={() => setDetailTab("info")}
+                className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+                  detailTab === "info"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-slate-700"
+                }`}
+              >
+                <Info className="h-4 w-4 inline mr-2" />
+                Información
+              </button>
+              <button
+                onClick={() => setDetailTab("program")}
+                className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+                  detailTab === "program"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-slate-700"
+                }`}
+              >
+                <ClipboardList className="h-4 w-4 inline mr-2" />
+                Programa
+              </button>
+              <button
+                onClick={() => setDetailTab("history")}
+                className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+                  detailTab === "history"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-slate-700"
+                }`}
+              >
+                <History className="h-4 w-4 inline mr-2" />
+                Historial
+              </button>
+            </div>
+
+            {/* Contenido de las tabs */}
+            <div className="space-y-4">
+              {detailTab === "info" && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Datos personales</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">NOMBRE COMPLETO</p>
+                      <p className="text-sm font-semibold">{selectedMember.profile?.firstName} {selectedMember.profile?.lastName}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">CORREO ELECTRÓNICO</p>
+                      <p className="text-sm font-semibold">{selectedMember.profile?.user?.email || "—"}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">TELÉFONO</p>
+                      <p className="text-sm font-semibold">{selectedMember.employeePhone || "—"}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">CÉDULA</p>
+                      <p className="text-sm font-semibold">{selectedMember.employeeNationalId || "—"}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">CARGO</p>
+                      <p className="text-sm font-semibold">{selectedMember.employeePosition || "—"}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">DEPARTAMENTO</p>
+                      <p className="text-sm font-semibold">{selectedMember.employeeDepartment || "—"}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">FECHA DE SOLICITUD</p>
+                      <p className="text-sm font-semibold">
+                        {new Date((selectedMember as unknown as { createdAt: string }).createdAt).toLocaleDateString("es-PA", { day: "2-digit", month: "long", year: "numeric" })}
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">ESTADO ACTUAL</p>
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_INFO[selectedMember.corporateStatus]?.bg || ""} ${STATUS_INFO[selectedMember.corporateStatus]?.color || ""}`}>
+                        {STATUS_INFO[selectedMember.corporateStatus]?.label || selectedMember.corporateStatus}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {detailTab === "program" && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Estado en el programa</h3>
+                  <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div className="flex items-start gap-4">
+                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${
+                        selectedMember.corporateStatus === "paid_active" ? "bg-emerald-100 text-emerald-600" :
+                        selectedMember.corporateStatus === "pending_company_review" ? "bg-blue-100 text-blue-600" :
+                        selectedMember.corporateStatus === "suspended" ? "bg-red-100 text-red-600" :
+                        selectedMember.corporateStatus === "rejected_by_company" ? "bg-rose-100 text-rose-600" :
+                        "bg-slate-200 text-slate-600"
+                      }`}>
+                        <ClipboardList className="h-6 w-6" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-black text-lg mb-2">{STATUS_INFO[selectedMember.corporateStatus]?.label || selectedMember.corporateStatus}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedMember.corporateStatus === "pending_company_review" && "Esperando aprobación de la empresa. Una vez aprobado, podrá completar su compra corporativa."}
+                          {selectedMember.corporateStatus === "approved_unpaid" && "Aprobado por la empresa. Puede completar su compra corporativa para activar sus beneficios."}
+                          {selectedMember.corporateStatus === "paid_active" && "Puede utilizar todos los beneficios del programa PreRescue."}
+                          {selectedMember.corporateStatus === "suspended" && "Acceso pausado temporalmente. Contacta al administrador para más información."}
+                          {selectedMember.corporateStatus === "rejected_by_company" && "Solicitud no aprobada por la empresa. Contacta al administrador si tienes preguntas."}
+                          {selectedMember.corporateStatus === "archived" && "Colaborador eliminado del sistema. Sus beneficios corporativos han sido desactivados."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {detailTab === "history" && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Historial de eventos</h3>
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold">Solicitud enviada</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date((selectedMember as unknown as { createdAt: string }).createdAt).toLocaleDateString("es-PA", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                          <History className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold">Última actualización</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date((selectedMember as unknown as { updatedAt: string }).updatedAt).toLocaleDateString("es-PA", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-6 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                      <p className="text-xs text-amber-800 font-semibold">
+                        El historial avanzado estará disponible próximamente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sección Próximamente */}
+            <div className="pt-6 border-t border-slate-200">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">Próximamente</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 opacity-60">
+                  <Package className="h-6 w-6 text-slate-400 mb-2" />
+                  <p className="text-xs font-bold text-slate-600">Kit Empresarial</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Productos asignados</p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 opacity-60">
+                  <FileText className="h-6 w-6 text-slate-400 mb-2" />
+                  <p className="text-xs font-bold text-slate-600">Solicitudes</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Historial de solicitudes</p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 opacity-60">
+                  <Smartphone className="h-6 w-6 text-slate-400 mb-2" />
+                  <p className="text-xs font-bold text-slate-600">Activaciones</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Chips activados</p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 opacity-60">
+                  <Truck className="h-6 w-6 text-slate-400 mb-2" />
+                  <p className="text-xs font-bold text-slate-600">Entregas</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Seguimiento de entregas</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    )}
     </div>
   );
 }
