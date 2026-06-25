@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
-import { Users, Loader2, Search, XCircle, CheckCircle2, Ban, Info, ClipboardList, History, Package, FileText, Smartphone, Truck } from "lucide-react";
+import { Users, Loader2, Search, XCircle, CheckCircle2, Ban, Info, ClipboardList, History, Package, FileText, Smartphone, Truck, Shield, Lock } from "lucide-react";
 
 type TabFilter = "todos" | "pending_company_review" | "paid_active" | "approved_unpaid" | "suspended" | "archived" | "rejected_by_company" | "empleados";
 
@@ -450,6 +450,153 @@ export default function ColaboradoresPage() {
               <button onClick={closeDetail} className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
                 <XCircle className="h-5 w-5" />
               </button>
+            </div>
+
+            {/* ════════════════════════════════════════════ */}
+            {/* CENTRO DE ACCIONES DEL COLABORADOR          */}
+            {/* ════════════════════════════════════════════ */}
+            <div className="rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-white to-slate-50 p-5 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Centro de Acciones</h3>
+                  <p className="text-[10px] text-muted-foreground">Operaciones sobre el colaborador</p>
+                </div>
+              </div>
+
+              {/* Botones según estado */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {actingOn === selectedMember.id ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                ) : (
+                  <>
+                    {/* PENDIENTE */}
+                    {selectedMember.corporateStatus === "pending_company_review" && (
+                      <>
+                        <button
+                          onClick={() => handleAction(selectedMember.id, "approve")}
+                          className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm inline-flex items-center gap-2"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Aprobar
+                        </button>
+                        <button
+                          onClick={() => handleAction(selectedMember.id, "reject")}
+                          className="px-5 py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors shadow-sm inline-flex items-center gap-2"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Rechazar
+                        </button>
+                      </>
+                    )}
+
+                    {/* APROBADO O ACTIVO */}
+                    {(selectedMember.corporateStatus === "approved_unpaid" || selectedMember.corporateStatus === "paid_active") && (
+                      <button
+                        onClick={() => handleAction(selectedMember.id, "suspend")}
+                        className="px-5 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors shadow-sm inline-flex items-center gap-2"
+                      >
+                        <Ban className="h-4 w-4" />
+                        Suspender
+                      </button>
+                    )}
+
+                    {/* SUSPENDIDO */}
+                    {selectedMember.corporateStatus === "suspended" && (
+                      <button
+                        onClick={() => handleAction(selectedMember.id, "unsuspend")}
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm inline-flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Reactivar
+                      </button>
+                    )}
+
+                    {/* ARCHIVADO */}
+                    {selectedMember.corporateStatus === "archived" && (
+                      <button
+                        onClick={() => handleAction(selectedMember.id, "restore")}
+                        className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm inline-flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Restaurar
+                      </button>
+                    )}
+
+                    {/* RECHAZADO */}
+                    {selectedMember.corporateStatus === "rejected_by_company" && (
+                      <button
+                        onClick={() => handleAction(selectedMember.id, "restore")}
+                        className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm inline-flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Restaurar
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Información operativa */}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase">Estado</p>
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_INFO[selectedMember.corporateStatus]?.bg || ""} ${STATUS_INFO[selectedMember.corporateStatus]?.color || ""}`}>
+                    {STATUS_INFO[selectedMember.corporateStatus]?.label || selectedMember.corporateStatus}
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase">Solicitud</p>
+                  <p className="text-xs font-semibold mt-1">
+                    {new Date((selectedMember as unknown as { createdAt: string }).createdAt).toLocaleDateString("es-PA", { day: "2-digit", month: "short" })}
+                  </p>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase">Actualización</p>
+                  <p className="text-xs font-semibold mt-1">
+                    {new Date((selectedMember as unknown as { updatedAt: string }).updatedAt).toLocaleDateString("es-PA", { day: "2-digit", month: "short" })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ════════════════════════════════════════════ */}
+            {/* PRÓXIMAMENTE — ACCIONES FUTURAS             */}
+            {/* ════════════════════════════════════════════ */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Lock className="h-4 w-4 text-slate-400" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Próximamente</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button disabled className="px-3 py-2 rounded-lg bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed inline-flex items-center gap-1.5">
+                  <Package className="h-3.5 w-3.5" />
+                  Ver Kit
+                  <span className="text-[8px] ml-auto text-slate-300">próximamente</span>
+                </button>
+                <button disabled className="px-3 py-2 rounded-lg bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed inline-flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
+                  Solicitudes
+                  <span className="text-[8px] ml-auto text-slate-300">próximamente</span>
+                </button>
+                <button disabled className="px-3 py-2 rounded-lg bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed inline-flex items-center gap-1.5">
+                  <Truck className="h-3.5 w-3.5" />
+                  Registrar Entrega
+                  <span className="text-[8px] ml-auto text-slate-300">próximamente</span>
+                </button>
+                <button disabled className="px-3 py-2 rounded-lg bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed inline-flex items-center gap-1.5">
+                  <Smartphone className="h-3.5 w-3.5" />
+                  Reasignar Chip
+                  <span className="text-[8px] ml-auto text-slate-300">próximamente</span>
+                </button>
+                <button disabled className="px-3 py-2 rounded-lg bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed inline-flex items-center gap-1.5 col-span-2">
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  Descargar Expediente
+                  <span className="text-[8px] ml-auto text-slate-300">próximamente</span>
+                </button>
+              </div>
             </div>
 
             {/* Tabs del drawer */}
