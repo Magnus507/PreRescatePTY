@@ -38,7 +38,7 @@ const consumerShoppingItems = [
 
 // === CORPORATE Navigation ===
 const corporateNavItems = [
-  { href: "/dashboard/empresas", label: "Panel de Empresa", icon: Users },
+  { href: "/dashboard/empresa-perfil", label: "Perfil Empresarial", icon: Building2 },
   { href: "/dashboard/colaboradores", label: "Colaboradores", icon: UsersRound },
 ];
 //// Configuración es eliminado del sidebar corporativo porque no aplica a cuentas empresa
