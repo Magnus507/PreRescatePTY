@@ -105,7 +105,8 @@ function SpecialAssistanceBadges({ profile }: { profile: EmergencyProfile }) {
   );
 }
 
-/** v2: Safe return instructions card */
+// @keep-for-future-use — SafeReturnCard remains available for special/citizen views
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SafeReturnCard({ safeReturn }: { safeReturn: EmergencyProfile["safeReturn"] }) {
   if (!safeReturn?.instructions) return null;
   return (
@@ -136,7 +137,8 @@ function parseLatLngFromLocation(location: string | null | undefined) {
   return { lat: match[1], lng: match[2] };
 }
 
-/** v2: Communication assistance card (paramedic view) */
+// @keep-for-future-use — CommunicationAssistanceCard remains available for special/citizen views
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function CommunicationAssistanceCard({ vulnerabilityStatus }: { vulnerabilityStatus: EmergencyProfile["vulnerabilityStatus"] }) {
   if (!vulnerabilityStatus?.isNonVerbal || !vulnerabilityStatus.communicationAssistance) return null;
   return (
@@ -819,12 +821,6 @@ export default function EmergencyPage() {
           </div>
         )}
 
-
-        {/* v2: Communication assistance (paramedic view) */}
-        {view === 'paramedic' && <CommunicationAssistanceCard vulnerabilityStatus={profile.vulnerabilityStatus} />}
-
-        {/* v2: Safe return (paramedic view) */}
-        {view === 'paramedic' && <SafeReturnCard safeReturn={profile.safeReturn} />}
 
         {/* Medical extras — paramedic view (keeps original format) */}
         {view === 'paramedic' && hasExtras && (
