@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Users, Loader2, Search, XCircle, CheckCircle2, Ban } from "lucide-react";
 
@@ -39,12 +39,36 @@ const TABS: { key: TabFilter; label: string; description: string }[] = [
   { key: "rejected_by_company", label: "Rechazados", description: "Solicitudes rechazadas por la empresa" },
 ];
 
+const KpiCard = ({ label, value, color }: { label: string; value: number; color: string }) => (
+  <div className={`rounded-xl border p-3 text-center ${color}`}>
+    <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{label}</p>
+    <p className="text-2xl font-black mt-1">{value}</p>
+  </div>
+);
+
 export default function ColaboradoresPage() {
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
   const [activeTab, setActiveTab] = useState<TabFilter>("pending_company_review");
   const [search, setSearch] = useState("");
   const [actingOn, setActingOn] = useState<string | null>(null);
+
+  // KPIs calculados desde los miembros cargados
+  const kpis = useMemo(() => {
+    const total = members.length;
+    const pendientes = members.filter(m => m.corporateStatus === "pending_company_review").length;
+    const aprobados = members.filter(m => m.corporateStatus === "approved_unpaid").length;
+    const activos = members.filter(m => m.corporateStatus === "paid_active").length;
+    const suspendidos = members.filter(m => m.corporateStatus === "suspended").length;
+    const rechazados = members.filter(m => m.corporateStatus === "rejected_by_company").length;
+    const archivados = members.filter(m => m.corporateStatus === "archived").length;
+
+    // Fórmula de salud: % de empleados activos vs total de no-archivados
+    const noArchivados = total - archivados;
+    const salud = noArchivados > 0 ? Math.round((activos / noArchivados) * 100) : 0;
+
+    return { total, pendientes, aprobados, activos, suspendidos, rechazados, archivados, salud };
+  }, [members]);
 
   useEffect(() => {
     loadMembers();
@@ -149,6 +173,81 @@ export default function ColaboradoresPage() {
           <h1 className="text-2xl font-black">Colaboradores</h1>
           <p className="text-sm text-muted-foreground">Gestiona el vínculo corporativo de tus empleados</p>
         </div>
+      </div>
+
+      {/* Dashboard Ejecutivo — KPIs */}
+      <div className="rounded-[2rem] border-2 border-slate-200 bg-white p-5 md:p-6 space-y-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Panel Ejecutivo</h2>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Resumen del programa empresarial</p>
+          </div>
+          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+            kpis.salud >= 70 ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+            kpis.salud >= 40 ? "bg-amber-50 text-amber-700 border-amber-200" :
+            "bg-red-50 text-red-700 border-red-200"
+          }`}>
+            Salud: {kpis.salud}%
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+          <KpiCard label="Total" value={kpis.total} color="bg-slate-100 text-slate-700 border-slate-200" />
+          <KpiCard label="Solicitantes" value={kpis.pendientes} color="bg-amber-50 text-amber-700 border-amber-200" />
+          <KpiCard label="Aprobados" value={kpis.aprobados} color="bg-blue-50 text-blue-700 border-blue-200" />
+          <KpiCard label="Activos" value={kpis.activos} color="bg-emerald-50 text-emerald-700 border-emerald-200" />
+          <KpiCard label="Suspendidos" value={kpis.suspendidos} color="bg-red-50 text-red-700 border-red-200" />
+          <KpiCard label="Rechazados" value={kpis.rechazados} color="bg-rose-50 text-rose-700 border-rose-200" />
+          <KpiCard label="Archivados" value={kpis.archivados} color="bg-slate-50 text-slate-600 border-slate-200" />
+        </div>
+
+        <p className="text-[10px] text-muted-foreground italic">
+          Salud del programa = % de empleados activos sobre el total de colaboradores no archivados.
+        </p>
+      </div>
+
+      {/* Acciones rápidas */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => handleTabChange("pending_company_review")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === "pending_company_review"
+              ? "bg-amber-500 text-white shadow-md"
+              : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+          }`}
+        >
+          Ver solicitantes
+        </button>
+        <button
+          onClick={() => handleTabChange("empleados")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === "empleados"
+              ? "bg-emerald-500 text-white shadow-md"
+              : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+          }`}
+        >
+          Ver empleados
+        </button>
+        <button
+          onClick={() => handleTabChange("suspended")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === "suspended"
+              ? "bg-red-500 text-white shadow-md"
+              : "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+          }`}
+        >
+          Ver suspendidos
+        </button>
+        <button
+          onClick={() => handleTabChange("rejected_by_company")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === "rejected_by_company"
+              ? "bg-rose-500 text-white shadow-md"
+              : "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
+          }`}
+        >
+          Ver rechazados
+        </button>
       </div>
 
       {/* Tabs */}
