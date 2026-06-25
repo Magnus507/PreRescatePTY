@@ -36,6 +36,12 @@ interface EmergencyProfile {
   } | null;
   safeReturn?: {
     instructions: string | null;
+    locationName?: string | null;
+    address?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+    contactName?: string | null;
+    contactPhone?: string | null;
   } | null;
   emergencyContacts: {
     fullName: string;
@@ -552,6 +558,24 @@ export default function EmergencyPage() {
     );
   }
 
+  // Derive whether this profile has special assistance / safe return data
+  const vulnerability = profile.vulnerabilityStatus;
+  const safeReturn = profile.safeReturn;
+  const hasSpecialAssistance = !!(
+    profile.isMinor ||
+    vulnerability?.hasCognitiveImpairment ||
+    vulnerability?.hasWanderingRisk ||
+    vulnerability?.isNonVerbal ||
+    vulnerability?.communicationAssistance ||
+    safeReturn?.instructions ||
+    safeReturn?.locationName ||
+    safeReturn?.address ||
+    safeReturn?.contactName ||
+    safeReturn?.contactPhone ||
+    safeReturn?.lat != null ||
+    safeReturn?.lng != null
+  );
+
   if (view === 'unknown') {
     return (
       <div className="min-h-screen bg-[#DA1A21] flex flex-col items-center justify-center p-6 text-white font-sans relative overflow-hidden">
@@ -568,10 +592,7 @@ export default function EmergencyPage() {
           <div className="grid grid-cols-1 gap-5">
             <button onClick={() => setView('paramedic')} className="group relative w-full bg-white text-[#DA1A21] py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3">Emergencia médica <ShieldCheck className="h-8 w-8" /></button>
             <button onClick={() => setView('citizen')} className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest">Soy un ciudadano</button>
-            {(
-              (profile?.vulnerabilityStatus) ||
-              !!profile?.safeReturn?.instructions
-            ) && (
+            {hasSpecialAssistance && (
               <button onClick={() => setView('special')} className="inline-flex items-center justify-center gap-2 w-full py-6 bg-amber-500 text-white rounded-[2.5rem] font-black text-lg shadow-2xl hover:bg-amber-600 active:scale-95 transition-all uppercase tracking-wider">Persona perdida / necesita asistencia</button>
             )}
           </div>
