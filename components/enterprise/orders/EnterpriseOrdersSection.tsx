@@ -46,13 +46,17 @@ interface EnterpriseOrdersSectionProps {
   corporateOrders: CorporateOrder[];
   cancellingOrder: string | null;
   onCancelOrder: (orderId: string) => Promise<void>;
+  initialStatusFilter?: string;
 }
 
 export default function EnterpriseOrdersSection({
   corporateOrders,
   cancellingOrder,
   onCancelOrder,
+  initialStatusFilter,
 }: EnterpriseOrdersSectionProps) {
+  const statusFilter = initialStatusFilter || "all";
+
   const pendingOrders = corporateOrders.filter(
     (o) => o.paymentStatus === "under_review" || o.adminReviewStatus === "pending"
   );
@@ -79,7 +83,7 @@ export default function EnterpriseOrdersSection({
           <p className="text-base font-semibold text-slate-700 mb-1">Sin pagos enviados pendientes</p>
           <p className="text-sm text-muted-foreground">Todas las compras corporativas han sido procesadas o aún no se han enviado.</p>
         </div>
-        {processedOrders.length > 0 && (
+        {processedOrders.length > 0 && statusFilter === "all" && (
           <ProcessedOrdersSection processedOrders={processedOrders} />
         )}
       </div>
@@ -285,25 +289,31 @@ export default function EnterpriseOrdersSection({
           </div>
         );
       })}
-      {processedOrders.length > 0 && (
-        <ProcessedOrdersSection processedOrders={processedOrders} />
-      )}
+      {statusFilter === "all" || statusFilter === "approved" || statusFilter === "rejected" ? (
+        <ProcessedOrdersSection processedOrders={processedOrders} statusFilter={statusFilter} />
+      ) : null}
     </div>
   );
 }
 
 function ProcessedOrdersSection({
   processedOrders,
+  statusFilter,
 }: {
   processedOrders: CorporateOrder[];
+  statusFilter?: string;
 }) {
+  const approvedOrders = processedOrders.filter((o) => o.adminReviewStatus === "approved");
+  const rejectedOrders = processedOrders.filter((o) => o.paymentStatus === "rejected");
+
+  const ordersToShow = statusFilter === "approved" ? approvedOrders : statusFilter === "rejected" ? rejectedOrders : processedOrders;
   return (
     <details className="group">
       <summary className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors py-2">
         Mostrar {processedOrders.length} orden(es) procesada(s)
       </summary>
       <div className="mt-3 space-y-3">
-        {processedOrders.map((order) => (
+        {ordersToShow.map((order) => (
           <div
             key={order.id}
             className="rounded-2xl border border-slate-200 p-4 bg-slate-50/50"

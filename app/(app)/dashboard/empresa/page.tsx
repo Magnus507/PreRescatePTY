@@ -575,7 +575,7 @@ export default function EmpresaDashboardPage() {
                 title: "Pedidos en revisión",
                 description: `${orderCounts.inReview} pedido(s) esperando revisión de pago.`,
                 count: orderCounts.inReview,
-                href: "/dashboard/pedidos-corporativos",
+                href: "/dashboard/pedidos-corporativos?status=under_review",
                 actionLabel: "Ver pedidos",
               });
             }
@@ -625,7 +625,7 @@ export default function EmpresaDashboardPage() {
                 title: "Pedidos rechazados",
                 description: `${orderCounts.rejected} pedido(s) rechazados.`,
                 count: orderCounts.rejected,
-                href: "/dashboard/pedidos-corporativos",
+                href: "/dashboard/pedidos-corporativos?status=rejected",
                 actionLabel: "Ver pedidos",
               });
             }
@@ -675,7 +675,7 @@ export default function EmpresaDashboardPage() {
                 title: "Pedidos aprobados",
                 description: `${orderCounts.approved} pedido(s) aprobado(s).`,
                 count: orderCounts.approved,
-                href: "/dashboard/pedidos-corporativos",
+                href: "/dashboard/pedidos-corporativos?status=approved",
                 actionLabel: "Ver pedidos",
               });
             }

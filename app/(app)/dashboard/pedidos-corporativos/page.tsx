@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { ShoppingCart, Loader2 } from "lucide-react";
 import EnterpriseOrdersSection from "@/components/enterprise/orders/EnterpriseOrdersSection";
@@ -37,6 +38,11 @@ type CorporateOrder = {
 };
 
 export default function PedidosCorporativosPage() {
+  const searchParams = useSearchParams();
+  const statusParam = searchParams.get("status");
+  const validStatuses = ["under_review", "approved", "rejected"];
+  const initialStatusFilter = statusParam && validStatuses.includes(statusParam) ? statusParam : undefined;
+
   const [corporateOrders, setCorporateOrders] = useState<CorporateOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
@@ -105,6 +111,7 @@ export default function PedidosCorporativosPage() {
         corporateOrders={corporateOrders}
         cancellingOrder={cancellingOrder}
         onCancelOrder={handleCancelOrder}
+        initialStatusFilter={initialStatusFilter}
       />
     </div>
   );
