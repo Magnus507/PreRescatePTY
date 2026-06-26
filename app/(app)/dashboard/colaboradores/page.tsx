@@ -6,6 +6,64 @@ import { Users, Loader2, Search, XCircle, CheckCircle2, Ban, Info, ClipboardList
 
 type TabFilter = "todos" | "pending_company_review" | "paid_active" | "approved_unpaid" | "suspended" | "archived" | "rejected_by_company" | "empleados";
 
+type ChipInfo = {
+  id: string;
+  shortCode: string;
+  serialPublic: string;
+  status: string;
+  activatedAt: string | null;
+};
+
+type OrderInfo = {
+  id: string;
+  orderNumber: string;
+  amount: number;
+  orderStatus: string;
+  paymentStatus: string;
+  createdAt: string;
+};
+
+type ProductInfo = {
+  id: string;
+  name: string;
+  productType: string;
+  image: string | null;
+};
+
+type CorporateOrderItem = {
+  id: string;
+  fulfillmentStatus: string;
+  activatedAt: string | null;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  createdAt: string;
+  product: ProductInfo;
+  chip: ChipInfo | null;
+  order: OrderInfo;
+};
+
+type RequestItem = {
+  quantity: number;
+  product: { id: string; name: string; productType: string };
+};
+
+type ProductRequest = {
+  id: string;
+  status: string;
+  createdAt: string;
+  items: RequestItem[];
+};
+
+type CorporateProfile = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  bloodType: string;
+  phone: string | null;
+  profileType: string;
+};
+
 type Member = {
   id: string;
   corporateStatus: string;
@@ -20,6 +78,9 @@ type Member = {
     lastName: string;
     user: { email: string } | null;
   } | null;
+  corporateProfile: CorporateProfile | null;
+  corporateOrderItems: CorporateOrderItem[];
+  productRequests: ProductRequest[];
 };
 
   const STATUS_INFO: Record<string, { label: string; color: string; bg: string }> = {
@@ -766,35 +827,89 @@ export default function ColaboradoresPage() {
                 <div className="space-y-4">
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Kit Empresarial</h3>
 
-                  {/* Estado del kit */}
-                  <div className="rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="h-12 w-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-                        <Package className="h-6 w-6" />
+                  {/* Perfil corporativo */}
+                  {selectedMember.corporateProfile ? (
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="h-8 w-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                          <Users className="h-4 w-4" />
+                        </div>
+                        <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Perfil corporativo</h4>
                       </div>
-                      <div className="flex-1">
-                        <h4 className="font-black text-lg mb-1">Estado del Kit</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Esta funcionalidad estará disponible en las próximas fases del Kit Empresarial.
-                        </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Nombre</p>
+                          <p className="text-sm font-semibold">{selectedMember.corporateProfile.firstName} {selectedMember.corporateProfile.lastName}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Tipo de sangre</p>
+                          <p className="text-sm font-semibold">{selectedMember.corporateProfile.bloodType || "—"}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Teléfono</p>
+                          <p className="text-sm font-semibold">{selectedMember.corporateProfile.phone || "—"}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : null}
 
-                  {/* Productos */}
+                  {/* Productos del kit */}
                   <div className="rounded-2xl border border-slate-200 bg-white p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="h-8 w-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
                         <Package className="h-4 w-4" />
                       </div>
                       <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Productos</h4>
+                      {selectedMember.corporateOrderItems.length > 0 && (
+                        <span className="ml-auto text-[10px] font-bold text-muted-foreground">{selectedMember.corporateOrderItems.length} ítem(s)</span>
+                      )}
                     </div>
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                      <p className="text-xs font-semibold text-muted-foreground">No disponibles todavía</p>
-                      <p className="text-[10px] text-muted-foreground/70 mt-1">
-                        Los productos asignados aparecerán aquí cuando el módulo esté completo.
-                      </p>
-                    </div>
+                    {selectedMember.corporateOrderItems.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedMember.corporateOrderItems.map((item) => {
+                          const fulfillmentColors: Record<string, string> = {
+                            pending_assignment: "bg-amber-50 text-amber-700 border-amber-200",
+                            assigned_reserved: "bg-blue-50 text-blue-700 border-blue-200",
+                            activated: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                            delivered: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                          };
+                          const fulfillmentLabels: Record<string, string> = {
+                            pending_assignment: "Pendiente",
+                            assigned_reserved: "Reservado",
+                            activated: "Activado",
+                            delivered: "Entregado",
+                          };
+                          const fStatus = fulfillmentLabels[item.fulfillmentStatus] || item.fulfillmentStatus;
+                          const fColor = fulfillmentColors[item.fulfillmentStatus] || "bg-slate-50 text-slate-600 border-slate-200";
+                          return (
+                            <div key={item.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <p className="text-sm font-bold">{item.product.name}</p>
+                                  <p className="text-[10px] text-muted-foreground">{item.product.productType}</p>
+                                  <p className="text-[10px] text-muted-foreground">Cantidad: {item.quantity}</p>
+                                </div>
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${fColor}`}>{fStatus}</span>
+                              </div>
+                              {item.chip && (
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                  Chip: {item.chip.shortCode}
+                                </p>
+                              )}
+                              {item.activatedAt && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Activado: {new Date(item.activatedAt).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" })}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                        <p className="text-xs font-semibold text-muted-foreground">Sin productos asignados todavía.</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Chip */}
@@ -805,12 +920,38 @@ export default function ColaboradoresPage() {
                       </div>
                       <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Chip</h4>
                     </div>
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                      <p className="text-xs font-semibold text-muted-foreground">No disponible todavía</p>
-                      <p className="text-[10px] text-muted-foreground/70 mt-1">
-                        El chip empresarial y su información de activación se mostrarán aquí.
-                      </p>
-                    </div>
+                    {(() => {
+                      const chip = selectedMember.corporateOrderItems.find(i => i.chip)?.chip;
+                      return chip ? (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">ShortCode</p>
+                            <p className="text-sm font-semibold font-mono">{chip.shortCode}</p>
+                          </div>
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Serial</p>
+                            <p className="text-sm font-semibold font-mono">{chip.serialPublic}</p>
+                          </div>
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Estado</p>
+                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              chip.status === "activated" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                              chip.status === "suspended" ? "bg-red-50 text-red-700 border-red-200" :
+                              chip.status === "sold" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                              "bg-slate-50 text-slate-600 border-slate-200"
+                            }`}>{chip.status}</span>
+                          </div>
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Activación</p>
+                            <p className="text-sm font-semibold">{chip.activatedAt ? new Date(chip.activatedAt).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                          <p className="text-xs font-semibold text-muted-foreground">Sin chip asignado todavía.</p>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Pedido asociado */}
@@ -821,12 +962,37 @@ export default function ColaboradoresPage() {
                       </div>
                       <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Pedido asociado</h4>
                     </div>
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                      <p className="text-xs font-semibold text-muted-foreground">No disponible todavía</p>
-                      <p className="text-[10px] text-muted-foreground/70 mt-1">
-                        El número de orden y detalles de la compra corporativa se integrarán próximamente.
-                      </p>
-                    </div>
+                    {(() => {
+                      const order = selectedMember.corporateOrderItems.find(i => i.order)?.order;
+                      return order ? (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Número</p>
+                            <p className="text-sm font-semibold font-mono">{order.orderNumber}</p>
+                          </div>
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Monto</p>
+                            <p className="text-sm font-semibold">${order.amount.toFixed(2)}</p>
+                          </div>
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Pago</p>
+                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              order.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                              order.paymentStatus === "under_review" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                              "bg-slate-50 text-slate-600 border-slate-200"
+                            }`}>{order.paymentStatus}</span>
+                          </div>
+                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Fecha</p>
+                            <p className="text-sm font-semibold">{new Date(order.createdAt).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                          <p className="text-xs font-semibold text-muted-foreground">Sin pedido asociado todavía.</p>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Solicitudes */}
@@ -836,29 +1002,45 @@ export default function ColaboradoresPage() {
                         <FileText className="h-4 w-4" />
                       </div>
                       <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Solicitudes</h4>
+                      {selectedMember.productRequests.length > 0 && (
+                        <span className="ml-auto text-[10px] font-bold text-muted-foreground">{selectedMember.productRequests.length}</span>
+                      )}
                     </div>
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                      <p className="text-xs font-semibold text-muted-foreground">No disponibles todavía</p>
-                      <p className="text-[10px] text-muted-foreground/70 mt-1">
-                        Las solicitudes de productos realizadas por el empleado se listarán aquí.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Activaciones */}
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="h-8 w-8 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center">
-                        <Truck className="h-4 w-4" />
+                    {selectedMember.productRequests.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedMember.productRequests.map((req) => {
+                          const reqColors: Record<string, string> = {
+                            pending_company_approval: "bg-amber-50 text-amber-700 border-amber-200",
+                            approved_pending_payment: "bg-blue-50 text-blue-700 border-blue-200",
+                            payment_under_review: "bg-violet-50 text-violet-700 border-violet-200",
+                            rejected_by_company: "bg-red-50 text-red-700 border-red-200",
+                          };
+                          const reqLabels: Record<string, string> = {
+                            pending_company_approval: "Pendiente",
+                            approved_pending_payment: "Aprobada",
+                            payment_under_review: "En revisión",
+                            rejected_by_company: "Rechazada",
+                          };
+                          const rLabel = reqLabels[req.status] || req.status;
+                          const rColor = reqColors[req.status] || "bg-slate-50 text-slate-600 border-slate-200";
+                          return (
+                            <div key={req.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-xs font-semibold">{req.items.map(i => `${i.product.name} × ${i.quantity}`).join(", ")}</p>
+                                  <p className="text-[10px] text-muted-foreground">{new Date(req.createdAt).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                                </div>
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${rColor}`}>{rLabel}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Activaciones</h4>
-                    </div>
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                      <p className="text-xs font-semibold text-muted-foreground">No disponibles todavía</p>
-                      <p className="text-[10px] text-muted-foreground/70 mt-1">
-                        El historial de activaciones y fechas se integrará en futuras fases.
-                      </p>
-                    </div>
+                    ) : (
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                        <p className="text-xs font-semibold text-muted-foreground">Sin solicitudes registradas.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

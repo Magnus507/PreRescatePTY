@@ -69,6 +69,75 @@ export async function GET(req: Request) {
           },
         },
       },
+      corporateProfile: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          bloodType: true,
+          phone: true,
+          profileType: true,
+        },
+      },
+      corporateOrderItems: {
+        select: {
+          id: true,
+          fulfillmentStatus: true,
+          activatedAt: true,
+          quantity: true,
+          unitPrice: true,
+          subtotal: true,
+          createdAt: true,
+          product: {
+            select: {
+              id: true,
+              name: true,
+              productType: true,
+              image: true,
+            },
+          },
+          chip: {
+            select: {
+              id: true,
+              shortCode: true,
+              serialPublic: true,
+              status: true,
+              activatedAt: true,
+            },
+          },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              amount: true,
+              orderStatus: true,
+              paymentStatus: true,
+              createdAt: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+      productRequests: {
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          items: {
+            select: {
+              quantity: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  productType: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
