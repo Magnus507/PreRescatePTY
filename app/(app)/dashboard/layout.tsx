@@ -38,6 +38,7 @@ const consumerShoppingItems = [
 
 // === CORPORATE Navigation ===
 const corporateNavItems = [
+  { href: "/dashboard/empresa", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/empresa-perfil", label: "Perfil Empresarial", icon: Building2 },
   { href: "/dashboard/colaboradores", label: "Colaboradores", icon: UsersRound },
 ];
