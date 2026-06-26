@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Loader2, Building2, UsersRound,
-  Clock, CheckCircle2,
+  Clock, CheckCircle2, UserPlus, UserCheck, UserX, UserMinus,
   Package, ShoppingCart, ArrowRight, AlertTriangle,
   LayoutDashboard, TrendingUp
 } from "lucide-react";
@@ -192,21 +192,27 @@ export default function EmpresaDashboardPage() {
   }, [memberCounts]);
 
   const recentActivity = useMemo(() => {
-    const activities: { id: string; type: "request" | "order"; date: number; title: string; status: string; statusColor: string }[] = [];
+    const activities: { id: string; type: "request" | "order" | "member"; date: number; title: string; description: string; status: string; statusColor: string; icon: React.ElementType; iconColor: string }[] = [];
+
     requests.forEach((r) => {
       if (r.createdAt) {
         const member = r.organizationMember;
         const name = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
+        const productNames = (r.items || []).map((i) => i.product?.name || "Producto").join(", ");
         activities.push({
           id: r.id,
           type: "request",
           date: new Date(r.createdAt).getTime(),
-          title: `Solicitud de ${name}`,
+          title: "Nueva solicitud",
+          description: `${name} solicitó ${productNames || "productos"}`,
           status: STATUS_LABELS[r.status] || r.status,
           statusColor: STATUS_COLORS[r.status] || "bg-slate-100 text-slate-600 border-slate-200",
+          icon: Package,
+          iconColor: "text-amber-500",
         });
       }
     });
+
     orders.forEach((o) => {
       if (o.createdAt) {
         const orderStatus =
@@ -219,16 +225,60 @@ export default function EmpresaDashboardPage() {
           id: o.id,
           type: "order",
           date: new Date(o.createdAt).getTime(),
-          title: `Orden #${o.orderNumber || "—"}`,
+          title: `Pedido #${o.orderNumber || "—"}`,
+          description: `Monto: $${o.amount?.toFixed(2) || "0.00"}`,
           status: orderStatus.label,
           statusColor: orderStatus.color,
+          icon: ShoppingCart,
+          iconColor: "text-blue-500",
         });
       }
     });
+
+    members.forEach((m) => {
+      const memberName = m.profile ? `${m.profile.firstName || ""} ${m.profile.lastName || ""}`.trim() : "—";
+      const statusMap: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+        pending_company_approval: { label: "Pendiente de aprobación", icon: UserPlus, color: "text-amber-500" },
+        approved_unpaid: { label: "Aprobado sin pagar", icon: UserCheck, color: "text-blue-500" },
+        paid_active: { label: "Colaborador activado", icon: UserCheck, color: "text-emerald-500" },
+        suspended: { label: "Suspendido", icon: UserMinus, color: "text-red-500" },
+        rejected_by_company: { label: "Rechazado", icon: UserX, color: "text-rose-500" },
+        archived: { label: "Archivado", icon: UserMinus, color: "text-slate-500" },
+      };
+      const statusInfo = statusMap[m.corporateStatus || ""];
+      if (statusInfo) {
+        activities.push({
+          id: m.id,
+          type: "member",
+          date: Date.now(),
+          title: memberName,
+          description: statusInfo.label,
+          status: statusInfo.label,
+          statusColor: "bg-slate-100 text-slate-600 border-slate-200",
+          icon: statusInfo.icon,
+          iconColor: statusInfo.color,
+        });
+      }
+    });
+
     return activities
       .sort((a, b) => b.date - a.date)
-      .slice(0, 10);
-  }, [requests, orders]);
+      .slice(0, 15);
+  }, [requests, orders, members]);
+
+  const getTimeLabel = (date: number): string => {
+    const now = new Date();
+    const diff = now.getTime() - date;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor(diff / (1000 * 60));
+
+    if (minutes < 60) return `Hace ${minutes} min`;
+    if (hours < 24) return `Hace ${hours} hora${hours > 1 ? "s" : ""}`;
+    if (days === 1) return "Ayer";
+    if (days < 7) return `Hace ${days} días`;
+    return new Date(date).toLocaleDateString("es-PA", { month: "short", day: "numeric" });
+  };
 
   if (loading) {
     return (
@@ -451,38 +501,40 @@ export default function EmpresaDashboardPage() {
             </div>
           </div>
 
-          {/* Recent Activity */}
-          {recentActivity.length > 0 && (
+          {/* Recent Activity Timeline */}
+          {recentActivity.length > 0 ? (
             <div>
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <Clock className="h-4 w-4" /> Actividad Reciente
               </h3>
-              <div className="space-y-2">
-                {recentActivity.map((activity) => (
-                  <div key={`${activity.type}-${activity.id}`} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                        {activity.type === "request" ? (
-                          <Package className="h-4 w-4 text-amber-500" />
-                        ) : (
-                          <ShoppingCart className="h-4 w-4 text-blue-500" />
-                        )}
+              <div className="space-y-3">
+                {recentActivity.map((activity) => {
+                  const Icon = activity.icon;
+                  return (
+                    <div key={`${activity.type}-${activity.id}`} className="rounded-xl border border-slate-200 bg-white p-4 flex items-start gap-3">
+                      <div className={`h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 ${activity.iconColor}`}>
+                        <Icon className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{activity.title}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {activity.type === "request" ? "Solicitud de producto" : "Pedido corporativo"}
-                        </p>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-sm font-bold text-slate-900 truncate">{activity.title}</p>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${activity.statusColor} shrink-0`}>
+                            {activity.status}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mb-1">{activity.description}</p>
+                        <p className="text-[9px] text-muted-foreground/70">{getTimeLabel(activity.date)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${activity.statusColor}`}>
-                        {activity.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+              <Clock className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-slate-700">No existe actividad reciente</p>
+              <p className="text-[10px] text-muted-foreground">Las acciones de colaboradores, solicitudes y pedidos aparecerán aquí</p>
             </div>
           )}
 
