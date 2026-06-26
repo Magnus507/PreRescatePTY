@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
-import { Package, AlertTriangle, Loader2 } from "lucide-react";
+import { Package, Loader2 } from "lucide-react";
 import EnterpriseRequestsSection from "@/components/enterprise/requests/EnterpriseRequestsSection";
 
 // Types
