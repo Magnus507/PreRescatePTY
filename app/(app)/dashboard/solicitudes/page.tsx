@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Package, Loader2 } from "lucide-react";
 import EnterpriseRequestsSection from "@/components/enterprise/requests/EnterpriseRequestsSection";
@@ -38,6 +39,11 @@ type CompanyRequest = {
 };
 
 export default function SolicitudesPage() {
+  const searchParams = useSearchParams();
+  const statusParam = searchParams.get("status");
+  const validStatuses = ["pending_company_approval", "approved_pending_payment", "payment_under_review", "paid_approved", "rejected_by_company", "cancelled"];
+  const initialStatusFilter = validStatuses.includes(statusParam || "") ? statusParam : undefined;
+
   const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
   const [companyRequestsLoading, setCompanyRequestsLoading] = useState(true);
   const [reviewingRequest, setReviewingRequest] = useState<string | null>(null);
@@ -100,7 +106,7 @@ export default function SolicitudesPage() {
     setSelectedApprovedRequests((prev) => ({ ...prev, [requestId]: !prev[requestId] }));
   };
 
-  const selectAllApproved = () => {
+  const handleSelectAllApproved = () => {
     const approved = companyRequests.filter((r) => r.status === "approved_pending_payment" && !r.orderId);
     const allSelected = approved.every((r) => selectedApprovedRequests[r.id]);
     if (allSelected) {
@@ -114,6 +120,16 @@ export default function SolicitudesPage() {
       for (const r of approved) next[r.id] = true;
       setSelectedApprovedRequests(next);
     }
+  };
+
+  const handleRemoveProof = () => {
+    setOrderProofUrl("");
+    setOrderProofName("");
+  };
+
+  const handleCloseRejectModal = () => {
+    setShowRejectModal(null);
+    setRejectReason("");
   };
 
   const handleSubmitOrderFromRequests = async () => {
@@ -196,12 +212,13 @@ export default function SolicitudesPage() {
         submittingOrderFromRequests={submittingOrderFromRequests}
         onReviewRequest={handleReviewRequest}
         onToggleApprovedRequest={toggleApprovedRequest}
-        onSelectAllApproved={selectAllApproved}
+        onSelectAllApproved={handleSelectAllApproved}
         onSubmitOrderFromRequests={handleSubmitOrderFromRequests}
         onUploadProof={handleUploadProof}
-        onRemoveProof={() => { setOrderProofUrl(""); setOrderProofName(""); }}
-        onCloseRejectModal={() => { setShowRejectModal(null); setRejectReason(""); }}
-        onRejectReasonChange={(reason) => setRejectReason(reason)}
+        onRemoveProof={handleRemoveProof}
+        onCloseRejectModal={handleCloseRejectModal}
+        onRejectReasonChange={setRejectReason}
+        initialStatusFilter={initialStatusFilter as string | undefined}
       />
     </div>
   );

@@ -563,7 +563,7 @@ export default function EmpresaDashboardPage() {
                 title: "Solicitudes pendientes",
                 description: `${requestCounts.pending} solicitud(es) esperando aprobación.`,
                 count: requestCounts.pending,
-                href: "/dashboard/solicitudes",
+                href: "/dashboard/solicitudes?status=pending_company_approval",
                 actionLabel: "Ver solicitudes",
               });
             }
@@ -613,7 +613,7 @@ export default function EmpresaDashboardPage() {
                 title: "Solicitudes rechazadas",
                 description: `${requestCounts.rejected} solicitud(es) rechazadas.`,
                 count: requestCounts.rejected,
-                href: "/dashboard/solicitudes",
+                href: "/dashboard/solicitudes?status=rejected_by_company",
                 actionLabel: "Ver solicitudes",
               });
             }
@@ -663,7 +663,7 @@ export default function EmpresaDashboardPage() {
                 title: "Solicitudes aprobadas",
                 description: `${requestCounts.approved} solicitud(es) aprobada(s) pendiente(s) de pago.`,
                 count: requestCounts.approved,
-                href: "/dashboard/solicitudes",
+                href: "/dashboard/solicitudes?status=approved_pending_payment",
                 actionLabel: "Ver solicitudes",
               });
             }

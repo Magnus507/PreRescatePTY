@@ -54,6 +54,7 @@ interface EnterpriseRequestsSectionProps {
   onRemoveProof: () => void;
   onCloseRejectModal: () => void;
   onRejectReasonChange: (reason: string) => void;
+  initialStatusFilter?: string;
 }
 
 
@@ -75,10 +76,11 @@ export default function EnterpriseRequestsSection({
   onRemoveProof,
   onCloseRejectModal,
   onRejectReasonChange,
+  initialStatusFilter,
 }: EnterpriseRequestsSectionProps) {
   const [orderProofUploading, setOrderProofUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter || "all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   const selectedApprovedRequestIds = Object.entries(selectedApprovedRequests)
