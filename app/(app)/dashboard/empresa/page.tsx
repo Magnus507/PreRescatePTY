@@ -3,8 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  Loader2, Building2, UsersRound, UserRound,
-  Clock,
+  Loader2, Building2, UsersRound,
+  Clock, CheckCircle2,
   Package, ShoppingCart, ArrowRight, AlertTriangle,
   LayoutDashboard, TrendingUp
 } from "lucide-react";
@@ -191,25 +191,44 @@ export default function EmpresaDashboardPage() {
     return Math.round((memberCounts.active / nonArchived) * 100);
   }, [memberCounts]);
 
-  const recentRequests = useMemo(() => {
-    return [...requests]
-      .sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      })
-      .slice(0, 5);
-  }, [requests]);
-
-  const recentOrders = useMemo(() => {
-    return [...orders]
-      .sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      })
-      .slice(0, 3);
-  }, [orders]);
+  const recentActivity = useMemo(() => {
+    const activities: { id: string; type: "request" | "order"; date: number; title: string; status: string; statusColor: string }[] = [];
+    requests.forEach((r) => {
+      if (r.createdAt) {
+        const member = r.organizationMember;
+        const name = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
+        activities.push({
+          id: r.id,
+          type: "request",
+          date: new Date(r.createdAt).getTime(),
+          title: `Solicitud de ${name}`,
+          status: STATUS_LABELS[r.status] || r.status,
+          statusColor: STATUS_COLORS[r.status] || "bg-slate-100 text-slate-600 border-slate-200",
+        });
+      }
+    });
+    orders.forEach((o) => {
+      if (o.createdAt) {
+        const orderStatus =
+          o.adminReviewStatus === "approved"
+            ? { label: "Aprobado", color: "bg-emerald-100 text-emerald-700 border-emerald-200" }
+            : o.paymentStatus === "rejected"
+            ? { label: "Rechazado", color: "bg-rose-100 text-rose-700 border-rose-200" }
+            : { label: "En revisión", color: "bg-indigo-100 text-indigo-700 border-indigo-200" };
+        activities.push({
+          id: o.id,
+          type: "order",
+          date: new Date(o.createdAt).getTime(),
+          title: `Orden #${o.orderNumber || "—"}`,
+          status: orderStatus.label,
+          statusColor: orderStatus.color,
+        });
+      }
+    });
+    return activities
+      .sort((a, b) => b.date - a.date)
+      .slice(0, 10);
+  }, [requests, orders]);
 
   if (loading) {
     return (
@@ -432,89 +451,43 @@ export default function EmpresaDashboardPage() {
             </div>
           </div>
 
-          {/* Recent requests */}
-          {recentRequests.length > 0 && (
+          {/* Recent Activity */}
+          {recentActivity.length > 0 && (
             <div>
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Package className="h-4 w-4" /> Solicitudes Recientes
+                <Clock className="h-4 w-4" /> Actividad Reciente
               </h3>
               <div className="space-y-2">
-                {recentRequests.map((req) => {
-                  const member = req.organizationMember;
-                  const memberName = member?.profile
-                    ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim()
-                    : "—";
-                  const statusConfig = STATUS_LABELS[req.status] || req.status;
-                  const statusColor = STATUS_COLORS[req.status] || "bg-slate-100 text-slate-600 border-slate-200";
-                  const productNames = (req.items || []).map((i) => i.product?.name || "Producto").join(", ");
-                  return (
-                    <div key={req.id} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                          <UserRound className="h-4 w-4 text-slate-500" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{memberName}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{productNames || "Sin productos"}</p>
-                        </div>
+                {recentActivity.map((activity) => (
+                  <div key={`${activity.type}-${activity.id}`} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                        {activity.type === "request" ? (
+                          <Package className="h-4 w-4 text-amber-500" />
+                        ) : (
+                          <ShoppingCart className="h-4 w-4 text-blue-500" />
+                        )}
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{activity.title}</p>
                         <p className="text-[10px] text-muted-foreground">
-                          {req.createdAt ? new Date(req.createdAt).toLocaleDateString("es-PA", { month: "short", day: "numeric" }) : "—"}
+                          {activity.type === "request" ? "Solicitud de producto" : "Pedido corporativo"}
                         </p>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${statusColor}`}>
-                          {statusConfig}
-                        </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Recent orders */}
-          {recentOrders.length > 0 && (
-            <div>
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4" /> Pedidos Recientes
-              </h3>
-              <div className="space-y-2">
-                {recentOrders.map((order) => {
-                  const orderStatus =
-                    order.adminReviewStatus === "approved"
-                      ? { label: "Aprobado", color: "bg-emerald-100 text-emerald-700 border-emerald-200" }
-                      : order.paymentStatus === "rejected"
-                      ? { label: "Rechazado", color: "bg-rose-100 text-rose-700 border-rose-200" }
-                      : { label: "En revisión", color: "bg-indigo-100 text-indigo-700 border-indigo-200" };
-                  return (
-                    <div key={order.id} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                          <ShoppingCart className="h-4 w-4 text-slate-500" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900">Orden #{order.orderNumber || "—"}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString("es-PA", { month: "short", day: "numeric" }) : "—"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <p className="text-sm font-bold text-primary">${order.amount?.toFixed(2)}</p>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${orderStatus.color}`}>
-                          {orderStatus.label}
-                        </span>
-                      </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${activity.statusColor}`}>
+                        {activity.status}
+                      </span>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
           {/* Alerts */}
-          {(memberCounts.pending > 0 || requestCounts.pending > 0 || orderCounts.inReview > 0 || (programHealth !== null && programHealth < 40)) && (
+          {(memberCounts.pending > 0 || requestCounts.pending > 0 || orderCounts.inReview > 0 || (programHealth !== null && programHealth < 40)) ? (
             <div>
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" /> Alertas
@@ -553,6 +526,12 @@ export default function EmpresaDashboardPage() {
                   </div>
                 )}
               </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 bg-white p-6 text-center">
+              <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-700">No hay alertas pendientes</p>
+              <p className="text-[10px] text-muted-foreground">Todo en orden</p>
             </div>
           )}
         </>
