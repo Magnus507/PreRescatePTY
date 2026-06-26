@@ -1,7 +1,7 @@
 "use client";
 
 import { CorporateKitData } from "./types";
-import { Loader2, Users, Package, Smartphone, ClipboardList, FileText } from "lucide-react";
+import { Loader2, Users, Package, Smartphone, ClipboardList } from "lucide-react";
 
 interface CollaboratorKitTabProps {
   kitData: CorporateKitData | null;
@@ -214,53 +214,6 @@ export default function CollaboratorKitTab({ kitData, kitLoading, kitError, onRe
         })()}
       </div>
 
-      {/* Solicitudes */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="h-8 w-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
-            <FileText className="h-4 w-4" />
-          </div>
-          <h4 className="text-sm font-black uppercase tracking-widest text-slate-500">Solicitudes</h4>
-          {kitData.productRequests.length > 0 && (
-            <span className="ml-auto text-[10px] font-bold text-muted-foreground">{kitData.productRequests.length}</span>
-          )}
-        </div>
-        {kitData.productRequests.length > 0 ? (
-          <div className="space-y-2">
-            {kitData.productRequests.map((req) => {
-              const reqColors: Record<string, string> = {
-                pending_company_approval: "bg-amber-50 text-amber-700 border-amber-200",
-                approved_pending_payment: "bg-blue-50 text-blue-700 border-blue-200",
-                payment_under_review: "bg-violet-50 text-violet-700 border-violet-200",
-                rejected_by_company: "bg-red-50 text-red-700 border-red-200",
-              };
-              const reqLabels: Record<string, string> = {
-                pending_company_approval: "Pendiente",
-                approved_pending_payment: "Aprobada",
-                payment_under_review: "En revisión",
-                rejected_by_company: "Rechazada",
-              };
-              const rLabel = reqLabels[req.status] || req.status;
-              const rColor = reqColors[req.status] || "bg-slate-50 text-slate-600 border-slate-200";
-              return (
-                <div key={req.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs font-semibold">{req.items.map(i => `${i.product.name} × ${i.quantity}`).join(", ")}</p>
-                      <p className="text-[10px] text-muted-foreground">{new Date(req.createdAt).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" })}</p>
-                    </div>
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${rColor}`}>{rLabel}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-            <p className="text-xs font-semibold text-muted-foreground">Sin solicitudes registradas.</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

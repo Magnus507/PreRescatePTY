@@ -7,6 +7,7 @@ import CollaboratorInfoTab from "./CollaboratorInfoTab";
 import CollaboratorProgramTab from "./CollaboratorProgramTab";
 import CollaboratorHistoryTab from "./CollaboratorHistoryTab";
 import CollaboratorKitTab from "./CollaboratorKitTab";
+import CollaboratorRequestsTab from "./CollaboratorRequestsTab";
 
 interface CollaboratorDrawerProps {
   member: Member;
@@ -149,6 +150,17 @@ export default function CollaboratorDrawer({
               <Package className="h-4 w-4 inline mr-2" />
               Kit Empresarial
             </button>
+            <button
+              onClick={() => setDetailTab("requests")}
+              className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+                detailTab === "requests"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-slate-700"
+              }`}
+            >
+              <FileText className="h-4 w-4 inline mr-2" />
+              Solicitudes
+            </button>
           </div>
 
           {/* Contenido de las tabs */}
@@ -158,6 +170,14 @@ export default function CollaboratorDrawer({
             {detailTab === "history" && <CollaboratorHistoryTab member={member} />}
             {detailTab === "kit" && (
               <CollaboratorKitTab
+                kitData={kitData}
+                kitLoading={kitLoading}
+                kitError={kitError}
+                onRetry={onRetryKit}
+              />
+            )}
+            {detailTab === "requests" && (
+              <CollaboratorRequestsTab
                 kitData={kitData}
                 kitLoading={kitLoading}
                 kitError={kitError}

@@ -87,4 +87,4 @@ export type StatusInfo = {
   bg: string;
 };
 
-export type DetailTab = "info" | "program" | "history" | "kit";
+export type DetailTab = "info" | "program" | "history" | "kit" | "requests";

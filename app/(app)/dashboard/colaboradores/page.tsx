@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Users, Loader2, Search, XCircle, CheckCircle2, Ban, Info } from "lucide-react";
 import CollaboratorDrawer from "@/components/enterprise/collaborators/CollaboratorDrawer";
+import type { DetailTab } from "@/components/enterprise/collaborators/types";
 
 type TabFilter = "todos" | "pending_company_review" | "paid_active" | "approved_unpaid" | "suspended" | "archived" | "rejected_by_company" | "empleados";
 
@@ -120,7 +121,7 @@ export default function ColaboradoresPage() {
   const [actingOn, setActingOn] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showDetail, setShowDetail] = useState(false);
-  const [detailTab, setDetailTab] = useState<"info" | "program" | "history" | "kit">("info");
+  const [detailTab, setDetailTab] = useState<DetailTab>("info");
   const [kitData, setKitData] = useState<CorporateKitData | null>(null);
   const [kitLoading, setKitLoading] = useState(false);
   const [kitError, setKitError] = useState<string | null>(null);
@@ -224,7 +225,7 @@ export default function ColaboradoresPage() {
   }, [setKitData, setKitLoading, setKitError, setKitCache]);
 
   useEffect(() => {
-    if (showDetail && detailTab === "kit" && selectedMember) {
+    if (showDetail && (detailTab === "kit" || detailTab === "requests") && selectedMember) {
       loadKitData(selectedMember.id);
     }
   }, [showDetail, detailTab, selectedMember, loadKitData]);
