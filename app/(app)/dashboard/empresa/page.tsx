@@ -540,7 +540,7 @@ export default function EmpresaDashboardPage() {
 
           {/* Notification Center */}
           {(() => {
-            const notifications: { level: "critical" | "warning" | "info"; icon: React.ElementType; iconColor: string; title: string; description: string; count: number }[] = [];
+            const notifications: { level: "critical" | "warning" | "info"; icon: React.ElementType; iconColor: string; title: string; description: string; count: number; href?: string; actionLabel?: string }[] = [];
 
             // CRITICAL
             if (memberCounts.pending > 0) {
@@ -551,6 +551,8 @@ export default function EmpresaDashboardPage() {
                 title: "Colaboradores pendientes",
                 description: `${memberCounts.pending} colaborador(es) esperando aprobación.`,
                 count: memberCounts.pending,
+                href: "/dashboard/colaboradores",
+                actionLabel: "Ver colaboradores",
               });
             }
             if (requestCounts.pending > 0) {
@@ -561,6 +563,8 @@ export default function EmpresaDashboardPage() {
                 title: "Solicitudes pendientes",
                 description: `${requestCounts.pending} solicitud(es) esperando aprobación.`,
                 count: requestCounts.pending,
+                href: "/dashboard/solicitudes",
+                actionLabel: "Ver solicitudes",
               });
             }
             if (orderCounts.inReview > 0) {
@@ -571,6 +575,8 @@ export default function EmpresaDashboardPage() {
                 title: "Pedidos en revisión",
                 description: `${orderCounts.inReview} pedido(s) esperando revisión de pago.`,
                 count: orderCounts.inReview,
+                href: "/dashboard/pedidos-corporativos",
+                actionLabel: "Ver pedidos",
               });
             }
             if (programHealth !== null && programHealth < 40) {
@@ -581,6 +587,8 @@ export default function EmpresaDashboardPage() {
                 title: "Salud del programa crítica",
                 description: `Solo el ${programHealth}% de colaboradores están activos.`,
                 count: 1,
+                href: "/dashboard/colaboradores",
+                actionLabel: "Ver colaboradores",
               });
             }
 
@@ -593,6 +601,8 @@ export default function EmpresaDashboardPage() {
                 title: "Colaboradores suspendidos",
                 description: `${memberCounts.suspended} colaborador(es) requieren revisión.`,
                 count: memberCounts.suspended,
+                href: "/dashboard/colaboradores",
+                actionLabel: "Ver colaboradores",
               });
             }
             if (requestCounts.rejected > 0) {
@@ -603,6 +613,8 @@ export default function EmpresaDashboardPage() {
                 title: "Solicitudes rechazadas",
                 description: `${requestCounts.rejected} solicitud(es) rechazadas.`,
                 count: requestCounts.rejected,
+                href: "/dashboard/solicitudes",
+                actionLabel: "Ver solicitudes",
               });
             }
             if (orderCounts.rejected > 0) {
@@ -613,6 +625,8 @@ export default function EmpresaDashboardPage() {
                 title: "Pedidos rechazados",
                 description: `${orderCounts.rejected} pedido(s) rechazados.`,
                 count: orderCounts.rejected,
+                href: "/dashboard/pedidos-corporativos",
+                actionLabel: "Ver pedidos",
               });
             }
             if (memberCounts.approved > 0) {
@@ -623,6 +637,8 @@ export default function EmpresaDashboardPage() {
                 title: "Aprobados sin pagar",
                 description: `${memberCounts.approved} colaborador(es) aprobado(s) pendiente(s) de pago.`,
                 count: memberCounts.approved,
+                href: "/dashboard/colaboradores",
+                actionLabel: "Ver colaboradores",
               });
             }
 
@@ -635,6 +651,8 @@ export default function EmpresaDashboardPage() {
                 title: "Colaboradores activos",
                 description: `${memberCounts.active} colaborador(es) activo(s) en el programa.`,
                 count: memberCounts.active,
+                href: "/dashboard/colaboradores",
+                actionLabel: "Ver colaboradores",
               });
             }
             if (requestCounts.approved > 0) {
@@ -645,6 +663,8 @@ export default function EmpresaDashboardPage() {
                 title: "Solicitudes aprobadas",
                 description: `${requestCounts.approved} solicitud(es) aprobada(s) pendiente(s) de pago.`,
                 count: requestCounts.approved,
+                href: "/dashboard/solicitudes",
+                actionLabel: "Ver solicitudes",
               });
             }
             if (orderCounts.approved > 0) {
@@ -655,6 +675,8 @@ export default function EmpresaDashboardPage() {
                 title: "Pedidos aprobados",
                 description: `${orderCounts.approved} pedido(s) aprobado(s).`,
                 count: orderCounts.approved,
+                href: "/dashboard/pedidos-corporativos",
+                actionLabel: "Ver pedidos",
               });
             }
             if (programHealth !== null && programHealth >= 70) {
@@ -665,6 +687,8 @@ export default function EmpresaDashboardPage() {
                 title: "Programa saludable",
                 description: `El ${programHealth}% de colaboradores están activos.`,
                 count: 1,
+                href: "/dashboard/colaboradores",
+                actionLabel: "Ver colaboradores",
               });
             }
 
@@ -717,7 +741,12 @@ export default function EmpresaDashboardPage() {
                                     {notif.count}
                                   </span>
                                 </div>
-                                <p className="text-[10px] text-muted-foreground">{notif.description}</p>
+                                <p className="text-[10px] text-muted-foreground mb-1">{notif.description}</p>
+                                {notif.href && (
+                                  <Link href={notif.href} className="inline-flex items-center gap-1 text-[9px] font-black text-primary hover:underline">
+                                    {notif.actionLabel || "Ver"} →
+                                  </Link>
+                                )}
                               </div>
                             </div>
                           );
