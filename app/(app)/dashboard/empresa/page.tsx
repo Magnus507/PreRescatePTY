@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Loader2, Building2, UsersRound,
-  Clock, CheckCircle2, UserPlus, UserCheck, UserX, UserMinus,
+  Clock, CheckCircle2, XCircle, UserPlus, UserCheck, UserX, UserMinus,
   Package, ShoppingCart, ArrowRight, AlertTriangle,
   LayoutDashboard, TrendingUp
 } from "lucide-react";
@@ -538,54 +538,197 @@ export default function EmpresaDashboardPage() {
             </div>
           )}
 
-          {/* Alerts */}
-          {(memberCounts.pending > 0 || requestCounts.pending > 0 || orderCounts.inReview > 0 || (programHealth !== null && programHealth < 40)) ? (
-            <div>
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" /> Alertas
-              </h3>
-              <div className="space-y-2">
-                {memberCounts.pending > 0 && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-amber-600 shrink-0" />
-                    <p className="text-sm font-semibold text-amber-800">
-                      {memberCounts.pending} colaborador(es) pendiente(s) de revisión
-                    </p>
-                  </div>
-                )}
-                {requestCounts.pending > 0 && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center gap-3">
-                    <Package className="h-5 w-5 text-amber-600 shrink-0" />
-                    <p className="text-sm font-semibold text-amber-800">
-                      {requestCounts.pending} solicitud(es) de producto pendiente(s) de aprobación
-                    </p>
-                  </div>
-                )}
-                {orderCounts.inReview > 0 && (
-                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 flex items-center gap-3">
-                    <ShoppingCart className="h-5 w-5 text-indigo-600 shrink-0" />
-                    <p className="text-sm font-semibold text-indigo-800">
-                      {orderCounts.inReview} pedido(s) en revisión de pago
-                    </p>
-                  </div>
-                )}
-                {programHealth !== null && programHealth < 40 && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 flex items-center gap-3">
-                    <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0" />
-                    <p className="text-sm font-semibold text-rose-800">
-                      Salud del programa crítica ({programHealth}%). Revisa el estado de tus colaboradores.
-                    </p>
-                  </div>
-                )}
+          {/* Notification Center */}
+          {(() => {
+            const notifications: { level: "critical" | "warning" | "info"; icon: React.ElementType; iconColor: string; title: string; description: string; count: number }[] = [];
+
+            // CRITICAL
+            if (memberCounts.pending > 0) {
+              notifications.push({
+                level: "critical",
+                icon: Clock,
+                iconColor: "text-rose-600",
+                title: "Colaboradores pendientes",
+                description: `${memberCounts.pending} colaborador(es) esperando aprobación.`,
+                count: memberCounts.pending,
+              });
+            }
+            if (requestCounts.pending > 0) {
+              notifications.push({
+                level: "critical",
+                icon: Package,
+                iconColor: "text-rose-600",
+                title: "Solicitudes pendientes",
+                description: `${requestCounts.pending} solicitud(es) esperando aprobación.`,
+                count: requestCounts.pending,
+              });
+            }
+            if (orderCounts.inReview > 0) {
+              notifications.push({
+                level: "critical",
+                icon: ShoppingCart,
+                iconColor: "text-rose-600",
+                title: "Pedidos en revisión",
+                description: `${orderCounts.inReview} pedido(s) esperando revisión de pago.`,
+                count: orderCounts.inReview,
+              });
+            }
+            if (programHealth !== null && programHealth < 40) {
+              notifications.push({
+                level: "critical",
+                icon: AlertTriangle,
+                iconColor: "text-rose-600",
+                title: "Salud del programa crítica",
+                description: `Solo el ${programHealth}% de colaboradores están activos.`,
+                count: 1,
+              });
+            }
+
+            // WARNING
+            if (memberCounts.suspended > 0) {
+              notifications.push({
+                level: "warning",
+                icon: UserMinus,
+                iconColor: "text-amber-600",
+                title: "Colaboradores suspendidos",
+                description: `${memberCounts.suspended} colaborador(es) requieren revisión.`,
+                count: memberCounts.suspended,
+              });
+            }
+            if (requestCounts.rejected > 0) {
+              notifications.push({
+                level: "warning",
+                icon: XCircle,
+                iconColor: "text-amber-600",
+                title: "Solicitudes rechazadas",
+                description: `${requestCounts.rejected} solicitud(es) rechazadas.`,
+                count: requestCounts.rejected,
+              });
+            }
+            if (orderCounts.rejected > 0) {
+              notifications.push({
+                level: "warning",
+                icon: XCircle,
+                iconColor: "text-amber-600",
+                title: "Pedidos rechazados",
+                description: `${orderCounts.rejected} pedido(s) rechazados.`,
+                count: orderCounts.rejected,
+              });
+            }
+            if (memberCounts.approved > 0) {
+              notifications.push({
+                level: "warning",
+                icon: UserCheck,
+                iconColor: "text-amber-600",
+                title: "Aprobados sin pagar",
+                description: `${memberCounts.approved} colaborador(es) aprobado(s) pendiente(s) de pago.`,
+                count: memberCounts.approved,
+              });
+            }
+
+            // INFO
+            if (memberCounts.active > 0) {
+              notifications.push({
+                level: "info",
+                icon: UserCheck,
+                iconColor: "text-emerald-600",
+                title: "Colaboradores activos",
+                description: `${memberCounts.active} colaborador(es) activo(s) en el programa.`,
+                count: memberCounts.active,
+              });
+            }
+            if (requestCounts.approved > 0) {
+              notifications.push({
+                level: "info",
+                icon: CheckCircle2,
+                iconColor: "text-emerald-600",
+                title: "Solicitudes aprobadas",
+                description: `${requestCounts.approved} solicitud(es) aprobada(s) pendiente(s) de pago.`,
+                count: requestCounts.approved,
+              });
+            }
+            if (orderCounts.approved > 0) {
+              notifications.push({
+                level: "info",
+                icon: CheckCircle2,
+                iconColor: "text-emerald-600",
+                title: "Pedidos aprobados",
+                description: `${orderCounts.approved} pedido(s) aprobado(s).`,
+                count: orderCounts.approved,
+              });
+            }
+            if (programHealth !== null && programHealth >= 70) {
+              notifications.push({
+                level: "info",
+                icon: TrendingUp,
+                iconColor: "text-emerald-600",
+                title: "Programa saludable",
+                description: `El ${programHealth}% de colaboradores están activos.`,
+                count: 1,
+              });
+            }
+
+            if (notifications.length === 0) {
+              return (
+                <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+                  <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-700">No existen notificaciones pendientes</p>
+                  <p className="text-[10px] text-muted-foreground">Todo en orden</p>
+                </div>
+              );
+            }
+
+            const levelConfig = {
+              critical: { label: "CRÍTICAS", bg: "bg-rose-50", border: "border-rose-200", iconBg: "bg-rose-100" },
+              warning: { label: "ATENCIÓN", bg: "bg-amber-50", border: "border-amber-200", iconBg: "bg-amber-100" },
+              info: { label: "INFORMACIÓN", bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100" },
+            };
+
+            const grouped = {
+              critical: notifications.filter((n) => n.level === "critical"),
+              warning: notifications.filter((n) => n.level === "warning"),
+              info: notifications.filter((n) => n.level === "info"),
+            };
+
+            return (
+              <div className="space-y-4">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" /> Centro de Notificaciones
+                </h3>
+                {(["critical", "warning", "info"] as const).map((level) => {
+                  const items = grouped[level];
+                  if (items.length === 0) return null;
+                  const config = levelConfig[level];
+                  return (
+                    <div key={level} className={`rounded-2xl border-2 ${config.bg} ${config.border} p-4`}>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">{config.label}</p>
+                      <div className="space-y-2">
+                        {items.map((notif, idx) => {
+                          const Icon = notif.icon;
+                          return (
+                            <div key={`${level}-${idx}`} className="rounded-xl border border-slate-200 bg-white p-3 flex items-center gap-3">
+                              <div className={`h-10 w-10 rounded-xl ${config.iconBg} flex items-center justify-center shrink-0 ${notif.iconColor}`}>
+                                <Icon className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                  <p className="text-sm font-bold text-slate-900 truncate">{notif.title}</p>
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-slate-900 text-white shrink-0">
+                                    {notif.count}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">{notif.description}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-slate-200 bg-white p-6 text-center">
-              <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-700">No hay alertas pendientes</p>
-              <p className="text-[10px] text-muted-foreground">Todo en orden</p>
-            </div>
-          )}
+            );
+          })()}
         </>
       )}
     </div>
