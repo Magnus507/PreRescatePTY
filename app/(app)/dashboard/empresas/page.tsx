@@ -70,7 +70,12 @@ type CompanyRequestItem = {
   subtotal?: number;
   unitPrice?: number;
   note?: string;
-  product?: { name?: string };
+  product?: { name?: string; productType?: string };
+};
+
+/** Request item from the API response that includes productType */
+type CompanyRequestItemFull = CompanyRequestItem & {
+  product?: { name?: string; productType?: string; id?: string; price?: number; image?: string | null };
 };
 
 type CompanyRequest = {
@@ -335,6 +340,7 @@ export default function EmpresasPage() {
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [myRequests, setMyRequests] = useState<CompanyRequest[]>([]);
   const [myRequestsLoading, setMyRequestsLoading] = useState(false);
+  const [submittingInitialChip, setSubmittingInitialChip] = useState(false);
 
   const [form, setForm] = useState<JoinFormState>({
     companyCode: "",
@@ -957,6 +963,20 @@ export default function EmpresasPage() {
     );
   }, [myStatus]);
 
+  // Detect initial chip request from already loaded myRequests
+  const initialChipRequest: CompanyRequest | null = useMemo(() => {
+    return myRequests.find((req) =>
+      (req as CompanyRequest & { items?: CompanyRequestItemFull[] }).items?.some(
+        (item: CompanyRequestItemFull) => item.product?.productType === "initial_chip"
+      )
+    ) || null;
+  }, [myRequests]);
+
+  // Find the initial_chip product from already loaded catalog
+  const initialChipProduct: CorporateProduct | null = useMemo(() => {
+    return catalogProducts.find((p: CorporateProduct) => p.productType === "initial_chip") || null;
+  }, [catalogProducts]);
+
   // Detect when employee goes from no-active to paid_active and load catalog
   // This must be after activeRequest declaration to avoid "used before declaration" error
   const prevActiveStatus = useRef<string | null>(null);
@@ -1089,6 +1109,32 @@ export default function EmpresasPage() {
         return sum + (prod?.price || 0) * item.quantity;
       }, 0);
 
+      // Handler: request initial chip
+      const handleRequestInitialChip = async () => {
+        if (!initialChipProduct) {
+          toast.error("Producto de chip inicial no disponible en el catálogo.");
+          return;
+        }
+        setSubmittingInitialChip(true);
+        try {
+          const res = await fetch("/api/organizations/product-requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              items: [{ productId: initialChipProduct.id, quantity: 1 }],
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Error al enviar solicitud");
+          toast.success("Solicitud enviada a tu empresa.");
+          await loadCatalogAndRequests();
+        } catch (err: unknown) {
+          toast.error(err instanceof Error ? err.message : "Error al enviar solicitud");
+        } finally {
+          setSubmittingInitialChip(false);
+        }
+      };
+
       // Handler: activate corporate chip
       const handleActivateCorporateChip = async () => {
         if (!corporateActivationCode.trim()) {
@@ -1173,6 +1219,125 @@ export default function EmpresasPage() {
               </div>
             </div>
           </div>
+
+          {/* ─── INITIAL CHIP FLOW ─────────────────────────────────────────────── */}
+          {(() => {
+            const chipReq = initialChipRequest as CompanyRequest;
+            if (!chipReq) {
+              return (
+                <div className="rounded-[2.5rem] border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-6 sm:p-8 space-y-6 shadow-xl shadow-emerald-500/5">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-emerald-500 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+                      <Smartphone className="h-7 w-7 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-black tracking-tight text-emerald-900">Solicita tu primer chip empresarial</h2>
+                      <p className="text-sm text-emerald-700/80 mt-1">Este será tu identificador oficial dentro de tu empresa.</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/60 rounded-2xl border border-emerald-200 p-5 space-y-2">
+                    <p className="text-xs font-bold text-emerald-800 uppercase tracking-widest">A partir de este chip podrás solicitar posteriormente:</p>
+                    <ul className="space-y-1.5">
+                      {["Credencial NFC", "Sticker NFC", "Llavero NFC", "Pulsera NFC", "Productos empresariales futuros"].map((item) => (
+                        <li key={item} className="flex items-center gap-2 text-sm text-emerald-800">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Precio destacado</p>
+                      <p className="text-4xl font-black text-emerald-900">USD 25.00</p>
+                    </div>
+                    <button
+                      onClick={handleRequestInitialChip}
+                      disabled={submittingInitialChip}
+                      className="w-full sm:w-auto min-h-[52px] px-8 py-3.5 rounded-2xl bg-emerald-600 text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-600/30 hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                    >
+                      {submittingInitialChip ? (
+                        <><Loader2 className="h-5 w-5 animate-spin" /> Enviando solicitud...</>
+                      ) : (
+                        <><PlusCircle className="h-5 w-5" /> Solicitar primer chip</>
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-emerald-700/60 text-center">
+                    La empresa revisará esta solicitud y realizará el pago corporativo correspondiente.
+                  </p>
+                </div>
+              );
+            }
+
+            // ✅ Initial chip request exists → show its status
+            const chipStatus = chipReq.status || "";
+            const INITIAL_CHIP_STATUSES: Record<string, { icon: React.ReactNode; color: string; title: string; description: string }> = {
+              pending_company_approval: {
+                icon: <Clock className="h-5 w-5 text-amber-600" />,
+                color: "bg-amber-50 border-amber-200 text-amber-800",
+                title: "🟡 Solicitud enviada",
+                description: "Estamos esperando que tu empresa revise la solicitud.",
+              },
+              approved_pending_payment: {
+                icon: <CheckCircle2 className="h-5 w-5 text-blue-600" />,
+                color: "bg-blue-50 border-blue-200 text-blue-800",
+                title: "🔵 Aprobada por la empresa",
+                description: "La empresa realizará el pago corporativo.",
+              },
+              payment_under_review: {
+                icon: <Clock className="h-5 w-5 text-purple-600" />,
+                color: "bg-purple-50 border-purple-200 text-purple-800",
+                title: "🟣 Pago en revisión",
+                description: "PreRescate está verificando el comprobante.",
+              },
+              paid_approved: {
+                icon: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
+                color: "bg-emerald-50 border-emerald-200 text-emerald-800",
+                title: "🟢 En fabricación",
+                description: "Estamos preparando tu chip empresarial.",
+              },
+              shipped: {
+                icon: <Package className="h-5 w-5 text-sky-600" />,
+                color: "bg-sky-50 border-sky-200 text-sky-800",
+                title: "🚚 Enviado a la empresa",
+                description: "La empresa podrá entregártelo muy pronto.",
+              },
+              delivered: {
+                icon: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
+                color: "bg-emerald-50 border-emerald-200 text-emerald-800",
+                title: "✅ Entregado",
+                description: "Ya puedes solicitar accesorios empresariales.",
+              },
+            };
+
+            const chipInfo = INITIAL_CHIP_STATUSES[chipStatus] || {
+              icon: <Clock className="h-5 w-5 text-slate-600" />,
+              color: "bg-slate-50 border-slate-200 text-slate-800",
+              title: chipStatus,
+              description: "Estado de tu solicitud de chip inicial.",
+            };
+
+            // If delivered, don't render the card — the catalog section will show instead
+            if (chipStatus === "delivered") return null;
+
+            return (
+              <div className={`rounded-2xl border-2 p-5 ${chipInfo.color}`}>
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-white/80 flex items-center justify-center shrink-0">
+                    {chipInfo.icon}
+                  </div>
+                  <div className="space-y-1 min-w-0">
+                    <h2 className="font-black text-lg">{chipInfo.title}</h2>
+                    <p className="text-sm opacity-80">{chipInfo.description}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Corporate Medical Profile — styled like ProfileCard from Perfiles Médicos */}
           {corpProfile && (
@@ -1560,8 +1725,8 @@ export default function EmpresasPage() {
             </div>
           )}
 
-          {/* Productos empresariales section */}
-          {isPaidActive && (
+          {/* Productos empresariales section — only visible after initial_chip is delivered */}
+          {isPaidActive && initialChipRequest?.status === "delivered" && (
             <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/30 to-white p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
@@ -1582,7 +1747,7 @@ export default function EmpresasPage() {
               </div>
             </div>
           )}
-          {!isPaidActive && (
+          {!isPaidActive && !initialChipRequest && (
             <div className="rounded-2xl border border-dashed border-slate-200 p-5 bg-slate-50/50">
               <p className="text-xs font-medium text-muted-foreground italic">
                 Ya puedes solicitar productos empresariales. La empresa revisará y pagará las solicitudes aprobadas.
