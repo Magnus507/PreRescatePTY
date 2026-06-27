@@ -224,8 +224,8 @@ function getStatusInfo(status: RequestStatus) {
     approved_unpaid: {
       icon: <CheckCircle2 className="h-5 w-5" />,
       color: "bg-blue-50 border-blue-200 text-blue-800",
-      title: "Aprobada — pendiente de pago",
-      description: "Tu empresa aprobó tu solicitud. Está pendiente de compra/pago corporativo.",
+      title: "Vinculación aprobada",
+      description: "Tu empresa aprobó tu vinculación. Ya puedes solicitar productos empresariales.",
     },
     rejected_by_company: {
       icon: <XCircle className="h-5 w-5" />,
@@ -986,7 +986,7 @@ export default function EmpresasPage() {
     if (activeRequest) {
       const statusInfo = getStatusInfo(activeRequest.corporateStatus as RequestStatus);
       const corpProfile = activeRequest.corporateProfile;
-      const isPaidActive = activeRequest.corporateStatus === "paid_active";
+      const isPaidActive = activeRequest.corporateStatus === "paid_active" || activeRequest.corporateStatus === "approved_unpaid";
       const canEdit = isPaidActive;
       const corporateChipItem = (activeRequest.corporateOrderItems ?? []).find((item) => item?.chip) || null;
       const corporateChip = corporateChipItem?.chip || null;
@@ -1585,7 +1585,7 @@ export default function EmpresasPage() {
           {!isPaidActive && (
             <div className="rounded-2xl border border-dashed border-slate-200 p-5 bg-slate-50/50">
               <p className="text-xs font-medium text-muted-foreground italic">
-                Cuando tu vinculación esté activa podrás solicitar productos empresariales.
+                Ya puedes solicitar productos empresariales. La empresa revisará y pagará las solicitudes aprobadas.
               </p>
             </div>
           )}
