@@ -194,6 +194,17 @@ interface ProductSeed {
 
 const PRODUCTS: ProductSeed[] = [
   {
+    name: 'Primer chip empresarial',
+    description: 'Chip base corporativo que activa la vinculación empresarial y permite asociar futuros accesorios.',
+    price: 25.00,
+    category: 'corporate',
+    stock: 9999,
+    productType: 'initial_chip',
+    requiresPersonalization: false,
+    isActive: true,
+    estimatedProductionTime: null,
+  },
+  {
     name: 'Llavero NFC',
     description: 'Llavero inteligente NFC con chip reutilizable. Ideal para llevar tu perfil médico siempre contigo en tus llaves.',
     price: 14.99,

@@ -24,6 +24,7 @@ const PRODUCT_TYPES = [
   { value: "tarjeta", label: "Tarjeta" },
   { value: "brazalete", label: "Brazalete" },
   { value: "combo", label: "Combo" },
+  { value: "initial_chip", label: "Primer chip empresarial" },
   { value: "otro", label: "Otro" },
 ];
 
@@ -33,6 +34,7 @@ const PRODUCT_TYPE_BADGES: Record<string, { color: string; label: string }> = {
   tarjeta: { color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400", label: "Tarjeta" },
   brazalete: { color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400", label: "Brazalete" },
   combo: { color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400", label: "Combo" },
+  initial_chip: { color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400", label: "Primer chip empresarial" },
   otro: { color: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400", label: "Otro" },
 };
 
