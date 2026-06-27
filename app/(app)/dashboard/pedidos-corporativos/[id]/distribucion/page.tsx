@@ -10,7 +10,7 @@ type Item = {
   deliveryStatus?: string | null;
   deliveredAt?: string | null;
   product?: { id?: string; name?: string } | null;
-  chip?: { shortCode?: string } | null;
+  chip?: { shortCode?: string; activatedAt?: string | null } | null;
   organizationMember?: { profile?: { firstName?: string; lastName?: string } | null } | null;
 };
 
@@ -148,6 +148,7 @@ export default function DistribucionPage() {
 
   const pendientes = order?.items?.filter((i) => i.deliveryStatus !== "delivered").length ?? 0;
   const entregados = order?.items?.filter((i) => i.deliveryStatus === "delivered").length ?? 0;
+  const activados = order?.items?.filter((i) => i.deliveryStatus === "delivered" && i.chip?.activatedAt).length ?? 0;
 
   if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
@@ -217,6 +218,33 @@ export default function DistribucionPage() {
         <div className="rounded-xl border border-border/60 bg-background p-4">
           <p className="text-xs font-medium text-muted-foreground">Pendientes</p>
           <p className="mt-1 text-lg font-bold text-amber-700">{pendientes}</p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border/60 bg-background p-5 space-y-3">
+        <p className="text-xs font-black uppercase text-muted-foreground">Estado de activaciones</p>
+        <p className="text-[10px] font-medium text-muted-foreground">
+          La activación ocurre cuando el colaborador registra oficialmente su producto.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border border-border/60 bg-background p-4">
+            <p className="text-xs font-medium text-muted-foreground">Total entregados</p>
+            <p className="mt-1 text-lg font-bold">{entregados}</p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-background p-4">
+            <p className="text-xs font-medium text-muted-foreground">Activados</p>
+            <p className="mt-1 text-lg font-bold text-emerald-700">
+              {entregados > 0
+                ? Math.round((activados / entregados) * 100) || 0
+                : 0}%
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-background p-4">
+            <p className="text-xs font-medium text-muted-foreground">Pendientes de activar</p>
+            <p className="mt-1 text-lg font-bold text-amber-700">
+              {entregados - activados}
+            </p>
+          </div>
         </div>
       </div>
 
