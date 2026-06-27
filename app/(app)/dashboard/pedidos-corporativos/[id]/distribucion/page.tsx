@@ -286,6 +286,24 @@ export default function DistribucionPage() {
                 {item.deliveryStatus || "pendiente"}
               </span>
               {item.deliveredAt ? <span>Entregado: {fmtDate(item.deliveredAt)}</span> : <span>Pendiente</span>}
+              {item.chip?.activatedAt ? (
+                <span className="inline-flex flex-col items-center rounded-md border border-border/60 px-2 py-1">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="text-[10px]">🟢</span> Activado
+                  </span>
+                  <span className="text-[9px] text-muted-foreground">
+                    Activado: {fmtDate(item.chip.activatedAt)}
+                  </span>
+                </span>
+              ) : item.deliveryStatus === "delivered" ? (
+                <span className="inline-flex items-center gap-1 rounded-md border border-border/60 px-2 py-1">
+                  <span className="text-[10px]">🟡</span> Pendiente de activar
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-md border border-border/60 px-2 py-1">
+                  <span className="text-[10px]">⚪</span> No entregado
+                </span>
+              )}
               {item.deliveryStatus !== "delivered" && (
                 <button
                   onClick={() => handleMarkDelivered(item.id)}
