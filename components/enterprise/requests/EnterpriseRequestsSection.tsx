@@ -17,7 +17,28 @@ type CompanyRequestItem = {
   subtotal?: number;
   unitPrice?: number;
   note?: string;
-  product?: { name?: string };
+  product?: { name?: string; productType?: string };
+};
+
+type GroupMemberItem = {
+  requestId: string;
+  memberName: string;
+  employeePosition?: string | null;
+  employeeNationalId?: string | null;
+  itemId: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  createdAt?: string;
+};
+
+type ProductGroup = {
+  productType: string;
+  groupLabel: string;
+  color: "blue" | "amber" | "emerald";
+  items: GroupMemberItem[];
+  totalQuantity: number;
+  subtotal: number;
 };
 
 type CompanyRequest = {
@@ -148,6 +169,84 @@ export default function EnterpriseRequestsSection({
     return filtered;
   }, [companyRequests, statusFilter, searchQuery, sortOrder]);
 
+  // Product group helpers
+  const getProductGroupInfo = (productType: string, productName?: string): { label: string; color: "blue" | "amber" | "emerald" } => {
+    const map: Record<string, { label: string; color: "blue" | "amber" | "emerald" }> = {
+      initial_chip: { label: "Primer chip empresarial", color: "blue" },
+      tarjeta: { label: "Credenciales NFC", color: "amber" },
+      brazalete: { label: "Pulseras NFC", color: "amber" },
+      qr: { label: "QR personalizados", color: "amber" },
+      sticker: { label: "Stickers NFC", color: "emerald" },
+      tag: { label: "Tags NFC", color: "emerald" },
+      llavero: { label: "Llaveros NFC", color: "emerald" },
+      combo: { label: "Combos", color: "emerald" },
+    };
+    return map[productType] || { label: productName || "Producto", color: "emerald" };
+  };
+
+  // Summary of all pending requests
+  const pendingSummary = useMemo(() => {
+    const pending = companyRequests.filter((r) => r.status === "pending_company_approval");
+    const collaboratorSet = new Set<string>();
+    let totalProducts = 0;
+    let totalAmount = 0;
+    for (const req of pending) {
+      const key = [req.organizationMember?.profile?.firstName, req.organizationMember?.profile?.lastName].filter(Boolean).join("|") || req.id;
+      collaboratorSet.add(key);
+      for (const item of req.items || []) {
+        totalProducts += item.quantity;
+        totalAmount += item.subtotal || 0;
+      }
+    }
+    return { collaborators: collaboratorSet.size, totalProducts, totalAmount };
+  }, [companyRequests]);
+
+  // Group pending requests by product type
+  const pendingGroups = useMemo(() => {
+    const pending = processedRequests.filter((r) => r.status === "pending_company_approval");
+    const groupsMap = new Map<string, ProductGroup>();
+
+    for (const req of pending) {
+      const memberName = req.organizationMember?.profile
+        ? `${req.organizationMember.profile.firstName || ""} ${req.organizationMember.profile.lastName || ""}`.trim()
+        : "—";
+
+      for (const item of req.items || []) {
+        const productType = (item as CompanyRequestItem).product?.productType || "other";
+        const productName = item.product?.name || "Producto";
+        const { label: groupLabel, color } = getProductGroupInfo(productType, productName);
+
+        if (!groupsMap.has(productType)) {
+          groupsMap.set(productType, {
+            productType,
+            groupLabel,
+            color,
+            items: [],
+            totalQuantity: 0,
+            subtotal: 0,
+          });
+        }
+
+        const group = groupsMap.get(productType)!;
+        group.items.push({
+          requestId: req.id,
+          memberName,
+          employeePosition: req.organizationMember?.employeePosition,
+          employeeNationalId: req.organizationMember?.employeeNationalId,
+          itemId: item.id,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || 0,
+          subtotal: item.subtotal || 0,
+          createdAt: req.createdAt,
+        });
+        group.totalQuantity += item.quantity;
+        group.subtotal += item.subtotal || 0;
+      }
+    }
+
+    return Array.from(groupsMap.values());
+  }, [processedRequests]);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -200,6 +299,27 @@ export default function EnterpriseRequestsSection({
           <p className="text-2xl font-black text-rose-900">{kpis.rejected}</p>
         </div>
       </div>
+
+      {/* Pending summary card */}
+      {pendingSummary.collaborators > 0 && (
+        <div className="rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-indigo-500 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
+              <ShoppingCart className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-indigo-900">Solicitudes pendientes</h3>
+              <p className="text-sm text-indigo-600/80">
+                {pendingSummary.collaborators === 1 ? "1 colaborador" : `${pendingSummary.collaborators} colaboradores`} · {pendingSummary.totalProducts} {pendingSummary.totalProducts === 1 ? "producto" : "productos"}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Total</p>
+            <p className="text-3xl font-black text-indigo-900">${pendingSummary.totalAmount.toFixed(2)}</p>
+          </div>
+        </div>
+      )}
 
       {/* Filters and Search */}
       <div className="flex flex-col md:flex-row gap-3">
@@ -258,81 +378,97 @@ export default function EnterpriseRequestsSection({
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Pending requests */}
-          {processedRequests.filter((r) => r.status === "pending_company_approval").length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-amber-800 uppercase tracking-widest flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Pendientes de revisión ({processedRequests.filter((r) => r.status === "pending_company_approval").length})
-              </h3>
-              {processedRequests.filter((r) => r.status === "pending_company_approval").map((req) => {
-                const member = req.organizationMember;
-                const memberName = member?.profile ? `${member.profile.firstName || ""} ${member.profile.lastName || ""}`.trim() : "—";
-                const reqTotal = (req.items || []).reduce((s: number, i) => s + (i.subtotal || 0), 0);
+          {/* Pending requests — grouped by product type */}
+          {pendingGroups.length > 0 && (
+            <div className="space-y-6">
+              {pendingGroups.map((group) => {
+                const colorMap = {
+                  blue: { border: "border-blue-200", bg: "bg-blue-50", text: "text-blue-800", badge: "bg-blue-500", light: "bg-blue-100" },
+                  amber: { border: "border-amber-200", bg: "bg-amber-50", text: "text-amber-800", badge: "bg-amber-500", light: "bg-amber-100" },
+                  emerald: { border: "border-emerald-200", bg: "bg-emerald-50", text: "text-emerald-800", badge: "bg-emerald-500", light: "bg-emerald-100" },
+                }[group.color];
+
                 return (
-                  <div key={req.id} className="rounded-2xl border border-amber-200 bg-white shadow-md overflow-hidden">
-                    <div className="p-5 bg-amber-50/50 border-b border-amber-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div key={group.productType} className={`rounded-2xl border-2 ${colorMap.border} ${colorMap.bg} overflow-hidden shadow-md`}>
+                    {/* Group header */}
+                    <div className={`px-5 py-4 ${colorMap.bg} border-b ${colorMap.border} flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                          <UserRound className="h-5 w-5" />
+                        <div className={`h-10 w-10 rounded-xl ${colorMap.light} flex items-center justify-center shrink-0`}>
+                          <Package className={`h-5 w-5 ${colorMap.text}`} />
                         </div>
                         <div>
-                          <p className="font-black text-sm">{memberName}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {member?.employeePosition && `${member.employeePosition} · `}
-                            {member?.employeeNationalId && `Céd: ${member.employeeNationalId}`}
-                            {!member?.employeePosition && !member?.employeeNationalId && (
-                              <>Solicitado {req.createdAt ? new Date(req.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "short", day: "numeric" }) : "—"}</>
-                            )}
+                          <h4 className={`font-black text-base ${colorMap.text}`}>{group.groupLabel}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {group.items.length} {group.items.length === 1 ? "colaborador" : "colaboradores"} · {group.totalQuantity} {group.totalQuantity === 1 ? "producto" : "productos"}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Total</span>
-                        <span className="text-xl font-black text-primary">${reqTotal.toFixed(2)}</span>
+                      <div className="text-right">
+                        <p className={`text-[10px] font-black ${colorMap.text} uppercase tracking-widest`}>Subtotal</p>
+                        <p className={`text-2xl font-black ${colorMap.text}`}>${group.subtotal.toFixed(2)}</p>
                       </div>
                     </div>
-                    <div className="p-5 space-y-4">
-                      <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
-                        {(req.items || []).map((item) => (
-                          <div key={item.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50/50 transition-colors">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="h-7 w-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-black shrink-0">
-                                {item.quantity}
+
+                    {/* Members in group */}
+                    <div className="divide-y divide-slate-100 bg-white">
+                      {group.items.map((memberItem) => {
+                        const req = companyRequests.find((r) => r.id === memberItem.requestId)!;
+                        return (
+                          <div key={`${memberItem.requestId}-${memberItem.itemId}`} className="p-4 sm:p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                                  <UserRound className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-sm text-slate-900 truncate">{memberItem.memberName}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {memberItem.employeePosition && `${memberItem.employeePosition} · `}
+                                    {memberItem.employeeNationalId && `Céd: ${memberItem.employeeNationalId}`}
+                                    {!memberItem.employeePosition && !memberItem.employeeNationalId && (
+                                      <>Solicitado {memberItem.createdAt ? new Date(memberItem.createdAt).toLocaleDateString("es-PA", { year: "numeric", month: "short", day: "numeric" }) : "—"}</>
+                                    )}
+                                  </p>
+                                </div>
                               </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-slate-900 truncate">{item.product?.name || "Producto"}</p>
-                                <p className="text-[10px] text-muted-foreground">${item.unitPrice?.toFixed(2)} c/u</p>
+                              <div className="flex items-center gap-4 shrink-0">
+                                <div className="text-right">
+                                  <p className="text-xs text-muted-foreground">{memberItem.quantity} × ${memberItem.unitPrice.toFixed(2)}</p>
+                                  <p className={`text-lg font-black ${colorMap.text}`}>${memberItem.subtotal.toFixed(2)}</p>
+                                </div>
                               </div>
                             </div>
-                            <span className="text-sm font-bold text-primary shrink-0">${item.subtotal?.toFixed(2)}</span>
+
+                            {/* Actions */}
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              <button
+                                onClick={() => onReviewRequest(memberItem.requestId, "approve")}
+                                disabled={reviewingRequest === memberItem.requestId}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white font-black text-xs shadow-lg shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                              >
+                                {reviewingRequest === memberItem.requestId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                Aprobar
+                              </button>
+                              <button
+                                onClick={() => onReviewRequest(memberItem.requestId, "reject")}
+                                disabled={reviewingRequest === memberItem.requestId}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 font-black text-xs hover:bg-rose-100 transition-all disabled:opacity-50"
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                                Rechazar
+                              </button>
+                            </div>
+
+                            {/* Item note */}
+                            {(() => {
+                              const reqItem = req?.items?.find((i) => i.id === memberItem.itemId);
+                              return reqItem?.note ? (
+                                <p className="text-[10px] text-muted-foreground italic pl-1">Nota: {reqItem.note}</p>
+                              ) : null;
+                            })()}
                           </div>
-                        ))}
-                      </div>
-                      {req.items?.some((i) => i.note) && (
-                        <div className="space-y-1">
-                          {req.items.filter((i) => i.note).map((i) => (
-                            <p key={i.id} className="text-[10px] text-muted-foreground italic">Nota para {i.product?.name}: {i.note}</p>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-100">
-                        <button
-                          onClick={() => onReviewRequest(req.id, "approve")}
-                          disabled={reviewingRequest === req.id}
-                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white font-black text-sm shadow-lg shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
-                        >
-                          {reviewingRequest === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                          Aprobar solicitud
-                        </button>
-                        <button
-                          onClick={() => { /* handled by parent */ }}
-                          disabled={reviewingRequest === req.id}
-                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 font-black text-sm hover:bg-rose-100 transition-all disabled:opacity-50"
-                        >
-                          <XCircle className="h-4 w-4" />
-                          Rechazar
-                        </button>
-                      </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
