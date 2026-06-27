@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, Package, AlertCircle, Box, CheckCircle2, Truck } from "lucide-react";
+import { Loader2, Package, AlertCircle, Box, CheckCircle2, Truck, Users } from "lucide-react";
 
 type Item = {
   id: string;
@@ -173,6 +173,40 @@ export default function DistribucionPage() {
         <div className="rounded-xl border border-border/60 bg-background p-4">
           <p className="text-xs font-medium text-muted-foreground">Items</p>
           <p className="mt-1 text-lg font-bold">{order.items.length} · {pendientes} pend. · {entregados} entreg.</p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border/60 bg-background p-5 space-y-3">
+        <p className="text-xs font-black uppercase text-muted-foreground">Progreso de distribución</p>
+        <p className="text-3xl font-black tracking-tighter">
+          {Math.round((entregados / (order?.items?.length ?? (pendientes + entregados))) * 100) || 0}%
+        </p>
+        <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-all"
+            style={{ width: `${Math.round((entregados / (order?.items?.length ?? 1)) * 100) || 0}%` }}
+          />
+        </div>
+        <p className="text-xs font-medium text-muted-foreground">
+          {entregados} de {order?.items?.length ?? 0} entregados
+        </p>
+        <p className="text-xs font-medium text-muted-foreground">
+          {pendientes} pendientes
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-border/60 bg-background p-4">
+          <p className="text-xs font-medium text-muted-foreground">Total colaboradores</p>
+          <p className="mt-1 text-lg font-bold">{order?.items?.length ?? 0}</p>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-background p-4">
+          <p className="text-xs font-medium text-muted-foreground">Entregados</p>
+          <p className="mt-1 text-lg font-bold text-emerald-700">{entregados}</p>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-background p-4">
+          <p className="text-xs font-medium text-muted-foreground">Pendientes</p>
+          <p className="mt-1 text-lg font-bold text-amber-700">{pendientes}</p>
         </div>
       </div>
 
