@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, CheckCircle2, Clock, Users, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Loader2, CheckCircle2, Clock, Users, XCircle, MapPin } from "lucide-react";
 
 // Types
 type MemberProfile = {
@@ -327,15 +328,26 @@ function ProcessedOrdersSection({
                     : "—"}
                 </p>
               </div>
-              <span
-                className={`px-2 py-1 rounded-full text-[9px] font-bold border ${
-                  order.adminReviewStatus === "approved"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-rose-50 text-rose-700 border-rose-200"
-                }`}
-              >
-                {order.adminReviewStatus === "approved" ? "✅ Aprobado" : "❌ Rechazado"}
-              </span>
+              <div className="flex items-center gap-2">
+                {order.adminReviewStatus === "approved" && (
+                  <Link
+                    href={`/dashboard/pedidos-corporativos/${order.id}/distribucion`}
+                    className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-[10px] font-bold hover:bg-blue-100 transition-colors inline-flex items-center gap-1"
+                  >
+                    <MapPin className="h-3 w-3" />
+                    Distribución
+                  </Link>
+                )}
+                <span
+                  className={`px-2 py-1 rounded-full text-[9px] font-bold border ${
+                    order.adminReviewStatus === "approved"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-rose-50 text-rose-700 border-rose-200"
+                  }`}
+                >
+                  {order.adminReviewStatus === "approved" ? "✅ Aprobado" : "❌ Rechazado"}
+                </span>
+              </div>
             </div>
           </div>
         ))}
