@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Loader2, Building2, UsersRound,
-  Clock, CheckCircle2, XCircle, UserPlus, UserCheck, UserX, UserMinus,
+  Clock, CheckCircle2, UserPlus, UserCheck, UserX, UserMinus,
   Package, ShoppingCart, ArrowRight, AlertTriangle,
   LayoutDashboard, TrendingUp
 } from "lucide-react";
@@ -239,7 +239,7 @@ export default function EmpresaDashboardPage() {
       const memberName = m.profile ? `${m.profile.firstName || ""} ${m.profile.lastName || ""}`.trim() : "—";
       const statusMap: Record<string, { label: string; icon: React.ElementType; color: string }> = {
         pending_company_approval: { label: "Pendiente de aprobación", icon: UserPlus, color: "text-amber-500" },
-        approved_unpaid: { label: "Aprobado sin pagar", icon: UserCheck, color: "text-blue-500" },
+        approved_unpaid: { label: "Aprobado pendiente", icon: UserCheck, color: "text-blue-500" },
         paid_active: { label: "Colaborador activado", icon: UserCheck, color: "text-emerald-500" },
         suspended: { label: "Suspendido", icon: UserMinus, color: "text-red-500" },
         rejected_by_company: { label: "Rechazado", icon: UserX, color: "text-rose-500" },
@@ -374,7 +374,7 @@ export default function EmpresaDashboardPage() {
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
               <UsersRound className="h-4 w-4" /> Colaboradores
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
               <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-1">
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Total</p>
                 <p className="text-2xl font-black text-slate-900">{memberCounts.total}</p>
@@ -390,10 +390,6 @@ export default function EmpresaDashboardPage() {
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-1">
                 <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Activos</p>
                 <p className="text-2xl font-black text-emerald-900">{memberCounts.active}</p>
-              </div>
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-1">
-                <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest">Rechazados</p>
-                <p className="text-2xl font-black text-rose-900">{memberCounts.rejected}</p>
               </div>
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-1">
                 <p className="text-[10px] font-black text-red-700 uppercase tracking-widest">Suspendidos</p>
@@ -411,7 +407,7 @@ export default function EmpresaDashboardPage() {
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
               <Package className="h-4 w-4" /> Solicitudes de Productos
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-1">
                 <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Pendientes</p>
                 <p className="text-2xl font-black text-amber-900">{requestCounts.pending}</p>
@@ -424,10 +420,6 @@ export default function EmpresaDashboardPage() {
                 <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">En revisión</p>
                 <p className="text-2xl font-black text-indigo-900">{requestCounts.paymentReview}</p>
               </div>
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-1">
-                <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest">Rechazadas</p>
-                <p className="text-2xl font-black text-rose-900">{requestCounts.rejected}</p>
-              </div>
             </div>
           </div>
 
@@ -436,7 +428,7 @@ export default function EmpresaDashboardPage() {
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
               <ShoppingCart className="h-4 w-4" /> Pedidos Corporativos
             </h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-1">
                 <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">En revisión</p>
                 <p className="text-2xl font-black text-indigo-900">{orderCounts.inReview}</p>
@@ -444,10 +436,6 @@ export default function EmpresaDashboardPage() {
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-1">
                 <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Aprobados</p>
                 <p className="text-2xl font-black text-emerald-900">{orderCounts.approved}</p>
-              </div>
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-1">
-                <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest">Rechazados</p>
-                <p className="text-2xl font-black text-rose-900">{orderCounts.rejected}</p>
               </div>
             </div>
           </div>
@@ -479,7 +467,7 @@ export default function EmpresaDashboardPage() {
                 <p className="text-[10px] text-muted-foreground">Configura tu empresa</p>
               </Link>
               <Link
-                href="/dashboard/empresas"
+                href="/dashboard/solicitudes"
                 className="rounded-xl border border-amber-200 bg-white p-4 hover:bg-amber-50 hover:border-amber-300 transition-all space-y-2 group"
               >
                 <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
@@ -489,7 +477,7 @@ export default function EmpresaDashboardPage() {
                 <p className="text-[10px] text-muted-foreground">Revisa y aprueba productos</p>
               </Link>
               <Link
-                href="/dashboard/empresas"
+                href="/dashboard/pedidos-corporativos"
                 className="rounded-xl border border-blue-200 bg-white p-4 hover:bg-blue-50 hover:border-blue-300 transition-all space-y-2 group"
               >
                 <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
@@ -498,6 +486,35 @@ export default function EmpresaDashboardPage() {
                 <p className="font-bold text-sm text-slate-900">Ver Pedidos</p>
                 <p className="text-[10px] text-muted-foreground">Seguimiento de compras</p>
               </Link>
+            </div>
+          </div>
+
+          {/* Flujo operativo corporativo */}
+          <div className="rounded-2xl border-2 border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-white p-6">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <ArrowRight className="h-4 w-4" /> Flujo operativo corporativo
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
+              {[
+                "Colaborador solicita producto",
+                "Empresa aprueba solicitud",
+                "Empresa genera pedido corporativo",
+                "Empresa paga / sube comprobante",
+                "PreRescue revisa pedido",
+                "PreRescue prepara lote",
+                "Empresa distribuye a colaboradores",
+                "Colaborador activa chip",
+              ].map((step, i) => (
+                <div key={i} className="flex flex-col items-center text-center">
+                  <div className="w-8 h-8 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center mb-1">{i + 1}</div>
+                  <p className="text-[10px] font-semibold text-slate-700 leading-tight">{step}</p>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+              <p className="text-[10px] text-indigo-800 leading-relaxed">
+                <strong>Nota:</strong> Para productos personalizados, el pedido debe conservar la relación con cada colaborador para facilitar impresión de QR, link público y entrega interna.
+              </p>
             </div>
           </div>
 
@@ -605,37 +622,13 @@ export default function EmpresaDashboardPage() {
                 actionLabel: "Ver colaboradores",
               });
             }
-            if (requestCounts.rejected > 0) {
-              notifications.push({
-                level: "warning",
-                icon: XCircle,
-                iconColor: "text-amber-600",
-                title: "Solicitudes rechazadas",
-                description: `${requestCounts.rejected} solicitud(es) rechazadas.`,
-                count: requestCounts.rejected,
-                href: "/dashboard/solicitudes?status=rejected_by_company",
-                actionLabel: "Ver solicitudes",
-              });
-            }
-            if (orderCounts.rejected > 0) {
-              notifications.push({
-                level: "warning",
-                icon: XCircle,
-                iconColor: "text-amber-600",
-                title: "Pedidos rechazados",
-                description: `${orderCounts.rejected} pedido(s) rechazados.`,
-                count: orderCounts.rejected,
-                href: "/dashboard/pedidos-corporativos?status=rejected",
-                actionLabel: "Ver pedidos",
-              });
-            }
             if (memberCounts.approved > 0) {
               notifications.push({
                 level: "warning",
                 icon: UserCheck,
                 iconColor: "text-amber-600",
-                title: "Aprobados sin pagar",
-                description: `${memberCounts.approved} colaborador(es) aprobado(s) pendiente(s) de pago.`,
+                title: "Aprobado pendiente",
+                description: `${memberCounts.approved} colaborador(es) pendiente(s) de pago.`,
                 count: memberCounts.approved,
                 href: "/dashboard/colaboradores",
                 actionLabel: "Ver colaboradores",
