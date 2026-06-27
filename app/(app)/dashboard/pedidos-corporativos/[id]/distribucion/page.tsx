@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, Package, AlertCircle, Box, CheckCircle2, Truck, Users } from "lucide-react";
+import { Loader2, Package, AlertCircle, Box, CheckCircle2, Truck } from "lucide-react";
 
 type Item = {
   id: string;
@@ -49,6 +49,7 @@ export default function DistribucionPage() {
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [confirmItem, setConfirmItem] = useState<Item | null>(null);
+  const [copiedItem, setCopiedItem] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -101,6 +102,15 @@ export default function DistribucionPage() {
       setConfirmItem(null);
     }
   }, [id, load, confirmItem]);
+
+  const handleCopyLink = useCallback((itemId: string, shortCode?: string | null) => {
+    if (!shortCode) return;
+    const publicUrl = `${window.location.origin}/e/${shortCode}`;
+    navigator.clipboard.writeText(publicUrl).then(() => {
+      setCopiedItem(itemId);
+      setTimeout(() => setCopiedItem(null), 2000);
+    });
+  }, []);
 
   const pendingIds = order?.items?.filter((i) => i.deliveryStatus !== "delivered").map((i) => i.id) ?? [];
 
@@ -261,6 +271,24 @@ export default function DistribucionPage() {
                   )}
                   Marcar entregado
                 </button>
+              )}
+              {item.chip?.shortCode && (
+                <>
+                  <a
+                    href={`/e/${item.chip.shortCode}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-[10px] font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+                  >
+                    Ver enlace
+                  </a>
+                  <button
+                    onClick={() => handleCopyLink(item.id, item.chip?.shortCode)}
+                    className="inline-flex items-center gap-1 rounded-xl border border-border bg-background px-3 py-1.5 text-[10px] font-bold text-foreground hover:bg-muted transition-colors"
+                  >
+                    {copiedItem === item.id ? "Copiado" : "Copiar enlace"}
+                  </button>
+                </>
               )}
             </div>
           </div>
