@@ -72,7 +72,7 @@ export default function EnterpriseOrdersSection({
             <Clock className="h-4 w-4" /> Compras corporativas enviadas con comprobante y pendientes de revisión por PreRescue ID.
           </p>
           <p className="text-[10px] text-amber-700/70 leading-relaxed">
-            Los colaboradores incluidos en estas órdenes <strong>Aprobados sin pagar</strong> hasta que PreRescue ID apruebe o cancele el pago.
+            Los colaboradores incluidos en estas órdenes <strong>Aprobado pendiente</strong> hasta que PreRescue ID apruebe o cancele el pago.
             Si el pago es aprobado, pasarán directamente a <strong>Pagados / activos</strong>.
           </p>
         </div>
@@ -97,7 +97,7 @@ export default function EnterpriseOrdersSection({
           <Clock className="h-4 w-4" /> Compras corporativas enviadas con comprobante y pendientes de revisión por PreRescue ID.
         </p>
         <p className="text-[10px] text-amber-700/70 leading-relaxed">
-          Los colaboradores incluidos en estas órdenes <strong>Aprobados sin pagar</strong> hasta que PreRescue ID apruebe o cancele el pago.
+          Los colaboradores incluidos en estas órdenes <strong>Aprobado pendiente</strong> hasta que PreRescue ID apruebe o cancele el pago.
           Si el pago es aprobado, pasarán directamente a <strong>Pagados / activos</strong>.
         </p>
       </div>

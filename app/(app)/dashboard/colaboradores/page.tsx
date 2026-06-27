@@ -232,7 +232,7 @@ export default function ColaboradoresPage() {
 
   const handleAction = async (memberId: string, action: "suspend" | "unsuspend" | "archive" | "restore" | "reject" | "delete_forever" | "approve") => {
     const confirmMessages: Record<string, string> = {
-      approve: "¿Aprobar a este solicitante? Pasará a 'Aprobado sin pagar' para que pueda completar su compra corporativa.",
+      approve: "¿Aprobar a este solicitante? Pasará a 'Aprobado pendiente' para que pueda completar su compra corporativa.",
       suspend: "¿Seguro que deseas suspender a este colaborador? Su vínculo corporativo quedará suspendido, pero su cuenta personal no se verá afectada.",
       unsuspend: "¿Reactivar este colaborador? Volverá al estado activo con beneficios.",
       archive: "¿Seguro que deseas eliminar/despedir a este colaborador de la empresa? Se desactivarán sus beneficios corporativos, perfil empresarial y chip corporativo de esta empresa. Su cuenta personal y otros beneficios no serán afectados.",

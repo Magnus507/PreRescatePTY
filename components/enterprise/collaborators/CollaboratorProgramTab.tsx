@@ -10,7 +10,7 @@ interface CollaboratorProgramTabProps {
 export default function CollaboratorProgramTab({ member }: CollaboratorProgramTabProps) {
   const statusDescriptions: Record<string, string> = {
     pending_company_review: "Esperando aprobación de la empresa. Una vez aprobado, podrá completar su compra corporativa.",
-    approved_unpaid: "Aprobado por la empresa. Puede completar su compra corporativa para activar sus beneficios.",
+    approved_unpaid: "Aprobado por la empresa, pendiente de pedido o activación.",
     paid_active: "Puede utilizar todos los beneficios del programa PreRescue.",
     suspended: "Acceso pausado temporalmente. Contacta al administrador para más información.",
     rejected_by_company: "Solicitud no aprobada por la empresa. Contacta al administrador si tienes preguntas.",
