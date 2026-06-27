@@ -47,6 +47,7 @@ export default function DistribucionPage() {
   const [error, setError] = useState<string | null>(null);
   const [deliveringItem, setDeliveringItem] = useState<string | null>(null);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -95,6 +96,38 @@ export default function DistribucionPage() {
     }
   }, [id, load]);
 
+  const pendingIds = order?.items?.filter((i) => i.deliveryStatus !== "delivered").map((i) => i.id) ?? [];
+
+  const handleMarkAllDelivered = useCallback(async () => {
+    if (!id) return;
+    if (!window.confirm("¿Confirmas marcar como entregados todos los colaboradores pendientes?")) return;
+
+    setBulkLoading(true);
+    setDeliveryError(null);
+
+    try {
+      const res = await fetch(`/api/organizations/corporate-orders/${id}/delivery/bulk`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          corporateOrderEmployeeItemIds: pendingIds,
+          deliveryStatus: "delivered",
+        }),
+      });
+
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error || `Error ${res.status}`);
+      }
+
+      await load();
+    } catch (err) {
+      setDeliveryError(err instanceof Error ? err.message : "Error al marcar entrega masiva");
+    } finally {
+      setBulkLoading(false);
+    }
+  }, [id, load, pendingIds]);
+
   useEffect(() => { load(); }, [load]);
 
   const pendientes = order?.items?.filter((i) => i.deliveryStatus !== "delivered").length ?? 0;
@@ -136,6 +169,21 @@ export default function DistribucionPage() {
           <p className="mt-1 text-lg font-bold">{order.items.length} · {pendientes} pend. · {entregados} entreg.</p>
         </div>
       </div>
+
+      {pendientes > 0 && (
+        <button
+          onClick={handleMarkAllDelivered}
+          disabled={bulkLoading}
+          className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+        >
+          {bulkLoading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-3 w-3" />
+          )}
+          Marcar todos los pendientes
+        </button>
+      )}
 
       <div className="space-y-2">
         {deliveryError && (
