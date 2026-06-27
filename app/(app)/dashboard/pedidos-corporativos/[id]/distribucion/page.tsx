@@ -48,6 +48,7 @@ export default function DistribucionPage() {
   const [deliveringItem, setDeliveringItem] = useState<string | null>(null);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [confirmItem, setConfirmItem] = useState<Item | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -67,10 +68,14 @@ export default function DistribucionPage() {
   }, [id]);
 
   const handleMarkDelivered = useCallback(async (itemId: string) => {
-    if (!id) return;
-    if (!window.confirm("¿Confirmas que este producto fue entregado al colaborador?")) return;
+    const item = order?.items?.find((i) => i.id === itemId) ?? null;
+    setConfirmItem(item);
+  }, [order]);
 
-    setDeliveringItem(itemId);
+  const executeMarkDelivered = useCallback(async () => {
+    if (!confirmItem) return;
+
+    setDeliveringItem(confirmItem.id);
     setDeliveryError(null);
 
     try {
@@ -78,7 +83,7 @@ export default function DistribucionPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          corporateOrderEmployeeItemId: itemId,
+          corporateOrderEmployeeItemId: confirmItem.id,
           deliveryStatus: "delivered",
         }),
       });
@@ -93,8 +98,9 @@ export default function DistribucionPage() {
       setDeliveryError(err instanceof Error ? err.message : "Error al marcar entrega");
     } finally {
       setDeliveringItem(null);
+      setConfirmItem(null);
     }
-  }, [id, load]);
+  }, [id, load, confirmItem]);
 
   const pendingIds = order?.items?.filter((i) => i.deliveryStatus !== "delivered").map((i) => i.id) ?? [];
 
@@ -226,6 +232,51 @@ export default function DistribucionPage() {
           </div>
         ))}
       </div>
+
+      {confirmItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-white p-5 shadow-xl space-y-4">
+            <div>
+              <p className="text-sm font-black">Confirmar entrega</p>
+              <p className="mt-1 space-y-1 text-xs text-muted-foreground">
+                <span>Producto: <strong>{confirmItem.product?.name || "Producto sin nombre"}</strong></span>
+                <br />
+                <span>Colaborador: <strong>{memberName(confirmItem)}</strong></span>
+                <br />
+                <span>Cantidad: <strong>{confirmItem.quantity}</strong></span>
+                <br />
+                <span>Chip shortCode: <strong>{confirmItem.chip?.shortCode || "—"}</strong></span>
+              </p>
+            </div>
+
+            <p className="text-xs font-medium text-foreground">
+              ¿Confirmas que este producto fue entregado al colaborador?
+            </p>
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setConfirmItem(null)}
+                disabled={deliveringItem === confirmItem.id}
+                className="rounded-xl border border-border px-3 py-1.5 text-[10px] font-bold text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executeMarkDelivered}
+                disabled={deliveringItem === confirmItem.id}
+                className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+              >
+                {deliveringItem === confirmItem.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3 w-3" />
+                )}
+                Confirmar entrega
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
