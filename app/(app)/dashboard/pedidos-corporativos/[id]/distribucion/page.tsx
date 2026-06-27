@@ -45,6 +45,8 @@ export default function DistribucionPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deliveringItem, setDeliveringItem] = useState<string | null>(null);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -62,6 +64,36 @@ export default function DistribucionPage() {
       setError(err instanceof Error ? err.message : "Error al cargar la distribución");
     } finally { setLoading(false); }
   }, [id]);
+
+  const handleMarkDelivered = useCallback(async (itemId: string) => {
+    if (!id) return;
+    if (!window.confirm("¿Confirmas que este producto fue entregado al colaborador?")) return;
+
+    setDeliveringItem(itemId);
+    setDeliveryError(null);
+
+    try {
+      const res = await fetch(`/api/organizations/corporate-orders/${id}/delivery`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          corporateOrderEmployeeItemId: itemId,
+          deliveryStatus: "delivered",
+        }),
+      });
+
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error || `Error ${res.status}`);
+      }
+
+      await load();
+    } catch (err) {
+      setDeliveryError(err instanceof Error ? err.message : "Error al marcar entrega");
+    } finally {
+      setDeliveringItem(null);
+    }
+  }, [id, load]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -106,6 +138,12 @@ export default function DistribucionPage() {
       </div>
 
       <div className="space-y-2">
+        {deliveryError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {deliveryError}
+          </div>
+        )}
         {order.items.map((item) => (
           <div key={item.id} className="flex flex-col gap-1 rounded-xl border border-border/60 bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
@@ -122,6 +160,20 @@ export default function DistribucionPage() {
                 {item.deliveryStatus || "pendiente"}
               </span>
               {item.deliveredAt ? <span>Entregado: {fmtDate(item.deliveredAt)}</span> : <span>Pendiente</span>}
+              {item.deliveryStatus !== "delivered" && (
+                <button
+                  onClick={() => handleMarkDelivered(item.id)}
+                  disabled={deliveringItem === item.id}
+                  className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                >
+                  {deliveringItem === item.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-3 w-3" />
+                  )}
+                  Marcar entregado
+                </button>
+              )}
             </div>
           </div>
         ))}
