@@ -110,11 +110,48 @@ export async function POST(req: NextRequest) {
 
   const { items } = parsed.data;
 
-  // Find the employee's active organization membership
+  // Validate products exist and are active, read prices from DB
+  const productIds = items.map((i) => i.productId);
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds }, isActive: true },
+    select: { id: true, price: true, name: true, productType: true },
+  });
+
+  if (products.length !== productIds.length) {
+    return NextResponse.json(
+      { error: "Uno o más productos no existen o están inactivos." },
+      { status: 400 }
+    );
+  }
+
+  const productMap = new Map(products.map((p) => [p.id, p]));
+  const includesInitialChip = products.some((p) => p.productType === "initial_chip");
+  const includesOtherProducts = products.some((p) => p.productType !== "initial_chip");
+  const isInitialChipOnly = includesInitialChip && !includesOtherProducts;
+
+  if (includesInitialChip && includesOtherProducts) {
+    return NextResponse.json(
+      { error: "No puedes mezclar el primer chip empresarial con otros productos." },
+      { status: 400 }
+    );
+  }
+
+  if (isInitialChipOnly && items.some((item) => item.quantity !== 1)) {
+    return NextResponse.json(
+      { error: "Solo puedes solicitar un primer chip empresarial." },
+      { status: 400 }
+    );
+  }
+
+  const allowedCorporateStatuses = isInitialChipOnly
+    ? ["approved_unpaid", "paid_active"]
+    : ["paid_active"];
+
+  // Find the employee's organization membership with the status required for this request type.
   const member = await prisma.organizationMember.findFirst({
     where: {
       profile: { userId },
-      corporateStatus: "paid_active",
+      corporateStatus: { in: allowedCorporateStatuses },
     },
     select: {
       id: true,
@@ -137,22 +174,6 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
-
-  // Validate products exist and are active, read prices from DB
-  const productIds = items.map((i) => i.productId);
-  const products = await prisma.product.findMany({
-    where: { id: { in: productIds }, isActive: true },
-    select: { id: true, price: true, name: true },
-  });
-
-  if (products.length !== productIds.length) {
-    return NextResponse.json(
-      { error: "Uno o más productos no existen o están inactivos." },
-      { status: 400 }
-    );
-  }
-
-  const productMap = new Map(products.map((p) => [p.id, p]));
 
   // Build request items with prices from DB
   const requestItems = items.map((item) => {
