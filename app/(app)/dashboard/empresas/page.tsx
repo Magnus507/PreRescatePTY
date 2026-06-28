@@ -954,7 +954,7 @@ export default function EmpresasPage() {
   useEffect(() => {
     if (!isCorporateAccount || !activeRequest) return;
     const status = activeRequest.corporateStatus;
-    const needsCatalog = ["pending_company_review", "approved_unpaid", "paid_active"].includes(status);
+    const needsCatalog = ["approved_unpaid", "paid_active"].includes(status);
     const wasLoaded = prevCatalogStatus.current === status;
     if (!needsCatalog || wasLoaded) return;
 
@@ -1215,6 +1215,10 @@ export default function EmpresasPage() {
 
           {/* ─── INITIAL CHIP FLOW ─────────────────────────────────────────────── */}
           {(() => {
+            const status = activeRequest.corporateStatus;
+            const showInitialChip = ["approved_unpaid", "paid_active"].includes(status);
+            if (!showInitialChip) return null;
+
             const chipReq = initialChipRequest as CompanyRequest;
             if (!chipReq) {
               return (
