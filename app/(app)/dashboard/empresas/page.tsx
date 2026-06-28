@@ -143,7 +143,6 @@ type ApiObjectResponse<T> = T & {
 type MembersResponse = ApiObjectResponse<{ members: CorporateMember[] }>;
 
 type ProductsResponse = ApiObjectResponse<{ products: CorporateProduct[] }>;
-type CompanyRequestsResponse = ApiObjectResponse<{ requests: CompanyRequest[] }>;
 type OrdersResponse = ApiObjectResponse<{ orders: CorporateOrder[] }>;
 
 type MyStatusResponse = ApiObjectResponse<MyStatus>;
