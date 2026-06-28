@@ -952,7 +952,7 @@ export default function EmpresasPage() {
   // This must be after activeRequest declaration to avoid "used before declaration" error
   const prevCatalogStatus = useRef<string | null>(null);
   useEffect(() => {
-    if (!isCorporateAccount || !activeRequest) return;
+    if (!activeRequest) return;
     const status = activeRequest.corporateStatus;
     const needsCatalog = ["approved_unpaid", "paid_active"].includes(status);
     const wasLoaded = prevCatalogStatus.current === status;
@@ -984,7 +984,7 @@ export default function EmpresasPage() {
     load();
 
     prevCatalogStatus.current = status;
-  }, [isCorporateAccount, activeRequest]);
+  }, [activeRequest]);
 
   if (loading) {
     return (
@@ -1015,6 +1015,7 @@ export default function EmpresasPage() {
         : "EM";
 
       const loadCatalogAndRequests = async () => {
+        let loadedProducts = catalogProducts;
         setCatalogLoading(true);
         setMyRequestsLoading(true);
         try {
@@ -1024,7 +1025,8 @@ export default function EmpresasPage() {
           ]);
           if (prodRes.ok) {
             const prodJson = await prodRes.json();
-            setCatalogProducts((prodJson.products || []).filter((p: { isActive?: boolean }) => p.isActive));
+            loadedProducts = (prodJson.products || []).filter((p: { isActive?: boolean }) => p.isActive);
+            setCatalogProducts(loadedProducts);
           }
           if (reqRes.ok) {
             const reqJson = await reqRes.json();
@@ -1036,6 +1038,7 @@ export default function EmpresasPage() {
           setCatalogLoading(false);
           setMyRequestsLoading(false);
         }
+        return loadedProducts;
       };
 
       const handleOpenProductRequest = () => {
@@ -1104,8 +1107,15 @@ export default function EmpresasPage() {
 
       // Handler: request initial chip
       const handleRequestInitialChip = async () => {
-        if (!initialChipProduct) {
+        let productToRequest = initialChipProduct;
+        if (!productToRequest && isPaidActive) {
+          setSubmittingInitialChip(true);
+          const loadedProducts = await loadCatalogAndRequests();
+          productToRequest = loadedProducts.find((p: CorporateProduct) => p.productType === "initial_chip") || null;
+        }
+        if (!productToRequest) {
           toast.error("El producto de chip empresarial aún no está configurado. Contacta a PreRescue.");
+          setSubmittingInitialChip(false);
           return;
         }
         setSubmittingInitialChip(true);
@@ -1114,7 +1124,7 @@ export default function EmpresasPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              items: [{ productId: initialChipProduct.id, quantity: 1 }],
+              items: [{ productId: productToRequest.id, quantity: 1 }],
             }),
           });
           const data = await res.json();
@@ -1240,10 +1250,10 @@ export default function EmpresasPage() {
                     </div>
                     <button
                       onClick={handleRequestInitialChip}
-                      disabled={submittingInitialChip}
+                      disabled={submittingInitialChip || catalogLoading}
                       className="w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-2xl bg-emerald-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                     >
-                      {submittingInitialChip ? (
+                      {submittingInitialChip || catalogLoading ? (
                         <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
                       ) : (
                         <><PlusCircle className="h-4 w-4" /> Solicitar primer chip</>
