@@ -950,13 +950,13 @@ export default function EmpresasPage() {
 
   // Detect when employee becomes active (approved_unpaid or paid_active) and load catalog
   // This must be after activeRequest declaration to avoid "used before declaration" error
-  const prevActiveStatus = useRef<string | null>(null);
+  const prevCatalogStatus = useRef<string | null>(null);
   useEffect(() => {
     if (!isCorporateAccount || !activeRequest) return;
     const status = activeRequest.corporateStatus;
-    const isNowActive = status === "paid_active" || status === "approved_unpaid";
-    const wasActive = prevActiveStatus.current === "paid_active" || prevActiveStatus.current === "approved_unpaid";
-    if (!isNowActive || wasActive) return;
+    const needsCatalog = ["pending_company_review", "approved_unpaid", "paid_active"].includes(status);
+    const wasLoaded = prevCatalogStatus.current === status;
+    if (!needsCatalog || wasLoaded) return;
 
     setCatalogLoading(true);
     setMyRequestsLoading(true);
@@ -983,7 +983,7 @@ export default function EmpresasPage() {
     };
     load();
 
-    prevActiveStatus.current = status;
+    prevCatalogStatus.current = status;
   }, [isCorporateAccount, activeRequest]);
 
   if (loading) {
@@ -1105,7 +1105,7 @@ export default function EmpresasPage() {
       // Handler: request initial chip
       const handleRequestInitialChip = async () => {
         if (!initialChipProduct) {
-          toast.error("Producto de chip inicial no disponible en el catálogo.");
+          toast.error("El producto de chip empresarial aún no está configurado. Contacta a PreRescue.");
           return;
         }
         setSubmittingInitialChip(true);
