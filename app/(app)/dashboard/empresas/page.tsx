@@ -592,34 +592,6 @@ export default function EmpresasPage() {
     loadAll();
   }, [loadAll]);
 
-  // Load catalog when employee becomes paid_active
-  const [shouldLoadCatalog, setShouldLoadCatalog] = useState(false);
-  useEffect(() => {
-    if (!shouldLoadCatalog) return;
-    const load = async () => {
-      try {
-        const [prodRes, reqRes] = await Promise.all([
-          fetch("/api/products"),
-          fetch("/api/organizations/product-requests/my"),
-        ]);
-          if (prodRes.ok) {
-            const prodJson = await prodRes.json() as ProductsResponse;
-          setCatalogProducts((prodJson.products || []).filter((p: { isActive?: boolean }) => p.isActive));
-        }
-        if (reqRes.ok) {
-          const reqJson = await reqRes.json() as CompanyRequestsResponse;
-          setMyRequests(reqJson.requests || []);
-        }
-      } catch {
-        // silent
-      } finally {
-        setCatalogLoading(false);
-        setMyRequestsLoading(false);
-      }
-    };
-    load();
-  }, [shouldLoadCatalog]);
-
   // Company product requests
   const [companyRequests, setCompanyRequests] = useState<CompanyRequest[]>([]);
   const [companyRequestsLoading, setCompanyRequestsLoading] = useState(false);
@@ -977,19 +949,42 @@ export default function EmpresasPage() {
     return catalogProducts.find((p: CorporateProduct) => p.productType === "initial_chip") || null;
   }, [catalogProducts]);
 
-  // Detect when employee goes from no-active to paid_active and load catalog
+  // Detect when employee becomes active (approved_unpaid or paid_active) and load catalog
   // This must be after activeRequest declaration to avoid "used before declaration" error
   const prevActiveStatus = useRef<string | null>(null);
   useEffect(() => {
-    if (!isCorporateAccount && activeRequest) {
-      const status = activeRequest.corporateStatus;
-      if (status === "paid_active" && prevActiveStatus.current !== "paid_active") {
-        setCatalogLoading(true);
-        setMyRequestsLoading(true);
-        setShouldLoadCatalog(true);
+    if (!isCorporateAccount || !activeRequest) return;
+    const status = activeRequest.corporateStatus;
+    const isNowActive = status === "paid_active" || status === "approved_unpaid";
+    const wasActive = prevActiveStatus.current === "paid_active" || prevActiveStatus.current === "approved_unpaid";
+    if (!isNowActive || wasActive) return;
+
+    setCatalogLoading(true);
+    setMyRequestsLoading(true);
+    const load = async () => {
+      try {
+        const [prodRes, reqRes] = await Promise.all([
+          fetch("/api/products"),
+          fetch("/api/organizations/product-requests/my"),
+        ]);
+        if (prodRes.ok) {
+          const prodJson = await prodRes.json();
+          setCatalogProducts((prodJson.products || []).filter((p: { isActive?: boolean }) => p.isActive));
+        }
+        if (reqRes.ok) {
+          const reqJson = await reqRes.json();
+          setMyRequests(reqJson.requests || []);
+        }
+      } catch {
+        // silent
+      } finally {
+        setCatalogLoading(false);
+        setMyRequestsLoading(false);
       }
-      prevActiveStatus.current = status;
-    }
+    };
+    load();
+
+    prevActiveStatus.current = status;
   }, [isCorporateAccount, activeRequest]);
 
   if (loading) {
@@ -1021,7 +1016,6 @@ export default function EmpresasPage() {
         : "EM";
 
       const loadCatalogAndRequests = async () => {
-        if (!isPaidActive) return;
         setCatalogLoading(true);
         setMyRequestsLoading(true);
         try {
@@ -1236,37 +1230,25 @@ export default function EmpresasPage() {
                     </div>
                   </div>
 
-                  <div className="bg-white/60 rounded-2xl border border-emerald-200 p-5 space-y-2">
-                    <p className="text-xs font-bold text-emerald-800 uppercase tracking-widest">A partir de este chip podrás solicitar posteriormente:</p>
-                    <ul className="space-y-1.5">
-                      {["Credencial NFC", "Sticker NFC", "Llavero NFC", "Pulsera NFC", "Productos empresariales futuros"].map((item) => (
-                        <li key={item} className="flex items-center gap-2 text-sm text-emerald-800">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
                   <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Precio destacado</p>
-                      <p className="text-4xl font-black text-emerald-900">USD 25.00</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Primer chip empresarial</p>
+                      <p className="text-3xl font-black text-emerald-900">USD 25.00</p>
                     </div>
                     <button
                       onClick={handleRequestInitialChip}
                       disabled={submittingInitialChip}
-                      className="w-full sm:w-auto min-h-[52px] px-8 py-3.5 rounded-2xl bg-emerald-600 text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-600/30 hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-2xl bg-emerald-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                     >
                       {submittingInitialChip ? (
-                        <><Loader2 className="h-5 w-5 animate-spin" /> Enviando solicitud...</>
+                        <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
                       ) : (
-                        <><PlusCircle className="h-5 w-5" /> Solicitar primer chip</>
+                        <><PlusCircle className="h-4 w-4" /> Solicitar primer chip</>
                       )}
                     </button>
                   </div>
 
-                  <p className="text-[11px] text-emerald-700/60 text-center">
+                  <p className="text-[10px] text-emerald-700/60 text-center">
                     La empresa revisará esta solicitud y realizará el pago corporativo correspondiente.
                   </p>
                 </div>
