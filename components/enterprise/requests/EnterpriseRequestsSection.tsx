@@ -104,6 +104,10 @@ export default function EnterpriseRequestsSection({
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter || "all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
+  // Pending items selection state
+  const [selectedPendingItems, setSelectedPendingItems] = useState<Set<string>>(new Set());
+  const [processingPendingGroup, setProcessingPendingGroup] = useState<string | null>(null);
+
   const selectedApprovedRequestIds = Object.entries(selectedApprovedRequests)
     .filter(([, v]) => v)
     .map(([k]) => k);
@@ -262,6 +266,91 @@ export default function EnterpriseRequestsSection({
     }
   };
 
+  // Pending selection helpers
+  const getPendingItemKey = (requestId: string, itemId: string) => `${requestId}:${itemId}`;
+
+  const togglePendingItem = (requestId: string, itemId: string) => {
+    setSelectedPendingItems((prev) => {
+      const next = new Set(prev);
+      const key = getPendingItemKey(requestId, itemId);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAllPendingItems = (group: ProductGroup) => {
+    setSelectedPendingItems((prev) => {
+      const next = new Set(prev);
+      const allSelected = group.items.every((it) => next.has(getPendingItemKey(it.requestId, it.itemId)));
+      for (const it of group.items) {
+        if (allSelected) next.delete(getPendingItemKey(it.requestId, it.itemId));
+        else next.add(getPendingItemKey(it.requestId, it.itemId));
+      }
+      return next;
+    });
+  };
+
+  const getGroupSelectedStats = (group: ProductGroup) => {
+    let quantity = 0;
+    let amount = 0;
+    const memberKeys = new Set<string>();
+    for (const it of group.items) {
+      if (selectedPendingItems.has(getPendingItemKey(it.requestId, it.itemId))) {
+        quantity += it.quantity;
+        amount += it.subtotal;
+        const memberKey = it.memberName || it.requestId;
+        memberKeys.add(memberKey);
+      }
+    }
+    return { members: memberKeys.size, quantity, amount };
+  };
+
+  const getTotalSelectedStats = () => {
+    let quantity = 0;
+    let amount = 0;
+    const memberKeys = new Set<string>();
+    for (const group of pendingGroups) {
+      const stats = getGroupSelectedStats(group);
+      quantity += stats.quantity;
+      amount += stats.amount;
+      for (const it of group.items) {
+        if (selectedPendingItems.has(getPendingItemKey(it.requestId, it.itemId))) {
+          memberKeys.add(it.memberName || it.requestId);
+        }
+      }
+    }
+    return { members: memberKeys.size, quantity, amount };
+  };
+
+  const handleBatchPendingReview = async (groupProductType: string, action: "approve" | "reject") => {
+    const group = pendingGroups.find((g) => g.productType === groupProductType);
+    if (!group) return;
+    setProcessingPendingGroup(groupProductType);
+    try {
+      // Deduplicate requestIds
+      const requestIds = Array.from(
+        new Set(
+          group.items
+            .filter((it) => selectedPendingItems.has(getPendingItemKey(it.requestId, it.itemId)))
+            .map((it) => it.requestId)
+        )
+      );
+      for (const reqId of requestIds) {
+        await onReviewRequest(reqId, action);
+      }
+      // Clear selections for this group
+      setSelectedPendingItems((prev) => {
+        const next = new Set(prev);
+        for (const it of group.items) {
+          next.delete(getPendingItemKey(it.requestId, it.itemId));
+        }
+        return next;
+      });
+    } finally {
+      setProcessingPendingGroup(null);
+    }
+  };
+
   if (companyRequestsLoading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -312,6 +401,15 @@ export default function EnterpriseRequestsSection({
               <p className="text-sm text-indigo-600/80">
                 {pendingSummary.collaborators === 1 ? "1 colaborador" : `${pendingSummary.collaborators} colaboradores`} · {pendingSummary.totalProducts} {pendingSummary.totalProducts === 1 ? "producto" : "productos"}
               </p>
+              {(() => {
+                const sel = getTotalSelectedStats();
+                if (sel.members === 0) return null;
+                return (
+                  <p className="text-xs font-bold text-primary mt-1">
+                    Seleccionados: {sel.members} {sel.members === 1 ? "colaborador" : "colaboradores"} · {sel.quantity} {sel.quantity === 1 ? "producto" : "productos"} · ${sel.amount.toFixed(2)}
+                  </p>
+                );
+              })()}
             </div>
           </div>
           <div className="text-right">
@@ -403,9 +501,21 @@ export default function EnterpriseRequestsSection({
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className={`text-[10px] font-black ${colorMap.text} uppercase tracking-widest`}>Subtotal</p>
-                        <p className={`text-2xl font-black ${colorMap.text}`}>${group.subtotal.toFixed(2)}</p>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={group.items.every((it) => selectedPendingItems.has(getPendingItemKey(it.requestId, it.itemId)))}
+                            onChange={() => toggleAllPendingItems(group)}
+                            disabled={processingPendingGroup === group.productType}
+                            className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary shrink-0"
+                          />
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Seleccionar todos</span>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-[10px] font-black ${colorMap.text} uppercase tracking-widest`}>Subtotal</p>
+                          <p className={`text-2xl font-black ${colorMap.text}`}>${group.subtotal.toFixed(2)}</p>
+                        </div>
                       </div>
                     </div>
 
@@ -417,6 +527,13 @@ export default function EnterpriseRequestsSection({
                           <div key={`${memberItem.requestId}-${memberItem.itemId}`} className="p-4 sm:p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                               <div className="flex items-center gap-3 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPendingItems.has(getPendingItemKey(memberItem.requestId, memberItem.itemId))}
+                                  onChange={() => togglePendingItem(memberItem.requestId, memberItem.itemId)}
+                                  disabled={!!processingPendingGroup}
+                                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary shrink-0"
+                                />
                                 <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
                                   <UserRound className="h-4 w-4" />
                                 </div>
@@ -470,6 +587,38 @@ export default function EnterpriseRequestsSection({
                         );
                       })}
                     </div>
+
+                    {/* Group batch actions */}
+                    {(() => {
+                      const sel = getGroupSelectedStats(group);
+                      if (sel.members === 0) return null;
+                      const isProcessing = processingPendingGroup === group.productType;
+                      return (
+                        <div className={`p-4 ${colorMap.bg} border-t ${colorMap.border} flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
+                          <p className="text-xs font-bold text-muted-foreground">
+                            {sel.members} {sel.members === 1 ? "colaborador" : "colaboradores"} · {sel.quantity} {sel.quantity === 1 ? "producto" : "productos"} · ${sel.amount.toFixed(2)}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => handleBatchPendingReview(group.productType, "approve")}
+                              disabled={isProcessing}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white font-black text-xs shadow-lg shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                            >
+                              {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                              Aprobar seleccionados
+                            </button>
+                            <button
+                              onClick={() => handleBatchPendingReview(group.productType, "reject")}
+                              disabled={isProcessing}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 font-black text-xs hover:bg-rose-100 transition-all disabled:opacity-50"
+                            >
+                              {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                              Rechazar seleccionados
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
