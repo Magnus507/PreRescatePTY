@@ -1,6 +1,6 @@
 ---
 name: prerescate-rules
-description: Reglas permanentes del proyecto PreRescatePTY para desarrollo, git, Prisma, módulos empresariales, chips, pedidos, distribución, activación, administración y auditorías.
+description: Reglas permanentes del proyecto PreRescatePTY para desarrollo, git, Prisma, módulos empresariales, chips, pedidos, distribución, activación, administración, Stock & Fábrica y auditorías.
 ---
 
 # PreRescatePTY Development Rules
@@ -20,6 +20,8 @@ Debe utilizarse antes de implementar cualquier cambio relacionado con:
 - activación
 - distribución
 - pagos
+- Stock & Fábrica
+- Prisma
 - auditorías
 
 ---
@@ -28,9 +30,9 @@ Debe utilizarse antes de implementar cualquier cambio relacionado con:
 
 Priorizar siempre:
 
-- KISS (Keep It Simple)
-- DRY (Don't Repeat Yourself)
-- YAGNI (You Aren't Gonna Need It)
+- KISS
+- DRY
+- YAGNI
 - Reutilizar componentes existentes
 - Reutilizar endpoints existentes
 - Reutilizar helpers existentes
@@ -47,19 +49,19 @@ Todo trabajo debe seguir este orden:
 3. Implementación
 4. Verificación
 5. Commit
-6. Push (solo cuando el usuario lo autorice)
+6. Push solo cuando el usuario lo autorice
 
 Nunca saltar pasos.
 
-Si el usuario pide únicamente una auditoría:
+Si el usuario pide únicamente auditoría:
 
-- NO modificar código.
-- NO crear commits.
-- NO hacer push.
+- NO modificar código
+- NO crear commit
+- NO hacer push
 
 ---
 
-# Reglas de Git
+# Git
 
 Nunca usar:
 
@@ -67,16 +69,9 @@ Nunca usar:
 git add .
 ```
 
-Siempre agregar únicamente los archivos modificados.
+Siempre usar staging explícito por archivo.
 
-Ejemplo:
-
-```bash
-git add app/api/organizations/corporate-chip/activate/route.ts
-git add app/(app)/dashboard/empresas/page.tsx
-```
-
-Nunca ejecutar sin autorización explícita del usuario:
+Nunca ejecutar sin autorización explícita:
 
 - git push
 - git push --force
@@ -85,7 +80,7 @@ Nunca ejecutar sin autorización explícita del usuario:
 - git reset
 - squash
 
-Antes de crear cualquier commit ejecutar obligatoriamente:
+Antes de commit ejecutar:
 
 ```bash
 git status --short
@@ -95,31 +90,7 @@ npm run typecheck
 npm run build
 ```
 
-Si cualquiera falla:
-
-Detener implementación.
-
-Corregir primero.
-
-Nunca asumir que build o typecheck pasaron.
-
----
-
-# Auditoría
-
-Antes de modificar código:
-
-- comprender el flujo completo
-- identificar todos los archivos afectados
-- buscar componentes reutilizables
-- buscar endpoints existentes
-- buscar helpers existentes
-- buscar validaciones existentes
-- entender impacto sobre otros módulos
-
-Si existe una forma de reutilizar código:
-
-Preferir reutilización antes que crear archivos nuevos.
+Si algo falla, detenerse y corregir.
 
 ---
 
@@ -134,42 +105,41 @@ Nunca modificar sin autorización explícita:
 - enums
 - índices
 
-Antes de crear nuevas tablas o campos:
+Nunca usar sin autorización explícita:
 
-Preguntarse:
+- prisma migrate reset
+- prisma db push
+- prisma migrate resolve
 
-¿Ya existe un modelo que resuelva este problema?
+Si Prisma muestra drift, checksum mismatch, P3006, P1014 o pide reset:
 
-Preferir reutilizar modelos existentes.
-
-Separar:
-
-- cambios de esquema
-- migraciones
-- backfills
-- lógica
-
-Nunca crear migraciones innecesarias.
+- detener implementación
+- NO seguir editando migraciones una por una
+- auditar primero:
+  - historial local de migraciones
+  - tabla `_prisma_migrations`
+  - schema.prisma
+  - BD real
+- proponer baseline controlado si el historial está desalineado
+- no continuar con nuevas migraciones hasta sanear Prisma
 
 ---
 
 # Arquitectura
 
-Mantener completamente separados estos módulos.
+Mantener separados estos módulos:
 
 ## Usuario Particular
 
 Incluye:
 
-- tienda
+- tienda normal
 - pedidos normales
 - chips normales
-- perfiles médicos
+- perfiles médicos normales
 - activación normal
 
 Nunca romper compatibilidad.
-
----
 
 ## Empresa
 
@@ -179,13 +149,11 @@ Incluye:
 - colaboradores
 - solicitudes empresariales
 - pedidos corporativos
-- distribución
+- distribución interna
 - activación empresarial
 - RRHH
 
-Nunca mezclar lógica con usuarios particulares.
-
----
+Nunca mezclar lógica empresarial con usuarios particulares.
 
 ## Administración
 
@@ -198,55 +166,35 @@ Incluye:
 - logística
 - entrega de lotes
 
-Nunca reutilizar componentes del dashboard usuario cuando exista un componente admin.
+Debe permanecer aislado del dashboard usuario/empresa.
 
 ---
 
 # Flujo Empresarial Oficial
 
-El flujo correcto siempre es:
+El flujo correcto es:
 
 Solicitud del colaborador
-
 ↓
-
 Aprobación por la empresa
-
 ↓
-
 Pago corporativo
-
 ↓
-
 Pago aprobado por Admin
-
 ↓
-
-PreRescue prepara el lote
-
+PreRescue prepara lote
 ↓
-
-Admin marca:
-
-corporateDeliveryStatus = "delivered"
-
+Admin marca lote como entregado a empresa
 ↓
-
-La empresa distribuye internamente
-
+Empresa distribuye internamente
 ↓
-
 RRHH marca entregado al colaborador
-
 ↓
-
-El colaborador activa su chip
-
+Colaborador activa chip empresarial
 ↓
-
 Perfil público disponible
 
-Nunca alterar este flujo sin autorización.
+No alterar este flujo sin autorización.
 
 ---
 
@@ -254,23 +202,23 @@ Nunca alterar este flujo sin autorización.
 
 El primer chip empresarial:
 
-- productType === "initial_chip"
+- `productType === "initial_chip"`
 - precio USD 25
 - solo una vez por colaborador
-- solicitado desde Empresa
-- aprobado por empresa
-- pagado
-- entregado por PreRescue
-- distribuido por RRHH
-- activado por el colaborador
+- se solicita desde Empresa
+- la empresa lo aprueba
+- la empresa paga
+- PreRescue entrega lote físico
+- RRHH distribuye
+- colaborador activa el chip
 
-Nunca tratar este flujo como una compra normal.
+No tratarlo como compra normal de tienda.
 
 ---
 
 # Distribución Empresarial
 
-La empresa solamente puede distribuir cuando:
+La empresa solo puede distribuir cuando:
 
 ```ts
 corporateDeliveryStatus === "delivered"
@@ -278,17 +226,14 @@ corporateDeliveryStatus === "delivered"
 
 Antes de eso:
 
-Mostrar estado:
-
-Pendiente de entrega por PreRescue.
-
-Nunca permitir distribución anticipada.
+- mostrar pendiente de entrega por PreRescue
+- no permitir distribución anticipada
 
 ---
 
 # Activación Empresarial
 
-La activación empresarial pertenece únicamente al módulo Empresa.
+La activación empresarial pertenece al módulo Empresa.
 
 Archivo principal:
 
@@ -296,32 +241,132 @@ Archivo principal:
 app/(app)/dashboard/empresas/page.tsx
 ```
 
+Endpoint empresarial:
+
+```text
+/api/organizations/corporate-chip/activate
+```
+
 No mezclar con:
 
 - activación normal
-- tienda
+- tienda normal
 - perfiles médicos normales
+- pedidos normales
 
-Si el flujo empresarial comienza a afectar:
+Evitar modificar:
 
 ```text
 app/api/chips/activate/route.ts
 ```
 
-evaluar crear un endpoint exclusivo empresarial.
+para lógica empresarial.
+
+---
+
+# Reglas Empresariales Consolidadas
+
+- Un colaborador no puede solicitar más de un primer chip empresarial.
+- Un colaborador no puede solicitar accesorios antes de activar su primer chip.
+- Un colaborador no puede tener dos chips empresariales activos.
+- Los reemplazos de chip deben ser un flujo formal independiente.
+- RRHH distribuye paquetes internamente.
+- PreRescue entrega lotes a la empresa, no chips individuales a cada colaborador.
+
+---
+
+# Stock & Fábrica
+
+Stock & Fábrica debe separar:
+
+- inventario normal para clientes particulares
+- producción corporativa para empresas
+- lotes normales
+- lotes corporativos
+- empaque
+- despacho
+- historial
+
+Nunca mezclar stock físico normal con producción corporativa.
+
+## Lote normal
+
+Sirve para crear stock físico disponible para venta normal.
+
+Flujo:
+
+Inventario digital
+↓
+Crear lote normal
+↓
+Convertir a físico
+↓
+Disponible para tienda / venta normal
+
+## Lote corporativo
+
+Sirve para cumplir un pedido empresarial específico.
+
+Flujo:
+
+Pedido corporativo aprobado
+↓
+Producción
+↓
+Lote corporativo
+↓
+Etiquetas internas
+↓
+Fabricación
+↓
+Empaque
+↓
+Despacho
+↓
+Empresa
+
+Debe vincularse a:
+
+- orden
+- empresa
+- items corporativos
+- etiquetas internas
+- trazabilidad
+
+---
+
+# Etiquetas Internas
+
+Las etiquetas internas sirven para operación, no para activación.
+
+Ejemplo:
+
+```text
+DICAPA-494-001
+DICAPA-494-002
+```
+
+No reemplazan:
+
+- shortCode
+- activationCode
+- serialPublic
+- QR
+
+La etiqueta interna identifica paquete/lote para fábrica, empaque y despacho.
 
 ---
 
 # API
 
-Antes de crear un endpoint nuevo:
+Antes de crear endpoint nuevo:
 
 - buscar si ya existe
 - revisar contratos existentes
 - validar permisos
 - mantener REST consistente
 
-Los endpoints deben validar siempre:
+Los endpoints deben validar:
 
 - sesión
 - permisos
@@ -329,11 +374,7 @@ Los endpoints deben validar siempre:
 - estado del recurso
 - ownership
 
-Respuestas consistentes.
-
-Usar HTTP correcto.
-
-Mensajes claros.
+Usar HTTP correcto y mensajes claros.
 
 ---
 
@@ -349,7 +390,7 @@ Reutilizar:
 
 Evitar duplicación.
 
-No crear lógica enorme cuando un cambio pequeño resuelve el problema.
+No crear lógica enorme si un cambio pequeño resuelve el flujo.
 
 ---
 
@@ -362,11 +403,11 @@ Priorizar:
 - cards simples
 - badges consistentes
 - estados claros
-- loading
+- loading states
 - empty states
 - mensajes útiles
 
-Evitar UI decorativa.
+Evitar UI decorativa sin valor operativo.
 
 Todo dashboard debe responder:
 
@@ -389,7 +430,7 @@ Nunca exponer:
 
 Nunca eliminar validaciones de permisos.
 
-Toda operación empresarial debe validar pertenencia a la organización.
+Toda operación empresarial debe validar pertenencia a la organización correcta.
 
 ---
 
@@ -402,17 +443,13 @@ Los errores deben ser:
 - seguros
 - sin detalles internos
 
-Ejemplos:
+Ejemplos correctos:
 
-✅ No tienes un vínculo empresarial activo.
-
-✅ El pedido aún no ha sido entregado por PreRescue.
-
-✅ No tienes paquetes pendientes de activación.
-
-✅ Este código ya fue utilizado.
-
-Nunca mostrar stack traces al usuario.
+- "No tienes un vínculo empresarial activo."
+- "El pedido aún no ha sido entregado por PreRescue a la empresa."
+- "No tienes paquetes pendientes de activación."
+- "Este código ya fue utilizado."
+- "Ya tienes un chip empresarial activo. Contacta a tu empresa para gestionar un reemplazo."
 
 ---
 
@@ -428,9 +465,7 @@ npm run typecheck
 npm run build
 ```
 
-Si alguna validación no fue ejecutada:
-
-Indicarlo explícitamente.
+Si alguna validación no fue ejecutada, decirlo claramente.
 
 Nunca afirmar que una validación pasó sin ejecutarla.
 
@@ -438,7 +473,7 @@ Nunca afirmar que una validación pasó sin ejecutarla.
 
 # Reporte Final Obligatorio
 
-Toda implementación debe terminar con el siguiente formato:
+Toda implementación debe terminar con:
 
 ## Archivos modificados
 
@@ -460,19 +495,13 @@ Sí / No
 
 Sí / No
 
-## Endpoints modificados
+## Endpoints modificados/creados
 
 ## Qué se implementó
 
 ## Qué NO se tocó
 
 ## Validaciones ejecutadas
-
-- git status --short
-- git diff
-- git diff --check
-- npm run typecheck
-- npm run build
 
 ## Estado Git
 
@@ -506,7 +535,8 @@ feat(admin):
 feat(enterprise):
 fix(chips):
 fix(api):
-refactor(profile):
+feat(prisma):
+chore(tools):
 ```
 
 Nunca mezclar múltiples funcionalidades en un mismo commit.
@@ -523,5 +553,5 @@ Toda implementación debe:
 - reutilizar código existente
 - respetar el flujo operativo real de PreRescatePTY
 - producir código limpio
-- ser fácilmente auditable
-- pasar todas las validaciones antes del commit
+- ser auditable
+- pasar validaciones antes del commit

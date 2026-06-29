@@ -32,7 +32,7 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
     { label: "Gestión de Chips", id: "chips", icon: Cpu },
     { label: "Tienda Admin", id: "tienda", icon: Store },
     { label: "Cuentas Corporativas", id: "empresas", icon: Building2 },
-    { label: "Stock & Fábrica", id: "inventory", icon: Package },
+    { label: "Centro de Operaciones", id: "inventory", icon: Package },
     { label: "Ventas & Pedidos", id: "pedidos", icon: Activity },
     { label: "Ajustes Sistema", id: "settings", icon: Settings },
     { label: "Administradores", id: "admins", icon: Shield },

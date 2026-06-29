@@ -13,7 +13,7 @@ import { DashboardSection } from "./_components/sections/DashboardSection";
 import { ChipsSection } from "./_components/sections/ChipsSection";
 import { UsersSection } from "./_components/sections/UsersSection";
 import { OrganizationsSection } from "./_components/sections/OrganizationsSection";
-import { InventorySection } from "./_components/sections/InventorySection";
+import { OperationsCenterSection } from "./_components/sections/OperationsCenterSection";
 import { AdminsSection } from "./_components/sections/AdminsSection";
 import { PedidosSection } from "./_components/sections/PedidosSection";
 import { TiendaSection } from "./_components/sections/TiendaSection";
@@ -116,9 +116,9 @@ function AdminDashboard() {
       placeholder: "Buscar organización..." 
     },
     inventory: { 
-      title: "Stock & Fábrica", 
-      subtitle: "Logística de hardware, stock físico y producción industrial",
-      placeholder: "Buscar en stock..." 
+      title: "Centro de Operaciones",
+      subtitle: "Producción, recursos digitales, inventario físico y despacho",
+      placeholder: "Buscar operación..."
     },
     admins: { 
       title: "Administradores", 
@@ -353,10 +353,7 @@ function AdminDashboard() {
           )}
 
           {admin.tab === "inventory" && (
-            <InventorySection 
-              chips={admin.chips.chips}
-              loading={admin.chips.loading}
-              loadChips={() => admin.chips.loadChips({ status: "inventory" })}
+            <OperationsCenterSection
               loadChipDetail={admin.chips.loadChipDetail}
               createCount={createCount}
               setCreateCount={setCreateCount}
