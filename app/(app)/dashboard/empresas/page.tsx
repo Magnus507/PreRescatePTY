@@ -1146,7 +1146,7 @@ export default function EmpresasPage() {
         }
         setActivatingCorporateChip(true);
         try {
-          const res = await fetch("/api/chips/activate", {
+          const res = await fetch("/api/organizations/corporate-chip/activate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ activationCode: corporateActivationCode.trim() }),
@@ -1156,7 +1156,7 @@ export default function EmpresasPage() {
             toast.error(data.error || "Error al activar chip empresarial");
             return;
           }
-          toast.success("¡Chip empresarial activado! Tu protección empresarial ya está activa.");
+          toast.success(data.message || "Chip empresarial activado correctamente.");
           setCorporateActivationCode("");
           await loadAll();
           const active = (myStatus?.requests || []).find((r) =>
