@@ -77,6 +77,13 @@ export async function GET(
     return NextResponse.json({ error: "Esta orden no es corporativa" }, { status: 400 });
   }
 
+  if (order.corporateDeliveryStatus !== "delivered") {
+    return NextResponse.json(
+      { error: "El pedido aún no ha sido entregado por PreRescue a la empresa." },
+      { status: 403 }
+    );
+  }
+
   return NextResponse.json({
     order: {
       id: order.id,
