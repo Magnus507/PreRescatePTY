@@ -1659,45 +1659,56 @@ export default function EmpresasPage() {
                 </div>
               )}
 
-              {/* Activar chip empresarial — card compacta */}
-                {corporateChip && corporateChip.status !== "activated" &&
-                  (activeRequest.corporateOrderItems ?? []).some((item) =>
-                  ["assigned_reserved", "delivered", "ready_for_assignment"].includes(item.fulfillmentStatus ?? "")
-                ) && (
-                <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/50 to-white p-5 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0">
-                      <Smartphone className="h-5 w-5" />
+              {/* Activar chip empresarial — solo después de entrega */}
+              {corporateChip && corporateChip.status !== "activated" && (
+                corporateFulfillmentStatus === "delivered" ? (
+                  <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/50 to-white p-5 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0">
+                        <Smartphone className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-black text-sm text-blue-900">Activar chip empresarial</h4>
+                        <p className="text-[11px] text-muted-foreground">
+                          Tu empresa ya te asignó el chip <span className="font-mono font-bold">{corporateChip.shortCode}</span>.{" "}
+                          Ingresa el código de activación que viene en tu paquete.
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-black text-sm text-blue-900">Activar chip empresarial</h4>
-                      <p className="text-[11px] text-muted-foreground">
-                        Tu empresa ya te asignó el chip <span className="font-mono font-bold">{corporateChip.shortCode}</span>.{" "}
-                        {corporateFulfillmentStatus === "delivered"
-                          ? "Chip entregado. Ingresa el código para activar tu protección."
-                          : "Ingresa el código de activación que viene en el empaque para activar tu protección empresarial."}
-                      </p>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-full">
+                      <input
+                        type="text"
+                        value={corporateActivationCode}
+                        onChange={(e) => setCorporateActivationCode(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleActivateCorporateChip(); }}
+                        placeholder="XXXX-XXXX-XXXX"
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-blue-200 bg-white text-sm font-bold focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      />
+                      <button
+                        onClick={handleActivateCorporateChip}
+                        disabled={activatingCorporateChip || !corporateActivationCode.trim()}
+                        className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
+                      >
+                        {activatingCorporateChip ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                        {activatingCorporateChip ? "Activando..." : "Activar chip"}
+                      </button>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-full">
-                    <input
-                      type="text"
-                      value={corporateActivationCode}
-                      onChange={(e) => setCorporateActivationCode(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleActivateCorporateChip(); }}
-                      placeholder="XXXX-XXXX-XXXX"
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-blue-200 bg-white text-sm font-bold focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                    />
-                    <button
-                      onClick={handleActivateCorporateChip}
-                      disabled={activatingCorporateChip || !corporateActivationCode.trim()}
-                      className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
-                    >
-                      {activatingCorporateChip ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                      {activatingCorporateChip ? "Activando..." : "Activar chip"}
-                    </button>
+                ) : (
+                  <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-5 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-slate-300 text-white flex items-center justify-center shrink-0">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-black text-sm text-slate-700">Chip empresarial pendiente de entrega</h4>
+                        <p className="text-[11px] text-muted-foreground">
+                          Tu empresa aún no ha marcado tu paquete como entregado. Cuando recibas tu paquete podrás activar tu chip empresarial aquí.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )
               )}
 
               {/* Botones globales (solo si hay chip) */}
