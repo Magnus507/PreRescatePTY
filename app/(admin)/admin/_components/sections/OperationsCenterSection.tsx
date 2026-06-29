@@ -30,6 +30,7 @@ import { InventoryMovementsSection } from "./InventoryMovementsSection";
 import { PackingSection } from "./PackingSection";
 import { DispatchSection } from "./DispatchSection";
 import { QualitySection } from "./QualitySection";
+import { HistorySection } from "./HistorySection";
 
 type OperationsTab =
   | "overview"
@@ -277,6 +278,10 @@ export function OperationsCenterSection({
 
     if (activeTab === "quality") {
       return <QualitySection />;
+    }
+
+    if (activeTab === "history") {
+      return <HistorySection />;
     }
 
     if (activeTab !== "overview") {
