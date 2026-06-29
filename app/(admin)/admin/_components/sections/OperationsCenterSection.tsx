@@ -29,6 +29,7 @@ import { PhysicalInventorySection } from "./PhysicalInventorySection";
 import { InventoryMovementsSection } from "./InventoryMovementsSection";
 import { PackingSection } from "./PackingSection";
 import { DispatchSection } from "./DispatchSection";
+import { QualitySection } from "./QualitySection";
 
 type OperationsTab =
   | "overview"
@@ -272,6 +273,10 @@ export function OperationsCenterSection({
 
     if (activeTab === "dispatch") {
       return <DispatchSection />;
+    }
+
+    if (activeTab === "quality") {
+      return <QualitySection />;
     }
 
     if (activeTab !== "overview") {
