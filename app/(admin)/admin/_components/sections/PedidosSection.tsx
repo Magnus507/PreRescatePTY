@@ -10,6 +10,7 @@ import { canAdminApproveManual, canAdminRejectManual } from "@/lib/order-status"
 import { resolveImageSrc } from "@/lib/resolve-image-src";
 import { ReceiptModal } from "../modals/ReceiptModal";
 import { formatShippingAddress, getPaymentMethodLabel, getPaymentStatusLabel } from "../../_utils/order-helpers";
+import FabricationSection from "./FabricationSection";
 
 interface CorporateEmployeeItem {
   id: string;
@@ -741,8 +742,11 @@ export function PedidosSection() {
                  </div>
                )}
 
-               {/* ==================== NORMAL ORDER DETAIL ==================== */}
-               {!isCorporateOrder && (
+                {/* ==================== FABRICACIÓN CORPORATIVA ==================== */}
+                {isCorporateOrder && selectedOrder && <FabricationSection orderId={selectedOrder.id} />}
+
+                {/* ==================== NORMAL ORDER DETAIL ==================== */}
+                {!isCorporateOrder && (
                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* COL 1: Buyer & Delivery */}
                   <div className="space-y-6">
