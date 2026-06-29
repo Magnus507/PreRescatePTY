@@ -71,6 +71,9 @@ interface Order {
   shippingNotes: string | null;
   createdAt: string;
   orderType: string | null;
+  corporateDeliveryStatus?: string | null;
+  estimatedDeliveryDate?: string | null;
+  deliveryNote?: string | null;
   items: {
     id: string;
     productType: string;
@@ -115,6 +118,7 @@ export function PedidosSection() {
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
+  const [markingDelivered, setMarkingDelivered] = useState(false);
   const initializedOrderIdRef = useRef<string | null>(null);
 
   const loadOrders = useCallback(async (options?: { silent?: boolean }) => {
@@ -213,6 +217,49 @@ export function PedidosSection() {
     setReviewAction(null);
     initializedOrderIdRef.current = null;
   }, []);
+
+  const handleCorporateDelivery = async () => {
+    if (!selectedOrder) return;
+    if (!confirm("¿Marcar este lote corporativo como entregado a la empresa?")) return;
+
+    setMarkingDelivered(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${selectedOrder.id}/corporate-delivery`, {
+        method: "PATCH",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.success("Lote marcado como entregado a empresa.");
+        setSelectedOrder((current) =>
+          current
+            ? {
+                ...current,
+                corporateDeliveryStatus: data?.order?.corporateDeliveryStatus ?? "delivered",
+                deliveryNote: data?.order?.deliveryNote ?? current.deliveryNote,
+                estimatedDeliveryDate: data?.order?.estimatedDeliveryDate ?? current.estimatedDeliveryDate,
+              }
+            : current
+        );
+        loadOrders();
+      } else if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.message || "El pedido cambió de estado o no cumple los requisitos para esta acción.");
+      } else if (res.status === 401 || res.status === 403) {
+        toast.error("No tienes permiso para actualizar este pedido.");
+      } else if (res.status === 404) {
+        toast.error("El pedido ya no está disponible.");
+      } else {
+        toast.error("No se pudo marcar el lote como entregado.");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setMarkingDelivered(false);
+    }
+  };
 
   const handleApprove = async () => {
     if (!selectedOrder || selectedOrder.provider !== "manual") return;
@@ -346,6 +393,10 @@ export function PedidosSection() {
     const isCorporatePaymentApproved =
       selectedOrder.paymentStatus === "paid" &&
       selectedOrder.adminReviewStatus === "approved";
+    const canMarkCorporateDelivered =
+      isCorporatePaymentApproved &&
+      selectedOrder.orderType === "corporate_employee_purchase" &&
+      selectedOrder.corporateDeliveryStatus !== "delivered";
     return (
       <div className="space-y-5 animate-in fade-in slide-in-from-bottom-5 duration-500 blur-none">
          {/* Integrated Admin Dashboard Header */}
@@ -485,9 +536,31 @@ export function PedidosSection() {
                    {/* Approved / Rejected status */}
                    {selectedOrder.adminReviewStatus === "approved" && (
                      <div className="rounded-[2rem] border border-emerald-200 bg-emerald-50/50 p-5">
-                       <div className="flex items-center gap-3">
-                         <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-                         <p className="font-black text-emerald-700">Pago aprobado</p>
+                       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                         <div className="flex items-center gap-3">
+                           <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                           <p className="font-black text-emerald-700">Pago aprobado</p>
+                         </div>
+                         {selectedOrder.corporateDeliveryStatus === "delivered" ? (
+                           <span className="px-3 py-1.5 bg-white rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-700 border border-emerald-200 inline-flex items-center gap-2 w-fit">
+                             <Truck className="h-3.5 w-3.5" />
+                             Entregado a empresa
+                           </span>
+                         ) : canMarkCorporateDelivered ? (
+                           <button
+                             type="button"
+                             onClick={handleCorporateDelivery}
+                             disabled={markingDelivered}
+                             className="px-5 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                           >
+                             {markingDelivered ? (
+                               <Loader2 className="h-4 w-4 animate-spin" />
+                             ) : (
+                               <Truck className="h-4 w-4" />
+                             )}
+                             Marcar entregado a empresa
+                           </button>
+                         ) : null}
                        </div>
                      </div>
                    )}
