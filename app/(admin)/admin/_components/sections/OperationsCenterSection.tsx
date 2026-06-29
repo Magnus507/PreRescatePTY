@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { ChipAdmin } from "../../_types/admin";
 import { CreateBatchSection } from "./CreateBatchSection";
 import ProductionQueueSection from "./ProductionQueueSection";
+import { DigitalResourcesSection } from "./DigitalResourcesSection";
 
 type OperationsTab =
   | "overview"
@@ -247,6 +248,10 @@ export function OperationsCenterSection({
           loadChipDetail={loadChipDetail}
         />
       );
+    }
+
+    if (activeTab === "digital") {
+      return <DigitalResourcesSection />;
     }
 
     if (activeTab !== "overview") {
