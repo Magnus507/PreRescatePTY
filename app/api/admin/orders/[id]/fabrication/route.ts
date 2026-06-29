@@ -110,11 +110,29 @@ export async function GET(
     summaryByProductType[type] = (summaryByProductType[type] || 0) + item.quantity;
   }
 
+  // Calcular materiales necesarios (runtime, no persistido)
+  const chipsNfc = (summaryByProductType.initial_chip || 0) + (summaryByProductType.sticker_nfc_qr || 0);
+  const pulseras = summaryByProductType.bracelet || 0;
+  const credenciales = summaryByProductType.credential || 0;
+  const stickers = summaryByProductType.sticker_nfc_qr || 0;
+  const totalProductos = items.reduce((sum, i) => sum + i.quantity, 0);
+
+  const materialSummary = {
+    chipsNfc,
+    pulseras,
+    credenciales,
+    stickers,
+    sobresActivacion: chipsNfc,
+    cajasCorporativas: Math.max(1, Math.ceil(totalProductos / 10)),
+    lanyards: credenciales,
+  };
+
   return NextResponse.json({
     orderNumber: order.orderNumber,
     companyName: order.organization?.displayName || order.organization?.legalName || "—",
     totalItems: items.length,
     summaryByProductType,
+    materialSummary,
     items,
   });
 }
