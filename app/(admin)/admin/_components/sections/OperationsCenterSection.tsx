@@ -25,6 +25,7 @@ import { ChipAdmin } from "../../_types/admin";
 import { CreateBatchSection } from "./CreateBatchSection";
 import ProductionQueueSection from "./ProductionQueueSection";
 import { DigitalResourcesSection } from "./DigitalResourcesSection";
+import { PhysicalInventorySection } from "./PhysicalInventorySection";
 
 type OperationsTab =
   | "overview"
@@ -252,6 +253,10 @@ export function OperationsCenterSection({
 
     if (activeTab === "digital") {
       return <DigitalResourcesSection />;
+    }
+
+    if (activeTab === "physical") {
+      return <PhysicalInventorySection />;
     }
 
     if (activeTab !== "overview") {
