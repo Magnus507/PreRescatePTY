@@ -143,6 +143,55 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Anti-duplicado: evitar múltiples solicitudes de primer chip
+  if (isInitialChipOnly) {
+    const existingInitialChipRequest = await prisma.corporateProductRequest.findFirst({
+      where: {
+        organizationMember: {
+          profile: { userId },
+        },
+        status: {
+          in: [
+            "pending_company_approval",
+            "approved_pending_payment",
+            "payment_under_review",
+            "paid_approved",
+          ],
+        },
+        items: {
+          some: {
+            product: { productType: "initial_chip" },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (existingInitialChipRequest) {
+      return NextResponse.json(
+        { error: "Ya tienes una solicitud de primer chip empresarial registrada." },
+        { status: 409 }
+      );
+    }
+
+    const existingInitialChipOrderItem = await prisma.corporateOrderEmployeeItem.findFirst({
+      where: {
+        organizationMember: {
+          profile: { userId },
+        },
+        product: { productType: "initial_chip" },
+      },
+      select: { id: true },
+    });
+
+    if (existingInitialChipOrderItem) {
+      return NextResponse.json(
+        { error: "Ya tienes una solicitud de primer chip empresarial registrada." },
+        { status: 409 }
+      );
+    }
+  }
+
   const allowedCorporateStatuses = isInitialChipOnly
     ? ["approved_unpaid", "paid_active"]
     : ["paid_active"];
