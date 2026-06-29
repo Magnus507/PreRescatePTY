@@ -192,6 +192,28 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Bloquear accesorios hasta que el primer chip esté activado
+  if (!isInitialChipOnly) {
+    const hasActivatedInitialChip = await prisma.corporateOrderEmployeeItem.findFirst({
+      where: {
+        organizationMember: {
+          profile: { userId },
+        },
+        product: { productType: "initial_chip" },
+        fulfillmentStatus: "activated",
+        chipId: { not: null },
+      },
+      select: { id: true },
+    });
+
+    if (!hasActivatedInitialChip) {
+      return NextResponse.json(
+        { error: "Debes activar tu primer chip empresarial antes de solicitar accesorios." },
+        { status: 403 }
+      );
+    }
+  }
+
   const allowedCorporateStatuses = isInitialChipOnly
     ? ["approved_unpaid", "paid_active"]
     : ["paid_active"];

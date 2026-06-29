@@ -1731,8 +1731,8 @@ export default function EmpresasPage() {
             </div>
           )}
 
-          {/* Productos empresariales section — only visible after initial_chip is delivered */}
-          {isPaidActive && initialChipRequest?.status === "delivered" && (
+          {/* Productos empresariales section — only visible after initial_chip is activated */}
+          {isPaidActive && corporateChip && corporateChip.status === "activated" && (
             <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/30 to-white p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
