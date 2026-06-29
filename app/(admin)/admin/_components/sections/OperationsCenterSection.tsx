@@ -26,6 +26,7 @@ import { CreateBatchSection } from "./CreateBatchSection";
 import ProductionQueueSection from "./ProductionQueueSection";
 import { DigitalResourcesSection } from "./DigitalResourcesSection";
 import { PhysicalInventorySection } from "./PhysicalInventorySection";
+import { InventoryMovementsSection } from "./InventoryMovementsSection";
 
 type OperationsTab =
   | "overview"
@@ -257,6 +258,10 @@ export function OperationsCenterSection({
 
     if (activeTab === "physical") {
       return <PhysicalInventorySection />;
+    }
+
+    if (activeTab === "movements") {
+      return <InventoryMovementsSection />;
     }
 
     if (activeTab !== "overview") {
