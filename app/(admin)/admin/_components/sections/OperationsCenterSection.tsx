@@ -7,6 +7,7 @@ import {
   Boxes,
   CheckCircle2,
   ClipboardCheck,
+  Clock,
   Cpu,
   Factory,
   History,
@@ -252,6 +253,8 @@ export function OperationsCenterSection({
       return <PlaceholderPanel config={PLACEHOLDERS[activeTab]} />;
     }
 
+    const hasPending = counts.pending > 0 || counts.inProduction > 0 || counts.packing > 0;
+
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -260,21 +263,21 @@ export function OperationsCenterSection({
             value={health.label}
             icon={HealthIcon}
             tone={health.tone}
-            hint="Lectura rapida del flujo operativo actual."
+            hint={hasPending ? "Hay pedidos pendientes de atencion." : "Todo al dia."}
           />
           <MetricCard
-            label="Pedidos en produccion"
+            label="Pendientes"
+            value={counts.pending}
+            icon={Clock}
+            tone="bg-amber-50 text-amber-700 border-amber-200"
+            hint="Pedidos aprobados esperando produccion."
+          />
+          <MetricCard
+            label="En produccion"
             value={counts.inProduction}
             icon={Factory}
             tone="bg-violet-50 text-violet-700 border-violet-200"
             hint="Ordenes con trabajo iniciado."
-          />
-          <MetricCard
-            label="Bloqueados"
-            value={0}
-            icon={AlertTriangle}
-            tone="bg-red-50 text-red-700 border-red-200"
-            hint="Pendiente de modelo operativo."
           />
           <MetricCard
             label="Listos para empaque"
@@ -284,12 +287,30 @@ export function OperationsCenterSection({
             hint="Derivado de estados actuales."
           />
           <MetricCard
-            label="Listos para despacho"
-            value={0}
-            icon={Truck}
-            tone="bg-slate-100 text-slate-700 border-slate-200"
-            hint="Se activara con despacho."
+            label="Completados"
+            value={counts.done}
+            icon={CheckCircle2}
+            tone="bg-emerald-50 text-emerald-700 border-emerald-200"
+            hint="Pedidos finalizados."
           />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/50">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-4 w-4 text-slate-400" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pendiente de modelo operativo</p>
+            </div>
+            <p className="text-sm font-semibold text-slate-500">Bloqueados y listos para despacho se mostraran cuando el backend exponga estos estados.</p>
+          </div>
+
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/50">
+            <div className="flex items-center gap-2 mb-3">
+              <Truck className="h-4 w-4 text-slate-400" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Despacho</p>
+            </div>
+            <p className="text-sm font-semibold text-slate-500">El tracking de despacho se activara con la integracion de lotes corporativos.</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
