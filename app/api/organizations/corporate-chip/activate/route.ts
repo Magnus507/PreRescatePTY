@@ -129,6 +129,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Validar que no tenga ya un chip empresarial activo
+      const existingActivatedChip = await tx.corporateOrderEmployeeItem.findFirst({
+        where: {
+          organizationMemberId: member.id,
+          fulfillmentStatus: "activated",
+          chipId: { not: null },
+        },
+      });
+
+      if (existingActivatedChip) {
+        throw Object.assign(
+          new Error("Ya tienes un chip empresarial activo. Contacta a tu empresa para gestionar un reemplazo."),
+          { status: 409 }
+        );
+      }
+
       const corporateProfile = await tx.profile.findUnique({
         where: { id: member.corporateProfileId },
       });
