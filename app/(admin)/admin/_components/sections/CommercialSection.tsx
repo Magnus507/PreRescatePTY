@@ -14,7 +14,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-type CommercialEventType = "CONFIRMED" | "PAYMENT_PENDING" | "PAID" | "CANCELLED" | "REFUNDED";
+type CommercialEventType =
+  | "CONFIRMED"
+  | "PAYMENT_PENDING"
+  | "PAID"
+  | "FULFILLMENT_REQUESTED"
+  | "CANCELLED"
+  | "REFUNDED";
 
 interface FinishedGoodOption {
   id: string;
@@ -145,6 +151,7 @@ const EVENT_SUCCESS_COPY: Record<CommercialEventType, string> = {
   CONFIRMED: "Pedido comercial confirmado",
   PAYMENT_PENDING: "Pago marcado como pendiente",
   PAID: "Pedido marcado como pagado",
+  FULFILLMENT_REQUESTED: "Despacho creado desde Comercial",
   CANCELLED: "Pedido comercial cancelado",
   REFUNDED: "Pago reembolsado",
 };
@@ -186,6 +193,18 @@ function StatusBadge({ value, config }: { value: string; config: Record<string, 
     <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${item.color}`}>
       {item.label}
     </span>
+  );
+}
+
+function canRequestFulfillment(order: CommercialOrder) {
+  const hasFinishedGoodItems =
+    order.items.length > 0 && order.items.every((item) => Boolean(item.finishedGoodId));
+
+  return (
+    !order.dispatch &&
+    order.status !== "cancelled" &&
+    hasFinishedGoodItems &&
+    (order.status === "confirmed" || order.paymentStatus === "paid")
   );
 }
 
@@ -442,7 +461,20 @@ export function CommercialSection() {
         : [];
     }
 
-    return ACTIONS_BY_STATUS[order.status] || [];
+    const actions = ACTIONS_BY_STATUS[order.status] || [];
+
+    if (!canRequestFulfillment(order)) {
+      return actions;
+    }
+
+    return [
+      ...actions,
+      {
+        label: "Solicitar despacho",
+        eventType: "FULFILLMENT_REQUESTED" as CommercialEventType,
+        tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100",
+      },
+    ];
   };
 
   return (
@@ -544,7 +576,9 @@ export function CommercialSection() {
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Actualizado</p>
                           <p className="font-bold text-slate-800">{formatDate(order.updatedAt)}</p>
-                          <p className="text-xs font-semibold text-slate-500">{order.dispatch ? `Despacho ${order.dispatch.code}` : "Sin despacho vinculado"}</p>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {order.dispatch ? `Despacho ${order.dispatch.code} · ${order.dispatch.status}` : "Sin despacho vinculado"}
+                          </p>
                         </div>
                       </div>
                       <div className="mt-4 grid gap-2">
@@ -848,9 +882,9 @@ export function CommercialSection() {
         <div className="flex gap-3">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
           <div>
-            <h3 className="text-sm font-black uppercase tracking-widest">Reserva y despacho automaticos pendientes</h3>
+            <h3 className="text-sm font-black uppercase tracking-widest">Reserva automatica pendiente</h3>
             <p className="mt-1 text-sm font-semibold">
-              W5.31B solo conecta pedidos comerciales al backend. RESERVED y FULFILLMENT_REQUESTED quedan para W5.31C.
+              Solicitar despacho crea un despacho operativo en borrador. La reserva y salida se ejecutan desde Despacho para conservar balances por eventos.
             </p>
           </div>
         </div>
