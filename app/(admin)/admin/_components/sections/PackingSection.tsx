@@ -13,6 +13,8 @@ import {
   Smartphone,
   FileText,
   Layers,
+  LockKeyhole,
+  Printer,
   Sticker,
   Truck,
 } from "lucide-react";
@@ -64,12 +66,14 @@ const UNIT_TYPES: UnitType[] = [
 ];
 
 const TIMELINE_STEPS = [
-  { label: "Producción terminada", icon: CheckCircle2, description: "Orden completada" },
-  { label: "Paquete individual", icon: Package, description: "Armado de paquete" },
-  { label: "Control de contenido", icon: ClipboardCheck, description: "Verificación checklist" },
-  { label: "Caja", icon: PackageCheck, description: "Empaque en caja" },
-  { label: "Packing list", icon: FileText, description: "Generación de lista" },
-  { label: "Listo para despacho", icon: Truck, description: "Enviar a despacho" },
+  { label: "Producto aprobado por QC", icon: CheckCircle2, description: "Aprobacion previa" },
+  { label: "Paquete individual", icon: Package, description: "Armado unitario" },
+  { label: "Verificar contenido", icon: ClipboardCheck, description: "Checklist operativo" },
+  { label: "Sellar", icon: LockKeyhole, description: "Cierre de paquete" },
+  { label: "Stock: inventario terminado", icon: ShieldCheck, description: "Ruta stock normal" },
+  { label: "Empresa: caja corporativa", icon: PackageCheck, description: "Agrupar por empresa" },
+  { label: "Packing list", icon: FileText, description: "Listado de caja" },
+  { label: "Despacho", icon: Truck, description: "Salida final" },
 ];
 
 const CHECKLIST_ITEMS = [
@@ -83,12 +87,13 @@ const CHECKLIST_ITEMS = [
 ];
 
 const FUTURE_ACTIONS = [
-  { label: "Crear paquete", icon: "📦", description: "Armar paquete individual" },
-  { label: "Escanear QR", icon: "📱", description: "Verificar contenido" },
-  { label: "Generar packing list", icon: "📋", description: "Generar documento" },
-  { label: "Cerrar caja", icon: "🔒", description: "Cerrar caja corporativa" },
-  { label: "Imprimir etiquetas", icon: "🖨️", description: "Imprimir etiquetas" },
-  { label: "Listo para despacho", icon: "✅", description: "Enviar a cola de despacho" },
+  { label: "Crear paquete", icon: Package, description: "Pendiente de backend" },
+  { label: "Escanear QR", icon: QrCode, description: "Pendiente de backend" },
+  { label: "Sellar paquete", icon: LockKeyhole, description: "Se activara con Prisma ERP" },
+  { label: "Generar packing list", icon: ClipboardCheck, description: "Pendiente de backend" },
+  { label: "Cerrar caja", icon: PackageCheck, description: "Se activara con Prisma ERP" },
+  { label: "Imprimir etiquetas", icon: Printer, description: "Pendiente de backend" },
+  { label: "Listo para despacho", icon: Truck, description: "Se activara con Prisma ERP" },
 ];
 
 const PLACEHOLDER_METRICS = {
@@ -108,7 +113,7 @@ export function PackingSection() {
           Empaque
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
-          Armado físico de paquetes y cajas antes del despacho.
+          Armado fisico de paquetes, salida a inventario terminado o caja corporativa antes del despacho.
         </p>
       </div>
 
@@ -123,8 +128,8 @@ export function PackingSection() {
               Este módulo controlará el armado físico de paquetes y cajas antes del despacho
             </h3>
             <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              El empaque prepara los productos terminados para su envío.
-              Una vez empaquetado, el paquete pasa a Despacho para su envío final.
+              El empaque recibe producto aprobado por QC. Si es stock normal, entra a inventario terminado; si es empresa,
+              se agrupa por empleado y caja corporativa con packing list antes de despacho.
             </p>
           </div>
         </div>
@@ -234,7 +239,7 @@ export function PackingSection() {
       {/* Checklist por Paquete */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
-          Checklist por Paquete (Próximamente)
+          Checklist por Paquete
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {CHECKLIST_ITEMS.map((item) => {
@@ -259,24 +264,29 @@ export function PackingSection() {
       {/* Acciones futuras */}
       <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/50">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
-          Acciones Disponibles (Próximamente)
+          Acciones del flujo
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {FUTURE_ACTIONS.map((action) => (
-            <div
-              key={action.label}
-              className="rounded-2xl border border-slate-200 bg-white p-4 opacity-50 cursor-not-allowed"
-              title="Disponible cuando se implemente el módulo de empaque"
-            >
-              <div className="text-2xl mb-2">{action.icon}</div>
-              <p className="text-xs font-black text-slate-700 dark:text-slate-300 mb-1">
-                {action.label}
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                {action.description}
-              </p>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+          {FUTURE_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.label}
+                type="button"
+                disabled
+                className="rounded-2xl border border-slate-200 bg-white p-4 opacity-50 cursor-not-allowed"
+                title={action.description}
+              >
+                <Icon className="mb-3 h-5 w-5 text-slate-500" />
+                <p className="text-xs font-black text-slate-700 dark:text-slate-300 mb-1">
+                  {action.label}
+                </p>
+                <p className="text-[10px] font-medium text-slate-500">
+                  {action.description}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
 

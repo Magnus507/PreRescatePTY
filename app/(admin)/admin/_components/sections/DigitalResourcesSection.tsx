@@ -3,12 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
+  ArrowRight,
   Cpu,
+  Download,
   Eye,
   Loader2,
+  Paintbrush,
+  Printer,
   QrCode,
   RefreshCw,
   Search,
+  Send,
   ShieldCheck,
   Copy,
   CheckCircle2,
@@ -77,6 +82,15 @@ const SERVICE_CONFIG: Record<string, { label: string; color: string }> = {
   limited: { label: "Limitado", color: "bg-orange-50 text-orange-700" },
   suspended: { label: "Suspendido", color: "bg-red-50 text-red-700" },
 };
+
+const DIGITAL_FLOW = [
+  { label: "Crear chip", icon: Cpu },
+  { label: "URL publica", icon: ShieldCheck },
+  { label: "QR", icon: QrCode },
+  { label: "Descargar QR", icon: Download },
+  { label: "Arte / diseno", icon: Paintbrush },
+  { label: "Produccion", icon: Printer },
+];
 
 export function DigitalResourcesSection() {
   const [activeTab, setActiveTab] = useState<DigitalView>("all");
@@ -176,9 +190,37 @@ export function DigitalResourcesSection() {
           Recursos Digitales
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
-          Gestión de chips, shortCodes, QR, códigos de activación y estados de servicio.
+          Gestion de chips, shortCodes, QR, codigos de activacion y estados de servicio.
         </p>
       </div>
+
+      <section className="rounded-3xl border border-indigo-200 bg-indigo-50 p-6">
+        <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h3 className="text-xl font-black tracking-tight text-indigo-950">Flujo digital hacia produccion</h3>
+            <p className="mt-1 text-sm font-semibold text-indigo-700">
+              El recurso digital prepara identidad, URL y QR. No representa stock fisico ni material disponible.
+            </p>
+          </div>
+          <span className="w-fit rounded-2xl border border-indigo-300 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-700">
+            Flujo definido, datos reales pendientes
+          </span>
+        </div>
+        <div className="flex overflow-x-auto pb-2">
+          {DIGITAL_FLOW.map((step, index) => {
+            const Icon = step.icon;
+            return (
+              <div key={step.label} className="flex items-center">
+                <div className="min-w-[136px] rounded-2xl bg-white px-4 py-4 text-center shadow-sm">
+                  <Icon className="mx-auto mb-3 h-5 w-5 text-primary" />
+                  <p className="text-xs font-black text-slate-800">{step.label}</p>
+                </div>
+                {index < DIGITAL_FLOW.length - 1 && <ArrowRight className="mx-3 h-4 w-4 text-indigo-300" />}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* Métricas */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -323,33 +365,54 @@ export function DigitalResourcesSection() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex min-w-[420px] flex-wrap items-center justify-end gap-2">
                         <button
                           onClick={() => copyToClipboard(getPublicUrl(chip), chip.id)}
-                          className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
-                          title="Copiar link público"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50"
+                          title="Copiar URL publica"
                         >
                           {copiedId === chip.id ? (
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                           ) : (
                             <Copy className="h-4 w-4 text-slate-600" />
                           )}
+                          Copiar URL
                         </button>
                         {chip.qrUrl && (
                           <button
                             onClick={() => setQrChip(chip)}
-                            className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50"
                             title="Ver QR"
                           >
                             <QrCode className="h-4 w-4 text-slate-600" />
+                            Ver QR
                           </button>
                         )}
                         <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 opacity-60"
+                          title="Pendiente de endpoint"
+                        >
+                          <Download className="h-4 w-4" />
+                          Descargar QR
+                        </button>
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 opacity-60"
+                          title="Se activara con el modulo ERP"
+                        >
+                          <Send className="h-4 w-4" />
+                          Enviar a produccion
+                        </button>
+                        <button
                           onClick={() => setDetailChip(chip)}
-                          className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50"
                           title="Ver detalle"
                         >
                           <Eye className="h-4 w-4 text-slate-600" />
+                          Detalle
                         </button>
                       </div>
                     </td>

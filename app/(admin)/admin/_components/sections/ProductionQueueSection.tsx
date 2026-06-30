@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import FabricationSection from "./FabricationSection";
+import { ProductionWorkflowSection } from "./ProductionWorkflowSection";
 
 interface QueueItem {
   orderId: string;
@@ -120,9 +121,11 @@ export default function ProductionQueueSection() {
           <Factory className="h-8 w-8 text-primary" /> Producción
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
-          Pedidos corporativos listos para fabricar
+          Produccion para stock y produccion empresarial bajo pedido.
         </p>
       </div>
+
+      <ProductionWorkflowSection />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

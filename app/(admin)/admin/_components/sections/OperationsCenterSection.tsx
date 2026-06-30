@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
+  ArrowRight,
   Boxes,
   CheckCircle2,
   ClipboardCheck,
@@ -82,55 +83,18 @@ const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }>
   { id: "history", label: "Historial", icon: History },
 ];
 
-const PLACEHOLDERS: Record<Exclude<OperationsTab, "overview" | "production" | "batches">, {
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  bullets: string[];
-}> = {
-  digital: {
-    title: "Proximamente: Recursos digitales",
-    description: "Vista dedicada para shortCodes, QR, codigos de activacion y estado de servicio.",
-    icon: Cpu,
-    bullets: ["Identidad digital", "Activacion", "Asignacion a perfil"],
+const OPERATIVE_ROUTES = [
+  {
+    title: "Ruta Stock Normal",
+    tone: "border-emerald-200 bg-emerald-50",
+    steps: ["Chip digital", "QR / arte", "Imprenta", "Ensamblaje", "QC", "Empaque", "Inventario", "Venta", "Activacion"],
   },
-  physical: {
-    title: "Proximamente: Inventario fisico",
-    description: "Stock real por producto, variante, ubicacion y estado operativo.",
-    icon: Boxes,
-    bullets: ["Disponible y reservado", "Danados y devueltos", "Multi-bodega"],
+  {
+    title: "Ruta Empresa",
+    tone: "border-blue-200 bg-blue-50",
+    steps: ["Pedido pagado", "Produccion personalizada", "QC", "Empaque corporativo", "Despacho", "Empresa", "Empleado activa"],
   },
-  movements: {
-    title: "Proximamente: Movimientos",
-    description: "Libro operativo para ingreso, reserva, consumo, devolucion, ajuste y despacho.",
-    icon: Route,
-    bullets: ["Sin ajustes directos", "Trazabilidad", "Auditoria"],
-  },
-  quality: {
-    title: "Proximamente: Calidad",
-    description: "Checklists por producto, incidencias, reproceso y aprobaciones excepcionales.",
-    icon: ClipboardCheck,
-    bullets: ["QR escaneable", "NFC legible", "Reproceso"],
-  },
-  packing: {
-    title: "Proximamente: Empaque",
-    description: "Paquetes por empleado, cajas corporativas, checklist y packing list.",
-    icon: PackageCheck,
-    bullets: ["Paquete individual", "Caja corporativa", "Packing list"],
-  },
-  dispatch: {
-    title: "Proximamente: Despacho",
-    description: "Courier, tracking, cajas, peso, evidencia e historial de entrega.",
-    icon: Truck,
-    bullets: ["Tracking", "Evidencia", "Entrega"],
-  },
-  history: {
-    title: "Proximamente: Historial",
-    description: "Eventos operativos para produccion, inventario, calidad, empaque y despacho.",
-    icon: History,
-    bullets: ["Eventos", "Metricas", "Reportes"],
-  },
-};
+];
 
 function MetricCard({
   label,
@@ -158,35 +122,6 @@ function MetricCard({
       </div>
       <p className="mt-3 text-[11px] font-semibold text-slate-500">{hint}</p>
     </div>
-  );
-}
-
-function PlaceholderPanel({
-  config,
-}: {
-  config: typeof PLACEHOLDERS[keyof typeof PLACEHOLDERS];
-}) {
-  const Icon = config.icon;
-  return (
-    <section className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 dark:border-slate-700 dark:bg-slate-900">
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div className="max-w-2xl">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            <Icon className="h-6 w-6" />
-          </div>
-          <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">{config.title}</h2>
-          <p className="mt-2 text-sm font-medium leading-relaxed text-slate-500">{config.description}</p>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-3 md:min-w-[360px] md:grid-cols-1">
-          {config.bullets.map((item) => (
-            <div key={item} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-widest text-slate-500 dark:border-slate-800 dark:bg-slate-950">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -284,10 +219,6 @@ export function OperationsCenterSection({
       return <HistorySection />;
     }
 
-    if (activeTab !== "overview") {
-      return <PlaceholderPanel config={PLACEHOLDERS[activeTab]} />;
-    }
-
     const hasPending = counts.pending > 0 || counts.inProduction > 0 || counts.packing > 0;
 
     return (
@@ -347,6 +278,33 @@ export function OperationsCenterSection({
             <p className="text-sm font-semibold text-slate-500">El tracking de despacho se activara con la integracion de lotes corporativos.</p>
           </div>
         </div>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-6">
+            <h2 className="text-xl font-black tracking-tight">Flujo real PreRescate</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Dos rutas conviven sin mezclar recursos digitales, inventario fisico, empaque y activacion.
+            </p>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {OPERATIVE_ROUTES.map((route) => (
+              <div key={route.title} className={`rounded-3xl border p-5 ${route.tone}`}>
+                <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">{route.title}</h3>
+                <div className="flex overflow-x-auto pb-2">
+                  {route.steps.map((step, index) => (
+                    <div key={step} className="flex items-center">
+                      <div className="min-w-[132px] rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-primary">Paso {index + 1}</p>
+                        <p className="mt-2 text-xs font-black text-slate-800">{step}</p>
+                      </div>
+                      {index < route.steps.length - 1 && <ArrowRight className="mx-3 h-4 w-4 text-slate-400" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <button
