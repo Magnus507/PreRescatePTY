@@ -96,6 +96,7 @@ model User {
   operationQcEvents           OperationQcInspectionEvent[] @relation("OperationQcInspectionEventCreatedBy")
   operationPackingEvents      OperationPackingEvent[]      @relation("OperationPackingEventCreatedBy")
   operationFinishedGoodEvents OperationFinishedGoodEvent[] @relation("OperationFinishedGoodEventCreatedBy")
+  operationDispatchEvents     OperationDispatchEvent[]     @relation("OperationDispatchEventCreatedBy")
   reviewedOrders              Order[]                      @relation("OrderAdminReview")
   orders                      Order[]
   profile                     Profile?
@@ -911,6 +912,7 @@ model OperationFinishedGood {
   createdAt      DateTime                     @default(now())
   updatedAt      DateTime                     @updatedAt
   events         OperationFinishedGoodEvent[]
+  dispatchItems  OperationDispatchItem[]
   packingBatch   OperationPackingBatch?       @relation(fields: [packingBatchId], references: [id])
 
   @@index([packingBatchId])
@@ -935,6 +937,64 @@ model OperationFinishedGoodEvent {
   finishedGood   OperationFinishedGood @relation(fields: [finishedGoodId], references: [id], onDelete: Cascade)
 
   @@index([finishedGoodId])
+  @@index([eventType])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model OperationDispatch {
+  id                   String                   @id @default(cuid())
+  code                 String                   @unique
+  status               String                   @default("draft")
+  destinationType      String                   @default("customer")
+  destinationName      String?
+  destinationReference String?
+  destinationAddress   String?
+  scheduledAt          DateTime?
+  dispatchedAt         DateTime?
+  deliveredAt          DateTime?
+  notes                String?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  items                OperationDispatchItem[]
+  events               OperationDispatchEvent[]
+
+  @@index([status])
+  @@index([destinationType])
+  @@index([createdAt])
+}
+
+model OperationDispatchItem {
+  id             String                @id @default(cuid())
+  dispatchId     String
+  finishedGoodId String
+  quantity       Float
+  unit           String
+  notes          String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  dispatch       OperationDispatch     @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  finishedGood   OperationFinishedGood @relation(fields: [finishedGoodId], references: [id])
+
+  @@index([dispatchId])
+  @@index([finishedGoodId])
+}
+
+model OperationDispatchEvent {
+  id            String            @id @default(cuid())
+  dispatchId    String
+  eventType     String
+  quantity      Float?
+  reason        String?
+  referenceType String?
+  referenceId   String?
+  metadataJson  String?
+  createdById   String?
+  createdAt     DateTime          @default(now())
+  createdBy     User?             @relation("OperationDispatchEventCreatedBy", fields: [createdById], references: [id])
+  dispatch      OperationDispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+
+  @@index([dispatchId])
   @@index([eventType])
   @@index([createdById])
   @@index([createdAt])
