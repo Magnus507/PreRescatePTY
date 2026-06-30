@@ -39,6 +39,7 @@ La carpeta `scripts/` contiene herramientas de mantenimiento, configuración de 
 | `create-initial-superadmin.ts` | Destructivo protegido | `CONFIRM_FULL_RESET=YES_DELETE_ALL_TEST_DATA` | Crea el superadmin inicial. **Solo funciona si la tabla User está vacía.** Genera contraseña temporal segura que se muestra una sola vez. |
 | `reset-all-test-data.sql` | Destructivo protegido | Variable psql `confirm_full_reset` | Borra todos los datos de prueba en orden de dependencias FK. **No toca `_prisma_migrations`.** Requiere: `psql -v confirm_full_reset='YES_DELETE_ALL_TEST_DATA' -f ...` |
 | `seed-structural-data.ts` | Destructivo protegido | `CONFIRM_STRUCTURAL_SEED=YES_CREATE_STRUCTURAL_DATA` | Crea/actualiza datos estructurales (Package, Product, SystemConfig). Idempotente (usa upsert). No toca usuarios, chips ni pedidos. |
+| `smoke-operations-e2e.ts` | Escritura protegida | `CONFIRM_OPERATIONS_SMOKE=YES_RUN_OPERATIONS_SMOKE` | Crea datos de prueba `W530D_SMOKE_*` y valida el flujo Materiales → Producción → QC → Empaque → Inventario PT → Despacho. No borra datos. |
 
 ---
 
@@ -73,6 +74,7 @@ DRY_RUN=false npx tsx scripts/backfill-corporate-chip-profiles.ts   # escritura 
 CONFIRM_CORPORATE_BACKFILL=YES_CREATE_CORPORATE_PROFILES npx tsx scripts/backfill-corporate-profiles.ts
 CONFIRM_FULL_RESET=YES_DELETE_ALL_TEST_DATA npx tsx scripts/create-initial-superadmin.ts
 CONFIRM_STRUCTURAL_SEED=YES_CREATE_STRUCTURAL_DATA npx tsx scripts/seed-structural-data.ts
+CONFIRM_OPERATIONS_SMOKE=YES_RUN_OPERATIONS_SMOKE npx tsx scripts/smoke-operations-e2e.ts
 psql -v confirm_full_reset='YES_DELETE_ALL_TEST_DATA' -f scripts/reset-all-test-data.sql
 ```
 
