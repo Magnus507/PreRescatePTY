@@ -99,6 +99,7 @@ model User {
   operationDispatchEvents     OperationDispatchEvent[]        @relation("OperationDispatchEventCreatedBy")
   operationCommercialEvents   OperationCommercialOrderEvent[] @relation("OperationCommercialOrderEventCreatedBy")
   operationWarrantyEvents     OperationWarrantyEvent[]        @relation("OperationWarrantyEventCreatedBy")
+  operationReplacementEvents  OperationReplacementEvent[]     @relation("OperationReplacementEventCreatedBy")
   reviewedOrders              Order[]                         @relation("OrderAdminReview")
   orders                      Order[]
   profile                     Profile?
@@ -903,21 +904,23 @@ model OperationPackingEvent {
 }
 
 model OperationFinishedGood {
-  id              String                         @id @default(cuid())
-  code            String                         @unique
-  name            String
-  productType     String
-  status          String                         @default("active")
-  unit            String                         @default("unit")
-  packingBatchId  String?
-  notes           String?
-  createdAt       DateTime                       @default(now())
-  updatedAt       DateTime                       @updatedAt
-  events          OperationFinishedGoodEvent[]
-  dispatchItems   OperationDispatchItem[]
-  commercialItems OperationCommercialOrderItem[]
-  warranties      OperationWarranty[]
-  packingBatch    OperationPackingBatch?         @relation(fields: [packingBatchId], references: [id])
+  id                      String                         @id @default(cuid())
+  code                    String                         @unique
+  name                    String
+  productType             String
+  status                  String                         @default("active")
+  unit                    String                         @default("unit")
+  packingBatchId          String?
+  notes                   String?
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  events                  OperationFinishedGoodEvent[]
+  dispatchItems           OperationDispatchItem[]
+  commercialItems         OperationCommercialOrderItem[]
+  warranties              OperationWarranty[]
+  originalReplacements    OperationReplacement[]         @relation("OperationReplacementOriginalFinishedGood")
+  replacementReplacements OperationReplacement[]         @relation("OperationReplacementReplacementFinishedGood")
+  packingBatch            OperationPackingBatch?         @relation(fields: [packingBatchId], references: [id])
 
   @@index([packingBatchId])
   @@index([status])
@@ -947,23 +950,25 @@ model OperationFinishedGoodEvent {
 }
 
 model OperationDispatch {
-  id                   String                     @id @default(cuid())
-  code                 String                     @unique
-  status               String                     @default("draft")
-  destinationType      String                     @default("customer")
-  destinationName      String?
-  destinationReference String?
-  destinationAddress   String?
-  scheduledAt          DateTime?
-  dispatchedAt         DateTime?
-  deliveredAt          DateTime?
-  notes                String?
-  createdAt            DateTime                   @default(now())
-  updatedAt            DateTime                   @updatedAt
-  items                OperationDispatchItem[]
-  events               OperationDispatchEvent[]
-  commercialOrders     OperationCommercialOrder[]
-  warranties           OperationWarranty[]
+  id                      String                     @id @default(cuid())
+  code                    String                     @unique
+  status                  String                     @default("draft")
+  destinationType         String                     @default("customer")
+  destinationName         String?
+  destinationReference    String?
+  destinationAddress      String?
+  scheduledAt             DateTime?
+  dispatchedAt            DateTime?
+  deliveredAt             DateTime?
+  notes                   String?
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+  items                   OperationDispatchItem[]
+  events                  OperationDispatchEvent[]
+  commercialOrders        OperationCommercialOrder[]
+  warranties              OperationWarranty[]
+  originalReplacements    OperationReplacement[]     @relation("OperationReplacementOriginalDispatch")
+  replacementReplacements OperationReplacement[]     @relation("OperationReplacementReplacementDispatch")
 
   @@index([status])
   @@index([destinationType])
@@ -1028,6 +1033,7 @@ model OperationCommercialOrder {
   items             OperationCommercialOrderItem[]
   events            OperationCommercialOrderEvent[]
   warranties        OperationWarranty[]
+  replacements      OperationReplacement[]
 
   @@index([status])
   @@index([customerType])
@@ -1104,6 +1110,7 @@ model OperationWarranty {
   finishedGood          OperationFinishedGood?        @relation(fields: [finishedGoodId], references: [id])
   dispatch              OperationDispatch?            @relation(fields: [dispatchId], references: [id])
   events                OperationWarrantyEvent[]
+  replacements          OperationReplacement[]
 
   @@index([status])
   @@index([warrantyType])
@@ -1130,6 +1137,65 @@ model OperationWarrantyEvent {
   createdBy     User?             @relation("OperationWarrantyEventCreatedBy", fields: [createdById], references: [id])
 
   @@index([warrantyId])
+  @@index([eventType])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model OperationReplacement {
+  id                        String                      @id @default(cuid())
+  code                      String                      @unique
+  status                    String                      @default("draft")
+  replacementType           String                      @default("warranty")
+  reason                    String?
+  customerName              String?
+  customerEmail             String?
+  customerPhone             String?
+  warrantyId                String?
+  commercialOrderId         String?
+  originalFinishedGoodId    String?
+  replacementFinishedGoodId String?
+  originalDispatchId        String?
+  replacementDispatchId     String?
+  approvedAt                DateTime?
+  completedAt               DateTime?
+  cancelledAt               DateTime?
+  notes                     String?
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  warranty                  OperationWarranty?          @relation(fields: [warrantyId], references: [id])
+  commercialOrder           OperationCommercialOrder?   @relation(fields: [commercialOrderId], references: [id])
+  originalFinishedGood      OperationFinishedGood?      @relation("OperationReplacementOriginalFinishedGood", fields: [originalFinishedGoodId], references: [id])
+  replacementFinishedGood   OperationFinishedGood?      @relation("OperationReplacementReplacementFinishedGood", fields: [replacementFinishedGoodId], references: [id])
+  originalDispatch          OperationDispatch?          @relation("OperationReplacementOriginalDispatch", fields: [originalDispatchId], references: [id])
+  replacementDispatch       OperationDispatch?          @relation("OperationReplacementReplacementDispatch", fields: [replacementDispatchId], references: [id])
+  events                    OperationReplacementEvent[]
+
+  @@index([status])
+  @@index([replacementType])
+  @@index([warrantyId])
+  @@index([commercialOrderId])
+  @@index([originalFinishedGoodId])
+  @@index([replacementFinishedGoodId])
+  @@index([originalDispatchId])
+  @@index([replacementDispatchId])
+  @@index([createdAt])
+}
+
+model OperationReplacementEvent {
+  id            String               @id @default(cuid())
+  replacementId String
+  eventType     String
+  reason        String?
+  referenceType String?
+  referenceId   String?
+  metadataJson  String?
+  createdById   String?
+  createdAt     DateTime             @default(now())
+  replacement   OperationReplacement @relation(fields: [replacementId], references: [id], onDelete: Cascade)
+  createdBy     User?                @relation("OperationReplacementEventCreatedBy", fields: [createdById], references: [id])
+
+  @@index([replacementId])
   @@index([eventType])
   @@index([createdById])
   @@index([createdAt])
