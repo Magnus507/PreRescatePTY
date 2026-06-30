@@ -70,37 +70,38 @@ model Package {
 }
 
 model User {
-  id                          String                       @id @default(cuid())
+  id                          String                          @id @default(cuid())
   accountId                   String?
-  email                       String                       @unique
+  email                       String                          @unique
   phone                       String?
   passwordHash                String
-  role                        String                       @default("owner")
-  status                      String                       @default("active")
-  createdAt                   DateTime                     @default(now())
-  updatedAt                   DateTime                     @updatedAt
+  role                        String                          @default("owner")
+  status                      String                          @default("active")
+  createdAt                   DateTime                        @default(now())
+  updatedAt                   DateTime                        @updatedAt
   lastLoginAt                 DateTime?
   adminRole                   String?
-  isAdmin                     Boolean                      @default(false)
+  isAdmin                     Boolean                         @default(false)
   deletedAt                   DateTime?
-  mfaEnabled                  Boolean                      @default(false)
+  mfaEnabled                  Boolean                         @default(false)
   mfaSecret                   String?
   appNotifications            AppNotification[]
   chips                       Chip[]
   consent                     Consent[]
   contacts                    Contact[]
-  reviewedRequests            CorporateProductRequest[]    @relation("CorporateProductRequestReviewedBy")
-  productRequests             CorporateProductRequest[]    @relation("CorporateProductRequestRequestedBy")
-  operationMaterialEvents     OperationMaterialEvent[]     @relation("OperationMaterialEventCreatedBy")
-  operationProductionEvents   OperationProductionEvent[]   @relation("OperationProductionEventCreatedBy")
-  operationQcEvents           OperationQcInspectionEvent[] @relation("OperationQcInspectionEventCreatedBy")
-  operationPackingEvents      OperationPackingEvent[]      @relation("OperationPackingEventCreatedBy")
-  operationFinishedGoodEvents OperationFinishedGoodEvent[] @relation("OperationFinishedGoodEventCreatedBy")
-  operationDispatchEvents     OperationDispatchEvent[]     @relation("OperationDispatchEventCreatedBy")
-  reviewedOrders              Order[]                      @relation("OrderAdminReview")
+  reviewedRequests            CorporateProductRequest[]       @relation("CorporateProductRequestReviewedBy")
+  productRequests             CorporateProductRequest[]       @relation("CorporateProductRequestRequestedBy")
+  operationMaterialEvents     OperationMaterialEvent[]        @relation("OperationMaterialEventCreatedBy")
+  operationProductionEvents   OperationProductionEvent[]      @relation("OperationProductionEventCreatedBy")
+  operationQcEvents           OperationQcInspectionEvent[]    @relation("OperationQcInspectionEventCreatedBy")
+  operationPackingEvents      OperationPackingEvent[]         @relation("OperationPackingEventCreatedBy")
+  operationFinishedGoodEvents OperationFinishedGoodEvent[]    @relation("OperationFinishedGoodEventCreatedBy")
+  operationDispatchEvents     OperationDispatchEvent[]        @relation("OperationDispatchEventCreatedBy")
+  operationCommercialEvents   OperationCommercialOrderEvent[] @relation("OperationCommercialOrderEventCreatedBy")
+  reviewedOrders              Order[]                         @relation("OrderAdminReview")
   orders                      Order[]
   profile                     Profile?
-  account                     Account?                     @relation(fields: [accountId], references: [id])
+  account                     Account?                        @relation(fields: [accountId], references: [id])
 
   @@index([isAdmin])
 }
@@ -901,19 +902,20 @@ model OperationPackingEvent {
 }
 
 model OperationFinishedGood {
-  id             String                       @id @default(cuid())
-  code           String                       @unique
-  name           String
-  productType    String
-  status         String                       @default("active")
-  unit           String                       @default("unit")
-  packingBatchId String?
-  notes          String?
-  createdAt      DateTime                     @default(now())
-  updatedAt      DateTime                     @updatedAt
-  events         OperationFinishedGoodEvent[]
-  dispatchItems  OperationDispatchItem[]
-  packingBatch   OperationPackingBatch?       @relation(fields: [packingBatchId], references: [id])
+  id              String                         @id @default(cuid())
+  code            String                         @unique
+  name            String
+  productType     String
+  status          String                         @default("active")
+  unit            String                         @default("unit")
+  packingBatchId  String?
+  notes           String?
+  createdAt       DateTime                       @default(now())
+  updatedAt       DateTime                       @updatedAt
+  events          OperationFinishedGoodEvent[]
+  dispatchItems   OperationDispatchItem[]
+  commercialItems OperationCommercialOrderItem[]
+  packingBatch    OperationPackingBatch?         @relation(fields: [packingBatchId], references: [id])
 
   @@index([packingBatchId])
   @@index([status])
@@ -943,10 +945,10 @@ model OperationFinishedGoodEvent {
 }
 
 model OperationDispatch {
-  id                   String                   @id @default(cuid())
-  code                 String                   @unique
-  status               String                   @default("draft")
-  destinationType      String                   @default("customer")
+  id                   String                     @id @default(cuid())
+  code                 String                     @unique
+  status               String                     @default("draft")
+  destinationType      String                     @default("customer")
   destinationName      String?
   destinationReference String?
   destinationAddress   String?
@@ -954,10 +956,11 @@ model OperationDispatch {
   dispatchedAt         DateTime?
   deliveredAt          DateTime?
   notes                String?
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
   items                OperationDispatchItem[]
   events               OperationDispatchEvent[]
+  commercialOrders     OperationCommercialOrder[]
 
   @@index([status])
   @@index([destinationType])
@@ -995,6 +998,78 @@ model OperationDispatchEvent {
   dispatch      OperationDispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
 
   @@index([dispatchId])
+  @@index([eventType])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model OperationCommercialOrder {
+  id                String                          @id @default(cuid())
+  code              String                          @unique
+  status            String                          @default("draft")
+  customerType      String                          @default("customer")
+  customerName      String?
+  customerEmail     String?
+  customerPhone     String?
+  customerReference String?
+  salesChannel      String                          @default("admin")
+  paymentStatus     String                          @default("pending")
+  fulfillmentStatus String                          @default("pending")
+  totalAmount       Float                           @default(0)
+  currency          String                          @default("USD")
+  dispatchId        String?
+  notes             String?
+  createdAt         DateTime                        @default(now())
+  updatedAt         DateTime                        @updatedAt
+  dispatch          OperationDispatch?              @relation(fields: [dispatchId], references: [id])
+  items             OperationCommercialOrderItem[]
+  events            OperationCommercialOrderEvent[]
+
+  @@index([status])
+  @@index([customerType])
+  @@index([salesChannel])
+  @@index([paymentStatus])
+  @@index([fulfillmentStatus])
+  @@index([dispatchId])
+  @@index([createdAt])
+}
+
+model OperationCommercialOrderItem {
+  id                String                   @id @default(cuid())
+  commercialOrderId String
+  finishedGoodId    String?
+  productCode       String?
+  productName       String
+  quantity          Float
+  unitPrice         Float
+  totalPrice        Float
+  unit              String                   @default("unit")
+  notes             String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  commercialOrder   OperationCommercialOrder @relation(fields: [commercialOrderId], references: [id], onDelete: Cascade)
+  finishedGood      OperationFinishedGood?   @relation(fields: [finishedGoodId], references: [id])
+
+  @@index([commercialOrderId])
+  @@index([finishedGoodId])
+  @@index([productCode])
+}
+
+model OperationCommercialOrderEvent {
+  id                String                   @id @default(cuid())
+  commercialOrderId String
+  eventType         String
+  amount            Float?
+  reason            String?
+  referenceType     String?
+  referenceId       String?
+  metadataJson      String?
+  createdById       String?
+  createdAt         DateTime                 @default(now())
+  commercialOrder   OperationCommercialOrder @relation(fields: [commercialOrderId], references: [id], onDelete: Cascade)
+  createdBy         User?                    @relation("OperationCommercialOrderEventCreatedBy", fields: [createdById], references: [id])
+
+  @@index([commercialOrderId])
   @@index([eventType])
   @@index([createdById])
   @@index([createdAt])
