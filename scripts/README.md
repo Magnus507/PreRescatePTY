@@ -41,6 +41,7 @@ La carpeta `scripts/` contiene herramientas de mantenimiento, configuración de 
 | `seed-structural-data.ts` | Destructivo protegido | `CONFIRM_STRUCTURAL_SEED=YES_CREATE_STRUCTURAL_DATA` | Crea/actualiza datos estructurales (Package, Product, SystemConfig). Idempotente (usa upsert). No toca usuarios, chips ni pedidos. |
 | `smoke-operations-e2e.ts` | Escritura protegida | `CONFIRM_OPERATIONS_SMOKE=YES_RUN_OPERATIONS_SMOKE` | Crea datos de prueba `W530D_SMOKE_*` y valida el flujo Materiales → Producción → QC → Empaque → Inventario PT → Despacho. No borra datos. |
 | `smoke-commercial-dispatch-e2e.ts` | Escritura protegida | `CONFIRM_COMMERCIAL_DISPATCH_SMOKE=YES_RUN_COMMERCIAL_DISPATCH_SMOKE` | Crea datos de prueba `W531D_SMOKE_*` y valida Comercial → Despacho → Inventario PT. No borra datos. |
+| `smoke-after-sales-e2e.ts` | Escritura protegida | `CONFIRM_AFTER_SALES_SMOKE=YES_RUN_AFTER_SALES_SMOKE` | Crea datos de prueba `W534C_SMOKE_*` y valida Garantía → Reemplazo → Despacho y Devolución → Inventario PT. No borra datos. |
 
 ---
 
@@ -77,6 +78,7 @@ CONFIRM_FULL_RESET=YES_DELETE_ALL_TEST_DATA npx tsx scripts/create-initial-super
 CONFIRM_STRUCTURAL_SEED=YES_CREATE_STRUCTURAL_DATA npx tsx scripts/seed-structural-data.ts
 CONFIRM_OPERATIONS_SMOKE=YES_RUN_OPERATIONS_SMOKE npx tsx scripts/smoke-operations-e2e.ts
 CONFIRM_COMMERCIAL_DISPATCH_SMOKE=YES_RUN_COMMERCIAL_DISPATCH_SMOKE npx tsx scripts/smoke-commercial-dispatch-e2e.ts
+CONFIRM_AFTER_SALES_SMOKE=YES_RUN_AFTER_SALES_SMOKE npx tsx scripts/smoke-after-sales-e2e.ts
 psql -v confirm_full_reset='YES_DELETE_ALL_TEST_DATA' -f scripts/reset-all-test-data.sql
 ```
 
