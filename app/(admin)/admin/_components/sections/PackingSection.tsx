@@ -75,7 +75,7 @@ const TIMELINE_STEPS = [
   { label: "Paquete individual", icon: Package, description: "Armado unitario" },
   { label: "Verificar contenido", icon: ClipboardCheck, description: "Checklist operativo" },
   { label: "Sellar", icon: LockKeyhole, description: "Cierre de paquete" },
-  { label: "Stock: inventario terminado", icon: ShieldCheck, description: "Ruta stock normal" },
+  { label: "Inventario PT", icon: ShieldCheck, description: "Ruta de producto terminado" },
   { label: "Empresa: caja corporativa", icon: PackageCheck, description: "Agrupar por empresa" },
   { label: "Packing list", icon: FileText, description: "Listado de caja" },
   { label: "Despacho", icon: Truck, description: "Salida final" },
@@ -513,7 +513,7 @@ export function PackingSection() {
               Este módulo controlará el armado físico de paquetes y cajas antes del despacho
             </h3>
             <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              El empaque recibe producto aprobado por QC. Si es stock normal, entra a inventario terminado; si es empresa,
+              El empaque recibe producto aprobado por QC. Si va a Inventario PT, entra a producto terminado; si es empresa,
               se agrupa por empleado y caja corporativa con packing list antes de despacho.
             </p>
           </div>
@@ -858,7 +858,7 @@ export function PackingSection() {
                     value={form.code}
                     onChange={(event) => updateForm("code", event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="PACK-STOCK-001"
+                    placeholder="PACK-PT-001"
                   />
                 </label>
 

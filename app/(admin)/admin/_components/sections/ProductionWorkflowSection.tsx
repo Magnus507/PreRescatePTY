@@ -79,7 +79,7 @@ export function ProductionWorkflowSection() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 xl:grid-cols-2">
-        <FlowRail title="Produccion para Stock" tone="border-emerald-200 bg-emerald-50" steps={STOCK_FLOW} />
+        <FlowRail title="Produccion para Inventario PT" tone="border-emerald-200 bg-emerald-50" steps={STOCK_FLOW} />
         <FlowRail title="Produccion Bajo Pedido Empresa" tone="border-blue-200 bg-blue-50" steps={COMPANY_FLOW} />
       </div>
 

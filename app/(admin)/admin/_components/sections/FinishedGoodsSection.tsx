@@ -384,7 +384,7 @@ export function FinishedGoodsSection() {
             </div>
             <h3 className="text-2xl font-black tracking-tight text-emerald-950">Productos Terminados</h3>
             <p className="mt-2 text-sm font-semibold leading-relaxed text-emerald-800">
-              El stock normal viene de Produccion, luego Control de Calidad, luego Empaque. Solo despues entra a inventario terminado listo para venta o punto de venta.
+              El producto terminado viene de Produccion, luego Control de Calidad, luego Empaque. Solo despues entra a Inventario PT listo para venta o punto de venta.
             </p>
           </div>
           <div className="rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-widest text-emerald-700">
@@ -394,7 +394,7 @@ export function FinishedGoodsSection() {
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
-        <h3 className="mb-5 text-sm font-black uppercase tracking-widest text-slate-500">Ruta de entrada a stock normal</h3>
+        <h3 className="mb-5 text-sm font-black uppercase tracking-widest text-slate-500">Ruta de entrada a Inventario PT</h3>
         <div className="flex overflow-x-auto pb-2">
           {FLOW.map((step, index) => (
             <div key={step} className="flex items-center">
@@ -599,7 +599,7 @@ export function FinishedGoodsSection() {
                     value={form.code}
                     onChange={(event) => updateForm("code", event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="PT-STOCK-001"
+                    placeholder="PT-001"
                   />
                 </label>
 

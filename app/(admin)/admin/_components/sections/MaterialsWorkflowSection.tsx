@@ -87,7 +87,7 @@ const MATERIAL_TASKS = [
   { label: "Registrar proveedor", detail: "Proveedor, contacto y condicion de compra.", icon: Truck },
   { label: "Registrar cantidad", detail: "Unidades, paquetes o rollos recibidos.", icon: Scale },
   { label: "Registrar lote/factura", detail: "Factura, lote proveedor y evidencia.", icon: ReceiptText },
-  { label: "Ver stock bajo", detail: "Alertas para reposicion de materiales.", icon: AlertTriangle },
+  { label: "Ver balance bajo", detail: "Alertas para reposicion de materiales.", icon: AlertTriangle },
 ];
 
 export function MaterialsWorkflowSection() {

@@ -734,9 +734,6 @@ export function QualitySection() {
                 <p className="text-[10px] font-medium text-slate-500 mb-2">
                   {type.description}
                 </p>
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                  Próximamente
-                </p>
               </div>
             );
           })}
@@ -746,7 +743,7 @@ export function QualitySection() {
       {/* Checklist futuro */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
-          Checklist de Calidad (Próximamente)
+          Checklist de Calidad
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {CHECKLIST_ITEMS.map((item) => {
@@ -846,7 +843,7 @@ export function QualitySection() {
                     value={form.code}
                     onChange={(event) => updateForm("code", event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="QC-STOCK-001"
+                    placeholder="QC-PT-001"
                   />
                 </label>
 

@@ -709,7 +709,7 @@ export function DispatchSection() {
                     value={form.code}
                     onChange={(event) => updateForm("code", event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="DSP-STOCK-001"
+                    placeholder="DSP-PT-001"
                   />
                 </label>
 

@@ -429,7 +429,7 @@ export default function ProductionQueueSection() {
           <Factory className="h-8 w-8 text-primary" /> Producción
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
-          Produccion para stock y produccion empresarial bajo pedido.
+          Produccion para Inventario PT y produccion empresarial bajo pedido.
         </p>
       </div>
 
@@ -697,7 +697,7 @@ export default function ProductionQueueSection() {
                     value={form.code}
                     onChange={(event) => updateForm("code", event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="PROD-STOCK-001"
+                    placeholder="PROD-PT-001"
                   />
                 </label>
 
