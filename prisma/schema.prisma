@@ -98,6 +98,7 @@ model User {
   operationFinishedGoodEvents OperationFinishedGoodEvent[]    @relation("OperationFinishedGoodEventCreatedBy")
   operationDispatchEvents     OperationDispatchEvent[]        @relation("OperationDispatchEventCreatedBy")
   operationCommercialEvents   OperationCommercialOrderEvent[] @relation("OperationCommercialOrderEventCreatedBy")
+  operationWarrantyEvents     OperationWarrantyEvent[]        @relation("OperationWarrantyEventCreatedBy")
   reviewedOrders              Order[]                         @relation("OrderAdminReview")
   orders                      Order[]
   profile                     Profile?
@@ -915,6 +916,7 @@ model OperationFinishedGood {
   events          OperationFinishedGoodEvent[]
   dispatchItems   OperationDispatchItem[]
   commercialItems OperationCommercialOrderItem[]
+  warranties      OperationWarranty[]
   packingBatch    OperationPackingBatch?         @relation(fields: [packingBatchId], references: [id])
 
   @@index([packingBatchId])
@@ -961,6 +963,7 @@ model OperationDispatch {
   items                OperationDispatchItem[]
   events               OperationDispatchEvent[]
   commercialOrders     OperationCommercialOrder[]
+  warranties           OperationWarranty[]
 
   @@index([status])
   @@index([destinationType])
@@ -1024,6 +1027,7 @@ model OperationCommercialOrder {
   dispatch          OperationDispatch?              @relation(fields: [dispatchId], references: [id])
   items             OperationCommercialOrderItem[]
   events            OperationCommercialOrderEvent[]
+  warranties        OperationWarranty[]
 
   @@index([status])
   @@index([customerType])
@@ -1049,6 +1053,7 @@ model OperationCommercialOrderItem {
   updatedAt         DateTime                 @updatedAt
   commercialOrder   OperationCommercialOrder @relation(fields: [commercialOrderId], references: [id], onDelete: Cascade)
   finishedGood      OperationFinishedGood?   @relation(fields: [finishedGoodId], references: [id])
+  warranties        OperationWarranty[]
 
   @@index([commercialOrderId])
   @@index([finishedGoodId])
@@ -1070,6 +1075,61 @@ model OperationCommercialOrderEvent {
   createdBy         User?                    @relation("OperationCommercialOrderEventCreatedBy", fields: [createdById], references: [id])
 
   @@index([commercialOrderId])
+  @@index([eventType])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model OperationWarranty {
+  id                    String                        @id @default(cuid())
+  code                  String                        @unique
+  status                String                        @default("active")
+  warrantyType          String                        @default("standard")
+  coverageStatus        String                        @default("valid")
+  startDate             DateTime?
+  endDate               DateTime?
+  customerName          String?
+  customerEmail         String?
+  customerPhone         String?
+  serialReference       String?
+  commercialOrderId     String?
+  commercialOrderItemId String?
+  finishedGoodId        String?
+  dispatchId            String?
+  notes                 String?
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+  commercialOrder       OperationCommercialOrder?     @relation(fields: [commercialOrderId], references: [id])
+  commercialOrderItem   OperationCommercialOrderItem? @relation(fields: [commercialOrderItemId], references: [id])
+  finishedGood          OperationFinishedGood?        @relation(fields: [finishedGoodId], references: [id])
+  dispatch              OperationDispatch?            @relation(fields: [dispatchId], references: [id])
+  events                OperationWarrantyEvent[]
+
+  @@index([status])
+  @@index([warrantyType])
+  @@index([coverageStatus])
+  @@index([commercialOrderId])
+  @@index([commercialOrderItemId])
+  @@index([finishedGoodId])
+  @@index([dispatchId])
+  @@index([serialReference])
+  @@index([createdAt])
+}
+
+model OperationWarrantyEvent {
+  id            String            @id @default(cuid())
+  warrantyId    String
+  eventType     String
+  reason        String?
+  referenceType String?
+  referenceId   String?
+  metadataJson  String?
+  createdById   String?
+  createdAt     DateTime          @default(now())
+  warranty      OperationWarranty @relation(fields: [warrantyId], references: [id], onDelete: Cascade)
+  createdBy     User?             @relation("OperationWarrantyEventCreatedBy", fields: [createdById], references: [id])
+
+  @@index([warrantyId])
   @@index([eventType])
   @@index([createdById])
   @@index([createdAt])
