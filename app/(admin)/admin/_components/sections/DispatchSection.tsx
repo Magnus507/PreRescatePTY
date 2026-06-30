@@ -240,9 +240,11 @@ export function DispatchSection() {
   const metrics = useMemo(() => {
     return dispatches.reduce(
       (acc, dispatch) => {
-        if (dispatch.status === "draft" || dispatch.status === "reserved" || dispatch.status === "released") {
-          acc.pending += 1;
-        }
+        acc.total += 1;
+        acc.itemQuantity += dispatch.items.reduce((sum, item) => sum + item.quantity, 0);
+        if (dispatch.status === "draft") acc.draft += 1;
+        if (dispatch.status === "reserved") acc.reserved += 1;
+        if (dispatch.status === "cancelled") acc.cancelled += 1;
         if (dispatch.scheduledAt && dispatch.status !== "delivered" && dispatch.status !== "cancelled") {
           acc.scheduled += 1;
         }
@@ -254,7 +256,7 @@ export function DispatchSection() {
         }
         return acc;
       },
-      { pending: 0, scheduled: 0, inTransit: 0, delivered: 0 }
+      { total: 0, draft: 0, reserved: 0, scheduled: 0, inTransit: 0, delivered: 0, cancelled: 0, itemQuantity: 0 }
     );
   }, [dispatches]);
 
@@ -463,7 +465,7 @@ export function DispatchSection() {
               Despacho descuenta Inventario PT mediante eventos
             </h3>
             <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-              Las reservas y salidas se registran como movimientos inmutables. El balance no usa stock como fuente de verdad.
+              Las reservas y salidas se registran como movimientos inmutables. El balance sale de eventos de Inventario PT.
             </p>
           </div>
         </div>
@@ -499,13 +501,27 @@ export function DispatchSection() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Truck className="h-4 w-4 text-slate-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Total</span>
+          </div>
+          <p className="text-2xl font-black">{metrics.total}</p>
+        </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-amber-600" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Pendientes</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Draft</span>
           </div>
-          <p className="text-2xl font-black">{metrics.pending}</p>
+          <p className="text-2xl font-black">{metrics.draft}</p>
+        </div>
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <PackageCheck className="h-4 w-4 text-cyan-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Reserved</span>
+          </div>
+          <p className="text-2xl font-black">{metrics.reserved}</p>
         </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -527,6 +543,20 @@ export function DispatchSection() {
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Entregados</span>
           </div>
           <p className="text-2xl font-black">{metrics.delivered}</p>
+        </div>
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Cancelados</span>
+          </div>
+          <p className="text-2xl font-black">{metrics.cancelled}</p>
+        </div>
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <ClipboardCheck className="h-4 w-4 text-emerald-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Items</span>
+          </div>
+          <p className="text-2xl font-black">{formatQuantity(metrics.itemQuantity)}</p>
         </div>
       </div>
 

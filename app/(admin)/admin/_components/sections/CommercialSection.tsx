@@ -11,6 +11,7 @@ import {
   RefreshCw,
   ShoppingCart,
   X,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -231,8 +232,10 @@ export function CommercialSection() {
     const pending = orders.filter((order) => order.status === "draft").length;
     const confirmed = orders.filter((order) => order.status === "confirmed").length;
     const paid = orders.filter((order) => order.paymentStatus === "paid").length;
+    const cancelled = orders.filter((order) => order.status === "cancelled").length;
+    const fulfillmentPending = orders.filter((order) => order.fulfillmentStatus === "pending").length;
     const total = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-    return { pending, confirmed, paid, total };
+    return { pending, confirmed, paid, cancelled, fulfillmentPending, total };
   }, [orders]);
 
   const statCards: StatCardConfig[] = [
@@ -253,6 +256,18 @@ export function CommercialSection() {
       value: stats.paid,
       icon: CreditCard,
       tone: "bg-blue-50 text-blue-700 border-blue-200",
+    },
+    {
+      label: "Cancelados",
+      value: stats.cancelled,
+      icon: XCircle,
+      tone: "bg-red-50 text-red-700 border-red-200",
+    },
+    {
+      label: "Pendiente despacho",
+      value: stats.fulfillmentPending,
+      icon: PackageCheck,
+      tone: "bg-amber-50 text-amber-700 border-amber-200",
     },
     {
       label: "Total listado",
@@ -513,7 +528,7 @@ export function CommercialSection() {
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         {statCards.map(({ label, value, icon: Icon, tone }) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">

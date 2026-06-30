@@ -236,9 +236,13 @@ export function WarrantySection() {
   const selectedOrderItems = selectedOrder?.items || [];
 
   const stats = useMemo(() => {
+    const total = warranties.length;
     const active = warranties.filter((warranty) => warranty.status === "active").length;
     const suspended = warranties.filter((warranty) => warranty.status === "suspended").length;
     const claimOpen = warranties.filter((warranty) => warranty.coverageStatus === "claim_open").length;
+    const claimClosed = warranties.filter((warranty) => warranty.coverageStatus === "claim_closed").length;
+    const expired = warranties.filter((warranty) => warranty.status === "expired").length;
+    const cancelled = warranties.filter((warranty) => warranty.status === "cancelled").length;
     const expiring = warranties.filter((warranty) => {
       if (!warranty.endDate || warranty.status === "cancelled") return false;
       const endDate = new Date(warranty.endDate).getTime();
@@ -246,7 +250,7 @@ export function WarrantySection() {
       return endDate <= limit;
     }).length;
 
-    return { active, suspended, claimOpen, expiring };
+    return { total, active, suspended, claimOpen, claimClosed, expired, cancelled, expiring };
   }, [warranties]);
 
   const loadWarranties = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -440,11 +444,15 @@ export function WarrantySection() {
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
         {[
+          { label: "Total", value: stats.total, icon: ShieldCheck, tone: "bg-slate-50 text-slate-700 border-slate-200" },
           { label: "Activas", value: stats.active, icon: ShieldCheck, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
           { label: "Suspendidas", value: stats.suspended, icon: ShieldOff, tone: "bg-amber-50 text-amber-700 border-amber-200" },
           { label: "Reclamos abiertos", value: stats.claimOpen, icon: AlertTriangle, tone: "bg-purple-50 text-purple-700 border-purple-200" },
+          { label: "Reclamos cerrados", value: stats.claimClosed, icon: FileText, tone: "bg-blue-50 text-blue-700 border-blue-200" },
+          { label: "Expiradas", value: stats.expired, icon: ShieldOff, tone: "bg-slate-50 text-slate-700 border-slate-200" },
+          { label: "Canceladas", value: stats.cancelled, icon: ShieldOff, tone: "bg-red-50 text-red-700 border-red-200" },
           { label: "Por vencer", value: stats.expiring, icon: FileText, tone: "bg-blue-50 text-blue-700 border-blue-200" },
         ].map(({ label, value, icon: Icon, tone }) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

@@ -10,6 +10,7 @@ import {
   RefreshCw,
   RotateCcw,
   X,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -254,11 +255,16 @@ export function ReturnSection() {
   const [form, setForm] = useState<ReturnFormState>(EMPTY_FORM);
 
   const stats = useMemo(() => {
+    const total = returns.length;
     const drafts = returns.filter((item) => item.status === "draft").length;
     const received = returns.filter((item) => item.status === "received").length;
     const inspected = returns.filter((item) => item.status === "inspected").length;
+    const returnedToInventory = returns.filter((item) => item.resolution === "returned_to_inventory").length;
     const completed = returns.filter((item) => item.status === "completed").length;
-    return { drafts, received, inspected, completed };
+    const cancelled = returns.filter((item) => item.status === "cancelled").length;
+    const acceptedQuantity = returns.reduce((sum, item) => sum + item.acceptedQuantity, 0);
+    const rejectedQuantity = returns.reduce((sum, item) => sum + item.rejectedQuantity, 0);
+    return { total, drafts, received, inspected, returnedToInventory, completed, cancelled, acceptedQuantity, rejectedQuantity };
   }, [returns]);
 
   const loadReturns = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -448,12 +454,17 @@ export function ReturnSection() {
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-8">
         {[
+          { label: "Total", value: stats.total, icon: RotateCcw, tone: "bg-slate-50 text-slate-700 border-slate-200" },
           { label: "Borradores", value: stats.drafts, icon: RotateCcw, tone: "bg-slate-50 text-slate-700 border-slate-200" },
           { label: "Recibidas", value: stats.received, icon: PackageCheck, tone: "bg-blue-50 text-blue-700 border-blue-200" },
           { label: "Inspeccionadas", value: stats.inspected, icon: ClipboardCheck, tone: "bg-purple-50 text-purple-700 border-purple-200" },
+          { label: "Aceptadas", value: stats.acceptedQuantity, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+          { label: "Rechazadas", value: stats.rejectedQuantity, icon: XCircle, tone: "bg-red-50 text-red-700 border-red-200" },
+          { label: "Retornadas PT", value: stats.returnedToInventory, icon: PackageCheck, tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
           { label: "Completadas", value: stats.completed, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+          { label: "Canceladas", value: stats.cancelled, icon: XCircle, tone: "bg-red-50 text-red-700 border-red-200" },
         ].map(({ label, value, icon: Icon, tone }) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">

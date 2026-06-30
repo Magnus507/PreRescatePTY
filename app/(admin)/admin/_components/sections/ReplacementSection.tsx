@@ -10,6 +10,7 @@ import {
   Repeat2,
   Send,
   X,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -231,11 +232,14 @@ export function ReplacementSection() {
   const [form, setForm] = useState<ReplacementFormState>(EMPTY_FORM);
 
   const stats = useMemo(() => {
+    const total = replacements.length;
     const drafts = replacements.filter((replacement) => replacement.status === "draft").length;
     const approved = replacements.filter((replacement) => replacement.status === "approved").length;
     const prepared = replacements.filter((replacement) => replacement.status === "prepared").length;
+    const withDispatch = replacements.filter((replacement) => Boolean(replacement.replacementDispatchId)).length;
     const completed = replacements.filter((replacement) => replacement.status === "completed").length;
-    return { drafts, approved, prepared, completed };
+    const closedNegative = replacements.filter((replacement) => replacement.status === "cancelled" || replacement.status === "rejected").length;
+    return { total, drafts, approved, prepared, withDispatch, completed, closedNegative };
   }, [replacements]);
 
   const loadReplacements = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -423,12 +427,15 @@ export function ReplacementSection() {
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
         {[
+          { label: "Total", value: stats.total, icon: Repeat2, tone: "bg-slate-50 text-slate-700 border-slate-200" },
           { label: "Borradores", value: stats.drafts, icon: Repeat2, tone: "bg-slate-50 text-slate-700 border-slate-200" },
           { label: "Aprobados", value: stats.approved, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
           { label: "Preparados", value: stats.prepared, icon: PackageCheck, tone: "bg-blue-50 text-blue-700 border-blue-200" },
+          { label: "Con despacho", value: stats.withDispatch, icon: Send, tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
           { label: "Completados", value: stats.completed, icon: Send, tone: "bg-purple-50 text-purple-700 border-purple-200" },
+          { label: "Cancelados/rechazados", value: stats.closedNegative, icon: XCircle, tone: "bg-red-50 text-red-700 border-red-200" },
         ].map(({ label, value, icon: Icon, tone }) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">

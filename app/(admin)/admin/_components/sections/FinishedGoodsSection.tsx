@@ -179,18 +179,17 @@ export function FinishedGoodsSection() {
       (acc, item) => {
         acc.skus += 1;
         acc.available += item.balance;
+        if (item.status === "active") {
+          acc.active += 1;
+        }
 
         if (item.packingBatch) {
           acc.fromPacking += 1;
         }
 
-        if (item.status === "reserved") {
-          acc.reserved += item.balance;
-        }
-
         return acc;
       },
-      { skus: 0, available: 0, fromPacking: 0, reserved: 0 }
+      { skus: 0, available: 0, active: 0, fromPacking: 0 }
     );
   }, [finishedGoods]);
 
@@ -426,8 +425,8 @@ export function FinishedGoodsSection() {
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <Boxes className="mb-4 h-6 w-6 text-amber-600" />
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reservado</h4>
-          <p className="mt-2 text-2xl font-black text-slate-950">{formatQuantity(metrics.reserved)}</p>
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Activos</h4>
+          <p className="mt-2 text-2xl font-black text-slate-950">{metrics.active}</p>
         </article>
       </div>
 

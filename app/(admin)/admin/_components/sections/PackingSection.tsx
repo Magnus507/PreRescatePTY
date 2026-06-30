@@ -286,20 +286,15 @@ export function PackingSection() {
   const metrics = useMemo(() => {
     return packingBatches.reduce(
       (acc, batch) => {
-        if (batch.status === "draft" || batch.status === "in_progress") {
-          acc.pending += 1;
-        }
-
-        acc.assembled += batch.packedQuantity;
-        acc.verified += Math.max(batch.packedQuantity - batch.rejectedQuantity, 0);
-
-        if (batch.status === "completed") {
-          acc.ready += 1;
-        }
-
+        acc.total += 1;
+        if (batch.status === "draft") acc.draft += 1;
+        if (batch.status === "in_progress") acc.inProgress += 1;
+        if (batch.status === "completed") acc.completed += 1;
+        acc.packed += batch.packedQuantity;
+        acc.rejected += batch.rejectedQuantity;
         return acc;
       },
-      { pending: 0, assembled: 0, verified: 0, ready: 0 }
+      { total: 0, draft: 0, inProgress: 0, completed: 0, packed: 0, rejected: 0 }
     );
   }, [packingBatches]);
 
@@ -554,42 +549,60 @@ export function PackingSection() {
       </div>
 
       {/* Métricas */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <PackageCheck className="h-4 w-4 text-slate-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+              Total
+            </span>
+          </div>
+          <p className="text-2xl font-black">{metrics.total}</p>
+        </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-amber-600" />
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-              Pendientes
+              Borradores
             </span>
           </div>
-          <p className="text-2xl font-black">{metrics.pending}</p>
+          <p className="text-2xl font-black">{metrics.draft}</p>
         </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Package className="h-4 w-4 text-blue-600" />
+            <PackageCheck className="h-4 w-4 text-blue-600" />
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-              Armados
+              En progreso
             </span>
           </div>
-          <p className="text-2xl font-black">{metrics.assembled}</p>
-        </div>
-        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <ClipboardCheck className="h-4 w-4 text-emerald-600" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-              Verificados
-            </span>
-          </div>
-          <p className="text-2xl font-black">{metrics.verified}</p>
+          <p className="text-2xl font-black">{metrics.inProgress}</p>
         </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-              Listos
+              Completados
             </span>
           </div>
-          <p className="text-2xl font-black">{metrics.ready}</p>
+          <p className="text-2xl font-black">{metrics.completed}</p>
+        </div>
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Package className="h-4 w-4 text-blue-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+              Empacados
+            </span>
+          </div>
+          <p className="text-2xl font-black">{metrics.packed}</p>
+        </div>
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+              Rechazados
+            </span>
+          </div>
+          <p className="text-2xl font-black">{metrics.rejected}</p>
         </div>
       </div>
 

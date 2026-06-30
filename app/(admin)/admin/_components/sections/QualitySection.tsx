@@ -275,23 +275,25 @@ export function QualitySection() {
   const metrics = useMemo(() => {
     return qcInspections.reduce(
       (acc, inspection) => {
-        if (inspection.status === "pending" || inspection.status === "in_progress") {
+        acc.total += 1;
+        if (inspection.status === "pending") {
           acc.pending += 1;
         }
-
-        if (inspection.status === "completed") {
-          acc.approved += inspection.passedQuantity;
+        if (inspection.status === "in_progress") {
+          acc.inProgress += 1;
         }
-
-        acc.rejected += inspection.failedQuantity;
-
+        if (inspection.status === "completed") {
+          acc.completed += 1;
+        }
         if (inspection.status === "rework_required") {
           acc.rework += 1;
         }
+        acc.passed += inspection.passedQuantity;
+        acc.failed += inspection.failedQuantity;
 
         return acc;
       },
-      { pending: 0, approved: 0, rejected: 0, rework: 0 }
+      { total: 0, pending: 0, inProgress: 0, completed: 0, passed: 0, failed: 0, rework: 0 }
     );
   }, [qcInspections]);
 
@@ -530,7 +532,16 @@ export function QualitySection() {
       </div>
 
       {/* Métricas */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-3">
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <ClipboardCheck className="h-4 w-4 text-slate-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+              Total
+            </span>
+          </div>
+          <p className="text-2xl font-black">{metrics.total}</p>
+        </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-amber-600" />
@@ -542,12 +553,30 @@ export function QualitySection() {
         </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className="h-4 w-4 text-blue-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+              En progreso
+            </span>
+          </div>
+          <p className="text-2xl font-black">{metrics.inProgress}</p>
+        </div>
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+              Completadas
+            </span>
+          </div>
+          <p className="text-2xl font-black">{metrics.completed}</p>
+        </div>
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
               Aprobados
             </span>
           </div>
-          <p className="text-2xl font-black">{metrics.approved}</p>
+          <p className="text-2xl font-black">{metrics.passed}</p>
         </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -556,7 +585,7 @@ export function QualitySection() {
               Rechazados
             </span>
           </div>
-          <p className="text-2xl font-black">{metrics.rejected}</p>
+          <p className="text-2xl font-black">{metrics.failed}</p>
         </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">

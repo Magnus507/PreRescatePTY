@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Loader2,
   Factory,
   Clock,
   CheckCircle2,
   Package,
+  PackageCheck,
   Building2,
   Users,
   ExternalLink,
@@ -18,6 +19,7 @@ import {
   RefreshCw,
   X,
   ClipboardList,
+  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import FabricationSection from "./FabricationSection";
@@ -232,6 +234,21 @@ export default function ProductionQueueSection() {
     }).format(value);
   };
 
+  const productionMetrics = useMemo(() => {
+    return productionOrders.reduce(
+      (acc, order) => {
+        acc.total += 1;
+        acc.produced += order.producedQuantity;
+        if (order.status === "draft") acc.draft += 1;
+        if (order.status === "planned") acc.planned += 1;
+        if (order.status === "started") acc.started += 1;
+        if (order.status === "completed") acc.completed += 1;
+        return acc;
+      },
+      { total: 0, draft: 0, planned: 0, started: 0, completed: 0, produced: 0 }
+    );
+  }, [productionOrders]);
+
   const updateForm = (field: keyof ProductionOrderFormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
@@ -434,6 +451,29 @@ export default function ProductionQueueSection() {
       </div>
 
       <ProductionWorkflowSection />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        {[
+          { label: "Ordenes", value: productionMetrics.total, icon: Factory, tone: "bg-slate-50 text-slate-700 border-slate-200" },
+          { label: "Borrador", value: productionMetrics.draft, icon: ClipboardList, tone: "bg-amber-50 text-amber-700 border-amber-200" },
+          { label: "Planificadas", value: productionMetrics.planned, icon: CheckCircle2, tone: "bg-blue-50 text-blue-700 border-blue-200" },
+          { label: "En produccion", value: productionMetrics.started, icon: Wrench, tone: "bg-purple-50 text-purple-700 border-purple-200" },
+          { label: "Completadas", value: productionMetrics.completed, icon: PackageCheck, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+          { label: "Producido", value: formatQuantity(productionMetrics.produced), icon: Package, tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+        ].map(({ label, value, icon: Icon, tone }) => (
+          <article key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
+              </div>
+              <div className={`rounded-xl border p-2 ${tone}`}>
+                <Icon className="h-5 w-5" />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

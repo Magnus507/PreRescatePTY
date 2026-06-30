@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Archive,
@@ -129,6 +129,19 @@ export function MaterialsWorkflowSection() {
   useEffect(() => {
     loadMaterials();
   }, [loadMaterials]);
+
+  const metrics = useMemo(() => {
+    const categories = new Set(materials.map((material) => material.category).filter(Boolean));
+    return materials.reduce(
+      (acc, material) => {
+        acc.total += 1;
+        acc.balance += material.balance;
+        if (material.status === "active") acc.active += 1;
+        return acc;
+      },
+      { total: 0, active: 0, balance: 0, categories: categories.size }
+    );
+  }, [materials]);
 
   const formatDate = (value: string) => {
     return new Date(value).toLocaleDateString("es-PA", {
@@ -289,6 +302,27 @@ export function MaterialsWorkflowSection() {
         })}
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Materiales", value: metrics.total, icon: Archive, tone: "bg-slate-50 text-slate-700 border-slate-200" },
+          { label: "Activos", value: metrics.active, icon: Factory, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+          { label: "Balance agregado", value: metrics.balance, icon: Scale, tone: "bg-blue-50 text-blue-700 border-blue-200" },
+          { label: "Categorias", value: metrics.categories, icon: ClipboardList, tone: "bg-amber-50 text-amber-700 border-amber-200" },
+        ].map(({ label, value, icon: Icon, tone }) => (
+          <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
+              </div>
+              <div className={`rounded-xl border p-2 ${tone}`}>
+                <Icon className="h-5 w-5" />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
@@ -397,7 +431,7 @@ export function MaterialsWorkflowSection() {
                   <p className="text-[10px] font-black uppercase tracking-widest text-primary">Materiales</p>
                   <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear material</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Registra un insumo fisico para produccion. Las cantidades se moveran por eventos, no por stock directo.
+                    Registra un insumo fisico para produccion. Las cantidades se moveran por eventos de inventario operativo.
                   </p>
                 </div>
                 <button
