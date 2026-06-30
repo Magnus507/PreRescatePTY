@@ -15,7 +15,6 @@ import {
   FileText,
   Layers,
   LockKeyhole,
-  Printer,
   RefreshCw,
   Sticker,
   Truck,
@@ -93,13 +92,9 @@ const CHECKLIST_ITEMS = [
 ];
 
 const FUTURE_ACTIONS = [
-  { label: "Crear paquete", icon: Package, description: "Disponible desde Crear empaque" },
   { label: "Escanear QR", icon: QrCode, description: "Pendiente de backend" },
   { label: "Sellar paquete", icon: LockKeyhole, description: "Se activara con Prisma ERP" },
   { label: "Generar packing list", icon: ClipboardCheck, description: "Pendiente de backend" },
-  { label: "Cerrar caja", icon: PackageCheck, description: "Se activara con Prisma ERP" },
-  { label: "Imprimir etiquetas", icon: Printer, description: "Pendiente de backend" },
-  { label: "Listo para despacho", icon: Truck, description: "Se activara con Prisma ERP" },
 ];
 
 interface ProductionOrderOption {
@@ -151,6 +146,19 @@ interface PackingBatchFormState {
   notes: string;
 }
 
+type PackingEventType =
+  | "STARTED"
+  | "PACKED"
+  | "REJECTED"
+  | "LABEL_PRINTED"
+  | "COMPLETED"
+  | "CANCELLED";
+
+interface QuantityEventFormState {
+  quantity: string;
+  reason: string;
+}
+
 const EMPTY_PACKING_FORM: PackingBatchFormState = {
   code: "",
   packageType: "standard",
@@ -161,11 +169,39 @@ const EMPTY_PACKING_FORM: PackingBatchFormState = {
   notes: "",
 };
 
+const EMPTY_QUANTITY_EVENT_FORM: QuantityEventFormState = {
+  quantity: "",
+  reason: "",
+};
+
 const PACKING_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   draft: { label: "Borrador", color: "bg-slate-50 border-slate-200 text-slate-700" },
   in_progress: { label: "En progreso", color: "bg-blue-50 border-blue-200 text-blue-800" },
   completed: { label: "Completado", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
   cancelled: { label: "Cancelado", color: "bg-red-50 border-red-200 text-red-800" },
+};
+
+const PACKING_EVENT_SUCCESS_COPY: Record<PackingEventType, string> = {
+  STARTED: "Empaque iniciado",
+  PACKED: "Cantidad empacada",
+  REJECTED: "Cantidad rechazada",
+  LABEL_PRINTED: "Etiqueta marcada como impresa",
+  COMPLETED: "Empaque completado",
+  CANCELLED: "Empaque cancelado",
+};
+
+const PACKING_ACTIONS_BY_STATUS: Record<string, Array<{ label: string; eventType: PackingEventType; tone: string }>> = {
+  draft: [
+    { label: "Iniciar empaque", eventType: "STARTED", tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100" },
+    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+  ],
+  in_progress: [
+    { label: "Registrar empacado", eventType: "PACKED", tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100" },
+    { label: "Registrar rechazado", eventType: "REJECTED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+    { label: "Etiqueta impresa", eventType: "LABEL_PRINTED", tone: "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100" },
+    { label: "Completar", eventType: "COMPLETED", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
+    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+  ],
 };
 
 export function PackingSection() {
@@ -176,6 +212,12 @@ export function PackingSection() {
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingEventKey, setSavingEventKey] = useState<string | null>(null);
+  const [quantityEvent, setQuantityEvent] = useState<{
+    batch: PackingBatch;
+    eventType: "PACKED" | "REJECTED";
+  } | null>(null);
+  const [quantityEventForm, setQuantityEventForm] = useState<QuantityEventFormState>(EMPTY_QUANTITY_EVENT_FORM);
   const [form, setForm] = useState<PackingBatchFormState>(EMPTY_PACKING_FORM);
 
   const loadPackingBatches = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -292,6 +334,21 @@ export function PackingSection() {
     setForm(EMPTY_PACKING_FORM);
   };
 
+  const openQuantityEventModal = (batch: PackingBatch, eventType: "PACKED" | "REJECTED") => {
+    setQuantityEvent({ batch, eventType });
+    setQuantityEventForm(EMPTY_QUANTITY_EVENT_FORM);
+  };
+
+  const closeQuantityEventModal = () => {
+    if (savingEventKey) return;
+    setQuantityEvent(null);
+    setQuantityEventForm(EMPTY_QUANTITY_EVENT_FORM);
+  };
+
+  const updateQuantityEventForm = (field: keyof QuantityEventFormState, value: string) => {
+    setQuantityEventForm((current) => ({ ...current, [field]: value }));
+  };
+
   const handleCreatePackingBatch = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -343,6 +400,92 @@ export function PackingSection() {
       toast.error(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const postPackingEvent = async ({
+    batch,
+    eventType,
+    quantity,
+    reason,
+    metadataJson,
+  }: {
+    batch: PackingBatch;
+    eventType: PackingEventType;
+    quantity?: number;
+    reason?: string | null;
+    metadataJson?: string | null;
+  }) => {
+    const eventKey = `${batch.id}:${eventType}`;
+    setSavingEventKey(eventKey);
+
+    try {
+      const res = await fetch(`/api/admin/operations/packing-batches/${batch.id}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventType,
+          quantity,
+          reason: reason || null,
+          metadataJson: metadataJson || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo registrar el evento de empaque");
+      }
+
+      toast.success(PACKING_EVENT_SUCCESS_COPY[eventType]);
+      await loadPackingBatches({ silent: true });
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar evento de empaque";
+      toast.error(message);
+      return false;
+    } finally {
+      setSavingEventKey(null);
+    }
+  };
+
+  const handlePackingAction = async (batch: PackingBatch, eventType: PackingEventType) => {
+    if (eventType === "PACKED" || eventType === "REJECTED") {
+      openQuantityEventModal(batch, eventType);
+      return;
+    }
+
+    await postPackingEvent({
+      batch,
+      eventType,
+      reason: PACKING_EVENT_SUCCESS_COPY[eventType],
+      metadataJson: eventType === "LABEL_PRINTED" && batch.labelCode
+        ? JSON.stringify({ labelCode: batch.labelCode })
+        : null,
+    });
+  };
+
+  const handleQuantityEventSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!quantityEvent) return;
+
+    const quantity = Number(quantityEventForm.quantity);
+
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      toast.error("La cantidad debe ser un entero positivo");
+      return;
+    }
+
+    const saved = await postPackingEvent({
+      batch: quantityEvent.batch,
+      eventType: quantityEvent.eventType,
+      quantity,
+      reason: quantityEventForm.reason.trim() || null,
+    });
+
+    if (saved) {
+      setQuantityEvent(null);
+      setQuantityEventForm(EMPTY_QUANTITY_EVENT_FORM);
     }
   };
 
@@ -509,6 +652,7 @@ export function PackingSection() {
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Etiqueta</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Creado</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Actualizado</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -517,6 +661,7 @@ export function PackingSection() {
                     label: batch.status,
                     color: "bg-slate-50 border-slate-200 text-slate-700",
                   };
+                  const actions = PACKING_ACTIONS_BY_STATUS[batch.status] || [];
 
                   return (
                     <tr key={batch.id} className="hover:bg-slate-50/70">
@@ -562,6 +707,35 @@ export function PackingSection() {
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{batch.labelCode || "Sin etiqueta"}</td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(batch.createdAt)}</td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(batch.updatedAt)}</td>
+                      <td className="px-4 py-4">
+                        {actions.length === 0 ? (
+                          <span className="text-[11px] font-bold text-slate-400">Sin acciones</span>
+                        ) : (
+                          <div className="flex min-w-[220px] flex-wrap gap-2">
+                            {actions.map((action) => {
+                              const eventKey = `${batch.id}:${action.eventType}`;
+                              const isSavingAction = savingEventKey === eventKey;
+
+                              return (
+                                <button
+                                  key={action.eventType}
+                                  type="button"
+                                  onClick={() => handlePackingAction(batch, action.eventType)}
+                                  disabled={Boolean(savingEventKey)}
+                                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-50 ${action.tone}`}
+                                >
+                                  {isSavingAction ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <PackageCheck className="h-3.5 w-3.5" />
+                                  )}
+                                  {action.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -784,6 +958,84 @@ export function PackingSection() {
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   Guardar empaque
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {quantityEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleQuantityEventSubmit} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Evento de empaque</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                    {quantityEvent.eventType === "PACKED" ? "Registrar empacado" : "Registrar rechazado"}
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {quantityEvent.batch.code} · {quantityEvent.batch.packageType}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeQuantityEventModal}
+                  disabled={Boolean(savingEventKey)}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cantidad</span>
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={quantityEventForm.quantity}
+                    onChange={(event) => updateQuantityEventForm("quantity", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="1"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Motivo</span>
+                  <textarea
+                    value={quantityEventForm.reason}
+                    onChange={(event) => updateQuantityEventForm("reason", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder={
+                      quantityEvent.eventType === "PACKED"
+                        ? "Detalle opcional del empacado"
+                        : "Detalle opcional del rechazo"
+                    }
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeQuantityEventModal}
+                  disabled={Boolean(savingEventKey)}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={Boolean(savingEventKey)}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {savingEventKey ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                  Registrar evento
                 </button>
               </div>
             </form>
