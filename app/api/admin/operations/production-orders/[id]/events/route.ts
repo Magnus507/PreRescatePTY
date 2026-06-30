@@ -8,6 +8,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const terminalProductionStatuses = new Set(["completed", "cancelled"]);
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -34,12 +36,17 @@ export async function POST(
         where: { id },
         select: {
           id: true,
+          status: true,
           producedQuantity: true,
         },
       });
 
       if (!productionOrder) {
         return null;
+      }
+
+      if (terminalProductionStatuses.has(productionOrder.status)) {
+        throw new Error("TERMINAL_PRODUCTION_ORDER");
       }
 
       const createdEvent = await tx.operationProductionEvent.create({
@@ -100,6 +107,13 @@ export async function POST(
 
     return NextResponse.json({ event }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "TERMINAL_PRODUCTION_ORDER") {
+      return NextResponse.json(
+        { error: "No se pueden registrar eventos sobre ordenes completed o cancelled" },
+        { status: 400 }
+      );
+    }
+
     console.error("[operations/production-orders/:id/events] POST error:", error);
     return NextResponse.json(
       { error: "Error al crear evento de produccion" },
