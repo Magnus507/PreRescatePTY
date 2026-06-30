@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Route,
   ShieldCheck,
+  ShoppingCart,
   Truck,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ import { PackingSection } from "./PackingSection";
 import { DispatchSection } from "./DispatchSection";
 import { QualitySection } from "./QualitySection";
 import { HistorySection } from "./HistorySection";
+import { CommercialSection } from "./CommercialSection";
 
 type OperationsTab =
   | "overview"
@@ -42,6 +44,7 @@ type OperationsTab =
   | "batches"
   | "quality"
   | "packing"
+  | "commercial"
   | "dispatch"
   | "history";
 
@@ -79,6 +82,7 @@ const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }>
   { id: "batches", label: "Lotes", icon: Layers },
   { id: "quality", label: "Calidad", icon: ClipboardCheck },
   { id: "packing", label: "Empaque", icon: PackageCheck },
+  { id: "commercial", label: "Comercial", icon: ShoppingCart },
   { id: "dispatch", label: "Despacho", icon: Truck },
   { id: "history", label: "Historial", icon: History },
 ];
@@ -209,6 +213,10 @@ export function OperationsCenterSection({
 
     if (activeTab === "dispatch") {
       return <DispatchSection />;
+    }
+
+    if (activeTab === "commercial") {
+      return <CommercialSection />;
     }
 
     if (activeTab === "quality") {
