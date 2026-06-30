@@ -91,6 +91,7 @@ model User {
   contacts         Contact[]
   reviewedRequests CorporateProductRequest[] @relation("CorporateProductRequestReviewedBy")
   productRequests  CorporateProductRequest[] @relation("CorporateProductRequestRequestedBy")
+  operationMaterialEvents OperationMaterialEvent[] @relation("OperationMaterialEventCreatedBy")
   reviewedOrders   Order[]                   @relation("OrderAdminReview")
   orders           Order[]
   profile          Profile?
@@ -443,10 +444,11 @@ model ChipClaimToken {
   id             String    @id @default(cuid())
   chipId         String
   activationCode String    @unique
-  expiresAt      DateTime
+  expiresAt      DateTime?
   usedAt         DateTime?
   createdAt      DateTime  @default(now())
   orderId        String?
+  status         String    @default("active")
   chip           Chip      @relation(fields: [chipId], references: [id], onDelete: Cascade)
   order          Order?    @relation(fields: [orderId], references: [id])
 }
@@ -709,4 +711,44 @@ model AdminUser {
   status       String    @default("active")
   name         String?
   updatedAt    DateTime?
+}
+
+model OperationMaterial {
+  id           String                   @id @default(cuid())
+  code         String                   @unique
+  name         String
+  description  String?
+  category     String
+  unit         String
+  status       String                   @default("active")
+  supplierName String?
+  notes        String?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  events       OperationMaterialEvent[]
+
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OperationMaterialEvent {
+  id            String            @id @default(cuid())
+  materialId    String
+  eventType     String
+  quantity      Float
+  unit          String
+  reason        String?
+  referenceType String?
+  referenceId   String?
+  metadataJson  String?
+  createdById   String?
+  createdAt     DateTime          @default(now())
+  createdBy     User?             @relation("OperationMaterialEventCreatedBy", fields: [createdById], references: [id])
+  material      OperationMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@index([materialId])
+  @@index([eventType])
+  @@index([createdById])
+  @@index([createdAt])
 }
