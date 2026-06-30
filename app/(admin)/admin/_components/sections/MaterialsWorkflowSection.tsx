@@ -8,10 +8,12 @@ import {
   Loader2,
   MapPin,
   PackagePlus,
+  Plus,
   ReceiptText,
   RefreshCw,
   Scale,
   Truck,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,6 +32,26 @@ interface OperationMaterial {
   balance: number;
 }
 
+interface MaterialFormState {
+  code: string;
+  name: string;
+  category: string;
+  unit: string;
+  description: string;
+  supplierName: string;
+  notes: string;
+}
+
+const EMPTY_FORM: MaterialFormState = {
+  code: "",
+  name: "",
+  category: "",
+  unit: "",
+  description: "",
+  supplierName: "",
+  notes: "",
+};
+
 const MATERIAL_TASKS = [
   { label: "Recibir materiales", detail: "Registrar entrada fisica desde proveedor.", icon: PackagePlus },
   { label: "Asignar ubicacion", detail: "Bodega, estante, caja o mesa de trabajo.", icon: MapPin },
@@ -43,6 +65,9 @@ export function MaterialsWorkflowSection() {
   const [materials, setMaterials] = useState<OperationMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<MaterialFormState>(EMPTY_FORM);
 
   const loadMaterials = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -79,6 +104,53 @@ export function MaterialsWorkflowSection() {
       month: "short",
       year: "numeric",
     });
+  };
+
+  const updateForm = (field: keyof MaterialFormState, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const closeCreateModal = () => {
+    if (saving) return;
+    setShowCreateModal(false);
+    setForm(EMPTY_FORM);
+  };
+
+  const handleCreateMaterial = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+
+    try {
+      const res = await fetch("/api/admin/operations/materials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: form.code.trim(),
+          name: form.name.trim(),
+          category: form.category.trim(),
+          unit: form.unit.trim(),
+          description: form.description.trim() || null,
+          supplierName: form.supplierName.trim() || null,
+          notes: form.notes.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo crear el material");
+      }
+
+      toast.success("Material creado");
+      setShowCreateModal(false);
+      setForm(EMPTY_FORM);
+      await loadMaterials({ silent: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al crear material";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -120,15 +192,25 @@ export function MaterialsWorkflowSection() {
             <Factory className="h-5 w-5 text-slate-500" />
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Materiales registrados</h3>
           </div>
-          <button
-            type="button"
-            onClick={() => loadMaterials({ silent: true })}
-            disabled={refreshing}
-            className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-white disabled:opacity-50"
-          >
-            {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Actualizar
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950"
+            >
+              <Plus className="h-4 w-4" />
+              Crear material
+            </button>
+            <button
+              type="button"
+              onClick={() => loadMaterials({ silent: true })}
+              disabled={refreshing}
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-white disabled:opacity-50"
+            >
+              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Actualizar
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -191,6 +273,128 @@ export function MaterialsWorkflowSection() {
           </div>
         )}
       </section>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleCreateMaterial} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Materiales</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear material</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Registra un insumo fisico para produccion. Las cantidades se moveran por eventos, no por stock directo.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  disabled={saving}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Code</span>
+                  <input
+                    required
+                    value={form.code}
+                    onChange={(event) => updateForm("code", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="MAT-STICKER-NFC"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre</span>
+                  <input
+                    required
+                    value={form.name}
+                    onChange={(event) => updateForm("name", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Sticker NFC en blanco"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categoria</span>
+                  <input
+                    required
+                    value={form.category}
+                    onChange={(event) => updateForm("category", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="stickers"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Unidad</span>
+                  <input
+                    required
+                    value={form.unit}
+                    onChange={(event) => updateForm("unit", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="unidad"
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Proveedor</span>
+                  <input
+                    value={form.supplierName}
+                    onChange={(event) => updateForm("supplierName", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Nombre del proveedor"
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Descripcion</span>
+                  <textarea
+                    value={form.description}
+                    onChange={(event) => updateForm("description", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Uso, especificacion o detalle del material"
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notas</span>
+                  <textarea
+                    value={form.notes}
+                    onChange={(event) => updateForm("notes", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Notas internas"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  disabled={saving}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Guardar material
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
