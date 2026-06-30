@@ -107,15 +107,6 @@ const RESULTS = [
   { label: "Aprobado con excepción", icon: ShieldCheck, color: "bg-orange-50 text-orange-700 border-orange-200" },
 ];
 
-const FUTURE_ACTIONS = [
-  { label: "Inspeccionar", icon: "🔍", description: "Iniciar inspección" },
-  { label: "Registrar resultado", icon: "📝", description: "Guardar resultado" },
-  { label: "Enviar a reproceso", icon: "🔄", description: "Rechazar y reprocesar" },
-  { label: "Aprobar", icon: "✅", description: "Aprobar calidad" },
-  { label: "Generar evidencia", icon: "📸", description: "Capturar evidencia" },
-  { label: "Reportar incidencia", icon: "⚠️", description: "Reportar problema" },
-];
-
 const BENEFITS = [
   { label: "Evitar errores", description: "Detección temprana de fallos" },
   { label: "Reducir devoluciones", description: "Productos verificados antes de salir" },
@@ -159,11 +150,29 @@ interface QcInspectionFormState {
   notes: string;
 }
 
+type QcEventType =
+  | "STARTED"
+  | "PASSED"
+  | "FAILED"
+  | "REWORK_REQUIRED"
+  | "COMPLETED"
+  | "CANCELLED";
+
+interface QuantityEventFormState {
+  quantity: string;
+  reason: string;
+}
+
 const EMPTY_QC_FORM: QcInspectionFormState = {
   code: "",
   productionOrderId: "",
   inspectionType: "standard",
   notes: "",
+};
+
+const EMPTY_QUANTITY_EVENT_FORM: QuantityEventFormState = {
+  quantity: "",
+  reason: "",
 };
 
 const QC_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -174,6 +183,34 @@ const QC_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Cancelada", color: "bg-red-50 border-red-200 text-red-800" },
 };
 
+const QC_EVENT_SUCCESS_COPY: Record<QcEventType, string> = {
+  STARTED: "QC iniciado",
+  PASSED: "Cantidad aprobada",
+  FAILED: "Cantidad rechazada",
+  REWORK_REQUIRED: "Reproceso marcado",
+  COMPLETED: "QC completado",
+  CANCELLED: "QC cancelado",
+};
+
+const QC_ACTIONS_BY_STATUS: Record<string, Array<{ label: string; eventType: QcEventType; tone: string }>> = {
+  pending: [
+    { label: "Iniciar QC", eventType: "STARTED", tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100" },
+    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+  ],
+  in_progress: [
+    { label: "Aprobar cantidad", eventType: "PASSED", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
+    { label: "Rechazar cantidad", eventType: "FAILED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+    { label: "Marcar reproceso", eventType: "REWORK_REQUIRED", tone: "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100" },
+    { label: "Completar", eventType: "COMPLETED", tone: "border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100" },
+    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+  ],
+  rework_required: [
+    { label: "Reanudar QC", eventType: "STARTED", tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100" },
+    { label: "Completar", eventType: "COMPLETED", tone: "border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100" },
+    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+  ],
+};
+
 export function QualitySection() {
   const [qcInspections, setQcInspections] = useState<QcInspection[]>([]);
   const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
@@ -181,6 +218,12 @@ export function QualitySection() {
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingEventKey, setSavingEventKey] = useState<string | null>(null);
+  const [quantityEvent, setQuantityEvent] = useState<{
+    inspection: QcInspection;
+    eventType: "PASSED" | "FAILED";
+  } | null>(null);
+  const [quantityEventForm, setQuantityEventForm] = useState<QuantityEventFormState>(EMPTY_QUANTITY_EVENT_FORM);
   const [form, setForm] = useState<QcInspectionFormState>(EMPTY_QC_FORM);
 
   const loadQcInspections = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -279,6 +322,21 @@ export function QualitySection() {
     setForm(EMPTY_QC_FORM);
   };
 
+  const openQuantityEventModal = (inspection: QcInspection, eventType: "PASSED" | "FAILED") => {
+    setQuantityEvent({ inspection, eventType });
+    setQuantityEventForm(EMPTY_QUANTITY_EVENT_FORM);
+  };
+
+  const closeQuantityEventModal = () => {
+    if (savingEventKey) return;
+    setQuantityEvent(null);
+    setQuantityEventForm(EMPTY_QUANTITY_EVENT_FORM);
+  };
+
+  const updateQuantityEventForm = (field: keyof QuantityEventFormState, value: string) => {
+    setQuantityEventForm((current) => ({ ...current, [field]: value }));
+  };
+
   const handleCreateInspection = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -322,6 +380,89 @@ export function QualitySection() {
       toast.error(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const postQcEvent = async ({
+    inspection,
+    eventType,
+    quantity,
+    reason,
+  }: {
+    inspection: QcInspection;
+    eventType: QcEventType;
+    quantity?: number;
+    reason?: string | null;
+  }) => {
+    const eventKey = `${inspection.id}:${eventType}`;
+    setSavingEventKey(eventKey);
+
+    try {
+      const res = await fetch(`/api/admin/operations/qc-inspections/${inspection.id}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventType,
+          quantity,
+          passedQuantity: eventType === "PASSED" ? quantity : undefined,
+          failedQuantity: eventType === "FAILED" ? quantity : undefined,
+          reason: reason || null,
+          metadataJson: null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo registrar el evento QC");
+      }
+
+      toast.success(QC_EVENT_SUCCESS_COPY[eventType]);
+      await loadQcInspections({ silent: true });
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar evento QC";
+      toast.error(message);
+      return false;
+    } finally {
+      setSavingEventKey(null);
+    }
+  };
+
+  const handleQcAction = async (inspection: QcInspection, eventType: QcEventType) => {
+    if (eventType === "PASSED" || eventType === "FAILED") {
+      openQuantityEventModal(inspection, eventType);
+      return;
+    }
+
+    await postQcEvent({
+      inspection,
+      eventType,
+      reason: QC_EVENT_SUCCESS_COPY[eventType],
+    });
+  };
+
+  const handleQuantityEventSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!quantityEvent) return;
+
+    const quantity = Number(quantityEventForm.quantity);
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      toast.error("La cantidad debe ser positiva");
+      return;
+    }
+
+    const saved = await postQcEvent({
+      inspection: quantityEvent.inspection,
+      eventType: quantityEvent.eventType,
+      quantity,
+      reason: quantityEventForm.reason.trim() || null,
+    });
+
+    if (saved) {
+      setQuantityEvent(null);
+      setQuantityEventForm(EMPTY_QUANTITY_EVENT_FORM);
     }
   };
 
@@ -485,6 +626,7 @@ export function QualitySection() {
                   <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Fallado</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Creada</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Actualizada</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -493,6 +635,7 @@ export function QualitySection() {
                     label: inspection.status,
                     color: "bg-slate-50 border-slate-200 text-slate-700",
                   };
+                  const actions = QC_ACTIONS_BY_STATUS[inspection.status] || [];
 
                   return (
                     <tr key={inspection.id} className="hover:bg-slate-50/70">
@@ -533,6 +676,33 @@ export function QualitySection() {
                       </td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(inspection.createdAt)}</td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(inspection.updatedAt)}</td>
+                      <td className="px-4 py-4">
+                        {actions.length === 0 ? (
+                          <p className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            Sin acciones
+                          </p>
+                        ) : (
+                          <div className="flex min-w-[220px] flex-wrap justify-end gap-2">
+                            {actions.map((action) => {
+                              const eventKey = `${inspection.id}:${action.eventType}`;
+                              const savingAction = savingEventKey === eventKey;
+
+                              return (
+                                <button
+                                  key={action.eventType}
+                                  type="button"
+                                  onClick={() => handleQcAction(inspection, action.eventType)}
+                                  disabled={Boolean(savingEventKey)}
+                                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-50 ${action.tone}`}
+                                >
+                                  {savingAction ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardCheck className="h-3.5 w-3.5" />}
+                                  {action.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -620,30 +790,6 @@ export function QualitySection() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* Acciones futuras */}
-      <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/50">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
-          Acciones Disponibles (Próximamente)
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {FUTURE_ACTIONS.map((action) => (
-            <div
-              key={action.label}
-              className="rounded-2xl border border-slate-200 bg-white p-4 opacity-50 cursor-not-allowed"
-              title="Disponible cuando se implemente el módulo de calidad"
-            >
-              <div className="text-2xl mb-2">{action.icon}</div>
-              <p className="text-xs font-black text-slate-700 dark:text-slate-300 mb-1">
-                {action.label}
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                {action.description}
-              </p>
-            </div>
-          ))}
         </div>
       </div>
 
@@ -760,6 +906,92 @@ export function QualitySection() {
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   Guardar QC
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {quantityEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleQuantityEventSubmit} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Evento inmutable</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                    {quantityEvent.eventType === "PASSED" ? "Aprobar cantidad" : "Rechazar cantidad"}
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {quantityEvent.inspection.code} · {quantityEvent.inspection.inspectionType}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeQuantityEventModal}
+                  disabled={Boolean(savingEventKey)}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className={`rounded-2xl border px-4 py-3 text-xs font-semibold ${
+                quantityEvent.eventType === "PASSED"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-red-200 bg-red-50 text-red-800"
+              }`}>
+                Este evento actualiza las cantidades acumuladas de QC. Los eventos no se editan ni se borran.
+              </div>
+
+              <div className="grid gap-4">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cantidad</span>
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={quantityEventForm.quantity}
+                    onChange={(event) => updateQuantityEventForm("quantity", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="10"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Razon</span>
+                  <input
+                    value={quantityEventForm.reason}
+                    onChange={(event) => updateQuantityEventForm("reason", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder={quantityEvent.eventType === "PASSED" ? "Lote aprobado por muestra" : "Defecto visual, NFC o QR"}
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeQuantityEventModal}
+                  disabled={Boolean(savingEventKey)}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={Boolean(savingEventKey)}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {savingEventKey === `${quantityEvent.inspection.id}:${quantityEvent.eventType}` ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ClipboardCheck className="h-4 w-4" />
+                  )}
+                  Guardar evento
                 </button>
               </div>
             </form>
