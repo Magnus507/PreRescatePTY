@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (new Date() > claimToken.expiresAt) {
+  if (claimToken.expiresAt && new Date() > claimToken.expiresAt) {
     return NextResponse.json(
       { error: "Este código ha expirado" },
       { status: 410 }
