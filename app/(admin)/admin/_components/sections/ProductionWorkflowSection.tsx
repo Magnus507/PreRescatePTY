@@ -4,13 +4,11 @@ import {
   ArrowRight,
   BadgeCheck,
   ClipboardCheck,
-  Download,
   Factory,
   PackageCheck,
   Paintbrush,
   Printer,
   QrCode,
-  ScanLine,
   Tag,
   Wrench,
 } from "lucide-react";
@@ -41,17 +39,15 @@ const COMPANY_FLOW = [
 ];
 
 const STATUS_CARDS = [
-  { label: "pending", icon: Factory, copy: "Lista para planificar" },
-  { label: "in_production", icon: Wrench, copy: "Trabajo iniciado" },
-  { label: "at_printer", icon: Printer, copy: "Material en imprenta" },
-  { label: "received_from_printer", icon: Download, copy: "Recibido para ensamblaje" },
-  { label: "assembling", icon: ScanLine, copy: "Armando producto fisico" },
-  { label: "completed", icon: BadgeCheck, copy: "Listo para QC" },
+  { label: "draft", icon: Factory, copy: "Orden base creada" },
+  { label: "planned", icon: ClipboardCheck, copy: "Lista para ejecutar" },
+  { label: "started", icon: Wrench, copy: "Trabajo iniciado" },
+  { label: "paused", icon: Printer, copy: "Pausa operativa" },
+  { label: "completed", icon: BadgeCheck, copy: "Lista para QC" },
   { label: "cancelled", icon: ClipboardCheck, copy: "Cancelada con trazabilidad" },
 ];
 
 const ACTIONS = [
-  "Nueva orden para stock",
   "Enviar a imprenta",
   "Recibir de imprenta",
   "Iniciar ensamblaje",
