@@ -17,6 +17,7 @@ import {
   PackageCheck,
   QrCode,
   RefreshCw,
+  Repeat2,
   Route,
   ShieldCheck,
   ShoppingCart,
@@ -35,6 +36,7 @@ import { QualitySection } from "./QualitySection";
 import { HistorySection } from "./HistorySection";
 import { CommercialSection } from "./CommercialSection";
 import { WarrantySection } from "./WarrantySection";
+import { ReplacementSection } from "./ReplacementSection";
 
 type OperationsTab =
   | "overview"
@@ -47,6 +49,7 @@ type OperationsTab =
   | "packing"
   | "commercial"
   | "warranties"
+  | "replacements"
   | "dispatch"
   | "history";
 
@@ -86,13 +89,14 @@ const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }>
   { id: "packing", label: "Empaque", icon: PackageCheck },
   { id: "commercial", label: "Comercial", icon: ShoppingCart },
   { id: "warranties", label: "Garantias", icon: ShieldCheck },
+  { id: "replacements", label: "Reemplazos", icon: Repeat2 },
   { id: "dispatch", label: "Despacho", icon: Truck },
   { id: "history", label: "Historial", icon: History },
 ];
 
 const OPERATIVE_ROUTES = [
   {
-    title: "Ruta Stock Normal",
+    title: "Ruta inventario operativo",
     tone: "border-emerald-200 bg-emerald-50",
     steps: ["Chip digital", "QR / arte", "Imprenta", "Ensamblaje", "QC", "Empaque", "Inventario", "Venta", "Activacion"],
   },
@@ -224,6 +228,10 @@ export function OperationsCenterSection({
 
     if (activeTab === "warranties") {
       return <WarrantySection />;
+    }
+
+    if (activeTab === "replacements") {
+      return <ReplacementSection />;
     }
 
     if (activeTab === "quality") {
