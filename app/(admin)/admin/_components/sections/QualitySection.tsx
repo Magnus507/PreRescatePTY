@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -19,7 +20,11 @@ import {
   XCircle,
   Sticker,
   Scan,
+  Loader2,
+  Plus,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ValidationType {
   key: string;
@@ -122,14 +127,204 @@ const BENEFITS = [
   { label: "Auditoría completa", description: "Historial de calidad" },
 ];
 
-const PLACEHOLDER_METRICS = {
-  pending: 0,
-  approved: 0,
-  rejected: 0,
-  rework: 0,
+interface ProductionOrderOption {
+  id: string;
+  code: string;
+  title: string;
+  status: string;
+  plannedQuantity: number;
+  producedQuantity: number;
+  outputType: string;
+}
+
+interface QcInspection {
+  id: string;
+  code: string;
+  productionOrderId: string | null;
+  status: string;
+  inspectionType: string;
+  inspectedQuantity: number;
+  passedQuantity: number;
+  failedQuantity: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  productionOrder: ProductionOrderOption | null;
+}
+
+interface QcInspectionFormState {
+  code: string;
+  productionOrderId: string;
+  inspectionType: string;
+  notes: string;
+}
+
+const EMPTY_QC_FORM: QcInspectionFormState = {
+  code: "",
+  productionOrderId: "",
+  inspectionType: "standard",
+  notes: "",
+};
+
+const QC_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  pending: { label: "Pendiente", color: "bg-amber-50 border-amber-200 text-amber-800" },
+  in_progress: { label: "En progreso", color: "bg-blue-50 border-blue-200 text-blue-800" },
+  rework_required: { label: "Reproceso", color: "bg-orange-50 border-orange-200 text-orange-800" },
+  completed: { label: "Completada", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+  cancelled: { label: "Cancelada", color: "bg-red-50 border-red-200 text-red-800" },
 };
 
 export function QualitySection() {
+  const [qcInspections, setQcInspections] = useState<QcInspection[]>([]);
+  const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<QcInspectionFormState>(EMPTY_QC_FORM);
+
+  const loadQcInspections = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const res = await fetch("/api/admin/operations/qc-inspections", { cache: "no-store" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudieron cargar inspecciones QC");
+      }
+
+      setQcInspections(Array.isArray(data.qcInspections) ? data.qcInspections : []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al cargar inspecciones QC";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  const loadProductionOrders = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/operations/production-orders", { cache: "no-store" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudieron cargar ordenes de produccion");
+      }
+
+      setProductionOrders(Array.isArray(data.productionOrders) ? data.productionOrders : []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al cargar ordenes de produccion";
+      toast.error(message);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadQcInspections();
+    loadProductionOrders();
+  }, [loadQcInspections, loadProductionOrders]);
+
+  const metrics = useMemo(() => {
+    return qcInspections.reduce(
+      (acc, inspection) => {
+        if (inspection.status === "pending" || inspection.status === "in_progress") {
+          acc.pending += 1;
+        }
+
+        if (inspection.status === "completed") {
+          acc.approved += inspection.passedQuantity;
+        }
+
+        acc.rejected += inspection.failedQuantity;
+
+        if (inspection.status === "rework_required") {
+          acc.rework += 1;
+        }
+
+        return acc;
+      },
+      { pending: 0, approved: 0, rejected: 0, rework: 0 }
+    );
+  }, [qcInspections]);
+
+  const selectableProductionOrders = useMemo(() => {
+    const preferredStatuses = new Set(["completed", "started"]);
+    return [...productionOrders].sort((a, b) => {
+      const aPreferred = preferredStatuses.has(a.status) ? 0 : 1;
+      const bPreferred = preferredStatuses.has(b.status) ? 0 : 1;
+      return aPreferred - bPreferred || a.code.localeCompare(b.code);
+    });
+  }, [productionOrders]);
+
+  const formatDate = (value: string) => {
+    return new Date(value).toLocaleDateString("es-PA", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const updateForm = (field: keyof QcInspectionFormState, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const closeCreateModal = () => {
+    if (saving) return;
+    setShowCreateModal(false);
+    setForm(EMPTY_QC_FORM);
+  };
+
+  const handleCreateInspection = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const code = form.code.trim();
+    const inspectionType = form.inspectionType.trim() || "standard";
+
+    if (!code) {
+      toast.error("Code es requerido");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const res = await fetch("/api/admin/operations/qc-inspections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          productionOrderId: form.productionOrderId || null,
+          inspectionType,
+          notes: form.notes.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 409) {
+          throw new Error(data.error || "Ya existe una inspeccion QC con ese code");
+        }
+        throw new Error(data.error || "No se pudo crear la inspeccion QC");
+      }
+
+      toast.success("Inspeccion QC creada");
+      setShowCreateModal(false);
+      setForm(EMPTY_QC_FORM);
+      await loadQcInspections({ silent: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al crear inspeccion QC";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
@@ -193,45 +388,159 @@ export function QualitySection() {
         </div>
       </div>
 
-      {/* Métricas placeholder */}
+      {/* Métricas */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl border-2 border-slate-200 bg-white p-4 opacity-60">
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-amber-600" />
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
               Pendientes
             </span>
           </div>
-          <p className="text-2xl font-black">{PLACEHOLDER_METRICS.pending}</p>
+          <p className="text-2xl font-black">{metrics.pending}</p>
         </div>
-        <div className="rounded-xl border-2 border-slate-200 bg-white p-4 opacity-60">
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
               Aprobados
             </span>
           </div>
-          <p className="text-2xl font-black">{PLACEHOLDER_METRICS.approved}</p>
+          <p className="text-2xl font-black">{metrics.approved}</p>
         </div>
-        <div className="rounded-xl border-2 border-slate-200 bg-white p-4 opacity-60">
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <XCircle className="h-4 w-4 text-red-600" />
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
               Rechazados
             </span>
           </div>
-          <p className="text-2xl font-black">{PLACEHOLDER_METRICS.rejected}</p>
+          <p className="text-2xl font-black">{metrics.rejected}</p>
         </div>
-        <div className="rounded-xl border-2 border-slate-200 bg-white p-4 opacity-60">
+        <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <RefreshCw className="h-4 w-4 text-amber-600" />
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
               Reproceso
             </span>
           </div>
-          <p className="text-2xl font-black">{PLACEHOLDER_METRICS.rework}</p>
+          <p className="text-2xl font-black">{metrics.rework}</p>
         </div>
       </div>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <ClipboardCheck className="h-5 w-5 text-slate-500" />
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">
+              Inspecciones QC
+            </h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950"
+            >
+              <Plus className="h-4 w-4" />
+              Crear QC
+            </button>
+            <button
+              type="button"
+              onClick={() => loadQcInspections({ silent: true })}
+              disabled={refreshing}
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-white disabled:opacity-50"
+            >
+              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Actualizar
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : qcInspections.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+            <ClipboardCheck className="mx-auto mb-4 h-10 w-10 text-slate-300" />
+            <p className="text-sm font-black uppercase tracking-widest text-slate-400">
+              No hay inspecciones QC registradas
+            </p>
+            <p className="mt-2 text-xs font-semibold text-slate-500">
+              Las inspecciones creadas desde esta seccion apareceran aqui con trazabilidad por eventos.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Code</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Produccion</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Inspeccionado</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Aprobado</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Fallado</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Creada</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Actualizada</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {qcInspections.map((inspection) => {
+                  const status = QC_STATUS_CONFIG[inspection.status] || {
+                    label: inspection.status,
+                    color: "bg-slate-50 border-slate-200 text-slate-700",
+                  };
+
+                  return (
+                    <tr key={inspection.id} className="hover:bg-slate-50/70">
+                      <td className="px-4 py-4">
+                        <div>
+                          <span className="font-mono text-xs font-black text-primary">{inspection.code}</span>
+                          {inspection.notes && (
+                            <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-slate-500">{inspection.notes}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        {inspection.productionOrder ? (
+                          <div>
+                            <p className="font-mono text-xs font-black text-slate-900">{inspection.productionOrder.code}</p>
+                            <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-slate-500">
+                              {inspection.productionOrder.title}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-400">Sin orden vinculada</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${status.color}`}>
+                          {status.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-xs font-bold text-slate-600">{inspection.inspectionType}</td>
+                      <td className="px-4 py-4 text-right font-mono text-sm font-black text-slate-900">
+                        {inspection.inspectedQuantity}
+                      </td>
+                      <td className="px-4 py-4 text-right font-mono text-sm font-black text-emerald-700">
+                        {inspection.passedQuantity}
+                      </td>
+                      <td className="px-4 py-4 text-right font-mono text-sm font-black text-red-700">
+                        {inspection.failedQuantity}
+                      </td>
+                      <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(inspection.createdAt)}</td>
+                      <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(inspection.updatedAt)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {/* Tipos de validación */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
@@ -360,12 +669,103 @@ export function QualitySection() {
         </div>
       </div>
 
-      {/* Estado */}
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
-        <p className="text-xs font-bold text-slate-500">
-          Sin inspecciones registradas — Las validaciones se activarán cuando exista el módulo operativo de Control de Calidad
-        </p>
-      </div>
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleCreateInspection} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Control de calidad</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear inspeccion QC</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Registra una inspeccion base. Los resultados se agregaran luego como eventos inmutables.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  disabled={saving}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Code</span>
+                  <input
+                    required
+                    value={form.code}
+                    onChange={(event) => updateForm("code", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="QC-STOCK-001"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo</span>
+                  <input
+                    value={form.inspectionType}
+                    onChange={(event) => updateForm("inspectionType", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="standard"
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Orden de produccion</span>
+                  <select
+                    value={form.productionOrderId}
+                    onChange={(event) => updateForm("productionOrderId", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  >
+                    <option value="">Sin orden vinculada</option>
+                    {selectableProductionOrders.map((order) => (
+                      <option key={order.id} value={order.id}>
+                        {order.code} · {order.title} · {order.status}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] font-semibold text-slate-500">
+                    Se muestran primero las ordenes completed o started cuando existen.
+                  </p>
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notas</span>
+                  <textarea
+                    value={form.notes}
+                    onChange={(event) => updateForm("notes", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Notas internas de calidad"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  disabled={saving}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Guardar QC
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
