@@ -100,6 +100,7 @@ model User {
   operationCommercialEvents   OperationCommercialOrderEvent[] @relation("OperationCommercialOrderEventCreatedBy")
   operationWarrantyEvents     OperationWarrantyEvent[]        @relation("OperationWarrantyEventCreatedBy")
   operationReplacementEvents  OperationReplacementEvent[]     @relation("OperationReplacementEventCreatedBy")
+  operationReturnEvents       OperationReturnEvent[]          @relation("OperationReturnEventCreatedBy")
   reviewedOrders              Order[]                         @relation("OrderAdminReview")
   orders                      Order[]
   profile                     Profile?
@@ -920,6 +921,7 @@ model OperationFinishedGood {
   warranties              OperationWarranty[]
   originalReplacements    OperationReplacement[]         @relation("OperationReplacementOriginalFinishedGood")
   replacementReplacements OperationReplacement[]         @relation("OperationReplacementReplacementFinishedGood")
+  returns                 OperationReturn[]
   packingBatch            OperationPackingBatch?         @relation(fields: [packingBatchId], references: [id])
 
   @@index([packingBatchId])
@@ -969,6 +971,7 @@ model OperationDispatch {
   warranties              OperationWarranty[]
   originalReplacements    OperationReplacement[]     @relation("OperationReplacementOriginalDispatch")
   replacementReplacements OperationReplacement[]     @relation("OperationReplacementReplacementDispatch")
+  returns                 OperationReturn[]
 
   @@index([status])
   @@index([destinationType])
@@ -1034,6 +1037,7 @@ model OperationCommercialOrder {
   events            OperationCommercialOrderEvent[]
   warranties        OperationWarranty[]
   replacements      OperationReplacement[]
+  returns           OperationReturn[]
 
   @@index([status])
   @@index([customerType])
@@ -1111,6 +1115,7 @@ model OperationWarranty {
   dispatch              OperationDispatch?            @relation(fields: [dispatchId], references: [id])
   events                OperationWarrantyEvent[]
   replacements          OperationReplacement[]
+  returns               OperationReturn[]
 
   @@index([status])
   @@index([warrantyType])
@@ -1170,6 +1175,7 @@ model OperationReplacement {
   originalDispatch          OperationDispatch?          @relation("OperationReplacementOriginalDispatch", fields: [originalDispatchId], references: [id])
   replacementDispatch       OperationDispatch?          @relation("OperationReplacementReplacementDispatch", fields: [replacementDispatchId], references: [id])
   events                    OperationReplacementEvent[]
+  returns                   OperationReturn[]
 
   @@index([status])
   @@index([replacementType])
@@ -1196,6 +1202,68 @@ model OperationReplacementEvent {
   createdBy     User?                @relation("OperationReplacementEventCreatedBy", fields: [createdById], references: [id])
 
   @@index([replacementId])
+  @@index([eventType])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model OperationReturn {
+  id                 String                    @id @default(cuid())
+  code               String                    @unique
+  status             String                    @default("draft")
+  returnType         String                    @default("customer_return")
+  reason             String?
+  resolution         String?
+  customerName       String?
+  customerEmail      String?
+  customerPhone      String?
+  warrantyId         String?
+  replacementId      String?
+  commercialOrderId  String?
+  finishedGoodId     String?
+  originalDispatchId String?
+  receivedQuantity   Int                       @default(0)
+  acceptedQuantity   Int                       @default(0)
+  rejectedQuantity   Int                       @default(0)
+  receivedAt         DateTime?
+  inspectedAt        DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  notes              String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  warranty           OperationWarranty?        @relation(fields: [warrantyId], references: [id])
+  replacement        OperationReplacement?     @relation(fields: [replacementId], references: [id])
+  commercialOrder    OperationCommercialOrder? @relation(fields: [commercialOrderId], references: [id])
+  finishedGood       OperationFinishedGood?    @relation(fields: [finishedGoodId], references: [id])
+  originalDispatch   OperationDispatch?        @relation(fields: [originalDispatchId], references: [id])
+  events             OperationReturnEvent[]
+
+  @@index([status])
+  @@index([returnType])
+  @@index([warrantyId])
+  @@index([replacementId])
+  @@index([commercialOrderId])
+  @@index([finishedGoodId])
+  @@index([originalDispatchId])
+  @@index([createdAt])
+}
+
+model OperationReturnEvent {
+  id            String          @id @default(cuid())
+  returnId      String
+  eventType     String
+  quantity      Int?
+  reason        String?
+  referenceType String?
+  referenceId   String?
+  metadataJson  String?
+  createdById   String?
+  createdAt     DateTime        @default(now())
+  return        OperationReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  createdBy     User?           @relation("OperationReturnEventCreatedBy", fields: [createdById], references: [id])
+
+  @@index([returnId])
   @@index([eventType])
   @@index([createdById])
   @@index([createdAt])
