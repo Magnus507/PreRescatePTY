@@ -94,6 +94,7 @@ model User {
   operationMaterialEvents   OperationMaterialEvent[]     @relation("OperationMaterialEventCreatedBy")
   operationProductionEvents OperationProductionEvent[]   @relation("OperationProductionEventCreatedBy")
   operationQcEvents         OperationQcInspectionEvent[] @relation("OperationQcInspectionEventCreatedBy")
+  operationPackingEvents    OperationPackingEvent[]      @relation("OperationPackingEventCreatedBy")
   reviewedOrders            Order[]                      @relation("OrderAdminReview")
   orders                    Order[]
   profile                   Profile?
@@ -770,6 +771,7 @@ model OperationProductionOrder {
   items            OperationProductionOrderItem[]
   events           OperationProductionEvent[]
   qcInspections    OperationQcInspection[]
+  packingBatches   OperationPackingBatch[]
 
   @@index([status])
   @@index([outputType])
@@ -824,6 +826,7 @@ model OperationQcInspection {
   updatedAt         DateTime                     @updatedAt
   events            OperationQcInspectionEvent[]
   productionOrder   OperationProductionOrder?    @relation(fields: [productionOrderId], references: [id])
+  packingBatches    OperationPackingBatch[]
 
   @@index([productionOrderId])
   @@index([status])
@@ -846,6 +849,49 @@ model OperationQcInspectionEvent {
   qcInspection   OperationQcInspection @relation(fields: [qcInspectionId], references: [id], onDelete: Cascade)
 
   @@index([qcInspectionId])
+  @@index([eventType])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model OperationPackingBatch {
+  id                String                    @id @default(cuid())
+  code              String                    @unique
+  productionOrderId String?
+  qcInspectionId    String?
+  status            String                    @default("draft")
+  packageType       String                    @default("standard")
+  plannedQuantity   Int                       @default(0)
+  packedQuantity    Int                       @default(0)
+  rejectedQuantity  Int                       @default(0)
+  labelCode         String?
+  notes             String?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  events            OperationPackingEvent[]
+  productionOrder   OperationProductionOrder? @relation(fields: [productionOrderId], references: [id])
+  qcInspection      OperationQcInspection?    @relation(fields: [qcInspectionId], references: [id])
+
+  @@index([productionOrderId])
+  @@index([qcInspectionId])
+  @@index([status])
+  @@index([packageType])
+  @@index([createdAt])
+}
+
+model OperationPackingEvent {
+  id             String                @id @default(cuid())
+  packingBatchId String
+  eventType      String
+  quantity       Int?
+  reason         String?
+  metadataJson   String?
+  createdById    String?
+  createdAt      DateTime              @default(now())
+  createdBy      User?                 @relation("OperationPackingEventCreatedBy", fields: [createdById], references: [id])
+  packingBatch   OperationPackingBatch @relation(fields: [packingBatchId], references: [id], onDelete: Cascade)
+
+  @@index([packingBatchId])
   @@index([eventType])
   @@index([createdById])
   @@index([createdAt])
