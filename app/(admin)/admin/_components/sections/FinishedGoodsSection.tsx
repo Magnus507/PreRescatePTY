@@ -26,7 +26,7 @@ const FLOW = [
 ];
 
 const FUTURE_ACTIONS = [
-  { label: "Enviar a punto de venta", hint: "Pendiente de despacho" },
+  { label: "Enviar a punto de venta", hint: "Gestionar desde Despacho o Comercial" },
 ];
 
 const FINISHED_GOOD_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -553,7 +553,7 @@ export function FinishedGoodsSection() {
       </section>
 
       <section className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6">
-        <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-500">Acciones pendientes</h3>
+        <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-500">Rutas complementarias</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {FUTURE_ACTIONS.map((action) => (
             <button key={action.label} type="button" disabled className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left opacity-60">

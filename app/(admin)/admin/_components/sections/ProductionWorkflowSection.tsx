@@ -9,7 +9,6 @@ import {
   Paintbrush,
   Printer,
   QrCode,
-  Tag,
   Wrench,
 } from "lucide-react";
 
@@ -45,15 +44,6 @@ const STATUS_CARDS = [
   { label: "paused", icon: Printer, copy: "Pausa operativa" },
   { label: "completed", icon: BadgeCheck, copy: "Lista para QC" },
   { label: "cancelled", icon: ClipboardCheck, copy: "Cancelada con trazabilidad" },
-];
-
-const ACTIONS = [
-  "Enviar a imprenta",
-  "Recibir de imprenta",
-  "Iniciar ensamblaje",
-  "Registrar ensamblaje",
-  "Asignar etiqueta interna",
-  "Completar ensamblaje",
 ];
 
 function FlowRail({ title, tone, steps }: { title: string; tone: string; steps: string[] }) {
@@ -96,21 +86,6 @@ export function ProductionWorkflowSection() {
               </article>
             );
           })}
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6">
-        <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-500">Acciones visibles del operador</h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {ACTIONS.map((action) => (
-            <button key={action} type="button" disabled className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left opacity-60">
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-700">
-                {action.includes("QR") ? <QrCode className="h-4 w-4" /> : action.includes("etiqueta") ? <Tag className="h-4 w-4" /> : action.includes("imprenta") ? <Printer className="h-4 w-4" /> : <Factory className="h-4 w-4" />}
-                {action}
-              </div>
-              <p className="mt-2 text-[11px] font-semibold text-slate-500">Se activara con el modulo ERP</p>
-            </button>
-          ))}
         </div>
       </section>
 

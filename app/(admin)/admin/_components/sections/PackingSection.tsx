@@ -92,9 +92,9 @@ const CHECKLIST_ITEMS = [
 ];
 
 const FUTURE_ACTIONS = [
-  { label: "Escanear QR", icon: QrCode, description: "Pendiente de backend" },
-  { label: "Sellar paquete", icon: LockKeyhole, description: "Se activara con Prisma ERP" },
-  { label: "Generar packing list", icon: ClipboardCheck, description: "Pendiente de backend" },
+  { label: "Escanear QR", icon: QrCode, description: "Control complementario del paquete" },
+  { label: "Sellar paquete", icon: LockKeyhole, description: "Verificacion fisica del cierre" },
+  { label: "Generar packing list", icon: ClipboardCheck, description: "Documento operativo de empaque" },
 ];
 
 interface ProductionOrderOption {
@@ -811,10 +811,9 @@ export function PackingSection() {
         </div>
       </div>
 
-      {/* Acciones futuras */}
       <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/50 p-6 dark:border-slate-700 dark:bg-slate-900/50">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
-          Acciones del flujo
+          Controles complementarios
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
           {FUTURE_ACTIONS.map((action) => {
