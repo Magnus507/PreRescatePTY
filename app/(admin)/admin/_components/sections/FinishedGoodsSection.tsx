@@ -26,8 +26,6 @@ const FLOW = [
 ];
 
 const FUTURE_ACTIONS = [
-  { label: "Reservar", hint: "Pendiente de movimientos PT" },
-  { label: "Ajustar", hint: "Pendiente de movimientos PT" },
   { label: "Enviar a punto de venta", hint: "Pendiente de despacho" },
 ];
 
@@ -73,6 +71,23 @@ interface FinishedGoodFormState {
   notes: string;
 }
 
+type FinishedGoodEventType =
+  | "RECEIPT"
+  | "RESERVATION"
+  | "RELEASE"
+  | "ISSUE"
+  | "ADJUSTMENT"
+  | "RETURN";
+
+interface MovementFormState {
+  eventType: FinishedGoodEventType;
+  quantity: string;
+  reason: string;
+  referenceType: string;
+  referenceId: string;
+  metadataJson: string;
+}
+
 const EMPTY_FINISHED_GOOD_FORM: FinishedGoodFormState = {
   code: "",
   name: "",
@@ -83,6 +98,24 @@ const EMPTY_FINISHED_GOOD_FORM: FinishedGoodFormState = {
   notes: "",
 };
 
+const EMPTY_MOVEMENT_FORM: MovementFormState = {
+  eventType: "RECEIPT",
+  quantity: "",
+  reason: "",
+  referenceType: "",
+  referenceId: "",
+  metadataJson: "",
+};
+
+const FINISHED_GOOD_EVENT_OPTIONS: Array<{ value: FinishedGoodEventType; label: string }> = [
+  { value: "RECEIPT", label: "Entrada" },
+  { value: "RESERVATION", label: "Reserva" },
+  { value: "RELEASE", label: "Liberacion" },
+  { value: "ISSUE", label: "Salida" },
+  { value: "ADJUSTMENT", label: "Ajuste" },
+  { value: "RETURN", label: "Retorno" },
+];
+
 export function FinishedGoodsSection() {
   const [finishedGoods, setFinishedGoods] = useState<FinishedGood[]>([]);
   const [packingBatches, setPackingBatches] = useState<PackingBatchOption[]>([]);
@@ -91,6 +124,9 @@ export function FinishedGoodsSection() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FinishedGoodFormState>(EMPTY_FINISHED_GOOD_FORM);
+  const [movementTarget, setMovementTarget] = useState<FinishedGood | null>(null);
+  const [movementForm, setMovementForm] = useState<MovementFormState>(EMPTY_MOVEMENT_FORM);
+  const [savingMovement, setSavingMovement] = useState(false);
 
   const loadFinishedGoods = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -192,6 +228,24 @@ export function FinishedGoodsSection() {
     setForm(EMPTY_FINISHED_GOOD_FORM);
   };
 
+  const openMovementModal = (item: FinishedGood) => {
+    setMovementTarget(item);
+    setMovementForm({
+      ...EMPTY_MOVEMENT_FORM,
+      quantity: item.balance > 0 ? String(item.balance) : "",
+    });
+  };
+
+  const closeMovementModal = () => {
+    if (savingMovement) return;
+    setMovementTarget(null);
+    setMovementForm(EMPTY_MOVEMENT_FORM);
+  };
+
+  const updateMovementForm = (field: keyof MovementFormState, value: string) => {
+    setMovementForm((current) => ({ ...current, [field]: value }));
+  };
+
   const handleCreateFinishedGood = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -256,6 +310,66 @@ export function FinishedGoodsSection() {
       toast.error(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCreateMovement = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!movementTarget) return;
+
+    const quantity = Number(movementForm.quantity);
+
+    if (!movementForm.eventType) {
+      toast.error("eventType es requerido");
+      return;
+    }
+
+    if (!Number.isFinite(quantity)) {
+      toast.error("quantity debe ser numerico");
+      return;
+    }
+
+    if (movementForm.eventType === "ADJUSTMENT") {
+      if (quantity === 0) {
+        toast.error("ADJUSTMENT requiere quantity distinto de 0");
+        return;
+      }
+    } else if (quantity <= 0) {
+      toast.error(`${movementForm.eventType} requiere quantity positivo`);
+      return;
+    }
+
+    setSavingMovement(true);
+
+    try {
+      const res = await fetch(`/api/admin/operations/finished-goods/${movementTarget.id}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventType: movementForm.eventType,
+          quantity,
+          reason: movementForm.reason.trim() || null,
+          referenceType: movementForm.referenceType.trim() || null,
+          referenceId: movementForm.referenceId.trim() || null,
+          metadataJson: movementForm.metadataJson.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo registrar movimiento PT");
+      }
+
+      toast.success("Movimiento PT registrado");
+      setMovementTarget(null);
+      setMovementForm(EMPTY_MOVEMENT_FORM);
+      await loadFinishedGoods({ silent: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar movimiento PT";
+      toast.error(message);
+    } finally {
+      setSavingMovement(false);
     }
   };
 
@@ -374,6 +488,7 @@ export function FinishedGoodsSection() {
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Empaque</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Creado</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Actualizado</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -418,6 +533,17 @@ export function FinishedGoodsSection() {
                       </td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(item.createdAt)}</td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(item.updatedAt)}</td>
+                      <td className="px-4 py-4">
+                        <button
+                          type="button"
+                          onClick={() => openMovementModal(item)}
+                          disabled={savingMovement}
+                          className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 transition-all hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <PackageCheck className="h-4 w-4" />
+                          Registrar movimiento
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -568,6 +694,126 @@ export function FinishedGoodsSection() {
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   Guardar producto
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {movementTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleCreateMovement} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Movimiento PT</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Registrar movimiento</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {movementTarget.code} · balance actual {formatQuantity(movementTarget.balance)} {movementTarget.unit}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeMovementModal}
+                  disabled={savingMovement}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo de evento</span>
+                  <select
+                    required
+                    value={movementForm.eventType}
+                    onChange={(event) => updateMovementForm("eventType", event.target.value as FinishedGoodEventType)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  >
+                    {FINISHED_GOOD_EVENT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label} · {option.value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cantidad</span>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    value={movementForm.quantity}
+                    onChange={(event) => updateMovementForm("quantity", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder={movementForm.eventType === "ADJUSTMENT" ? "-5 o 10" : "10"}
+                  />
+                  <p className="text-[11px] font-semibold text-slate-500">
+                    ADJUSTMENT permite negativos; los demas movimientos requieren cantidad positiva.
+                  </p>
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Motivo</span>
+                  <textarea
+                    value={movementForm.reason}
+                    onChange={(event) => updateMovementForm("reason", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Ingreso, reserva, liberacion, salida, ajuste o retorno operativo"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reference type</span>
+                  <input
+                    value={movementForm.referenceType}
+                    onChange={(event) => updateMovementForm("referenceType", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="order, dispatch, adjustment"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reference ID</span>
+                  <input
+                    value={movementForm.referenceId}
+                    onChange={(event) => updateMovementForm("referenceId", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Pedido, despacho o documento"
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Metadata JSON</span>
+                  <textarea
+                    value={movementForm.metadataJson}
+                    onChange={(event) => updateMovementForm("metadataJson", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 font-mono text-xs font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder='{"ubicacion":"bodega-pt"}'
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeMovementModal}
+                  disabled={savingMovement}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingMovement}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {savingMovement ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                  Guardar movimiento
                 </button>
               </div>
             </form>
