@@ -97,7 +97,7 @@ export async function GET(
               include: {
                 organization: true,
                 location: true,
-                department: true
+                departmentRel: true
               }
             }
           },
@@ -127,7 +127,7 @@ export async function GET(
     type OrgMemberMinimal = {
       organization?: { legalName?: string | null; displayName?: string | null } | null;
       location?: { name?: string; address?: string | null; city?: string | null } | null;
-      department?: { name?: string } | null;
+      departmentRel?: { name?: string } | null;
       corporateStatus?: string | null;
     } | null;
 
@@ -145,7 +145,7 @@ export async function GET(
           location: {
             select: { name: true, address: true, city: true },
           },
-          department: { select: { name: true } },
+          departmentRel: { select: { name: true } },
         },
       });
 
@@ -177,7 +177,7 @@ export async function GET(
       orgMember = {
         organization: corporateMember.organization ?? null,
         location: corporateMember.location ?? null,
-        department: corporateMember.department ?? null,
+        departmentRel: corporateMember.departmentRel ?? null,
         corporateStatus: corporateMember.corporateStatus ?? null,
       };
     }
@@ -268,7 +268,7 @@ export async function GET(
         location: orgMember.location
           ? `${orgMember.location.name}${orgMember.location.city ? `, ${orgMember.location.city}` : ""}`
           : null,
-        department: orgMember.department?.name || null,
+        department: orgMember.departmentRel?.name || null,
       } : null,
 
       emergencyContacts: profile.contacts.map((pc) => ({

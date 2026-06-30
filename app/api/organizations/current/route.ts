@@ -46,7 +46,7 @@ export async function GET() {
               where: { organizationId: organization.id },
               include: {
                 location: true,
-                department: true
+                departmentRel: true
               }
             },
           },
@@ -60,7 +60,7 @@ export async function GET() {
       const orgMember = u.profile?.organizationMembers?.[0];
       return {
         ...u,
-        department: orgMember?.department?.name || orgMember?.departmentId || null,
+        department: (orgMember?.departmentRel as unknown as { name?: string } | null)?.name || orgMember?.departmentId || null,
         location: orgMember?.location?.name || orgMember?.locationId || null,
         position: orgMember?.position ?? null,
         memberStatus: orgMember?.memberStatus ?? "active",
