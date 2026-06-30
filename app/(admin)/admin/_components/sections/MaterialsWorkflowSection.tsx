@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
   Archive,
+  ClipboardList,
   Factory,
   Loader2,
   MapPin,
@@ -42,6 +43,17 @@ interface MaterialFormState {
   notes: string;
 }
 
+type MaterialEventType = "RECEIPT" | "ISSUE" | "ADJUSTMENT" | "RESERVATION" | "RELEASE";
+
+interface MovementFormState {
+  eventType: MaterialEventType;
+  quantity: string;
+  reason: string;
+  referenceType: string;
+  referenceId: string;
+  metadataJson: string;
+}
+
 const EMPTY_FORM: MaterialFormState = {
   code: "",
   name: "",
@@ -51,6 +63,23 @@ const EMPTY_FORM: MaterialFormState = {
   supplierName: "",
   notes: "",
 };
+
+const EMPTY_MOVEMENT_FORM: MovementFormState = {
+  eventType: "RECEIPT",
+  quantity: "",
+  reason: "",
+  referenceType: "",
+  referenceId: "",
+  metadataJson: "",
+};
+
+const MATERIAL_EVENT_TYPES: Array<{ value: MaterialEventType; label: string }> = [
+  { value: "RECEIPT", label: "Ingreso" },
+  { value: "ISSUE", label: "Salida" },
+  { value: "ADJUSTMENT", label: "Ajuste" },
+  { value: "RESERVATION", label: "Reserva" },
+  { value: "RELEASE", label: "Liberacion" },
+];
 
 const MATERIAL_TASKS = [
   { label: "Recibir materiales", detail: "Registrar entrada fisica desde proveedor.", icon: PackagePlus },
@@ -66,8 +95,11 @@ export function MaterialsWorkflowSection() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [movementMaterial, setMovementMaterial] = useState<OperationMaterial | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingMovement, setSavingMovement] = useState(false);
   const [form, setForm] = useState<MaterialFormState>(EMPTY_FORM);
+  const [movementForm, setMovementForm] = useState<MovementFormState>(EMPTY_MOVEMENT_FORM);
 
   const loadMaterials = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -110,10 +142,25 @@ export function MaterialsWorkflowSection() {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
+  const updateMovementForm = (field: keyof MovementFormState, value: string) => {
+    setMovementForm((current) => ({ ...current, [field]: value }));
+  };
+
   const closeCreateModal = () => {
     if (saving) return;
     setShowCreateModal(false);
     setForm(EMPTY_FORM);
+  };
+
+  const openMovementModal = (material: OperationMaterial) => {
+    setMovementMaterial(material);
+    setMovementForm(EMPTY_MOVEMENT_FORM);
+  };
+
+  const closeMovementModal = () => {
+    if (savingMovement) return;
+    setMovementMaterial(null);
+    setMovementForm(EMPTY_MOVEMENT_FORM);
   };
 
   const handleCreateMaterial = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -152,6 +199,62 @@ export function MaterialsWorkflowSection() {
       setSaving(false);
     }
   };
+
+  const handleCreateMovement = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!movementMaterial) return;
+
+    const quantity = Number(movementForm.quantity);
+    if (!Number.isFinite(quantity)) {
+      toast.error("La cantidad debe ser numerica");
+      return;
+    }
+
+    if (movementForm.eventType === "ADJUSTMENT") {
+      if (quantity === 0) {
+        toast.error("El ajuste no puede ser 0");
+        return;
+      }
+    } else if (quantity <= 0) {
+      toast.error("La cantidad debe ser positiva");
+      return;
+    }
+
+    setSavingMovement(true);
+
+    try {
+      const res = await fetch(`/api/admin/operations/materials/${movementMaterial.id}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventType: movementForm.eventType,
+          quantity,
+          unit: movementMaterial.unit,
+          reason: movementForm.reason.trim() || null,
+          referenceType: movementForm.referenceType.trim() || null,
+          referenceId: movementForm.referenceId.trim() || null,
+          metadataJson: movementForm.metadataJson.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo registrar el movimiento");
+      }
+
+      toast.success("Movimiento registrado");
+      setMovementMaterial(null);
+      setMovementForm(EMPTY_MOVEMENT_FORM);
+      await loadMaterials({ silent: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar movimiento";
+      toast.error(message);
+    } finally {
+      setSavingMovement(false);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -239,6 +342,7 @@ export function MaterialsWorkflowSection() {
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</th>
                   <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Balance</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Creado</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Accion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -266,6 +370,16 @@ export function MaterialsWorkflowSection() {
                       <span className="font-mono text-sm font-black text-slate-900">{material.balance}</span>
                     </td>
                     <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(material.createdAt)}</td>
+                    <td className="px-4 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => openMovementModal(material)}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:border-primary/30 hover:text-primary"
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                        Registrar movimiento
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -389,6 +503,127 @@ export function MaterialsWorkflowSection() {
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   Guardar material
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {movementMaterial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleCreateMovement} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Movimiento inmutable</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Registrar movimiento</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {movementMaterial.code} · {movementMaterial.name} · unidad {movementMaterial.unit}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeMovementModal}
+                  disabled={savingMovement}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
+                Los movimientos no se editan ni se borran. El balance se recalcula desde eventos y se refresca despues de guardar.
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo</span>
+                  <select
+                    required
+                    value={movementForm.eventType}
+                    onChange={(event) => updateMovementForm("eventType", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  >
+                    {MATERIAL_EVENT_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cantidad</span>
+                  <input
+                    required
+                    type="number"
+                    step="any"
+                    value={movementForm.quantity}
+                    onChange={(event) => updateMovementForm("quantity", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder={movementForm.eventType === "ADJUSTMENT" ? "-5 o 10" : "10"}
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Razon</span>
+                  <input
+                    value={movementForm.reason}
+                    onChange={(event) => updateMovementForm("reason", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Compra, consumo de produccion, reserva o ajuste operativo"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Referencia tipo</span>
+                  <input
+                    value={movementForm.referenceType}
+                    onChange={(event) => updateMovementForm("referenceType", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="invoice, order, production"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Referencia ID</span>
+                  <input
+                    value={movementForm.referenceId}
+                    onChange={(event) => updateMovementForm("referenceId", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Factura, orden o lote"
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Metadata JSON</span>
+                  <textarea
+                    value={movementForm.metadataJson}
+                    onChange={(event) => updateMovementForm("metadataJson", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 font-mono text-xs font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder='{"ubicacion":"bodega-1"}'
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeMovementModal}
+                  disabled={savingMovement}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingMovement}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {savingMovement ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+                  Guardar movimiento
                 </button>
               </div>
             </form>
