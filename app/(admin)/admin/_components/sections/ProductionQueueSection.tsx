@@ -17,6 +17,7 @@ import {
   Plus,
   RefreshCw,
   X,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import FabricationSection from "./FabricationSection";
@@ -62,12 +63,30 @@ interface ProductionOrderFormState {
   notes: string;
 }
 
+type ProductionEventType =
+  | "PLANNED"
+  | "STARTED"
+  | "PRODUCED"
+  | "PAUSED"
+  | "COMPLETED"
+  | "CANCELLED";
+
+interface ProducedFormState {
+  quantity: string;
+  reason: string;
+}
+
 const EMPTY_PRODUCTION_ORDER_FORM: ProductionOrderFormState = {
   code: "",
   title: "",
   plannedQuantity: "",
   outputType: "",
   notes: "",
+};
+
+const EMPTY_PRODUCED_FORM: ProducedFormState = {
+  quantity: "",
+  reason: "",
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -109,6 +128,35 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
   sticker_nfc_qr: <Sticker className="h-3 w-3" />,
 };
 
+const EVENT_SUCCESS_COPY: Record<ProductionEventType, string> = {
+  PLANNED: "Orden planificada",
+  STARTED: "Orden iniciada",
+  PRODUCED: "Produccion registrada",
+  PAUSED: "Orden pausada",
+  COMPLETED: "Orden completada",
+  CANCELLED: "Orden cancelada",
+};
+
+const ACTIONS_BY_STATUS: Record<string, Array<{ label: string; eventType: ProductionEventType; tone: string }>> = {
+  draft: [
+    { label: "Planificar", eventType: "PLANNED", tone: "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100" },
+    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+  ],
+  planned: [
+    { label: "Iniciar", eventType: "STARTED", tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100" },
+    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+  ],
+  started: [
+    { label: "Registrar producido", eventType: "PRODUCED", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
+    { label: "Pausar", eventType: "PAUSED", tone: "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100" },
+    { label: "Completar", eventType: "COMPLETED", tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100" },
+  ],
+  paused: [
+    { label: "Reanudar", eventType: "STARTED", tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100" },
+    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+  ],
+};
+
 export default function ProductionQueueSection() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [productionOrders, setProductionOrders] = useState<ProductionOrder[]>([]);
@@ -120,6 +168,9 @@ export default function ProductionQueueSection() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [savingEventKey, setSavingEventKey] = useState<string | null>(null);
+  const [producedOrder, setProducedOrder] = useState<ProductionOrder | null>(null);
+  const [producedForm, setProducedForm] = useState<ProducedFormState>(EMPTY_PRODUCED_FORM);
   const [form, setForm] = useState<ProductionOrderFormState>(EMPTY_PRODUCTION_ORDER_FORM);
 
   const loadProductionOrders = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -191,6 +242,21 @@ export default function ProductionQueueSection() {
     setForm(EMPTY_PRODUCTION_ORDER_FORM);
   };
 
+  const openProducedModal = (order: ProductionOrder) => {
+    setProducedOrder(order);
+    setProducedForm(EMPTY_PRODUCED_FORM);
+  };
+
+  const closeProducedModal = () => {
+    if (savingEventKey) return;
+    setProducedOrder(null);
+    setProducedForm(EMPTY_PRODUCED_FORM);
+  };
+
+  const updateProducedForm = (field: keyof ProducedFormState, value: string) => {
+    setProducedForm((current) => ({ ...current, [field]: value }));
+  };
+
   const handleCreateProductionOrder = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -252,6 +318,87 @@ export default function ProductionQueueSection() {
       toast.error(message);
     } finally {
       setSavingOrder(false);
+    }
+  };
+
+  const postProductionEvent = async ({
+    order,
+    eventType,
+    quantity,
+    reason,
+  }: {
+    order: ProductionOrder;
+    eventType: ProductionEventType;
+    quantity?: number;
+    reason?: string | null;
+  }) => {
+    const eventKey = `${order.id}:${eventType}`;
+    setSavingEventKey(eventKey);
+
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${order.id}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventType,
+          quantity,
+          reason: reason || null,
+          metadataJson: null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo registrar el evento de produccion");
+      }
+
+      toast.success(EVENT_SUCCESS_COPY[eventType]);
+      await loadProductionOrders({ silent: true });
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar evento de produccion";
+      toast.error(message);
+      return false;
+    } finally {
+      setSavingEventKey(null);
+    }
+  };
+
+  const handleProductionAction = async (order: ProductionOrder, eventType: ProductionEventType) => {
+    if (eventType === "PRODUCED") {
+      openProducedModal(order);
+      return;
+    }
+
+    await postProductionEvent({
+      order,
+      eventType,
+      reason: EVENT_SUCCESS_COPY[eventType],
+    });
+  };
+
+  const handleProducedSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!producedOrder) return;
+
+    const quantity = Number(producedForm.quantity);
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      toast.error("La cantidad producida debe ser positiva");
+      return;
+    }
+
+    const saved = await postProductionEvent({
+      order: producedOrder,
+      eventType: "PRODUCED",
+      quantity,
+      reason: producedForm.reason.trim() || null,
+    });
+
+    if (saved) {
+      setProducedOrder(null);
+      setProducedForm(EMPTY_PRODUCED_FORM);
     }
   };
 
@@ -342,6 +489,7 @@ export default function ProductionQueueSection() {
                   <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Producido</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Creada</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Actualizada</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -350,6 +498,7 @@ export default function ProductionQueueSection() {
                     label: order.status,
                     color: "bg-slate-50 border-slate-200 text-slate-700",
                   };
+                  const actions = ACTIONS_BY_STATUS[order.status] || [];
 
                   return (
                     <tr key={order.id} className="hover:bg-slate-50/70">
@@ -378,6 +527,33 @@ export default function ProductionQueueSection() {
                       </td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(order.createdAt)}</td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(order.updatedAt)}</td>
+                      <td className="px-4 py-4">
+                        {actions.length === 0 ? (
+                          <p className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            Sin acciones
+                          </p>
+                        ) : (
+                          <div className="flex min-w-[180px] flex-wrap justify-end gap-2">
+                            {actions.map((action) => {
+                              const eventKey = `${order.id}:${action.eventType}`;
+                              const saving = savingEventKey === eventKey;
+
+                              return (
+                                <button
+                                  key={action.eventType}
+                                  type="button"
+                                  onClick={() => handleProductionAction(order, action.eventType)}
+                                  disabled={Boolean(savingEventKey)}
+                                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-50 ${action.tone}`}
+                                >
+                                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardList className="h-3.5 w-3.5" />}
+                                  {action.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -588,6 +764,82 @@ export default function ProductionQueueSection() {
                 >
                   {savingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   Guardar orden
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {producedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleProducedSubmit} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Evento inmutable</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Registrar producido</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {producedOrder.code} · {producedOrder.title}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeProducedModal}
+                  disabled={Boolean(savingEventKey)}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
+                Este evento incrementa el producido acumulado de la orden. Los eventos no se editan ni se borran.
+              </div>
+
+              <div className="grid gap-4">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cantidad producida</span>
+                  <input
+                    required
+                    type="number"
+                    min="0.01"
+                    step="any"
+                    value={producedForm.quantity}
+                    onChange={(event) => updateProducedForm("quantity", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="25"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Razon</span>
+                  <input
+                    value={producedForm.reason}
+                    onChange={(event) => updateProducedForm("reason", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Produccion parcial, cierre de tanda o ajuste operativo"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeProducedModal}
+                  disabled={Boolean(savingEventKey)}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={Boolean(savingEventKey)}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {savingEventKey === `${producedOrder.id}:PRODUCED` ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+                  Guardar producido
                 </button>
               </div>
             </form>

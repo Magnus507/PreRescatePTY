@@ -32,14 +32,17 @@ export async function POST(
     const event = await prisma.$transaction(async (tx) => {
       const productionOrder = await tx.operationProductionOrder.findUnique({
         where: { id },
-        select: { id: true },
+        select: {
+          id: true,
+          producedQuantity: true,
+        },
       });
 
       if (!productionOrder) {
         return null;
       }
 
-      return tx.operationProductionEvent.create({
+      const createdEvent = await tx.operationProductionEvent.create({
         data: {
           productionOrderId: id,
           eventType: data.eventType,
@@ -58,6 +61,34 @@ export async function POST(
           },
         },
       });
+
+      const orderUpdate: {
+        status?: string;
+        producedQuantity?: number;
+      } = {};
+
+      if (data.eventType === "PLANNED") {
+        orderUpdate.status = "planned";
+      } else if (data.eventType === "STARTED") {
+        orderUpdate.status = "started";
+      } else if (data.eventType === "PAUSED") {
+        orderUpdate.status = "paused";
+      } else if (data.eventType === "COMPLETED") {
+        orderUpdate.status = "completed";
+      } else if (data.eventType === "CANCELLED") {
+        orderUpdate.status = "cancelled";
+      } else if (data.eventType === "PRODUCED" && data.quantity) {
+        orderUpdate.producedQuantity = productionOrder.producedQuantity + data.quantity;
+      }
+
+      if (Object.keys(orderUpdate).length > 0) {
+        await tx.operationProductionOrder.update({
+          where: { id },
+          data: orderUpdate,
+        });
+      }
+
+      return createdEvent;
     });
 
     if (!event) {
