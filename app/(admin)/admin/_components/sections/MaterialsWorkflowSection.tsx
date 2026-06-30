@@ -1,18 +1,34 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
   Archive,
-  ClipboardList,
   Factory,
+  Loader2,
   MapPin,
   PackagePlus,
   ReceiptText,
-  RotateCcw,
+  RefreshCw,
   Scale,
   Truck,
-  Wrench,
 } from "lucide-react";
+import { toast } from "sonner";
+
+interface OperationMaterial {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  category: string;
+  unit: string;
+  status: string;
+  supplierName: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  balance: number;
+}
 
 const MATERIAL_TASKS = [
   { label: "Recibir materiales", detail: "Registrar entrada fisica desde proveedor.", icon: PackagePlus },
@@ -23,25 +39,48 @@ const MATERIAL_TASKS = [
   { label: "Ver stock bajo", detail: "Alertas para reposicion de materiales.", icon: AlertTriangle },
 ];
 
-const DISABLED_ACTIONS = [
-  { label: "Recibir", hint: "Pendiente de backend" },
-  { label: "Ajustar", hint: "Se activara con Prisma ERP" },
-  { label: "Marcar danado", hint: "Se activara con movimientos" },
-  { label: "Devolver proveedor", hint: "Se activara con movimientos" },
-];
-
-const MATERIALS = [
-  "Stickers NFC en blanco",
-  "Pulseras",
-  "Credenciales PVC",
-  "Tarjetas",
-  "Llaveros",
-  "Sobres de activacion",
-  "Cajas",
-  "Lanyards",
-];
-
 export function MaterialsWorkflowSection() {
+  const [materials, setMaterials] = useState<OperationMaterial[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadMaterials = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const res = await fetch("/api/admin/operations/materials", { cache: "no-store" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudieron cargar materiales");
+      }
+
+      setMaterials(Array.isArray(data.materials) ? data.materials : []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al cargar materiales";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMaterials();
+  }, [loadMaterials]);
+
+  const formatDate = (value: string) => {
+    return new Date(value).toLocaleDateString("es-PA", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-amber-200 bg-amber-50 p-6">
@@ -57,7 +96,7 @@ export function MaterialsWorkflowSection() {
             </p>
           </div>
           <div className="rounded-2xl border border-amber-300 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-widest text-amber-700">
-            Datos reales pendientes
+            API conectada
           </div>
         </div>
       </section>
@@ -76,37 +115,81 @@ export function MaterialsWorkflowSection() {
       </div>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
-        <div className="flex items-center gap-2">
-          <Factory className="h-5 w-5 text-slate-500" />
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Materiales controlados</h3>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <Factory className="h-5 w-5 text-slate-500" />
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Materiales registrados</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => loadMaterials({ silent: true })}
+            disabled={refreshing}
+            className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-white disabled:opacity-50"
+          >
+            {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Actualizar
+          </button>
         </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {MATERIALS.map((item) => (
-            <div key={item} className="rounded-xl bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-600">
-              {item}
-            </div>
-          ))}
-        </div>
-      </section>
 
-      <section className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6">
-        <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-500">Acciones del flujo</h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {DISABLED_ACTIONS.map((action) => (
-            <button
-              key={action.label}
-              type="button"
-              disabled
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left opacity-60"
-            >
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-700">
-                {action.label === "Ajustar" ? <Wrench className="h-4 w-4" /> : action.label === "Devolver proveedor" ? <RotateCcw className="h-4 w-4" /> : <ClipboardList className="h-4 w-4" />}
-                {action.label}
-              </div>
-              <p className="mt-2 text-[11px] font-semibold text-slate-500">{action.hint}</p>
-            </button>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : materials.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+            <Archive className="mx-auto mb-4 h-10 w-10 text-slate-300" />
+            <p className="text-sm font-black uppercase tracking-widest text-slate-400">
+              No hay materiales registrados
+            </p>
+            <p className="mt-2 text-xs font-semibold text-slate-500">
+              Los materiales creados desde el API administrativo apareceran aqui.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Code</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Categoria</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Unidad</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Balance</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Creado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {materials.map((material) => (
+                  <tr key={material.id} className="hover:bg-slate-50/70">
+                    <td className="px-4 py-4">
+                      <span className="font-mono text-xs font-black text-primary">{material.code}</span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div>
+                        <p className="font-black text-slate-900">{material.name}</p>
+                        {material.supplierName && (
+                          <p className="mt-1 text-[11px] font-semibold text-slate-500">{material.supplierName}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-xs font-bold text-slate-600">{material.category}</td>
+                    <td className="px-4 py-4 text-xs font-bold text-slate-600">{material.unit}</td>
+                    <td className="px-4 py-4">
+                      <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                        {material.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <span className="font-mono text-sm font-black text-slate-900">{material.balance}</span>
+                    </td>
+                    <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(material.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );
