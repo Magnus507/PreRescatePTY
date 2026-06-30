@@ -70,35 +70,36 @@ model Package {
 }
 
 model User {
-  id                        String                       @id @default(cuid())
-  accountId                 String?
-  email                     String                       @unique
-  phone                     String?
-  passwordHash              String
-  role                      String                       @default("owner")
-  status                    String                       @default("active")
-  createdAt                 DateTime                     @default(now())
-  updatedAt                 DateTime                     @updatedAt
-  lastLoginAt               DateTime?
-  adminRole                 String?
-  isAdmin                   Boolean                      @default(false)
-  deletedAt                 DateTime?
-  mfaEnabled                Boolean                      @default(false)
-  mfaSecret                 String?
-  appNotifications          AppNotification[]
-  chips                     Chip[]
-  consent                   Consent[]
-  contacts                  Contact[]
-  reviewedRequests          CorporateProductRequest[]    @relation("CorporateProductRequestReviewedBy")
-  productRequests           CorporateProductRequest[]    @relation("CorporateProductRequestRequestedBy")
-  operationMaterialEvents   OperationMaterialEvent[]     @relation("OperationMaterialEventCreatedBy")
-  operationProductionEvents OperationProductionEvent[]   @relation("OperationProductionEventCreatedBy")
-  operationQcEvents         OperationQcInspectionEvent[] @relation("OperationQcInspectionEventCreatedBy")
-  operationPackingEvents    OperationPackingEvent[]      @relation("OperationPackingEventCreatedBy")
-  reviewedOrders            Order[]                      @relation("OrderAdminReview")
-  orders                    Order[]
-  profile                   Profile?
-  account                   Account?                     @relation(fields: [accountId], references: [id])
+  id                          String                       @id @default(cuid())
+  accountId                   String?
+  email                       String                       @unique
+  phone                       String?
+  passwordHash                String
+  role                        String                       @default("owner")
+  status                      String                       @default("active")
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  lastLoginAt                 DateTime?
+  adminRole                   String?
+  isAdmin                     Boolean                      @default(false)
+  deletedAt                   DateTime?
+  mfaEnabled                  Boolean                      @default(false)
+  mfaSecret                   String?
+  appNotifications            AppNotification[]
+  chips                       Chip[]
+  consent                     Consent[]
+  contacts                    Contact[]
+  reviewedRequests            CorporateProductRequest[]    @relation("CorporateProductRequestReviewedBy")
+  productRequests             CorporateProductRequest[]    @relation("CorporateProductRequestRequestedBy")
+  operationMaterialEvents     OperationMaterialEvent[]     @relation("OperationMaterialEventCreatedBy")
+  operationProductionEvents   OperationProductionEvent[]   @relation("OperationProductionEventCreatedBy")
+  operationQcEvents           OperationQcInspectionEvent[] @relation("OperationQcInspectionEventCreatedBy")
+  operationPackingEvents      OperationPackingEvent[]      @relation("OperationPackingEventCreatedBy")
+  operationFinishedGoodEvents OperationFinishedGoodEvent[] @relation("OperationFinishedGoodEventCreatedBy")
+  reviewedOrders              Order[]                      @relation("OrderAdminReview")
+  orders                      Order[]
+  profile                     Profile?
+  account                     Account?                     @relation(fields: [accountId], references: [id])
 
   @@index([isAdmin])
 }
@@ -869,6 +870,7 @@ model OperationPackingBatch {
   createdAt         DateTime                  @default(now())
   updatedAt         DateTime                  @updatedAt
   events            OperationPackingEvent[]
+  finishedGoods     OperationFinishedGood[]
   productionOrder   OperationProductionOrder? @relation(fields: [productionOrderId], references: [id])
   qcInspection      OperationQcInspection?    @relation(fields: [qcInspectionId], references: [id])
 
@@ -892,6 +894,47 @@ model OperationPackingEvent {
   packingBatch   OperationPackingBatch @relation(fields: [packingBatchId], references: [id], onDelete: Cascade)
 
   @@index([packingBatchId])
+  @@index([eventType])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model OperationFinishedGood {
+  id             String                       @id @default(cuid())
+  code           String                       @unique
+  name           String
+  productType    String
+  status         String                       @default("active")
+  unit           String                       @default("unit")
+  packingBatchId String?
+  notes          String?
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+  events         OperationFinishedGoodEvent[]
+  packingBatch   OperationPackingBatch?       @relation(fields: [packingBatchId], references: [id])
+
+  @@index([packingBatchId])
+  @@index([status])
+  @@index([productType])
+  @@index([createdAt])
+}
+
+model OperationFinishedGoodEvent {
+  id             String                @id @default(cuid())
+  finishedGoodId String
+  eventType      String
+  quantity       Float
+  unit           String
+  reason         String?
+  referenceType  String?
+  referenceId    String?
+  metadataJson   String?
+  createdById    String?
+  createdAt      DateTime              @default(now())
+  createdBy      User?                 @relation("OperationFinishedGoodEventCreatedBy", fields: [createdById], references: [id])
+  finishedGood   OperationFinishedGood @relation(fields: [finishedGoodId], references: [id], onDelete: Cascade)
+
+  @@index([finishedGoodId])
   @@index([eventType])
   @@index([createdById])
   @@index([createdAt])
