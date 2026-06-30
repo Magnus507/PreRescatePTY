@@ -70,32 +70,33 @@ model Package {
 }
 
 model User {
-  id               String                    @id @default(cuid())
-  accountId        String?
-  email            String                    @unique
-  phone            String?
-  passwordHash     String
-  role             String                    @default("owner")
-  status           String                    @default("active")
-  createdAt        DateTime                  @default(now())
-  updatedAt        DateTime                  @updatedAt
-  lastLoginAt      DateTime?
-  adminRole        String?
-  isAdmin          Boolean                   @default(false)
-  deletedAt        DateTime?
-  mfaEnabled       Boolean                   @default(false)
-  mfaSecret        String?
-  appNotifications AppNotification[]
-  chips            Chip[]
-  consent          Consent[]
-  contacts         Contact[]
-  reviewedRequests CorporateProductRequest[] @relation("CorporateProductRequestReviewedBy")
-  productRequests  CorporateProductRequest[] @relation("CorporateProductRequestRequestedBy")
-  operationMaterialEvents OperationMaterialEvent[] @relation("OperationMaterialEventCreatedBy")
-  reviewedOrders   Order[]                   @relation("OrderAdminReview")
-  orders           Order[]
-  profile          Profile?
-  account          Account?                  @relation(fields: [accountId], references: [id])
+  id                        String                     @id @default(cuid())
+  accountId                 String?
+  email                     String                     @unique
+  phone                     String?
+  passwordHash              String
+  role                      String                     @default("owner")
+  status                    String                     @default("active")
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  lastLoginAt               DateTime?
+  adminRole                 String?
+  isAdmin                   Boolean                    @default(false)
+  deletedAt                 DateTime?
+  mfaEnabled                Boolean                    @default(false)
+  mfaSecret                 String?
+  appNotifications          AppNotification[]
+  chips                     Chip[]
+  consent                   Consent[]
+  contacts                  Contact[]
+  reviewedRequests          CorporateProductRequest[]  @relation("CorporateProductRequestReviewedBy")
+  productRequests           CorporateProductRequest[]  @relation("CorporateProductRequestRequestedBy")
+  operationMaterialEvents   OperationMaterialEvent[]   @relation("OperationMaterialEventCreatedBy")
+  operationProductionEvents OperationProductionEvent[] @relation("OperationProductionEventCreatedBy")
+  reviewedOrders            Order[]                    @relation("OrderAdminReview")
+  orders                    Order[]
+  profile                   Profile?
+  account                   Account?                   @relation(fields: [accountId], references: [id])
 
   @@index([isAdmin])
 }
@@ -434,7 +435,7 @@ model OrganizationMember {
   corporateOrderItems CorporateOrderEmployeeItem[]
   productRequests     CorporateProductRequest[]
   corporateProfile    Profile?                     @relation("CorporateProfileOwner", fields: [corporateProfileId], references: [id])
-  departmentRel        OrganizationDepartment?      @relation(fields: [departmentId], references: [id], onUpdate: NoAction)
+  departmentRel       OrganizationDepartment?      @relation(fields: [departmentId], references: [id], onUpdate: NoAction)
   location            OrganizationLocation?        @relation(fields: [locationId], references: [id], onUpdate: NoAction)
   organization        Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   profile             Profile                      @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -714,18 +715,19 @@ model AdminUser {
 }
 
 model OperationMaterial {
-  id           String                   @id @default(cuid())
-  code         String                   @unique
-  name         String
-  description  String?
-  category     String
-  unit         String
-  status       String                   @default("active")
-  supplierName String?
-  notes        String?
-  createdAt    DateTime                 @default(now())
-  updatedAt    DateTime                 @updatedAt
-  events       OperationMaterialEvent[]
+  id              String                         @id @default(cuid())
+  code            String                         @unique
+  name            String
+  description     String?
+  category        String
+  unit            String
+  status          String                         @default("active")
+  supplierName    String?
+  notes           String?
+  createdAt       DateTime                       @default(now())
+  updatedAt       DateTime                       @updatedAt
+  events          OperationMaterialEvent[]
+  productionItems OperationProductionOrderItem[]
 
   @@index([category])
   @@index([status])
@@ -748,6 +750,59 @@ model OperationMaterialEvent {
   material      OperationMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@index([materialId])
+  @@index([eventType])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model OperationProductionOrder {
+  id               String                         @id @default(cuid())
+  code             String                         @unique
+  title            String
+  status           String                         @default("draft")
+  plannedQuantity  Float
+  producedQuantity Float                          @default(0)
+  outputType       String
+  notes            String?
+  createdAt        DateTime                       @default(now())
+  updatedAt        DateTime                       @updatedAt
+  items            OperationProductionOrderItem[]
+  events           OperationProductionEvent[]
+
+  @@index([status])
+  @@index([outputType])
+  @@index([createdAt])
+}
+
+model OperationProductionOrderItem {
+  id                String                   @id @default(cuid())
+  productionOrderId String
+  materialId        String
+  plannedQuantity   Float
+  consumedQuantity  Float                    @default(0)
+  unit              String
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  material          OperationMaterial        @relation(fields: [materialId], references: [id])
+  productionOrder   OperationProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+
+  @@index([productionOrderId])
+  @@index([materialId])
+}
+
+model OperationProductionEvent {
+  id                String                   @id @default(cuid())
+  productionOrderId String
+  eventType         String
+  quantity          Float?
+  reason            String?
+  metadataJson      String?
+  createdById       String?
+  createdAt         DateTime                 @default(now())
+  createdBy         User?                    @relation("OperationProductionEventCreatedBy", fields: [createdById], references: [id])
+  productionOrder   OperationProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+
+  @@index([productionOrderId])
   @@index([eventType])
   @@index([createdById])
   @@index([createdAt])
