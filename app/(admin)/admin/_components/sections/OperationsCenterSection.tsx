@@ -34,6 +34,7 @@ import { DispatchSection } from "./DispatchSection";
 import { QualitySection } from "./QualitySection";
 import { HistorySection } from "./HistorySection";
 import { CommercialSection } from "./CommercialSection";
+import { WarrantySection } from "./WarrantySection";
 
 type OperationsTab =
   | "overview"
@@ -45,6 +46,7 @@ type OperationsTab =
   | "quality"
   | "packing"
   | "commercial"
+  | "warranties"
   | "dispatch"
   | "history";
 
@@ -83,6 +85,7 @@ const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }>
   { id: "quality", label: "Calidad", icon: ClipboardCheck },
   { id: "packing", label: "Empaque", icon: PackageCheck },
   { id: "commercial", label: "Comercial", icon: ShoppingCart },
+  { id: "warranties", label: "Garantias", icon: ShieldCheck },
   { id: "dispatch", label: "Despacho", icon: Truck },
   { id: "history", label: "Historial", icon: History },
 ];
@@ -217,6 +220,10 @@ export function OperationsCenterSection({
 
     if (activeTab === "commercial") {
       return <CommercialSection />;
+    }
+
+    if (activeTab === "warranties") {
+      return <WarrantySection />;
     }
 
     if (activeTab === "quality") {
