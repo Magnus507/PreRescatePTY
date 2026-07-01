@@ -18,6 +18,7 @@ import {
   Repeat2,
   RotateCcw,
   Route,
+  Printer,
   ShieldCheck,
   ShoppingCart,
   Truck,
@@ -28,6 +29,7 @@ import { ChipAdmin } from "../../_types/admin";
 import { CreateBatchSection } from "./CreateBatchSection";
 import ProductionQueueSection from "./ProductionQueueSection";
 import { DigitalResourcesSection } from "./DigitalResourcesSection";
+import { PrintOrdersSection } from "./PrintOrdersSection";
 import { PhysicalInventorySection } from "./PhysicalInventorySection";
 import { InventoryMovementsSection } from "./InventoryMovementsSection";
 import { PackingSection } from "./PackingSection";
@@ -43,6 +45,7 @@ type OperationsTab =
   | "overview"
   | "production"
   | "digital"
+  | "print"
   | "physical"
   | "movements"
   | "batches"
@@ -140,6 +143,7 @@ const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }>
   { id: "commercial", label: "Pedidos", icon: ShoppingCart },
   { id: "physical", label: "Inventario", icon: Boxes },
   { id: "digital", label: "Recursos digitales", icon: Cpu },
+  { id: "print", label: "Imprenta", icon: Printer },
   { id: "production", label: "Produccion", icon: Factory },
   { id: "batches", label: "Lotes", icon: Layers },
   { id: "packing", label: "Produccion / Empaque", icon: PackageCheck },
@@ -285,6 +289,10 @@ export function OperationsCenterSection({
 
     if (activeTab === "digital") {
       return <DigitalResourcesSection />;
+    }
+
+    if (activeTab === "print") {
+      return <PrintOrdersSection />;
     }
 
     if (activeTab === "physical") {

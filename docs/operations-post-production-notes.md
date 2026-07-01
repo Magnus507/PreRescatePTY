@@ -76,3 +76,14 @@
 - No se toco checkout legacy.
 - No se toco `Order` / `Product` legacy.
 - No se uso stock como fuente de verdad.
+
+## W5.37H - Orden a imprenta
+
+- Se agrego el modelo Prisma `OperationPrintOrder` y `OperationPrintOrderItem` para enviar rangos de lotes digitales a proveedor.
+- Cada orden guarda proveedor, rango enviado, producto terminado asociado y trazabilidad de items enviados/recibidos.
+- Los items del lote digital pasan a `sent_to_print` al crear la orden y a `printed` al recepcionarla.
+- Se agrego una UI basica en `Imprenta` para crear y consultar ordenes.
+- El flujo sigue sin crear stock, sin crear producto terminado y sin tocar activacion final.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se uso stock como fuente de verdad.

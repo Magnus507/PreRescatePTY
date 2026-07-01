@@ -966,6 +966,7 @@ model OperationDigitalBatch {
   createdAt        DateTime                   @default(now())
   updatedAt        DateTime                   @updatedAt
   items            OperationDigitalBatchItem[]
+  printOrders      OperationPrintOrder[]
 
   @@index([productType])
   @@index([finishedGoodCode])
@@ -990,11 +991,63 @@ model OperationDigitalBatchItem {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   batch                OperationDigitalBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  printOrderItems      OperationPrintOrderItem[]
 
   @@unique([batchId, sequenceNumber])
   @@index([batchId])
   @@index([status])
   @@index([createdAt])
+}
+
+model OperationPrintOrder {
+  id               String                @id @default(cuid())
+  code             String                @unique
+  supplierName     String
+  supplierReference String?
+  productType      String
+  finishedGoodCode String?
+  digitalBatchId   String
+  rangeStartLabel  String
+  rangeEndLabel    String
+  quantity         Int
+  includesSticker  Boolean               @default(true)
+  includesActivationCard Boolean          @default(false)
+  includesPresentation Boolean            @default(false)
+  includesPackaging Boolean               @default(false)
+  status           String                @default("draft")
+  sentAt           DateTime?
+  receivedAt       DateTime?
+  notes            String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  digitalBatch     OperationDigitalBatch  @relation(fields: [digitalBatchId], references: [id], onDelete: Restrict)
+  items            OperationPrintOrderItem[]
+
+  @@index([digitalBatchId])
+  @@index([status])
+  @@index([productType])
+  @@index([finishedGoodCode])
+  @@index([createdAt])
+}
+
+model OperationPrintOrderItem {
+  id                   String              @id @default(cuid())
+  printOrderId         String
+  digitalBatchItemId   String              @unique
+  internalLabel        String
+  status               String              @default("pending")
+  sentAt               DateTime?
+  receivedAt           DateTime?
+  notes                String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  printOrder           OperationPrintOrder   @relation(fields: [printOrderId], references: [id], onDelete: Cascade)
+  digitalBatchItem     OperationDigitalBatchItem @relation(fields: [digitalBatchItemId], references: [id], onDelete: Restrict)
+
+  @@index([printOrderId])
+  @@index([digitalBatchItemId])
+  @@index([internalLabel])
+  @@index([status])
 }
 
 model OperationDispatch {
