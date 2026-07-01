@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
           digitalBatchId: item.batchId,
           digitalBatchItemId: item.id,
           printOrderId: await tx.operationPrintOrderItem.findFirst({ where: { digitalBatchItemId: item.id }, select: { printOrderId: true } }).then((row) => row?.printOrderId || null),
-          status: "assembled",
+          status: "qa_pending",
           qaStatus: "pending",
           notes: parsed.data.notes || null,
           events: {

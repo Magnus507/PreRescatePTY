@@ -57,6 +57,16 @@ interface ProductionOrder {
   updatedAt: string;
 }
 
+interface AssemblyCandidate {
+  id: string;
+  internalLabel: string;
+  status: string;
+  batchId: string;
+  batchCode: string;
+  productType: string;
+  printOrderStatus: string | null;
+}
+
 interface ProductionOrderFormState {
   code: string;
   title: string;
@@ -174,6 +184,11 @@ export default function ProductionQueueSection() {
   const [producedOrder, setProducedOrder] = useState<ProductionOrder | null>(null);
   const [producedForm, setProducedForm] = useState<ProducedFormState>(EMPTY_PRODUCED_FORM);
   const [form, setForm] = useState<ProductionOrderFormState>(EMPTY_PRODUCTION_ORDER_FORM);
+  const [assemblyCandidates, setAssemblyCandidates] = useState<AssemblyCandidate[]>([]);
+  const [loadingAssemblyCandidates, setLoadingAssemblyCandidates] = useState(true);
+  const [assemblyProductionOrderId, setAssemblyProductionOrderId] = useState("");
+  const [selectedAssemblyItemIds, setSelectedAssemblyItemIds] = useState<string[]>([]);
+  const [assemblingUnits, setAssemblingUnits] = useState(false);
 
   const loadProductionOrders = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -215,10 +230,45 @@ export default function ProductionQueueSection() {
     }
   }, []);
 
+  const loadAssemblyCandidates = useCallback(async () => {
+    setLoadingAssemblyCandidates(true);
+    try {
+      const res = await fetch("/api/admin/operations/digital-batches", { cache: "no-store" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudieron cargar los candidatos de ensamblaje");
+      }
+
+      const flattened: AssemblyCandidate[] = Array.isArray(data.batches)
+        ? data.batches.flatMap((batch: { id: string; code?: string; productType?: string; items?: Array<{ id: string; internalLabel: string; status: string }> }) =>
+            Array.isArray(batch.items)
+              ? batch.items.map((item) => ({
+                  id: item.id,
+                  internalLabel: item.internalLabel,
+                  status: item.status,
+                  batchId: batch.id,
+                  batchCode: batch.code || batch.id,
+                  productType: batch.productType || "",
+                  printOrderStatus: null,
+                }))
+              : []
+          )
+        : [];
+
+      setAssemblyCandidates(flattened.filter((item) => item.status === "printed"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al cargar candidatos de ensamblaje");
+    } finally {
+      setLoadingAssemblyCandidates(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadQueue();
     loadProductionOrders();
-  }, [loadQueue, loadProductionOrders]);
+    loadAssemblyCandidates();
+  }, [loadAssemblyCandidates, loadQueue, loadProductionOrders]);
 
   const formatDate = (value: string) => {
     return new Date(value).toLocaleDateString("es-PA", {
@@ -248,6 +298,20 @@ export default function ProductionQueueSection() {
       { total: 0, draft: 0, planned: 0, started: 0, completed: 0, produced: 0 }
     );
   }, [productionOrders]);
+
+  const assemblyOrderOptions = useMemo(
+    () => productionOrders.filter((order) => ["draft", "planned", "started"].includes(order.status)),
+    [productionOrders]
+  );
+
+  const filteredAssemblyCandidates = useMemo(() => {
+    if (!assemblyProductionOrderId) return assemblyCandidates;
+    const selectedOrder = productionOrders.find((order) => order.id === assemblyProductionOrderId);
+    if (!selectedOrder) return assemblyCandidates;
+    return assemblyCandidates.filter((candidate) =>
+      candidate.productType === selectedOrder.outputType || !candidate.productType
+    );
+  }, [assemblyCandidates, assemblyProductionOrderId, productionOrders]);
 
   const updateForm = (field: keyof ProductionOrderFormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -416,6 +480,50 @@ export default function ProductionQueueSection() {
     if (saved) {
       setProducedOrder(null);
       setProducedForm(EMPTY_PRODUCED_FORM);
+    }
+  };
+
+  const toggleAssemblyItem = (itemId: string) => {
+    setSelectedAssemblyItemIds((current) =>
+      current.includes(itemId) ? current.filter((value) => value !== itemId) : [...current, itemId]
+    );
+  };
+
+  const handleAssembleUnits = async () => {
+    if (!assemblyProductionOrderId) {
+      toast.error("Selecciona una orden de produccion");
+      return;
+    }
+
+    if (selectedAssemblyItemIds.length === 0) {
+      toast.error("Selecciona al menos un item printed");
+      return;
+    }
+
+    setAssemblingUnits(true);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${assemblyProductionOrderId}/assemble-units`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          digitalBatchItemIds: selectedAssemblyItemIds,
+          notes: null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo ensamblar las unidades");
+      }
+
+      toast.success("Unidades ensambladas");
+      setSelectedAssemblyItemIds([]);
+      await Promise.all([loadProductionOrders({ silent: true }), loadAssemblyCandidates()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al ensamblar unidades");
+    } finally {
+      setAssemblingUnits(false);
     }
   };
 
@@ -599,6 +707,79 @@ export default function ProductionQueueSection() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Ensamblaje de unidades</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Convierte items printed y recibidos en unidades terminadas en estado QA pendiente.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={assemblyProductionOrderId}
+              onChange={(event) => {
+                setAssemblyProductionOrderId(event.target.value);
+                setSelectedAssemblyItemIds([]);
+              }}
+              className="min-w-[260px] rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold"
+            >
+              <option value="">Selecciona orden de produccion</option>
+              {assemblyOrderOptions.map((order) => (
+                <option key={order.id} value={order.id}>
+                  {order.code} · {order.title}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleAssembleUnits}
+              disabled={assemblingUnits || !assemblyProductionOrderId || selectedAssemblyItemIds.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+            >
+              {assemblingUnits ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+              Ensamblar
+            </button>
+          </div>
+        </div>
+
+        {loadingAssemblyCandidates ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          </div>
+        ) : filteredAssemblyCandidates.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+            <p className="text-sm font-black uppercase tracking-widest text-slate-400">
+              No hay items printed disponibles para ensamblar
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {filteredAssemblyCandidates.map((item) => {
+              const selected = selectedAssemblyItemIds.includes(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => toggleAssemblyItem(item.id)}
+                  className={`rounded-2xl border p-4 text-left transition-all ${
+                    selected
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                      : "border-slate-200 bg-slate-50 hover:bg-white"
+                  }`}
+                >
+                  <p className="font-mono text-xs font-black text-primary">{item.internalLabel}</p>
+                  <p className="mt-2 text-sm font-black text-slate-950">{item.batchCode}</p>
+                  <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                    {item.productType || "tipo no definido"} · {item.status}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         )}
       </section>

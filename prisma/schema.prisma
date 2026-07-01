@@ -1062,7 +1062,7 @@ model OperationFinishedGoodUnit {
   digitalBatchId       String?
   digitalBatchItemId   String?                    @unique
   printOrderId         String?
-  status               String                     @default("assembled")
+  status               String                     @default("qa_pending")
   qaStatus             String?
   activationStatus     String                     @default("not_activated")
   activationReferenceType String?
