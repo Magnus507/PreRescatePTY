@@ -251,3 +251,13 @@ Esta auditoria no debe tocar Prisma schema ni migraciones. Eso no significa que 
 - La pantalla publica de pre-activacion ahora distingue `Producto activado` y puede ofrecer enlace al perfil publico.
 - No se toco checkout legacy ni `Order` / `Product` legacy.
 - No se usaron migraciones, `prisma db push` ni `prisma migrate reset`.
+
+## W5.37R - Postventa por unidad
+
+- Garantias, Reemplazos y Devoluciones ya pueden referenciar `OperationFinishedGoodUnit` como unidad real.
+- La garantia se abre desde una unidad elegible y deja evento operativo `WARRANTY_OPENED` sobre esa unidad.
+- Reemplazos y devoluciones ya guardan referencia de unidad, etiqueta interna y trazabilidad operativa por pieza.
+- La UI de postventa ahora muestra la unidad asociada junto con producto y estado, sin exponer datos medicos.
+- Se agrego una migracion pequena para los campos puente de postventa por unidad.
+- No se toco checkout legacy ni `Order` / `Product` legacy.
+- No se uso `prisma db push` ni `prisma migrate reset`.

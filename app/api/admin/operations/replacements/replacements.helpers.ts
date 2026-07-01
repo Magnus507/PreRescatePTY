@@ -39,6 +39,10 @@ export const CreateReplacementSchema = z.object({
   replacementFinishedGoodId: z.string().trim().min(1, "replacementFinishedGoodId es requerido").optional().nullable(),
   originalDispatchId: z.string().trim().min(1, "originalDispatchId es requerido").optional().nullable(),
   replacementDispatchId: z.string().trim().min(1, "replacementDispatchId es requerido").optional().nullable(),
+  originalUnitId: z.string().trim().min(1, "originalUnitId es requerido").optional().nullable(),
+  originalInternalLabel: z.string().trim().max(160, "originalInternalLabel es demasiado largo").optional().nullable(),
+  replacementUnitId: z.string().trim().min(1, "replacementUnitId es requerido").optional().nullable(),
+  replacementInternalLabel: z.string().trim().max(160, "replacementInternalLabel es demasiado largo").optional().nullable(),
   notes: z.string().trim().max(2000, "notes es demasiado largo").optional().nullable(),
 });
 

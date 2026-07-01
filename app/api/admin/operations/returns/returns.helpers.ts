@@ -41,6 +41,10 @@ export const CreateReturnSchema = z.object({
   commercialOrderId: z.string().trim().min(1, "commercialOrderId es requerido").optional().nullable(),
   finishedGoodId: z.string().trim().min(1, "finishedGoodId es requerido").optional().nullable(),
   originalDispatchId: z.string().trim().min(1, "originalDispatchId es requerido").optional().nullable(),
+  unitId: z.string().trim().min(1, "unitId es requerido").optional().nullable(),
+  internalLabel: z.string().trim().max(160, "internalLabel es demasiado largo").optional().nullable(),
+  productCode: z.string().trim().max(80, "productCode es demasiado largo").optional().nullable(),
+  productName: z.string().trim().max(160, "productName es demasiado largo").optional().nullable(),
   notes: z.string().trim().max(2000, "notes es demasiado largo").optional().nullable(),
 });
 

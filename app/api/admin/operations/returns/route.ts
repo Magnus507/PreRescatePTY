@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { recordFinishedGoodUnitPostSaleEvent } from "@/lib/operations/record-finished-good-unit-postsale-event";
 import { CreateReturnSchema, getFirstValidationMessage } from "./returns.helpers";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,17 @@ const dispatchSelect = {
   destinationName: true,
 } as const;
 
+const unitSelect = {
+  id: true,
+  internalLabel: true,
+  productCode: true,
+  productName: true,
+  status: true,
+  activationStatus: true,
+  deliveredAt: true,
+  activatedAt: true,
+} as const;
+
 export const returnInclude = {
   warranty: {
     select: warrantySelect,
@@ -63,6 +75,9 @@ export const returnInclude = {
   originalDispatch: {
     select: dispatchSelect,
   },
+  unit: {
+    select: unitSelect,
+  },
   events: {
     orderBy: { createdAt: "desc" },
     take: 10,
@@ -77,6 +92,10 @@ async function assertRelationsExist(
     commercialOrderId?: string | null;
     finishedGoodId?: string | null;
     originalDispatchId?: string | null;
+    unitId?: string | null;
+    internalLabel?: string | null;
+    productCode?: string | null;
+    productName?: string | null;
   }
 ) {
   if (data.warrantyId) {
@@ -118,6 +137,14 @@ async function assertRelationsExist(
     });
     if (!dispatch) throw new Error("INVALID_DISPATCH");
   }
+
+  if (data.unitId) {
+    const unit = await tx.operationFinishedGoodUnit.findUnique({
+      where: { id: data.unitId },
+      select: { id: true },
+    });
+    if (!unit) throw new Error("INVALID_UNIT");
+  }
 }
 
 function relationErrorResponse(error: Error) {
@@ -139,6 +166,10 @@ function relationErrorResponse(error: Error) {
 
   if (error.message === "INVALID_DISPATCH") {
     return NextResponse.json({ error: "originalDispatchId no existe" }, { status: 400 });
+  }
+
+  if (error.message === "INVALID_UNIT") {
+    return NextResponse.json({ error: "unitId no existe" }, { status: 400 });
   }
 
   return null;
@@ -183,8 +214,11 @@ export async function POST(req: NextRequest) {
   try {
     const operationReturn = await prisma.$transaction(async (tx) => {
       await assertRelationsExist(tx, data);
+      const unit = data.unitId
+        ? await tx.operationFinishedGoodUnit.findUnique({ where: { id: data.unitId }, select: { id: true } })
+        : null;
 
-      return tx.operationReturn.create({
+      const created = await tx.operationReturn.create({
         data: {
           code: data.code,
           status: data.status || "draft",
@@ -199,6 +233,10 @@ export async function POST(req: NextRequest) {
           commercialOrderId: data.commercialOrderId || null,
           finishedGoodId: data.finishedGoodId || null,
           originalDispatchId: data.originalDispatchId || null,
+          unitId: data.unitId || null,
+          internalLabel: data.internalLabel || null,
+          productCode: data.productCode || null,
+          productName: data.productName || null,
           notes: data.notes || null,
           events: {
             create: {
@@ -210,6 +248,7 @@ export async function POST(req: NextRequest) {
                 replacementId: data.replacementId || null,
                 commercialOrderId: data.commercialOrderId || null,
                 finishedGoodId: data.finishedGoodId || null,
+                unitId: data.unitId || null,
               }),
               createdById,
             },
@@ -217,6 +256,22 @@ export async function POST(req: NextRequest) {
         },
         include: returnInclude,
       });
+
+      if (unit) {
+        await recordFinishedGoodUnitPostSaleEvent({
+          tx,
+          unitId: unit.id,
+          eventType: "RETURN_REQUESTED",
+          referenceType: "return",
+          referenceId: created.id,
+          reason: data.reason || "Devolucion solicitada",
+          metadataJson: {
+            returnType: data.returnType || "customer_return",
+          },
+        });
+      }
+
+      return created;
     });
 
     return NextResponse.json({ return: operationReturn }, { status: 201 });

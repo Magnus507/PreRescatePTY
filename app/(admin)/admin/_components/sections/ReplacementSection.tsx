@@ -84,6 +84,20 @@ interface OperationReplacement {
   replacementFinishedGood?: FinishedGoodOption | null;
   originalDispatch?: DispatchOption | null;
   replacementDispatch?: DispatchOption | null;
+  originalUnit?: {
+    id: string;
+    internalLabel: string;
+    productName: string;
+    status: string;
+    activationStatus: string;
+  } | null;
+  replacementUnit?: {
+    id: string;
+    internalLabel: string;
+    productName: string;
+    status: string;
+    activationStatus: string;
+  } | null;
 }
 
 interface ReplacementFormState {
@@ -528,6 +542,20 @@ export function ReplacementSection() {
                             {replacement.replacementDispatch
                               ? `Despacho ${replacement.replacementDispatch.code} · ${replacement.replacementDispatch.status}`
                               : "Sin despacho de reemplazo"}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white px-4 py-3 text-sm">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unidad original</p>
+                          <p className="mt-1 font-black text-slate-900">{replacement.originalUnit?.internalLabel || "Sin unidad"}</p>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {replacement.originalUnit ? `${replacement.originalUnit.productName} · ${replacement.originalUnit.status} · ${replacement.originalUnit.activationStatus}` : "No vinculada"}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white px-4 py-3 text-sm">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unidad reemplazo</p>
+                          <p className="mt-1 font-black text-slate-900">{replacement.replacementUnit?.internalLabel || "Sin unidad"}</p>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {replacement.replacementUnit ? `${replacement.replacementUnit.productName} · ${replacement.replacementUnit.status} · ${replacement.replacementUnit.activationStatus}` : "No vinculada"}
                           </p>
                         </div>
                       </div>

@@ -16,6 +16,7 @@ export const WARRANTY_COVERAGE_STATUSES = [
 
 export const WARRANTY_EVENT_TYPES = [
   "CREATED",
+  "OPENED",
   "ACTIVATED",
   "SUSPENDED",
   "EXPIRED",
@@ -42,6 +43,11 @@ export const CreateWarrantySchema = z
     customerEmail: z.string().trim().email("customerEmail invalido").max(180, "customerEmail es demasiado largo").optional().nullable(),
     customerPhone: z.string().trim().max(60, "customerPhone es demasiado largo").optional().nullable(),
     serialReference: z.string().trim().max(180, "serialReference es demasiado largo").optional().nullable(),
+    unitId: z.string().trim().min(1, "unitId es requerido").optional().nullable(),
+    internalLabel: z.string().trim().max(160, "internalLabel es demasiado largo").optional().nullable(),
+    productCode: z.string().trim().max(80, "productCode es demasiado largo").optional().nullable(),
+    productName: z.string().trim().max(160, "productName es demasiado largo").optional().nullable(),
+    reason: z.string().trim().max(1000, "reason es demasiado largo").optional().nullable(),
     commercialOrderId: z.string().trim().min(1, "commercialOrderId es requerido").optional().nullable(),
     commercialOrderItemId: z.string().trim().min(1, "commercialOrderItemId es requerido").optional().nullable(),
     finishedGoodId: z.string().trim().min(1, "finishedGoodId es requerido").optional().nullable(),

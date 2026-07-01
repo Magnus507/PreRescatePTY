@@ -146,3 +146,13 @@
 - La pantalla publica `/activar/[internalLabel]` ahora muestra `Producto activado` y puede enlazar al perfil publico si existe `shortCode`.
 - No se tocaron checkout legacy, `Order` / `Product` legacy ni migraciones.
 - No se uso `prisma db push` ni `prisma migrate reset`.
+
+## W5.37R - Postventa por unidad
+
+- Se conectaron Garantias, Reemplazos y Devoluciones con `OperationFinishedGoodUnit`.
+- Garantias ahora pueden abrirse contra una unidad real y registran evento `WARRANTY_OPENED` sobre la unidad.
+- Reemplazos y devoluciones ya pueden apuntar a la unidad real correspondiente y dejar trazabilidad operativa por pieza.
+- La UI de postventa ahora muestra la etiqueta interna de la unidad, su producto y su estado operativo/activacion.
+- Se agrego una migracion pequena para los campos puente de postventa por unidad.
+- No se toco checkout legacy ni `Order` / `Product` legacy.
+- No se uso `prisma db push` ni `prisma migrate reset`.

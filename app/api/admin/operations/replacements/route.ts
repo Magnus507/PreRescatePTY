@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { recordFinishedGoodUnitPostSaleEvent } from "@/lib/operations/record-finished-good-unit-postsale-event";
 import { CreateReplacementSchema, getFirstValidationMessage } from "./replacements.helpers";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,18 @@ const dispatchSelect = {
   destinationName: true,
 } as const;
 
+const unitSelect = {
+  id: true,
+  internalLabel: true,
+  productCode: true,
+  productName: true,
+  status: true,
+  activationStatus: true,
+  dispatchedAt: true,
+  deliveredAt: true,
+  activatedAt: true,
+} as const;
+
 export const replacementInclude = {
   warranty: {
     select: warrantySelect,
@@ -60,6 +73,12 @@ export const replacementInclude = {
   replacementDispatch: {
     select: dispatchSelect,
   },
+  originalUnit: {
+    select: unitSelect,
+  },
+  replacementUnit: {
+    select: unitSelect,
+  },
   events: {
     orderBy: { createdAt: "desc" },
     take: 10,
@@ -75,6 +94,10 @@ async function assertRelationsExist(
     replacementFinishedGoodId?: string | null;
     originalDispatchId?: string | null;
     replacementDispatchId?: string | null;
+    originalUnitId?: string | null;
+    originalInternalLabel?: string | null;
+    replacementUnitId?: string | null;
+    replacementInternalLabel?: string | null;
   }
 ) {
   if (data.warrantyId) {
@@ -126,6 +149,22 @@ async function assertRelationsExist(
       throw new Error("INVALID_DISPATCH");
     }
   }
+
+  if (data.originalUnitId) {
+    const originalUnit = await tx.operationFinishedGoodUnit.findUnique({
+      where: { id: data.originalUnitId },
+      select: { id: true },
+    });
+    if (!originalUnit) throw new Error("INVALID_ORIGINAL_UNIT");
+  }
+
+  if (data.replacementUnitId) {
+    const replacementUnit = await tx.operationFinishedGoodUnit.findUnique({
+      where: { id: data.replacementUnitId },
+      select: { id: true },
+    });
+    if (!replacementUnit) throw new Error("INVALID_REPLACEMENT_UNIT");
+  }
 }
 
 function relationErrorResponse(error: Error) {
@@ -149,6 +188,14 @@ function relationErrorResponse(error: Error) {
       { error: "Uno o mas dispatchId no existen" },
       { status: 400 }
     );
+  }
+
+  if (error.message === "INVALID_ORIGINAL_UNIT") {
+    return NextResponse.json({ error: "originalUnitId no existe" }, { status: 400 });
+  }
+
+  if (error.message === "INVALID_REPLACEMENT_UNIT") {
+    return NextResponse.json({ error: "replacementUnitId no existe" }, { status: 400 });
   }
 
   return null;
@@ -193,8 +240,14 @@ export async function POST(req: NextRequest) {
   try {
     const replacement = await prisma.$transaction(async (tx) => {
       await assertRelationsExist(tx, data);
+      const originalUnit = data.originalUnitId
+        ? await tx.operationFinishedGoodUnit.findUnique({ where: { id: data.originalUnitId }, select: { id: true } })
+        : null;
+      const replacementUnit = data.replacementUnitId
+        ? await tx.operationFinishedGoodUnit.findUnique({ where: { id: data.replacementUnitId }, select: { id: true } })
+        : null;
 
-      return tx.operationReplacement.create({
+      const created = await tx.operationReplacement.create({
         data: {
           code: data.code,
           status: data.status || "draft",
@@ -209,6 +262,10 @@ export async function POST(req: NextRequest) {
           replacementFinishedGoodId: data.replacementFinishedGoodId || null,
           originalDispatchId: data.originalDispatchId || null,
           replacementDispatchId: data.replacementDispatchId || null,
+          originalUnitId: data.originalUnitId || null,
+          originalInternalLabel: data.originalInternalLabel || null,
+          replacementUnitId: data.replacementUnitId || null,
+          replacementInternalLabel: data.replacementInternalLabel || null,
           notes: data.notes || null,
           events: {
             create: {
@@ -219,6 +276,8 @@ export async function POST(req: NextRequest) {
                 warrantyId: data.warrantyId || null,
                 commercialOrderId: data.commercialOrderId || null,
                 replacementFinishedGoodId: data.replacementFinishedGoodId || null,
+                originalUnitId: data.originalUnitId || null,
+                replacementUnitId: data.replacementUnitId || null,
               }),
               createdById,
             },
@@ -226,6 +285,23 @@ export async function POST(req: NextRequest) {
         },
         include: replacementInclude,
       });
+
+      if (originalUnit) {
+        await recordFinishedGoodUnitPostSaleEvent({
+          tx,
+          unitId: originalUnit.id,
+          eventType: "REPLACEMENT_REQUESTED",
+          referenceType: "replacement",
+          referenceId: created.id,
+          reason: data.reason || "Reemplazo solicitado",
+          metadataJson: {
+            replacementType: data.replacementType || "warranty",
+            replacementUnitId: replacementUnit?.id || null,
+          },
+        });
+      }
+
+      return created;
     });
 
     return NextResponse.json({ replacement }, { status: 201 });

@@ -83,6 +83,14 @@ interface OperationWarranty {
   commercialOrderItem?: CommercialOrderItemOption | null;
   finishedGood?: FinishedGoodOption | null;
   dispatch?: DispatchOption | null;
+  unit?: {
+    id: string;
+    internalLabel: string;
+    productCode: string;
+    productName: string;
+    status: string;
+    activationStatus: string;
+  } | null;
 }
 
 interface WarrantyFormState {
@@ -533,6 +541,13 @@ export function WarrantySection() {
                           <p className="mt-1 font-black text-slate-900">{warranty.finishedGood?.code || "Sin PT"}</p>
                           <p className="text-xs font-semibold text-slate-500">
                             {warranty.finishedGood ? `${warranty.finishedGood.name} · ${warranty.finishedGood.productType}` : "No vinculado"}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white px-4 py-3 text-sm">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unidad real</p>
+                          <p className="mt-1 font-black text-slate-900">{warranty.unit?.internalLabel || "Sin unidad"}</p>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {warranty.unit ? `${warranty.unit.productName} · ${warranty.unit.status} · ${warranty.unit.activationStatus}` : "No vinculada"}
                           </p>
                         </div>
                         <div className="rounded-2xl bg-white px-4 py-3 text-sm">

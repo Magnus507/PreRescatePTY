@@ -97,6 +97,13 @@ interface OperationReturn {
   commercialOrder?: Pick<CommercialOrderOption, "id" | "code" | "status" | "customerName"> | null;
   finishedGood?: FinishedGoodOption | null;
   originalDispatch?: DispatchOption | null;
+  unit?: {
+    id: string;
+    internalLabel: string;
+    productName: string;
+    status: string;
+    activationStatus: string;
+  } | null;
 }
 
 interface ReturnFormState {
@@ -555,6 +562,13 @@ export function ReturnSection() {
                           <p className="mt-1 font-black text-slate-900">{operationReturn.originalDispatch?.code || "Sin despacho"}</p>
                           <p className="text-xs font-semibold text-slate-500">
                             {operationReturn.originalDispatch ? `${operationReturn.originalDispatch.status} · ${operationReturn.originalDispatch.destinationName || operationReturn.originalDispatch.destinationType}` : "No vinculado"}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white px-4 py-3 text-sm">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unidad real</p>
+                          <p className="mt-1 font-black text-slate-900">{operationReturn.unit?.internalLabel || "Sin unidad"}</p>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {operationReturn.unit ? `${operationReturn.unit.productName} · ${operationReturn.unit.status} · ${operationReturn.unit.activationStatus}` : "No vinculada"}
                           </p>
                         </div>
                       </div>
