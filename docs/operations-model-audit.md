@@ -211,6 +211,15 @@ Esta auditoria no debe tocar Prisma schema ni migraciones. Eso no significa que 
 - No se toco Prisma schema.
 - No se tocaron migraciones.
 
+## W5.37T - Historial general consolidado
+
+- Se agrego `lib/operations/operation-history.ts` como capa de lectura por entidad para reconstruir la vida operativa de una unidad, pedido, lote, imprenta, despacho y postventa.
+- Se agrego `GET /api/admin/operations/history` con busqueda y sugerencias para investigar entidades por etiqueta interna, pedido, lote o despacho.
+- La tab `Historial` deja de ser conceptual y pasa a funcionar como timeline profundo por entidad reutilizando eventos ya existentes.
+- El historial es solo lectura, no crea ni edita eventos, no expone datos medicos ni PII innecesaria y no toca checkout legacy, `Order` / `Product` legacy ni activacion legacy.
+- No se toco Prisma schema.
+- No se tocaron migraciones.
+
 ## Orden recomendado actualizado
 
 1. Reordenar UI y taxonomia de tabs.

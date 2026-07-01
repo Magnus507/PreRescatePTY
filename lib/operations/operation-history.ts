@@ -1,0 +1,270 @@
+import { prisma } from "@/lib/prisma";
+import { getOperationMovements, type OperationMovement } from "./operation-movements";
+
+export type HistoryEntityType =
+  | "unit"
+  | "commercial_order"
+  | "digital_batch"
+  | "print_order"
+  | "production_order"
+  | "dispatch"
+  | "warranty"
+  | "replacement"
+  | "return"
+  | "material";
+
+export interface OperationHistorySubject {
+  entityType: HistoryEntityType;
+  entityId: string;
+  entityCode: string | null;
+  internalLabel: string | null;
+  title: string;
+  subtitle: string | null;
+  currentStatus: string | null;
+  activationStatus: string | null;
+}
+
+export interface OperationHistoryTimelineItem extends OperationMovement {
+  related: {
+    commercialOrderId: string | null;
+    dispatchId: string | null;
+    unitId: string | null;
+    digitalBatchId: string | null;
+    printOrderId: string | null;
+    productionOrderId: string | null;
+    warrantyId: string | null;
+    replacementId: string | null;
+    returnId: string | null;
+  };
+}
+
+export interface OperationHistorySummary {
+  totalEvents: number;
+  firstEventAt: string | null;
+  lastEventAt: string | null;
+  currentStatus: string | null;
+  activationStatus: string | null;
+  deliveredPendingActivation: boolean | null;
+}
+
+export interface OperationHistoryResult {
+  subject: OperationHistorySubject | null;
+  timeline: OperationHistoryTimelineItem[];
+  summary: OperationHistorySummary;
+  suggestions?: Array<{ type: HistoryEntityType; id: string; label: string; subtitle: string | null }>;
+}
+
+function toTimelineItem(movement: OperationMovement, related: OperationHistoryTimelineItem["related"]): OperationHistoryTimelineItem {
+  return { ...movement, related };
+}
+
+function unitSubject(unit: { id: string; internalLabel: string; status: string; activationStatus: string }) {
+  return {
+    entityType: "unit" as const,
+    entityId: unit.id,
+    entityCode: unit.internalLabel,
+    internalLabel: unit.internalLabel,
+    title: unit.internalLabel,
+    subtitle: "Unidad terminada",
+    currentStatus: unit.status,
+    activationStatus: unit.activationStatus,
+  };
+}
+
+async function buildUnitHistoryByLabel(internalLabel: string, limit: number) {
+  const unit = await prisma.operationFinishedGoodUnit.findUnique({
+    where: { internalLabel },
+    select: { id: true, internalLabel: true, status: true, activationStatus: true },
+  });
+  if (!unit) return null;
+
+  const movements = await getOperationMovements({ internalLabel, limit });
+  return {
+    subject: unitSubject(unit),
+    timeline: movements.map((movement) =>
+      toTimelineItem(movement, {
+        commercialOrderId: movement.commercialOrderId,
+        dispatchId: movement.dispatchId,
+        unitId: unit.id,
+        digitalBatchId: movement.source === "digital_batch" ? movement.entityId : null,
+        printOrderId: movement.source === "print_order" ? movement.entityId : null,
+        productionOrderId: movement.source === "production" ? movement.entityId : null,
+        warrantyId: movement.source === "warranty" ? movement.entityId : null,
+        replacementId: movement.source === "replacement" ? movement.entityId : null,
+        returnId: movement.source === "return" ? movement.entityId : null,
+      })
+    ),
+    summary: {
+      totalEvents: movements.length,
+      firstEventAt: movements.at(-1)?.occurredAt || null,
+      lastEventAt: movements[0]?.occurredAt || null,
+      currentStatus: unit.status,
+      activationStatus: unit.activationStatus,
+      deliveredPendingActivation: unit.status === "delivered" && unit.activationStatus === "not_activated",
+    },
+  } satisfies OperationHistoryResult;
+}
+
+async function buildCommercialOrderHistoryById(id: string, limit: number) {
+  const order = await prisma.operationCommercialOrder.findUnique({
+    where: { id },
+    select: { id: true, code: true, status: true, fulfillmentStatus: true, paymentStatus: true },
+  });
+  if (!order) return null;
+
+  const movements = await getOperationMovements({ commercialOrderId: id, limit });
+  return {
+    subject: {
+      entityType: "commercial_order" as const,
+      entityId: order.id,
+      entityCode: order.code,
+      internalLabel: null,
+      title: order.code,
+      subtitle: "Pedido comercial",
+      currentStatus: `${order.status} / ${order.paymentStatus} / ${order.fulfillmentStatus}`,
+      activationStatus: null,
+    },
+    timeline: movements.map((movement) =>
+      toTimelineItem(movement, {
+        commercialOrderId: order.id,
+        dispatchId: movement.dispatchId,
+        unitId: null,
+        digitalBatchId: null,
+        printOrderId: null,
+        productionOrderId: null,
+        warrantyId: null,
+        replacementId: null,
+        returnId: null,
+      })
+    ),
+    summary: {
+      totalEvents: movements.length,
+      firstEventAt: movements.at(-1)?.occurredAt || null,
+      lastEventAt: movements[0]?.occurredAt || null,
+      currentStatus: order.status,
+      activationStatus: null,
+      deliveredPendingActivation: null,
+    },
+  } satisfies OperationHistoryResult;
+}
+
+function sourceForEntityType(entityType: HistoryEntityType) {
+  if (entityType === "production_order") return "production";
+  if (entityType === "commercial_order") return "commercial_order";
+  if (entityType === "digital_batch") return "digital_batch";
+  if (entityType === "print_order") return "print_order";
+  if (entityType === "dispatch") return "dispatch";
+  if (entityType === "warranty") return "warranty";
+  if (entityType === "replacement") return "replacement";
+  if (entityType === "return") return "return";
+  if (entityType === "material") return "material";
+  return null;
+}
+
+async function searchSuggestions(search: string, limit: number) {
+  const [units, batches, prints, orders, dispatches, warranties, replacements, returns_, materials] = await Promise.all([
+    prisma.operationFinishedGoodUnit.findMany({ where: { internalLabel: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, internalLabel: true, productName: true } }),
+    prisma.operationDigitalBatch.findMany({ where: { OR: [{ code: { contains: search, mode: "insensitive" } }, { finishedGoodCode: { contains: search, mode: "insensitive" } }] }, take: 5, select: { id: true, code: true, name: true } }),
+    prisma.operationPrintOrder.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, supplierName: true } }),
+    prisma.operationCommercialOrder.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, customerName: true } }),
+    prisma.operationDispatch.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, destinationName: true } }),
+    prisma.operationWarranty.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, customerName: true } }),
+    prisma.operationReplacement.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, customerName: true } }),
+    prisma.operationReturn.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, customerName: true } }),
+    prisma.operationMaterial.findMany({ where: { OR: [{ code: { contains: search, mode: "insensitive" } }, { name: { contains: search, mode: "insensitive" } }] }, take: 5, select: { id: true, code: true, name: true } }),
+  ]);
+
+  return [
+    ...units.map((item) => ({ type: "unit" as const, id: item.id, label: item.internalLabel, subtitle: item.productName })),
+    ...batches.map((item) => ({ type: "digital_batch" as const, id: item.id, label: item.code, subtitle: item.name })),
+    ...prints.map((item) => ({ type: "print_order" as const, id: item.id, label: item.code, subtitle: item.supplierName })),
+    ...orders.map((item) => ({ type: "commercial_order" as const, id: item.id, label: item.code, subtitle: item.customerName })),
+    ...dispatches.map((item) => ({ type: "dispatch" as const, id: item.id, label: item.code, subtitle: item.destinationName })),
+    ...warranties.map((item) => ({ type: "warranty" as const, id: item.id, label: item.code, subtitle: item.customerName })),
+    ...replacements.map((item) => ({ type: "replacement" as const, id: item.id, label: item.code, subtitle: item.customerName })),
+    ...returns_.map((item) => ({ type: "return" as const, id: item.id, label: item.code, subtitle: item.customerName })),
+    ...materials.map((item) => ({ type: "material" as const, id: item.id, label: item.code, subtitle: item.name })),
+  ].slice(0, limit);
+}
+
+export async function getOperationHistory(params: {
+  entityType?: HistoryEntityType | null;
+  entityId?: string | null;
+  identifier?: string | null;
+  internalLabel?: string | null;
+  search?: string | null;
+  limit?: number;
+}): Promise<OperationHistoryResult> {
+  const limit = Math.min(params.limit || 100, 250);
+  const search = params.search?.trim() || null;
+  const internalLabel = params.internalLabel?.trim() || null;
+  const identifier = params.identifier?.trim() || null;
+  const entityType = params.entityType || null;
+  const entityId = params.entityId || null;
+
+  if ((entityType === "unit" || (!entityType && internalLabel)) && (internalLabel || identifier || search)) {
+    return (await buildUnitHistoryByLabel(internalLabel || identifier || search!, limit)) || { subject: null, timeline: [], summary: { totalEvents: 0, firstEventAt: null, lastEventAt: null, currentStatus: null, activationStatus: null, deliveredPendingActivation: null } };
+  }
+
+  if (entityType === "commercial_order" && entityId) return (await buildCommercialOrderHistoryById(entityId, limit)) || { subject: null, timeline: [], summary: { totalEvents: 0, firstEventAt: null, lastEventAt: null, currentStatus: null, activationStatus: null, deliveredPendingActivation: null } };
+
+  const source = entityType ? sourceForEntityType(entityType) : null;
+  if (entityType && source && (entityId || identifier || search)) {
+    const movements = await getOperationMovements({
+      source,
+      search: search || identifier || null,
+      internalLabel: internalLabel || identifier || null,
+      limit,
+    });
+
+    return {
+      subject: {
+        entityType,
+        entityId: entityId || identifier || "",
+        entityCode: identifier || null,
+        internalLabel: entityType === "unit" ? internalLabel || identifier || null : null,
+        title: identifier || entityType,
+        subtitle: `${entityType.replaceAll("_", " ")}`,
+        currentStatus: null,
+        activationStatus: null,
+      },
+      timeline: movements.map((movement) =>
+        toTimelineItem(movement, {
+          commercialOrderId: movement.commercialOrderId,
+          dispatchId: movement.dispatchId,
+          unitId: entityType === "unit" ? entityId || identifier || null : null,
+          digitalBatchId: entityType === "digital_batch" ? entityId || identifier || null : null,
+          printOrderId: entityType === "print_order" ? entityId || identifier || null : null,
+          productionOrderId: entityType === "production_order" ? entityId || identifier || null : null,
+          warrantyId: entityType === "warranty" ? entityId || identifier || null : null,
+          replacementId: entityType === "replacement" ? entityId || identifier || null : null,
+          returnId: entityType === "return" ? entityId || identifier || null : null,
+        })
+      ),
+      summary: {
+        totalEvents: movements.length,
+        firstEventAt: movements.at(-1)?.occurredAt || null,
+        lastEventAt: movements[0]?.occurredAt || null,
+        currentStatus: null,
+        activationStatus: null,
+        deliveredPendingActivation: null,
+      },
+    };
+  }
+
+  if (!entityType && search) {
+    const suggestions = await searchSuggestions(search, limit);
+    return {
+      subject: null,
+      timeline: [],
+      summary: { totalEvents: 0, firstEventAt: null, lastEventAt: null, currentStatus: null, activationStatus: null, deliveredPendingActivation: null },
+      suggestions,
+    };
+  }
+
+  return {
+    subject: null,
+    timeline: [],
+    summary: { totalEvents: 0, firstEventAt: null, lastEventAt: null, currentStatus: null, activationStatus: null, deliveredPendingActivation: null },
+  };
+}

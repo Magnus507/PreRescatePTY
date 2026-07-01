@@ -166,3 +166,12 @@
 - El feed no crea stock manual, no reescribe eventos y no toca checkout legacy ni `Order` / `Product` legacy.
 - No se tocaron migraciones.
 - No se toco Prisma schema.
+
+## W5.37T - Historial general consolidado
+
+- Se agrego `lib/operations/operation-history.ts` para reconstruir historial por entidad sobre eventos y relaciones operativas existentes.
+- Se agrego `GET /api/admin/operations/history` con busqueda por etiqueta, pedido, lote, despacho e imprenta.
+- La tab `Historial` ahora muestra un timeline real por entidad, con sugerencias cuando la busqueda es ambigua.
+- La vista es solo lectura, no permite crear, editar ni borrar eventos, y filtra datos sensibles para no exponer datos medicos ni PII innecesaria.
+- No se tocaron migraciones.
+- No se toco Prisma schema.
