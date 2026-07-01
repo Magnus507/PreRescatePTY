@@ -20,3 +20,15 @@
 - No se tocaron migraciones.
 - No se toco checkout legacy.
 - No se toco `Order` / `Product` legacy.
+
+## W5.37D - Reorden UI / taxonomia
+
+- Se reordeno la barra de tabs del Centro de Operaciones para que lea como `Pedidos`, `Inventario`, `Recursos digitales`, `Produccion`, `Lotes`, `Produccion / Empaque`, `Calidad / QA`, `Despacho`, `Garantias`, `Reemplazos`, `Devoluciones`, `Movimientos` y `Historial`.
+- Se renombro visualmente `Comercial` a `Pedidos`, `Inventario PT` a `Inventario` y `QC` a `Calidad / QA` en los textos principales del panel.
+- `Postventa` no quedo agrupada en una sola tab en este bloque; las secciones quedaron ordenadas juntas como `Garantias`, `Reemplazos` y `Devoluciones` para evitar un refactor mas grande.
+- `Empaque` quedo como etapa cercana a Produccion, visible como `Produccion / Empaque`.
+- No se toco Prisma schema.
+- No se tocaron migraciones.
+- No se toco backend.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.

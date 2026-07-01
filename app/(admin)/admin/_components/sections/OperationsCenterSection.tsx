@@ -137,18 +137,18 @@ interface OperationsDashboardResponse {
 
 const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }> = [
   { id: "overview", label: "Panel operativo", icon: Activity },
-  { id: "production", label: "Produccion", icon: Factory },
+  { id: "commercial", label: "Pedidos", icon: ShoppingCart },
+  { id: "physical", label: "Inventario", icon: Boxes },
   { id: "digital", label: "Recursos digitales", icon: Cpu },
-  { id: "physical", label: "Inventario fisico", icon: Boxes },
-  { id: "movements", label: "Movimientos", icon: Route },
+  { id: "production", label: "Produccion", icon: Factory },
   { id: "batches", label: "Lotes", icon: Layers },
-  { id: "quality", label: "Calidad", icon: ClipboardCheck },
-  { id: "packing", label: "Empaque", icon: PackageCheck },
-  { id: "commercial", label: "Comercial", icon: ShoppingCart },
+  { id: "packing", label: "Produccion / Empaque", icon: PackageCheck },
+  { id: "quality", label: "Calidad / QA", icon: ClipboardCheck },
+  { id: "dispatch", label: "Despacho", icon: Truck },
   { id: "warranties", label: "Garantias", icon: ShieldCheck },
   { id: "replacements", label: "Reemplazos", icon: Repeat2 },
   { id: "returns", label: "Devoluciones", icon: RotateCcw },
-  { id: "dispatch", label: "Despacho", icon: Truck },
+  { id: "movements", label: "Movimientos", icon: Route },
   { id: "history", label: "Historial", icon: History },
 ];
 
@@ -343,7 +343,7 @@ export function OperationsCenterSection({
             <div>
               <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Resumen operativo real</h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                Salud, cuellos de botella y volumen del flujo Materiales → Despacho + Comercial/Postventa.
+                Salud, cuellos de botella y volumen del flujo Materiales → Despacho + Pedidos/Postventa.
               </p>
               {dashboardGeneratedAt && (
                 <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -406,7 +406,7 @@ export function OperationsCenterSection({
             hint={`${formatCompactNumber(dashboard.packing.totalPackedQuantity)} unidades empacadas.`}
           />
           <MetricCard
-            label="Inventario PT"
+            label="Inventario"
             value={formatCompactNumber(dashboard.finishedGoods.totalAvailableBalance)}
             icon={Warehouse}
             tone="bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -423,7 +423,7 @@ export function OperationsCenterSection({
             hint={`${dashboard.dispatch.dispatchDelivered} entregados, ${dashboard.dispatch.dispatchReserved} reservados.`}
           />
           <MetricCard
-            label="Comercial"
+            label="Pedidos"
             value={`${dashboard.commercial.commercialConfirmed}/${dashboard.commercial.commercialPaid}`}
             icon={DollarSign}
             tone="bg-lime-50 text-lime-700 border-lime-200"
@@ -441,7 +441,7 @@ export function OperationsCenterSection({
             value={afterSalesPending}
             icon={RotateCcw}
             tone="bg-rose-50 text-rose-700 border-rose-200"
-            hint={`${formatCompactNumber(dashboard.returns.totalReturnedToInventoryQuantity)} unidades retornadas a Inventario PT.`}
+            hint={`${formatCompactNumber(dashboard.returns.totalReturnedToInventoryQuantity)} unidades retornadas a Inventario.`}
           />
         </div>
 
@@ -456,7 +456,7 @@ export function OperationsCenterSection({
             <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
               <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">Core operacional</h3>
               <div className="flex overflow-x-auto pb-2">
-                {["Materiales", "Produccion", "QC", "Empaque", "Inventario PT", "Despacho"].map((step, index, list) => (
+                {["Materiales", "Produccion", "Calidad / QA", "Produccion / Empaque", "Inventario", "Despacho"].map((step, index, list) => (
                   <div key={step} className="flex items-center">
                     <div className="min-w-[132px] rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
                       <p className="text-[9px] font-black uppercase tracking-widest text-primary">Paso {index + 1}</p>
@@ -468,9 +468,9 @@ export function OperationsCenterSection({
               </div>
             </div>
             <div className="rounded-3xl border border-blue-200 bg-blue-50 p-5">
-              <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">Comercial y postventa</h3>
+              <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">Pedidos y postventa</h3>
               <div className="flex overflow-x-auto pb-2">
-                {["Comercial", "Despacho", "Garantias", "Reemplazos", "Devoluciones", "Inventario PT"].map((step, index, list) => (
+                {["Pedidos", "Despacho", "Garantias", "Reemplazos", "Devoluciones", "Inventario"].map((step, index, list) => (
                   <div key={step} className="flex items-center">
                     <div className="min-w-[132px] rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
                       <p className="text-[9px] font-black uppercase tracking-widest text-primary">Paso {index + 1}</p>
@@ -504,7 +504,7 @@ export function OperationsCenterSection({
             <Warehouse className="mb-5 h-8 w-8 text-emerald-600" />
             <h3 className="text-lg font-black tracking-tight">Abrir inventario</h3>
             <p className="mt-2 text-sm font-medium text-slate-500">
-              Balance disponible calculado por eventos de producto terminado.
+              Balance disponible calculado por eventos de inventario terminado.
             </p>
           </button>
           <button

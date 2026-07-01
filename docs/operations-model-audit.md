@@ -168,6 +168,8 @@ Se reutiliza bien:
 - Mover `Empaque` visualmente dentro de Produccion
 - Reescribir `HistorySection` como timeline consolidado cuando exista fuente real
 
+La UI ya fue alineada con ese orden recomendado en el panel de operaciones, manteniendo `Postventa` como secciones cercanas sin agrupar completamente en este bloque.
+
 ## No tocar todavia
 
 - Prisma schema
