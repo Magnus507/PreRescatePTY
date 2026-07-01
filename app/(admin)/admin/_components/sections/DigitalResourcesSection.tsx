@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  Plus,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { QrPreviewModal } from "../modals/QrPreviewModal";
@@ -59,6 +61,46 @@ interface Counts {
   damaged: number;
 }
 
+interface DigitalBatchItem {
+  id: string;
+  internalLabel: string;
+  sequenceNumber: number;
+  qrUrl: string;
+  nfcUrl: string | null;
+  activationUrl: string | null;
+  shortCode: string | null;
+  status: string;
+}
+
+interface DigitalBatch {
+  id: string;
+  code: string;
+  name: string | null;
+  productType: string;
+  finishedGoodCode: string | null;
+  prefix: string;
+  startNumber: number;
+  endNumber: number;
+  quantity: number;
+  status: string;
+  notes: string | null;
+  items: DigitalBatchItem[];
+  consumedItems?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface DigitalBatchFormState {
+  code: string;
+  name: string;
+  productType: string;
+  finishedGoodCode: string;
+  prefix: string;
+  startNumber: string;
+  endNumber: string;
+  notes: string;
+}
+
 const TABS: { key: DigitalView; label: string; icon: React.ElementType }[] = [
   { key: "all", label: "Todos", icon: Activity },
   { key: "available", label: "Disponibles", icon: ShieldCheck },
@@ -92,10 +134,22 @@ const DIGITAL_FLOW = [
   { label: "Produccion", icon: Printer },
 ];
 
+const EMPTY_BATCH_FORM: DigitalBatchFormState = {
+  code: "",
+  name: "",
+  productType: "sticker_normal",
+  finishedGoodCode: "PRP-FG-STICKER",
+  prefix: "Inicial",
+  startNumber: "1",
+  endNumber: "10",
+  notes: "",
+};
+
 export function DigitalResourcesSection() {
   const [activeTab, setActiveTab] = useState<DigitalView>("all");
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<DigitalChip[]>([]);
+  const [digitalBatches, setDigitalBatches] = useState<DigitalBatch[]>([]);
   const [counts, setCounts] = useState<Counts>({
     total: 0,
     available: 0,
@@ -107,6 +161,9 @@ export function DigitalResourcesSection() {
   const [qrChip, setQrChip] = useState<DigitalChip | null>(null);
   const [detailChip, setDetailChip] = useState<DigitalChip | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [savingBatch, setSavingBatch] = useState(false);
+  const [batchForm, setBatchForm] = useState<DigitalBatchFormState>(EMPTY_BATCH_FORM);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -134,9 +191,24 @@ export function DigitalResourcesSection() {
     }
   }, [activeTab, search]);
 
+  const loadDigitalBatches = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/operations/digital-batches", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al cargar lotes digitales");
+      setDigitalBatches(Array.isArray(data.batches) ? data.batches : []);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al cargar lotes digitales");
+    }
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    loadDigitalBatches();
+  }, [loadDigitalBatches]);
 
   const copyToClipboard = async (text: string, chipId: string) => {
     try {
@@ -181,6 +253,47 @@ export function DigitalResourcesSection() {
     return new Date(value).toLocaleString("es-PA", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
+  const updateBatchForm = (field: keyof DigitalBatchFormState, value: string) => {
+    setBatchForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleCreateBatch = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const startNumber = Number(batchForm.startNumber);
+    const endNumber = Number(batchForm.endNumber);
+    if (!Number.isFinite(startNumber) || !Number.isFinite(endNumber)) {
+      toast.error("El rango debe ser numérico");
+      return;
+    }
+    setSavingBatch(true);
+    try {
+      const res = await fetch("/api/admin/operations/digital-batches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: batchForm.code.trim(),
+          name: batchForm.name.trim() || null,
+          productType: batchForm.productType,
+          finishedGoodCode: batchForm.finishedGoodCode,
+          prefix: batchForm.prefix.trim(),
+          startNumber,
+          endNumber,
+          notes: batchForm.notes.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo crear lote digital");
+      toast.success("Lote digital creado");
+      setBatchForm(EMPTY_BATCH_FORM);
+      setShowBatchModal(false);
+      await loadDigitalBatches();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al crear lote digital");
+    } finally {
+      setSavingBatch(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
@@ -219,6 +332,49 @@ export function DigitalResourcesSection() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-xl font-black tracking-tight text-slate-950">Lotes digitales QR+link</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Cada lote crea una secuencia interna única antes de pasar a producción física.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowBatchModal(true)}
+            className="inline-flex w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950"
+          >
+            <Plus className="h-4 w-4" />
+            Crear lote
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {digitalBatches.map((batch) => (
+            <article key={batch.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-xs font-black text-primary">{batch.code}</p>
+                  <p className="mt-1 text-sm font-black text-slate-900">{batch.name || "Sin nombre"}</p>
+                </div>
+                <span className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                  {batch.status}
+                </span>
+              </div>
+              <p className="mt-3 text-[11px] font-semibold text-slate-500">
+                {batch.prefix}-{String(batch.startNumber).padStart(4, "0")} a {String(batch.endNumber).padStart(4, "0")}
+              </p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                {batch.productType} · {batch.finishedGoodCode} · {batch.quantity} unidades
+              </p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                Consumidos: {batch.consumedItems || 0}
+              </p>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -441,6 +597,71 @@ export function DigitalResourcesSection() {
           formatDate={formatDate}
           formatDateTime={formatDateTime}
         />
+      )}
+
+      {showBatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleCreateBatch} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Lote digital</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear lote QR+link</h3>
+                </div>
+                <button type="button" onClick={() => setShowBatchModal(false)} className="rounded-2xl border border-slate-200 p-3 text-slate-400 hover:bg-slate-50" aria-label="Cerrar">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Code</span>
+                  <input required value={batchForm.code} onChange={(e) => updateBatchForm("code", e.target.value)} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="DB-0001" />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre</span>
+                  <input value={batchForm.name} onChange={(e) => updateBatchForm("name", e.target.value)} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Lote inicial normal" />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo</span>
+                  <select value={batchForm.productType} onChange={(e) => updateBatchForm("productType", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary focus:ring-4 focus:ring-primary/10">
+                    <option value="sticker_normal">Sticker PreRescatePTY</option>
+                    <option value="sticker_empresarial">Sticker PreRescatePTY Empresarial</option>
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Producto terminado</span>
+                  <select value={batchForm.finishedGoodCode} onChange={(e) => updateBatchForm("finishedGoodCode", e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary focus:ring-4 focus:ring-primary/10">
+                    <option value="PRP-FG-STICKER">PRP-FG-STICKER</option>
+                    <option value="PRP-FG-STICKER-EMP">PRP-FG-STICKER-EMP</option>
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Prefijo</span>
+                  <input required value={batchForm.prefix} onChange={(e) => updateBatchForm("prefix", e.target.value)} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Inicial" />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Inicio</span>
+                  <input required type="number" min="1" value={batchForm.startNumber} onChange={(e) => updateBatchForm("startNumber", e.target.value)} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Fin</span>
+                  <input required type="number" min="1" value={batchForm.endNumber} onChange={(e) => updateBatchForm("endNumber", e.target.value)} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
+                </label>
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notas</span>
+                  <textarea value={batchForm.notes} onChange={(e) => updateBatchForm("notes", e.target.value)} className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
+                </label>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={() => setShowBatchModal(false)} className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600">Cancelar</button>
+                <button type="submit" disabled={savingBatch} className="inline-flex items-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50">
+                  {savingBatch ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Guardar lote
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

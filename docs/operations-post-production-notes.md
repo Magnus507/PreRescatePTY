@@ -64,3 +64,15 @@
 - No se toco backend de eventos de inventario.
 - No se toco checkout legacy.
 - No se toco `Order` / `Product` legacy.
+
+## W5.37G - Lote digital QR+link
+
+- Se agrego el modelo Prisma `OperationDigitalBatch` y `OperationDigitalBatchItem` para representar lotes digitales QR+link y sus unidades numeradas.
+- Cada lote guarda `productType` normal o empresarial, `finishedGoodCode`, rango numerico, cantidad total y estado operativo.
+- Cada unidad guarda `internalLabel`, secuencia, URLs internas provisionales y trazabilidad de consumo.
+- Se agregaron endpoints admin para listar, crear y consultar lotes digitales.
+- Se agrego una UI basica en `Recursos digitales` para crear y visualizar lotes.
+- El flujo sigue desacoplado de chips reales, produccion fisica, orden a imprenta y activacion final.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se uso stock como fuente de verdad.

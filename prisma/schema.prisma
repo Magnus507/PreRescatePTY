@@ -951,6 +951,52 @@ model OperationFinishedGoodEvent {
   @@index([createdAt])
 }
 
+model OperationDigitalBatch {
+  id               String                     @id @default(cuid())
+  code             String                     @unique
+  name             String?
+  productType      String
+  finishedGoodCode String?
+  prefix           String
+  startNumber      Int
+  endNumber        Int
+  quantity         Int
+  status           String                     @default("draft")
+  notes            String?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  items            OperationDigitalBatchItem[]
+
+  @@index([productType])
+  @@index([finishedGoodCode])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OperationDigitalBatchItem {
+  id                   String                @id @default(cuid())
+  batchId              String
+  internalLabel        String                @unique
+  sequenceNumber       Int
+  qrUrl                String
+  nfcUrl               String?
+  activationUrl        String?
+  shortCode            String?
+  status               String                @default("available")
+  consumedAt           DateTime?
+  consumedReferenceType String?
+  consumedReferenceId   String?
+  notes                String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  batch                OperationDigitalBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, sequenceNumber])
+  @@index([batchId])
+  @@index([status])
+  @@index([createdAt])
+}
+
 model OperationDispatch {
   id                      String                     @id @default(cuid())
   code                    String                     @unique
