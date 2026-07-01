@@ -516,6 +516,33 @@ export function CommercialSection() {
     }
   };
 
+  const handleCreateDispatch = async (order: CommercialOrder) => {
+    const code = window.prompt("Code del despacho:");
+    if (!code) return;
+
+    setSavingEventKey(`${order.id}:FULFILLMENT_REQUESTED`);
+    try {
+      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/create-dispatch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          carrierName: window.prompt("Transportista (opcional):") || null,
+          trackingReference: window.prompt("Referencia de tracking (opcional):") || null,
+          notes: window.prompt("Notas (opcional):") || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo crear despacho");
+      toast.success("Despacho creado");
+      await loadOrders({ silent: true });
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Error al crear despacho"));
+    } finally {
+      setSavingEventKey(null);
+    }
+  };
+
   const getActionsForOrder = (order: CommercialOrder) => {
     if (order.status === "cancelled") {
       return order.paymentStatus === "paid"
@@ -702,9 +729,20 @@ export function CommercialSection() {
                           onClick={() => handleReleaseUnits(order)}
                           disabled={reservationKey === order.id}
                           className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-amber-800 transition-all hover:bg-amber-100 disabled:opacity-50"
-                        >
+                          >
                           {reservationKey === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                           Liberar unidades
+                        </button>
+                      )}
+                      {(order.status === "stock_reserved" || order.fulfillmentStatus === "reserved") && !order.dispatch && (
+                        <button
+                          type="button"
+                          onClick={() => handleCreateDispatch(order)}
+                          disabled={Boolean(savingEventKey)}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-purple-800 transition-all hover:bg-purple-100 disabled:opacity-50"
+                        >
+                          <PackageCheck className="h-4 w-4" />
+                          Crear despacho
                         </button>
                       )}
                     </div>

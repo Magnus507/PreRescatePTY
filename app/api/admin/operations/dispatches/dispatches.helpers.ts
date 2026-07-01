@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const DISPATCH_STATUSES = [
   "draft",
+  "pending_pick",
+  "picked",
+  "packed",
   "reserved",
   "released",
   "dispatched",
@@ -19,6 +22,8 @@ export const DISPATCH_DESTINATION_TYPES = [
 
 export const DISPATCH_EVENT_TYPES = [
   "CREATED",
+  "PICKED",
+  "PACKED",
   "RESERVED",
   "RELEASED",
   "DISPATCHED",

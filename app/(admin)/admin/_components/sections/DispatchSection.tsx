@@ -45,11 +45,25 @@ interface FinishedGoodOption {
 interface DispatchItem {
   id: string;
   dispatchId: string;
-  finishedGoodId: string;
+  finishedGoodId: string | null;
+  unitId?: string | null;
+  internalLabel?: string | null;
+  productCode?: string | null;
+  productName?: string | null;
+  status?: string;
   quantity: number;
   unit: string;
   notes: string | null;
-  finishedGood: FinishedGoodOption;
+  finishedGood?: FinishedGoodOption | null;
+  unitRecord?: {
+    id: string;
+    internalLabel: string;
+    productCode: string;
+    productName: string;
+    status: string;
+    qaStatus: string | null;
+    activationStatus: string;
+  } | null;
 }
 
 interface OperationDispatch {
@@ -61,9 +75,12 @@ interface OperationDispatch {
   destinationReference: string | null;
   destinationAddress: string | null;
   scheduledAt: string | null;
+  sentAt: string | null;
   dispatchedAt: string | null;
   deliveredAt: string | null;
   notes: string | null;
+  carrierName: string | null;
+  trackingReference: string | null;
   createdAt: string;
   updatedAt: string;
   items: DispatchItem[];
@@ -661,7 +678,11 @@ export function DispatchSection() {
                         <div className="min-w-[220px] space-y-1">
                           {dispatch.items.map((item) => (
                             <p key={item.id} className="text-[11px] font-semibold text-slate-600">
-                              <span className="font-mono font-black text-slate-900">{item.finishedGood.code}</span> · {item.finishedGood.name} · {formatQuantity(item.quantity)} {item.unit}
+                              <span className="font-mono font-black text-slate-900">
+                                {item.unitRecord?.internalLabel || item.internalLabel || item.finishedGood?.code || "Unidad"}
+                              </span>
+                              {" "}· {item.unitRecord?.productName || item.finishedGood?.name || "Producto"} · {formatQuantity(item.quantity)} {item.unit}
+                              {item.unitRecord ? ` · ${item.unitRecord.status}` : ""}
                             </p>
                           ))}
                         </div>
@@ -670,6 +691,7 @@ export function DispatchSection() {
                         <div className="min-w-[170px] text-[11px] font-semibold text-slate-500">
                           <p>Creado: {formatDate(dispatch.createdAt)}</p>
                           <p>Prog.: {formatDate(dispatch.scheduledAt)}</p>
+                          <p>Salida: {formatDate(dispatch.sentAt)}</p>
                           <p>Salida: {formatDate(dispatch.dispatchedAt)}</p>
                           <p>Entregado: {formatDate(dispatch.deliveredAt)}</p>
                         </div>

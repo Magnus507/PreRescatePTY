@@ -91,7 +91,7 @@ async function reserveDispatch(dispatchId: string, reason: string, referenceType
 
     await tx.operationFinishedGoodEvent.createMany({
       data: dispatch.items.map((item) => ({
-        finishedGoodId: item.finishedGoodId,
+        finishedGoodId: item.finishedGoodId!,
         eventType: "RESERVATION",
         quantity: item.quantity,
         unit: item.unit,
@@ -136,7 +136,7 @@ async function dispatchReservedDispatch(
     await tx.operationFinishedGoodEvent.createMany({
       data: dispatch.items.flatMap((item) => [
         {
-          finishedGoodId: item.finishedGoodId,
+          finishedGoodId: item.finishedGoodId!,
           eventType: "RELEASE",
           quantity: item.quantity,
           unit: item.unit,
@@ -146,7 +146,7 @@ async function dispatchReservedDispatch(
           metadataJson: JSON.stringify({ dispatchCode: dispatch.code, dispatchEventId: event.id }),
         },
         {
-          finishedGoodId: item.finishedGoodId,
+          finishedGoodId: item.finishedGoodId!,
           eventType: "ISSUE",
           quantity: item.quantity,
           unit: item.unit,

@@ -34,12 +34,17 @@ const dispatchInclude = {
 } as const;
 
 function getRequiredQuantities(
-  items: Array<{ finishedGoodId: string; quantity: number }>
+  items: Array<{ finishedGoodId: string | null; quantity: number }>
 ) {
   return items.reduce((acc, item) => {
+    if (!item.finishedGoodId) return acc;
     acc.set(item.finishedGoodId, (acc.get(item.finishedGoodId) || 0) + item.quantity);
     return acc;
   }, new Map<string, number>());
+}
+
+function hasUnitItems(items: Array<{ unitId: string | null }>) {
+  return items.some((item) => Boolean(item.unitId));
 }
 
 export async function POST(
@@ -93,11 +98,13 @@ export async function POST(
         throw new Error("INVALID_STATUS_RELEASED");
       }
 
+      if (data.eventType === "PICKED" && !["pending_pick", "draft", "reserved"].includes(dispatch.status)) {
+        throw new Error("INVALID_STATUS_PICKED");
+      }
+
       if (
         data.eventType === "DISPATCHED" &&
-        dispatch.status !== "draft" &&
-        dispatch.status !== "released" &&
-        dispatch.status !== "reserved"
+        !["draft", "released", "reserved", "pending_pick", "picked", "packed"].includes(dispatch.status)
       ) {
         throw new Error("INVALID_STATUS_DISPATCHED");
       }
@@ -123,7 +130,9 @@ export async function POST(
       const requiredQuantities = getRequiredQuantities(dispatch.items);
       const finishedGoodIds = [...requiredQuantities.keys()];
 
-      if (data.eventType === "RESERVED" || data.eventType === "DISPATCHED") {
+      const unitMode = hasUnitItems(dispatch.items);
+
+      if (!unitMode && (data.eventType === "RESERVED" || data.eventType === "DISPATCHED")) {
         const existingEvents = await tx.operationFinishedGoodEvent.findMany({
           where: { finishedGoodId: { in: finishedGoodIds } },
           select: {
@@ -161,8 +170,9 @@ export async function POST(
         createdById: string | null;
       }> = [];
 
-      if (data.eventType === "RESERVED") {
+      if (!unitMode && data.eventType === "RESERVED") {
         for (const item of dispatch.items) {
+          if (!item.finishedGoodId) continue;
           finishedGoodEvents.push({
             finishedGoodId: item.finishedGoodId,
             eventType: "RESERVATION",
@@ -177,8 +187,9 @@ export async function POST(
         }
       }
 
-      if (data.eventType === "RELEASED" || (data.eventType === "CANCELLED" && dispatch.status === "reserved")) {
+      if (!unitMode && (data.eventType === "RELEASED" || (data.eventType === "CANCELLED" && dispatch.status === "reserved"))) {
         for (const item of dispatch.items) {
+          if (!item.finishedGoodId) continue;
           finishedGoodEvents.push({
             finishedGoodId: item.finishedGoodId,
             eventType: "RELEASE",
@@ -193,9 +204,10 @@ export async function POST(
         }
       }
 
-      if (data.eventType === "DISPATCHED") {
+      if (!unitMode && data.eventType === "DISPATCHED") {
         if (dispatch.status === "reserved") {
           for (const item of dispatch.items) {
+            if (!item.finishedGoodId) continue;
             finishedGoodEvents.push({
               finishedGoodId: item.finishedGoodId,
               eventType: "RELEASE",
@@ -211,6 +223,7 @@ export async function POST(
         }
 
         for (const item of dispatch.items) {
+          if (!item.finishedGoodId) continue;
           finishedGoodEvents.push({
             finishedGoodId: item.finishedGoodId,
             eventType: "ISSUE",
@@ -222,8 +235,8 @@ export async function POST(
             metadataJson: JSON.stringify({ dispatchCode: dispatch.code, dispatchEventId: event.id }),
             createdById,
           });
+          }
         }
-      }
 
       if (finishedGoodEvents.length > 0) {
         await tx.operationFinishedGoodEvent.createMany({
@@ -231,18 +244,84 @@ export async function POST(
         });
       }
 
+      if (unitMode) {
+        if (data.eventType === "PICKED") {
+          for (const item of dispatch.items) {
+            if (!item.unitId) continue;
+            await tx.operationFinishedGoodUnit.update({
+              where: { id: item.unitId },
+              data: {
+                status: "reserved",
+                events: {
+                  create: {
+                    eventType: "PICKED",
+                    reason: data.reason || `Unidad separada para despacho ${dispatch.code}`,
+                    referenceType: "dispatch",
+                    referenceId: dispatch.id,
+                    metadataJson: {
+                      dispatchCode: dispatch.code,
+                      dispatchEventId: event.id,
+                      internalLabel: item.internalLabel,
+                    },
+                  },
+                },
+              },
+            });
+          }
+        }
+
+        if (data.eventType === "DISPATCHED" || data.eventType === "DELIVERED") {
+          const nextStatus = data.eventType === "DISPATCHED" ? "dispatched" : "delivered";
+          for (const item of dispatch.items) {
+            if (!item.unitId) continue;
+            await tx.operationFinishedGoodUnit.update({
+              where: { id: item.unitId },
+              data: {
+                status: nextStatus,
+                dispatchedAt: data.eventType === "DISPATCHED" ? new Date() : undefined,
+                deliveredAt: data.eventType === "DELIVERED" ? new Date() : undefined,
+                events: {
+                  create: {
+                    eventType: data.eventType,
+                    reason:
+                      data.reason ||
+                      (data.eventType === "DISPATCHED"
+                        ? `Unidad despachada fisicamente por ${dispatch.code}`
+                        : `Unidad entregada por ${dispatch.code}`),
+                    referenceType: "dispatch",
+                    referenceId: dispatch.id,
+                    metadataJson: {
+                      dispatchCode: dispatch.code,
+                      dispatchEventId: event.id,
+                      internalLabel: item.internalLabel,
+                      status: nextStatus,
+                    },
+                  },
+                },
+              },
+            });
+          }
+        }
+      }
+
       const updateData: {
         status?: string;
+        sentAt?: Date;
         dispatchedAt?: Date;
         deliveredAt?: Date;
       } = {};
 
       if (data.eventType === "RESERVED") {
         updateData.status = "reserved";
+      } else if (data.eventType === "PICKED") {
+        updateData.status = "picked";
+      } else if (data.eventType === "PACKED") {
+        updateData.status = "packed";
       } else if (data.eventType === "RELEASED") {
         updateData.status = "released";
       } else if (data.eventType === "DISPATCHED") {
         updateData.status = "dispatched";
+        updateData.sentAt = new Date();
         updateData.dispatchedAt = new Date();
       } else if (data.eventType === "DELIVERED") {
         updateData.status = "delivered";

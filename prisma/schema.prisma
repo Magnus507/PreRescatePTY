@@ -1078,6 +1078,7 @@ model OperationFinishedGoodUnit {
   digitalBatch         OperationDigitalBatch?     @relation(fields: [digitalBatchId], references: [id], onDelete: SetNull)
   digitalBatchItem     OperationDigitalBatchItem? @relation(fields: [digitalBatchItemId], references: [id], onDelete: SetNull)
   printOrder           OperationPrintOrder?       @relation(fields: [printOrderId], references: [id], onDelete: SetNull)
+  dispatchItems        OperationDispatchItem[]
   events               OperationFinishedGoodUnitEvent[]
 
   @@index([productCode])
@@ -1112,7 +1113,10 @@ model OperationDispatch {
   destinationName         String?
   destinationReference    String?
   destinationAddress      String?
+  carrierName             String?
+  trackingReference       String?
   scheduledAt             DateTime?
+  sentAt                  DateTime?
   dispatchedAt            DateTime?
   deliveredAt             DateTime?
   notes                   String?
@@ -1120,7 +1124,7 @@ model OperationDispatch {
   updatedAt               DateTime                   @updatedAt
   items                   OperationDispatchItem[]
   events                  OperationDispatchEvent[]
-  commercialOrders        OperationCommercialOrder[]
+  commercialOrders        OperationCommercialOrder[]  @relation("CommercialOrderDispatch")
   warranties              OperationWarranty[]
   originalReplacements    OperationReplacement[]     @relation("OperationReplacementOriginalDispatch")
   replacementReplacements OperationReplacement[]     @relation("OperationReplacementReplacementDispatch")
@@ -1132,19 +1136,31 @@ model OperationDispatch {
 }
 
 model OperationDispatchItem {
-  id             String                @id @default(cuid())
+  id             String                  @id @default(cuid())
   dispatchId     String
-  finishedGoodId String
+  finishedGoodId String?
+  unitId         String?
+  internalLabel  String?
+  productCode    String?
+  productName    String?
   quantity       Float
   unit           String
+  status         String                  @default("pending_pick")
+  pickedAt       DateTime?
+  packedAt       DateTime?
+  dispatchedAt   DateTime?
+  deliveredAt    DateTime?
   notes          String?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  dispatch       OperationDispatch     @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
-  finishedGood   OperationFinishedGood @relation(fields: [finishedGoodId], references: [id])
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  dispatch       OperationDispatch       @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  finishedGood   OperationFinishedGood?  @relation(fields: [finishedGoodId], references: [id])
+  unitRecord     OperationFinishedGoodUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
 
   @@index([dispatchId])
   @@index([finishedGoodId])
+  @@index([unitId])
+  @@index([status])
 }
 
 model OperationDispatchEvent {
@@ -1185,7 +1201,7 @@ model OperationCommercialOrder {
   notes             String?
   createdAt         DateTime                        @default(now())
   updatedAt         DateTime                        @updatedAt
-  dispatch          OperationDispatch?              @relation(fields: [dispatchId], references: [id])
+  dispatch          OperationDispatch?              @relation("CommercialOrderDispatch", fields: [dispatchId], references: [id])
   items             OperationCommercialOrderItem[]
   events            OperationCommercialOrderEvent[]
   warranties        OperationWarranty[]

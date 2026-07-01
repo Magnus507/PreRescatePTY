@@ -24,6 +24,17 @@ const dispatchInclude = {
       finishedGood: {
         select: finishedGoodSelect,
       },
+      unitRecord: {
+        select: {
+          id: true,
+          internalLabel: true,
+          productCode: true,
+          productName: true,
+          status: true,
+          qaStatus: true,
+          activationStatus: true,
+        },
+      },
     },
   },
   events: {
