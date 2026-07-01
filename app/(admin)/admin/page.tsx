@@ -93,6 +93,7 @@ function AdminDashboard() {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const isPrintRole = role === 'imprenta';
+  const isOperationsTab = admin.tab === 'inventory';
 
   const dynamicLabels: Record<string, { title: string; subtitle: string; placeholder: string }> = {
     dashboard: { 
@@ -153,6 +154,14 @@ function AdminDashboard() {
     subtitle: "Infraestructura PreRescatePTY v3.1",
     placeholder: "Buscar..." 
   };
+
+  const headerWrapperClassName = isOperationsTab
+    ? "w-full px-6 py-10 relative z-10"
+    : "max-w-7xl mx-auto px-8 py-10 relative z-10";
+
+  const mainWrapperClassName = isOperationsTab
+    ? "w-full px-6 py-10"
+    : "max-w-7xl mx-auto px-6 py-10";
 
   // -- UI States --
   const [showOrgModal, setShowOrgModal] = useState(false);
@@ -256,7 +265,7 @@ function AdminDashboard() {
            <Activity className="h-64 w-64 animate-pulse" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-8 py-10 relative z-10">
+        <div className={headerWrapperClassName}>
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -288,7 +297,7 @@ function AdminDashboard() {
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-6 py-10">
+      <div className={mainWrapperClassName}>
         <div className="min-h-[60vh]">
           {admin.tab === "dashboard" && (
             <DashboardSection 
