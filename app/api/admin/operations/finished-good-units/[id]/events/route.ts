@@ -2,38 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
-import {
-  FinishedGoodUnitActionSchema,
-  getFirstValidationMessage,
-} from "../finished-good-units.helpers";
+import { FinishedGoodUnitActionSchema, getFirstValidationMessage } from "../../finished-good-units.helpers";
 
 export const dynamic = "force-dynamic";
-
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const auth = await requireRole(GENERAL_ADMIN_ROLES);
-  if (!auth.authorized) return auth.response;
-  const { id } = await params;
-  const unit = await prisma.operationFinishedGoodUnit.findUnique({
-    where: { id },
-    include: {
-      digitalBatch: true,
-      digitalBatchItem: true,
-      printOrder: true,
-      events: { orderBy: { createdAt: "asc" } },
-    },
-  });
-  if (!unit) return NextResponse.json({ error: "Unidad no encontrada" }, { status: 404 });
-  const reservedOrder = unit.reservedOrderId
-    ? await prisma.operationCommercialOrder.findUnique({
-        where: { id: unit.reservedOrderId },
-        select: { id: true, code: true, status: true, customerName: true, customerReference: true },
-      })
-    : null;
-  return NextResponse.json({ unit: { ...unit, reservedOrder } });
-}
 
 export async function POST(
   req: NextRequest,
@@ -41,6 +12,7 @@ export async function POST(
 ) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
+
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
   const parsed = FinishedGoodUnitActionSchema.safeParse(body);
@@ -57,19 +29,12 @@ export async function POST(
       if (!["assembled", "qa_pending"].includes(unit.status)) {
         return NextResponse.json({ error: "La unidad no puede aprobarse desde este estado" }, { status: 400 });
       }
-
       await prisma.operationFinishedGoodUnit.update({
         where: { id },
         data: {
           status: "available",
           qaStatus: "passed",
-          events: {
-            create: {
-              eventType: "QA_PASSED",
-              reason: parsed.data.reason || null,
-              metadataJson: { previousStatus: unit.status },
-            },
-          },
+          events: { create: { eventType: "QA_PASSED", reason: parsed.data.reason || null, metadataJson: { previousStatus: unit.status } } },
         },
       });
       return NextResponse.json({ ok: true });
@@ -79,60 +44,40 @@ export async function POST(
       if (!["assembled", "qa_pending"].includes(unit.status)) {
         return NextResponse.json({ error: "La unidad no puede rechazarse desde este estado" }, { status: 400 });
       }
-
       await prisma.operationFinishedGoodUnit.update({
         where: { id },
         data: {
           status: "qa_failed",
           qaStatus: "failed",
-          events: {
-            create: {
-              eventType: "QA_FAILED",
-              reason: parsed.data.reason || null,
-              metadataJson: { previousStatus: unit.status },
-            },
-          },
+          events: { create: { eventType: "QA_FAILED", reason: parsed.data.reason || null, metadataJson: { previousStatus: unit.status } } },
         },
       });
       return NextResponse.json({ ok: true });
     }
 
     if (parsed.data.action === "reserve") {
+      const referenceType = parsed.data.referenceType?.trim() || null;
+      const referenceId = parsed.data.referenceId?.trim() || null;
       if (unit.status !== "available") {
         return NextResponse.json({ error: "Solo se puede reservar una unidad available" }, { status: 400 });
       }
-
-      const referenceType = parsed.data.referenceType?.trim() || null;
-      const referenceId = parsed.data.referenceId?.trim() || null;
-      if (!referenceType) {
-        return NextResponse.json({ error: "referenceType es requerido para reservar" }, { status: 400 });
+      if (!referenceType) return NextResponse.json({ error: "referenceType es requerido para reservar" }, { status: 400 });
+      if (!["commercial_order", "manual_reservation"].includes(referenceType)) {
+        return NextResponse.json({ error: "referenceType invalido" }, { status: 400 });
       }
       if (referenceType === "commercial_order" && !referenceId) {
         return NextResponse.json({ error: "referenceId es requerido para commercial_order" }, { status: 400 });
       }
-      if (!["commercial_order", "manual_reservation"].includes(referenceType)) {
-        return NextResponse.json({ error: "referenceType invalido" }, { status: 400 });
-      }
-
       if (unit.reservedOrderId) {
         return NextResponse.json({ error: "La unidad ya tiene una reserva activa" }, { status: 409 });
       }
-
       await prisma.operationFinishedGoodUnit.update({
         where: { id },
         data: {
           status: "reserved",
-          reservedOrderId: referenceType === "commercial_order" ? referenceId : referenceId,
+          reservedOrderId: referenceId,
           reservedAt: new Date(),
-          events: {
-            create: {
-              eventType: "RESERVED",
-              reason: parsed.data.reason || null,
-              referenceType,
-              referenceId,
-              metadataJson: { previousStatus: unit.status },
-            },
-          },
+          events: { create: { eventType: "RESERVED", reason: parsed.data.reason || null, referenceType, referenceId, metadataJson: { previousStatus: unit.status } } },
         },
       });
       return NextResponse.json({ ok: true });
@@ -148,13 +93,7 @@ export async function POST(
           status: "available",
           reservedOrderId: null,
           reservedAt: null,
-          events: {
-            create: {
-              eventType: "RELEASED",
-              reason: parsed.data.reason || null,
-              metadataJson: { previousStatus: unit.status },
-            },
-          },
+          events: { create: { eventType: "RELEASED", reason: parsed.data.reason || null, metadataJson: { previousStatus: unit.status } } },
         },
       });
       return NextResponse.json({ ok: true });
@@ -168,13 +107,7 @@ export async function POST(
         where: { id },
         data: {
           status: "discarded",
-          events: {
-            create: {
-              eventType: "DISCARDED",
-              reason: parsed.data.reason || null,
-              metadataJson: { previousStatus: unit.status },
-            },
-          },
+          events: { create: { eventType: "DISCARDED", reason: parsed.data.reason || null, metadataJson: { previousStatus: unit.status } } },
         },
       });
       return NextResponse.json({ ok: true });
@@ -188,13 +121,7 @@ export async function POST(
         where: { id },
         data: {
           status: "cancelled",
-          events: {
-            create: {
-              eventType: "CANCELLED",
-              reason: parsed.data.reason || null,
-              metadataJson: { previousStatus: unit.status },
-            },
-          },
+          events: { create: { eventType: "CANCELLED", reason: parsed.data.reason || null, metadataJson: { previousStatus: unit.status } } },
         },
       });
       return NextResponse.json({ ok: true });
@@ -205,6 +132,7 @@ export async function POST(
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       return NextResponse.json({ error: "Error al actualizar unidad" }, { status: 500 });
     }
-    throw error;
+    console.error("[operations/finished-good-units/:id/events] POST error:", error);
+    return NextResponse.json({ error: "Error al ejecutar evento de unidad" }, { status: 500 });
   }
 }

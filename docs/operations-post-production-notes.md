@@ -87,3 +87,23 @@
 - No se toco checkout legacy.
 - No se toco `Order` / `Product` legacy.
 - No se uso stock como fuente de verdad.
+
+## W5.37I - Unidad terminada por etiqueta interna
+
+- Se agrego el modelo Prisma `OperationFinishedGoodUnit` y `OperationFinishedGoodUnitEvent` para representar una pieza operativa trazable.
+- La unidad se crea desde `DigitalBatchItem` en estado `printed` y hereda `internalLabel`, producto y tipo.
+- Se agrego una UI basica en `Unidades` para crear unidades desde items impresos.
+- La entidad queda lista para QA, inventario por unidad y trazabilidad futura sin tocar activacion final.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se uso stock como fuente de verdad.
+
+## W5.37J - Inventario por unidad / reserva
+
+- Se habilito el listado filtrable de `OperationFinishedGoodUnit` con conteos rapidos por estado operativo.
+- Se agrego la ruta `POST /api/admin/operations/finished-good-units/[id]/events` para eventos append-only de QA, reserva, liberacion, descarte y cancelacion.
+- La reserva usa `reservedOrderId` y `reservedAt` sin asignar usuario final ni tocar activacion.
+- La UI de `Unidades` ahora muestra unidades disponibles y reservadas con acciones basicas operativas.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se uso stock como fuente de verdad.

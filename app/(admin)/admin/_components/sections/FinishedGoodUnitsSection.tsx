@@ -24,6 +24,14 @@ interface Unit {
   digitalBatchItem?: DigitalBatchItem | null;
 }
 
+interface Counts {
+  qaPendingCount: number;
+  availableCount: number;
+  reservedCount: number;
+  deliveredCount: number;
+  notActivatedCount: number;
+}
+
 export function FinishedGoodUnitsSection() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [items, setItems] = useState<DigitalBatchItem[]>([]);
@@ -31,6 +39,15 @@ export function FinishedGoodUnitsSection() {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState("");
+  const [counts, setCounts] = useState<Counts>({
+    qaPendingCount: 0,
+    availableCount: 0,
+    reservedCount: 0,
+    deliveredCount: 0,
+    notActivatedCount: 0,
+  });
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
 
   const loadData = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -39,8 +56,11 @@ export function FinishedGoodUnitsSection() {
       setLoading(true);
     }
     try {
+      const params = new URLSearchParams();
+      if (filterStatus) params.set("status", filterStatus);
+      if (filterSearch) params.set("search", filterSearch);
       const [unitsRes, batchesRes] = await Promise.all([
-        fetch("/api/admin/operations/finished-good-units", { cache: "no-store" }),
+        fetch(`/api/admin/operations/finished-good-units?${params.toString()}`, { cache: "no-store" }),
         fetch("/api/admin/operations/digital-batches", { cache: "no-store" }),
       ]);
       const unitsData = await unitsRes.json();
@@ -48,6 +68,15 @@ export function FinishedGoodUnitsSection() {
       if (!unitsRes.ok) throw new Error(unitsData.error || "No se pudieron cargar unidades");
       if (!batchesRes.ok) throw new Error(batchesData.error || "No se pudieron cargar lotes");
       setUnits(Array.isArray(unitsData.units) ? unitsData.units : []);
+      setCounts(
+        unitsData.counts || {
+          qaPendingCount: 0,
+          availableCount: 0,
+          reservedCount: 0,
+          deliveredCount: 0,
+          notActivatedCount: 0,
+        }
+      );
       const flattened: DigitalBatchItem[] = Array.isArray(batchesData.batches)
         ? batchesData.batches.flatMap((batch: { id: string; items?: DigitalBatchItem[] }) =>
             Array.isArray(batch.items)
@@ -62,7 +91,7 @@ export function FinishedGoodUnitsSection() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [filterSearch, filterStatus]);
 
   useEffect(() => {
     loadData();
@@ -89,6 +118,17 @@ export function FinishedGoodUnitsSection() {
     }
   };
 
+  const runUnitAction = async (unitId: string, action: string, reason?: string, referenceType?: string, referenceId?: string) => {
+    const res = await fetch(`/api/admin/operations/finished-good-units/${unitId}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, reason, referenceType, referenceId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "No se pudo ejecutar la accion");
+    await loadData({ silent: true });
+  };
+
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
@@ -98,6 +138,14 @@ export function FinishedGoodUnitsSection() {
             <p className="mt-1 text-sm font-semibold text-slate-500">Creadas desde items impresos, con etiqueta interna unica.</p>
           </div>
           <div className="flex gap-2">
+            <input value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} placeholder="Buscar internalLabel" className="min-w-[220px] rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold" />
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold">
+              <option value="">Todos los estados</option>
+              <option value="qa_pending">QA pendiente</option>
+              <option value="available">Disponibles</option>
+              <option value="reserved">Reservadas</option>
+              <option value="qa_failed">QA fallida</option>
+            </select>
             <select value={selectedItemId} onChange={(e) => setSelectedItemId(e.target.value)} className="min-w-[280px] rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold">
               <option value="">Selecciona item printed</option>
               {items.map((item) => (
@@ -114,6 +162,28 @@ export function FinishedGoodUnitsSection() {
             </button>
           </div>
         </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">QA pendiente</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{counts.qaPendingCount}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Disponibles</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{counts.availableCount}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reservadas</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{counts.reservedCount}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Entregadas</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{counts.deliveredCount}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No activadas</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{counts.notActivatedCount}</p>
+          </div>
+        </div>
       </section>
 
       {loading ? (
@@ -126,6 +196,45 @@ export function FinishedGoodUnitsSection() {
               <h4 className="mt-2 text-sm font-black text-slate-950">{unit.productName}</h4>
               <p className="mt-1 text-[11px] font-semibold text-slate-500">{unit.productCode} · {unit.productType}</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-500">Estado: {unit.status} · QA: {unit.qaStatus || "pending"} · Activacion: {unit.activationStatus}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {unit.status !== "available" && unit.status !== "reserved" && (
+                  <button type="button" onClick={() => runUnitAction(unit.id, "qa_pass")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800">
+                    QA passed
+                  </button>
+                )}
+                {unit.status === "available" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const orderId = window.prompt("Reference ID de la orden comercial:");
+                      if (!orderId) return;
+                      const reason = window.prompt("Motivo de la reserva (opcional):") || "";
+                      runUnitAction(unit.id, "reserve", reason, "commercial_order", orderId).catch((error) => toast.error(error instanceof Error ? error.message : "Error al reservar"));
+                    }}
+                    className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-blue-800"
+                  >
+                    Reservar
+                  </button>
+                )}
+                {unit.status === "reserved" && (
+                  <button
+                    type="button"
+                    onClick={() => runUnitAction(unit.id, "release").catch((error) => toast.error(error instanceof Error ? error.message : "Error al liberar"))}
+                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800"
+                  >
+                    Liberar
+                  </button>
+                )}
+                {unit.status === "qa_failed" && (
+                  <button
+                    type="button"
+                    onClick={() => runUnitAction(unit.id, "discard", "Descartada por QA").catch((error) => toast.error(error instanceof Error ? error.message : "Error al descartar"))}
+                    className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-800"
+                  >
+                    Descartar
+                  </button>
+                )}
+              </div>
             </article>
           ))}
         </div>

@@ -4,18 +4,36 @@ import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import {
   CreateFinishedGoodUnitSchema,
+  buildFinishedGoodUnitStatusCounts,
   getFirstValidationMessage,
   getProductMetadata,
 } from "./finished-good-units.helpers";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
 
+  const searchParams = req.nextUrl.searchParams;
+  const status = searchParams.get("status") || undefined;
+  const productType = searchParams.get("productType") || undefined;
+  const productCode = searchParams.get("productCode") || undefined;
+  const activationStatus = searchParams.get("activationStatus") || undefined;
+  const reservedOrderId = searchParams.get("reservedOrderId") || undefined;
+  const search = searchParams.get("search") || undefined;
+
+  const where: Record<string, unknown> = {};
+  if (status) where.status = status;
+  if (productType) where.productType = productType;
+  if (productCode) where.productCode = productCode;
+  if (activationStatus) where.activationStatus = activationStatus;
+  if (reservedOrderId) where.reservedOrderId = reservedOrderId;
+  if (search) where.internalLabel = { contains: search, mode: "insensitive" };
+
   try {
     const units = await prisma.operationFinishedGoodUnit.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       include: {
         digitalBatch: true,
@@ -24,7 +42,7 @@ export async function GET() {
         events: { orderBy: { createdAt: "asc" } },
       },
     });
-    return NextResponse.json({ units });
+    return NextResponse.json({ units, counts: buildFinishedGoodUnitStatusCounts(units) });
   } catch (error) {
     console.error("[operations/finished-good-units] GET error:", error);
     return NextResponse.json({ error: "Error al listar unidades terminadas" }, { status: 500 });
