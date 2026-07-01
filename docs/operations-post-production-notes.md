@@ -136,3 +136,13 @@
 - La activacion real queda pendiente para W5.37Q.
 - No se tocaron migraciones, no se uso `prisma db push` y no se uso `prisma migrate reset`.
 - No se toco checkout legacy ni `Order` / `Product` legacy.
+
+## W5.37Q - Activacion conecta unidad con usuario final
+
+- Se agrego el helper operativo `markFinishedGoodUnitActivated` en `lib/operations/activate-finished-good-unit.ts`.
+- El flujo legacy de activacion de chip llama ese helper despues de activarse con exito.
+- La activacion operativa busca la unidad por `internalLabel` o por `shortCode` asociado al lote digital.
+- Al activarse, la unidad pasa a `activationStatus = activated`, guarda `activatedAt`, referencia de activacion y crea evento `ACTIVATED`.
+- La pantalla publica `/activar/[internalLabel]` ahora muestra `Producto activado` y puede enlazar al perfil publico si existe `shortCode`.
+- No se tocaron checkout legacy, `Order` / `Product` legacy ni migraciones.
+- No se uso `prisma db push` ni `prisma migrate reset`.

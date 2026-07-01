@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import { markFinishedGoodUnitActivated } from "@/lib/operations/activate-finished-good-unit";
 import {
   ACTIVATABLE_CHIP_STATUSES,
   CHIP_SERVICE_STATUS,
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const activationSyncData = await prisma.$transaction(async (tx) => {
       const now = new Date();
 
       // 1. Find the claim token
@@ -291,10 +292,45 @@ export async function POST(req: NextRequest) {
           }),
         },
       });
+
+      return {
+        internalLabel: chip.internalLabel || null,
+        shortCode: chip.shortCode,
+        chipId: chip.id,
+        activationCodeSuffix: activationCode.slice(-4),
+        corporateProfileId: corporateProfile.id,
+        organizationMemberId: member.id,
+        corporateOrderEmployeeItemId: pendingItem.id,
+      };
     });
 
     // Invalidate cache after successful activation
     await AccountStateService.invalidateCache(userId);
+
+    void (async () => {
+      if (!activationSyncData) return;
+      const activationResult = await markFinishedGoodUnitActivated({
+        internalLabel: activationSyncData.internalLabel,
+        shortCode: activationSyncData.shortCode,
+        activationReferenceType: "corporate_chip_activation",
+        activationReferenceId: activationSyncData.chipId,
+        metadataJson: {
+          chipId: activationSyncData.chipId,
+          chipShortCode: activationSyncData.shortCode,
+          activationCodeSuffix: activationSyncData.activationCodeSuffix,
+          flow: "corporate_chip_activation",
+          corporateProfileId: activationSyncData.corporateProfileId,
+          organizationMemberId: activationSyncData.organizationMemberId,
+          corporateOrderEmployeeItemId: activationSyncData.corporateOrderEmployeeItemId,
+        },
+      });
+
+      if (!activationResult.ok) {
+        console.warn("[corporate-chip/activate] Finished good unit sync skipped:", activationResult.reason);
+      }
+    })().catch((error) => {
+      console.warn("[corporate-chip/activate] Finished good unit sync failed:", error);
+    });
 
     return NextResponse.json({
       success: true,

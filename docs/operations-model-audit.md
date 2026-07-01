@@ -242,3 +242,12 @@ Esta auditoria no debe tocar Prisma schema ni migraciones. Eso no significa que 
 - No se uso `prisma db push`.
 - No se uso `prisma migrate reset`.
 - No se toco checkout legacy ni `Order` / `Product` legacy.
+
+## W5.37Q - Activacion conecta unidad con usuario final
+
+- Se agrego un puente operativo seguro entre la activacion legacy y `OperationFinishedGoodUnit`.
+- La unidad se resuelve por `internalLabel` y, como respaldo, por `shortCode` asociado al lote digital.
+- Al activar con exito, la unidad pasa a `activationStatus = activated`, recibe `activatedAt`, referencia de activacion y evento `ACTIVATED`.
+- La pantalla publica de pre-activacion ahora distingue `Producto activado` y puede ofrecer enlace al perfil publico.
+- No se toco checkout legacy ni `Order` / `Product` legacy.
+- No se usaron migraciones, `prisma db push` ni `prisma migrate reset`.

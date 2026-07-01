@@ -39,13 +39,6 @@ export default async function PublicActivationPage({
           name: true,
         },
       },
-      finishedGoodUnits: {
-        select: {
-          id: true,
-          activationStatus: true,
-          status: true,
-        },
-      },
     },
   });
 
@@ -53,14 +46,25 @@ export default async function PublicActivationPage({
     notFound();
   }
 
-  const unit = item.finishedGoodUnits[0] || null;
-  if (unit?.activationStatus === "activated" && item.shortCode) {
-    redirect(`/e/${item.shortCode}`);
+  const unit = await prisma.operationFinishedGoodUnit.findUnique({
+    where: { digitalBatchItemId: item.id },
+    select: {
+      activationStatus: true,
+      status: true,
+      digitalBatchItem: { select: { shortCode: true } },
+    },
+  });
+
+  if (unit?.activationStatus === "activated" && unit.digitalBatchItem?.shortCode) {
+    redirect(`/e/${unit.digitalBatchItem.shortCode}`);
   }
 
+  const isActivated = unit?.activationStatus === "activated";
   const isReadyForActivation = unit?.activationStatus === "not_activated";
   const statusLabel = unit
-    ? isReadyForActivation
+    ? isActivated
+      ? "Producto activado"
+      : isReadyForActivation
       ? "Pendiente de activación"
       : unit.status === "qa_pending"
         ? "En preparación"
@@ -83,7 +87,9 @@ export default async function PublicActivationPage({
           <div className="h-3 bg-red-600" />
           <div className="p-6 sm:p-10 md:p-12 text-center">
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[2rem] border border-slate-100 bg-slate-50 shadow-lg">
-              {isReadyForActivation ? (
+              {isActivated ? (
+                <ShieldCheck className="h-10 w-10 text-emerald-700" />
+              ) : isReadyForActivation ? (
                 <ShieldCheck className="h-10 w-10 text-slate-800" />
               ) : (
                 <Activity className="h-10 w-10 text-slate-700" />
@@ -94,7 +100,7 @@ export default async function PublicActivationPage({
               PreRescatePTY / PreRescueID
             </p>
             <h1 className="mt-3 text-3xl font-black uppercase tracking-tighter text-slate-900 sm:text-5xl">
-              Este producto requiere activación
+              {isActivated ? "Producto activado" : "Este producto requiere activación"}
             </h1>
 
             <div className="mx-auto mt-8 grid max-w-lg gap-3 text-left">
@@ -113,18 +119,29 @@ export default async function PublicActivationPage({
             </div>
 
             <p className="mx-auto mt-8 max-w-xl text-sm leading-relaxed text-slate-500 sm:text-base">
-              Este código pertenece a un producto PreRescatePTY. Antes de la activación solo mostramos información operativa segura.
-              No se muestran datos médicos, personales ni contactos de emergencia.
+              {isActivated
+                ? "La activación ya se completó. Desde aquí solo mostramos el estado operativo, sin datos médicos ni personales."
+                : "Este código pertenece a un producto PreRescatePTY. Antes de la activación solo mostramos información operativa segura. No se muestran datos médicos, personales ni contactos de emergencia."}
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <Link
-                href="/activar"
-                className="inline-flex items-center justify-center gap-3 rounded-2xl bg-red-600 px-6 py-4 text-sm font-black uppercase tracking-widest text-white transition-all hover:bg-black active:scale-[0.98]"
-              >
-                Activar producto
-                <ShieldCheck className="h-5 w-5" />
-              </Link>
+              {isActivated && item.shortCode ? (
+                <Link
+                  href={`/e/${item.shortCode}`}
+                  className="inline-flex items-center justify-center gap-3 rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-black uppercase tracking-widest text-white transition-all hover:bg-emerald-700 active:scale-[0.98]"
+                >
+                  Ver perfil de emergencia
+                  <ShieldCheck className="h-5 w-5" />
+                </Link>
+              ) : (
+                <Link
+                  href="/activar"
+                  className="inline-flex items-center justify-center gap-3 rounded-2xl bg-red-600 px-6 py-4 text-sm font-black uppercase tracking-widest text-white transition-all hover:bg-black active:scale-[0.98]"
+                >
+                  Activar producto
+                  <ShieldCheck className="h-5 w-5" />
+                </Link>
+              )}
             </div>
           </div>
         </section>

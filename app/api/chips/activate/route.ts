@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import { markFinishedGoodUnitActivated } from "@/lib/operations/activate-finished-good-unit";
 import {
   ACTIVATABLE_CHIP_STATUSES,
   CHIP_SERVICE_STATUS,
@@ -329,6 +330,27 @@ export async function POST(req: NextRequest) {
 
     // Invalidate cache after successful activation (outside transaction)
     await AccountStateService.invalidateCache(userId);
+
+    void (async () => {
+      const activationResult = await markFinishedGoodUnitActivated({
+        internalLabel: chip.internalLabel || null,
+        shortCode: chip.shortCode,
+        activationReferenceType: "chip_activation",
+        activationReferenceId: chip.id,
+        metadataJson: {
+          chipId: chip.id,
+          chipShortCode: chip.shortCode,
+          activationCodeSuffix: activationCode.slice(-4),
+          flow: "legacy_chip_activation",
+        },
+      });
+
+      if (!activationResult.ok) {
+        console.warn("[chips/activate] Finished good unit sync skipped:", activationResult.reason);
+      }
+    })().catch((error) => {
+      console.warn("[chips/activate] Finished good unit sync failed:", error);
+    });
   } catch (error: unknown) {
     console.error("[chips/activate] Error:", error);
     if (error instanceof Error && error.message === "TOKEN_ALREADY_USED_OR_EXPIRED") {
