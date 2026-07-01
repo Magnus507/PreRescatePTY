@@ -142,6 +142,13 @@ Todos usan `requireRole(GENERAL_ADMIN_ROLES)` y operan con modelos basados en ev
 - No se detecto una fuente consolidada unica para historico general del centro de operaciones.
 - La mejor salida es construirlo despues como timeline unificado por eventos de dominios, no como mock.
 
+## Estado de QA
+
+- La brecha de QA por unidad queda cerrada de forma parcial y formal con checklist obligatorio en `OperationFinishedGoodUnitEvent.metadataJson`.
+- `QA_PASSED` habilita inventario disponible.
+- `QA_FAILED` bloquea la unidad fuera de inventario hasta reproceso o descarte.
+- Esto reduce la brecha entre ensamblaje y disponibilidad sin introducir stock agregado manual ni tocar activacion final.
+
 ## Reutilizacion
 
 Se reutiliza bien:

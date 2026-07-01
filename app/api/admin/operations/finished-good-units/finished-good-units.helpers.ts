@@ -6,10 +6,11 @@ export const CreateFinishedGoodUnitSchema = z.object({
 });
 
 export const FinishedGoodUnitActionSchema = z.object({
-  action: z.enum(["qa_pass", "qa_fail", "reserve", "release", "discard", "cancel"]),
+  action: z.enum(["qa_pass", "qa_fail", "send_to_rework", "reserve", "release", "discard", "cancel"]),
   reason: z.string().trim().max(1000).optional().nullable(),
   referenceType: z.string().trim().max(80).optional().nullable(),
   referenceId: z.string().trim().max(160).optional().nullable(),
+  metadataJson: z.union([z.record(z.any()), z.null()]).optional(),
 });
 
 export function getFirstValidationMessage(error: z.ZodError): string {
@@ -48,4 +49,31 @@ export function buildFinishedGoodUnitStatusCounts(units: Array<{ status: string;
       notActivatedCount: 0,
     }
   );
+}
+
+export const QA_REQUIRED_CHECKS = [
+  "nfcWorks",
+  "qrWorks",
+  "internalLabelCorrect",
+  "stickerCorrect",
+  "activationCardCorrect",
+  "packagingCorrect",
+  "sealedPackage",
+  "productTypeCorrect",
+] as const;
+
+export type QARequiredCheck = (typeof QA_REQUIRED_CHECKS)[number];
+
+export function normalizeQaChecklist(metadataJson: unknown) {
+  if (!metadataJson || typeof metadataJson !== "object" || Array.isArray(metadataJson)) {
+    return null;
+  }
+
+  return metadataJson as Record<string, unknown>;
+}
+
+export function hasCompleteQaChecklist(metadataJson: unknown) {
+  const checklist = normalizeQaChecklist(metadataJson);
+  if (!checklist) return false;
+  return QA_REQUIRED_CHECKS.every((key) => checklist[key] === true);
 }

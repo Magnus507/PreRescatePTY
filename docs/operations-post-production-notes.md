@@ -107,3 +107,12 @@
 - No se toco checkout legacy.
 - No se toco `Order` / `Product` legacy.
 - No se uso stock como fuente de verdad.
+
+## W5.37M - QA obligatorio formal
+
+- Se formalizo QA por unidad terminada con checklist obligatorio en `metadataJson` de `OperationFinishedGoodUnitEvent`.
+- `QA_PASSED` exige controles completos y mueve la unidad a `available`.
+- `QA_FAILED` deja la unidad en `qa_failed`.
+- La produccion sigue creando unidades en `qa_pending`.
+- No se crea stock agregado, no se reserva automaticamente, no se crea despacho y no se toca activacion ni usuario final.
+- La UI de `Calidad / QA` ya expone la cola de unidades terminadas para aprobar, fallar o descartar.

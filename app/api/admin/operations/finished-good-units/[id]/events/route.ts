@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
-import { FinishedGoodUnitActionSchema, getFirstValidationMessage } from "../../finished-good-units.helpers";
+import {
+  FinishedGoodUnitActionSchema,
+  getFirstValidationMessage,
+  hasCompleteQaChecklist,
+  normalizeQaChecklist,
+} from "../../finished-good-units.helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -20,21 +25,57 @@ export async function POST(
 
   const unit = await prisma.operationFinishedGoodUnit.findUnique({
     where: { id },
-    select: { id: true, status: true, qaStatus: true, activationStatus: true, reservedOrderId: true },
+    select: {
+      id: true,
+      status: true,
+      qaStatus: true,
+      activationStatus: true,
+      reservedOrderId: true,
+    },
   });
   if (!unit) return NextResponse.json({ error: "Unidad no encontrada" }, { status: 404 });
 
   try {
+    const qaMetadata = (metadataJson: Record<string, unknown> | null) =>
+      ({
+        previousStatus: unit.status,
+        checklist: metadataJson as Prisma.InputJsonValue | null,
+      }) as Prisma.InputJsonValue;
+
     if (parsed.data.action === "qa_pass") {
       if (!["assembled", "qa_pending"].includes(unit.status)) {
         return NextResponse.json({ error: "La unidad no puede aprobarse desde este estado" }, { status: 400 });
       }
+      if (unit.qaStatus && unit.qaStatus !== "pending") {
+        return NextResponse.json({ error: "La unidad ya fue evaluada por QA" }, { status: 400 });
+      }
+      if (unit.activationStatus !== "not_activated") {
+        return NextResponse.json({ error: "La unidad no puede aprobarse desde este estado de activacion" }, { status: 400 });
+      }
+      if (["reserved", "dispatched", "delivered", "activated", "cancelled", "discarded"].includes(unit.status)) {
+        return NextResponse.json({ error: "La unidad no puede aprobarse desde este estado" }, { status: 400 });
+      }
+
+      const metadataJson = normalizeQaChecklist(parsed.data.metadataJson);
+      if (!hasCompleteQaChecklist(metadataJson)) {
+        return NextResponse.json(
+          { error: "No se puede aprobar QA si todos los controles obligatorios no están completos." },
+          { status: 400 }
+        );
+      }
+
       await prisma.operationFinishedGoodUnit.update({
         where: { id },
         data: {
           status: "available",
           qaStatus: "passed",
-          events: { create: { eventType: "QA_PASSED", reason: parsed.data.reason || null, metadataJson: { previousStatus: unit.status } } },
+          events: {
+            create: {
+              eventType: "QA_PASSED",
+              reason: parsed.data.reason || null,
+              metadataJson: qaMetadata(metadataJson),
+            },
+          },
         },
       });
       return NextResponse.json({ ok: true });
@@ -44,12 +85,49 @@ export async function POST(
       if (!["assembled", "qa_pending"].includes(unit.status)) {
         return NextResponse.json({ error: "La unidad no puede rechazarse desde este estado" }, { status: 400 });
       }
+      if (["reserved", "dispatched", "delivered", "activated", "cancelled", "discarded"].includes(unit.status)) {
+        return NextResponse.json({ error: "La unidad no puede rechazarse desde este estado" }, { status: 400 });
+      }
+      const metadataJson = normalizeQaChecklist(parsed.data.metadataJson);
+      if (!parsed.data.reason && !metadataJson) {
+        return NextResponse.json({ error: "qa_fail requiere reason o metadataJson" }, { status: 400 });
+      }
       await prisma.operationFinishedGoodUnit.update({
         where: { id },
         data: {
           status: "qa_failed",
           qaStatus: "failed",
-          events: { create: { eventType: "QA_FAILED", reason: parsed.data.reason || null, metadataJson: { previousStatus: unit.status } } },
+          events: {
+            create: {
+              eventType: "QA_FAILED",
+              reason: parsed.data.reason || null,
+              metadataJson: qaMetadata(metadataJson),
+            },
+          },
+        },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (parsed.data.action === "send_to_rework") {
+      if (unit.status !== "qa_failed") {
+        return NextResponse.json({ error: "Solo se puede enviar a reproceso desde qa_failed" }, { status: 400 });
+      }
+      if (!parsed.data.reason) {
+        return NextResponse.json({ error: "reason es requerido para enviar a reproceso" }, { status: 400 });
+      }
+      await prisma.operationFinishedGoodUnit.update({
+        where: { id },
+        data: {
+          status: "qa_pending",
+          qaStatus: "pending",
+          events: {
+            create: {
+              eventType: "SEND_TO_REWORK",
+              reason: parsed.data.reason,
+              metadataJson: { previousStatus: unit.status },
+            },
+          },
         },
       });
       return NextResponse.json({ ok: true });
@@ -58,7 +136,7 @@ export async function POST(
     if (parsed.data.action === "reserve") {
       const referenceType = parsed.data.referenceType?.trim() || null;
       const referenceId = parsed.data.referenceId?.trim() || null;
-      if (unit.status !== "available") {
+      if (unit.status !== "available" || unit.qaStatus !== "passed") {
         return NextResponse.json({ error: "Solo se puede reservar una unidad available" }, { status: 400 });
       }
       if (!referenceType) return NextResponse.json({ error: "referenceType es requerido para reservar" }, { status: 400 });
@@ -102,6 +180,9 @@ export async function POST(
     if (parsed.data.action === "discard") {
       if (!["qa_failed", "qa_pending", "assembled"].includes(unit.status)) {
         return NextResponse.json({ error: "La unidad no puede descartarse desde este estado" }, { status: 400 });
+      }
+      if (!parsed.data.reason) {
+        return NextResponse.json({ error: "reason es requerido para descartar" }, { status: 400 });
       }
       await prisma.operationFinishedGoodUnit.update({
         where: { id },

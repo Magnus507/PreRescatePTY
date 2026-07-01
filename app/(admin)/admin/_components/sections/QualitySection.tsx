@@ -143,6 +143,34 @@ interface QcInspection {
   productionOrder: ProductionOrderOption | null;
 }
 
+interface FinishedGoodUnit {
+  id: string;
+  internalLabel: string;
+  productCode: string;
+  productName: string;
+  productType: string;
+  status: string;
+  qaStatus: string | null;
+  activationStatus: string;
+  createdAt: string;
+  digitalBatch?: {
+    code: string;
+  } | null;
+  digitalBatchItem?: {
+    status: string;
+  } | null;
+  printOrder?: {
+    code: string;
+  } | null;
+  events?: Array<{
+    id: string;
+    eventType: string;
+    reason: string | null;
+    metadataJson: Record<string, unknown> | null;
+    createdAt: string;
+  }>;
+}
+
 interface QcInspectionFormState {
   code: string;
   productionOrderId: string;
@@ -163,6 +191,18 @@ interface QuantityEventFormState {
   reason: string;
 }
 
+interface QaChecklistState {
+  nfcWorks: boolean;
+  qrWorks: boolean;
+  internalLabelCorrect: boolean;
+  stickerCorrect: boolean;
+  activationCardCorrect: boolean;
+  packagingCorrect: boolean;
+  sealedPackage: boolean;
+  productTypeCorrect: boolean;
+  inspectorNotes: string;
+}
+
 const EMPTY_QC_FORM: QcInspectionFormState = {
   code: "",
   productionOrderId: "",
@@ -173,6 +213,18 @@ const EMPTY_QC_FORM: QcInspectionFormState = {
 const EMPTY_QUANTITY_EVENT_FORM: QuantityEventFormState = {
   quantity: "",
   reason: "",
+};
+
+const EMPTY_QA_CHECKLIST: QaChecklistState = {
+  nfcWorks: false,
+  qrWorks: false,
+  internalLabelCorrect: false,
+  stickerCorrect: false,
+  activationCardCorrect: false,
+  packagingCorrect: false,
+  sealedPackage: false,
+  productTypeCorrect: false,
+  inspectorNotes: "",
 };
 
 const QC_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -214,8 +266,10 @@ const QC_ACTIONS_BY_STATUS: Record<string, Array<{ label: string; eventType: QcE
 export function QualitySection() {
   const [qcInspections, setQcInspections] = useState<QcInspection[]>([]);
   const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
+  const [finishedGoodUnits, setFinishedGoodUnits] = useState<FinishedGoodUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingEventKey, setSavingEventKey] = useState<string | null>(null);
@@ -225,6 +279,14 @@ export function QualitySection() {
   } | null>(null);
   const [quantityEventForm, setQuantityEventForm] = useState<QuantityEventFormState>(EMPTY_QUANTITY_EVENT_FORM);
   const [form, setForm] = useState<QcInspectionFormState>(EMPTY_QC_FORM);
+  const [unitSearch, setUnitSearch] = useState("");
+  const [unitStatusFilter, setUnitStatusFilter] = useState<string>("qa_pending");
+  const [unitQaModal, setUnitQaModal] = useState<{
+    unit: FinishedGoodUnit;
+    mode: "pass" | "fail" | "discard";
+  } | null>(null);
+  const [qaChecklist, setQaChecklist] = useState<QaChecklistState>(EMPTY_QA_CHECKLIST);
+  const [savingUnitEvent, setSavingUnitEvent] = useState(false);
 
   const loadQcInspections = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -267,10 +329,30 @@ export function QualitySection() {
     }
   }, []);
 
+  const loadFinishedGoodUnits = useCallback(async () => {
+    setLoadingUnits(true);
+    try {
+      const res = await fetch("/api/admin/operations/finished-good-units", { cache: "no-store" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudieron cargar unidades terminadas");
+      }
+
+      setFinishedGoodUnits(Array.isArray(data.units) ? data.units : []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al cargar unidades terminadas";
+      toast.error(message);
+    } finally {
+      setLoadingUnits(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadQcInspections();
     loadProductionOrders();
-  }, [loadQcInspections, loadProductionOrders]);
+    loadFinishedGoodUnits();
+  }, [loadFinishedGoodUnits, loadQcInspections, loadProductionOrders]);
 
   const metrics = useMemo(() => {
     return qcInspections.reduce(
@@ -306,6 +388,20 @@ export function QualitySection() {
     });
   }, [productionOrders]);
 
+  const qaUnits = useMemo(() => {
+    const search = unitSearch.trim().toLowerCase();
+    return finishedGoodUnits.filter((unit) => {
+      const matchesStatus = unitStatusFilter ? unit.status === unitStatusFilter : true;
+      const matchesSearch = search
+        ? [unit.internalLabel, unit.productCode, unit.productName, unit.productType, unit.digitalBatch?.code || "", unit.printOrder?.code || ""]
+            .join(" ")
+            .toLowerCase()
+            .includes(search)
+        : true;
+      return matchesStatus && matchesSearch;
+    });
+  }, [finishedGoodUnits, unitSearch, unitStatusFilter]);
+
   const formatDate = (value: string) => {
     return new Date(value).toLocaleDateString("es-PA", {
       day: "2-digit",
@@ -337,6 +433,21 @@ export function QualitySection() {
 
   const updateQuantityEventForm = (field: keyof QuantityEventFormState, value: string) => {
     setQuantityEventForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateQaChecklist = (field: keyof Omit<QaChecklistState, "inspectorNotes">, value: boolean) => {
+    setQaChecklist((current) => ({ ...current, [field]: value }));
+  };
+
+  const openQaModal = (unit: FinishedGoodUnit, mode: "pass" | "fail" | "discard") => {
+    setUnitQaModal({ unit, mode });
+    setQaChecklist(EMPTY_QA_CHECKLIST);
+  };
+
+  const closeQaModal = () => {
+    if (savingUnitEvent) return;
+    setUnitQaModal(null);
+    setQaChecklist(EMPTY_QA_CHECKLIST);
   };
 
   const handleCreateInspection = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -465,6 +576,67 @@ export function QualitySection() {
     if (saved) {
       setQuantityEvent(null);
       setQuantityEventForm(EMPTY_QUANTITY_EVENT_FORM);
+    }
+  };
+
+  const submitQaEvent = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!unitQaModal) return;
+
+    const checklist = {
+      nfcWorks: qaChecklist.nfcWorks,
+      qrWorks: qaChecklist.qrWorks,
+      internalLabelCorrect: qaChecklist.internalLabelCorrect,
+      stickerCorrect: qaChecklist.stickerCorrect,
+      activationCardCorrect: qaChecklist.activationCardCorrect,
+      packagingCorrect: qaChecklist.packagingCorrect,
+      sealedPackage: qaChecklist.sealedPackage,
+      productTypeCorrect: qaChecklist.productTypeCorrect,
+      inspectorNotes: qaChecklist.inspectorNotes.trim() || null,
+    };
+
+    const requiredChecks = [
+      checklist.nfcWorks,
+      checklist.qrWorks,
+      checklist.internalLabelCorrect,
+      checklist.stickerCorrect,
+      checklist.activationCardCorrect,
+      checklist.packagingCorrect,
+      checklist.sealedPackage,
+      checklist.productTypeCorrect,
+    ];
+
+    if (unitQaModal.mode === "pass" && requiredChecks.some((value) => value !== true)) {
+      toast.error("No se puede aprobar QA si todos los controles obligatorios no están completos.");
+      return;
+    }
+
+    if (unitQaModal.mode !== "pass" && !qaChecklist.inspectorNotes.trim()) {
+      toast.error("Las notas del inspector son requeridas");
+      return;
+    }
+
+    setSavingUnitEvent(true);
+    try {
+      const res = await fetch(`/api/admin/operations/finished-good-units/${unitQaModal.unit.id}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: unitQaModal.mode === "pass" ? "qa_pass" : unitQaModal.mode === "fail" ? "qa_fail" : "discard",
+          reason: qaChecklist.inspectorNotes.trim() || (unitQaModal.mode === "discard" ? null : "QA de unidad terminada"),
+          metadataJson: checklist,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo registrar QA");
+      toast.success(unitQaModal.mode === "pass" ? "QA aprobado" : unitQaModal.mode === "fail" ? "QA fallido" : "Unidad descartada");
+      setUnitQaModal(null);
+      setQaChecklist(EMPTY_QA_CHECKLIST);
+      await loadFinishedGoodUnits();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al registrar QA");
+    } finally {
+      setSavingUnitEvent(false);
     }
   };
 
@@ -597,6 +769,150 @@ export function QualitySection() {
           <p className="text-2xl font-black">{metrics.rework}</p>
         </div>
       </div>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">
+              QA de unidades terminadas
+            </h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              La aprobación de QA habilita la unidad para inventario disponible.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              value={unitSearch}
+              onChange={(event) => setUnitSearch(event.target.value)}
+              placeholder="Buscar etiqueta interna"
+              className="min-w-[220px] rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold"
+            />
+            <select
+              value={unitStatusFilter}
+              onChange={(event) => setUnitStatusFilter(event.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold"
+            >
+              <option value="">Todos</option>
+              <option value="qa_pending">qa_pending</option>
+              <option value="qa_failed">qa_failed</option>
+              <option value="available">available</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pendientes QA</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">
+              {finishedGoodUnits.filter((unit) => unit.status === "qa_pending").length}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Fallidas QA</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">
+              {finishedGoodUnits.filter((unit) => unit.status === "qa_failed").length}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Disponibles</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">
+              {finishedGoodUnits.filter((unit) => unit.status === "available").length}
+            </p>
+          </div>
+        </div>
+
+        {loadingUnits ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : qaUnits.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+            <p className="text-sm font-black uppercase tracking-widest text-slate-400">
+              No hay unidades para este filtro
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-3 xl:grid-cols-2">
+            {qaUnits.map((unit) => {
+              const lastEvent = unit.events?.[unit.events.length - 1];
+              return (
+                <article key={unit.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xs font-black text-primary">{unit.internalLabel}</p>
+                      <p className="mt-1 text-sm font-black text-slate-950">{unit.productName}</p>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                        {unit.productCode} · {unit.productType}
+                      </p>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                        Lote {unit.digitalBatch?.code || "sin lote"} · Imprenta {unit.printOrder?.code || "sin orden"}
+                      </p>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                        Unidad {unit.status} · QA {unit.qaStatus || "pending"} · Activación {unit.activationStatus}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                      {unit.digitalBatchItem?.status || "n/a"}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {unit.status === "qa_pending" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openQaModal(unit, "pass")}
+                          className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800"
+                        >
+                          Abrir QA
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openQaModal(unit, "fail")}
+                          className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800"
+                        >
+                          Fallar QA
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openQaModal(unit, "discard")}
+                          className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800"
+                        >
+                          Descartar
+                        </button>
+                      </>
+                    )}
+                    {unit.status === "qa_failed" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openQaModal(unit, "fail")}
+                          className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800"
+                        >
+                          Ver falla
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openQaModal(unit, "discard")}
+                          className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800"
+                        >
+                          Descartar
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {lastEvent && (
+                    <p className="mt-3 text-[11px] font-semibold text-slate-500">
+                      Ultimo evento: {lastEvent.eventType}
+                    </p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1018,6 +1334,101 @@ export function QualitySection() {
                     <ClipboardCheck className="h-4 w-4" />
                   )}
                   Guardar evento
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {unitQaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={submitQaEvent} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">QA de unidad terminada</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                    {unitQaModal.mode === "pass" ? "Aprobar QA" : unitQaModal.mode === "fail" ? "Fallar QA" : "Descartar unidad"}
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {unitQaModal.unit.internalLabel} · {unitQaModal.unit.productName}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeQaModal}
+                  disabled={savingUnitEvent}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
+                unitQaModal.mode === "pass"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : unitQaModal.mode === "fail"
+                    ? "border-amber-200 bg-amber-50 text-amber-800"
+                    : "border-red-200 bg-red-50 text-red-800"
+              }`}>
+                {unitQaModal.mode === "pass"
+                  ? "Al aprobar QA, la unidad pasa a inventario disponible. No se asigna usuario final."
+                  : unitQaModal.mode === "fail"
+                    ? "El fallo de QA deja la unidad fuera de inventario hasta reproceso o descarte."
+                    : "El descarte cierra la unidad de forma operativa."}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  ["nfcWorks", "Chip NFC funciona"],
+                  ["qrWorks", "QR/link funciona"],
+                  ["internalLabelCorrect", "Etiqueta interna correcta"],
+                  ["stickerCorrect", "Sticker correcto"],
+                  ["activationCardCorrect", "Tarjeta/codigo correcto"],
+                  ["packagingCorrect", "Empaque/presentacion correcto"],
+                  ["sealedPackage", "Paquete sellado"],
+                  ["productTypeCorrect", "Tipo de producto correcto"],
+                ].map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={qaChecklist[key as keyof Omit<QaChecklistState, "inspectorNotes">]}
+                      onChange={(event) => updateQaChecklist(key as keyof Omit<QaChecklistState, "inspectorNotes">, event.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm font-semibold text-slate-700">{label as string}</span>
+                  </label>
+                ))}
+              </div>
+
+              <label className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notas del inspector</span>
+                <textarea
+                  value={qaChecklist.inspectorNotes}
+                  onChange={(event) => setQaChecklist((current) => ({ ...current, inspectorNotes: event.target.value }))}
+                  className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  placeholder="Observaciones de QA"
+                />
+              </label>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeQaModal}
+                  disabled={savingUnitEvent}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingUnitEvent}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {savingUnitEvent ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
+                  Confirmar
                 </button>
               </div>
             </form>
