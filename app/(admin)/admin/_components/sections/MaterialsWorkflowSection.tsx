@@ -43,6 +43,16 @@ interface MaterialFormState {
   notes: string;
 }
 
+interface MaterialEditFormState {
+  name: string;
+  category: string;
+  unit: string;
+  description: string;
+  supplierName: string;
+  notes: string;
+  status: string;
+}
+
 type MaterialEventType = "RECEIPT" | "ISSUE" | "ADJUSTMENT" | "RESERVATION" | "RELEASE";
 
 interface MovementFormState {
@@ -62,6 +72,16 @@ const EMPTY_FORM: MaterialFormState = {
   description: "",
   supplierName: "",
   notes: "",
+};
+
+const EMPTY_EDIT_FORM: MaterialEditFormState = {
+  name: "",
+  category: "",
+  unit: "",
+  description: "",
+  supplierName: "",
+  notes: "",
+  status: "active",
 };
 
 const EMPTY_MOVEMENT_FORM: MovementFormState = {
@@ -96,10 +116,13 @@ export function MaterialsWorkflowSection() {
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [movementMaterial, setMovementMaterial] = useState<OperationMaterial | null>(null);
+  const [editingMaterial, setEditingMaterial] = useState<OperationMaterial | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingMovement, setSavingMovement] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [form, setForm] = useState<MaterialFormState>(EMPTY_FORM);
   const [movementForm, setMovementForm] = useState<MovementFormState>(EMPTY_MOVEMENT_FORM);
+  const [editForm, setEditForm] = useState<MaterialEditFormState>(EMPTY_EDIT_FORM);
 
   const loadMaterials = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -159,6 +182,10 @@ export function MaterialsWorkflowSection() {
     setMovementForm((current) => ({ ...current, [field]: value }));
   };
 
+  const updateEditForm = (field: keyof MaterialEditFormState, value: string) => {
+    setEditForm((current) => ({ ...current, [field]: value }));
+  };
+
   const closeCreateModal = () => {
     if (saving) return;
     setShowCreateModal(false);
@@ -170,10 +197,29 @@ export function MaterialsWorkflowSection() {
     setMovementForm(EMPTY_MOVEMENT_FORM);
   };
 
+  const openEditModal = (material: OperationMaterial) => {
+    setEditingMaterial(material);
+    setEditForm({
+      name: material.name,
+      category: material.category,
+      unit: material.unit,
+      description: material.description || "",
+      supplierName: material.supplierName || "",
+      notes: material.notes || "",
+      status: material.status || "active",
+    });
+  };
+
   const closeMovementModal = () => {
     if (savingMovement) return;
     setMovementMaterial(null);
     setMovementForm(EMPTY_MOVEMENT_FORM);
+  };
+
+  const closeEditModal = () => {
+    if (savingEdit) return;
+    setEditingMaterial(null);
+    setEditForm(EMPTY_EDIT_FORM);
   };
 
   const handleCreateMaterial = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -265,6 +311,45 @@ export function MaterialsWorkflowSection() {
       toast.error(message);
     } finally {
       setSavingMovement(false);
+    }
+  };
+
+  const handleEditMaterial = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingMaterial) return;
+
+    setSavingEdit(true);
+
+    try {
+      const res = await fetch(`/api/admin/operations/materials/${editingMaterial.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editForm.name.trim(),
+          category: editForm.category.trim(),
+          unit: editForm.unit.trim(),
+          description: editForm.description.trim() || null,
+          supplierName: editForm.supplierName.trim() || null,
+          notes: editForm.notes.trim() || null,
+          status: editForm.status.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo actualizar el material");
+      }
+
+      toast.success("Material actualizado");
+      setEditingMaterial(null);
+      setEditForm(EMPTY_EDIT_FORM);
+      await loadMaterials({ silent: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al actualizar material";
+      toast.error(message);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -405,14 +490,23 @@ export function MaterialsWorkflowSection() {
                     </td>
                     <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(material.createdAt)}</td>
                     <td className="px-4 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => openMovementModal(material)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:border-primary/30 hover:text-primary"
-                      >
-                        <ClipboardList className="h-4 w-4" />
-                        Registrar movimiento
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(material)}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:border-primary/30 hover:text-primary"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openMovementModal(material)}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:border-primary/30 hover:text-primary"
+                        >
+                          <ClipboardList className="h-4 w-4" />
+                          Movimiento
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -658,6 +752,121 @@ export function MaterialsWorkflowSection() {
                 >
                   {savingMovement ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
                   Guardar movimiento
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingMaterial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleEditMaterial} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Materiales</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Editar material</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {editingMaterial.code} · Ajuste basico de datos descriptivos.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  disabled={savingEdit}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre</span>
+                  <input
+                    required
+                    value={editForm.name}
+                    onChange={(event) => updateEditForm("name", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categoria</span>
+                  <input
+                    required
+                    value={editForm.category}
+                    onChange={(event) => updateEditForm("category", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Unidad</span>
+                  <input
+                    required
+                    value={editForm.unit}
+                    onChange={(event) => updateEditForm("unit", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</span>
+                  <input
+                    required
+                    value={editForm.status}
+                    onChange={(event) => updateEditForm("status", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Proveedor</span>
+                  <input
+                    value={editForm.supplierName}
+                    onChange={(event) => updateEditForm("supplierName", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Descripcion</span>
+                  <textarea
+                    value={editForm.description}
+                    onChange={(event) => updateEditForm("description", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notas</span>
+                  <textarea
+                    value={editForm.notes}
+                    onChange={(event) => updateEditForm("notes", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  disabled={savingEdit}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Guardar cambios
                 </button>
               </div>
             </form>

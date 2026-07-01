@@ -32,3 +32,20 @@
 - No se toco backend.
 - No se toco checkout legacy.
 - No se toco `Order` / `Product` legacy.
+
+## W5.37E - Base real de materiales + edicion basica
+
+- Se agrego `scripts/seed-operations-base-materials.ts` para crear o actualizar la base real de materiales por `code` sin duplicar.
+- Materiales definidos:
+  - `PRP-MAT-NFC-BLANK` / NFC chip en blanco / Amazon
+  - `PRP-MAT-STICKER-BLANK` / Sticker en blanco / PanamaSticker
+  - `PRP-MAT-ACTIVATION-CARD` / Tarjeta con codigo de activacion / presentacion / imprenta por definir
+  - `PRP-MAT-PACKAGING` / Empaque / presentacion / imprenta por definir
+- El QR no se modela como material separado.
+- Se agrego edicion basica de material en la UI y endpoint `PATCH /api/admin/operations/materials/[id]`.
+- La edicion cubre solo datos descriptivos basicos y no toca eventos, balance ni stock.
+- No se tocaron migraciones.
+- No se toco Prisma schema.
+- No se toco backend de eventos de inventario.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.

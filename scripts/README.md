@@ -44,6 +44,7 @@ La carpeta `scripts/` contiene herramientas de mantenimiento, configuración de 
 | `smoke-after-sales-e2e.ts` | Escritura protegida | `CONFIRM_AFTER_SALES_SMOKE=YES_RUN_AFTER_SALES_SMOKE` | Crea datos de prueba `W534C_SMOKE_*` y valida Garantía → Reemplazo → Despacho y Devolución → Inventario PT. No borra datos. |
 | `smoke-full-erp-e2e.ts` | Escritura protegida | `CONFIRM_FULL_ERP_SMOKE=YES_RUN_FULL_ERP_SMOKE` | Crea datos de prueba `W535D_SMOKE_*` y valida el flujo ERP completo Materiales → Producción → QC → Empaque → Inventario PT → Comercial → Despacho → Garantía → Reemplazo → Devolución → Inventario PT. No borra datos. |
 | `clean-operations-smoke-data.ts` | Destructivo protegido | `CONFIRM_CLEAN_OPERATIONS_SMOKE=YES_CLEAN_OPERATIONS_SMOKE` | Borra datos smoke `W530D_SMOKE_*`, `W531D_SMOKE_*`, `W534C_SMOKE_*` y `W535D_SMOKE_*` por prefijo estricto. `DRY_RUN` por defecto; requiere confirmación exacta y no toca datos reales fuera de esos prefijos. |
+| `seed-operations-base-materials.ts` | Destructivo protegido | `CONFIRM_SEED_BASE_MATERIALS=YES_SEED_BASE_MATERIALS` | Crea o actualiza los materiales base `PRP-MAT-NFC-BLANK`, `PRP-MAT-STICKER-BLANK`, `PRP-MAT-ACTIVATION-CARD` y `PRP-MAT-PACKAGING`. No crea stock, no registra movimientos y no borra datos. |
 
 ---
 
@@ -83,6 +84,7 @@ CONFIRM_COMMERCIAL_DISPATCH_SMOKE=YES_RUN_COMMERCIAL_DISPATCH_SMOKE npx tsx scri
 CONFIRM_AFTER_SALES_SMOKE=YES_RUN_AFTER_SALES_SMOKE npx tsx scripts/smoke-after-sales-e2e.ts
 CONFIRM_FULL_ERP_SMOKE=YES_RUN_FULL_ERP_SMOKE npx tsx scripts/smoke-full-erp-e2e.ts
 CONFIRM_CLEAN_OPERATIONS_SMOKE=YES_CLEAN_OPERATIONS_SMOKE npx tsx scripts/clean-operations-smoke-data.ts
+CONFIRM_SEED_BASE_MATERIALS=YES_SEED_BASE_MATERIALS npx tsx scripts/seed-operations-base-materials.ts
 psql -v confirm_full_reset='YES_DELETE_ALL_TEST_DATA' -f scripts/reset-all-test-data.sql
 ```
 
@@ -95,4 +97,5 @@ psql -v confirm_full_reset='YES_DELETE_ALL_TEST_DATA' -f scripts/reset-all-test-
 - **`reset-all-test-data.sql`** borra TODOS los datos excepto `_prisma_migrations`. Solo para entornos de desarrollo o QA.
 - **`create-initial-superadmin.ts`** aborta si la tabla User no está vacía. No borra datos existentes.
 - **`clean-operations-smoke-data.ts`** usa filtros estrictos por prefijo y corre en `DRY_RUN` por defecto. Solo borra datos de prueba identificados por `W530D_SMOKE`, `W531D_SMOKE`, `W534C_SMOKE` y `W535D_SMOKE` cuando recibe la confirmación exacta.
+- **`seed-operations-base-materials.ts`** usa `upsert`/creación segura por `code` y solo prepara metadata base de materiales. No crea stock, cantidades ni eventos.
 - Los scripts que usan `DIRECT_URL` asumen acceso directo a la base de datos (bypass de Connection Pooler). Solo funciona desde entornos con acceso a la BD directa.

@@ -48,6 +48,16 @@ export const CreateMaterialSchema = z.object({
   status: z.string().trim().max(40, "status es demasiado largo").optional(),
 });
 
+export const UpdateMaterialSchema = z.object({
+  name: z.string().trim().min(1, "name es requerido").max(180, "name es demasiado largo").optional(),
+  category: z.string().trim().min(1, "category es requerido").max(120, "category es demasiado largo").optional(),
+  unit: z.string().trim().min(1, "unit es requerido").max(40, "unit es demasiado largo").optional(),
+  description: z.string().trim().max(1000, "description es demasiado largo").optional().nullable(),
+  supplierName: z.string().trim().max(180, "supplierName es demasiado largo").optional().nullable(),
+  notes: z.string().trim().max(2000, "notes es demasiado largo").optional().nullable(),
+  status: z.string().trim().min(1, "status es requerido").max(40, "status es demasiado largo").optional(),
+});
+
 export const CreateMaterialEventSchema = z.object({
   eventType: z.string().trim().refine(isValidMaterialEventType, {
     message: "eventType invalido",
