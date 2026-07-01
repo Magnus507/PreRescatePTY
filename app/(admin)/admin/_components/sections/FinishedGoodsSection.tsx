@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Boxes,
   CheckCircle2,
+  Edit3,
   Factory,
   Loader2,
   PackageCheck,
@@ -71,6 +72,14 @@ interface FinishedGoodFormState {
   notes: string;
 }
 
+interface FinishedGoodEditFormState {
+  name: string;
+  productType: string;
+  unit: string;
+  notes: string;
+  status: string;
+}
+
 type FinishedGoodEventType =
   | "RECEIPT"
   | "RESERVATION"
@@ -98,6 +107,14 @@ const EMPTY_FINISHED_GOOD_FORM: FinishedGoodFormState = {
   notes: "",
 };
 
+const EMPTY_FINISHED_GOOD_EDIT_FORM: FinishedGoodEditFormState = {
+  name: "",
+  productType: "",
+  unit: "unit",
+  notes: "",
+  status: "active",
+};
+
 const EMPTY_MOVEMENT_FORM: MovementFormState = {
   eventType: "RECEIPT",
   quantity: "",
@@ -122,8 +139,11 @@ export function FinishedGoodsSection() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingFinishedGood, setEditingFinishedGood] = useState<FinishedGood | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [form, setForm] = useState<FinishedGoodFormState>(EMPTY_FINISHED_GOOD_FORM);
+  const [editForm, setEditForm] = useState<FinishedGoodEditFormState>(EMPTY_FINISHED_GOOD_EDIT_FORM);
   const [movementTarget, setMovementTarget] = useState<FinishedGood | null>(null);
   const [movementForm, setMovementForm] = useState<MovementFormState>(EMPTY_MOVEMENT_FORM);
   const [savingMovement, setSavingMovement] = useState(false);
@@ -221,10 +241,31 @@ export function FinishedGoodsSection() {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
+  const updateEditForm = (field: keyof FinishedGoodEditFormState, value: string) => {
+    setEditForm((current) => ({ ...current, [field]: value }));
+  };
+
   const closeCreateModal = () => {
     if (saving) return;
     setShowCreateModal(false);
     setForm(EMPTY_FINISHED_GOOD_FORM);
+  };
+
+  const openEditModal = (item: FinishedGood) => {
+    setEditingFinishedGood(item);
+    setEditForm({
+      name: item.name,
+      productType: item.productType,
+      unit: item.unit,
+      notes: item.notes || "",
+      status: item.status || "active",
+    });
+  };
+
+  const closeEditModal = () => {
+    if (savingEdit) return;
+    setEditingFinishedGood(null);
+    setEditForm(EMPTY_FINISHED_GOOD_EDIT_FORM);
   };
 
   const openMovementModal = (item: FinishedGood) => {
@@ -369,6 +410,62 @@ export function FinishedGoodsSection() {
       toast.error(message);
     } finally {
       setSavingMovement(false);
+    }
+  };
+
+  const handleEditFinishedGood = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingFinishedGood) return;
+
+    const name = editForm.name.trim();
+    const productType = editForm.productType.trim();
+    const unit = editForm.unit.trim() || "unit";
+
+    if (!name) {
+      toast.error("Name es requerido");
+      return;
+    }
+
+    if (!productType) {
+      toast.error("productType es requerido");
+      return;
+    }
+
+    if (!unit) {
+      toast.error("unit es requerido");
+      return;
+    }
+
+    setSavingEdit(true);
+
+    try {
+      const res = await fetch(`/api/admin/operations/finished-goods/${editingFinishedGood.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          productType,
+          unit,
+          notes: editForm.notes.trim() || null,
+          status: editForm.status,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo actualizar producto terminado");
+      }
+
+      toast.success("Producto terminado actualizado");
+      setEditingFinishedGood(null);
+      setEditForm(EMPTY_FINISHED_GOOD_EDIT_FORM);
+      await loadFinishedGoods({ silent: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al actualizar producto terminado";
+      toast.error(message);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -535,8 +632,17 @@ export function FinishedGoodsSection() {
                       <td className="px-4 py-4">
                         <button
                           type="button"
+                          onClick={() => openEditModal(item)}
+                          disabled={savingEdit || savingMovement}
+                          className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openMovementModal(item)}
-                          disabled={savingMovement}
+                          disabled={savingMovement || savingEdit}
                           className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 transition-all hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <PackageCheck className="h-4 w-4" />
@@ -693,6 +799,106 @@ export function FinishedGoodsSection() {
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   Guardar producto
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingFinishedGood && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleEditFinishedGood} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Inventario PT</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Editar producto terminado</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {editingFinishedGood.code} · balance actual {formatQuantity(editingFinishedGood.balance)} {editingFinishedGood.unit}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  disabled={savingEdit}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre</span>
+                  <input
+                    required
+                    value={editForm.name}
+                    onChange={(event) => updateEditForm("name", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo de producto</span>
+                  <input
+                    required
+                    value={editForm.productType}
+                    onChange={(event) => updateEditForm("productType", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Unidad</span>
+                  <input
+                    required
+                    value={editForm.unit}
+                    onChange={(event) => updateEditForm("unit", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</span>
+                  <select
+                    value={editForm.status}
+                    onChange={(event) => updateEditForm("status", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  >
+                    <option value="active">Activo</option>
+                    <option value="reserved">Reservado</option>
+                    <option value="inactive">Inactivo</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notas</span>
+                  <textarea
+                    value={editForm.notes}
+                    onChange={(event) => updateEditForm("notes", event.target.value)}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  disabled={savingEdit}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
+                  Guardar cambios
                 </button>
               </div>
             </form>

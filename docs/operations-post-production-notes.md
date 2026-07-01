@@ -49,3 +49,18 @@
 - No se toco backend de eventos de inventario.
 - No se toco checkout legacy.
 - No se toco `Order` / `Product` legacy.
+
+## W5.37F - Productos terminados base
+
+- Se agrego `scripts/seed-operations-base-finished-goods.ts` para crear o actualizar la base real de productos terminados por `code` sin duplicar.
+- Productos definidos:
+  - `PRP-FG-STICKER` / Sticker PreRescatePTY / `sticker_prerescatepty`
+  - `PRP-FG-STICKER-EMP` / Sticker PreRescatePTY Empresarial / `sticker_prerescatepty_empresarial`
+- El seed no crea stock inicial, no registra eventos y no asigna usuarios finales.
+- Se agrego edicion basica de producto terminado en la UI y endpoint `PATCH /api/admin/operations/finished-goods/[id]`.
+- La edicion cubre solo datos descriptivos basicos y no toca balance, eventos ni despacho.
+- No se tocaron migraciones.
+- No se toco Prisma schema.
+- No se toco backend de eventos de inventario.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.

@@ -49,6 +49,14 @@ export const CreateFinishedGoodSchema = z.object({
   initialQuantity: z.coerce.number().positive("initialQuantity debe ser positivo").optional(),
 });
 
+export const UpdateFinishedGoodSchema = z.object({
+  name: z.string().trim().min(1, "name es requerido").max(160, "name es demasiado largo").optional(),
+  productType: z.string().trim().min(1, "productType es requerido").max(80, "productType es demasiado largo").optional(),
+  status: z.enum(FINISHED_GOOD_STATUSES).optional(),
+  unit: z.string().trim().min(1, "unit es requerido").max(40, "unit es demasiado largo").optional(),
+  notes: z.string().trim().max(2000, "notes es demasiado largo").optional().nullable(),
+});
+
 export const CreateFinishedGoodEventSchema = z.object({
   eventType: z.string().trim().refine(isValidFinishedGoodEventType, {
     message: "eventType invalido",
