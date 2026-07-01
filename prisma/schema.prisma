@@ -967,6 +967,7 @@ model OperationDigitalBatch {
   updatedAt        DateTime                   @updatedAt
   items            OperationDigitalBatchItem[]
   printOrders      OperationPrintOrder[]
+  finishedGoodUnits OperationFinishedGoodUnit[]
 
   @@index([productType])
   @@index([finishedGoodCode])
@@ -992,6 +993,7 @@ model OperationDigitalBatchItem {
   updatedAt            DateTime              @updatedAt
   batch                OperationDigitalBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
   printOrderItems      OperationPrintOrderItem[]
+  finishedGoodUnits    OperationFinishedGoodUnit[]
 
   @@unique([batchId, sequenceNumber])
   @@index([batchId])
@@ -1022,6 +1024,7 @@ model OperationPrintOrder {
   updatedAt        DateTime              @updatedAt
   digitalBatch     OperationDigitalBatch  @relation(fields: [digitalBatchId], references: [id], onDelete: Restrict)
   items            OperationPrintOrderItem[]
+  finishedGoodUnits OperationFinishedGoodUnit[]
 
   @@index([digitalBatchId])
   @@index([status])
@@ -1048,6 +1051,57 @@ model OperationPrintOrderItem {
   @@index([digitalBatchItemId])
   @@index([internalLabel])
   @@index([status])
+}
+
+model OperationFinishedGoodUnit {
+  id                   String                     @id @default(cuid())
+  internalLabel        String                     @unique
+  productCode          String
+  productName          String
+  productType          String
+  digitalBatchId       String?
+  digitalBatchItemId   String?                    @unique
+  printOrderId         String?
+  status               String                     @default("assembled")
+  qaStatus             String?
+  activationStatus     String                     @default("not_activated")
+  activationReferenceType String?
+  activationReferenceId String?
+  reservedOrderId      String?
+  reservedAt           DateTime?
+  dispatchedAt         DateTime?
+  deliveredAt          DateTime?
+  activatedAt          DateTime?
+  notes                String?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  digitalBatch         OperationDigitalBatch?     @relation(fields: [digitalBatchId], references: [id], onDelete: SetNull)
+  digitalBatchItem     OperationDigitalBatchItem? @relation(fields: [digitalBatchItemId], references: [id], onDelete: SetNull)
+  printOrder           OperationPrintOrder?       @relation(fields: [printOrderId], references: [id], onDelete: SetNull)
+  events               OperationFinishedGoodUnitEvent[]
+
+  @@index([productCode])
+  @@index([productType])
+  @@index([status])
+  @@index([activationStatus])
+  @@index([reservedOrderId])
+  @@index([createdAt])
+}
+
+model OperationFinishedGoodUnitEvent {
+  id             String                    @id @default(cuid())
+  unitId         String
+  eventType      String
+  reason         String?
+  referenceType  String?
+  referenceId    String?
+  metadataJson   Json?
+  createdAt      DateTime                  @default(now())
+  unit           OperationFinishedGoodUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId])
+  @@index([eventType])
+  @@index([createdAt])
 }
 
 model OperationDispatch {
