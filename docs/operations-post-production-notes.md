@@ -116,3 +116,13 @@
 - La produccion sigue creando unidades en `qa_pending`.
 - No se crea stock agregado, no se reserva automaticamente, no se crea despacho y no se toca activacion ni usuario final.
 - La UI de `Calidad / QA` ya expone la cola de unidades terminadas para aprobar, fallar o descartar.
+
+## W5.37O - Entregado pero no activado
+
+- Se agrego la condicion derivada `entregado, pendiente de activacion` para unidades con `status = delivered` y `activationStatus = not_activated`.
+- La alerta se muestra como recordatorio de que la entrega fisica no asigna usuario final.
+- Se agregaron conteos y filtro para identificar estas unidades en Inventario / Unidades.
+- Se agrego un aviso equivalente en Despacho y un conteo en el dashboard operativo.
+- No se toco el flujo de activacion.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.

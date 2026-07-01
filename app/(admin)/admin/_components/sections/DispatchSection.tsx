@@ -686,6 +686,11 @@ export function DispatchSection() {
                             </p>
                           ))}
                         </div>
+                        {dispatch.status === "delivered" && (
+                          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800">
+                            Entrega confirmada no activa el producto ni asigna usuario final
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-4">
                         <div className="min-w-[170px] text-[11px] font-semibold text-slate-500">

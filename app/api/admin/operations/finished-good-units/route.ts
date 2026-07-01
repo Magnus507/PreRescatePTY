@@ -7,6 +7,7 @@ import {
   buildFinishedGoodUnitStatusCounts,
   getFirstValidationMessage,
   getProductMetadata,
+  isDeliveredPendingActivation,
 } from "./finished-good-units.helpers";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest) {
   const productCode = searchParams.get("productCode") || undefined;
   const activationStatus = searchParams.get("activationStatus") || undefined;
   const reservedOrderId = searchParams.get("reservedOrderId") || undefined;
+  const deliveredPendingActivation = searchParams.get("deliveredPendingActivation") === "true";
   const search = searchParams.get("search") || undefined;
 
   const where: Record<string, unknown> = {};
@@ -29,6 +31,10 @@ export async function GET(req: NextRequest) {
   if (productCode) where.productCode = productCode;
   if (activationStatus) where.activationStatus = activationStatus;
   if (reservedOrderId) where.reservedOrderId = reservedOrderId;
+  if (deliveredPendingActivation) {
+    where.status = "delivered";
+    where.activationStatus = "not_activated";
+  }
   if (search) where.internalLabel = { contains: search, mode: "insensitive" };
 
   try {
@@ -42,7 +48,16 @@ export async function GET(req: NextRequest) {
         events: { orderBy: { createdAt: "asc" } },
       },
     });
-    return NextResponse.json({ units, counts: buildFinishedGoodUnitStatusCounts(units) });
+    const normalizedUnits = units.map((unit) => {
+      const deliveredPendingActivation = isDeliveredPendingActivation(unit);
+      return {
+        ...unit,
+        deliveredPendingActivation,
+        alertLabel: deliveredPendingActivation ? "Entregado, pendiente de activación" : null,
+      };
+    });
+
+    return NextResponse.json({ units: normalizedUnits, counts: buildFinishedGoodUnitStatusCounts(normalizedUnits) });
   } catch (error) {
     console.error("[operations/finished-good-units] GET error:", error);
     return NextResponse.json({ error: "Error al listar unidades terminadas" }, { status: 500 });

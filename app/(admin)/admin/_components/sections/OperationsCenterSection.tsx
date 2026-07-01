@@ -109,6 +109,7 @@ interface OperationsDashboardSummary {
     dispatchReserved: number;
     dispatchDispatched: number;
     dispatchDelivered: number;
+    deliveredPendingActivation: number;
   };
   commercial: {
     totalCommercialOrders: number;
@@ -255,9 +256,10 @@ export function OperationsCenterSection({
       (dashboard?.dispatch.dispatchDraft || 0) +
       (dashboard?.dispatch.dispatchReserved || 0) +
       (dashboard?.dispatch.dispatchDispatched || 0);
+    const deliveredPendingActivation = dashboard?.dispatch.deliveredPendingActivation || 0;
     const claimsOpen = dashboard?.warranties.warrantiesClaimOpen || 0;
 
-    if (productionActive > 0 || qcPending > 0 || packingActive > 0 || dispatchPending > 0 || claimsOpen > 0) {
+    if (productionActive > 0 || qcPending > 0 || packingActive > 0 || dispatchPending > 0 || deliveredPendingActivation > 0 || claimsOpen > 0) {
       return {
         label: "Atencion operativa",
         tone: "bg-amber-50 text-amber-700 border-amber-200",
@@ -436,6 +438,13 @@ export function OperationsCenterSection({
             icon={Truck}
             tone="bg-cyan-50 text-cyan-700 border-cyan-200"
             hint={`${dashboard.dispatch.dispatchDelivered} entregados, ${dashboard.dispatch.dispatchReserved} reservados.`}
+          />
+          <MetricCard
+            label="Entregado sin activar"
+            value={dashboard.dispatch.deliveredPendingActivation}
+            icon={AlertTriangle}
+            tone="bg-amber-50 text-amber-700 border-amber-200"
+            hint="Entrega física confirmada, pendiente de activación del codigo."
           />
           <MetricCard
             label="Pedidos"

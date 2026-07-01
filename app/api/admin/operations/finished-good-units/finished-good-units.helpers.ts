@@ -39,6 +39,7 @@ export function buildFinishedGoodUnitStatusCounts(units: Array<{ status: string;
       if (unit.status === "reserved") acc.reservedCount += 1;
       if (unit.status === "delivered") acc.deliveredCount += 1;
       if (unit.activationStatus === "not_activated") acc.notActivatedCount += 1;
+      if (isDeliveredPendingActivation(unit)) acc.deliveredPendingActivationCount += 1;
       return acc;
     },
     {
@@ -47,8 +48,13 @@ export function buildFinishedGoodUnitStatusCounts(units: Array<{ status: string;
       reservedCount: 0,
       deliveredCount: 0,
       notActivatedCount: 0,
+      deliveredPendingActivationCount: 0,
     }
   );
+}
+
+export function isDeliveredPendingActivation(unit: { status: string; activationStatus: string; deliveredAt?: Date | string | null }) {
+  return unit.status === "delivered" && unit.activationStatus === "not_activated";
 }
 
 export const QA_REQUIRED_CHECKS = [

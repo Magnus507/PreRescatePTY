@@ -149,6 +149,12 @@ Todos usan `requireRole(GENERAL_ADMIN_ROLES)` y operan con modelos basados en ev
 - `QA_FAILED` bloquea la unidad fuera de inventario hasta reproceso o descarte.
 - Esto reduce la brecha entre ensamblaje y disponibilidad sin introducir stock agregado manual ni tocar activacion final.
 
+## Entregado pero no activado
+
+- La condicion de entrega fisica sin activacion ya queda visible como alerta derivada en unidades, despacho y dashboard.
+- Se mantiene la regla operativa de que `delivered` no implica asignacion de usuario final.
+- La activacion sigue siendo el unico momento que asigna usuario final al producto.
+
 ## Reutilizacion
 
 Se reutiliza bien:

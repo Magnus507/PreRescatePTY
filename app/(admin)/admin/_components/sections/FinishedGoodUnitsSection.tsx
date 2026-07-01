@@ -21,6 +21,12 @@ interface Unit {
   qaStatus: string | null;
   activationStatus: string;
   createdAt: string;
+  deliveredAt?: string | null;
+  reservedOrderId?: string | null;
+  reservedAt?: string | null;
+  deliveredPendingActivation?: boolean;
+  alertLabel?: string | null;
+  dispatch?: { id: string; code: string; status: string } | null;
   digitalBatchItem?: DigitalBatchItem | null;
 }
 
@@ -30,6 +36,7 @@ interface Counts {
   reservedCount: number;
   deliveredCount: number;
   notActivatedCount: number;
+  deliveredPendingActivationCount: number;
 }
 
 export function FinishedGoodUnitsSection() {
@@ -45,6 +52,7 @@ export function FinishedGoodUnitsSection() {
     reservedCount: 0,
     deliveredCount: 0,
     notActivatedCount: 0,
+    deliveredPendingActivationCount: 0,
   });
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
@@ -57,7 +65,11 @@ export function FinishedGoodUnitsSection() {
     }
     try {
       const params = new URLSearchParams();
-      if (filterStatus) params.set("status", filterStatus);
+      if (filterStatus === "delivered_pending_activation") {
+        params.set("deliveredPendingActivation", "true");
+      } else if (filterStatus) {
+        params.set("status", filterStatus);
+      }
       if (filterSearch) params.set("search", filterSearch);
       const [unitsRes, batchesRes] = await Promise.all([
         fetch(`/api/admin/operations/finished-good-units?${params.toString()}`, { cache: "no-store" }),
@@ -75,6 +87,7 @@ export function FinishedGoodUnitsSection() {
           reservedCount: 0,
           deliveredCount: 0,
           notActivatedCount: 0,
+          deliveredPendingActivationCount: 0,
         }
       );
       const flattened: DigitalBatchItem[] = Array.isArray(batchesData.batches)
@@ -145,6 +158,7 @@ export function FinishedGoodUnitsSection() {
               <option value="available">Disponibles</option>
               <option value="reserved">Reservadas</option>
               <option value="qa_failed">QA fallida</option>
+              <option value="delivered_pending_activation">Entregadas sin activar</option>
             </select>
             <select value={selectedItemId} onChange={(e) => setSelectedItemId(e.target.value)} className="min-w-[280px] rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold">
               <option value="">Selecciona item printed</option>
@@ -183,7 +197,14 @@ export function FinishedGoodUnitsSection() {
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No activadas</p>
             <p className="mt-2 text-2xl font-black text-slate-950">{counts.notActivatedCount}</p>
           </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Entregadas sin activar</p>
+            <p className="mt-2 text-2xl font-black text-amber-950">{counts.deliveredPendingActivationCount}</p>
+          </div>
         </div>
+        <p className="mt-3 text-xs font-semibold text-slate-500">
+          Una unidad entregada todavía no tiene usuario final hasta que el codigo sea activado.
+        </p>
       </section>
 
       {loading ? (
@@ -196,6 +217,19 @@ export function FinishedGoodUnitsSection() {
               <h4 className="mt-2 text-sm font-black text-slate-950">{unit.productName}</h4>
               <p className="mt-1 text-[11px] font-semibold text-slate-500">{unit.productCode} · {unit.productType}</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-500">Estado: {unit.status} · QA: {unit.qaStatus || "pending"} · Activacion: {unit.activationStatus}</p>
+              {unit.alertLabel && (
+                <p className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-amber-800">
+                  {unit.alertLabel}
+                </p>
+              )}
+              <p className="mt-2 text-[11px] font-semibold text-slate-500">
+                Reserva: {unit.reservedOrderId || "sin reserva"} · Entrega: {unit.deliveredAt ? new Date(unit.deliveredAt).toLocaleDateString("es-PA") : "sin entrega"}
+              </p>
+              {unit.dispatch && (
+                <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                  Despacho: {unit.dispatch.code} · {unit.dispatch.status}
+                </p>
+              )}
               <div className="mt-4 flex flex-wrap gap-2">
                 {unit.status !== "available" && unit.status !== "reserved" && (
                   <button type="button" onClick={() => runUnitAction(unit.id, "qa_pass")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800">
@@ -224,6 +258,11 @@ export function FinishedGoodUnitsSection() {
                   >
                     Liberar
                   </button>
+                )}
+                {unit.deliveredPendingActivation && (
+                  <span className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800">
+                    Entregado, pendiente de activacion
+                  </span>
                 )}
                 {unit.status === "qa_failed" && (
                   <button

@@ -40,6 +40,7 @@ export async function GET() {
       dispatchReserved,
       dispatchDispatched,
       dispatchDelivered,
+      deliveredPendingActivation,
       totalCommercialOrders,
       commercialConfirmed,
       commercialPaid,
@@ -89,6 +90,9 @@ export async function GET() {
       prisma.operationDispatch.count({ where: { status: "reserved" } }),
       prisma.operationDispatch.count({ where: { status: "dispatched" } }),
       prisma.operationDispatch.count({ where: { status: "delivered" } }),
+      prisma.operationFinishedGoodUnit.count({
+        where: { status: "delivered", activationStatus: "not_activated" },
+      }),
       prisma.operationCommercialOrder.count(),
       prisma.operationCommercialOrder.count({ where: { status: "confirmed" } }),
       prisma.operationCommercialOrder.count({ where: { paymentStatus: "paid" } }),
@@ -155,6 +159,7 @@ export async function GET() {
           dispatchReserved,
           dispatchDispatched,
           dispatchDelivered,
+          deliveredPendingActivation,
         },
         commercial: {
           totalCommercialOrders,
