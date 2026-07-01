@@ -10,6 +10,8 @@ El Centro de Operaciones ya tiene un modelo operativo funcional y reutilizable p
 
 La brecha principal es de granularidad: hoy el sistema opera muy bien por lote, orden o unidad agregada, pero todavia no modela de forma explicita un lote digital QR+link, una orden a imprenta, ni una unidad terminada identificada como pieza operativa propia con separacion clara entre entrega y activacion final.
 
+Aclaracion operativa clave: el sistema puede reservar o vender una etiqueta interna a un pedido, por ejemplo `Inicial-0800 -> Pedido #00800`, pero eso no significa asignacion al usuario final. La asignacion al usuario final ocurre unicamente cuando el codigo se activa.
+
 ## Modelos actuales relevantes
 
 ### Operaciones
@@ -79,6 +81,8 @@ Todos usan `requireRole(GENERAL_ADMIN_ROLES)` y operan con modelos basados en ev
 - Hoy `Chip` guarda `shortCode`, `qrUrl`, `nfcUrl`, `serialPublic`, `internalLabel` y `chipUidInternal`.
 - Eso sirve para el chip individual, pero no para programacion de un lote digital que luego se consume por unidad.
 - Falta separar formalmente lote digital, rango, tipo normal/empresarial y consumo irreversible de cada QR+link.
+- Ese lote digital debe alimentar dos rutas posibles: `Sticker PreRescatePTY` y `Sticker PreRescatePTY Empresarial`.
+- Al crear el lote debe elegirse si es normal o empresarial, porque esa decision afecta el producto terminado y las reglas de activacion posteriores.
 
 ### B) Etiqueta interna por unidad
 
@@ -173,6 +177,8 @@ Se reutiliza bien:
 - activacion normal y empresarial
 - logica real de inventario ya estabilizada
 
+Esta auditoria no debe tocar Prisma schema ni migraciones. Eso no significa que Prisma o migraciones nunca se tocaran; significa que no deben tocarse dentro de esta auditoria. Las migraciones nuevas deben hacerse despues, en bloques controlados y especificos.
+
 ## Riesgos
 
 - Confundir unidad fisica con balance agregado
@@ -183,13 +189,29 @@ Se reutiliza bien:
 
 ## Orden recomendado actualizado
 
-1. Reordenar UI y taxonomia de tabs
-2. Definir lote digital QR+link
-3. Definir orden a imprenta
-4. Definir unidad terminada por etiqueta interna
-5. Ajustar inventario por unidad / reserva
-6. Ajustar despacho con separacion fisica y entrega
-7. Ajustar postventa con la nueva unidad
-8. Construir movimientos automaticos unificados
-9. Construir historial general consolidado
-10. Auditar legacy antes de tocar checkout o `Order` / `Product`
+1. Reordenar UI y taxonomia de tabs.
+2. Crear o preparar base real de materiales:
+   - NFC chip en blanco
+   - Sticker en blanco
+   - Tarjeta con codigo de activacion / presentacion
+   - Empaque / presentacion
+3. Crear o preparar productos terminados base:
+   - Sticker PreRescatePTY
+   - Sticker PreRescatePTY Empresarial
+4. Definir lote digital QR+link.
+5. Definir orden a imprenta.
+6. Definir unidad terminada por etiqueta interna.
+7. Ajustar Pedidos:
+   - pedido normal
+   - pedido empresa
+   - pedido interno
+8. Ajustar inventario por unidad / reserva.
+9. Implementar regla: si hay stock, Pedido -> Inventario -> Despacho, saltando Produccion.
+10. Ajustar Produccion por lote / ensamblaje.
+11. Ajustar QA obligatorio antes de Inventario PT.
+12. Ajustar Despacho con separacion fisica, transportista y entrega.
+13. Agregar alerta "entregado pero no activado".
+14. Ajustar postventa con la nueva unidad.
+15. Construir movimientos automaticos unificados.
+16. Construir historial general consolidado.
+17. Auditar legacy antes de tocar checkout o `Order` / `Product`.
