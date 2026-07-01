@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Check, Copy, LogIn, Smartphone } from "lucide-react";
 
@@ -87,13 +88,13 @@ export default function ClientCompanyCodeSection({
           <LogIn className="h-4 w-4" />
           Iniciar sesión / Crear cuenta
         </a>
-        <a
+        <Link
           href="/activar"
           className="flex-1 px-5 py-3 rounded-xl border-2 border-slate-300 text-slate-800 text-xs font-black uppercase tracking-widest text-center hover:bg-slate-100 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         >
           <Smartphone className="h-4 w-4" />
           Ya tengo un chip: activar código
-        </a>
+        </Link>
       </div>
 
       {/* Custom message */}
