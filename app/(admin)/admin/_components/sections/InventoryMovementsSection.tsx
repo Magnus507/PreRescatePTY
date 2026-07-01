@@ -1,363 +1,275 @@
 "use client";
 
-import {
-  AlertTriangle,
-  ArrowRight,
-  ClipboardCheck,
-  Factory,
-  Package,
-  PackageCheck,
-  Route,
-  Truck,
-  CheckCircle2,
-  RotateCcw,
-  Settings,
-  AlertCircle,
-  FileSearch,
-  ClipboardList,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Clock3, Filter, Loader2, Route, Search, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 
-type MovementType =
-  | "ingreso"
-  | "reserva"
-  | "consumo"
-  | "transferencia"
-  | "devolucion"
-  | "ajuste"
-  | "dano"
-  | "perdida"
-  | "despacho";
-
-interface MovementTypeInfo {
-  key: MovementType;
+type Movement = {
+  id: string;
+  source: string;
+  eventType: string;
   label: string;
-  icon: React.ElementType;
-  description: string;
-  color: string;
+  description: string | null;
+  occurredAt: string;
+  entityType: string;
+  entityCode: string | null;
+  internalLabel: string | null;
+  productCode: string | null;
+  productName: string | null;
+  commercialOrderId: string | null;
+  dispatchId: string | null;
+  referenceType: string | null;
+  referenceId: string | null;
+  severity: "info" | "success" | "warning" | "danger";
+  metadataSafe: Record<string, unknown>;
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  material: "Material",
+  digital_batch: "Lote digital",
+  print_order: "Orden imprenta",
+  production: "Producción",
+  qa: "QA",
+  packing: "Empaque",
+  finished_good: "Producto terminado",
+  finished_good_unit: "Unidad terminada",
+  commercial_order: "Pedido",
+  dispatch: "Despacho",
+  warranty: "Garantía",
+  replacement: "Reemplazo",
+  return: "Devolución",
+  activation: "Activación",
+};
+
+const SEVERITY_STYLES: Record<Movement["severity"], string> = {
+  info: "bg-slate-100 text-slate-700 border-slate-200",
+  success: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  warning: "bg-amber-100 text-amber-700 border-amber-200",
+  danger: "bg-rose-100 text-rose-700 border-rose-200",
+};
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("es-PA", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
-const MOVEMENT_TYPES: MovementTypeInfo[] = [
-  {
-    key: "ingreso",
-    label: "Ingreso",
-    icon: Package,
-    description: "Registrar entrada de materiales al inventario",
-    color: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  },
-  {
-    key: "reserva",
-    label: "Reserva",
-    icon: ClipboardList,
-    description: "Reservar materiales para producción",
-    color: "bg-blue-50 text-blue-700 border-blue-200",
-  },
-  {
-    key: "consumo",
-    label: "Consumo",
-    icon: Factory,
-    description: "Registrar consumo en proceso productivo",
-    color: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  {
-    key: "transferencia",
-    label: "Transferencia",
-    icon: ArrowRight,
-    description: "Transferir materiales entre ubicaciones",
-    color: "bg-purple-50 text-purple-700 border-purple-200",
-  },
-  {
-    key: "devolucion",
-    label: "Devolución",
-    icon: RotateCcw,
-    description: "Devolver materiales a stock",
-    color: "bg-cyan-50 text-cyan-700 border-cyan-200",
-  },
-  {
-    key: "ajuste",
-    label: "Ajuste",
-    icon: Settings,
-    description: "Ajuste manual de cantidades",
-    color: "bg-slate-100 text-slate-700 border-slate-200",
-  },
-  {
-    key: "dano",
-    label: "Daño",
-    icon: AlertCircle,
-    description: "Reportar materiales dañados",
-    color: "bg-red-50 text-red-700 border-red-200",
-  },
-  {
-    key: "perdida",
-    label: "Pérdida",
-    icon: FileSearch,
-    description: "Registrar pérdida de materiales",
-    color: "bg-orange-50 text-orange-700 border-orange-200",
-  },
-  {
-    key: "despacho",
-    label: "Despacho",
-    icon: Truck,
-    description: "Registrar despacho de materiales",
-    color: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  },
-];
-
-const TIMELINE_STEPS = [
-  { label: "Proveedor", icon: Package, description: "Origen de materiales" },
-  { label: "Ingreso", icon: Package, description: "Registro en sistema" },
-  { label: "Reserva", icon: ClipboardList, description: "Asignación a producción" },
-  { label: "Producción", icon: Factory, description: "Consumo en proceso" },
-  { label: "Calidad", icon: ClipboardCheck, description: "Control de calidad" },
-  { label: "Empaque", icon: PackageCheck, description: "Preparación final" },
-  { label: "Despacho", icon: Truck, description: "Envío a destino" },
-  { label: "Entrega", icon: CheckCircle2, description: "Confirmación final" },
-];
+function sourceLabel(value: string) {
+  return SOURCE_LABELS[value] || value;
+}
 
 export function InventoryMovementsSection() {
+  const [movements, setMovements] = useState<Movement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [source, setSource] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMovements() {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (source) params.set("source", source);
+        if (query.trim()) params.set("search", query.trim());
+
+        const res = await fetch(`/api/admin/operations/movements?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "No se pudo cargar el historial consolidado");
+        }
+
+        if (!cancelled) {
+          setMovements((data.movements as Movement[]) || []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "No se pudo cargar el historial");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadMovements();
+    return () => {
+      cancelled = true;
+    };
+  }, [query, source]);
+
+  const summary = useMemo(() => {
+    const bySource = new Map<string, number>();
+    for (const movement of movements) {
+      bySource.set(movement.source, (bySource.get(movement.source) || 0) + 1);
+    }
+    return {
+      total: movements.length,
+      sources: Array.from(bySource.entries()).sort((a, b) => b[1] - a[1]),
+    };
+  }, [movements]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div>
-        <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
+      <div className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-3 text-3xl font-black tracking-tight">
           <Route className="h-8 w-8 text-primary" />
-          Movimientos de Inventario
+          Movimientos automáticos
         </h2>
-        <p className="text-sm text-muted-foreground font-medium mt-1">
-          Todo cambio de inventario físico quedará registrado como un movimiento completamente auditable.
+        <p className="max-w-3xl text-sm font-medium text-muted-foreground">
+          Este historial consolida eventos operativos reales en una sola vista de lectura, sin convertirlo en una fuente manual de stock.
         </p>
       </div>
 
-      {/* Card principal explicativa */}
-      <div className="rounded-3xl border-2 border-blue-200 bg-blue-50 p-6 dark:border-blue-800 dark:bg-blue-950/20">
-        <div className="flex items-start gap-4">
-          <div className="rounded-2xl bg-blue-100 p-3 dark:bg-blue-900/50">
-            <AlertTriangle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total</p>
+          <p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{summary.total}</p>
+          <p className="mt-2 text-xs text-slate-500">Movimientos normalizados visibles</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 md:col-span-2">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fuentes principales</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {summary.sources.slice(0, 6).map(([key, count]) => (
+              <span key={key} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                {sourceLabel(key)} · {count}
+              </span>
+            ))}
+            {summary.sources.length === 0 && (
+              <span className="text-sm text-slate-500">Sin movimientos cargados todavía.</span>
+            )}
           </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-black text-blue-900 dark:text-blue-100 mb-2">
-              El inventario físico nunca cambia directamente
-            </h3>
-            <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              Cada ingreso, reserva, consumo, transferencia, devolución, ajuste, pérdida o despacho
-              genera un movimiento. Esto garantiza trazabilidad completa de todos los materiales.
-            </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-400">
+            <Filter className="h-4 w-4" />
+            Filtros
+          </div>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950">
+              <Search className="h-4 w-4 text-slate-400" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar etiqueta, producto o pedido"
+                className="w-72 bg-transparent text-sm outline-none placeholder:text-slate-400"
+              />
+            </label>
+            <select
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium outline-none dark:border-slate-800 dark:bg-slate-950"
+            >
+              <option value="">Todas las fuentes</option>
+              {Object.keys(SOURCE_LABELS).map((key) => (
+                <option key={key} value={key}>
+                  {SOURCE_LABELS[key]}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
 
-      {/* Timeline Operativo */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">
-          Flujo Operativo
-        </h3>
-        <div className="flex items-center justify-between overflow-x-auto pb-4">
-          {TIMELINE_STEPS.map((step, idx) => {
-            const Icon = step.icon;
-            const isLast = idx === TIMELINE_STEPS.length - 1;
-            return (
-              <div key={step.label} className="flex items-center">
-                <div className="flex flex-col items-center text-center min-w-[80px]">
-                  <div className="rounded-xl bg-slate-100 p-2 mb-2 dark:bg-slate-800">
-                    <Icon className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                  </div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
-                    {step.label}
-                  </p>
-                  <p className="text-[9px] font-medium text-slate-500 mt-1">
-                    {step.description}
-                  </p>
-                </div>
-                {!isLast && (
-                  <div className="mx-2 text-slate-300 dark:text-slate-700">
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Tipos de Movimiento */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
-          Tipos de Movimiento
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {MOVEMENT_TYPES.map((movement) => {
-            const Icon = movement.icon;
-            return (
-              <div
-                key={movement.key}
-                className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 opacity-60"
-              >
-                <div className={`rounded-xl p-2 mb-3 inline-flex ${movement.color}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <p className="text-xs font-black text-slate-900 dark:text-white mb-1">
-                  {movement.label}
-                </p>
-                <p className="text-[10px] font-medium text-slate-500 mb-2">
-                  {movement.description}
-                </p>
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                  Se registra por módulo
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Tabla Placeholder */}
-      <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden dark:border-slate-800 dark:bg-slate-900">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
-            Historial de Movimientos
-          </h3>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Historial consolidado</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200 dark:bg-slate-950 dark:border-slate-800">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
               <tr>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Fecha
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Tipo
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Producto
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Cantidad
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Origen
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Destino
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Operador
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Motivo
-                </th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Fecha</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Fuente</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Movimiento</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Unidad / producto</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Referencia</th>
+                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Severidad</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              <tr>
-                <td colSpan={8} className="px-6 py-12 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <Route className="h-12 w-12 text-slate-300 dark:text-slate-700" />
-                    <p className="text-sm font-black uppercase tracking-widest text-slate-400">
-                      Todavía no existe un historial consolidado
-                    </p>
-                    <p className="text-xs font-medium text-slate-500 max-w-md">
-                      Los movimientos ya se registran dentro de cada módulo operativo. El historial consolidado se integrará en la fase de Movimientos automáticos.
-                    </p>
-                  </div>
-                </td>
-              </tr>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-16 text-center">
+                    <div className="flex items-center justify-center gap-2 text-slate-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Cargando movimientos...
+                    </div>
+                  </td>
+                </tr>
+              ) : movements.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-16 text-center">
+                    <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+                      <AlertTriangle className="h-10 w-10 text-slate-300 dark:text-slate-700" />
+                      <p className="text-sm font-black uppercase tracking-widest text-slate-400">
+                        No hay movimientos para mostrar
+                      </p>
+                      <p className="text-xs font-medium text-slate-500">
+                        Cuando los módulos operativos empiecen a emitir eventos, esta vista los consolidará aquí.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                movements.map((movement) => (
+                  <tr key={movement.id} className="align-top">
+                    <td className="px-4 py-4 whitespace-nowrap text-xs text-slate-500">
+                      <div className="flex items-center gap-2">
+                        <Clock3 className="h-4 w-4 text-slate-400" />
+                        {formatDateTime(movement.occurredAt)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                        {sourceLabel(movement.source)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="font-semibold text-slate-950 dark:text-white">{movement.label}</div>
+                      <div className="mt-1 text-xs text-slate-500">{movement.eventType}</div>
+                      {movement.description ? <div className="mt-1 text-xs text-slate-500">{movement.description}</div> : null}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="font-semibold text-slate-950 dark:text-white">
+                        {movement.internalLabel || movement.entityCode || "Sin etiqueta"}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {movement.productCode || movement.productName || movement.entityType}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-xs text-slate-500">
+                      {movement.commercialOrderId || movement.dispatchId || movement.referenceId || "—"}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${SEVERITY_STYLES[movement.severity]}`}>
+                        {movement.severity}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Card Informativa */}
-      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900/50">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
-          ¿Por qué usar movimientos?
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-white mb-1">
-                Auditoría completa
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                Registro inmutable de cada cambio
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-white mb-1">
-                Historial de cada cambio
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                Trazabilidad punto a punto
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-white mb-1">
-                Trazabilidad de materiales
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                Seguimiento de lote a lote
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-white mb-1">
-                Control de pérdidas
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                Identificación rápida de desviaciones
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-white mb-1">
-                Integración con Producción
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                Consumo automático por orden
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-white mb-1">
-                Integración con Calidad
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                Control de calidad por lote
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-white mb-1">
-                Integración con Empaque
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                Preparación de pedidos
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-white mb-1">
-                Integración con Despacho
-              </p>
-              <p className="text-[10px] font-medium text-slate-500">
-                Tracking de entrega
-              </p>
-            </div>
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Regla operativa</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Esta vista solo normaliza eventos ya emitidos por los módulos operativos. No calcula stock manual ni edita el historial existente.
+            </p>
           </div>
         </div>
       </div>

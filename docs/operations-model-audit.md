@@ -202,6 +202,15 @@ Esta auditoria no debe tocar Prisma schema ni migraciones. Eso no significa que 
 - Repetir estados de despacho que ya existen con otro nombre sin una taxonomia comun
 - Meter historia consolidada antes de tener eventos estandarizados
 
+## W5.37S - Movimientos automaticos unificados
+
+- Se agrego `lib/operations/operation-movements.ts` para normalizar en una sola linea de tiempo eventos de materiales, lote digital, orden a imprenta, produccion, QA, empaque, producto terminado, unidad terminada, pedido comercial, despacho y postventa.
+- Se agrego `GET /api/admin/operations/movements` como fuente consolidada de solo lectura para el panel operativo.
+- La tab `Movimientos` ahora consume datos reales y deja de ser un placeholder conceptual.
+- El feed es derivado desde eventos existentes y no crea stock manual, no edita eventos y no toca checkout legacy, `Order` / `Product` legacy ni activacion.
+- No se toco Prisma schema.
+- No se tocaron migraciones.
+
 ## Orden recomendado actualizado
 
 1. Reordenar UI y taxonomia de tabs.

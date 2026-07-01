@@ -156,3 +156,13 @@
 - Se agrego una migracion pequena para los campos puente de postventa por unidad.
 - No se toco checkout legacy ni `Order` / `Product` legacy.
 - No se uso `prisma db push` ni `prisma migrate reset`.
+
+## W5.37S - Movimientos automaticos unificados
+
+- Se agrego `lib/operations/operation-movements.ts` para consolidar movimientos automaticos desde eventos reales del centro de operaciones.
+- Se agrego `GET /api/admin/operations/movements` como fuente de solo lectura para el historial consolidado.
+- La tab `Movimientos` dejo de ser un placeholder y ahora muestra eventos normalizados con filtros basicos.
+- Se incluyeron en la linea de tiempo lotes digitales, ordenes a imprenta, pedidos comerciales, despachos y postventa, ademas de materiales, produccion, QA, empaque y unidades terminadas.
+- El feed no crea stock manual, no reescribe eventos y no toca checkout legacy ni `Order` / `Product` legacy.
+- No se tocaron migraciones.
+- No se toco Prisma schema.
