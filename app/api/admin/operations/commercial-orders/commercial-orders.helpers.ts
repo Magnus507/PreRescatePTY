@@ -91,3 +91,18 @@ export function calculateCommercialOrderTotal(
 export function getFirstValidationMessage(error: z.ZodError): string {
   return error.errors[0]?.message || "Datos invalidos";
 }
+
+export function resolveCommercialOrderItemKey(item: {
+  finishedGoodId: string | null;
+  productCode: string | null;
+  finishedGood?: { code: string; productType: string } | null;
+}) {
+  return item.finishedGood?.code || item.productCode || item.finishedGoodId || "";
+}
+
+export function getCommercialOrderItemProductType(item: {
+  finishedGood?: { productType: string } | null;
+  productCode: string | null;
+}) {
+  return item.finishedGood?.productType || item.productCode || "";
+}

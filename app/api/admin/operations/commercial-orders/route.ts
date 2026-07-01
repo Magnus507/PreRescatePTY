@@ -52,8 +52,27 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: commercialOrderInclude,
     });
+    const reservedUnitsByOrder = await prisma.operationFinishedGoodUnit.findMany({
+      where: { reservedOrderId: { in: commercialOrders.map((order) => order.id) }, status: "reserved" },
+      select: {
+        id: true,
+        reservedOrderId: true,
+        internalLabel: true,
+      },
+    });
 
-    return NextResponse.json({ commercialOrders });
+    const reservedCountMap = reservedUnitsByOrder.reduce<Record<string, number>>((acc, unit) => {
+      if (!unit.reservedOrderId) return acc;
+      acc[unit.reservedOrderId] = (acc[unit.reservedOrderId] || 0) + 1;
+      return acc;
+    }, {});
+
+    return NextResponse.json({
+      commercialOrders: commercialOrders.map((order) => ({
+        ...order,
+        reservedUnitsCount: reservedCountMap[order.id] || 0,
+      })),
+    });
   } catch (error) {
     console.error("[operations/commercial-orders] GET error:", error);
     return NextResponse.json(

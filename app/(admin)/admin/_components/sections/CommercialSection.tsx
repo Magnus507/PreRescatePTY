@@ -71,6 +71,18 @@ interface CommercialOrder {
     status: string;
     destinationType: string;
   } | null;
+  reservedUnitsCount?: number;
+  reservedUnits?: Array<{
+    id: string;
+    internalLabel: string;
+    productCode: string;
+    productName: string;
+    productType: string;
+    status: string;
+    qaStatus: string | null;
+    activationStatus: string;
+    reservedAt: string | null;
+  }>;
 }
 
 interface CommercialFormItem {
@@ -217,6 +229,7 @@ export function CommercialSection() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingEventKey, setSavingEventKey] = useState<string | null>(null);
+  const [reservationKey, setReservationKey] = useState<string | null>(null);
   const [form, setForm] = useState<CommercialFormState>(EMPTY_FORM);
 
   const formTotal = useMemo(() => {
@@ -463,6 +476,46 @@ export function CommercialSection() {
     }
   };
 
+  const handleReserveUnits = async (order: CommercialOrder) => {
+    setReservationKey(order.id);
+    try {
+      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/reserve-units`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "auto", allowPartial: false }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudieron reservar unidades");
+      }
+      toast.success("Unidades reservadas");
+      await loadOrders({ silent: true });
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Error al reservar unidades"));
+    } finally {
+      setReservationKey(null);
+    }
+  };
+
+  const handleReleaseUnits = async (order: CommercialOrder) => {
+    setReservationKey(order.id);
+    try {
+      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/release-units`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudieron liberar unidades");
+      }
+      toast.success("Reserva liberada");
+      await loadOrders({ silent: true });
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Error al liberar unidades"));
+    } finally {
+      setReservationKey(null);
+    }
+  };
+
   const getActionsForOrder = (order: CommercialOrder) => {
     if (order.status === "cancelled") {
       return order.paymentStatus === "paid"
@@ -634,7 +687,42 @@ export function CommercialSection() {
                           );
                         })
                       )}
+                      <button
+                        type="button"
+                        onClick={() => handleReserveUnits(order)}
+                        disabled={reservationKey === order.id}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 transition-all hover:bg-blue-100 disabled:opacity-50"
+                      >
+                        {reservationKey === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                        Reservar unidades
+                      </button>
+                      {(order.fulfillmentStatus === "reserved" || order.status === "stock_reserved") && (
+                        <button
+                          type="button"
+                          onClick={() => handleReleaseUnits(order)}
+                          disabled={reservationKey === order.id}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-amber-800 transition-all hover:bg-amber-100 disabled:opacity-50"
+                        >
+                          {reservationKey === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                          Liberar unidades
+                        </button>
+                      )}
                     </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unidades reservadas</p>
+                    {order.reservedUnits && order.reservedUnits.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {order.reservedUnits.map((unit) => (
+                          <span key={unit.id} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                            {unit.internalLabel}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm font-semibold text-slate-500">Sin unidades reservadas</p>
+                    )}
                   </div>
                 </article>
               );

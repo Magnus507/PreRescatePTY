@@ -66,7 +66,23 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ commercialOrder });
+    const reservedUnits = await prisma.operationFinishedGoodUnit.findMany({
+      where: { reservedOrderId: id, status: "reserved" },
+      select: {
+        id: true,
+        internalLabel: true,
+        productCode: true,
+        productName: true,
+        productType: true,
+        status: true,
+        qaStatus: true,
+        activationStatus: true,
+        reservedAt: true,
+      },
+      orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
+    });
+
+    return NextResponse.json({ commercialOrder: { ...commercialOrder, reservedUnits } });
   } catch (error) {
     console.error("[operations/commercial-orders/:id] GET error:", error);
     return NextResponse.json(
