@@ -201,7 +201,7 @@ export function InventoryMovementsSection() {
                   {movement.description}
                 </p>
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                  Próximamente
+                  Se registra por módulo
                 </p>
               </div>
             );
@@ -252,10 +252,10 @@ export function InventoryMovementsSection() {
                   <div className="flex flex-col items-center gap-3">
                     <Route className="h-12 w-12 text-slate-300 dark:text-slate-700" />
                     <p className="text-sm font-black uppercase tracking-widest text-slate-400">
-                      Todavía no existen movimientos registrados
+                      Todavía no existe un historial consolidado
                     </p>
                     <p className="text-xs font-medium text-slate-500 max-w-md">
-                      Los movimientos aparecerán automáticamente cuando se active el módulo de Inventario Físico.
+                      Los movimientos ya se registran dentro de cada módulo operativo. El historial consolidado se integrará en la fase de Movimientos automáticos.
                     </p>
                   </div>
                 </td>
