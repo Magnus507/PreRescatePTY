@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import EmergencyProfileClient from "./client";
 
 export const metadata: Metadata = {
-  title: "Perfil médico de emergencia — PreRescue ID",
+  title: "PreRescatePTY — Estado del producto",
   description:
-    "Perfil médico de emergencia accesible mediante identificación QR o NFC.",
+    "Pantalla pública segura para productos PreRescatePTY antes de la activación.",
   robots: {
     index: false,
     follow: false,
@@ -18,17 +18,17 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "Perfil médico de emergencia — PreRescue ID",
+    title: "PreRescatePTY — Estado del producto",
     description:
-      "Perfil médico de emergencia accesible mediante identificación QR o NFC.",
+      "Pantalla pública segura para productos PreRescatePTY antes de la activación.",
     type: "website",
     locale: "es_PA",
   },
   twitter: {
     card: "summary",
-    title: "Perfil médico de emergencia — PreRescue ID",
+    title: "PreRescatePTY — Estado del producto",
     description:
-      "Perfil médico de emergencia accesible mediante identificación QR o NFC.",
+      "Pantalla pública segura para productos PreRescatePTY antes de la activación.",
   },
 };
 

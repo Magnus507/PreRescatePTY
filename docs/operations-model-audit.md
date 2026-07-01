@@ -230,3 +230,15 @@ Esta auditoria no debe tocar Prisma schema ni migraciones. Eso no significa que 
 15. Construir movimientos automaticos unificados.
 16. Construir historial general consolidado.
 17. Auditar legacy antes de tocar checkout o `Order` / `Product`.
+
+## W5.37P - Pantalla publica QR antes de activacion
+
+- Se agrego la ruta publica segura `app/(public)/activar/[internalLabel]/page.tsx` para el estado previo a activacion.
+- Se ajusto `app/(public)/e/[shortCode]` para que `unactivated` muestre una pantalla segura de pre-activacion.
+- La vista publica previa a activacion solo muestra etiqueta interna, producto y estado operativo.
+- No expone datos medicos, personales, contactos de emergencia, pedido, despacho, proveedor ni notas internas.
+- La activacion real queda fuera de este bloque y se revisara en W5.37Q.
+- No hubo migracion.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se toco checkout legacy ni `Order` / `Product` legacy.

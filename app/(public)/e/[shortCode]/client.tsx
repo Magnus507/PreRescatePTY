@@ -519,18 +519,28 @@ export default function EmergencyPage() {
           <div className="bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden relative">
             <div className="h-3 bg-red-600 w-full" />
             <div className="p-6 md:p-10 lg:p-14 text-center">
-              <div className="bg-red-50 h-20 w-20 md:h-28 md:w-28 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 md:mb-10 border border-red-100 shadow-xl shadow-red-100/50">
-                <AlertTriangle className="h-12 w-12 text-red-600" />
+              <div className="bg-slate-50 h-20 w-20 md:h-28 md:w-28 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 md:mb-10 border border-slate-100 shadow-xl shadow-slate-100/50">
+                <ShieldCheck className="h-12 w-12 text-slate-700" />
               </div>
               <div className="space-y-4 mb-8 md:mb-12">
-                <h1 className="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter italic leading-none">Chip aún no activado</h1>
-                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Identificador válido en PreRescate</p>
+                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">PreRescatePTY / PreRescueID</p>
+                <h1 className="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter italic leading-none">Este producto requiere activación</h1>
               </div>
               <div className="space-y-6">
-                <p className="text-slate-500 text-lg font-medium leading-relaxed max-w-sm mx-auto">Este identificador existe, pero todavía no tiene un perfil médico vinculado.</p>
-                <p className="text-slate-400 text-sm font-semibold leading-relaxed max-w-md mx-auto">Si este chip es tuyo, actívalo desde tu cuenta usando el código de activación.</p>
+                <div className="grid gap-3 max-w-md mx-auto text-left">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Etiqueta interna</p>
+                    <p className="mt-1 text-base font-black text-slate-900 break-words">{shortCode}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</p>
+                    <p className="mt-1 text-base font-black text-slate-900">Pendiente de activación</p>
+                  </div>
+                </div>
+                <p className="text-slate-500 text-lg font-medium leading-relaxed max-w-sm mx-auto">Este código pertenece a un producto PreRescatePTY. Para mostrar información médica o contactos de emergencia, debe activarse por su usuario final.</p>
+                <p className="text-slate-400 text-sm font-semibold leading-relaxed max-w-md mx-auto">No se muestran datos personales antes de la activación.</p>
                 <div className="grid grid-cols-1 gap-4">
-                  <Link href="/activar" className="group relative inline-flex items-center justify-center gap-3 w-full py-6 bg-red-600 text-white rounded-[2rem] font-black text-2xl transition-all hover:bg-black active:scale-95 shadow-2xl shadow-red-200">Ir a activar chip <ShieldCheck className="h-7 w-7" /></Link>
+                  <Link href="/activar" className="group relative inline-flex items-center justify-center gap-3 w-full py-6 bg-red-600 text-white rounded-[2rem] font-black text-2xl transition-all hover:bg-black active:scale-95 shadow-2xl shadow-red-200">Activar producto <ShieldCheck className="h-7 w-7" /></Link>
                 </div>
               </div>
             </div>

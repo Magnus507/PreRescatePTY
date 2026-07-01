@@ -126,3 +126,13 @@
 - No se toco el flujo de activacion.
 - No se toco checkout legacy.
 - No se toco `Order` / `Product` legacy.
+
+## W5.37P - Pantalla publica QR antes de activacion
+
+- Se agrego la ruta publica segura `app/(public)/activar/[internalLabel]/page.tsx` para mostrar el estado previo a activacion sin datos sensibles.
+- Se ajusto `app/(public)/e/[shortCode]` para que el estado `unactivated` muestre una pantalla informativa y no una ficha medica.
+- La pantalla pre-activacion solo expone etiqueta interna, producto y estado operativo.
+- No se exponen datos medicos, personales, contactos de emergencia, pedido, despacho, proveedor ni notas internas.
+- La activacion real queda pendiente para W5.37Q.
+- No se tocaron migraciones, no se uso `prisma db push` y no se uso `prisma migrate reset`.
+- No se toco checkout legacy ni `Order` / `Product` legacy.
