@@ -175,3 +175,14 @@
 - La vista es solo lectura, no permite crear, editar ni borrar eventos, y filtra datos sensibles para no exponer datos medicos ni PII innecesaria.
 - No se tocaron migraciones.
 - No se toco Prisma schema.
+
+## W5.37V - Smoke test operativo completo
+
+- Se agrego `scripts/smoke-operations-full-flow.ts` para ejecutar un smoke controlado de punta a punta con prefijo `W537V_SMOKE`.
+- El smoke cubre lote digital, imprenta, ensamblaje, QA, pedido comercial, reserva, despacho, entrega, activacion operativa y postventa.
+- El script incluye modo cleanup estricto por prefijo y no borra datos reales ni bases.
+- Se agrego `docs/operations-full-smoke-test.md` para documentar el flujo y la limpieza del smoke.
+- El smoke ejecuto correctamente, limpio todos los registros creados y termino con `remainingSmokeRecords = 0`.
+- No se toco checkout legacy ni `Order` / `Product` legacy.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
