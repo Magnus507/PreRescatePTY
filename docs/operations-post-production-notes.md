@@ -1,5 +1,24 @@
 # Notas post-produccion del Centro de Operaciones
 
+## W5.38A - Auditoria integral Centro de Operaciones
+
+- Se audito el Centro de Operaciones post-W5.37 y post-W5.37X sin tocar codigo funcional.
+- El backend operativo sigue consistente y conectado.
+- Se detecto una deuda visual fuerte en Produccion por textos y diagramas conceptuales antiguos.
+- Se detectaron textos densos o parcialmente crudos en Pedidos, Inventario, QA, Despacho, Postventa y Historial.
+- Se documento el mapa actual de tabs, subtabs, hallazgos y un plan propuesto por bloques.
+- No se toco backend.
+- No se tocaron endpoints.
+- No se tocaron payloads.
+- No se tocaron migraciones.
+- No se toco Prisma schema.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se toco activacion legacy.
+- No se hizo push.
+
 ## W5.37X - Auditoria visual de taxonomia
 
 - Se reorganizo visualmente el Centro de Operaciones para reducir tabs principales y agrupar secciones por flujo real.
