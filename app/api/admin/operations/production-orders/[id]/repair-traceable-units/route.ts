@@ -19,24 +19,54 @@ export async function POST(
     orderBy: [{ sequenceNumber: "asc" }, { internalLabel: "asc" }],
   });
 
-  let repaired = 0;
+  const units: Array<{
+    preparationId: string;
+    digitalBatchItemId: string;
+    internalLabel: string;
+    shortCode: string | null;
+    finishedGoodUnitId: string;
+    action: "created" | "found" | "linked";
+  }> = [];
+  const errors: Array<{ preparationId: string; message: string }> = [];
+  const readyForQcItems: Array<{ id: string; internalLabel: string; shortCode: string | null }> = [];
 
   for (const item of items) {
     const printOrder = await prisma.operationPrintOrder.findFirst({ where: { digitalBatchId: item.batchId } });
     const assemblyState = buildProductionAssemblyState(item, { printOrder });
-    if (!assemblyState.readyForQc) continue;
+    if (!assemblyState.readyForQc) {
+      continue;
+    }
+    readyForQcItems.push({ id: item.id, internalLabel: item.internalLabel, shortCode: item.shortCode });
 
-    const existing = await prisma.operationFinishedGoodUnit.findUnique({
-      where: { digitalBatchItemId: item.id },
-    });
-    if (existing) continue;
+    try {
+      const unit = await prisma.$transaction(async (tx) => {
+        const existingByBatchItem = await tx.operationFinishedGoodUnit.findUnique({
+          where: { digitalBatchItemId: item.id },
+        });
+        if (existingByBatchItem) {
+          const linked = await tx.operationFinishedGoodUnit.update({
+            where: { id: existingByBatchItem.id },
+            data: {
+              digitalBatchId: existingByBatchItem.digitalBatchId || item.batchId,
+              digitalBatchItemId: existingByBatchItem.digitalBatchItemId || item.id,
+              printOrderId: existingByBatchItem.printOrderId || printOrder?.id || null,
+              productCode: existingByBatchItem.productCode || "PRP-FG-STICKER",
+              productName: existingByBatchItem.productName || "Sticker PreRescatePTY",
+              productType: existingByBatchItem.productType || item.batch.productType,
+              qaStatus: existingByBatchItem.qaStatus && ["passed", "failed"].includes(existingByBatchItem.qaStatus) ? existingByBatchItem.qaStatus : "pending",
+              status: existingByBatchItem.qaStatus === "passed" || existingByBatchItem.qaStatus === "failed" ? existingByBatchItem.status : "qa_pending",
+              activationStatus: existingByBatchItem.activationStatus || "not_activated",
+            },
+          });
+          return { unit: linked, action: "found" as const };
+        }
 
-    await prisma.$transaction(async (tx) => {
-      const existingByLabel = await tx.operationFinishedGoodUnit.findUnique({
-        where: { internalLabel: item.internalLabel },
-      });
-      const unit = existingByLabel
-        ? await tx.operationFinishedGoodUnit.update({
+        const existingByLabel = await tx.operationFinishedGoodUnit.findUnique({
+          where: { internalLabel: item.internalLabel },
+        });
+
+        if (existingByLabel) {
+          const linked = await tx.operationFinishedGoodUnit.update({
             where: { id: existingByLabel.id },
             data: {
               digitalBatchId: existingByLabel.digitalBatchId || item.batchId,
@@ -49,36 +79,93 @@ export async function POST(
               status: existingByLabel.qaStatus === "passed" || existingByLabel.qaStatus === "failed" ? existingByLabel.status : "qa_pending",
               activationStatus: existingByLabel.activationStatus || "not_activated",
             },
-          })
-        : await tx.operationFinishedGoodUnit.create({
-            data: {
-              internalLabel: item.internalLabel,
-              productCode: "PRP-FG-STICKER",
-              productName: "Sticker PreRescatePTY",
-              productType: item.batch.productType,
-              digitalBatchId: item.batchId,
-              digitalBatchItemId: item.id,
-              status: "qa_pending",
-              qaStatus: "pending",
-              activationStatus: "not_activated",
-              printOrderId: printOrder?.id || null,
-              events: { create: { eventType: "UNIT_COMPLETED", metadataJson: { preparationId: item.id } } },
-            },
           });
+          return { unit: linked, action: "linked" as const };
+        }
 
-      await tx.operationProductionEvent.create({
+        const created = await tx.operationFinishedGoodUnit.create({
+          data: {
+            internalLabel: item.internalLabel,
+            productCode: "PRP-FG-STICKER",
+            productName: "Sticker PreRescatePTY",
+            productType: item.batch.productType,
+            digitalBatchId: item.batchId,
+            digitalBatchItemId: item.id,
+            status: "qa_pending",
+            qaStatus: "pending",
+            activationStatus: "not_activated",
+            printOrderId: printOrder?.id || null,
+            events: { create: { eventType: "UNIT_COMPLETED", metadataJson: { preparationId: item.id } } },
+          },
+        });
+
+        return { unit: created, action: "created" as const };
+      });
+
+      const fresh = await prisma.operationFinishedGoodUnit.findUnique({
+        where: { id: unit.unit.id },
+        select: {
+          id: true,
+          digitalBatchItemId: true,
+          internalLabel: true,
+          digitalBatchId: true,
+          qaStatus: true,
+          status: true,
+          activationStatus: true,
+          reservedOrderId: true,
+        },
+      });
+
+      if (!fresh?.id || fresh.digitalBatchItemId !== item.id) {
+        errors.push({ preparationId: item.id, message: "No se pudo vincular la unidad trazable." });
+        continue;
+      }
+
+      await prisma.operationProductionEvent.create({
         data: {
           productionOrderId,
           eventType: "UNIT_READY_FOR_QC",
           reason: "Unidad sincronizada para QC",
-          metadataJson: JSON.stringify({ preparationId: item.id, unitId: unit.id, repaired: true }),
+          metadataJson: JSON.stringify({ preparationId: item.id, unitId: fresh.id, repaired: true }),
           createdById: auth.session.user.id || null,
         },
       });
-    });
 
-    repaired += 1;
+      units.push({
+        preparationId: item.id,
+        digitalBatchItemId: item.id,
+        internalLabel: fresh.internalLabel,
+        shortCode: item.shortCode,
+        finishedGoodUnitId: fresh.id,
+        action: unit.action,
+      });
+    } catch (error) {
+      errors.push({
+        preparationId: item.id,
+        message: error instanceof Error ? error.message : "No se pudo sincronizar la unidad trazable.",
+      });
+    }
   }
 
-  return NextResponse.json({ ok: true, repaired });
+  const repairedCount = units.length;
+  const stillMissing = readyForQcItems.filter((item) => !units.some((unit) => unit.digitalBatchItemId === item.id));
+
+  if (repairedCount === 0 && stillMissing.length > 0) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "No se pudo sincronizar la unidad trazable.",
+        units: [],
+        errors: [...errors, ...stillMissing.map((item) => ({ preparationId: item.id, message: "Sigue sin finishedGoodUnitId." }))],
+      },
+      { status: 400 }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    repairedCount,
+    units,
+    errors,
+  });
 }

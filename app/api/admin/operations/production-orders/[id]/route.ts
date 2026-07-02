@@ -61,7 +61,36 @@ export async function GET(
         ...productionOrder,
         digitalItems: productionOrder.digitalItems.map((item) => ({
           ...item,
-          finishedGoodUnitId: item.finishedGoodUnits.find((unit) => unit.digitalBatchItemId === item.id)?.id || item.finishedGoodUnits[0]?.id || null,
+          finishedGoodUnitId:
+            item.finishedGoodUnits.find((unit) => unit.digitalBatchItemId === item.id)?.id ||
+            item.finishedGoodUnits.find((unit) => unit.internalLabel === item.internalLabel)?.id ||
+            item.finishedGoodUnits[0]?.id ||
+            null,
+          unitId:
+            item.finishedGoodUnits.find((unit) => unit.digitalBatchItemId === item.id)?.id ||
+            item.finishedGoodUnits.find((unit) => unit.internalLabel === item.internalLabel)?.id ||
+            item.finishedGoodUnits[0]?.id ||
+            null,
+          qaStatus:
+            item.finishedGoodUnits.find((unit) => unit.digitalBatchItemId === item.id)?.qaStatus ||
+            item.finishedGoodUnits.find((unit) => unit.internalLabel === item.internalLabel)?.qaStatus ||
+            item.finishedGoodUnits[0]?.qaStatus ||
+            null,
+          inventoryStatus:
+            item.finishedGoodUnits.find((unit) => unit.digitalBatchItemId === item.id)?.status ||
+            item.finishedGoodUnits.find((unit) => unit.internalLabel === item.internalLabel)?.status ||
+            item.finishedGoodUnits[0]?.status ||
+            null,
+          activationStatus:
+            item.finishedGoodUnits.find((unit) => unit.digitalBatchItemId === item.id)?.activationStatus ||
+            item.finishedGoodUnits.find((unit) => unit.internalLabel === item.internalLabel)?.activationStatus ||
+            item.finishedGoodUnits[0]?.activationStatus ||
+            null,
+          reservedOrderId:
+            item.finishedGoodUnits.find((unit) => unit.digitalBatchItemId === item.id)?.reservedOrderId ||
+            item.finishedGoodUnits.find((unit) => unit.internalLabel === item.internalLabel)?.reservedOrderId ||
+            item.finishedGoodUnits[0]?.reservedOrderId ||
+            null,
         })),
       },
     });

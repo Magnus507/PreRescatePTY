@@ -407,6 +407,25 @@ export default function ProductionQueueSection() {
     }
   }, []);
 
+  const refreshSelectedProductionOrder = useCallback(
+    async (productionOrderId: string) => {
+      const res = await fetch(`/api/admin/operations/production-orders/${productionOrderId}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo refrescar la orden de produccion");
+      }
+
+      const refreshedOrder = data.productionOrder;
+      setProductionOrders((current) =>
+        current.map((order) => (order.id === refreshedOrder.id ? { ...order, ...refreshedOrder } : order))
+      );
+      return refreshedOrder;
+    },
+    []
+  );
+
   const loadPrintOrders = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/operations/print-orders", { cache: "no-store" });
@@ -698,9 +717,21 @@ export default function ProductionQueueSection() {
         method: "POST",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo sincronizar la unidad trazable");
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "No se pudo sincronizar la unidad trazable");
+      }
+
+      const repairedForItem = Array.isArray(data.units)
+        ? data.units.find((entry: { preparationId: string; finishedGoodUnitId?: string | null }) => entry.preparationId === itemId && Boolean(entry.finishedGoodUnitId))
+        : null;
+
+      if (!repairedForItem?.finishedGoodUnitId) {
+        throw new Error("No se pudo sincronizar la unidad trazable.");
+      }
+
+      await refreshSelectedProductionOrder(orderId);
+      await loadPrintOrders();
       toast.success("Unidad trazable sincronizada");
-      await Promise.all([loadProductionOrders({ silent: true }), loadPrintOrders()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al sincronizar la unidad trazable");
     } finally {
