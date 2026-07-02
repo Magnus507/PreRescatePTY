@@ -23,47 +23,74 @@ export async function POST(
     return NextResponse.json({ error: "La unidad debe estar empaquetada antes de marcarla lista para QC" }, { status: 400 });
   }
 
-  const existing = await prisma.operationFinishedGoodUnit.findUnique({
-    where: { digitalBatchItemId: item.id },
-  });
-  if (existing) {
-    await prisma.operationDigitalBatchItem.update({
+  const result = await prisma.$transaction(async (tx) => {
+    const printOrder = await tx.operationPrintOrder.findFirst({ where: { digitalBatchId: item.batchId } });
+    const existingByBatchItem = await tx.operationFinishedGoodUnit.findUnique({
+      where: { digitalBatchItemId: item.id },
+    });
+    const existingByLabel = existingByBatchItem || await tx.operationFinishedGoodUnit.findUnique({
+      where: { internalLabel: item.internalLabel },
+    });
+
+    const unit = existingByLabel
+      ? await tx.operationFinishedGoodUnit.update({
+          where: { id: existingByLabel.id },
+          data: {
+            digitalBatchId: existingByLabel.digitalBatchId || item.batchId,
+            digitalBatchItemId: existingByLabel.digitalBatchItemId || item.id,
+            printOrderId: existingByLabel.printOrderId || printOrder?.id || null,
+            productCode: existingByLabel.productCode || "PRP-FG-STICKER",
+            productName: existingByLabel.productName || "Sticker PreRescatePTY",
+            productType: existingByLabel.productType || item.batch.productType,
+            qaStatus: existingByLabel.qaStatus && ["passed", "failed"].includes(existingByLabel.qaStatus) ? existingByLabel.qaStatus : "pending",
+            status: existingByLabel.qaStatus === "passed" || existingByLabel.qaStatus === "failed" ? existingByLabel.status : "qa_pending",
+            activationStatus: existingByLabel.activationStatus || "not_activated",
+          },
+        })
+      : await tx.operationFinishedGoodUnit.create({
+          data: {
+            internalLabel: item.internalLabel,
+            productCode: "PRP-FG-STICKER",
+            productName: "Sticker PreRescatePTY",
+            productType: item.batch.productType,
+            digitalBatchId: item.batchId,
+            digitalBatchItemId: item.id,
+            status: "qa_pending",
+            qaStatus: "pending",
+            activationStatus: "not_activated",
+            printOrderId: printOrder?.id || null,
+            events: { create: { eventType: "UNIT_COMPLETED", metadataJson: { preparationId } } },
+          },
+        });
+
+    await tx.operationDigitalBatchItem.update({
       where: { id: item.id },
       data: { status: "completed" },
     });
-    return NextResponse.json({ unit: existing });
-  }
 
-  const unit = await prisma.operationFinishedGoodUnit.create({
-    data: {
-      internalLabel: item.internalLabel,
-      productCode: "PRP-FG-STICKER",
-      productName: "Sticker PreRescatePTY",
-      productType: item.batch.productType,
-      digitalBatchId: item.batchId,
-      digitalBatchItemId: item.id,
-      status: "qa_pending",
-      qaStatus: "pending",
-      activationStatus: "not_activated",
-      printOrderId: (await prisma.operationPrintOrder.findFirst({ where: { digitalBatchId: item.batchId } }))?.id || null,
-      events: { create: { eventType: "UNIT_COMPLETED", metadataJson: { preparationId } } },
+    await tx.operationProductionEvent.create({
+      data: {
+        productionOrderId,
+        eventType: "UNIT_READY_FOR_QC",
+        reason: "Unidad lista para QC",
+        metadataJson: JSON.stringify({ preparationId, unitId: unit.id }),
+        createdById: auth.session.user.id || null,
+      },
+    });
+
+    return unit;
+  });
+
+  return NextResponse.json({
+    finishedGoodUnitId: result.id,
+    finishedGoodUnit: {
+      id: result.id,
+      internalLabel: result.internalLabel,
+      shortCode: null,
+      qaStatus: result.qaStatus,
+      inventoryStatus: result.status,
+      activationStatus: result.activationStatus,
+      reservedOrderId: result.reservedOrderId,
     },
-  });
-
-  await prisma.operationDigitalBatchItem.update({
-    where: { id: item.id },
-    data: { status: "completed" },
-  });
-
-  await prisma.operationProductionEvent.create({
-    data: {
-      productionOrderId,
-      eventType: "UNIT_COMPLETED",
-      reason: "Unidad lista para QC",
-      metadataJson: JSON.stringify({ preparationId, unitId: unit.id }),
-      createdById: auth.session.user.id || null,
-    },
-  });
-
-  return NextResponse.json({ unit }, { status: 201 });
+  }, { status: 201 });
 }

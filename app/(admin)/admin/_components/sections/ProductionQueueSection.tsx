@@ -77,6 +77,7 @@ interface ProductionOrder {
         activationStatus: string | null;
         reservedOrderId: string | null;
       }>;
+      finishedGoodUnitId?: string | null;
     }>;
   printOrders?: Array<{
     id: string;
@@ -689,6 +690,23 @@ export default function ProductionQueueSection() {
     }
   };
 
+  const handleRepairTraceableUnit = async (orderId: string, itemId: string) => {
+    setSavingDigitalKey(`${itemId}:repair-traceable-unit`);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${orderId}/unit-assembly/${itemId}/complete`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo sincronizar la unidad trazable");
+      toast.success("Unidad trazable sincronizada");
+      await Promise.all([loadProductionOrders({ silent: true }), loadPrintOrders()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al sincronizar la unidad trazable");
+    } finally {
+      setSavingDigitalKey(null);
+    }
+  };
+
   const handleSendToPrint = async (order: ProductionOrder) => {
     setSavingDigitalKey(`${order.id}:send-to-print`);
     try {
@@ -1058,11 +1076,23 @@ export default function ProductionQueueSection() {
                             </div>
                             <div className="mt-3 grid gap-3">
                               {digitalItems.map((item) => {
-                                const unit = item.finishedGoodUnits?.find((entry) => entry.status === "qa_pending" || entry.qaStatus === "pending" || entry.qaStatus === "passed" || entry.qaStatus === "failed" || entry.status === "available" || entry.status === "reserved" || entry.status === "qa_failed") || item.finishedGoodUnits?.[0] || null;
+                                const unit =
+                                  item.finishedGoodUnits?.find(
+                                    (entry) =>
+                                      entry.status === "qa_pending" ||
+                                      entry.qaStatus === "pending" ||
+                                      entry.qaStatus === "passed" ||
+                                      entry.qaStatus === "failed" ||
+                                      entry.status === "available" ||
+                                      entry.status === "reserved" ||
+                                      entry.status === "qa_failed"
+                                  ) || item.finishedGoodUnits?.[0] || null;
+                                const finishedGoodUnitId = item.finishedGoodUnitId || unit?.id || null;
                                 const qaStatus = unit?.qaStatus || "pending";
                                 const inventoryStatus = unit?.status || "qa_pending";
                                 const passEnabled = canPassQc(unit);
                                 const failEnabled = canFailQc(unit);
+                                const isReadyButUnsynced = item.status === "completed" && !finishedGoodUnitId;
                                 return (
                                   <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1073,20 +1103,49 @@ export default function ProductionQueueSection() {
                                           QA: {qaStatus} · Inventario: {inventoryStatus} · {unit?.activationStatus || "not_activated"} · {unit?.reservedOrderId ? `Pedido ${unit.reservedOrderId}` : "Sin reserva"}
                                         </p>
                                         <p className="mt-1 text-xs font-semibold text-slate-500">
-                                          {unit ? `Unidad trazable: ${unit.id}` : "La unidad todavía no fue creada como unidad trazable. Cierre ensamblaje físico antes de QC."}
+                                          {finishedGoodUnitId
+                                            ? `Unidad trazable: ${finishedGoodUnitId}`
+                                            : isReadyButUnsynced
+                                              ? "Unidad lista para QC, pendiente de sincronizar unidad trazable."
+                                              : "Marque la unidad lista para QC en Ensamblaje físico."}
                                         </p>
                                       </div>
                                       <div className="flex flex-wrap gap-2">
-                                        <button type="button" onClick={() => unit && handleQaPass(selectedProductionOrder, unit.id)} disabled={!passEnabled} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">
-                                          {savingDigitalKey === `${unit?.id}:qa-pass` ? "Aprobando..." : "Pass QC"}
-                                        </button>
-                                        <button type="button" onClick={() => unit && handleQaFail(selectedProductionOrder, unit.id)} disabled={!failEnabled} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800 disabled:opacity-50">
-                                          {savingDigitalKey === `${unit?.id}:qa-fail` ? "Marcando..." : "Fail QC"}
-                                        </button>
+                                        {finishedGoodUnitId ? (
+                                          <>
+                                            <button type="button" onClick={() => handleQaPass(selectedProductionOrder, finishedGoodUnitId)} disabled={!passEnabled} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">
+                                              {savingDigitalKey === `${finishedGoodUnitId}:qa-pass` ? "Aprobando..." : "Pass QC"}
+                                            </button>
+                                            <button type="button" onClick={() => handleQaFail(selectedProductionOrder, finishedGoodUnitId)} disabled={!failEnabled} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800 disabled:opacity-50">
+                                              {savingDigitalKey === `${finishedGoodUnitId}:qa-fail` ? "Marcando..." : "Fail QC"}
+                                            </button>
+                                          </>
+                                        ) : isReadyButUnsynced ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRepairTraceableUnit(selectedProductionOrder.id, item.id)}
+                                            disabled={Boolean(savingDigitalKey)}
+                                            className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800 disabled:opacity-50"
+                                          >
+                                            {savingDigitalKey === `${item.id}:repair-traceable-unit` ? "Sincronizando..." : "Sincronizar unidad trazable"}
+                                          </button>
+                                        ) : null}
                                       </div>
                                     </div>
-                                    {!passEnabled && <p className="mt-3 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "pass")}</p>}
-                                    {!failEnabled && <p className="mt-2 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "fail")}</p>}
+                                    {finishedGoodUnitId ? (
+                                      <>
+                                        {!passEnabled && <p className="mt-3 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "pass")}</p>}
+                                        {!failEnabled && <p className="mt-2 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "fail")}</p>}
+                                      </>
+                                    ) : isReadyButUnsynced ? (
+                                      <p className="mt-3 text-xs font-semibold text-slate-500">
+                                        La unidad ya está lista para QC, pero falta sincronizar la unidad trazable.
+                                      </p>
+                                    ) : (
+                                      <p className="mt-3 text-xs font-semibold text-slate-500">
+                                        Marque la unidad lista para QC en Ensamblaje físico.
+                                      </p>
+                                    )}
                                   </div>
                                 );
                               })}

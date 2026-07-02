@@ -13,6 +13,13 @@
 - No se uso `prisma db push`.
 - No se uso `prisma migrate reset`.
 
+## W5.40O.1 - Fix definitivo de unidad trazable para QC
+
+- `Marcar lista para QC` ya no puede dejar la pantalla de QC sin `finishedGoodUnitId`.
+- El endpoint de ensamblaje crea o recupera `OperationFinishedGoodUnit` de forma idempotente.
+- La UI de QC ahora usa `finishedGoodUnitId` como referencia principal.
+- Las órdenes antiguas con lista para QC incompleta pueden sincronizar la unidad trazable sin duplicar datos.
+
 ## W5.40M - Hotfix Pass/Fail QC dentro de Produccion
 
 - Se corrigio la habilitacion de acciones QC dentro de Produccion para unidades realmente en `qa_pending`.
