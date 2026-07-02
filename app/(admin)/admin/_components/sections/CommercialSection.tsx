@@ -114,6 +114,7 @@ interface CommercialFormState {
   paymentStatus: string;
   currency: string;
   notes: string;
+  internalReason: string;
   dispatchId: string;
   items: CommercialFormItem[];
 }
@@ -136,6 +137,7 @@ const EMPTY_FORM: CommercialFormState = {
   paymentStatus: "pending",
   currency: "USD",
   notes: "",
+  internalReason: "",
   dispatchId: "",
   items: [
     {
@@ -167,6 +169,32 @@ const FULFILLMENT_CONFIG: Record<string, { label: string; color: string }> = {
   reserved: { label: "Reservado", color: "bg-amber-50 border-amber-200 text-amber-800" },
   requested: { label: "Fulfillment solicitado", color: "bg-purple-50 border-purple-200 text-purple-800" },
 };
+
+const ORDER_TYPE_OPTIONS = [
+  {
+    value: "customer",
+    label: "Cliente",
+    description: "Venta operativa para cliente normal. Si falta stock, se envía a producción.",
+  },
+  {
+    value: "enterprise",
+    label: "Empresarial",
+    description: "Pedido para cuenta empresa o corporativa. Usa producto empresarial y puede reservar unidades.",
+  },
+  {
+    value: "internal",
+    label: "Interno",
+    description: "Pedido para fabricar inventario. No es una venta y siempre pasa a producción.",
+  },
+] as const;
+
+function getOrderTypeMeta(value: string) {
+  return ORDER_TYPE_OPTIONS.find((option) => option.value === value) || ORDER_TYPE_OPTIONS[0];
+}
+
+function isInternalOrderType(value: string) {
+  return value === "internal";
+}
 
 const EVENT_SUCCESS_COPY: Record<CommercialEventType, string> = {
   CONFIRMED: "Pedido comercial confirmado",
@@ -394,6 +422,20 @@ export function CommercialSection() {
       return;
     }
 
+    const isInternal = isInternalOrderType(form.customerType);
+    const isEnterprise = form.customerType === "enterprise";
+    const requiresCustomerIdentity = !isInternal;
+
+    if (requiresCustomerIdentity && !form.customerName.trim()) {
+      toast.error(isEnterprise ? "La empresa es requerida" : "El cliente es requerido");
+      return;
+    }
+
+    if (isInternal && !form.internalReason.trim()) {
+      toast.error("El motivo es requerido para pedidos internos");
+      return;
+    }
+
     const items = form.items.map((item) => ({
       finishedGoodId: item.finishedGoodId || undefined,
       productCode: item.productCode.trim() || undefined,
@@ -427,15 +469,15 @@ export function CommercialSection() {
         body: JSON.stringify({
           code: form.code.trim(),
           customerType: form.customerType,
-          customerName: form.customerName.trim() || undefined,
-          customerEmail: form.customerEmail.trim() || undefined,
-          customerPhone: form.customerPhone.trim() || undefined,
-          customerReference: form.customerReference.trim() || undefined,
+          customerName: requiresCustomerIdentity ? form.customerName.trim() : undefined,
+          customerEmail: !isInternal ? form.customerEmail.trim() || undefined : undefined,
+          customerPhone: !isInternal ? form.customerPhone.trim() || undefined : undefined,
+          customerReference: (!isInternal ? form.customerReference.trim() : form.internalReason.trim()) || undefined,
           salesChannel: form.salesChannel.trim() || "admin",
           paymentStatus: form.paymentStatus,
           currency: form.currency.trim() || "USD",
           dispatchId: form.dispatchId.trim() || undefined,
-          notes: form.notes.trim() || undefined,
+          notes: [form.notes.trim(), isInternal ? `Motivo interno: ${form.internalReason.trim()}` : ""].filter(Boolean).join("\n") || undefined,
           items,
         }),
       });
@@ -827,8 +869,11 @@ export function CommercialSection() {
           <form onSubmit={handleCreateOrder} className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Nuevo pedido comercial</p>
-                <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Registrar venta operativa</h3>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Nuevo pedido operativo</p>
+                <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Selecciona el tipo de pedido</h3>
+                <p className="mt-1 max-w-2xl text-sm font-semibold text-slate-500">
+                  El tipo define qué campos se muestran y qué flujo tomará después: despacho, producción o inventario interno.
+                </p>
               </div>
               <button
                 type="button"
@@ -840,94 +885,221 @@ export function CommercialSection() {
               </button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Code *</span>
-                <input
-                  value={form.code}
-                  onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                  placeholder="COM-001"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo cliente</span>
-                <select
-                  value={form.customerType}
-                  onChange={(event) => setForm((current) => ({ ...current, customerType: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                >
-                  <option value="customer">Cliente</option>
-                  <option value="organization">Organizacion</option>
-                  <option value="point_of_sale">Punto de venta</option>
-                  <option value="other">Otro</option>
-                </select>
-              </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Canal</span>
-                <input
-                  value={form.salesChannel}
-                  onChange={(event) => setForm((current) => ({ ...current, salesChannel: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                  placeholder="admin"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nombre cliente</span>
-                <input
-                  value={form.customerName}
-                  onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                  placeholder="Cliente o empresa"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email</span>
-                <input
-                  value={form.customerEmail}
-                  onChange={(event) => setForm((current) => ({ ...current, customerEmail: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                  placeholder="cliente@correo.com"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Telefono</span>
-                <input
-                  value={form.customerPhone}
-                  onChange={(event) => setForm((current) => ({ ...current, customerPhone: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                  placeholder="+507 000-0000"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Referencia</span>
-                <input
-                  value={form.customerReference}
-                  onChange={(event) => setForm((current) => ({ ...current, customerReference: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                  placeholder="OC, contacto o documento"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pago</span>
-                <select
-                  value={form.paymentStatus}
-                  onChange={(event) => setForm((current) => ({ ...current, paymentStatus: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                >
-                  <option value="pending">Pendiente</option>
-                  <option value="paid">Pagado</option>
-                </select>
-              </label>
-              <label className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Moneda</span>
-                <input
-                  value={form.currency}
-                  onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value.toUpperCase() }))}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                  placeholder="USD"
-                />
-              </label>
+            <div className="space-y-6">
+              <div className="grid gap-3 md:grid-cols-3">
+                {ORDER_TYPE_OPTIONS.map((option) => {
+                  const active = form.customerType === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setForm((current) => ({ ...current, customerType: option.value }))}
+                      className={`rounded-3xl border p-4 text-left transition-all ${
+                        active
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Tipo</p>
+                      <h4 className="mt-2 text-base font-black text-slate-950">{option.label}</h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">{option.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Nuevo pedido operativo</p>
+                <p className="mt-2 text-sm font-semibold text-slate-600">
+                  {getOrderTypeMeta(form.customerType).description}
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Code *</span>
+                  <input
+                    value={form.code}
+                    onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                    placeholder="COM-001"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Canal</span>
+                  <input
+                    value={form.salesChannel}
+                    onChange={(event) => setForm((current) => ({ ...current, salesChannel: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                    placeholder="admin"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pago</span>
+                  <select
+                    value={form.paymentStatus}
+                    onChange={(event) => setForm((current) => ({ ...current, paymentStatus: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                    disabled={isInternalOrderType(form.customerType)}
+                  >
+                    <option value="pending">Pendiente</option>
+                    <option value="paid">Pagado</option>
+                  </select>
+                </label>
+              </div>
+
+              {form.customerType === "customer" && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente / nombre de referencia *</span>
+                    <input
+                      value={form.customerName}
+                      onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="Nombre del cliente"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Referencia opcional</span>
+                    <input
+                      value={form.customerReference}
+                      onChange={(event) => setForm((current) => ({ ...current, customerReference: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="OC, contacto o documento"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email opcional</span>
+                    <input
+                      value={form.customerEmail}
+                      onChange={(event) => setForm((current) => ({ ...current, customerEmail: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="cliente@correo.com"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Telefono opcional</span>
+                    <input
+                      value={form.customerPhone}
+                      onChange={(event) => setForm((current) => ({ ...current, customerPhone: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="+507 000-0000"
+                    />
+                  </label>
+                </div>
+              )}
+
+              {form.customerType === "enterprise" && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Empresa *</span>
+                    <input
+                      value={form.customerName}
+                      onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="Nombre de la empresa"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Producto empresarial</span>
+                    <input
+                      value={form.customerReference}
+                      onChange={(event) => setForm((current) => ({ ...current, customerReference: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="Documento, orden o centro de costo"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Contacto empresa opcional</span>
+                    <input
+                      value={form.customerEmail}
+                      onChange={(event) => setForm((current) => ({ ...current, customerEmail: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="contacto@empresa.com"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Telefono empresa opcional</span>
+                    <input
+                      value={form.customerPhone}
+                      onChange={(event) => setForm((current) => ({ ...current, customerPhone: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="+507 000-0000"
+                    />
+                  </label>
+                </div>
+              )}
+
+              {form.customerType === "internal" && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Producto a fabricar *</span>
+                    <input
+                      value={form.customerName}
+                      onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="Producto o catálogo a fabricar"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Motivo *</span>
+                    <select
+                      value={form.internalReason}
+                      onChange={(event) => setForm((current) => ({ ...current, internalReason: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                    >
+                      <option value="">Selecciona un motivo</option>
+                      <option value="Reposición de inventario">Reposición de inventario</option>
+                      <option value="Stock inicial">Stock inicial</option>
+                      <option value="Producción empresarial">Producción empresarial</option>
+                      <option value="Prueba operativa">Prueba operativa</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+
+              <details className="rounded-3xl border border-slate-200 bg-white p-4">
+                <summary className="cursor-pointer text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Campos avanzados
+                </summary>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {!isInternalOrderType(form.customerType) ? (
+                    <>
+                      <label className="space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Moneda</span>
+                        <input
+                          value={form.currency}
+                          onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value.toUpperCase() }))}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                          placeholder="USD"
+                        />
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Referencia avanzada</span>
+                        <input
+                          value={form.customerReference}
+                          onChange={(event) => setForm((current) => ({ ...current, customerReference: event.target.value }))}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                          placeholder="OC, contacto o documento"
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
+                      Los campos comerciales avanzados quedan ocultos para pedidos internos.
+                    </div>
+                  )}
+                </div>
+              </details>
+
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                {form.customerType === "customer" && "Si hay unidades disponibles, el pedido podrá reservarse y pasar a despacho. Si falta stock, se enviará a producción."}
+                {form.customerType === "enterprise" && "Los pedidos empresariales usan unidades empresariales. Si no hay stock, se genera producción."}
+                {form.customerType === "internal" && "Este pedido no es una venta. Se usa para fabricar inventario y siempre debe enviarse a producción."}
+              </div>
             </div>
 
             <div className="mt-6 space-y-3">

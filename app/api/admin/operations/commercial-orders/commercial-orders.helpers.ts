@@ -20,6 +20,8 @@ export const COMMERCIAL_FULFILLMENT_STATUSES = [
 
 export const COMMERCIAL_CUSTOMER_TYPES = [
   "customer",
+  "enterprise",
+  "internal",
   "organization",
   "point_of_sale",
   "other",

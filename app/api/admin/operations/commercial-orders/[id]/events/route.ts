@@ -43,6 +43,8 @@ const commercialOrderInclude = {
 } as const;
 
 function getDispatchDestinationType(customerType: string) {
+  if (customerType === "enterprise") return "enterprise";
+  if (customerType === "internal") return "internal";
   if (customerType === "point_of_sale") return "point_of_sale";
   if (customerType === "other") return "other";
   return "customer";
