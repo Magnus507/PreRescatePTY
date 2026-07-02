@@ -174,6 +174,15 @@ const FULFILLMENT_CONFIG: Record<string, { label: string; color: string }> = {
   requested: { label: "Fulfillment solicitado", color: "bg-purple-50 border-purple-200 text-purple-800" },
 };
 
+const INTERNAL_ORDER_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  draft: { label: "Pendiente de producción", color: "bg-amber-50 border-amber-200 text-amber-800" },
+  confirmed: { label: "En producción", color: "bg-violet-50 border-violet-200 text-violet-800" },
+  stock_reserved: { label: "En inventario", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+  pending_stock: { label: "En producción", color: "bg-violet-50 border-violet-200 text-violet-800" },
+  needs_production: { label: "Pendiente de producción", color: "bg-amber-50 border-amber-200 text-amber-800" },
+  cancelled: { label: "Cancelado", color: "bg-red-50 border-red-200 text-red-700" },
+};
+
 const ORDER_TYPE_OPTIONS = [
   {
     value: "customer",
@@ -292,6 +301,10 @@ function canRequestFulfillment(order: CommercialOrder) {
     hasFinishedGoodItems &&
     (order.status === "confirmed" || order.paymentStatus === "paid")
   );
+}
+
+function isInternalOrder(order: CommercialOrder) {
+  return order.customerType === "internal";
 }
 
 export function CommercialSection() {
@@ -592,6 +605,10 @@ export function CommercialSection() {
   };
 
   const handleReserveUnits = async (order: CommercialOrder) => {
+    if (isInternalOrder(order)) {
+      toast.error("Los pedidos internos no reservan unidades");
+      return;
+    }
     setReservationKey(order.id);
     try {
       const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/reserve-units`, {
@@ -632,6 +649,10 @@ export function CommercialSection() {
   };
 
   const handleCreateDispatch = async (order: CommercialOrder) => {
+    if (isInternalOrder(order)) {
+      toast.error("Los pedidos internos no crean despacho");
+      return;
+    }
     const code = window.prompt("Code del despacho:");
     if (!code) return;
 
@@ -678,32 +699,55 @@ export function CommercialSection() {
   };
 
   const getActionsForOrder = (order: CommercialOrder) => {
+    if (isInternalOrder(order)) {
+      return {
+        internal: true,
+        items:
+          order.status === "cancelled"
+            ? []
+            : [
+                {
+                  label: order.fulfillmentStatus === "requested" ? "Producción vinculada" : "Enviar a producción",
+                  eventType: "FULFILLMENT_REQUESTED" as CommercialEventType,
+                  tone: "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100",
+                },
+              ],
+      };
+    }
+
     if (order.status === "cancelled") {
-      return order.paymentStatus === "paid"
-        ? [
-            {
-              label: "Reembolsar",
-              eventType: "REFUNDED" as CommercialEventType,
-              tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100",
-            },
-          ]
-        : [];
+      return {
+        internal: false,
+        items:
+          order.paymentStatus === "paid"
+            ? [
+                {
+                  label: "Reembolsar",
+                  eventType: "REFUNDED" as CommercialEventType,
+                  tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100",
+                },
+              ]
+            : [],
+      };
     }
 
     const actions = ACTIONS_BY_STATUS[order.status] || [];
 
     if (!canRequestFulfillment(order)) {
-      return actions;
+      return { internal: false, items: actions };
     }
 
-    return [
-      ...actions,
-      {
-        label: "Solicitar despacho",
-        eventType: "FULFILLMENT_REQUESTED" as CommercialEventType,
-        tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100",
-      },
-    ];
+    return {
+      internal: false,
+      items: [
+        ...actions,
+        {
+          label: "Solicitar despacho",
+          eventType: "FULFILLMENT_REQUESTED" as CommercialEventType,
+          tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100",
+        },
+      ],
+    };
   };
 
   const getProductionNeed = (order: CommercialOrder) => {
@@ -786,7 +830,7 @@ export function CommercialSection() {
         ) : (
           <div className="space-y-4">
             {orders.map((order) => {
-              const actions = getActionsForOrder(order);
+              const actions = getActionsForOrder(order).items;
               const productionNeed = getProductionNeed(order);
 
               return (
@@ -795,31 +839,63 @@ export function CommercialSection() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg font-black tracking-tight text-slate-950">{order.code}</h3>
-                        <StatusBadge value={order.status} config={STATUS_CONFIG} />
-                        <StatusBadge value={order.paymentStatus} config={PAYMENT_CONFIG} />
-                        <StatusBadge value={order.fulfillmentStatus} config={FULFILLMENT_CONFIG} />
+                        {isInternalOrder(order) ? (
+                          <>
+                            <StatusBadge value="internal" config={{ internal: { label: "Pedido interno", color: "bg-violet-50 border-violet-200 text-violet-800" } }} />
+                            <StatusBadge value={order.status} config={INTERNAL_ORDER_STATUS_CONFIG} />
+                            <StatusBadge value={order.fulfillmentStatus} config={FULFILLMENT_CONFIG} />
+                          </>
+                        ) : (
+                          <>
+                            <StatusBadge value={order.status} config={STATUS_CONFIG} />
+                            <StatusBadge value={order.paymentStatus} config={PAYMENT_CONFIG} />
+                            <StatusBadge value={order.fulfillmentStatus} config={FULFILLMENT_CONFIG} />
+                          </>
+                        )}
                       </div>
                       <div className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</p>
-                          <p className="font-bold text-slate-800">{order.customerName || "Sin nombre"}</p>
-                          <p className="text-xs font-semibold text-slate-500">{order.customerEmail || order.customerPhone || order.customerType}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {isInternalOrder(order) ? "Origen" : "Cliente"}
+                          </p>
+                          <p className="font-bold text-slate-800">
+                            {isInternalOrder(order) ? "Pedido interno para inventario" : (order.customerName || "Sin nombre")}
+                          </p>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {isInternalOrder(order)
+                              ? (order.notes?.split("\n").find((line) => line.startsWith("Motivo interno:"))?.replace("Motivo interno: ", "") || "Sin motivo")
+                              : (order.customerEmail || order.customerPhone || order.customerType)}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Canal</p>
-                          <p className="font-bold text-slate-800">{order.salesChannel}</p>
-                          <p className="text-xs font-semibold text-slate-500">{order.customerReference || "Sin referencia"}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {isInternalOrder(order) ? "Destino" : "Canal"}
+                          </p>
+                          <p className="font-bold text-slate-800">{isInternalOrder(order) ? "Inventario PT" : order.salesChannel}</p>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {isInternalOrder(order) ? "Se envía a producción real" : (order.customerReference || "Sin referencia")}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total</p>
-                          <p className="font-black text-slate-950">{formatMoney(order.totalAmount, order.currency)}</p>
-                          <p className="text-xs font-semibold text-slate-500">{order.items.length} item(s)</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {isInternalOrder(order) ? "Fabricación" : "Total"}
+                          </p>
+                          <p className="font-black text-slate-950">
+                            {isInternalOrder(order) ? `${order.items[0]?.quantity ?? 0} unidad(es)` : formatMoney(order.totalAmount, order.currency)}
+                          </p>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {isInternalOrder(order) ? "No genera cobro ni despacho" : `${order.items.length} item(s)`}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Actualizado</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {isInternalOrder(order) ? "Último movimiento" : "Actualizado"}
+                          </p>
                           <p className="font-bold text-slate-800">{formatDate(order.updatedAt)}</p>
                           <p className="text-xs font-semibold text-slate-500">
-                            {order.dispatch ? `Despacho ${order.dispatch.code} · ${order.dispatch.status}` : "Sin despacho vinculado"}
+                            {isInternalOrder(order)
+                              ? (order.fulfillmentStatus === "requested" ? "Producción vinculada" : "Sin producción vinculada")
+                              : (order.dispatch ? `Despacho ${order.dispatch.code} · ${order.dispatch.status}` : "Sin despacho vinculado")}
                           </p>
                         </div>
                       </div>
@@ -850,29 +926,44 @@ export function CommercialSection() {
                         actions.map((action) => {
                           const eventKey = `${order.id}:${action.eventType}`;
                           return (
-                            <button
-                              key={action.eventType}
-                              type="button"
-                              onClick={() => handleOrderEvent(order, action.eventType)}
-                              disabled={Boolean(savingEventKey)}
-                              className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-50 ${action.tone}`}
-                            >
-                              {savingEventKey === eventKey ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                              {action.label}
-                            </button>
+                            isInternalOrder(order) ? (
+                              <button
+                                key={action.eventType}
+                                type="button"
+                                onClick={() => handleSendToProduction(order)}
+                                disabled={Boolean(savingEventKey)}
+                                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-50 ${action.tone}`}
+                              >
+                                {savingEventKey === `${order.id}:SEND_TO_PRODUCTION` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Factory className="h-4 w-4" />}
+                                {action.label}
+                              </button>
+                            ) : (
+                              <button
+                                key={action.eventType}
+                                type="button"
+                                onClick={() => handleOrderEvent(order, action.eventType)}
+                                disabled={Boolean(savingEventKey)}
+                                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-50 ${action.tone}`}
+                              >
+                                {savingEventKey === eventKey ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                {action.label}
+                              </button>
+                            )
                           );
                         })
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleReserveUnits(order)}
-                        disabled={reservationKey === order.id}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 transition-all hover:bg-blue-100 disabled:opacity-50"
-                      >
-                        {reservationKey === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
-                        Reservar unidades
-                      </button>
-                      {productionNeed.needsProduction && order.status !== "cancelled" && (
+                      {!isInternalOrder(order) && (
+                        <button
+                          type="button"
+                          onClick={() => handleReserveUnits(order)}
+                          disabled={reservationKey === order.id}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 transition-all hover:bg-blue-100 disabled:opacity-50"
+                        >
+                          {reservationKey === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                          Reservar unidades
+                        </button>
+                      )}
+                      {!isInternalOrder(order) && productionNeed.needsProduction && order.status !== "cancelled" && (
                         <button
                           type="button"
                           onClick={() => handleSendToProduction(order)}
@@ -883,7 +974,7 @@ export function CommercialSection() {
                           Enviar a producción
                         </button>
                       )}
-                      {(order.fulfillmentStatus === "reserved" || order.status === "stock_reserved") && (
+                      {!isInternalOrder(order) && (order.fulfillmentStatus === "reserved" || order.status === "stock_reserved") && (
                         <button
                           type="button"
                           onClick={() => handleReleaseUnits(order)}
@@ -894,7 +985,7 @@ export function CommercialSection() {
                           Liberar unidades
                         </button>
                       )}
-                      {(order.status === "stock_reserved" || order.fulfillmentStatus === "reserved") && !order.dispatch && (
+                      {!isInternalOrder(order) && (order.status === "stock_reserved" || order.fulfillmentStatus === "reserved") && !order.dispatch && (
                         <button
                           type="button"
                           onClick={() => handleCreateDispatch(order)}
@@ -908,20 +999,31 @@ export function CommercialSection() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unidades reservadas</p>
-                    {order.reservedUnits && order.reservedUnits.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {order.reservedUnits.map((unit) => (
-                          <span key={unit.id} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                            {unit.internalLabel}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-sm font-semibold text-slate-500">Sin unidades reservadas</p>
-                    )}
-                  </div>
+                  {!isInternalOrder(order) ? (
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unidades reservadas</p>
+                      {order.reservedUnits && order.reservedUnits.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {order.reservedUnits.map((unit) => (
+                            <span key={unit.id} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                              {unit.internalLabel}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm font-semibold text-slate-500">Sin unidades reservadas</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-violet-700">Producción vinculada</p>
+                      <p className="mt-2 text-sm font-semibold text-violet-900">
+                        {order.fulfillmentStatus === "requested"
+                          ? "Pedido ya enviado a producción y listo para seguimiento."
+                          : "Aún no se ha enviado a producción."}
+                      </p>
+                    </div>
+                  )}
                 </article>
               );
             })}
