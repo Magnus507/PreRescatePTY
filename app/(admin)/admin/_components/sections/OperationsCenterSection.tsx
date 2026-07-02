@@ -7,15 +7,12 @@ import {
   ArrowRight,
   Boxes,
   ClipboardCheck,
-  Cpu,
   DollarSign,
   Factory,
   History,
-  Layers,
   Loader2,
   PackageCheck,
   RefreshCw,
-  Repeat2,
   RotateCcw,
   Route,
   Printer,
@@ -44,21 +41,19 @@ import { ReturnSection } from "./ReturnSection";
 
 type OperationsTab =
   | "overview"
-  | "production"
-  | "digital"
-  | "print"
-  | "units"
-  | "physical"
-  | "movements"
-  | "batches"
-  | "quality"
-  | "packing"
   | "commercial"
-  | "warranties"
-  | "replacements"
-  | "returns"
+  | "inventory"
+  | "print"
+  | "production"
+  | "quality"
   | "dispatch"
+  | "postsales"
+  | "movements"
   | "history";
+
+type InventoryTab = "summary" | "units" | "digital" | "base";
+type ProductionTab = "orders" | "assembly" | "packing";
+type PostsalesTab = "warranties" | "replacements" | "returns";
 
 interface OperationsCenterSectionProps {
   createCount: number;
@@ -144,20 +139,33 @@ interface OperationsDashboardResponse {
 const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }> = [
   { id: "overview", label: "Panel operativo", icon: Activity },
   { id: "commercial", label: "Pedidos", icon: ShoppingCart },
-  { id: "physical", label: "Inventario", icon: Boxes },
-  { id: "digital", label: "Recursos digitales", icon: Cpu },
+  { id: "inventory", label: "Inventario", icon: Boxes },
   { id: "print", label: "Imprenta", icon: Printer },
-  { id: "units", label: "Unidades", icon: PackageCheck },
   { id: "production", label: "Produccion", icon: Factory },
-  { id: "batches", label: "Lotes", icon: Layers },
-  { id: "packing", label: "Produccion / Empaque", icon: PackageCheck },
   { id: "quality", label: "Calidad / QA", icon: ClipboardCheck },
   { id: "dispatch", label: "Despacho", icon: Truck },
-  { id: "warranties", label: "Garantias", icon: ShieldCheck },
-  { id: "replacements", label: "Reemplazos", icon: Repeat2 },
-  { id: "returns", label: "Devoluciones", icon: RotateCcw },
+  { id: "postsales", label: "Postventa", icon: RotateCcw },
   { id: "movements", label: "Movimientos", icon: Route },
   { id: "history", label: "Historial", icon: History },
+];
+
+const INVENTORY_TABS: Array<{ id: InventoryTab; label: string }> = [
+  { id: "summary", label: "Resumen inventario" },
+  { id: "units", label: "Unidades" },
+  { id: "digital", label: "Recursos digitales" },
+  { id: "base", label: "Productos base" },
+];
+
+const PRODUCTION_TABS: Array<{ id: ProductionTab; label: string }> = [
+  { id: "orders", label: "Ordenes" },
+  { id: "assembly", label: "Ensamblaje" },
+  { id: "packing", label: "Empaque / Lotes" },
+];
+
+const POSTSALES_TABS: Array<{ id: PostsalesTab; label: string }> = [
+  { id: "warranties", label: "Garantias" },
+  { id: "replacements", label: "Reemplazos" },
+  { id: "returns", label: "Devoluciones" },
 ];
 
 function MetricCard({
@@ -221,6 +229,9 @@ export function OperationsCenterSection({
   role,
 }: OperationsCenterSectionProps) {
   const [activeTab, setActiveTab] = useState<OperationsTab>("overview");
+  const [inventoryTab, setInventoryTab] = useState<InventoryTab>("summary");
+  const [productionTab, setProductionTab] = useState<ProductionTab>("orders");
+  const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
   const [dashboard, setDashboard] = useState<OperationsDashboardSummary | null>(null);
   const [dashboardGeneratedAt, setDashboardGeneratedAt] = useState<string | null>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
@@ -276,44 +287,12 @@ export function OperationsCenterSection({
   const HealthIcon = health.icon;
 
   const renderContent = () => {
-    if (activeTab === "production") return <ProductionQueueSection />;
-
-    if (activeTab === "batches") {
-      return (
-        <CreateBatchSection
-          createCount={createCount}
-          setCreateCount={setCreateCount}
-          createBatch={createBatch}
-          creating={creating}
-          createdBatch={createdBatch}
-          exportCSV={exportCSV}
-          loadChipDetail={loadChipDetail}
-        />
-      );
-    }
-
-    if (activeTab === "digital") {
-      return <DigitalResourcesSection />;
-    }
-
     if (activeTab === "print") {
       return <PrintOrdersSection />;
     }
 
-    if (activeTab === "units") {
-      return <FinishedGoodUnitsSection />;
-    }
-
-    if (activeTab === "physical") {
-      return <PhysicalInventorySection />;
-    }
-
     if (activeTab === "movements") {
       return <InventoryMovementsSection />;
-    }
-
-    if (activeTab === "packing") {
-      return <PackingSection />;
     }
 
     if (activeTab === "dispatch") {
@@ -324,20 +303,148 @@ export function OperationsCenterSection({
       return <CommercialSection />;
     }
 
-    if (activeTab === "warranties") {
-      return <WarrantySection />;
-    }
-
-    if (activeTab === "replacements") {
-      return <ReplacementSection />;
-    }
-
-    if (activeTab === "returns") {
-      return <ReturnSection />;
-    }
-
     if (activeTab === "quality") {
       return <QualitySection />;
+    }
+
+    if (activeTab === "inventory") {
+      return (
+        <div className="space-y-6">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Inventario trazable</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Recursos digitales asociados al inventario trazable: QR, link de activacion, shortCode y estado de preparacion.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <div className="flex min-w-max gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950" role="tablist" aria-label="Subsecciones de inventario">
+                  {INVENTORY_TABS.map((tab) => {
+                    const active = inventoryTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setInventoryTab(tab.id)}
+                        className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                          active
+                            ? "bg-white text-primary shadow-sm dark:bg-slate-800"
+                            : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+          {inventoryTab === "summary" && <PhysicalInventorySection />}
+          {inventoryTab === "units" && <FinishedGoodUnitsSection />}
+          {inventoryTab === "digital" && <DigitalResourcesSection />}
+          {inventoryTab === "base" && <PhysicalInventorySection />}
+        </div>
+      );
+    }
+
+    if (activeTab === "production") {
+      return (
+        <div className="space-y-6">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Produccion</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Ordenes de produccion, ensamblaje de unidades y empaque/lotes fisicos dentro del mismo flujo.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <div className="flex min-w-max gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950" role="tablist" aria-label="Subsecciones de produccion">
+                  {PRODUCTION_TABS.map((tab) => {
+                    const active = productionTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setProductionTab(tab.id)}
+                        className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                          active
+                            ? "bg-white text-primary shadow-sm dark:bg-slate-800"
+                            : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+          {productionTab === "orders" && <ProductionQueueSection />}
+          {productionTab === "assembly" && (
+            <CreateBatchSection
+              createCount={createCount}
+              setCreateCount={setCreateCount}
+              createBatch={createBatch}
+              creating={creating}
+              createdBatch={createdBatch}
+              exportCSV={exportCSV}
+              loadChipDetail={loadChipDetail}
+            />
+          )}
+          {productionTab === "packing" && <PackingSection />}
+        </div>
+      );
+    }
+
+    if (activeTab === "postsales") {
+      return (
+        <div className="space-y-6">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Postventa</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Garantias, reemplazos y devoluciones agrupados como continuidad del flujo operativo.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <div className="flex min-w-max gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950" role="tablist" aria-label="Subsecciones de postventa">
+                  {POSTSALES_TABS.map((tab) => {
+                    const active = postsalesTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setPostsalesTab(tab.id)}
+                        className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                          active
+                            ? "bg-white text-primary shadow-sm dark:bg-slate-800"
+                            : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+          {postsalesTab === "warranties" && <WarrantySection />}
+          {postsalesTab === "replacements" && <ReplacementSection />}
+          {postsalesTab === "returns" && <ReturnSection />}
+        </div>
+      );
     }
 
     if (activeTab === "history") {
@@ -480,7 +587,7 @@ export function OperationsCenterSection({
             <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
               <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">Core operacional</h3>
               <div className="flex overflow-x-auto pb-2">
-                {["Materiales", "Produccion", "Calidad / QA", "Produccion / Empaque", "Inventario", "Despacho"].map((step, index, list) => (
+                {["Materiales", "Produccion", "Calidad / QA", "Empaque", "Inventario", "Despacho"].map((step, index, list) => (
                   <div key={step} className="flex items-center">
                     <div className="min-w-[132px] rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
                       <p className="text-[9px] font-black uppercase tracking-widest text-primary">Paso {index + 1}</p>
@@ -494,7 +601,7 @@ export function OperationsCenterSection({
             <div className="rounded-3xl border border-blue-200 bg-blue-50 p-5">
               <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">Pedidos y postventa</h3>
               <div className="flex overflow-x-auto pb-2">
-                {["Pedidos", "Despacho", "Garantias", "Reemplazos", "Devoluciones", "Inventario"].map((step, index, list) => (
+                {["Pedidos", "Despacho", "Postventa", "Reemplazos", "Devoluciones", "Inventario"].map((step, index, list) => (
                   <div key={step} className="flex items-center">
                     <div className="min-w-[132px] rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
                       <p className="text-[9px] font-black uppercase tracking-widest text-primary">Paso {index + 1}</p>
@@ -522,13 +629,24 @@ export function OperationsCenterSection({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("physical")}
+            onClick={() => setActiveTab("inventory")}
             className="rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
           >
             <Warehouse className="mb-5 h-8 w-8 text-emerald-600" />
             <h3 className="text-lg font-black tracking-tight">Abrir inventario</h3>
             <p className="mt-2 text-sm font-medium text-slate-500">
               Balance disponible calculado por eventos de inventario terminado.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("postsales")}
+            className="rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+          >
+            <RotateCcw className="mb-5 h-8 w-8 text-rose-600" />
+            <h3 className="text-lg font-black tracking-tight">Abrir postventa</h3>
+            <p className="mt-2 text-sm font-medium text-slate-500">
+              Garantias, reemplazos y devoluciones agrupadas por continuidad operativa.
             </p>
           </button>
           <button
@@ -562,7 +680,7 @@ export function OperationsCenterSection({
               Centro de Operaciones
             </h2>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-500">
-              Core operacional, Comercial y Postventa en una sola entrada administrativa.
+              Flujo operativo, comercial, inventario, produccion, postventa y trazabilidad en una sola entrada administrativa.
             </p>
           </div>
           <div className={`flex w-fit items-center gap-2 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${health.tone}`}>

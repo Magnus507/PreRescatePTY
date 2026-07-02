@@ -118,7 +118,7 @@ function AdminDashboard() {
     },
     inventory: { 
       title: "Centro de Operaciones",
-      subtitle: "Producción, recursos digitales, inventario físico y despacho",
+      subtitle: "Inventario, producción, postventa y trazabilidad operacional",
       placeholder: "Buscar operación..."
     },
     admins: { 

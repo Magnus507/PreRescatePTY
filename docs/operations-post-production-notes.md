@@ -1,5 +1,22 @@
 # Notas post-produccion del Centro de Operaciones
 
+## W5.37X - Auditoria visual de taxonomia
+
+- Se reorganizo visualmente el Centro de Operaciones para reducir tabs principales y agrupar secciones por flujo real.
+- `Recursos digitales` paso a `Inventario` como subtab interna.
+- `Unidades` paso a `Inventario` como subtab interna.
+- `Garantias`, `Reemplazos` y `Devoluciones` pasaron a `Postventa` como subtabs internas.
+- `Produccion` agrupa ahora la vista de ordenes, ensamblaje y empaque/lotes.
+- No se cambio backend.
+- No se cambiaron endpoints.
+- No se cambiaron payloads.
+- No se tocaron migraciones.
+- No se toco Prisma schema.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+
 ## W5.37A - Movimiento / Proximamente
 
 - El placeholder visible estaba en `app/(admin)/admin/_components/sections/InventoryMovementsSection.tsx`.
