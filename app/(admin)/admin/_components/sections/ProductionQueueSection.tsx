@@ -19,11 +19,12 @@ import {
   RefreshCw,
   X,
   ClipboardList,
+  ClipboardCheck,
+  Printer,
   Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import FabricationSection from "./FabricationSection";
-import { ProductionWorkflowSection } from "./ProductionWorkflowSection";
 
 interface QueueItem {
   orderId: string;
@@ -87,6 +88,37 @@ interface ProductionOrder {
   }>;
 }
 
+function getOriginTypeLabel(order: ProductionOrder) {
+  const note = (order.notes || "").toLowerCase();
+  if (note.includes("[commercialorderid:") && note.includes("pedido interno")) return "Interno";
+  if (note.includes("[commercialorderid:")) return "Cliente";
+  return "Operativo";
+}
+
+function getOriginLabel(order: ProductionOrder) {
+  const note = order.notes || "";
+  const markerLine = note.split("\n").find((line) => line.includes("[commercialOrderId:"));
+  if (markerLine?.includes("Pedido interno")) return "Pedido interno";
+  if (markerLine) return "Pedido origen";
+  return "Orden de producción";
+}
+
+function getProductionStageLabel(status: string) {
+  const map: Record<string, string> = {
+    draft: "Pendiente de producción",
+    planned: "Planificada",
+    started: "En proceso",
+    paused: "Pausada",
+    completed: "Completada",
+    cancelled: "Cancelada",
+    sent_to_print: "En imprenta",
+    print_received: "Imprenta recibida",
+    qa_pending: "En QC",
+    qa_passed: "QC aprobado",
+  };
+  return map[status] || status;
+}
+
 function isInternalProduction(order: ProductionOrder) {
   return Boolean(order.notes?.includes("[commercialOrderId:")) && order.title.toLowerCase().includes("interna");
 }
@@ -109,30 +141,12 @@ interface ProductionOrderFormState {
   notes: string;
 }
 
-type ProductionEventType =
-  | "PLANNED"
-  | "STARTED"
-  | "PRODUCED"
-  | "PAUSED"
-  | "COMPLETED"
-  | "CANCELLED";
-
-interface ProducedFormState {
-  quantity: string;
-  reason: string;
-}
-
 const EMPTY_PRODUCTION_ORDER_FORM: ProductionOrderFormState = {
   code: "",
   title: "",
   plannedQuantity: "",
   outputType: "",
   notes: "",
-};
-
-const EMPTY_PRODUCED_FORM: ProducedFormState = {
-  quantity: "",
-  reason: "",
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -158,49 +172,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   },
 };
 
-const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: "Borrador", color: "bg-slate-50 border-slate-200 text-slate-700" },
-  planned: { label: "Planificada", color: "bg-amber-50 border-amber-200 text-amber-800" },
-  started: { label: "En proceso", color: "bg-purple-50 border-purple-200 text-purple-800" },
-  paused: { label: "Pausada", color: "bg-orange-50 border-orange-200 text-orange-800" },
-  completed: { label: "Lista para QA", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
-  cancelled: { label: "Cancelada", color: "bg-red-50 border-red-200 text-red-800" },
-};
-
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   initial_chip: <Smartphone className="h-3 w-3" />,
   bracelet: <Layers className="h-3 w-3" />,
   credential: <FileText className="h-3 w-3" />,
   sticker_nfc_qr: <Sticker className="h-3 w-3" />,
-};
-
-const EVENT_SUCCESS_COPY: Record<ProductionEventType, string> = {
-  PLANNED: "Orden planificada",
-  STARTED: "Orden iniciada",
-  PRODUCED: "Produccion registrada",
-  PAUSED: "Orden pausada",
-  COMPLETED: "Orden completada",
-  CANCELLED: "Orden cancelada",
-};
-
-const ACTIONS_BY_STATUS: Record<string, Array<{ label: string; eventType: ProductionEventType; tone: string }>> = {
-  draft: [
-    { label: "Planificar", eventType: "PLANNED", tone: "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100" },
-    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
-  ],
-  planned: [
-    { label: "Iniciar", eventType: "STARTED", tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100" },
-    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
-  ],
-  started: [
-    { label: "Registrar producido", eventType: "PRODUCED", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
-    { label: "Pausar", eventType: "PAUSED", tone: "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100" },
-    { label: "Completar", eventType: "COMPLETED", tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100" },
-  ],
-  paused: [
-    { label: "Reanudar", eventType: "STARTED", tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100" },
-    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
-  ],
 };
 
 export default function ProductionQueueSection() {
@@ -215,9 +191,6 @@ export default function ProductionQueueSection() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
-  const [savingEventKey, setSavingEventKey] = useState<string | null>(null);
-  const [producedOrder, setProducedOrder] = useState<ProductionOrder | null>(null);
-  const [producedForm, setProducedForm] = useState<ProducedFormState>(EMPTY_PRODUCED_FORM);
   const [form, setForm] = useState<ProductionOrderFormState>(EMPTY_PRODUCTION_ORDER_FORM);
   const [assemblyCandidates, setAssemblyCandidates] = useState<AssemblyCandidate[]>([]);
   const [loadingAssemblyCandidates, setLoadingAssemblyCandidates] = useState(true);
@@ -350,20 +323,17 @@ export default function ProductionQueueSection() {
     }).format(value);
   };
 
-  const productionMetrics = useMemo(() => {
-    return productionOrders.reduce(
-      (acc, order) => {
-        acc.total += 1;
-        acc.produced += order.producedQuantity;
-        if (order.status === "draft") acc.draft += 1;
-        if (order.status === "planned") acc.planned += 1;
-        if (order.status === "started") acc.started += 1;
-        if (order.status === "completed") acc.completed += 1;
-        return acc;
-      },
-      { total: 0, draft: 0, planned: 0, started: 0, completed: 0, produced: 0 }
-    );
-  }, [productionOrders]);
+  const productionSummaryCards = useMemo(
+    () => [
+      { label: "Pendientes", value: productionOrders.filter((order) => order.status === "draft").length, icon: ClipboardList, tone: "bg-amber-50 text-amber-700 border-amber-200" },
+      { label: "En preparación", value: productionOrders.filter((order) => order.status === "planned").length, icon: CheckCircle2, tone: "bg-blue-50 text-blue-700 border-blue-200" },
+      { label: "En imprenta", value: productionOrders.filter((order) => order.status === "sent_to_print" || order.status === "print_received").length, icon: Printer, tone: "bg-violet-50 text-violet-700 border-violet-200" },
+      { label: "En ensamblaje", value: productionOrders.filter((order) => order.status === "started" || order.status === "paused").length, icon: Wrench, tone: "bg-purple-50 text-purple-700 border-purple-200" },
+      { label: "En QC", value: productionOrders.filter((order) => order.status === "qa_pending").length, icon: ClipboardCheck, tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+      { label: "Completadas", value: productionOrders.filter((order) => order.status === "completed").length, icon: PackageCheck, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    ],
+    [productionOrders]
+  );
 
   const assemblyOrderOptions = useMemo(
     () => productionOrders.filter((order) => ["draft", "planned", "started"].includes(order.status)),
@@ -387,21 +357,6 @@ export default function ProductionQueueSection() {
     if (savingOrder) return;
     setShowCreateModal(false);
     setForm(EMPTY_PRODUCTION_ORDER_FORM);
-  };
-
-  const openProducedModal = (order: ProductionOrder) => {
-    setProducedOrder(order);
-    setProducedForm(EMPTY_PRODUCED_FORM);
-  };
-
-  const closeProducedModal = () => {
-    if (savingEventKey) return;
-    setProducedOrder(null);
-    setProducedForm(EMPTY_PRODUCED_FORM);
-  };
-
-  const updateProducedForm = (field: keyof ProducedFormState, value: string) => {
-    setProducedForm((current) => ({ ...current, [field]: value }));
   };
 
   const handleCreateProductionOrder = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -465,87 +420,6 @@ export default function ProductionQueueSection() {
       toast.error(message);
     } finally {
       setSavingOrder(false);
-    }
-  };
-
-  const postProductionEvent = async ({
-    order,
-    eventType,
-    quantity,
-    reason,
-  }: {
-    order: ProductionOrder;
-    eventType: ProductionEventType;
-    quantity?: number;
-    reason?: string | null;
-  }) => {
-    const eventKey = `${order.id}:${eventType}`;
-    setSavingEventKey(eventKey);
-
-    try {
-      const res = await fetch(`/api/admin/operations/production-orders/${order.id}/events`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventType,
-          quantity,
-          reason: reason || null,
-          metadataJson: null,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "No se pudo registrar el evento de produccion");
-      }
-
-      toast.success(EVENT_SUCCESS_COPY[eventType]);
-      await loadProductionOrders({ silent: true });
-      return true;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Error al registrar evento de produccion";
-      toast.error(message);
-      return false;
-    } finally {
-      setSavingEventKey(null);
-    }
-  };
-
-  const handleProductionAction = async (order: ProductionOrder, eventType: ProductionEventType) => {
-    if (eventType === "PRODUCED") {
-      openProducedModal(order);
-      return;
-    }
-
-    await postProductionEvent({
-      order,
-      eventType,
-      reason: EVENT_SUCCESS_COPY[eventType],
-    });
-  };
-
-  const handleProducedSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!producedOrder) return;
-
-    const quantity = Number(producedForm.quantity);
-
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      toast.error("La cantidad producida debe ser positiva");
-      return;
-    }
-
-    const saved = await postProductionEvent({
-      order: producedOrder,
-      eventType: "PRODUCED",
-      quantity,
-      reason: producedForm.reason.trim() || null,
-    });
-
-    if (saved) {
-      setProducedOrder(null);
-      setProducedForm(EMPTY_PRODUCED_FORM);
     }
   };
 
@@ -952,40 +826,49 @@ export default function ProductionQueueSection() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div>
-        <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
-          <Factory className="h-8 w-8 text-primary" /> Producción y ensamblaje
-        </h2>
-        <p className="text-sm text-muted-foreground font-medium mt-1">
-          Convierte QR/link impresos en unidades físicas trazables. Toda unidad ensamblada queda pendiente de QA antes de entrar al inventario disponible.
-        </p>
-      </div>
-
-      <ProductionWorkflowSection />
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        {[
-          { label: "Ordenes", value: productionMetrics.total, icon: Factory, tone: "bg-slate-50 text-slate-700 border-slate-200" },
-          { label: "Borrador", value: productionMetrics.draft, icon: ClipboardList, tone: "bg-amber-50 text-amber-700 border-amber-200" },
-          { label: "Planificadas", value: productionMetrics.planned, icon: CheckCircle2, tone: "bg-blue-50 text-blue-700 border-blue-200" },
-          { label: "En produccion", value: productionMetrics.started, icon: Wrench, tone: "bg-purple-50 text-purple-700 border-purple-200" },
-          { label: "Completadas", value: productionMetrics.completed, icon: PackageCheck, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-          { label: "Producido", value: formatQuantity(productionMetrics.produced), icon: Package, tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
-        ].map(({ label, value, icon: Icon, tone }) => (
-          <article key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
-                <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
-              </div>
-              <div className={`rounded-xl border p-2 ${tone}`}>
-                <Icon className="h-5 w-5" />
-              </div>
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="h-1.5 w-8 rounded-full bg-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Producción</span>
             </div>
-          </article>
-        ))}
-      </div>
+            <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white">Producción</h2>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-500">
+              Gestiona las órdenes de producción creadas desde pedidos internos o pedidos sin stock.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => loadProductionOrders({ silent: true })}
+              disabled={refreshingOrders}
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-white disabled:opacity-50"
+            >
+              {refreshingOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Actualizar
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {productionOrders.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+          {productionSummaryCards.map(({ label, value, icon: Icon, tone }) => (
+            <article key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+                  <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
+                </div>
+                <div className={`rounded-xl border p-2 ${tone}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1021,11 +904,9 @@ export default function ProductionQueueSection() {
         ) : productionOrders.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
             <Factory className="mx-auto mb-4 h-10 w-10 text-slate-300" />
-            <p className="text-sm font-black uppercase tracking-widest text-slate-400">
-              Aún no hay órdenes de producción
-            </p>
+            <p className="text-sm font-black uppercase tracking-widest text-slate-400">No hay órdenes de producción.</p>
             <p className="mt-2 text-xs font-semibold text-slate-500">
-              Crea una orden cuando necesites ensamblar unidades desde QR/link impresos.
+              Las órdenes nacen desde Pedidos cuando falta stock o cuando se crea un pedido interno.
             </p>
           </div>
         ) : (
@@ -1034,23 +915,21 @@ export default function ProductionQueueSection() {
               <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Code</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Orden</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Plan</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Producido</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Creada</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Actualizada</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Origen</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo origen</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Producto</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Cantidad</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Etapa</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Progreso</th>
                   <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {productionOrders.map((order) => {
-                  const status = ORDER_STATUS_CONFIG[order.status] || {
-                    label: order.status,
-                    color: "bg-slate-50 border-slate-200 text-slate-700",
-                  };
-                  const actions = ACTIONS_BY_STATUS[order.status] || [];
+                  const originType = getOriginTypeLabel(order);
+                  const originLabel = getOriginLabel(order);
+                  const stageLabel = getProductionStageLabel(order.status);
+                  const progress = order.plannedQuantity > 0 ? Math.min(100, Math.round((order.producedQuantity / order.plannedQuantity) * 100)) : 0;
 
                   return (
                     <tr key={order.id} className="hover:bg-slate-50/70">
@@ -1059,57 +938,44 @@ export default function ProductionQueueSection() {
                       </td>
                       <td className="px-4 py-4">
                         <div>
-                          <p className="font-black text-slate-900">{order.title}</p>
+                          <p className="font-black text-slate-900">{originLabel}</p>
                           {isInternalProduction(order) && (
-                            <p className="mt-1 text-[11px] font-black uppercase tracking-widest text-violet-700">
-                              Origen: pedido interno para inventario
-                            </p>
+                            <p className="mt-1 text-[11px] font-black uppercase tracking-widest text-violet-700">Pedido interno para fabricar inventario</p>
                           )}
-                          {order.notes && (
-                            <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-slate-500">{order.notes}</p>
-                          )}
+                          <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-slate-500">
+                            {order.notes?.split("\n").find((line) => line.startsWith("Motivo interno:"))?.replace("Motivo interno: ", "") || order.title}
+                          </p>
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${status.color}`}>
-                          {status.label}
-                        </span>
+                        <span className="rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">{originType}</span>
                       </td>
                       <td className="px-4 py-4 text-xs font-bold text-slate-600">{order.outputType}</td>
                       <td className="px-4 py-4 text-right font-mono text-sm font-black text-slate-900">
                         {formatQuantity(order.plannedQuantity)}
                       </td>
-                      <td className="px-4 py-4 text-right font-mono text-sm font-black text-slate-900">
-                        {formatQuantity(order.producedQuantity)}
+                      <td className="px-4 py-4 text-xs font-semibold text-slate-500">{stageLabel}</td>
+                      <td className="px-4 py-4 text-xs font-semibold text-slate-500">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span>{formatQuantity(order.producedQuantity)} / {formatQuantity(order.plannedQuantity)}</span>
+                            <span>{progress}%</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                            <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(order.createdAt)}</td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(order.updatedAt)}</td>
-                      <td className="px-4 py-4">
-                        {actions.length === 0 ? (
-                          <p className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
-                            Sin acciones
-                          </p>
-                        ) : (
-                          <div className="flex min-w-[180px] flex-wrap justify-end gap-2">
-                            {actions.map((action) => {
-                              const eventKey = `${order.id}:${action.eventType}`;
-                              const saving = savingEventKey === eventKey;
-
-                              return (
-                                <button
-                                  key={action.eventType}
-                                  type="button"
-                                  onClick={() => handleProductionAction(order, action.eventType)}
-                                  disabled={Boolean(savingEventKey)}
-                                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-50 ${action.tone}`}
-                                >
-                                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardList className="h-3.5 w-3.5" />}
-                                  {action.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
+                      <td className="px-4 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setOpenOrderId(order.id)}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary/10"
+                        >
+                          Abrir flujo
+                        </button>
                       </td>
                     </tr>
                   );
@@ -1404,81 +1270,6 @@ export default function ProductionQueueSection() {
         </div>
       )}
 
-      {producedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
-            <form onSubmit={handleProducedSubmit} className="space-y-6 p-6 md:p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Evento inmutable</p>
-                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Registrar producido</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">
-                    {producedOrder.code} · {producedOrder.title}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeProducedModal}
-                  disabled={Boolean(savingEventKey)}
-                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
-                  aria-label="Cerrar"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
-                Este evento incrementa el producido acumulado de la orden. Los eventos no se editan ni se borran.
-              </div>
-
-              <div className="grid gap-4">
-                <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cantidad producida</span>
-                  <input
-                    required
-                    type="number"
-                    min="0.01"
-                    step="any"
-                    value={producedForm.quantity}
-                    onChange={(event) => updateProducedForm("quantity", event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="25"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Razon</span>
-                  <input
-                    value={producedForm.reason}
-                    onChange={(event) => updateProducedForm("reason", event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="Produccion parcial, cierre de tanda o ajuste operativo"
-                  />
-                </label>
-              </div>
-
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closeProducedModal}
-                  disabled={Boolean(savingEventKey)}
-                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={Boolean(savingEventKey)}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
-                >
-                  {savingEventKey === `${producedOrder.id}:PRODUCED` ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
-                  Guardar producido
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

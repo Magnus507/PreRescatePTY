@@ -1,5 +1,20 @@
 # Notas post-produccion del Centro de Operaciones
 
+## W5.40D - Simplificacion pantalla Produccion
+
+- Se simplifico la pantalla de Produccion para dejarla enfocada en ordenes reales y no en bloques didacticos o decorativos.
+- Se elimino la narrativa visual estatica de pasos, estados operativos y tarjetas inferiores que no ayudaban a operar una orden.
+- La vista principal ahora prioriza encabezado simple, resumen real, lista de ordenes y acceso a flujo.
+- El detalle de la orden sigue conteniendo las acciones reales de preparacion NFC/QR, imprenta, ensamblaje, QC y resultado.
+- Se mantuvo la logica backend y no se modificaron endpoints.
+- No se toco Prisma schema.
+- No se tocaron migraciones.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se toco activacion legacy.
+
 ## W5.38A - Auditoria integral Centro de Operaciones
 
 - Se audito el Centro de Operaciones post-W5.37 y post-W5.37X sin tocar codigo funcional.
