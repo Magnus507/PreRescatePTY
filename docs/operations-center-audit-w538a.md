@@ -98,6 +98,11 @@
 - `W5.38G` - Smoke visual final
 - `W5.38H` - Push visual cleanup
 
+## Seguimiento
+
+- `W5.38B` atendio el hallazgo de Produccion con una limpieza visual parcial/sustancial.
+- `W5.38C` esta atendiendo el hallazgo de Inventario separando catalogo, recursos digitales y unidades trazables.
+
 ## Confirmaciones
 
 - No se cambió código funcional.

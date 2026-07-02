@@ -20,6 +20,25 @@
 - No se toco activacion legacy.
 - No se hizo push.
 
+## W5.38C - Limpieza visual Inventario
+
+- Se separo visualmente el inventario en catalogo operativo, recursos digitales y unidades trazables.
+- `Productos base` ahora se entienden como catalogo, no como stock disponible.
+- `Recursos digitales` se presenta como identidad QR/link previa a la unidad fisica.
+- `Unidades` se presenta como inventario real trazable por etiqueta interna y estado operativo.
+- Se aclaro que la entrega no asigna usuario final y que `entregado sin activar` es una alerta operativa.
+- No se toco backend.
+- No se tocaron endpoints.
+- No se tocaron payloads.
+- No se tocaron migraciones.
+- No se toco Prisma schema.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se toco activacion legacy.
+- No se hizo push.
+
 ## W5.37X - Auditoria visual de taxonomia
 
 - Se reorganizo visualmente el Centro de Operaciones para reducir tabs principales y agrupar secciones por flujo real.

@@ -20,10 +20,10 @@ export function PhysicalInventorySection() {
       <div>
         <h2 className="flex items-center gap-3 text-3xl font-black tracking-tight">
           <Boxes className="h-8 w-8 text-primary" />
-          Inventario Fisico
+          Inventario agregado / referencia
         </h2>
         <p className="mt-1 text-sm font-medium text-muted-foreground">
-          Control operativo separado entre materiales de fabricacion y productos terminados listos para venta.
+          Balance agregado y lectura secundaria para materiales de fabricacion y producto terminado.
         </p>
       </div>
 
@@ -38,7 +38,7 @@ export function PhysicalInventorySection() {
             </h3>
             <p className="text-sm font-semibold leading-relaxed text-amber-700 dark:text-amber-300">
               Materiales no son productos terminados. Chips, shortCodes, QR y codigos de activacion no son inventario fisico.
-              El stock normal entra desde Produccion, pasa por Control de Calidad y Empaque, y solo despues queda disponible para venta.
+              Este balance es de referencia: las reservas y el despacho usan unidades trazables.
             </p>
           </div>
         </div>

@@ -160,12 +160,12 @@ export function FinishedGoodsSection() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "No se pudo cargar Inventario PT");
+        throw new Error(data.error || "No se pudo cargar productos base");
       }
 
       setFinishedGoods(Array.isArray(data.finishedGoods) ? data.finishedGoods : []);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Error al cargar Inventario PT";
+      const message = error instanceof Error ? error.message : "Error al cargar productos base";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -478,9 +478,10 @@ export function FinishedGoodsSection() {
               <CheckCircle2 className="h-4 w-4" />
               Producto vendible
             </div>
-            <h3 className="text-2xl font-black tracking-tight text-emerald-950">Productos Terminados</h3>
+            <h3 className="text-2xl font-black tracking-tight text-emerald-950">Productos base</h3>
             <p className="mt-2 text-sm font-semibold leading-relaxed text-emerald-800">
-              El producto terminado viene de Produccion, luego Control de Calidad, luego Empaque. Solo despues entra a Inventario PT listo para venta o punto de venta.
+              Catálogo operativo de productos terminados que pueden producirse, reservarse o venderse.
+              Crear un producto base no crea unidades disponibles.
             </p>
           </div>
           <div className="rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-widest text-emerald-700">
@@ -490,7 +491,7 @@ export function FinishedGoodsSection() {
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
-        <h3 className="mb-5 text-sm font-black uppercase tracking-widest text-slate-500">Ruta de entrada a Inventario PT</h3>
+        <h3 className="mb-5 text-sm font-black uppercase tracking-widest text-slate-500">Ruta de entrada a inventario agregado</h3>
         <div className="flex overflow-x-auto pb-2">
           {FLOW.map((step, index) => (
             <div key={step} className="flex items-center">
@@ -512,7 +513,7 @@ export function FinishedGoodsSection() {
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <PackageCheck className="mb-4 h-6 w-6 text-emerald-600" />
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Balance total</h4>
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Balance agregado</h4>
           <p className="mt-2 text-2xl font-black text-slate-950">{formatQuantity(metrics.available)}</p>
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -531,8 +532,8 @@ export function FinishedGoodsSection() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
             <Warehouse className="h-5 w-5 text-slate-500" />
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">
-              Inventario PT
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">
+              Productos base
             </h3>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -564,10 +565,10 @@ export function FinishedGoodsSection() {
           <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
             <Warehouse className="mx-auto mb-4 h-10 w-10 text-slate-300" />
             <p className="text-sm font-black uppercase tracking-widest text-slate-400">
-              No hay producto terminado registrado
+              No hay productos base configurados
             </p>
             <p className="mt-2 text-xs font-semibold text-slate-500">
-              Los productos creados desde esta seccion apareceran aqui con balance calculado por eventos.
+              El catálogo operativo se mostrará aquí cuando exista.
             </p>
           </div>
         ) : (
@@ -679,10 +680,10 @@ export function FinishedGoodsSection() {
             <form onSubmit={handleCreateFinishedGood} className="space-y-6 p-6 md:p-8">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Inventario PT</p>
-                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear producto terminado</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Productos base</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear producto base</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Registra producto terminado con balance inicial opcional por evento RECEIPT.
+                    Registra un producto de catálogo. No crea unidades disponibles.
                   </p>
                 </div>
                 <button
@@ -812,8 +813,8 @@ export function FinishedGoodsSection() {
             <form onSubmit={handleEditFinishedGood} className="space-y-6 p-6 md:p-8">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Inventario PT</p>
-                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Editar producto terminado</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Productos base</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Editar producto base</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
                     {editingFinishedGood.code} · balance actual {formatQuantity(editingFinishedGood.balance)} {editingFinishedGood.unit}
                   </p>

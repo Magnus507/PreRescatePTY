@@ -126,12 +126,12 @@ const SERVICE_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const DIGITAL_FLOW = [
-  { label: "Crear chip", icon: Cpu },
-  { label: "URL publica", icon: ShieldCheck },
+  { label: "Generar lote", icon: Cpu },
+  { label: "URL de activacion", icon: ShieldCheck },
   { label: "QR", icon: QrCode },
-  { label: "Descargar QR", icon: Download },
-  { label: "Arte / diseno", icon: Paintbrush },
-  { label: "Produccion", icon: Printer },
+  { label: "Impresion", icon: Download },
+  { label: "Recibido por imprenta", icon: Printer },
+  { label: "Ensamblaje", icon: Paintbrush },
 ];
 
 const EMPTY_BATCH_FORM: DigitalBatchFormState = {
@@ -300,19 +300,19 @@ export function DigitalResourcesSection() {
       <div>
         <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
           <Cpu className="h-8 w-8 text-primary" />
-          Recursos Digitales
+          Recursos digitales QR/link
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
-          Gestion de chips, shortCodes, QR, codigos de activacion y estados de servicio.
+          Administra lotes digitales, etiquetas internas, shortCodes y enlaces de activacion asociados al inventario trazable.
         </p>
       </div>
 
       <section className="rounded-3xl border border-indigo-200 bg-indigo-50 p-6">
         <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h3 className="text-xl font-black tracking-tight text-indigo-950">Flujo digital hacia produccion</h3>
+            <h3 className="text-xl font-black tracking-tight text-indigo-950">Flujo digital hacia imprenta y ensamblaje</h3>
             <p className="mt-1 text-sm font-semibold text-indigo-700">
-              El recurso digital prepara identidad, URL y QR. No representa stock fisico ni material disponible.
+              Un recurso digital no es una unidad fisica ni stock disponible. Se convierte en unidad cuando impresion y ensamblaje se completan.
             </p>
           </div>
           <span className="w-fit rounded-2xl border border-indigo-300 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-700">
@@ -338,9 +338,9 @@ export function DigitalResourcesSection() {
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="text-xl font-black tracking-tight text-slate-950">Lotes digitales QR+link</h3>
+          <h3 className="text-xl font-black tracking-tight text-slate-950">Lotes digitales QR+link</h3>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Cada lote crea una secuencia interna única antes de pasar a producción física.
+              Cada lote crea una secuencia interna única antes de pasar a impresión y ensamblaje físico.
             </p>
           </div>
           <button
@@ -457,10 +457,10 @@ export function DigitalResourcesSection() {
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
           <Cpu className="h-12 w-12 mx-auto mb-4 text-slate-300" />
           <p className="text-sm font-black uppercase tracking-widest text-slate-400">
-            No hay recursos digitales en esta categoría
+            No hay lotes digitales todavía
           </p>
           <p className="text-xs text-muted-foreground mt-2">
-            Los chips creados aparecerán aquí automáticamente.
+            Crea un lote QR/link antes de enviarlo a imprenta.
           </p>
         </div>
       ) : (
@@ -551,16 +551,16 @@ export function DigitalResourcesSection() {
                           title="Pendiente de endpoint"
                         >
                           <Download className="h-4 w-4" />
-                          Descargar QR
+                          Marcar impreso
                         </button>
                         <button
                           type="button"
                           disabled
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 opacity-60"
-                          title="Se activara con el modulo ERP"
+                          title="Se activara con el flujo de ensamblaje"
                         >
                           <Send className="h-4 w-4" />
-                          Enviar a produccion
+                          Enviar a ensamblaje
                         </button>
                         <button
                           onClick={() => setDetailChip(chip)}
@@ -605,7 +605,7 @@ export function DigitalResourcesSection() {
             <form onSubmit={handleCreateBatch} className="space-y-6 p-6 md:p-8">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Lote digital</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Recursos digitales</p>
                   <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear lote QR+link</h3>
                 </div>
                 <button type="button" onClick={() => setShowBatchModal(false)} className="rounded-2xl border border-slate-200 p-3 text-slate-400 hover:bg-slate-50" aria-label="Cerrar">

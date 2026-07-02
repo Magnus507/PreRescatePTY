@@ -27,6 +27,7 @@ import { CreateBatchSection } from "./CreateBatchSection";
 import ProductionQueueSection from "./ProductionQueueSection";
 import { DigitalResourcesSection } from "./DigitalResourcesSection";
 import { PrintOrdersSection } from "./PrintOrdersSection";
+import { FinishedGoodsSection } from "./FinishedGoodsSection";
 import { FinishedGoodUnitsSection } from "./FinishedGoodUnitsSection";
 import { PhysicalInventorySection } from "./PhysicalInventorySection";
 import { InventoryMovementsSection } from "./InventoryMovementsSection";
@@ -346,7 +347,7 @@ export function OperationsCenterSection({
           {inventoryTab === "summary" && <PhysicalInventorySection />}
           {inventoryTab === "units" && <FinishedGoodUnitsSection />}
           {inventoryTab === "digital" && <DigitalResourcesSection />}
-          {inventoryTab === "base" && <PhysicalInventorySection />}
+          {inventoryTab === "base" && <FinishedGoodsSection />}
         </div>
       );
     }

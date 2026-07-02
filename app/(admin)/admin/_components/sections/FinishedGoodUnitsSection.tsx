@@ -147,28 +147,31 @@ export function FinishedGoodUnitsSection() {
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h3 className="text-xl font-black tracking-tight text-slate-950">Unidades terminadas</h3>
-            <p className="mt-1 text-sm font-semibold text-slate-500">Creadas desde items impresos, con etiqueta interna unica.</p>
+            <h3 className="text-xl font-black tracking-tight text-slate-950">Unidades trazables</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Cada unidad representa un producto fisico con etiqueta interna y estado operativo.</p>
           </div>
           <div className="flex gap-2">
-            <input value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} placeholder="Buscar internalLabel" className="min-w-[220px] rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold" />
+            <input value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} placeholder="Buscar etiqueta interna" className="min-w-[220px] rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold" />
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold">
               <option value="">Todos los estados</option>
               <option value="qa_pending">QA pendiente</option>
               <option value="available">Disponibles</option>
               <option value="reserved">Reservadas</option>
               <option value="qa_failed">QA fallida</option>
+              <option value="dispatched">Despachadas</option>
+              <option value="delivered">Entregadas</option>
+              <option value="activated">Activadas</option>
               <option value="delivered_pending_activation">Entregadas sin activar</option>
             </select>
             <select value={selectedItemId} onChange={(e) => setSelectedItemId(e.target.value)} className="min-w-[280px] rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold">
-              <option value="">Selecciona item printed</option>
+              <option value="">Selecciona item impreso</option>
               {items.map((item) => (
                 <option key={item.id} value={item.id}>{item.internalLabel}</option>
               ))}
             </select>
             <button type="button" onClick={handleCreate} disabled={saving || !selectedItemId} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Crear unidad
+              Crear unidad desde QR/link impreso
             </button>
             <button type="button" onClick={() => loadData({ silent: true })} disabled={refreshing} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50">
               {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -178,7 +181,7 @@ export function FinishedGoodUnitsSection() {
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">QA pendiente</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pendientes QA</p>
             <p className="mt-2 text-2xl font-black text-slate-950">{counts.qaPendingCount}</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -203,7 +206,7 @@ export function FinishedGoodUnitsSection() {
           </div>
         </div>
         <p className="mt-3 text-xs font-semibold text-slate-500">
-          Una unidad entregada todavía no tiene usuario final hasta que el codigo sea activado.
+          La entrega no asigna usuario final. El usuario final se define al activar el código.
         </p>
       </section>
 
@@ -233,7 +236,7 @@ export function FinishedGoodUnitsSection() {
               <div className="mt-4 flex flex-wrap gap-2">
                 {unit.status !== "available" && unit.status !== "reserved" && (
                   <button type="button" onClick={() => runUnitAction(unit.id, "qa_pass")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800">
-                    QA passed
+                    Aprobar QA
                   </button>
                 )}
                 {unit.status === "available" && (
@@ -247,7 +250,7 @@ export function FinishedGoodUnitsSection() {
                     }}
                     className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-blue-800"
                   >
-                    Reservar
+                    Reservar para pedido
                   </button>
                 )}
                 {unit.status === "reserved" && (
@@ -256,12 +259,12 @@ export function FinishedGoodUnitsSection() {
                     onClick={() => runUnitAction(unit.id, "release").catch((error) => toast.error(error instanceof Error ? error.message : "Error al liberar"))}
                     className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800"
                   >
-                    Liberar
+                    Liberar reserva
                   </button>
                 )}
                 {unit.deliveredPendingActivation && (
                   <span className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800">
-                    Entregado, pendiente de activacion
+                    Entregado, pendiente de activación
                   </span>
                 )}
                 {unit.status === "qa_failed" && (
