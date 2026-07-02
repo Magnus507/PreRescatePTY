@@ -15,6 +15,14 @@ export async function POST(
   if (!item || item.productionOrderId !== productionOrderId) {
     return NextResponse.json({ error: "Item de preparacion no encontrado" }, { status: 404 });
   }
+  if (item.status !== "assembled") {
+    return NextResponse.json({ error: "La unidad debe estar ensamblada antes de marcar empaque completado" }, { status: 400 });
+  }
+
+  await prisma.operationDigitalBatchItem.update({
+    where: { id: preparationId },
+    data: { status: "packaged" },
+  });
 
   await prisma.operationProductionEvent.create({
     data: {

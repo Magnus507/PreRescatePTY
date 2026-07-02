@@ -30,7 +30,7 @@ export async function POST(
       const incomplete = await tx.operationDigitalBatchItem.count({
         where: {
           productionOrderId,
-          NOT: { status: "printed" },
+          NOT: { status: "completed" },
         },
       });
       if (incomplete > 0) {

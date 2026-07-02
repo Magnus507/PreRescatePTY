@@ -19,11 +19,20 @@ export async function POST(
   if (!item || item.productionOrderId !== productionOrderId) {
     return NextResponse.json({ error: "Item de preparacion no encontrado" }, { status: 404 });
   }
+  if (item.status !== "packaged") {
+    return NextResponse.json({ error: "La unidad debe estar empaquetada antes de cerrarla" }, { status: 400 });
+  }
 
   const existing = await prisma.operationFinishedGoodUnit.findUnique({
     where: { digitalBatchItemId: item.id },
   });
-  if (existing) return NextResponse.json({ unit: existing });
+  if (existing) {
+    await prisma.operationDigitalBatchItem.update({
+      where: { id: item.id },
+      data: { status: "completed" },
+    });
+    return NextResponse.json({ unit: existing });
+  }
 
   const unit = await prisma.operationFinishedGoodUnit.create({
     data: {
@@ -39,6 +48,11 @@ export async function POST(
       printOrderId: (await prisma.operationPrintOrder.findFirst({ where: { digitalBatchId: item.batchId } }))?.id || null,
       events: { create: { eventType: "UNIT_COMPLETED", metadataJson: { preparationId } } },
     },
+  });
+
+  await prisma.operationDigitalBatchItem.update({
+    where: { id: item.id },
+    data: { status: "completed" },
   });
 
   await prisma.operationProductionEvent.create({

@@ -307,7 +307,7 @@ export default function ProductionQueueSection() {
   const hasPrintOrder = Boolean(printOrder);
   const printSent = Boolean(printOrder && ["sent", "printed", "received"].includes(printOrder.status));
   const printReceived = Boolean(printOrder && ["received", "printed"].includes(printOrder.status));
-  const allAssembled = hasDigitalItems && digitalItems.every((item) => item.status === "assembled" || item.status === "qa_pending" || item.status === "qa_passed");
+  const allAssembled = hasDigitalItems && digitalItems.every((item) => item.status === "completed" || item.status === "qa_pending" || item.status === "qa_passed");
   const sentToQa = Boolean(selectedProductionOrder && ["qa_pending", "qa_passed"].includes(selectedProductionOrder.status));
   const hasQcResults = hasDigitalItems && digitalItems.some((item) => item.finishedGoodUnits?.some((unit) => ["passed", "failed"].includes(unit.qaStatus || "")));
   const allCanonicalIdentities = hasDigitalItems && digitalItems.every((item) => buildProductionDigitalIdentity({ internalLabel: item.internalLabel, shortCode: item.shortCode }).canPrint && buildProductionDigitalIdentity({ internalLabel: item.internalLabel, shortCode: item.shortCode }).shortCode);
@@ -597,9 +597,29 @@ export default function ProductionQueueSection() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo actualizar la preparacion");
-      await loadProductionOrders({ silent: true });
+      await Promise.all([loadProductionOrders({ silent: true }), loadPrintOrders()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al actualizar la preparacion");
+    } finally {
+      setSavingDigitalKey(null);
+    }
+  };
+
+  const handleMarkAssemblyStep = async (
+    orderId: string,
+    itemId: string,
+    action: "assembled" | "packaging-completed" | "complete"
+  ) => {
+    setSavingDigitalKey(`${itemId}:${action}`);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${orderId}/unit-assembly/${itemId}/${action}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo actualizar el ensamblaje");
+      await Promise.all([loadProductionOrders({ silent: true }), loadPrintOrders()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al actualizar el ensamblaje");
     } finally {
       setSavingDigitalKey(null);
     }
@@ -903,11 +923,11 @@ export default function ProductionQueueSection() {
                   <div>
                     <p className="text-xs font-black uppercase tracking-widest text-slate-500">Ensamblaje físico</p>
                     <p className="mt-1 text-sm font-semibold text-slate-600">
-                      En esta etapa se completa chip + sticker y empaque antes de enviar a QC.
+                      En esta etapa se completa chip + sticker, empaque y cierre final por unidad antes de enviar a QC.
                     </p>
                   </div>
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                    {digitalItems.filter((item) => item.status === "assembled").length}/{digitalItems.length} ensambladas
+                    {digitalItems.filter((item) => item.status === "completed").length}/{digitalItems.length} cerradas
                   </span>
                 </div>
                 <div className="mt-4 grid gap-3">
@@ -922,9 +942,54 @@ export default function ProductionQueueSection() {
                           {item.status}
                         </span>
                       </div>
+                      <div className="mt-2 grid gap-2 text-xs font-semibold text-slate-600">
+                        <p>NFC programado: {item.nfcProgrammed ? "sí" : "no"}</p>
+                        <p>QR preparado: {item.qrPrepared ? "sí" : "no"}</p>
+                        <p>Ensamblaje físico: {item.status === "assembled" || item.status === "packaged" || item.status === "completed" ? "sí" : "no"}</p>
+                        <p>Empaque cerrado: {item.status === "packaged" || item.status === "completed" ? "sí" : "no"}</p>
+                        <p>Unidad cerrada: {item.status === "completed" ? "sí" : "no"}</p>
+                      </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")} className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800">Chip + sticker ensamblado</button>
-                        <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800">Empaque etiquetado</button>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")}
+                          disabled={Boolean(savingDigitalKey)}
+                          className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800 disabled:opacity-50"
+                        >
+                          {savingDigitalKey === `${item.id}:nfc-programmed` ? "Marcando..." : "Marcar NFC"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")}
+                          disabled={Boolean(savingDigitalKey)}
+                          className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
+                        >
+                          {savingDigitalKey === `${item.id}:qr-prepared` ? "Marcando..." : "Marcar QR"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "assembled")}
+                          disabled={Boolean(savingDigitalKey) || item.status !== "printed"}
+                          className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-violet-800 disabled:opacity-50"
+                        >
+                          {savingDigitalKey === `${item.id}:assembled` ? "Cerrando..." : "Ensamblado"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "packaging-completed")}
+                          disabled={Boolean(savingDigitalKey) || item.status !== "assembled"}
+                          className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800 disabled:opacity-50"
+                        >
+                          {savingDigitalKey === `${item.id}:packaging-completed` ? "Cerrando..." : "Empaque"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "complete")}
+                          disabled={Boolean(savingDigitalKey) || item.status !== "packaged"}
+                          className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
+                        >
+                          {savingDigitalKey === `${item.id}:complete` ? "Cerrando..." : "Cerrar unidad"}
+                        </button>
                       </div>
                     </div>
                   ))}

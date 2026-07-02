@@ -24,6 +24,9 @@ export async function POST(
   if (!printOrder || printOrder.status !== "received") {
     return NextResponse.json({ error: "La imprenta debe estar recibida" }, { status: 400 });
   }
+  if (item.status !== "printed") {
+    return NextResponse.json({ error: "La unidad debe estar printed antes de ensamblarla" }, { status: 400 });
+  }
 
   await prisma.operationDigitalBatchItem.update({
     where: { id: preparationId },
