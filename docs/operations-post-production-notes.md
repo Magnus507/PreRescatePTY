@@ -253,3 +253,14 @@
 - No se usó `prisma migrate reset`.
 - No se tocaron migraciones historicas.
 - No se toco checkout legacy ni `Order` / `Product` legacy.
+
+## W5.39B - Preparación digital por orden de producción
+
+- Se reutilizo `OperationDigitalBatchItem` como lista de preparación por orden.
+- Se agregaron campos puente para preparar recursos digitales por unidad.
+- Se agregaron endpoints para crear la preparación y marcar NFC/QR por unidad.
+- La UI de Producción ahora muestra preparación NFC / QR dentro de la orden abierta.
+- La preparación no crea inventario disponible y no asigna usuario final.
+- No se usó `prisma db push`.
+- No se usó `prisma migrate reset`.
+- No se tocaron migraciones historicas.

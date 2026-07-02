@@ -25,6 +25,19 @@ Pedidos → Producción → preparación digital → imprenta → recepción →
 
 - Pedidos ahora puede disparar el envío a producción cuando detecta faltante de stock.
 
+## W5.39B - Preparación digital por orden de producción
+
+- Se reutilizó `OperationDigitalBatchItem` como lista de preparación por orden de producción.
+- Se agregaron campos puente para la preparación digital: `productionOrderId`, `nfcProgrammed`, `qrPrepared`, `preparedAt` y `preparedBy`.
+- Se creó `POST /api/admin/operations/production-orders/[id]/prepare-digital-items`.
+- Se creó `POST /api/admin/operations/production-orders/[id]/unit-preparation/[preparationId]/nfc-programmed`.
+- Se creó `POST /api/admin/operations/production-orders/[id]/unit-preparation/[preparationId]/qr-prepared`.
+- Cada línea muestra etiqueta interna, `shortCode` y link de activación cuando ya está vinculada.
+- La preparación queda lista para imprenta solo cuando NFC y QR están completos en todas las líneas.
+- No se crea inventario disponible.
+- No se asigna usuario final.
+- No se envía a imprenta todavía en este bloque.
+
 ## Nota
 
 Este documento complementa la auditoría visual y las notas post-producción previas.

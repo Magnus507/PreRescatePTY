@@ -22,6 +22,9 @@ export async function GET() {
             material: true,
           },
         },
+        digitalItems: {
+          orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
+        },
         events: {
           orderBy: { createdAt: "desc" },
           take: 10,
@@ -107,6 +110,9 @@ export async function POST(req: NextRequest) {
             include: {
               material: true,
             },
+          },
+          digitalItems: {
+            orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
           },
           events: {
             orderBy: { createdAt: "desc" },

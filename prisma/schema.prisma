@@ -778,6 +778,7 @@ model OperationProductionOrder {
   events           OperationProductionEvent[]
   qcInspections    OperationQcInspection[]
   packingBatches   OperationPackingBatch[]
+  digitalItems     OperationDigitalBatchItem[]
 
   @@index([status])
   @@index([outputType])
@@ -978,6 +979,7 @@ model OperationDigitalBatch {
 model OperationDigitalBatchItem {
   id                   String                @id @default(cuid())
   batchId              String
+  productionOrderId    String?
   internalLabel        String                @unique
   sequenceNumber       Int
   qrUrl                String
@@ -985,6 +987,10 @@ model OperationDigitalBatchItem {
   activationUrl        String?
   shortCode            String?
   status               String                @default("available")
+  nfcProgrammed        Boolean               @default(false)
+  qrPrepared           Boolean               @default(false)
+  preparedAt           DateTime?
+  preparedBy           String?
   consumedAt           DateTime?
   consumedReferenceType String?
   consumedReferenceId   String?
@@ -992,11 +998,13 @@ model OperationDigitalBatchItem {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   batch                OperationDigitalBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  productionOrder      OperationProductionOrder? @relation(fields: [productionOrderId], references: [id], onDelete: SetNull)
   printOrderItems      OperationPrintOrderItem[]
   finishedGoodUnits    OperationFinishedGoodUnit[]
 
   @@unique([batchId, sequenceNumber])
   @@index([batchId])
+  @@index([productionOrderId])
   @@index([status])
   @@index([createdAt])
 }

@@ -55,6 +55,17 @@ interface ProductionOrder {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  digitalItems?: Array<{
+    id: string;
+    internalLabel: string;
+    shortCode: string | null;
+    activationUrl: string | null;
+    nfcProgrammed: boolean;
+    qrPrepared: boolean;
+    status: string;
+    preparedAt: string | null;
+    notes: string | null;
+  }>;
 }
 
 interface AssemblyCandidate {
@@ -189,6 +200,19 @@ export default function ProductionQueueSection() {
   const [assemblyProductionOrderId, setAssemblyProductionOrderId] = useState("");
   const [selectedAssemblyItemIds, setSelectedAssemblyItemIds] = useState<string[]>([]);
   const [assemblingUnits, setAssemblingUnits] = useState(false);
+  const [preparingDigitalOrderId, setPreparingDigitalOrderId] = useState<string | null>(null);
+  const [savingDigitalKey, setSavingDigitalKey] = useState<string | null>(null);
+
+  const selectedProductionOrder = useMemo(
+    () => productionOrders.find((order) => order.id === openOrderId) || null,
+    [openOrderId, productionOrders]
+  );
+
+  const digitalProgress = useMemo(() => {
+    const items = selectedProductionOrder?.digitalItems || [];
+    const ready = items.filter((item) => item.nfcProgrammed && item.qrPrepared).length;
+    return { total: items.length, ready };
+  }, [selectedProductionOrder]);
 
   const loadProductionOrders = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -527,6 +551,45 @@ export default function ProductionQueueSection() {
     }
   };
 
+  const handlePrepareDigitalItems = async (order: ProductionOrder) => {
+    setPreparingDigitalOrderId(order.id);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${order.id}/prepare-digital-items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quantity: order.plannedQuantity }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo preparar recursos digitales");
+      toast.success("Recursos digitales preparados");
+      await loadProductionOrders({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al preparar recursos digitales");
+    } finally {
+      setPreparingDigitalOrderId(null);
+    }
+  };
+
+  const handleMarkDigitalItem = async (
+    orderId: string,
+    itemId: string,
+    action: "nfc-programmed" | "qr-prepared"
+  ) => {
+    setSavingDigitalKey(`${itemId}:${action}`);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${orderId}/unit-preparation/${itemId}/${action}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo actualizar la preparacion");
+      await loadProductionOrders({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al actualizar la preparacion");
+    } finally {
+      setSavingDigitalKey(null);
+    }
+  };
+
   const filtered = statusFilter ? queue.filter((o) => o.productionStatus === statusFilter) : queue;
 
   // If we're viewing a specific order's fabrication detail
@@ -541,6 +604,86 @@ export default function ProductionQueueSection() {
             ← Volver a cola
           </button>
         </div>
+        {selectedProductionOrder && (
+          <section className="rounded-3xl border border-slate-200 bg-white p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Preparación digital / NFC / QR</p>
+                <h3 className="mt-2 text-xl font-black tracking-tight text-slate-950">
+                  {selectedProductionOrder.code} · {selectedProductionOrder.title}
+                </h3>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Programa cada NFC con su link de activación y guarda el QR correspondiente. La activación final ocurre después de la entrega.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handlePrepareDigitalItems(selectedProductionOrder)}
+                disabled={Boolean(preparingDigitalOrderId)}
+                className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-violet-800 disabled:opacity-50"
+              >
+                {preparingDigitalOrderId === selectedProductionOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Preparar recursos digitales
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-center gap-3 text-sm font-semibold text-slate-600">
+              <span>Progreso:</span>
+              <span className="font-black text-slate-950">{digitalProgress.ready}/{digitalProgress.total}</span>
+              <span className="text-slate-400">Lista para imprenta cuando todas las líneas estén completas.</span>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {(selectedProductionOrder.digitalItems || []).map((item) => {
+                const ready = item.nfcProgrammed && item.qrPrepared;
+                const partial = item.nfcProgrammed || item.qrPrepared;
+                const badge = ready ? "Lista para imprenta" : partial ? "Parcial" : "Pendiente";
+                return (
+                  <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-sm font-black text-slate-950">{item.internalLabel}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          {item.shortCode || "Sin shortCode"} · {item.activationUrl || "Sin link"}
+                        </p>
+                      </div>
+                      <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
+                        ready ? "border-emerald-200 bg-emerald-50 text-emerald-800" : partial ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-white text-slate-700"
+                      }`}>
+                        {badge}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => item.activationUrl && navigator.clipboard.writeText(item.activationUrl)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700"
+                      >
+                        Copiar link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")}
+                        disabled={Boolean(savingDigitalKey)}
+                        className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800 disabled:opacity-50"
+                      >
+                        NFC programado
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")}
+                        disabled={Boolean(savingDigitalKey)}
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
+                      >
+                        QR preparado
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
         <FabricationSection orderId={openOrderId} />
       </div>
     );
