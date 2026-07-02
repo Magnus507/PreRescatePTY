@@ -147,8 +147,10 @@ export function FinishedGoodUnitsSection() {
       <section className="rounded-3xl border border-slate-200 bg-white p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h3 className="text-xl font-black tracking-tight text-slate-950">Unidades trazables</h3>
-            <p className="mt-1 text-sm font-semibold text-slate-500">Cada unidad representa un producto fisico con etiqueta interna y estado operativo.</p>
+            <h3 className="text-xl font-black tracking-tight text-slate-950">Unidades físicas trazables</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Cada unidad representa inventario físico real con etiqueta interna, estado QC, reserva, despacho y activación.
+            </p>
           </div>
           <div className="flex gap-2">
             <input value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} placeholder="Buscar etiqueta interna" className="min-w-[220px] rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold" />
@@ -161,7 +163,7 @@ export function FinishedGoodUnitsSection() {
               <option value="dispatched">Despachadas</option>
               <option value="delivered">Entregadas</option>
               <option value="activated">Activadas</option>
-              <option value="delivered_pending_activation">Entregadas sin activar</option>
+              <option value="delivered_pending_activation">Entregadas, pendiente de activación</option>
             </select>
             <select value={selectedItemId} onChange={(e) => setSelectedItemId(e.target.value)} className="min-w-[280px] rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold">
               <option value="">Selecciona item impreso</option>
@@ -171,7 +173,7 @@ export function FinishedGoodUnitsSection() {
             </select>
             <button type="button" onClick={handleCreate} disabled={saving || !selectedItemId} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Crear unidad desde QR/link impreso
+              Crear unidad física desde QR/link impreso
             </button>
             <button type="button" onClick={() => loadData({ silent: true })} disabled={refreshing} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50">
               {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -181,7 +183,7 @@ export function FinishedGoodUnitsSection() {
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pendientes QA</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pendientes QC</p>
             <p className="mt-2 text-2xl font-black text-slate-950">{counts.qaPendingCount}</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -201,7 +203,7 @@ export function FinishedGoodUnitsSection() {
             <p className="mt-2 text-2xl font-black text-slate-950">{counts.notActivatedCount}</p>
           </div>
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Entregadas sin activar</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Entregadas, pendiente de activación</p>
             <p className="mt-2 text-2xl font-black text-amber-950">{counts.deliveredPendingActivationCount}</p>
           </div>
         </div>
@@ -219,7 +221,7 @@ export function FinishedGoodUnitsSection() {
               <p className="font-mono text-xs font-black text-primary">{unit.internalLabel}</p>
               <h4 className="mt-2 text-sm font-black text-slate-950">{unit.productName}</h4>
               <p className="mt-1 text-[11px] font-semibold text-slate-500">{unit.productCode} · {unit.productType}</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-500">Estado: {unit.status} · QA: {unit.qaStatus || "pending"} · Activacion: {unit.activationStatus}</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">Estado inventario: {unit.status} · QC: {unit.qaStatus || "pending"} · Activación: {unit.activationStatus}</p>
               {unit.alertLabel && (
                 <p className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-amber-800">
                   {unit.alertLabel}
@@ -236,7 +238,7 @@ export function FinishedGoodUnitsSection() {
               <div className="mt-4 flex flex-wrap gap-2">
                 {unit.status !== "available" && unit.status !== "reserved" && (
                   <button type="button" onClick={() => runUnitAction(unit.id, "qa_pass")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800">
-                    Aprobar QA
+                    Aprobar QC
                   </button>
                 )}
                 {unit.status === "available" && (

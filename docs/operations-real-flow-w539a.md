@@ -121,7 +121,8 @@ Inventario visual final:
 
 - las unidades son el inventario físico real;
 - `available`, `reserved`, `qa_failed`, `dispatched`, `delivered`, `activated` y `delivered_pending_activation` se muestran como estados humanos;
-- materiales, productos base y recursos digitales quedan como vistas separadas.
+- materiales, productos base y recursos digitales quedan como vistas separadas;
+- el encabezado deja claro que el inventario real vive en unidades físicas trazables y que la entrega no asigna usuario final.
 
 Movimientos / Historial:
 
@@ -133,6 +134,25 @@ Movimientos / Historial:
 Pendiente para W5.39L:
 
 - smoke completo del flujo end-to-end.
+
+## W5.39J - Inventario visual final por unidad trazable
+
+- Se ajustaron los labels y subtítulos del bloque de Inventario para leer como flujo operativo real.
+- `Unidades` pasó a `Unidades físicas`, con foco en etiqueta interna, QC, reserva, despacho y activación.
+- `Recursos digitales` quedó explicitado como identidad QR/link/shortCode, no como stock físico.
+- `Productos base` quedó explicitado como catálogo operativo, no como unidades disponibles.
+- Se reforzó el mensaje de que la entrega no asigna usuario final y que la activación ocurre después, fuera de Operaciones.
+- No se cambió backend.
+- No se cambiaron endpoints.
+- No se cambiaron payloads.
+- No se tocaron migraciones.
+- No se tocó Prisma schema.
+- No se usó `prisma db push`.
+- No se usó `prisma migrate reset`.
+- No se tocó checkout legacy.
+- No se tocó `Order` / `Product` legacy.
+- No se tocó activación legacy.
+- No se hizo push.
 
 ## W5.39L — Smoke completo punta a punta
 
@@ -179,3 +199,7 @@ Confirmaciones:
 - no checkout legacy
 - no Order/Product legacy
 - no `db push` / `migrate reset`
+
+Pendiente de siguiente bloque:
+
+- W5.39M como auditoría final y pre-push.

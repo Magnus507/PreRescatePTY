@@ -126,12 +126,12 @@ const SERVICE_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const DIGITAL_FLOW = [
-  { label: "Generar lote", icon: Cpu },
-  { label: "URL de activacion", icon: ShieldCheck },
+  { label: "Generado", icon: Cpu },
+  { label: "Disponible digital", icon: ShieldCheck },
   { label: "QR", icon: QrCode },
-  { label: "Impresion", icon: Download },
-  { label: "Recibido por imprenta", icon: Printer },
-  { label: "Ensamblaje", icon: Paintbrush },
+  { label: "Enviado a imprenta", icon: Download },
+  { label: "Impreso recibido", icon: Printer },
+  { label: "Ensamblado", icon: Paintbrush },
 ];
 
 const EMPTY_BATCH_FORM: DigitalBatchFormState = {
@@ -303,7 +303,7 @@ export function DigitalResourcesSection() {
           Recursos digitales QR/link
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
-          Administra lotes digitales, etiquetas internas, shortCodes y enlaces de activacion asociados al inventario trazable.
+          Administra lotes digitales, etiquetas internas, shortCodes y enlaces de activación asociados al inventario trazable.
         </p>
       </div>
 
@@ -312,7 +312,7 @@ export function DigitalResourcesSection() {
           <div>
             <h3 className="text-xl font-black tracking-tight text-indigo-950">Flujo digital hacia imprenta y ensamblaje</h3>
             <p className="mt-1 text-sm font-semibold text-indigo-700">
-              Un recurso digital no es una unidad fisica ni stock disponible. Se convierte en unidad cuando impresion y ensamblaje se completan.
+              Un recurso digital no es una unidad física ni stock disponible. Se convierte en unidad cuando impresión y ensamblaje se completan.
             </p>
           </div>
           <span className="w-fit rounded-2xl border border-indigo-300 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-700">
@@ -485,7 +485,7 @@ export function DigitalResourcesSection() {
                     Servicio
                   </th>
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    Owner/Perfil
+                    Usuario vinculado
                   </th>
                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">
                     Acciones
@@ -557,7 +557,7 @@ export function DigitalResourcesSection() {
                           type="button"
                           disabled
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 opacity-60"
-                          title="Se activara con el flujo de ensamblaje"
+                          title="Se activará con el flujo de ensamblaje"
                         >
                           <Send className="h-4 w-4" />
                           Enviar a ensamblaje

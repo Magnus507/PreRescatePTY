@@ -513,7 +513,7 @@ export function FinishedGoodsSection() {
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <PackageCheck className="mb-4 h-6 w-6 text-emerald-600" />
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Balance agregado</h4>
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Balance de catálogo</h4>
           <p className="mt-2 text-2xl font-black text-slate-950">{formatQuantity(metrics.available)}</p>
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

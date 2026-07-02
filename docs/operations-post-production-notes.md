@@ -39,6 +39,25 @@
 - No se toco activacion legacy.
 - No se hizo push.
 
+## W5.39J - Inventario visual final por unidad trazable
+
+- Se dejo el bloque de Inventario con lectura final por unidad física trazable.
+- `Unidades físicas` queda como vista principal del inventario real.
+- `Recursos digitales` queda explicado como QR/link/shortCode y no como stock físico.
+- `Productos base` queda como catálogo operativo y no como inventario disponible.
+- La UI refuerza que la entrega no asigna usuario final y que la activación ocurre fuera de Operaciones.
+- El siguiente paso de documentación / auditoría queda en `W5.39M`.
+- No se toco backend.
+- No se tocaron endpoints.
+- No se tocaron migraciones.
+- No se toco Prisma schema.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se toco activacion legacy.
+- No se hizo push.
+
 ## W5.37X - Auditoria visual de taxonomia
 
 - Se reorganizo visualmente el Centro de Operaciones para reducir tabs principales y agrupar secciones por flujo real.

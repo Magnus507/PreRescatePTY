@@ -152,7 +152,7 @@ const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }>
 
 const INVENTORY_TABS: Array<{ id: InventoryTab; label: string }> = [
   { id: "summary", label: "Resumen inventario" },
-  { id: "units", label: "Unidades" },
+  { id: "units", label: "Unidades físicas" },
   { id: "digital", label: "Recursos digitales" },
   { id: "base", label: "Productos base" },
 ];
@@ -316,7 +316,10 @@ export function OperationsCenterSection({
               <div>
                 <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Inventario trazable</h2>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Recursos digitales asociados al inventario trazable: QR, link de activacion, shortCode y estado de preparacion.
+                  El inventario real vive en las unidades físicas. Los recursos digitales, el catálogo de productos base y el resumen solo acompañan ese flujo.
+                </p>
+                <p className="mt-2 text-xs font-semibold text-slate-400">
+                  QR, shortCode y enlaces de activación siguen el proceso; la asignación de usuario final ocurre fuera de este módulo.
                 </p>
               </div>
               <div className="overflow-x-auto">
