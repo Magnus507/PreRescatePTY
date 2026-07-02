@@ -87,6 +87,10 @@ interface ProductionOrder {
   }>;
 }
 
+function isInternalProduction(order: ProductionOrder) {
+  return Boolean(order.notes?.includes("[commercialOrderId:")) && order.title.toLowerCase().includes("interna");
+}
+
 interface AssemblyCandidate {
   id: string;
   internalLabel: string;
@@ -1056,6 +1060,11 @@ export default function ProductionQueueSection() {
                       <td className="px-4 py-4">
                         <div>
                           <p className="font-black text-slate-900">{order.title}</p>
+                          {isInternalProduction(order) && (
+                            <p className="mt-1 text-[11px] font-black uppercase tracking-widest text-violet-700">
+                              Origen: pedido interno para inventario
+                            </p>
+                          )}
                           {order.notes && (
                             <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-slate-500">{order.notes}</p>
                           )}

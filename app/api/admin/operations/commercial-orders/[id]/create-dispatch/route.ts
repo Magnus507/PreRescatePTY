@@ -168,7 +168,10 @@ export async function POST(
       return NextResponse.json({ error: "El pedido cancelado no puede crear despacho" }, { status: 400 });
     }
     if (error instanceof Error && error.message === "INTERNAL_ORDER_NO_DISPATCH") {
-      return NextResponse.json({ error: "Los pedidos internos no generan despacho" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Los pedidos internos no crean despacho. Terminan en inventario disponible después de QC." },
+        { status: 400 }
+      );
     }
     if (error instanceof Error && error.message === "NO_RESERVED_UNITS") {
       return NextResponse.json({ error: "El pedido no tiene unidades reservadas" }, { status: 400 });

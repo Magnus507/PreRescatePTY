@@ -79,6 +79,12 @@ interface CommercialOrder {
     status: string;
     destinationType: string;
   } | null;
+  productionOrder?: {
+    id: string;
+    code: string;
+    status: string;
+    notes: string | null;
+  } | null;
   reservedUnitsCount?: number;
   reservedUnits?: Array<{
     id: string;
@@ -180,6 +186,7 @@ const INTERNAL_ORDER_STATUS_CONFIG: Record<string, { label: string; color: strin
   stock_reserved: { label: "En inventario", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
   pending_stock: { label: "En producción", color: "bg-violet-50 border-violet-200 text-violet-800" },
   needs_production: { label: "Pendiente de producción", color: "bg-amber-50 border-amber-200 text-amber-800" },
+  requested: { label: "En producción", color: "bg-violet-50 border-violet-200 text-violet-800" },
   cancelled: { label: "Cancelado", color: "bg-red-50 border-red-200 text-red-700" },
 };
 
@@ -307,6 +314,16 @@ function isInternalOrder(order: CommercialOrder) {
   return order.customerType === "internal";
 }
 
+function getInternalProductionLabel(order: CommercialOrder) {
+  if (order.productionOrder) {
+    return `Producción ${order.productionOrder.code} · ${order.productionOrder.status}`;
+  }
+  if (order.fulfillmentStatus === "requested") {
+    return "Producción vinculada";
+  }
+  return "Sin producción vinculada";
+}
+
 export function CommercialSection() {
   const [orders, setOrders] = useState<CommercialOrder[]>([]);
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
@@ -328,13 +345,15 @@ export function CommercialSection() {
   }, [form.items]);
 
   const stats = useMemo(() => {
-    const pending = orders.filter((order) => order.status === "draft").length;
-    const confirmed = orders.filter((order) => order.status === "confirmed").length;
-    const paid = orders.filter((order) => order.paymentStatus === "paid").length;
-    const cancelled = orders.filter((order) => order.status === "cancelled").length;
-    const fulfillmentPending = orders.filter((order) => order.fulfillmentStatus === "pending").length;
-    const total = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-    return { pending, confirmed, paid, cancelled, fulfillmentPending, total };
+    const commercialOrders = orders.filter((order) => !isInternalOrder(order));
+    const internal = orders.filter((order) => isInternalOrder(order)).length;
+    const pending = commercialOrders.filter((order) => order.status === "draft").length;
+    const confirmed = commercialOrders.filter((order) => order.status === "confirmed").length;
+    const paid = commercialOrders.filter((order) => order.paymentStatus === "paid").length;
+    const cancelled = commercialOrders.filter((order) => order.status === "cancelled").length;
+    const fulfillmentPending = commercialOrders.filter((order) => order.fulfillmentStatus === "pending").length;
+    const total = commercialOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+    return { pending, confirmed, paid, cancelled, fulfillmentPending, total, internal };
   }, [orders]);
 
   const statCards: StatCardConfig[] = [
@@ -373,6 +392,12 @@ export function CommercialSection() {
       value: formatMoney(stats.total, "USD"),
       icon: PackageCheck,
       tone: "bg-purple-50 text-purple-700 border-purple-200",
+    },
+    {
+      label: "Internos",
+      value: stats.internal,
+      icon: Factory,
+      tone: "bg-violet-50 text-violet-700 border-violet-200",
     },
   ];
 
@@ -700,54 +725,51 @@ export function CommercialSection() {
 
   const getActionsForOrder = (order: CommercialOrder) => {
     if (isInternalOrder(order)) {
-      return {
-        internal: true,
-        items:
-          order.status === "cancelled"
-            ? []
-            : [
-                {
-                  label: order.fulfillmentStatus === "requested" ? "Producción vinculada" : "Enviar a producción",
-                  eventType: "FULFILLMENT_REQUESTED" as CommercialEventType,
-                  tone: "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100",
-                },
-              ],
-      };
+      if (order.status === "cancelled") return [];
+      if (order.productionOrder || order.fulfillmentStatus === "requested") {
+        return [
+          {
+            label: "Ver producción",
+            eventType: "FULFILLMENT_REQUESTED" as CommercialEventType,
+            tone: "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100",
+          },
+        ];
+      }
+      return [
+        {
+          label: "Enviar a producción",
+          eventType: "FULFILLMENT_REQUESTED" as CommercialEventType,
+          tone: "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100",
+        },
+      ];
     }
 
     if (order.status === "cancelled") {
-      return {
-        internal: false,
-        items:
-          order.paymentStatus === "paid"
-            ? [
-                {
-                  label: "Reembolsar",
-                  eventType: "REFUNDED" as CommercialEventType,
-                  tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100",
-                },
-              ]
-            : [],
-      };
+      return order.paymentStatus === "paid"
+        ? [
+            {
+              label: "Reembolsar",
+              eventType: "REFUNDED" as CommercialEventType,
+              tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100",
+            },
+          ]
+        : [];
     }
 
     const actions = ACTIONS_BY_STATUS[order.status] || [];
 
     if (!canRequestFulfillment(order)) {
-      return { internal: false, items: actions };
+      return actions;
     }
 
-    return {
-      internal: false,
-      items: [
-        ...actions,
-        {
-          label: "Solicitar despacho",
-          eventType: "FULFILLMENT_REQUESTED" as CommercialEventType,
-          tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100",
-        },
-      ],
-    };
+    return [
+      ...actions,
+      {
+        label: "Solicitar despacho",
+        eventType: "FULFILLMENT_REQUESTED" as CommercialEventType,
+        tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100",
+      },
+    ];
   };
 
   const getProductionNeed = (order: CommercialOrder) => {
@@ -830,7 +852,7 @@ export function CommercialSection() {
         ) : (
           <div className="space-y-4">
             {orders.map((order) => {
-              const actions = getActionsForOrder(order).items;
+              const actions = getActionsForOrder(order);
               const productionNeed = getProductionNeed(order);
 
               return (
@@ -894,7 +916,7 @@ export function CommercialSection() {
                           <p className="font-bold text-slate-800">{formatDate(order.updatedAt)}</p>
                           <p className="text-xs font-semibold text-slate-500">
                             {isInternalOrder(order)
-                              ? (order.fulfillmentStatus === "requested" ? "Producción vinculada" : "Sin producción vinculada")
+                              ? getInternalProductionLabel(order)
                               : (order.dispatch ? `Despacho ${order.dispatch.code} · ${order.dispatch.status}` : "Sin despacho vinculado")}
                           </p>
                         </div>
@@ -1018,10 +1040,13 @@ export function CommercialSection() {
                     <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-4">
                       <p className="text-[10px] font-black uppercase tracking-widest text-violet-700">Producción vinculada</p>
                       <p className="mt-2 text-sm font-semibold text-violet-900">
-                        {order.fulfillmentStatus === "requested"
-                          ? "Pedido ya enviado a producción y listo para seguimiento."
-                          : "Aún no se ha enviado a producción."}
+                        {getInternalProductionLabel(order)}
                       </p>
+                      {order.notes && (
+                        <p className="mt-2 text-xs font-semibold text-violet-700">
+                          {order.notes.split("\n").find((line) => line.startsWith("Motivo interno:"))?.replace("Motivo interno: ", "") || "Pedido interno para fabricar inventario"}
+                        </p>
+                      )}
                     </div>
                   )}
                 </article>

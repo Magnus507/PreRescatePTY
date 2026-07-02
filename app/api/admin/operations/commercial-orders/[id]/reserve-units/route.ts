@@ -103,6 +103,10 @@ export async function POST(
 
       if (!order) return null;
 
+      if (order.customerType === "internal") {
+        throw new Error("INTERNAL_ORDER_NO_RESERVATION");
+      }
+
       const reservationResults = [];
       const missingItems = [];
 
@@ -161,6 +165,13 @@ export async function POST(
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT_UNIT_STOCK") {
       return NextResponse.json({ error: "No hay unidades suficientes para reservar" }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "INTERNAL_ORDER_NO_RESERVATION") {
+      return NextResponse.json(
+        { error: "Los pedidos internos no reservan unidades. Deben producir inventario." },
+        { status: 400 }
+      );
     }
 
     console.error("[operations/commercial-orders/:id/reserve-units] POST error:", error);

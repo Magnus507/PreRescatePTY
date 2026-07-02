@@ -73,26 +73,36 @@ export async function POST(
       const totalQuantity = commercialOrder.items.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0);
       const firstItem = commercialOrder.items[0];
       const productInfo = getProductInfo(firstItem);
+      const isInternal = commercialOrder.customerType === "internal";
+      const productionTitle = isInternal
+        ? `Producción interna desde ${commercialOrder.code}`
+        : `Producción desde ${commercialOrder.code}`;
+      const productionNotes = isInternal
+        ? `${productionNotesMarker} Pedido interno para fabricar inventario.`
+        : `${productionNotesMarker} Pedido operativo enviado a producción real.`;
 
       const productionOrder = await tx.operationProductionOrder.create({
         data: {
           code: `PROD-${commercialOrder.code}`,
-          title: `Producción desde ${commercialOrder.code}`,
+          title: productionTitle,
           status: "draft",
           plannedQuantity: totalQuantity,
           producedQuantity: 0,
           outputType: productInfo.productType,
-          notes: `${productionNotesMarker} Pedido operativo enviado a producción real.`,
+          notes: productionNotes,
           events: {
             create: {
               eventType: "CREATED",
               quantity: totalQuantity,
-              reason: `Orden creada desde pedido comercial ${commercialOrder.code}`,
+              reason: isInternal
+                ? `Orden creada desde pedido interno ${commercialOrder.code}`
+                : `Orden creada desde pedido comercial ${commercialOrder.code}`,
               metadataJson: JSON.stringify({
                 commercialOrderId: commercialOrder.id,
                 commercialOrderCode: commercialOrder.code,
                 itemCount: commercialOrder.items.length,
                 productType: productInfo.productType,
+                orderSource: isInternal ? "internal" : "commercial",
               }),
               createdById: auth.session.user.id || null,
             },

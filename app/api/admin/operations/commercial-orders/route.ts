@@ -68,6 +68,8 @@ const commercialOrderInclude = {
   },
 } as const;
 
+const productionNotesMarkerPattern = /\[commercialOrderId:([^\]]+)\]/;
+
 export async function GET() {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
@@ -76,6 +78,19 @@ export async function GET() {
     const commercialOrders = await prisma.operationCommercialOrder.findMany({
       orderBy: { createdAt: "desc" },
       include: commercialOrderInclude,
+    });
+    const linkedProductionOrders = await prisma.operationProductionOrder.findMany({
+      where: {
+        notes: {
+          contains: "[commercialOrderId:",
+        },
+      },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        notes: true,
+      },
     });
     const reservedUnitsByOrder = await prisma.operationFinishedGoodUnit.findMany({
       where: { reservedOrderId: { in: commercialOrders.map((order) => order.id) }, status: "reserved" },
@@ -91,11 +106,22 @@ export async function GET() {
       acc[unit.reservedOrderId] = (acc[unit.reservedOrderId] || 0) + 1;
       return acc;
     }, {});
+    const productionOrderByCommercialOrderId = linkedProductionOrders.reduce<Record<string, { id: string; code: string; status: string; notes: string | null }>>(
+      (acc, productionOrder) => {
+        const match = productionOrder.notes?.match(productionNotesMarkerPattern);
+        const commercialOrderId = match?.[1];
+        if (!commercialOrderId || acc[commercialOrderId]) return acc;
+        acc[commercialOrderId] = productionOrder;
+        return acc;
+      },
+      {}
+    );
 
     return NextResponse.json({
       commercialOrders: commercialOrders.map((order) => ({
         ...order,
         reservedUnitsCount: reservedCountMap[order.id] || 0,
+        productionOrder: productionOrderByCommercialOrderId[order.id] || null,
       })),
     });
   } catch (error) {
@@ -178,7 +204,7 @@ export async function POST(req: NextRequest) {
           customerEmail: isInternal ? null : data.customerEmail || null,
           customerPhone: isInternal ? null : data.customerPhone || null,
           customerReference: isInternal ? data.customerReference || null : data.customerReference || null,
-          salesChannel: data.salesChannel || "admin",
+          salesChannel: isInternal ? "internal" : data.salesChannel || "admin",
           paymentStatus: isInternal ? "pending" : data.paymentStatus || "pending",
           fulfillmentStatus: data.fulfillmentStatus || "pending",
           totalAmount,
@@ -204,7 +230,7 @@ export async function POST(req: NextRequest) {
               reason: "Pedido comercial creado",
               metadataJson: JSON.stringify({
                 itemCount: items.length,
-                salesChannel: data.salesChannel || "admin",
+                salesChannel: isInternal ? "internal" : data.salesChannel || "admin",
                 customerType,
                 dispatchId: data.dispatchId || null,
               }),
