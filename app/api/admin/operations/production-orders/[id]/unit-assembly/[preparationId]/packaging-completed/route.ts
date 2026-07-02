@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { buildProductionAssemblyState } from "@/lib/operations/production-assembly-state";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,8 @@ export async function POST(
   if (!item || item.productionOrderId !== productionOrderId) {
     return NextResponse.json({ error: "Item de preparacion no encontrado" }, { status: 404 });
   }
-  if (item.status !== "assembled") {
+  const assemblyState = buildProductionAssemblyState(item, { printOrder: null });
+  if (!assemblyState.chipStickerAssembled) {
     return NextResponse.json({ error: "La unidad debe estar ensamblada antes de marcar empaque completado" }, { status: 400 });
   }
 

@@ -17,3 +17,10 @@ Se eliminó la inconsistencia donde una unidad podía figurar como `Lista para Q
 - QC Pass/Fail opera sobre `OperationFinishedGoodUnit.id`.
 - No se duplica la unidad trazable al reintentar la acción.
 
+## W5.40O.2 - Sincronizacion canonica de empaque y lista para QC
+
+- Se unifico la lectura de ensamblaje con `lib/operations/production-assembly-state.ts`.
+- `Marcar lista para QC` ahora valida con la misma logica que la UI y acepta solo una unidad realmente lista.
+- `packaging-completed` y `complete` usan una fuente de verdad compartida para evitar el falso positivo de `Lista para QC: sí`.
+- Se agrego `repair-traceable-units` para sincronizar unidades trazables faltantes sin duplicar registros.
+- La UI de Produccion ahora muestra `Empaque etiquetado` y `Lista para QC` usando la misma logica canonica del backend.

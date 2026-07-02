@@ -56,7 +56,15 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ productionOrder });
+    return NextResponse.json({
+      productionOrder: {
+        ...productionOrder,
+        digitalItems: productionOrder.digitalItems.map((item) => ({
+          ...item,
+          finishedGoodUnitId: item.finishedGoodUnits.find((unit) => unit.digitalBatchItemId === item.id)?.id || item.finishedGoodUnits[0]?.id || null,
+        })),
+      },
+    });
   } catch (error) {
     console.error("[operations/production-orders/:id] GET error:", error);
     return NextResponse.json(

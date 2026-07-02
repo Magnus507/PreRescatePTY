@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import FabricationSection from "./FabricationSection";
 import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
+import { buildProductionAssemblyState } from "@/lib/operations/production-assembly-state";
 
 interface QueueItem {
   orderId: string;
@@ -693,7 +694,7 @@ export default function ProductionQueueSection() {
   const handleRepairTraceableUnit = async (orderId: string, itemId: string) => {
     setSavingDigitalKey(`${itemId}:repair-traceable-unit`);
     try {
-      const res = await fetch(`/api/admin/operations/production-orders/${orderId}/unit-assembly/${itemId}/complete`, {
+      const res = await fetch(`/api/admin/operations/production-orders/${orderId}/repair-traceable-units`, {
         method: "POST",
       });
       const data = await res.json();
@@ -1028,11 +1029,15 @@ export default function ProductionQueueSection() {
                                 </p>
                               </div>
                               <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                                {digitalItems.filter((item) => item.status === "completed").length}/{digitalItems.length} listas para QC
+                                {digitalItems.filter((item) => buildProductionAssemblyState(item, { printOrder: printOrder ? { status: printOrder.status } : null }).readyForQc).length}/{digitalItems.length} listas para QC
                               </span>
                             </div>
                             <div className="mt-4 grid gap-3">
-                              {digitalItems.map((item) => (
+                              {digitalItems.map((item) => {
+                                const itemAssemblyState = buildProductionAssemblyState(item, {
+                                  printOrder: printOrder ? { status: printOrder.status } : null,
+                                });
+                                return (
                                 <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
@@ -1044,19 +1049,20 @@ export default function ProductionQueueSection() {
                                   <div className="mt-2 grid gap-2 text-xs font-semibold text-slate-600">
                                     <p>NFC programado: {item.nfcProgrammed ? "sí" : "no"}</p>
                                     <p>QR preparado: {item.qrPrepared ? "sí" : "no"}</p>
-                                    <p>Ensamblaje físico: {item.status === "assembled" || item.status === "packaged" || item.status === "completed" ? "sí" : "no"}</p>
-                                    <p>Empaque etiquetado: {item.status === "packaged" || item.status === "completed" ? "sí" : "no"}</p>
-                                    <p>Lista para QC: {item.status === "completed" ? "sí" : "no"}</p>
+                                    <p>Ensamblaje físico: {itemAssemblyState.chipStickerAssembled ? "sí" : "no"}</p>
+                                    <p>Empaque etiquetado: {itemAssemblyState.packagingLabeled ? "sí" : "no"}</p>
+                                    <p>Lista para QC: {itemAssemblyState.readyForQc ? "sí" : "no"}</p>
                                   </div>
                                   <div className="mt-3 flex flex-wrap gap-2">
                                     <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")} disabled={Boolean(savingDigitalKey)} className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800 disabled:opacity-50">Marcar NFC</button>
                                     <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")} disabled={Boolean(savingDigitalKey)} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">Marcar QR</button>
                                     <button type="button" onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "assembled")} disabled={Boolean(savingDigitalKey) || item.status !== "printed"} className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-violet-800 disabled:opacity-50">Ensamblado</button>
                                     <button type="button" onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "packaging-completed")} disabled={Boolean(savingDigitalKey) || item.status !== "assembled"} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800 disabled:opacity-50">Empaque</button>
-                                    <button type="button" onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "complete")} disabled={Boolean(savingDigitalKey) || item.status !== "packaged"} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">Marcar lista para QC</button>
+                                    <button type="button" onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "complete")} disabled={Boolean(savingDigitalKey) || !itemAssemblyState.readyForQc} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">Marcar lista para QC</button>
                                   </div>
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -1076,6 +1082,9 @@ export default function ProductionQueueSection() {
                             </div>
                             <div className="mt-3 grid gap-3">
                               {digitalItems.map((item) => {
+                                const itemAssemblyState = buildProductionAssemblyState(item, {
+                                  printOrder: printOrder ? { status: printOrder.status } : null,
+                                });
                                 const unit =
                                   item.finishedGoodUnits?.find(
                                     (entry) =>
@@ -1092,7 +1101,7 @@ export default function ProductionQueueSection() {
                                 const inventoryStatus = unit?.status || "qa_pending";
                                 const passEnabled = canPassQc(unit);
                                 const failEnabled = canFailQc(unit);
-                                const isReadyButUnsynced = item.status === "completed" && !finishedGoodUnitId;
+                                const isReadyButUnsynced = itemAssemblyState.readyForQc && !finishedGoodUnitId;
                                 return (
                                   <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1105,7 +1114,7 @@ export default function ProductionQueueSection() {
                                         <p className="mt-1 text-xs font-semibold text-slate-500">
                                           {finishedGoodUnitId
                                             ? `Unidad trazable: ${finishedGoodUnitId}`
-                                            : isReadyButUnsynced
+                                          : isReadyButUnsynced
                                               ? "Unidad lista para QC, pendiente de sincronizar unidad trazable."
                                               : "Marque la unidad lista para QC en Ensamblaje físico."}
                                         </p>
