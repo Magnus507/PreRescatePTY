@@ -151,9 +151,9 @@ export async function POST(
                 return {
                   internalLabel,
                   sequenceNumber,
-                  qrUrl: identity.qrImageUrl,
+                  qrUrl: identity.qrImageUrl || "",
                   nfcUrl: identity.nfcUrl,
-                  activationUrl: identity.activationUrl,
+                  activationUrl: identity.activationFallbackUrl,
                   shortCode: null,
                   status: "available",
                 };

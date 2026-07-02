@@ -1,8 +1,21 @@
-type ProductionDigitalIdentityInput = {
+type DigitalIdentityInput = {
   internalLabel: string;
   shortCode?: string | null;
   requestOrigin?: string | null;
   envBaseUrl?: string | null;
+};
+
+type DigitalIdentity = {
+  internalLabel: string;
+  shortCode: string | null;
+  canonicalPublicUrl: string | null;
+  activationFallbackUrl: string;
+  nfcUrl: string | null;
+  qrPayload: string | null;
+  qrImageUrl: string | null;
+  canPrint: boolean;
+  missingReasons: string[];
+  isLocalUrl: boolean;
 };
 
 function normalizeBaseUrl(value: string | null | undefined) {
@@ -15,9 +28,9 @@ function normalizeBaseUrl(value: string | null | undefined) {
 export function getAppBaseUrl(requestOrigin?: string | null) {
   const envBaseUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.NEXTAUTH_URL ||
     process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.VERCEL_URL ||
     "";
 
@@ -30,28 +43,43 @@ export function getAppBaseUrl(requestOrigin?: string | null) {
   return "";
 }
 
+function isRealShortCode(shortCode?: string | null) {
+  const trimmed = shortCode?.trim() || "";
+  if (!trimmed) return false;
+  return trimmed.length >= 6 && trimmed !== "";
+}
+
 export function buildProductionDigitalIdentity({
   internalLabel,
   shortCode,
   requestOrigin,
   envBaseUrl,
-}: ProductionDigitalIdentityInput) {
+}: DigitalIdentityInput): DigitalIdentity {
   const baseUrl = normalizeBaseUrl(envBaseUrl) || getAppBaseUrl(requestOrigin);
-  const activationPath = `/activar/${encodeURIComponent(internalLabel)}`;
-  const activationUrl = baseUrl ? `${baseUrl}${activationPath}` : activationPath;
-  const qrPayload = activationUrl;
-  const qrImageUrl = `/api/public/qr?data=${encodeURIComponent(qrPayload)}`;
-  const nfcUrl = activationUrl;
-  const publicUrl = shortCode ? `${baseUrl || ""}/e/${encodeURIComponent(shortCode)}` : null;
+  const normalizedShortCode = shortCode?.trim() || null;
+  const canonicalPath = normalizedShortCode ? `/e/${encodeURIComponent(normalizedShortCode)}` : null;
+  const canonicalPublicUrl = canonicalPath ? `${baseUrl || ""}${canonicalPath}` : null;
+  const activationFallbackUrl = `${baseUrl || ""}/activar/${encodeURIComponent(internalLabel)}`;
+  const qrPayload = canonicalPublicUrl;
+  const qrImageUrl = canonicalPublicUrl ? `/api/public/qr?data=${encodeURIComponent(canonicalPublicUrl)}` : null;
+  const nfcUrl = canonicalPublicUrl;
+  const missingReasons = [];
+
+  if (!isRealShortCode(normalizedShortCode)) {
+    missingReasons.push("Falta shortCode real");
+  }
 
   return {
     internalLabel,
-    shortCode: shortCode?.trim() || null,
-    activationUrl,
+    shortCode: isRealShortCode(normalizedShortCode) ? normalizedShortCode : null,
+    canonicalPublicUrl,
+    activationFallbackUrl,
+    nfcUrl,
     qrPayload,
     qrImageUrl,
-    nfcUrl,
-    publicUrl,
+    canPrint: Boolean(canonicalPublicUrl),
+    missingReasons,
+    isLocalUrl: !baseUrl,
   };
 }
 

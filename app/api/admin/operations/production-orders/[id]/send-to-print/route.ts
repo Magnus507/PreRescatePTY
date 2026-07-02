@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { id: productionOrderId } = await params;
+  let printValidationErrors: Array<{ internalLabel: string; missing: string[] }> = [];
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -35,8 +37,25 @@ export async function POST(
         throw new Error("NO_DIGITAL_ITEMS");
       }
 
-      const notReady = productionOrder.digitalItems.filter((item) => !item.nfcProgrammed || !item.qrPrepared);
-      if (notReady.length > 0) {
+      const invalidItems = productionOrder.digitalItems
+        .map((item) => {
+          const identity = buildProductionDigitalIdentity({
+            internalLabel: item.internalLabel,
+            shortCode: item.shortCode,
+          });
+          const missing: string[] = [];
+          if (!identity.shortCode) missing.push("shortCode real");
+          if (!identity.canonicalPublicUrl) missing.push("URL canónica");
+          if (!identity.nfcUrl) missing.push("nfcUrl");
+          if (!identity.qrPayload) missing.push("qrPayload");
+          if (!item.nfcProgrammed) missing.push("NFC programado");
+          if (!item.qrPrepared) missing.push("QR preparado");
+          return missing.length > 0 ? { internalLabel: item.internalLabel, missing } : null;
+        })
+        .filter(Boolean) as Array<{ internalLabel: string; missing: string[] }>;
+
+      if (invalidItems.length > 0) {
+        printValidationErrors = invalidItems;
         throw new Error("NOT_READY_FOR_PRINT");
       }
 
@@ -124,7 +143,10 @@ export async function POST(
       return NextResponse.json({ error: "La orden no tiene items digitales preparados" }, { status: 400 });
     }
     if (error instanceof Error && error.message === "NOT_READY_FOR_PRINT") {
-      return NextResponse.json({ error: "La orden no está lista para imprenta." }, { status: 400 });
+      return NextResponse.json({
+        error: "No se puede enviar a imprenta: faltan identidades digitales canónicas.",
+        details: printValidationErrors,
+      }, { status: 400 });
     }
 
     console.error("[operations/production-orders/:id/send-to-print] POST error:", error);

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import FabricationSection from "./FabricationSection";
+import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
 
 interface QueueItem {
   orderId: string;
@@ -145,12 +146,6 @@ function getPrintStatusLabel(status: string | null) {
     cancelled: "Cancelada",
   };
   return map[status] || status;
-}
-
-function isLikelyRealShortCode(shortCode: string | null | undefined, internalLabel: string) {
-  const value = shortCode?.trim() || "";
-  if (!value) return false;
-  return value !== internalLabel;
 }
 
 interface AssemblyCandidate {
@@ -315,6 +310,7 @@ export default function ProductionQueueSection() {
   const allAssembled = hasDigitalItems && digitalItems.every((item) => item.status === "assembled" || item.status === "qa_pending" || item.status === "qa_passed");
   const sentToQa = Boolean(selectedProductionOrder && ["qa_pending", "qa_passed"].includes(selectedProductionOrder.status));
   const hasQcResults = hasDigitalItems && digitalItems.some((item) => item.finishedGoodUnits?.some((unit) => ["passed", "failed"].includes(unit.qaStatus || "")));
+  const allCanonicalIdentities = hasDigitalItems && digitalItems.every((item) => buildProductionDigitalIdentity({ internalLabel: item.internalLabel, shortCode: item.shortCode }).canPrint && buildProductionDigitalIdentity({ internalLabel: item.internalLabel, shortCode: item.shortCode }).shortCode);
   const showPrintStage = allDigitalReady;
   const showAssemblyStage = printReceived;
   const showQcStage = allAssembled || sentToQa || hasQcResults;
@@ -756,10 +752,11 @@ export default function ProductionQueueSection() {
                 const ready = item.nfcProgrammed && item.qrPrepared;
                 const partial = item.nfcProgrammed || item.qrPrepared;
                 const badge = ready ? "Lista para imprenta" : partial ? "Parcial" : "Pendiente";
-                const activationPath = getPublicActivationPath(item.activationUrl);
-                const qrTarget = item.activationUrl || "";
+                const identity = buildProductionDigitalIdentity({ internalLabel: item.internalLabel, shortCode: item.shortCode });
+                const activationPath = getPublicActivationPath(identity.activationFallbackUrl);
+                const qrTarget = identity.canonicalPublicUrl || "";
                 const nfcTarget = item.nfcUrl || item.activationUrl || "";
-                const shortCodeIsReal = isLikelyRealShortCode(item.shortCode, item.internalLabel);
+                const shortCodeIsReal = Boolean(identity.shortCode);
                 return (
                   <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -768,8 +765,9 @@ export default function ProductionQueueSection() {
                         <p className="text-xs font-semibold text-slate-500">
                           shortCode: {shortCodeIsReal ? item.shortCode : "No generado"}
                         </p>
-                        <p className="text-xs font-semibold text-slate-500">Activación: {activationPath || "Sin link"}</p>
-                        <p className="text-xs font-semibold text-slate-500">QR payload: {item.activationUrl || "Sin QR"}</p>
+                        <p className="text-xs font-semibold text-slate-500">URL canónica: {identity.canonicalPublicUrl || "Sin shortCode real"}</p>
+                        <p className="text-xs font-semibold text-slate-500">Ruta auxiliar: {activationPath || "Sin ruta auxiliar"}</p>
+                        <p className="text-xs font-semibold text-slate-500">QR payload: {qrTarget || "Sin QR"}</p>
                         <p className="text-xs font-semibold text-slate-500">NFC: {nfcTarget || "Sin NFC"}</p>
                         <p className="text-xs font-semibold text-slate-500">
                           NFC {item.nfcProgrammed ? "programado" : "pendiente"} · QR {item.qrPrepared ? "preparado" : "pendiente"}
@@ -783,9 +781,9 @@ export default function ProductionQueueSection() {
                     </div>
                     <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
                       <div className="rounded-2xl border border-slate-200 bg-white p-3">
-                        {item.qrUrl ? (
+                        {item.qrUrl && identity.qrImageUrl ? (
                           <img
-                            src={item.qrUrl}
+                            src={identity.qrImageUrl}
                             alt={`QR para ${item.internalLabel}`}
                             className="h-auto w-full rounded-xl"
                           />
@@ -799,7 +797,7 @@ export default function ProductionQueueSection() {
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => item.activationUrl && handleCopyNfcUrl(item.activationUrl)}
+                            onClick={() => identity.nfcUrl && handleCopyNfcUrl(identity.nfcUrl)}
                             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700"
                           >
                             Copiar URL NFC
@@ -837,9 +835,9 @@ export default function ProductionQueueSection() {
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-500">
                           <p className="font-black uppercase tracking-widest text-slate-400">QR visual</p>
-                          <p className="mt-1 break-all text-slate-600">{item.qrUrl || "QR no disponible"}</p>
+                          <p className="mt-1 break-all text-slate-600">{identity.canonicalPublicUrl || "Falta shortCode real"}</p>
                           <p className="mt-2 font-black text-slate-900">
-                            {item.activationUrl ? "El QR codifica la misma URL canónica que NFC." : "Falta URL de activación para esta unidad."}
+                            {identity.shortCode ? "El QR codifica la misma URL pública que se graba en el NFC." : "Falta shortCode real. Esta unidad aún no puede enviarse a imprenta."}
                           </p>
                         </div>
                       </div>
@@ -863,12 +861,17 @@ export default function ProductionQueueSection() {
                   <button
                     type="button"
                     onClick={() => handleSendToPrint(selectedProductionOrder)}
-                    disabled={!allDigitalReady}
+                    disabled={!allDigitalReady || !allCanonicalIdentities}
                     className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-800 disabled:opacity-50"
                   >
                     {savingDigitalKey === `${selectedProductionOrder.id}:send-to-print` ? "Enviando..." : hasPrintOrder ? "Orden a imprenta creada" : "Enviar a imprenta"}
                   </button>
                 </div>
+                {!allCanonicalIdentities && (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+                    Falta shortCode real. Esta unidad aún no puede enviarse a imprenta.
+                  </div>
+                )}
 
                 {printOrder ? (
                   <div className="mt-4 space-y-3">

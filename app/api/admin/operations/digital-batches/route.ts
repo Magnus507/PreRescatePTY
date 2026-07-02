@@ -88,9 +88,9 @@ export async function POST(req: NextRequest) {
               return {
                 internalLabel,
                 sequenceNumber,
-                qrUrl: identity.qrImageUrl,
+                qrUrl: identity.qrImageUrl || "",
                 nfcUrl: identity.nfcUrl,
-                activationUrl: identity.activationUrl,
+                activationUrl: identity.activationFallbackUrl,
                 shortCode: null,
                 status: "available",
               };
