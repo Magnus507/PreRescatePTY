@@ -24,3 +24,15 @@ Se eliminó la inconsistencia donde una unidad podía figurar como `Lista para Q
 - `packaging-completed` y `complete` usan una fuente de verdad compartida para evitar el falso positivo de `Lista para QC: sí`.
 - Se agrego `repair-traceable-units` para sincronizar unidades trazables faltantes sin duplicar registros.
 - La UI de Produccion ahora muestra `Empaque etiquetado` y `Lista para QC` usando la misma logica canonica del backend.
+
+## W5.40O.3 - Sincronizacion real de unidad trazable
+
+- `repair-traceable-units` ahora devuelve unidades reparadas y errores, no un exito silencioso.
+- La UI refresca la orden completa despues de sincronizar para reflejar `finishedGoodUnitId`.
+- Se evita el toast de exito falso cuando la unidad no queda realmente vinculada.
+
+## W5.40P - Checklist obligatorio de PASS QC dentro de Produccion
+
+- `PASS QC` en Produccion envia el checklist canónico que el backend exige.
+- La tarjeta de QC muestra el checklist previo y la confirmacion fisica del operador.
+- El backend sigue bloqueando si faltan controles reales.

@@ -32,6 +32,23 @@
 - No se uso `prisma db push`.
 - No se uso `prisma migrate reset`.
 
+## W5.40P - Checklist obligatorio de PASS QC dentro de Produccion
+
+- `PASS QC` ahora recibe desde Produccion el checklist QA canónico que valida el backend.
+- La UI de Produccion muestra el checklist obligatorio antes de aprobar QC.
+- La aprobacion sigue exigiendo unidad trazable real y controles previos completos.
+- No se toca checkout legacy.
+- No se toca `Order` / `Product` legacy.
+- No se toca activacion legacy.
+- No se usa `prisma db push`.
+- No se usa `prisma migrate reset`.
+
+## W5.40O.3 - Sincronizacion real de unidad trazable
+
+- `Sincronizar unidad trazable` ahora refresca la orden completa y solo muestra exito con `finishedGoodUnitId` real.
+- El mensaje de exito falso fue reemplazado por validacion real de la respuesta del backend.
+- QC vuelve a habilitar `Pass QC` y `Fail QC` despues del refresh correcto.
+
 ## W5.40M - Hotfix Pass/Fail QC dentro de Produccion
 
 - Se corrigio la habilitacion de acciones QC dentro de Produccion para unidades realmente en `qa_pending`.

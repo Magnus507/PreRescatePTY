@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import FabricationSection from "./FabricationSection";
 import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
 import { buildProductionAssemblyState } from "@/lib/operations/production-assembly-state";
+import { buildProductionQcChecklist, getProductionQcChecklistLabels } from "@/lib/operations/production-qc-checklist";
 
 interface QueueItem {
   orderId: string;
@@ -359,8 +360,18 @@ export default function ProductionQueueSection() {
     return isUnitInQc(unit);
   };
 
-  const getQcDisabledMessage = (unit: NonNullable<NonNullable<ProductionOrder["digitalItems"]>[number]["finishedGoodUnits"]>[number] | null, action: "pass" | "fail") => {
-    if (!unit) return "La unidad todavía no fue creada como unidad trazable. Cierre ensamblaje físico antes de QC.";
+  const getQcDisabledMessage = (
+    item: NonNullable<ProductionOrder["digitalItems"]>[number],
+    unit: NonNullable<NonNullable<ProductionOrder["digitalItems"]>[number]["finishedGoodUnits"]>[number] | null,
+    itemAssemblyState: ReturnType<typeof buildProductionAssemblyState>,
+    action: "pass" | "fail"
+  ) => {
+    if (!item.shortCode) return "Falta shortCode real.";
+    if (!item.nfcProgrammed || !item.qrPrepared) return "Falta QR/NFC canónico.";
+    if (!printReceived) return "Falta imprenta recibida.";
+    if (!itemAssemblyState.chipStickerAssembled) return "Falta chip + sticker ensamblado.";
+    if (!itemAssemblyState.packagingLabeled) return "Falta empaque etiquetado.";
+    if (!unit) return "Falta unidad trazable.";
     if (unit.qaStatus === "passed") return "La unidad ya fue aprobada en QC.";
     if (unit.qaStatus === "failed") return "La unidad ya fue rechazada en QC.";
     if (unit.status === "available" || unit.status === "reserved") return "La unidad ya salió de QC hacia inventario.";
@@ -776,15 +787,10 @@ export default function ProductionQueueSection() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          checklist: {
-            nfcWorks: true,
-            qrWorks: true,
-            internalLabelCorrect: true,
-            stickerCorrect: true,
-            packagingCorrect: true,
-            sealedReady: true,
-          },
+          checklist: buildProductionQcChecklist(),
           notes: null,
+          source: "production",
+          note: "QC aprobado desde Producción",
         }),
       });
       const data = await res.json();
@@ -818,6 +824,8 @@ export default function ProductionQueueSection() {
       setSavingDigitalKey(null);
     }
   };
+
+  const productionQcChecklistLabels = getProductionQcChecklistLabels();
 
   const filtered = statusFilter ? queue.filter((o) => o.productionStatus === statusFilter) : queue;
 
@@ -1149,6 +1157,26 @@ export default function ProductionQueueSection() {
                                               ? "Unidad lista para QC, pendiente de sincronizar unidad trazable."
                                               : "Marque la unidad lista para QC en Ensamblaje físico."}
                                         </p>
+                                        {finishedGoodUnitId && (
+                                          <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800">
+                                              Checklist QC obligatorio
+                                            </p>
+                                            <ul className="mt-2 grid gap-1 text-xs font-semibold text-emerald-900">
+                                              {productionQcChecklistLabels.map((item) => (
+                                                <li key={item.key} className="flex items-center gap-2">
+                                                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-black text-white">
+                                                    ✓
+                                                  </span>
+                                                  {item.label}
+                                                </li>
+                                              ))}
+                                            </ul>
+                                            <p className="mt-2 text-[10px] font-semibold uppercase tracking-widest text-emerald-800">
+                                              Al aprobar QC confirmas que revisaste físicamente la unidad.
+                                            </p>
+                                          </div>
+                                        )}
                                       </div>
                                       <div className="flex flex-wrap gap-2">
                                         {finishedGoodUnitId ? (
@@ -1174,8 +1202,8 @@ export default function ProductionQueueSection() {
                                     </div>
                                     {finishedGoodUnitId ? (
                                       <>
-                                        {!passEnabled && <p className="mt-3 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "pass")}</p>}
-                                        {!failEnabled && <p className="mt-2 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "fail")}</p>}
+                                        {!passEnabled && <p className="mt-3 text-xs font-semibold text-slate-500">{getQcDisabledMessage(item, unit, itemAssemblyState, "pass")}</p>}
+                                        {!failEnabled && <p className="mt-2 text-xs font-semibold text-slate-500">{getQcDisabledMessage(item, unit, itemAssemblyState, "fail")}</p>}
                                       </>
                                     ) : isReadyButUnsynced ? (
                                       <p className="mt-3 text-xs font-semibold text-slate-500">
