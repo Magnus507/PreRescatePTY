@@ -349,5 +349,16 @@ Pendiente para W5.39L:
 - No se uso `prisma migrate reset`.
 - No se tocaron migraciones historicas.
 - No se toco checkout legacy ni `Order` / `Product` legacy.
+
+## W5.40F - Produccion por etapas progresivas
+
+- La vista de Produccion ahora muestra solo la etapa vigente y habilita la siguiente cuando la anterior queda completa.
+- La preparacion digital expone etiqueta interna, shortCode, link de activacion, QR y NFC por unidad.
+- El QR y el NFC pueden copiarse desde la tarjeta de cada item sin esconder los datos operativos.
+- La etapa de imprenta, ensamblaje, QC y resultado ya no aparecen como bloques activos hasta que corresponda su turno real.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se tocaron migraciones historicas.
+- No se toco checkout legacy ni `Order` / `Product` legacy.
 - La limpieza automática dejó `remainingSmokeRecords = 0`.
 - No hubo activación ni usuario final desde operaciones.

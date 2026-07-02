@@ -62,6 +62,8 @@ interface ProductionOrder {
     internalLabel: string;
     shortCode: string | null;
     activationUrl: string | null;
+    qrUrl: string | null;
+    nfcUrl: string | null;
     nfcProgrammed: boolean;
     qrPrepared: boolean;
     status: string;
@@ -121,6 +123,28 @@ function getProductionStageLabel(status: string) {
 
 function isInternalProduction(order: ProductionOrder) {
   return Boolean(order.notes?.includes("[commercialOrderId:")) && order.title.toLowerCase().includes("interna");
+}
+
+function getPublicActivationPath(value: string | null) {
+  if (!value) return "";
+  try {
+    const url = new URL(value, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return value;
+  }
+}
+
+function getPrintStatusLabel(status: string | null) {
+  if (!status) return "Sin orden";
+  const map: Record<string, string> = {
+    draft: "Borrador",
+    sent: "Enviada",
+    received: "Recibida",
+    printed: "Impresa",
+    cancelled: "Cancelada",
+  };
+  return map[status] || status;
 }
 
 interface AssemblyCandidate {
@@ -218,6 +242,20 @@ export default function ProductionQueueSection() {
     if (!batchId) return null;
     return printOrders.find((order) => order.digitalBatchId === batchId) || null;
   }, [printOrders, selectedProductionOrder]);
+
+  const digitalItems = selectedProductionOrder?.digitalItems || [];
+  const hasDigitalItems = digitalItems.length > 0;
+  const allDigitalReady = hasDigitalItems && digitalItems.every((item) => item.nfcProgrammed && item.qrPrepared);
+  const hasPrintOrder = Boolean(printOrder);
+  const printSent = Boolean(printOrder && ["sent", "printed", "received"].includes(printOrder.status));
+  const printReceived = Boolean(printOrder && ["received", "printed"].includes(printOrder.status));
+  const allAssembled = hasDigitalItems && digitalItems.every((item) => item.status === "assembled" || item.status === "qa_pending" || item.status === "qa_passed");
+  const sentToQa = Boolean(selectedProductionOrder && ["qa_pending", "qa_passed"].includes(selectedProductionOrder.status));
+  const hasQcResults = hasDigitalItems && digitalItems.some((item) => item.finishedGoodUnits?.some((unit) => ["passed", "failed"].includes(unit.qaStatus || "")));
+  const showPrintStage = allDigitalReady;
+  const showAssemblyStage = printReceived;
+  const showQcStage = allAssembled || sentToQa || hasQcResults;
+  const showResultStage = hasQcResults;
 
   const loadProductionOrders = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -641,33 +679,40 @@ export default function ProductionQueueSection() {
             </div>
 
             <div className="mt-4 flex items-center gap-3 text-sm font-semibold text-slate-600">
-              <span>Progreso:</span>
+              <span>Progreso digital:</span>
               <span className="font-black text-slate-950">{digitalProgress.ready}/{digitalProgress.total}</span>
               <span className="text-slate-400">
                 {digitalPreparationEmpty
-                  ? "Aún no hay QR/link generados para esta orden. Genera los recursos digitales para crear las etiquetas internas y programar los NFC."
-                  : "Recursos digitales generados para esta orden. Programa cada NFC con su link y marca el QR como preparado."}
+                  ? "Aún no hay QR/link generados para esta orden."
+                  : "Programa cada NFC con su link y marca el QR como preparado."}
               </span>
             </div>
 
             <div className="mt-4 grid gap-3">
-              {(selectedProductionOrder.digitalItems || []).map((item) => {
+              {digitalItems.map((item) => {
                 const ready = item.nfcProgrammed && item.qrPrepared;
                 const partial = item.nfcProgrammed || item.qrPrepared;
                 const badge = ready ? "Lista para imprenta" : partial ? "Parcial" : "Pendiente";
+                const activationPath = getPublicActivationPath(item.activationUrl);
+                const qrTarget = item.qrUrl || item.activationUrl || "";
+                const nfcTarget = item.nfcUrl || item.activationUrl || "";
                 return (
                   <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div>
+                      <div className="space-y-1">
                         <p className="text-sm font-black text-slate-950">{item.internalLabel}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">
-                          {item.shortCode || "Sin shortCode"} · {item.activationUrl || "Sin link"} · {item.nfcProgrammed ? "NFC programado" : "NFC pendiente"} · {item.qrPrepared ? "QR preparado" : "QR pendiente"}
+                        <p className="text-xs font-semibold text-slate-500">shortCode: {item.shortCode || "Sin shortCode"}</p>
+                        <p className="text-xs font-semibold text-slate-500">Activación: {activationPath || "Sin link"}</p>
+                        <p className="text-xs font-semibold text-slate-500">QR: {item.qrUrl || item.activationUrl || "Sin QR"}</p>
+                        <p className="text-xs font-semibold text-slate-500">NFC: {item.nfcUrl || item.activationUrl || "Sin NFC"}</p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          NFC {item.nfcProgrammed ? "programado" : "pendiente"} · QR {item.qrPrepared ? "preparado" : "pendiente"}
                         </p>
                       </div>
                       <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
                         ready ? "border-emerald-200 bg-emerald-50 text-emerald-800" : partial ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-white text-slate-700"
                       }`}>
-                        {badge === "Lista para imprenta" ? "Lista para imprenta" : badge}
+                        {badge}
                       </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -676,7 +721,21 @@ export default function ProductionQueueSection() {
                         onClick={() => item.activationUrl && navigator.clipboard.writeText(item.activationUrl)}
                         className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700"
                       >
-                        Copiar link de activación
+                        Copiar link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => qrTarget && navigator.clipboard.writeText(qrTarget)}
+                        className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-800"
+                      >
+                        Copiar QR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => nfcTarget && navigator.clipboard.writeText(nfcTarget)}
+                        className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-cyan-800"
+                      >
+                        Copiar NFC
                       </button>
                       <button
                         type="button"
@@ -700,129 +759,169 @@ export default function ProductionQueueSection() {
               })}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">Orden a imprenta</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-600">
-                  Esta acción envía los QR/link preparados a imprenta. No crea inventario ni asigna usuario final, y solo queda habilitada cuando todas las líneas están completas.
-                </p>
-              </div>
-                <button
-                  type="button"
-                  onClick={() => handleSendToPrint(selectedProductionOrder)}
-                  disabled={digitalProgress.total === 0 || digitalProgress.ready !== digitalProgress.total}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-800 disabled:opacity-50"
-                >
-                  {savingDigitalKey === `${selectedProductionOrder.id}:send-to-print` ? "Enviando..." : "Enviar a imprenta"}
-                </button>
-              </div>
-
-              {printOrder ? (
-                <div className="mt-4 space-y-3">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="font-mono text-xs font-black text-primary">{printOrder.code}</p>
-                    <p className="mt-1 text-sm font-black text-slate-950">{printOrder.supplierName}</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                      Estado: {printOrder.status} · Cantidad: {printOrder.quantity} · {printOrder.rangeStartLabel} - {printOrder.rangeEndLabel}
+            {showPrintStage && (
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-500">Orden a imprenta</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">
+                      {hasPrintOrder
+                        ? "La orden digital ya tiene un lote asociado para imprenta."
+                        : "Esta acción envía los QR/link preparados a imprenta. No crea inventario ni asigna usuario final."}
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleMarkPrintReceived(selectedProductionOrder)}
-                    disabled={printOrder.status === "received"}
-                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
+                    onClick={() => handleSendToPrint(selectedProductionOrder)}
+                    disabled={!allDigitalReady}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-800 disabled:opacity-50"
                   >
-                    {savingDigitalKey === `${selectedProductionOrder.id}:mark-print-received` ? "Marcando..." : "Marcar imprenta recibida"}
+                    {savingDigitalKey === `${selectedProductionOrder.id}:send-to-print` ? "Enviando..." : hasPrintOrder ? "Orden a imprenta creada" : "Enviar a imprenta"}
                   </button>
                 </div>
-              ) : null}
-            </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">Ensamblaje físico</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-600">
-                    En esta etapa se completa chip + sticker y empaque antes de enviar a QC.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleSendToQa(selectedProductionOrder)}
-                  disabled={!printOrder || printOrder.status !== "received" || (selectedProductionOrder.digitalItems || []).some((item) => item.status !== "assembled")}
-                  className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 disabled:opacity-50"
-                >
-                  {savingDigitalKey === `${selectedProductionOrder.id}:send-to-qa` ? "Enviando..." : "Enviar a QC"}
-                </button>
-              </div>
-              <div className="mt-4 grid gap-3">
-                {(selectedProductionOrder.digitalItems || []).map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-mono text-xs font-black text-primary">{item.internalLabel}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{item.shortCode || "Sin shortCode"}</p>
-                      </div>
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                        {item.status}
-                      </span>
+                {printOrder ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="font-mono text-xs font-black text-primary">{printOrder.code}</p>
+                      <p className="mt-1 text-sm font-black text-slate-950">{printOrder.supplierName}</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Estado: {getPrintStatusLabel(printOrder.status)} · Cantidad: {printOrder.quantity} · {printOrder.rangeStartLabel} - {printOrder.rangeEndLabel}
+                      </p>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")} className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800">Chip + sticker ensamblado</button>
-                      <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800">Empaque etiquetado</button>
-                    </div>
+                    {printSent && !printReceived && (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkPrintReceived(selectedProductionOrder)}
+                        disabled={printOrder.status === "received"}
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
+                      >
+                        {savingDigitalKey === `${selectedProductionOrder.id}:mark-print-received` ? "Marcando..." : "Marcar imprenta recibida"}
+                      </button>
+                    )}
                   </div>
-                ))}
+                ) : null}
               </div>
-              {printOrder?.status === "received" && (
-                <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold text-blue-900">
-                  QC pendiente. Las unidades ya están listas para revisión de calidad. El inventario final se habilitará solo con QC Pass.
-                </div>
-              )}
-            </div>
+            )}
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-black uppercase tracking-widest text-slate-500">QC de la orden</p>
-              <div className="mt-3 grid gap-3">
-                {(selectedProductionOrder.digitalItems || []).map((item) => {
-                  const unit = item.finishedGoodUnits?.[0] || null;
-                  const qaStatus = unit?.qaStatus || "pending";
-                  const inventoryStatus = unit?.status || "qa_pending";
-                  return (
-                    <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            {showAssemblyStage && (
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-500">Ensamblaje físico</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">
+                      En esta etapa se completa chip + sticker y empaque antes de enviar a QC.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                    {digitalItems.filter((item) => item.status === "assembled").length}/{digitalItems.length} ensambladas
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3">
+                  {digitalItems.map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center justify-between">
                         <div>
                           <p className="font-mono text-xs font-black text-primary">{item.internalLabel}</p>
-                          <p className="mt-1 text-sm font-semibold text-slate-500">{item.shortCode || "Sin shortCode"}</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">
-                            QA: {qaStatus} · Inventario: {inventoryStatus} · {unit?.reservedOrderId ? `Pedido ${unit.reservedOrderId}` : "Sin reserva"}
-                          </p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">{item.shortCode || "Sin shortCode"}</p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleQaPass(selectedProductionOrder, unit?.id || "")}
-                            disabled={!unit || qaStatus === "passed"}
-                            className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
-                          >
-                            {savingDigitalKey === `${unit?.id}:qa-pass` ? "Aprobando..." : "Pass QC"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => unit && handleQaFail(selectedProductionOrder, unit.id)}
-                            disabled={!unit || qaStatus === "failed"}
-                            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800 disabled:opacity-50"
-                          >
-                            {savingDigitalKey === `${unit?.id}:qa-fail` ? "Marcando..." : "Fail QC"}
-                          </button>
-                        </div>
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                          {item.status}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")} className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800">Chip + sticker ensamblado</button>
+                        <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800">Empaque etiquetado</button>
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {showQcStage && (
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-500">QC de la orden</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">
+                      El inventario final se habilita solo con QC Pass. No se asigna usuario final desde Producción.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSendToQa(selectedProductionOrder)}
+                    disabled={!allAssembled || sentToQa}
+                    className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 disabled:opacity-50"
+                  >
+                    {savingDigitalKey === `${selectedProductionOrder.id}:send-to-qa` ? "Enviando..." : "Enviar a QC"}
+                  </button>
+                </div>
+                <div className="mt-3 grid gap-3">
+                  {digitalItems.map((item) => {
+                    const unit = item.finishedGoodUnits?.[0] || null;
+                    const qaStatus = unit?.qaStatus || "pending";
+                    const inventoryStatus = unit?.status || "qa_pending";
+                    return (
+                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <p className="font-mono text-xs font-black text-primary">{item.internalLabel}</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-500">{item.shortCode || "Sin shortCode"}</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-500">
+                              QA: {qaStatus} · Inventario: {inventoryStatus} · {unit?.reservedOrderId ? `Pedido ${unit.reservedOrderId}` : "Sin reserva"}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleQaPass(selectedProductionOrder, unit?.id || "")}
+                              disabled={!unit || qaStatus === "passed"}
+                              className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
+                            >
+                              {savingDigitalKey === `${unit?.id}:qa-pass` ? "Aprobando..." : "Pass QC"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => unit && handleQaFail(selectedProductionOrder, unit.id)}
+                              disabled={!unit || qaStatus === "failed"}
+                              className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800 disabled:opacity-50"
+                            >
+                              {savingDigitalKey === `${unit?.id}:qa-fail` ? "Marcando..." : "Fail QC"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {showResultStage && (
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Resultado</p>
+                <div className="mt-3 grid gap-3">
+                  {digitalItems.map((item) => {
+                    const unit = item.finishedGoodUnits?.[0] || null;
+                    if (!unit || !["passed", "failed"].includes(unit.qaStatus || "")) return null;
+                    return (
+                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="font-mono text-xs font-black text-primary">{item.internalLabel}</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                          QA: {unit.qaStatus} · Inventario: {unit.status}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          {unit.qaStatus === "passed"
+                            ? "Disponible en inventario según el flujo operativo. No hay usuario final asignado desde Producción."
+                            : "Unidad rechazada en QC. No se habilita inventario final."}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </section>
         )}
         <FabricationSection orderId={openOrderId} />
