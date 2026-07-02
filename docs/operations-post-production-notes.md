@@ -289,3 +289,14 @@ Pendiente para W5.39G:
 Pendiente para W5.39H:
 
 - despacho conectado al nuevo flujo.
+
+## W5.39I-J-K — Despacho nuevo flujo, Inventario visual final y Movimientos/Historial
+
+- El despacho nuevo toma unidades reservadas por QC Pass, no stock agregado viejo.
+- La entrega no activa usuarios finales.
+- Inventario visual distingue claramente unidades físicas, materiales, recursos digitales y productos base.
+- Movimientos e historial pasan a ser la fuente de trazabilidad operativa.
+
+Pendiente para W5.39L:
+
+- smoke end-to-end del flujo completo.

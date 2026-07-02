@@ -142,3 +142,13 @@ Se agregó el cierre de QC por unidad:
 Pendiente:
 
 - despacho y activación.
+
+## W5.39I-J-K — Despacho nuevo flujo, Inventario visual final y Movimientos/Historial
+
+- Se conectó el despacho al flujo QC aprobado.
+- Inventario y movimientos quedan más cercanos al flujo físico real.
+- El historial consolida la trazabilidad de unidad, pedido, producción y despacho.
+
+Pendiente:
+
+- smoke completo y auditoría final.

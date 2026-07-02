@@ -106,3 +106,30 @@ Eventos:
 Pendiente para W5.39H:
 
 - conectar despacho al flujo nuevo de QC.
+
+## W5.39I-J-K — Despacho nuevo flujo, Inventario visual final y Movimientos/Historial
+
+Despacho conectado al flujo real:
+
+- solo se crea desde pedidos cliente/empresa con unidades QC aprobadas y reservadas;
+- usa unidades reales por `internalLabel`;
+- crea eventos `DISPATCH_CREATED` y `UNIT_ASSIGNED_TO_DISPATCH`;
+- entrega deja la unidad en `delivered` con `activationStatus = not_activated`;
+- no asigna usuario final.
+
+Inventario visual final:
+
+- las unidades son el inventario físico real;
+- `available`, `reserved`, `qa_failed`, `dispatched`, `delivered`, `activated` y `delivered_pending_activation` se muestran como estados humanos;
+- materiales, productos base y recursos digitales quedan como vistas separadas.
+
+Movimientos / Historial:
+
+- el feed consolida producción, imprenta, QC, inventario y despacho;
+- el historial de una unidad puede reconstruir su vida completa por `internalLabel`;
+- no expone PII ni datos médicos;
+- no reescribe activación legacy ni checkout legacy.
+
+Pendiente para W5.39L:
+
+- smoke completo del flujo end-to-end.

@@ -102,6 +102,8 @@ export function normalizeMovementLabel(source: OperationMovementSource, eventTyp
     INVENTORY_AVAILABLE: "Inventario disponible",
     UNIT_RESERVED_FOR_ORDER: "Unidad reservada para pedido",
     PRODUCTION_COMPLETED: "Producción completada",
+    DISPATCH_CREATED: "Despacho creado",
+    UNIT_ASSIGNED_TO_DISPATCH: "Unidad asignada a despacho",
     RELEASED: "Liberada",
     RESERVED: "Reservada",
     DISPATCHED: "Despachada",

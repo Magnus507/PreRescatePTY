@@ -47,16 +47,31 @@ export async function POST(
         throw new Error("ORDER_ALREADY_HAS_DISPATCH");
       }
 
+      if (order.status === "cancelled") {
+        throw new Error("ORDER_CANCELLED");
+      }
+
+      if (order.customerType === "internal") {
+        throw new Error("INTERNAL_ORDER_NO_DISPATCH");
+      }
+
       const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
         where: {
           reservedOrderId: commercialOrderId,
           status: "reserved",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
         },
         orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
       });
 
       if (reservedUnits.length === 0) {
         throw new Error("NO_RESERVED_UNITS");
+      }
+
+      const requiredQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+      if (reservedUnits.length < requiredQuantity) {
+        throw new Error("INSUFFICIENT_RESERVED_UNITS");
       }
 
       const dispatch = await tx.operationDispatch.create({
@@ -84,7 +99,7 @@ export async function POST(
           },
           events: {
             create: {
-              eventType: "CREATED",
+              eventType: "DISPATCH_CREATED",
               reason: "Despacho creado desde pedido reservado",
               metadataJson: JSON.stringify({
                 commercialOrderId,
@@ -105,8 +120,32 @@ export async function POST(
         data: {
           dispatchId: dispatch.id,
           fulfillmentStatus: "reserved",
-          status: order.status === "stock_reserved" ? "stock_reserved" : order.status,
+          status: "dispatch_created",
         },
+      });
+
+      await tx.operationFinishedGoodUnit.updateMany({
+        where: {
+          id: { in: reservedUnits.map((unit) => unit.id) },
+        },
+        data: {
+          status: "reserved",
+        },
+      });
+
+      await tx.operationFinishedGoodUnitEvent.createMany({
+        data: reservedUnits.map((unit) => ({
+          unitId: unit.id,
+          eventType: "UNIT_ASSIGNED_TO_DISPATCH",
+          reason: `Asignada a despacho ${dispatch.code}`,
+          referenceType: "dispatch",
+          referenceId: dispatch.id,
+          metadataJson: JSON.stringify({
+            commercialOrderId,
+            dispatchId: dispatch.id,
+            dispatchCode: dispatch.code,
+          }),
+        })),
       });
 
       return {
@@ -125,8 +164,17 @@ export async function POST(
     if (error instanceof Error && error.message === "ORDER_ALREADY_HAS_DISPATCH") {
       return NextResponse.json({ error: "El pedido ya tiene un despacho asociado" }, { status: 409 });
     }
+    if (error instanceof Error && error.message === "ORDER_CANCELLED") {
+      return NextResponse.json({ error: "El pedido cancelado no puede crear despacho" }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "INTERNAL_ORDER_NO_DISPATCH") {
+      return NextResponse.json({ error: "Los pedidos internos no generan despacho" }, { status: 400 });
+    }
     if (error instanceof Error && error.message === "NO_RESERVED_UNITS") {
       return NextResponse.json({ error: "El pedido no tiene unidades reservadas" }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "INSUFFICIENT_RESERVED_UNITS") {
+      return NextResponse.json({ error: "No hay unidades QC aprobadas suficientes para crear el despacho" }, { status: 400 });
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "Ya existe un despacho con ese code" }, { status: 409 });
