@@ -57,7 +57,7 @@ const CommercialOrderItemSchema = z.object({
 });
 
 export const CreateCommercialOrderSchema = z.object({
-  code: z.string().trim().min(1, "code es requerido").max(80, "code es demasiado largo"),
+  code: z.string().trim().max(80, "code es demasiado largo").optional().nullable(),
   status: z.enum(COMMERCIAL_ORDER_STATUSES).optional(),
   customerType: z.enum(COMMERCIAL_CUSTOMER_TYPES).optional(),
   customerName: z.string().trim().max(180, "customerName es demasiado largo").optional().nullable(),

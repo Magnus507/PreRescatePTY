@@ -115,6 +115,8 @@ interface CommercialFormState {
   currency: string;
   notes: string;
   internalReason: string;
+  internalFinishedGoodId: string;
+  internalQuantity: string;
   dispatchId: string;
   items: CommercialFormItem[];
 }
@@ -138,6 +140,8 @@ const EMPTY_FORM: CommercialFormState = {
   currency: "USD",
   notes: "",
   internalReason: "",
+  internalFinishedGoodId: "",
+  internalQuantity: "1",
   dispatchId: "",
   items: [
     {
@@ -194,6 +198,39 @@ function getOrderTypeMeta(value: string) {
 
 function isInternalOrderType(value: string) {
   return value === "internal";
+}
+
+function buildInternalOrderCodeHint() {
+  return "Código: se generará automáticamente al crear el pedido";
+}
+
+function applyOrderTypeChange(current: CommercialFormState, customerType: string) {
+  if (customerType === "internal") {
+    return {
+      ...current,
+      customerType,
+      code: "",
+      customerName: "",
+      customerEmail: "",
+      customerPhone: "",
+      customerReference: "",
+      salesChannel: "internal",
+      paymentStatus: "pending",
+      currency: "USD",
+      internalReason: "Reposición de inventario",
+      internalFinishedGoodId: "",
+      internalQuantity: "1",
+      items: current.items.slice(0, 1),
+    };
+  }
+
+  return {
+    ...current,
+    customerType,
+    internalReason: "",
+    internalFinishedGoodId: "",
+    internalQuantity: "1",
+  };
 }
 
 const EVENT_SUCCESS_COPY: Record<CommercialEventType, string> = {
@@ -417,14 +454,24 @@ export function CommercialSection() {
   const handleCreateOrder = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!form.code.trim()) {
+    const isInternal = isInternalOrderType(form.customerType);
+    const isEnterprise = form.customerType === "enterprise";
+    const requiresCustomerIdentity = !isInternal;
+
+    if (requiresCustomerIdentity && !form.code.trim()) {
       toast.error("El code es requerido");
       return;
     }
 
-    const isInternal = isInternalOrderType(form.customerType);
-    const isEnterprise = form.customerType === "enterprise";
-    const requiresCustomerIdentity = !isInternal;
+    if (isInternal && !form.internalFinishedGoodId.trim()) {
+      toast.error("Selecciona el producto a fabricar");
+      return;
+    }
+
+    if (isInternal && (Number(form.internalQuantity) <= 0 || !Number.isFinite(Number(form.internalQuantity)))) {
+      toast.error("La cantidad debe ser mayor a 0");
+      return;
+    }
 
     if (requiresCustomerIdentity && !form.customerName.trim()) {
       toast.error(isEnterprise ? "La empresa es requerida" : "El cliente es requerido");
@@ -436,29 +483,47 @@ export function CommercialSection() {
       return;
     }
 
-    const items = form.items.map((item) => ({
-      finishedGoodId: item.finishedGoodId || undefined,
-      productCode: item.productCode.trim() || undefined,
-      productName: item.productName.trim(),
-      quantity: Number(item.quantity),
-      unitPrice: Number(item.unitPrice),
-      unit: item.unit.trim() || "unit",
-      notes: item.notes.trim() || undefined,
-    }));
+    const internalFinishedGood = isInternal
+      ? finishedGoods.find((item) => item.id === form.internalFinishedGoodId)
+      : null;
 
-    if (items.some((item) => !item.productName)) {
-      toast.error("Cada item requiere productName");
-      return;
-    }
+    const items = isInternal
+      ? [
+          {
+            finishedGoodId: form.internalFinishedGoodId || undefined,
+            productCode: internalFinishedGood?.code || undefined,
+            productName: internalFinishedGood?.name || "Producto interno",
+            quantity: Number(form.internalQuantity),
+            unitPrice: 0,
+            unit: "unit",
+            notes: form.internalReason.trim() || undefined,
+          },
+        ]
+      : form.items.map((item) => ({
+          finishedGoodId: item.finishedGoodId || undefined,
+          productCode: item.productCode.trim() || undefined,
+          productName: item.productName.trim(),
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          unit: item.unit.trim() || "unit",
+          notes: item.notes.trim() || undefined,
+        }));
 
-    if (items.some((item) => !Number.isFinite(item.quantity) || item.quantity <= 0)) {
-      toast.error("Cada item requiere quantity positivo");
-      return;
-    }
+    if (!isInternal) {
+      if (items.some((item) => !item.productName)) {
+        toast.error("Cada item requiere productName");
+        return;
+      }
 
-    if (items.some((item) => !Number.isFinite(item.unitPrice) || item.unitPrice < 0)) {
-      toast.error("Cada item requiere unitPrice mayor o igual a 0");
-      return;
+      if (items.some((item) => !Number.isFinite(item.quantity) || item.quantity <= 0)) {
+        toast.error("Cada item requiere quantity positivo");
+        return;
+      }
+
+      if (items.some((item) => !Number.isFinite(item.unitPrice) || item.unitPrice < 0)) {
+        toast.error("Cada item requiere unitPrice mayor o igual a 0");
+        return;
+      }
     }
 
     setSaving(true);
@@ -467,15 +532,15 @@ export function CommercialSection() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          code: form.code.trim(),
+          code: isInternal ? undefined : form.code.trim(),
           customerType: form.customerType,
           customerName: requiresCustomerIdentity ? form.customerName.trim() : undefined,
           customerEmail: !isInternal ? form.customerEmail.trim() || undefined : undefined,
           customerPhone: !isInternal ? form.customerPhone.trim() || undefined : undefined,
-          customerReference: (!isInternal ? form.customerReference.trim() : form.internalReason.trim()) || undefined,
-          salesChannel: form.salesChannel.trim() || "admin",
-          paymentStatus: form.paymentStatus,
-          currency: form.currency.trim() || "USD",
+          customerReference: (!isInternal ? form.customerReference.trim() : undefined) || undefined,
+          salesChannel: isInternal ? "internal" : form.salesChannel.trim() || "admin",
+          paymentStatus: isInternal ? "pending" : form.paymentStatus,
+          currency: isInternal ? "USD" : form.currency.trim() || "USD",
           dispatchId: form.dispatchId.trim() || undefined,
           notes: [form.notes.trim(), isInternal ? `Motivo interno: ${form.internalReason.trim()}` : ""].filter(Boolean).join("\n") || undefined,
           items,
@@ -870,9 +935,13 @@ export function CommercialSection() {
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Nuevo pedido operativo</p>
-                <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Selecciona el tipo de pedido</h3>
+                <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                  {isInternalOrderType(form.customerType) ? "Pedido interno para inventario" : "Selecciona el tipo de pedido"}
+                </h3>
                 <p className="mt-1 max-w-2xl text-sm font-semibold text-slate-500">
-                  El tipo define qué campos se muestran y qué flujo tomará después: despacho, producción o inventario interno.
+                  {isInternalOrderType(form.customerType)
+                    ? "Crea una solicitud interna para fabricar unidades y enviarlas a producción. No es una venta."
+                    : "El tipo define qué campos se muestran y qué flujo tomará después: despacho, producción o inventario interno."}
                 </p>
               </div>
               <button
@@ -893,7 +962,7 @@ export function CommercialSection() {
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setForm((current) => ({ ...current, customerType: option.value }))}
+                      onClick={() => setForm((current) => applyOrderTypeChange(current, option.value))}
                       className={`rounded-3xl border p-4 text-left transition-all ${
                         active
                           ? "border-primary bg-primary/5 shadow-sm"
@@ -915,40 +984,43 @@ export function CommercialSection() {
                 </p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Code *</span>
-                  <input
-                    value={form.code}
-                    onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                    placeholder="COM-001"
-                  />
-                </label>
+              {!isInternalOrderType(form.customerType) ? (
+                <div className="grid gap-4 md:grid-cols-3">
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Code *</span>
+                    <input
+                      value={form.code}
+                      onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="COM-001"
+                    />
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Canal</span>
-                  <input
-                    value={form.salesChannel}
-                    onChange={(event) => setForm((current) => ({ ...current, salesChannel: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                    placeholder="admin"
-                  />
-                </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Canal</span>
+                    <input
+                      value={form.salesChannel}
+                      onChange={(event) => setForm((current) => ({ ...current, salesChannel: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="admin"
+                    />
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pago</span>
-                  <select
-                    value={form.paymentStatus}
-                    onChange={(event) => setForm((current) => ({ ...current, paymentStatus: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                    disabled={isInternalOrderType(form.customerType)}
-                  >
-                    <option value="pending">Pendiente</option>
-                    <option value="paid">Pagado</option>
-                  </select>
-                </label>
-              </div>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pago</span>
+                    <select
+                      value={form.paymentStatus}
+                      onChange={(event) => setForm((current) => ({ ...current, paymentStatus: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                    >
+                      <option value="pending">Pendiente</option>
+                      <option value="paid">Pagado</option>
+                    </select>
+                  </label>
+                </div>
+              ) : (
+                <p className="text-sm font-semibold text-slate-500">{buildInternalOrderCodeHint()}</p>
+              )}
 
               {form.customerType === "customer" && (
                 <div className="grid gap-4 md:grid-cols-2">
@@ -1036,11 +1108,28 @@ export function CommercialSection() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Producto a fabricar *</span>
-                    <input
-                      value={form.customerName}
-                      onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
+                    <select
+                      value={form.internalFinishedGoodId}
+                      onChange={(event) => setForm((current) => ({ ...current, internalFinishedGoodId: event.target.value }))}
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                      placeholder="Producto o catálogo a fabricar"
+                    >
+                      <option value="">Selecciona un producto base</option>
+                      {finishedGoods.map((finishedGood) => (
+                        <option key={finishedGood.id} value={finishedGood.id}>
+                          {finishedGood.name} · {finishedGood.code} · {getProductTypeLabel(finishedGood.productType)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Cantidad *</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.internalQuantity}
+                      onChange={(event) => setForm((current) => ({ ...current, internalQuantity: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="1"
                     />
                   </label>
                   <label className="space-y-2">
@@ -1058,42 +1147,39 @@ export function CommercialSection() {
                       <option value="Otro">Otro</option>
                     </select>
                   </label>
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500 md:col-span-2">
+                    Este pedido no crea despacho. Al crearlo, se enviará a producción para fabricar inventario.
+                  </div>
                 </div>
               )}
 
-              <details className="rounded-3xl border border-slate-200 bg-white p-4">
+              {!isInternalOrderType(form.customerType) && (
+                <details className="rounded-3xl border border-slate-200 bg-white p-4">
                 <summary className="cursor-pointer text-[10px] font-black uppercase tracking-widest text-slate-500">
                   Campos avanzados
                 </summary>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {!isInternalOrderType(form.customerType) ? (
-                    <>
-                      <label className="space-y-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Moneda</span>
-                        <input
-                          value={form.currency}
-                          onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value.toUpperCase() }))}
-                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                          placeholder="USD"
-                        />
-                      </label>
-                      <label className="space-y-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Referencia avanzada</span>
-                        <input
-                          value={form.customerReference}
-                          onChange={(event) => setForm((current) => ({ ...current, customerReference: event.target.value }))}
-                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
-                          placeholder="OC, contacto o documento"
-                        />
-                      </label>
-                    </>
-                  ) : (
-                    <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
-                      Los campos comerciales avanzados quedan ocultos para pedidos internos.
-                    </div>
-                  )}
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Moneda</span>
+                    <input
+                      value={form.currency}
+                      onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value.toUpperCase() }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="USD"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Referencia avanzada</span>
+                    <input
+                      value={form.customerReference}
+                      onChange={(event) => setForm((current) => ({ ...current, customerReference: event.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-primary"
+                      placeholder="OC, contacto o documento"
+                    />
+                  </label>
                 </div>
-              </details>
+                </details>
+              )}
 
               <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
                 {form.customerType === "customer" && "Si hay unidades disponibles, el pedido podrá reservarse y pasar a despacho. Si falta stock, se enviará a producción."}
@@ -1102,7 +1188,8 @@ export function CommercialSection() {
               </div>
             </div>
 
-            <div className="mt-6 space-y-3">
+            {!isInternalOrderType(form.customerType) ? (
+              <div className="mt-6 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Items</p>
@@ -1210,7 +1297,8 @@ export function CommercialSection() {
                   </div>
                 );
               })}
-            </div>
+              </div>
+            ) : null}
 
             <label className="mt-5 block space-y-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notas</span>
@@ -1221,6 +1309,12 @@ export function CommercialSection() {
                 placeholder="Notas internas del pedido comercial"
               />
             </label>
+
+            {isInternalOrderType(form.customerType) && (
+              <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                Este pedido no crea despacho. Al crearlo, se enviará a producción para fabricar inventario.
+              </div>
+            )}
 
             <div className="mt-6 flex flex-col-reverse gap-3 md:flex-row md:justify-end">
               <button
@@ -1237,7 +1331,7 @@ export function CommercialSection() {
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-                Crear pedido
+                {isInternalOrderType(form.customerType) ? "Crear pedido interno y enviar a producción" : "Crear pedido"}
               </button>
             </div>
           </form>

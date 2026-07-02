@@ -10,6 +10,31 @@ import {
 
 export const dynamic = "force-dynamic";
 
+async function generateCommercialOrderCode(
+  tx: Prisma.TransactionClient,
+  prefix: string
+) {
+  const existingCodes = await tx.operationCommercialOrder.findMany({
+    where: {
+      code: {
+        startsWith: `${prefix}-`,
+      },
+    },
+    select: { code: true },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+
+  let maxSequence = 0;
+  for (const order of existingCodes) {
+    const match = order.code.match(new RegExp(`^${prefix}-(\\d+)$`));
+    if (!match) continue;
+    maxSequence = Math.max(maxSequence, Number.parseInt(match[1], 10) || 0);
+  }
+
+  return `${prefix}-${String(maxSequence + 1).padStart(4, "0")}`;
+}
+
 const finishedGoodSelect = {
   id: true,
   code: true,
@@ -97,13 +122,31 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data;
   const createdById = auth.session.user.id || null;
-  const totalAmount = calculateCommercialOrderTotal(data.items);
-  const finishedGoodIds = [
-    ...new Set(data.items.map((item) => item.finishedGoodId).filter(Boolean)),
-  ] as string[];
 
   try {
     const commercialOrder = await prisma.$transaction(async (tx) => {
+      const customerType = data.customerType || "customer";
+      const isInternal = customerType === "internal";
+      const code = data.code?.trim() || (isInternal ? await generateCommercialOrderCode(tx, "INT") : null);
+      if (!code) {
+        throw new Error("COMMERCIAL_ORDER_CODE_REQUIRED");
+      }
+      const items = isInternal
+        ? [{
+            finishedGoodId: data.items[0]?.finishedGoodId || null,
+            productCode: data.items[0]?.productCode || null,
+            productName: data.items[0]?.productName || "Producto interno",
+            quantity: data.items[0]?.quantity || 1,
+            unitPrice: 0,
+            unit: "unit",
+            notes: data.items[0]?.notes || null,
+          }]
+        : data.items;
+      const totalAmount = calculateCommercialOrderTotal(items);
+      const finishedGoodIds = [
+        ...new Set(items.map((item) => item.finishedGoodId).filter(Boolean)),
+      ] as string[];
+
       if (finishedGoodIds.length > 0) {
         const finishedGoods = await tx.operationFinishedGood.findMany({
           where: { id: { in: finishedGoodIds } },
@@ -128,22 +171,22 @@ export async function POST(req: NextRequest) {
 
       return tx.operationCommercialOrder.create({
         data: {
-          code: data.code,
+          code,
           status: data.status || "draft",
-          customerType: data.customerType || "customer",
-          customerName: data.customerName || null,
-          customerEmail: data.customerEmail || null,
-          customerPhone: data.customerPhone || null,
-          customerReference: data.customerReference || null,
+          customerType,
+          customerName: isInternal ? null : data.customerName || null,
+          customerEmail: isInternal ? null : data.customerEmail || null,
+          customerPhone: isInternal ? null : data.customerPhone || null,
+          customerReference: isInternal ? data.customerReference || null : data.customerReference || null,
           salesChannel: data.salesChannel || "admin",
-          paymentStatus: data.paymentStatus || "pending",
+          paymentStatus: isInternal ? "pending" : data.paymentStatus || "pending",
           fulfillmentStatus: data.fulfillmentStatus || "pending",
           totalAmount,
-          currency: data.currency || "USD",
+          currency: isInternal ? "USD" : data.currency || "USD",
           dispatchId: data.dispatchId || null,
           notes: data.notes || null,
           items: {
-            create: data.items.map((item) => ({
+            create: items.map((item) => ({
               finishedGoodId: item.finishedGoodId || null,
               productCode: item.productCode || null,
               productName: item.productName,
@@ -160,8 +203,9 @@ export async function POST(req: NextRequest) {
               amount: totalAmount,
               reason: "Pedido comercial creado",
               metadataJson: JSON.stringify({
-                itemCount: data.items.length,
+                itemCount: items.length,
                 salesChannel: data.salesChannel || "admin",
+                customerType,
                 dispatchId: data.dispatchId || null,
               }),
               createdById,
@@ -195,6 +239,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Ya existe un pedido comercial con ese code" },
         { status: 409 }
+      );
+    }
+
+    if (error instanceof Error && error.message === "COMMERCIAL_ORDER_CODE_REQUIRED") {
+      return NextResponse.json(
+        { error: "El code es requerido para pedidos no internos" },
+        { status: 400 }
       );
     }
 
