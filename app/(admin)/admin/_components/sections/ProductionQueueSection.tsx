@@ -338,6 +338,41 @@ export default function ProductionQueueSection() {
           ? "qc"
           : "result";
 
+  const isUnitInQc = (unit: NonNullable<NonNullable<ProductionOrder["digitalItems"]>[number]["finishedGoodUnits"]>[number] | null) => {
+    if (!unit) return false;
+    return unit.qaStatus === "pending" && unit.status === "qa_pending";
+  };
+
+  const canPassQc = (unit: NonNullable<NonNullable<ProductionOrder["digitalItems"]>[number]["finishedGoodUnits"]>[number] | null) => {
+    if (!unit) return false;
+    if (!sentToQa) return false;
+    if (unit.qaStatus === "passed" || unit.qaStatus === "failed") return false;
+    if (unit.status === "available" || unit.status === "reserved" || unit.status === "qa_failed") return false;
+    return isUnitInQc(unit);
+  };
+
+  const canFailQc = (unit: NonNullable<NonNullable<ProductionOrder["digitalItems"]>[number]["finishedGoodUnits"]>[number] | null) => {
+    if (!unit) return false;
+    if (!sentToQa) return false;
+    if (unit.qaStatus === "passed" || unit.qaStatus === "failed") return false;
+    if (unit.status === "available" || unit.status === "reserved" || unit.status === "qa_failed") return false;
+    return isUnitInQc(unit);
+  };
+
+  const getQcDisabledMessage = (unit: NonNullable<NonNullable<ProductionOrder["digitalItems"]>[number]["finishedGoodUnits"]>[number] | null, action: "pass" | "fail") => {
+    if (!unit) return "Falta unidad trazable.";
+    if (!sentToQa) return "La orden todavía no fue enviada a QC.";
+    if (unit.qaStatus === "passed") return "La unidad ya fue aprobada en QC.";
+    if (unit.qaStatus === "failed") return "La unidad ya fue rechazada en QC.";
+    if (unit.status === "available" || unit.status === "reserved") return "La unidad ya salió de QC hacia inventario.";
+    if (unit.status === "qa_failed" && action === "pass") return "La unidad ya quedó rechazada en QC.";
+    if (unit.status !== "qa_pending") return "La unidad aún no está en QC.";
+    if (unit.qaStatus !== "pending") return "La unidad no está pendiente de QC.";
+    return action === "pass"
+      ? "La unidad ya no puede aprobarse."
+      : "La unidad ya no puede rechazarse.";
+  };
+
   useEffect(() => {
     setExpandedStages({
       identity: currentStage === "identity",
@@ -1035,20 +1070,28 @@ export default function ProductionQueueSection() {
                                   El inventario final se habilita solo con QC Pass. No se asigna usuario final desde Producción.
                                 </p>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => handleSendToQa(selectedProductionOrder)}
-                                disabled={!allAssembled || sentToQa}
-                                className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 disabled:opacity-50"
-                              >
-                                {savingDigitalKey === `${selectedProductionOrder.id}:send-to-qa` ? "Enviando..." : "Enviar a QC"}
-                              </button>
+                              {!sentToQa ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendToQa(selectedProductionOrder)}
+                                  disabled={!allAssembled}
+                                  className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 disabled:opacity-50"
+                                >
+                                  {savingDigitalKey === `${selectedProductionOrder.id}:send-to-qa` ? "Enviando..." : "Enviar a QC"}
+                                </button>
+                              ) : (
+                                <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-800">
+                                  Orden ya enviada a QC
+                                </span>
+                              )}
                             </div>
                             <div className="mt-3 grid gap-3">
                               {digitalItems.map((item) => {
                                 const unit = item.finishedGoodUnits?.[0] || null;
                                 const qaStatus = unit?.qaStatus || "pending";
                                 const inventoryStatus = unit?.status || "qa_pending";
+                                const passEnabled = canPassQc(unit);
+                                const failEnabled = canFailQc(unit);
                                 return (
                                   <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1060,14 +1103,20 @@ export default function ProductionQueueSection() {
                                         </p>
                                       </div>
                                       <div className="flex flex-wrap gap-2">
-                                        <button type="button" onClick={() => unit && handleQaPass(selectedProductionOrder, unit.id)} disabled={!unit || qaStatus === "passed"} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">
+                                        <button type="button" onClick={() => unit && handleQaPass(selectedProductionOrder, unit.id)} disabled={!passEnabled} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">
                                           {savingDigitalKey === `${unit?.id}:qa-pass` ? "Aprobando..." : "Pass QC"}
                                         </button>
-                                        <button type="button" onClick={() => unit && handleQaFail(selectedProductionOrder, unit.id)} disabled={!unit || qaStatus === "failed"} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800 disabled:opacity-50">
+                                        <button type="button" onClick={() => unit && handleQaFail(selectedProductionOrder, unit.id)} disabled={!failEnabled} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800 disabled:opacity-50">
                                           {savingDigitalKey === `${unit?.id}:qa-fail` ? "Marcando..." : "Fail QC"}
                                         </button>
                                       </div>
                                     </div>
+                                    {!passEnabled && (
+                                      <p className="mt-3 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "pass")}</p>
+                                    )}
+                                    {!failEnabled && (
+                                      <p className="mt-2 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "fail")}</p>
+                                    )}
                                   </div>
                                 );
                               })}

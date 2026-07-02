@@ -1,5 +1,20 @@
 # Notas post-produccion del Centro de Operaciones
 
+## W5.40M - Hotfix Pass/Fail QC dentro de Produccion
+
+- Se corrigio la habilitacion de acciones QC dentro de Produccion para unidades realmente en `qa_pending`.
+- `Pass QC` y `Fail QC` ahora usan el `unit.id` real de `OperationFinishedGoodUnit`.
+- Cuando la orden ya esta en QC, el boton repetido `Enviar a QC` deja de ser la accion principal y se reemplaza por el estado informativo `Orden ya enviada a QC`.
+- La lectura del bloqueo ahora explica por que una unidad no puede aprobarse o rechazarse, en lugar de dejar el boton muerto sin contexto.
+- El resultado final sigue respetando el origen operativo:
+  - pedido interno -> `available`
+  - pedido comercial/empresa -> `reserved`
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se toco activacion legacy.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+
 ## W5.40D - Simplificacion pantalla Produccion
 
 - Se simplifico la pantalla de Produccion para dejarla enfocada en ordenes reales y no en bloques didacticos o decorativos.

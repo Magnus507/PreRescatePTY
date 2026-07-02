@@ -18,6 +18,18 @@ Consolidar Produccion como la ventana principal donde nace cada unidad trazable,
 - El detalle de la orden ya concentra el trabajo operativo real por unidad.
 - La navegacion secundaria de Produccion se redujo a una unica entrada operativa.
 
+## W5.40M - Hotfix QC en Produccion
+
+- El flujo de Produccion mantiene el acordeon progresivo introducido en W5.40L.
+- La etapa QC ahora habilita `Pass QC` y `Fail QC` cuando la unidad esta en `qa_pending` con su `unit.id` real.
+- El boton `Enviar a QC` deja de competir visualmente con las acciones de QC cuando la orden ya esta en QC.
+- El inventario final sigue respetando el origen operativo:
+  - interno -> `available`
+  - comercial/empresa -> `reserved`
+- No se reabrio la pestaña `Calidad / QA`.
+- No se asigno usuario final desde Produccion.
+- No se creo despacho automatico.
+
 ## Seguridad de identidad
 
 - `shortCode` sigue siendo la identidad publica unica real.
@@ -35,4 +47,3 @@ Consolidar Produccion como la ventana principal donde nace cada unidad trazable,
 - No se toco activacion legacy.
 - No se activo desde operaciones.
 - No se asigno usuario final desde operaciones.
-
