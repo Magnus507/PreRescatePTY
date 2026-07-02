@@ -20,7 +20,7 @@ export async function POST(
     return NextResponse.json({ error: "Item de preparacion no encontrado" }, { status: 404 });
   }
   if (item.status !== "packaged") {
-    return NextResponse.json({ error: "La unidad debe estar empaquetada antes de cerrarla" }, { status: 400 });
+    return NextResponse.json({ error: "La unidad debe estar empaquetada antes de marcarla lista para QC" }, { status: 400 });
   }
 
   const existing = await prisma.operationFinishedGoodUnit.findUnique({

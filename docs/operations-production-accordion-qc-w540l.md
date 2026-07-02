@@ -14,6 +14,7 @@ Convertir Produccion en un flujo real por etapas, con QC dentro de la misma pant
   - resultado
 - La etapa actual se abre automaticamente y las anteriores se contraen.
 - Las etapas futuras permanecen ocultas hasta que corresponden.
+- `Marcar lista para QC` es la accion final de Ensamblaje fisico y crea o vincula la unidad trazable real.
 - `Pass QC` y `Fail QC` operan sobre la unidad trazable correcta.
 - La salida final sigue respetando el origen de la orden:
   - pedido interno -> `available`

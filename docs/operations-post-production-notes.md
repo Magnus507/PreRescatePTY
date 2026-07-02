@@ -1,5 +1,18 @@
 # Notas post-produccion del Centro de Operaciones
 
+## W5.40O - Lista para QC crea unidad trazable
+
+- La accion visible en Ensamblaje fisico paso a `Marcar lista para QC`.
+- Esa accion crea o vincula `OperationFinishedGoodUnit` y deja la unidad lista para revisarse en QC.
+- El estado resultante queda en `qa_pending` y no aprueba inventario por si mismo.
+- QC sigue siendo la etapa donde se aprueba o rechaza la unidad.
+- No se toco QR/link/NFC.
+- No se toco checkout legacy.
+- No se toco `Order` / `Product` legacy.
+- No se toco activacion legacy.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+
 ## W5.40M - Hotfix Pass/Fail QC dentro de Produccion
 
 - Se corrigio la habilitacion de acciones QC dentro de Produccion para unidades realmente en `qa_pending`.

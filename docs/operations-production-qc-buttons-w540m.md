@@ -17,6 +17,7 @@ Tambien seguia apareciendo `Enviar a QC` dentro del bloque QC aunque la orden ya
 - `Pass QC` y `Fail QC` usan el `unit.id` real de `OperationFinishedGoodUnit`.
 - QC ahora se presenta como etapa directa de revision, sin accion separada de envio.
 - Si una unidad no puede aprobarse o rechazarse, la UI muestra un motivo explicito.
+- La unidad trazable nace al marcar `lista para QC` desde Ensamblaje fisico.
 
 ## Resultado esperado
 

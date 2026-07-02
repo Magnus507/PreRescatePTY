@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Eliminar el lenguaje y la dependencia de "Enviar a QC" dentro de Produccion para que QC funcione como una etapa directa sobre la unidad trazable real.
+Eliminar el lenguaje de cierre ambiguo y dejar QC como una etapa directa sobre la unidad trazable real.
 
 ## Cambio aplicado
 
@@ -11,6 +11,7 @@ Eliminar el lenguaje y la dependencia de "Enviar a QC" dentro de Produccion para
 - La tarjeta de QC muestra la trazabilidad real de la unidad, incluyendo `id`, `internalLabel`, `shortCode`, `qaStatus`, `inventoryStatus`, `activationStatus` y `reservedOrderId`.
 - El estado `qa_pending` se interpreta como listo para revision QC.
 - Cuando falta trazabilidad real, la UI explica que el ensamblaje fisico debe cerrarse antes de QC.
+- La accion de Ensamblaje que genera la unidad trazable es `Marcar lista para QC`.
 
 ## Resultado esperado
 

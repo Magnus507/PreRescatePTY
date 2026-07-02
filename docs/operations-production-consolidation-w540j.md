@@ -13,6 +13,7 @@ Consolidar Produccion como la ventana principal donde nace cada unidad trazable,
   - imprenta
   - ensamblaje fisico
   - empaque
+  - marcar lista para QC
   - QC
   - salida a inventario
 - El detalle de la orden ya concentra el trabajo operativo real por unidad.

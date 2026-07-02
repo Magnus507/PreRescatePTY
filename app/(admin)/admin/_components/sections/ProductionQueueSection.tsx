@@ -97,7 +97,7 @@ type ProductionFlowStage = "identity" | "print" | "assembly" | "qc" | "result";
 const FLOW_STAGES: Array<{ id: ProductionFlowStage; title: string; description: string }> = [
   { id: "identity", title: "Identidad digital / QR / NFC", description: "Genera y valida shortCode, QR y NFC canónicos." },
   { id: "print", title: "Imprenta", description: "Envía la identidad digital a imprenta y confirma recepción." },
-  { id: "assembly", title: "Ensamblaje físico", description: "Completa chip, sticker y empaque por unidad." },
+  { id: "assembly", title: "Ensamblaje físico", description: "Completa chip, sticker y empaque por unidad y deja la unidad lista para QC." },
   { id: "qc", title: "QC de la orden", description: "Aprobación o rechazo por unidad dentro de Producción." },
   { id: "result", title: "Salida a inventario", description: "Muestra el resultado final de cada unidad." },
 ];
@@ -796,8 +796,8 @@ export default function ProductionQueueSection() {
       badge: printReceived ? "Recibida" : printSent ? "Enviada" : "Pendiente",
     },
     assembly: {
-      summary: `${digitalItems.filter((item) => item.status === "completed").length}/${digitalItems.length || 0} cerradas`,
-      badge: allAssembled ? "Cerrada" : "Activa",
+      summary: `${digitalItems.filter((item) => item.status === "completed").length}/${digitalItems.length || 0} listas para QC`,
+      badge: allAssembled ? "Lista para QC" : "Activa",
     },
     qc: {
       summary: hasQcResults ? "QC completado" : allAssembled ? "Listo para revisión" : "Bloqueada",
@@ -1006,11 +1006,11 @@ export default function ProductionQueueSection() {
                               <div>
                                 <p className="text-xs font-black uppercase tracking-widest text-slate-500">Ensamblaje físico</p>
                                 <p className="mt-1 text-sm font-semibold text-slate-600">
-                                  En esta etapa se completa chip + sticker, empaque y cierre final por unidad antes de enviar a QC.
+                                  En esta etapa se completa chip + sticker, empaque y la unidad queda lista para QC. No aprueba inventario.
                                 </p>
                               </div>
                               <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                                {digitalItems.filter((item) => item.status === "completed").length}/{digitalItems.length} cerradas
+                                {digitalItems.filter((item) => item.status === "completed").length}/{digitalItems.length} listas para QC
                               </span>
                             </div>
                             <div className="mt-4 grid gap-3">
@@ -1027,15 +1027,15 @@ export default function ProductionQueueSection() {
                                     <p>NFC programado: {item.nfcProgrammed ? "sí" : "no"}</p>
                                     <p>QR preparado: {item.qrPrepared ? "sí" : "no"}</p>
                                     <p>Ensamblaje físico: {item.status === "assembled" || item.status === "packaged" || item.status === "completed" ? "sí" : "no"}</p>
-                                    <p>Empaque cerrado: {item.status === "packaged" || item.status === "completed" ? "sí" : "no"}</p>
-                                    <p>Unidad cerrada: {item.status === "completed" ? "sí" : "no"}</p>
+                                    <p>Empaque etiquetado: {item.status === "packaged" || item.status === "completed" ? "sí" : "no"}</p>
+                                    <p>Lista para QC: {item.status === "completed" ? "sí" : "no"}</p>
                                   </div>
                                   <div className="mt-3 flex flex-wrap gap-2">
                                     <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")} disabled={Boolean(savingDigitalKey)} className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800 disabled:opacity-50">Marcar NFC</button>
                                     <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")} disabled={Boolean(savingDigitalKey)} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">Marcar QR</button>
                                     <button type="button" onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "assembled")} disabled={Boolean(savingDigitalKey) || item.status !== "printed"} className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-violet-800 disabled:opacity-50">Ensamblado</button>
                                     <button type="button" onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "packaging-completed")} disabled={Boolean(savingDigitalKey) || item.status !== "assembled"} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800 disabled:opacity-50">Empaque</button>
-                                    <button type="button" onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "complete")} disabled={Boolean(savingDigitalKey) || item.status !== "packaged"} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">Cerrar unidad</button>
+                                    <button type="button" onClick={() => handleMarkAssemblyStep(selectedProductionOrder.id, item.id, "complete")} disabled={Boolean(savingDigitalKey) || item.status !== "packaged"} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50">Marcar lista para QC</button>
                                   </div>
                                 </div>
                               ))}
