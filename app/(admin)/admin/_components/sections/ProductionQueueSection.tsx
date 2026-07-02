@@ -66,6 +66,12 @@ interface ProductionOrder {
     status: string;
     preparedAt: string | null;
     notes: string | null;
+    finishedGoodUnits?: Array<{
+      id: string;
+      qaStatus: string | null;
+      status: string;
+      reservedOrderId: string | null;
+    }>;
   }>;
   printOrders?: Array<{
     id: string;
@@ -667,6 +673,56 @@ export default function ProductionQueueSection() {
     }
   };
 
+  const handleQaPass = async (order: ProductionOrder, unitId: string) => {
+    setSavingDigitalKey(`${unitId}:qa-pass`);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${order.id}/qa/${unitId}/pass`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checklist: {
+            nfcWorks: true,
+            qrWorks: true,
+            internalLabelCorrect: true,
+            stickerCorrect: true,
+            packagingCorrect: true,
+            sealedReady: true,
+          },
+          notes: null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo aprobar QC");
+      toast.success("QC aprobado");
+      await Promise.all([loadProductionOrders({ silent: true }), loadPrintOrders()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al aprobar QC");
+    } finally {
+      setSavingDigitalKey(null);
+    }
+  };
+
+  const handleQaFail = async (order: ProductionOrder, unitId: string) => {
+    const reason = window.prompt("Motivo del QC fallido");
+    if (!reason) return;
+    setSavingDigitalKey(`${unitId}:qa-fail`);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${order.id}/qa/${unitId}/fail`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason, notes: null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo registrar QC fallido");
+      toast.success("QC fallido registrado");
+      await Promise.all([loadProductionOrders({ silent: true }), loadPrintOrders()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al registrar QC fallido");
+    } finally {
+      setSavingDigitalKey(null);
+    }
+  };
+
   const filtered = statusFilter ? queue.filter((o) => o.productionStatus === statusFilter) : queue;
 
   // If we're viewing a specific order's fabrication detail
@@ -840,6 +896,48 @@ export default function ProductionQueueSection() {
                   QC pendiente. Las unidades ya están listas para revisión de calidad. El inventario final se habilitará solo con QC Pass.
                 </div>
               )}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-widest text-slate-500">QC de la orden</p>
+              <div className="mt-3 grid gap-3">
+                {(selectedProductionOrder.digitalItems || []).map((item) => {
+                  const unit = item.finishedGoodUnits?.[0] || null;
+                  const qaStatus = unit?.qaStatus || "pending";
+                  const inventoryStatus = unit?.status || "qa_pending";
+                  return (
+                    <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <p className="font-mono text-xs font-black text-primary">{item.internalLabel}</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-500">{item.shortCode || "Sin shortCode"}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            QA: {qaStatus} · Inventario: {inventoryStatus} · {unit?.reservedOrderId ? `Pedido ${unit.reservedOrderId}` : "Sin reserva"}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleQaPass(selectedProductionOrder, unit?.id || "")}
+                            disabled={!unit || qaStatus === "passed"}
+                            className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
+                          >
+                            {savingDigitalKey === `${unit?.id}:qa-pass` ? "Aprobando..." : "Pass QC"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => unit && handleQaFail(selectedProductionOrder, unit.id)}
+                            disabled={!unit || qaStatus === "failed"}
+                            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800 disabled:opacity-50"
+                          >
+                            {savingDigitalKey === `${unit?.id}:qa-fail` ? "Marcando..." : "Fail QC"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </section>
         )}

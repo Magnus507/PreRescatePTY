@@ -278,3 +278,14 @@ Pendiente para W5.39G:
 - QC Pass / Fail.
 - Creación de inventario `available`.
 - Reserva o despacho posterior.
+
+## W5.39G — QC Pass / Fail y salida final a Inventario / Reserva
+
+- `QC Pass` termina una unidad como `available` o `reserved` según el origen.
+- `QC Fail` deja la unidad como `qa_failed`.
+- `reservedOrderId` se conserva para pedido cliente/empresa.
+- La activación sigue fuera de Producción.
+
+Pendiente para W5.39H:
+
+- despacho conectado al nuevo flujo.

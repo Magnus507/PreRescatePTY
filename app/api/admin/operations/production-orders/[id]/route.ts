@@ -22,6 +22,18 @@ export async function GET(
             material: true,
           },
         },
+        digitalItems: {
+          orderBy: [{ sequenceNumber: "asc" }, { internalLabel: "asc" }],
+          include: {
+            batch: true,
+            finishedGoodUnits: true,
+            printOrderItems: {
+              include: {
+                printOrder: true,
+              },
+            },
+          },
+        },
         events: {
           orderBy: { createdAt: "desc" },
           include: {

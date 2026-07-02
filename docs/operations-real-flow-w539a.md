@@ -66,3 +66,43 @@ Estados operativos usados:
 Observación:
 
 - El flujo deja las unidades listas para revisión de calidad. El paso de aprobación final queda para W5.39G.
+
+## W5.39G — QC Pass / Fail y salida final a Inventario / Reserva
+
+Este bloque cerró QC dentro de Producción.
+
+Endpoints:
+
+- `POST /api/admin/operations/production-orders/[id]/qa/[unitId]/pass`
+- `POST /api/admin/operations/production-orders/[id]/qa/[unitId]/fail`
+
+Checklist QC:
+
+- NFC lee correctamente.
+- QR abre pantalla correcta.
+- etiqueta interna coincide.
+- sticker correcto.
+- empaque correcto.
+- unidad sellada/lista.
+
+Reglas:
+
+- `QC Pass` es la única puerta hacia inventario operativo.
+- Si la producción viene de un pedido interno, la unidad pasa a `available`.
+- Si la producción viene de un pedido cliente/empresa, la unidad pasa a `reserved` y conserva `reservedOrderId`.
+- `QC Fail` deja la unidad en `qa_failed`.
+- No se crea despacho automáticamente.
+- No se asigna usuario final.
+- No se toca activación legacy.
+
+Eventos:
+
+- `QA_PASSED`
+- `QA_FAILED`
+- `INVENTORY_AVAILABLE`
+- `UNIT_RESERVED_FOR_ORDER`
+- `PRODUCTION_COMPLETED`
+
+Pendiente para W5.39H:
+
+- conectar despacho al flujo nuevo de QC.

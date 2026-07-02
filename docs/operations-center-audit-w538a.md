@@ -130,3 +130,15 @@ No forma parte de este bloque:
 - QC Pass.
 - Inventario `available`.
 - Usuario final.
+
+## W5.39G — QC Pass / Fail y salida final a Inventario / Reserva
+
+Se agregó el cierre de QC por unidad:
+
+- `Pass QC` para unidades internas y de pedido.
+- `Fail QC` con motivo obligatorio.
+- salida a `available` o `reserved` según origen.
+
+Pendiente:
+
+- despacho y activación.
