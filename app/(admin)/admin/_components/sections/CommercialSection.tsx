@@ -260,13 +260,13 @@ const EVENT_SUCCESS_COPY: Record<CommercialEventType, string> = {
 
 const ACTIONS_BY_STATUS: Record<string, Array<{ label: string; eventType: CommercialEventType; tone: string }>> = {
   draft: [
-    { label: "Confirmar", eventType: "CONFIRMED", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
-    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+    { label: "Aceptar pedido", eventType: "CONFIRMED", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
+    { label: "Rechazar pedido", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
   ],
   confirmed: [
-    { label: "Marcar pagado", eventType: "PAID", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
+    { label: "Marcar pago", eventType: "PAID", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
     { label: "Pago pendiente", eventType: "PAYMENT_PENDING", tone: "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100" },
-    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+    { label: "Cancelar pedido", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
   ],
 };
 
@@ -322,6 +322,20 @@ function getInternalProductionLabel(order: CommercialOrder) {
     return "Producción vinculada";
   }
   return "Sin producción vinculada";
+}
+
+function getCustomerTypeLabel(customerType: string) {
+  if (customerType === "enterprise") return "Empresa";
+  if (customerType === "internal") return "Interno";
+  if (customerType === "organization") return "Organización";
+  if (customerType === "point_of_sale") return "Punto de venta";
+  if (customerType === "other") return "Otro";
+  return "Cliente";
+}
+
+function getDeliveryReferenceLabel(order: CommercialOrder) {
+  if (order.customerReference?.trim()) return order.customerReference.trim();
+  return "Sin referencia de entrega";
 }
 
 export function CommercialSection() {
@@ -921,6 +935,35 @@ export function CommercialSection() {
                           </p>
                         </div>
                       </div>
+                      {!isInternalOrder(order) && (
+                        <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo</p>
+                            <p className="mt-1 font-bold text-slate-800">{getCustomerTypeLabel(order.customerType)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Contacto</p>
+                            <p className="mt-1 font-bold text-slate-800">{order.customerName || "Sin nombre"}</p>
+                            <p className="text-xs font-semibold text-slate-500">
+                              {order.customerEmail || order.customerPhone || "Sin datos de contacto"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Referencia de entrega</p>
+                            <p className="mt-1 font-bold text-slate-800">{getDeliveryReferenceLabel(order)}</p>
+                            <p className="text-xs font-semibold text-slate-500">Se usa como referencia operativa antes del despacho.</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pago</p>
+                            <p className="mt-1 font-bold text-slate-800">{PAYMENT_CONFIG[order.paymentStatus]?.label || order.paymentStatus}</p>
+                            <p className="text-xs font-semibold text-slate-500">
+                              {order.paymentStatus === "paid"
+                                ? "El pedido ya puede reservarse o despacharse."
+                                : "El pedido todavía depende de validación de pago."}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       <div className="mt-4 grid gap-2">
                         {order.items.map((item) => (
                           <div key={item.id} className="flex flex-col gap-2 rounded-2xl bg-white px-4 py-3 text-sm md:flex-row md:items-center md:justify-between">
@@ -982,7 +1025,7 @@ export function CommercialSection() {
                           className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 transition-all hover:bg-blue-100 disabled:opacity-50"
                         >
                           {reservationKey === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
-                          Reservar unidades
+                          Reservar etiqueta interna
                         </button>
                       )}
                       {!isInternalOrder(order) && productionNeed.needsProduction && order.status !== "cancelled" && (
