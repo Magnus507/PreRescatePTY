@@ -73,15 +73,15 @@
 
 - `ProductionQueueSection` es el principal candidato a limpieza visual.
 - La parte superior del `Panel operativo` todavía mezcla core, pedidos y postventa en una narrativa algo antigua.
-- `PediosSection` todavía muestra flujos de creación y gestión que pueden parecer `pedido -> QR -> imprenta`, cuando el flujo real ya está más repartido entre inventario, producción e imprenta.
+- `PedidosSection` todavía muestra flujos de creación y gestión que pueden parecer `pedido -> QR -> imprenta`, cuando el flujo real ya está más repartido entre inventario, producción e imprenta.
 - `PhysicalInventorySection` necesita una lectura más explícita de catálogo / inventario por estado vs. inventario físico histórico.
 
 ## Producción - análisis especial
 
 - La captura observada sí coincide con una zona conceptualmente vieja de la UI.
-- El texto `Produccion para Inventario PT` y la idea de `Produccion Bajo Pedido Empresa` son válidos como categorías, pero el bloque visual que enumera acciones como `Crear orden interna`, `Asignar chips`, `Descargar QR / arte` y `Enviar a imprenta` ya no comunica bien el flujo real.
+- El texto `Produccion para Inventario PT` y la idea de `Produccion Bajo Pedido Empresa` eran válidos como categorías históricas, pero el bloque visual que enumeraba acciones como `Crear orden interna`, `Asignar chips`, `Descargar QR / arte` y `Enviar a imprenta` ya no comunica bien el flujo real.
 - Esa parte está más cerca de una guía histórica o panel de ayuda que de la navegación operativa principal.
-- La UI de Producción debería enfocarse en:
+- W5.38B ya movió esa pantalla hacia un enfoque más correcto y ahora la UI de Producción se centra en:
   - órdenes de producción
   - ensamblaje de unidades desde lote digital / QR+link
   - estado de producción

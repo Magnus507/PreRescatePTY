@@ -127,9 +127,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   draft: { label: "Borrador", color: "bg-slate-50 border-slate-200 text-slate-700" },
   planned: { label: "Planificada", color: "bg-amber-50 border-amber-200 text-amber-800" },
-  started: { label: "Iniciada", color: "bg-purple-50 border-purple-200 text-purple-800" },
+  started: { label: "En proceso", color: "bg-purple-50 border-purple-200 text-purple-800" },
   paused: { label: "Pausada", color: "bg-orange-50 border-orange-200 text-orange-800" },
-  completed: { label: "Completada", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+  completed: { label: "Lista para QA", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
   cancelled: { label: "Cancelada", color: "bg-red-50 border-red-200 text-red-800" },
 };
 
@@ -551,10 +551,10 @@ export default function ProductionQueueSection() {
       {/* Header */}
       <div>
         <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
-          <Factory className="h-8 w-8 text-primary" /> Producción
+          <Factory className="h-8 w-8 text-primary" /> Producción y ensamblaje
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
-          Produccion para Inventario PT y produccion empresarial bajo pedido.
+          Convierte QR/link impresos en unidades físicas trazables. Toda unidad ensamblada queda pendiente de QA antes de entrar al inventario disponible.
         </p>
       </div>
 
@@ -618,10 +618,10 @@ export default function ProductionQueueSection() {
           <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
             <Factory className="mx-auto mb-4 h-10 w-10 text-slate-300" />
             <p className="text-sm font-black uppercase tracking-widest text-slate-400">
-              No hay ordenes de produccion registradas
+              Aún no hay órdenes de producción
             </p>
             <p className="mt-2 text-xs font-semibold text-slate-500">
-              Las ordenes creadas desde esta seccion apareceran aqui con trazabilidad por eventos.
+              Crea una orden cuando necesites ensamblar unidades desde QR/link impresos.
             </p>
           </div>
         ) : (
@@ -754,7 +754,10 @@ export default function ProductionQueueSection() {
         ) : filteredAssemblyCandidates.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
             <p className="text-sm font-black uppercase tracking-widest text-slate-400">
-              No hay items printed disponibles para ensamblar
+              No hay QR/link impresos disponibles para ensamblaje
+            </p>
+            <p className="mt-2 text-xs font-semibold text-slate-500">
+              Primero recibe una orden a imprenta.
             </p>
           </div>
         ) : (

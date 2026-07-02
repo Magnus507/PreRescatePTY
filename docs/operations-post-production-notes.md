@@ -7,6 +7,7 @@
 - Se detecto una deuda visual fuerte en Produccion por textos y diagramas conceptuales antiguos.
 - Se detectaron textos densos o parcialmente crudos en Pedidos, Inventario, QA, Despacho, Postventa y Historial.
 - Se documento el mapa actual de tabs, subtabs, hallazgos y un plan propuesto por bloques.
+- W5.38B atendio parcialmente el hallazgo de Produccion y reemplazo la narrativa vieja por flujo real de ensamblaje/QA.
 - No se toco backend.
 - No se tocaron endpoints.
 - No se tocaron payloads.
