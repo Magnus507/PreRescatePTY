@@ -15,7 +15,7 @@ Tambien seguia apareciendo `Enviar a QC` dentro del bloque QC aunque la orden ya
 
 - Se endurecio la validacion visual para habilitar QC solo cuando la unidad esta realmente en `qa_pending`.
 - `Pass QC` y `Fail QC` usan el `unit.id` real de `OperationFinishedGoodUnit`.
-- Cuando la orden ya esta enviada a QC, se muestra `Orden ya enviada a QC` en lugar de repetir la accion.
+- QC ahora se presenta como etapa directa de revision, sin accion separada de envio.
 - Si una unidad no puede aprobarse o rechazarse, la UI muestra un motivo explicito.
 
 ## Resultado esperado

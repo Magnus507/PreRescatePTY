@@ -4,7 +4,7 @@
 
 - Se corrigio la habilitacion de acciones QC dentro de Produccion para unidades realmente en `qa_pending`.
 - `Pass QC` y `Fail QC` ahora usan el `unit.id` real de `OperationFinishedGoodUnit`.
-- Cuando la orden ya esta en QC, el boton repetido `Enviar a QC` deja de ser la accion principal y se reemplaza por el estado informativo `Orden ya enviada a QC`.
+- QC se muestra como etapa directa de revision, sin depender de una accion separada de envio.
 - La lectura del bloqueo ahora explica por que una unidad no puede aprobarse o rechazarse, en lugar de dejar el boton muerto sin contexto.
 - El resultado final sigue respetando el origen operativo:
   - pedido interno -> `available`

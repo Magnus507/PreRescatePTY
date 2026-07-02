@@ -22,7 +22,7 @@ Consolidar Produccion como la ventana principal donde nace cada unidad trazable,
 
 - El flujo de Produccion mantiene el acordeon progresivo introducido en W5.40L.
 - La etapa QC ahora habilita `Pass QC` y `Fail QC` cuando la unidad esta en `qa_pending` con su `unit.id` real.
-- El boton `Enviar a QC` deja de competir visualmente con las acciones de QC cuando la orden ya esta en QC.
+- QC ya no depende de un boton de envio previo dentro de la misma etapa.
 - El inventario final sigue respetando el origen operativo:
   - interno -> `available`
   - comercial/empresa -> `reserved`

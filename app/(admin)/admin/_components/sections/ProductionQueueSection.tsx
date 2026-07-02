@@ -57,26 +57,27 @@ interface ProductionOrder {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  digitalItems?: Array<{
-    id: string;
-    batchId: string;
-    internalLabel: string;
-    shortCode: string | null;
+    digitalItems?: Array<{
+      id: string;
+      batchId: string;
+      internalLabel: string;
+      shortCode: string | null;
     activationUrl: string | null;
     qrUrl: string | null;
     nfcUrl: string | null;
     nfcProgrammed: boolean;
     qrPrepared: boolean;
-    status: string;
-    preparedAt: string | null;
-    notes: string | null;
-    finishedGoodUnits?: Array<{
-      id: string;
-      qaStatus: string | null;
       status: string;
-      reservedOrderId: string | null;
+      preparedAt: string | null;
+      notes: string | null;
+      finishedGoodUnits?: Array<{
+        id: string;
+        qaStatus: string | null;
+        status: string;
+        activationStatus: string | null;
+        reservedOrderId: string | null;
+      }>;
     }>;
-  }>;
   printOrders?: Array<{
     id: string;
     code: string;
@@ -325,7 +326,6 @@ export default function ProductionQueueSection() {
   const printSent = Boolean(printOrder && ["sent", "printed", "received"].includes(printOrder.status));
   const printReceived = Boolean(printOrder && ["received", "printed"].includes(printOrder.status));
   const allAssembled = hasDigitalItems && digitalItems.every((item) => item.status === "completed" || item.status === "qa_pending" || item.status === "qa_passed");
-  const sentToQa = Boolean(selectedProductionOrder && ["qa_pending", "qa_passed"].includes(selectedProductionOrder.status));
   const hasQcResults = hasDigitalItems && digitalItems.some((item) => item.finishedGoodUnits?.some((unit) => ["passed", "failed"].includes(unit.qaStatus || "")));
   const allCanonicalIdentities = hasDigitalItems && digitalItems.every((item) => buildProductionDigitalIdentity({ internalLabel: item.internalLabel, shortCode: item.shortCode }).canPrint && buildProductionDigitalIdentity({ internalLabel: item.internalLabel, shortCode: item.shortCode }).shortCode);
   const currentStage: ProductionFlowStage = !allDigitalReady
@@ -345,7 +345,6 @@ export default function ProductionQueueSection() {
 
   const canPassQc = (unit: NonNullable<NonNullable<ProductionOrder["digitalItems"]>[number]["finishedGoodUnits"]>[number] | null) => {
     if (!unit) return false;
-    if (!sentToQa) return false;
     if (unit.qaStatus === "passed" || unit.qaStatus === "failed") return false;
     if (unit.status === "available" || unit.status === "reserved" || unit.status === "qa_failed") return false;
     return isUnitInQc(unit);
@@ -353,15 +352,13 @@ export default function ProductionQueueSection() {
 
   const canFailQc = (unit: NonNullable<NonNullable<ProductionOrder["digitalItems"]>[number]["finishedGoodUnits"]>[number] | null) => {
     if (!unit) return false;
-    if (!sentToQa) return false;
     if (unit.qaStatus === "passed" || unit.qaStatus === "failed") return false;
     if (unit.status === "available" || unit.status === "reserved" || unit.status === "qa_failed") return false;
     return isUnitInQc(unit);
   };
 
   const getQcDisabledMessage = (unit: NonNullable<NonNullable<ProductionOrder["digitalItems"]>[number]["finishedGoodUnits"]>[number] | null, action: "pass" | "fail") => {
-    if (!unit) return "Falta unidad trazable.";
-    if (!sentToQa) return "La orden todavía no fue enviada a QC.";
+    if (!unit) return "La unidad todavía no fue creada como unidad trazable. Cierre ensamblaje físico antes de QC.";
     if (unit.qaStatus === "passed") return "La unidad ya fue aprobada en QC.";
     if (unit.qaStatus === "failed") return "La unidad ya fue rechazada en QC.";
     if (unit.status === "available" || unit.status === "reserved") return "La unidad ya salió de QC hacia inventario.";
@@ -722,21 +719,6 @@ export default function ProductionQueueSection() {
     }
   };
 
-  const handleSendToQa = async (order: ProductionOrder) => {
-    setSavingDigitalKey(`${order.id}:send-to-qa`);
-    try {
-      const res = await fetch(`/api/admin/operations/production-orders/${order.id}/send-to-qa`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo enviar a QC");
-      toast.success("Enviado a QC");
-      await Promise.all([loadProductionOrders({ silent: true }), loadPrintOrders()]);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al enviar a QC");
-    } finally {
-      setSavingDigitalKey(null);
-    }
-  };
-
   const handleQaPass = async (order: ProductionOrder, unitId: string) => {
     setSavingDigitalKey(`${unitId}:qa-pass`);
     try {
@@ -818,8 +800,8 @@ export default function ProductionQueueSection() {
       badge: allAssembled ? "Cerrada" : "Activa",
     },
     qc: {
-      summary: hasQcResults ? "QC completado" : sentToQa ? "Pendiente de aprobar" : "Bloqueada",
-      badge: hasQcResults ? "Resultados" : sentToQa ? "Abierta" : "Pendiente",
+      summary: hasQcResults ? "QC completado" : allAssembled ? "Listo para revisión" : "Bloqueada",
+      badge: hasQcResults ? "Resultados" : allAssembled ? "Abierta" : "Pendiente",
     },
     result: {
       summary: hasQcResults ? "Salida a inventario disponible" : "Aún sin resultados",
@@ -1070,24 +1052,13 @@ export default function ProductionQueueSection() {
                                   El inventario final se habilita solo con QC Pass. No se asigna usuario final desde Producción.
                                 </p>
                               </div>
-                              {!sentToQa ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendToQa(selectedProductionOrder)}
-                                  disabled={!allAssembled}
-                                  className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 disabled:opacity-50"
-                                >
-                                  {savingDigitalKey === `${selectedProductionOrder.id}:send-to-qa` ? "Enviando..." : "Enviar a QC"}
-                                </button>
-                              ) : (
-                                <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-800">
-                                  Orden ya enviada a QC
-                                </span>
-                              )}
+                              <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-800">
+                                {allAssembled ? "QC habilitado" : "Pendiente de cierre de ensamblaje"}
+                              </span>
                             </div>
                             <div className="mt-3 grid gap-3">
                               {digitalItems.map((item) => {
-                                const unit = item.finishedGoodUnits?.[0] || null;
+                                const unit = item.finishedGoodUnits?.find((entry) => entry.status === "qa_pending" || entry.qaStatus === "pending" || entry.qaStatus === "passed" || entry.qaStatus === "failed" || entry.status === "available" || entry.status === "reserved" || entry.status === "qa_failed") || item.finishedGoodUnits?.[0] || null;
                                 const qaStatus = unit?.qaStatus || "pending";
                                 const inventoryStatus = unit?.status || "qa_pending";
                                 const passEnabled = canPassQc(unit);
@@ -1099,7 +1070,10 @@ export default function ProductionQueueSection() {
                                         <p className="font-mono text-xs font-black text-primary">{item.internalLabel}</p>
                                         <p className="mt-1 text-sm font-semibold text-slate-500">{item.shortCode || "Sin shortCode"}</p>
                                         <p className="mt-1 text-xs font-semibold text-slate-500">
-                                          QA: {qaStatus} · Inventario: {inventoryStatus} · {unit?.reservedOrderId ? `Pedido ${unit.reservedOrderId}` : "Sin reserva"}
+                                          QA: {qaStatus} · Inventario: {inventoryStatus} · {unit?.activationStatus || "not_activated"} · {unit?.reservedOrderId ? `Pedido ${unit.reservedOrderId}` : "Sin reserva"}
+                                        </p>
+                                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                                          {unit ? `Unidad trazable: ${unit.id}` : "La unidad todavía no fue creada como unidad trazable. Cierre ensamblaje físico antes de QC."}
                                         </p>
                                       </div>
                                       <div className="flex flex-wrap gap-2">
@@ -1111,12 +1085,8 @@ export default function ProductionQueueSection() {
                                         </button>
                                       </div>
                                     </div>
-                                    {!passEnabled && (
-                                      <p className="mt-3 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "pass")}</p>
-                                    )}
-                                    {!failEnabled && (
-                                      <p className="mt-2 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "fail")}</p>
-                                    )}
+                                    {!passEnabled && <p className="mt-3 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "pass")}</p>}
+                                    {!failEnabled && <p className="mt-2 text-xs font-semibold text-slate-500">{getQcDisabledMessage(unit, "fail")}</p>}
                                   </div>
                                 );
                               })}
