@@ -242,3 +242,14 @@
 - No se toco checkout legacy ni `Order` / `Product` legacy.
 - No se uso `prisma db push`.
 - No se uso `prisma migrate reset`.
+
+## W5.39A - Flujo operativo real Pedidos → Producción → Inventario
+
+- Se agrego el endpoint `POST /api/admin/operations/commercial-orders/[id]/send-to-production` para crear o vincular una orden de produccion desde Pedidos.
+- La UI de Pedidos ahora expone la accion operativa `Enviar a producción` cuando detecta faltante de stock en los items.
+- La orden creada se registra con marcador trazable en `notes` para evitar duplicados obvios sin tocar Prisma.
+- Se documento el flujo en `docs/operations-real-flow-w539a.md`.
+- No se usó `prisma db push`.
+- No se usó `prisma migrate reset`.
+- No se tocaron migraciones historicas.
+- No se toco checkout legacy ni `Order` / `Product` legacy.

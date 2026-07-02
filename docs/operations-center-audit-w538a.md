@@ -102,6 +102,7 @@
 
 - `W5.38B` atendio el hallazgo de Produccion con una limpieza visual parcial/sustancial.
 - `W5.38C` esta atendiendo el hallazgo de Inventario separando catalogo, recursos digitales y unidades trazables.
+- `W5.39A` atiende el rediseño de flujo real detectado tras la auditoria, conectando Pedidos con Produccion cuando falta stock.
 
 ## Confirmaciones
 

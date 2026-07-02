@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   CreditCard,
+  Factory,
   Loader2,
   PackageCheck,
   Plus,
@@ -44,6 +45,13 @@ interface CommercialOrderItem {
   unit: string;
   notes: string | null;
   finishedGood: FinishedGoodOption | null;
+}
+
+function getProductTypeLabel(productType: string | null | undefined) {
+  if (!productType) return "Sin tipo";
+  if (productType === "sticker_nfc_qr") return "Sticker NFC/QR";
+  if (productType === "sticker_empresarial") return "Sticker empresarial";
+  return productType;
 }
 
 interface CommercialOrder {
@@ -543,6 +551,25 @@ export function CommercialSection() {
     }
   };
 
+  const handleSendToProduction = async (order: CommercialOrder) => {
+    setSavingEventKey(`${order.id}:SEND_TO_PRODUCTION`);
+    try {
+      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/send-to-production`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo enviar a produccion");
+      }
+      toast.success(data.created ? "Orden enviada a producción" : "Producción ya vinculada");
+      await loadOrders({ silent: true });
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Error al enviar a producción"));
+    } finally {
+      setSavingEventKey(null);
+    }
+  };
+
   const getActionsForOrder = (order: CommercialOrder) => {
     if (order.status === "cancelled") {
       return order.paymentStatus === "paid"
@@ -570,6 +597,18 @@ export function CommercialSection() {
         tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100",
       },
     ];
+  };
+
+  const getProductionNeed = (order: CommercialOrder) => {
+    const missing = order.items.reduce((sum, item) => {
+      const balance = item.finishedGood?.balance ?? 0;
+      return balance >= item.quantity ? sum : sum + (item.quantity - balance);
+    }, 0);
+
+    return {
+      needsProduction: missing > 0,
+      missing,
+    };
   };
 
   return (
@@ -641,6 +680,7 @@ export function CommercialSection() {
           <div className="space-y-4">
             {orders.map((order) => {
               const actions = getActionsForOrder(order);
+              const productionNeed = getProductionNeed(order);
 
               return (
                 <article key={order.id} className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
@@ -683,6 +723,8 @@ export function CommercialSection() {
                               <p className="font-black text-slate-900">{item.productName}</p>
                               <p className="text-xs font-semibold text-slate-500">
                                 {item.productCode || item.finishedGood?.code || "Producto sin codigo"} · {item.quantity} {item.unit}
+                                {" · "}
+                                {getProductTypeLabel(item.finishedGood?.productType)}
                                 {typeof item.finishedGood?.balance === "number" ? ` · balance ${item.finishedGood.balance}` : ""}
                               </p>
                             </div>
@@ -723,6 +765,17 @@ export function CommercialSection() {
                         {reservationKey === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
                         Reservar unidades
                       </button>
+                      {productionNeed.needsProduction && order.status !== "cancelled" && (
+                        <button
+                          type="button"
+                          onClick={() => handleSendToProduction(order)}
+                          disabled={Boolean(savingEventKey)}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-violet-800 transition-all hover:bg-violet-100 disabled:opacity-50"
+                        >
+                          {savingEventKey === `${order.id}:SEND_TO_PRODUCTION` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Factory className="h-4 w-4" />}
+                          Enviar a producción
+                        </button>
+                      )}
                       {(order.fulfillmentStatus === "reserved" || order.status === "stock_reserved") && (
                         <button
                           type="button"
