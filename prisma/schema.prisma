@@ -985,7 +985,7 @@ model OperationDigitalBatchItem {
   qrUrl                String
   nfcUrl               String?
   activationUrl        String?
-  shortCode            String?
+  shortCode            String?               @unique
   status               String                @default("available")
   nfcProgrammed        Boolean               @default(false)
   qrPrepared           Boolean               @default(false)

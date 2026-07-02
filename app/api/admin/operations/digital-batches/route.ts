@@ -8,6 +8,7 @@ import {
   getFirstValidationMessage,
 } from "./digital-batches.helpers";
 import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
+import { generateUniqueDigitalShortCode } from "@/lib/operations/generate-digital-short-code";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,23 @@ export async function POST(req: NextRequest) {
 
   try {
     const quantity = data.endNumber - data.startNumber + 1;
+    const itemsData = [];
+    for (let index = 0; index < quantity; index += 1) {
+      const sequenceNumber = data.startNumber + index;
+      const internalLabel = buildInternalLabel(data.prefix, sequenceNumber);
+      const shortCode = await generateUniqueDigitalShortCode();
+      const identity = buildProductionDigitalIdentity({ internalLabel, shortCode });
+      itemsData.push({
+        internalLabel,
+        sequenceNumber,
+        qrUrl: identity.qrImageUrl || "",
+        nfcUrl: identity.nfcUrl,
+        activationUrl: identity.activationFallbackUrl,
+        shortCode,
+        status: "available",
+      });
+    }
+
     const batch = await prisma.operationDigitalBatch.create({
       data: {
         code: data.code,
@@ -80,22 +98,7 @@ export async function POST(req: NextRequest) {
         status: "draft",
         notes: data.notes || null,
         items: {
-          createMany: {
-            data: Array.from({ length: quantity }, (_, index) => {
-              const sequenceNumber = data.startNumber + index;
-              const internalLabel = buildInternalLabel(data.prefix, sequenceNumber);
-              const identity = buildProductionDigitalIdentity({ internalLabel });
-              return {
-                internalLabel,
-                sequenceNumber,
-                qrUrl: identity.qrImageUrl || "",
-                nfcUrl: identity.nfcUrl,
-                activationUrl: identity.activationFallbackUrl,
-                shortCode: null,
-                status: "available",
-              };
-            }),
-          },
+          createMany: { data: itemsData },
         },
       },
       include: { items: { select: itemSelect, orderBy: { sequenceNumber: "asc" } } },

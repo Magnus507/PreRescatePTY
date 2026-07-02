@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { buildInternalLabel } from "../../../digital-batches/digital-batches.helpers";
 import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
+import { generateUniqueDigitalShortCode } from "@/lib/operations/generate-digital-short-code";
 
 export const dynamic = "force-dynamic";
 
@@ -81,11 +82,36 @@ export async function POST(
       const createdItems = [];
       const requestOrigin = req.headers.get("origin");
 
+      for (const item of productionOrder.digitalItems) {
+        if (item.shortCode || item.status === "printed" || item.status === "assembled" || item.status === "packaged") {
+          continue;
+        }
+
+        const shortCode = await generateUniqueDigitalShortCode();
+        const identity = buildProductionDigitalIdentity({
+          internalLabel: item.internalLabel,
+          shortCode,
+          requestOrigin,
+        });
+
+        await tx.operationDigitalBatchItem.update({
+          where: { id: item.id },
+          data: {
+            shortCode,
+            activationUrl: item.activationUrl || identity.activationFallbackUrl,
+            qrUrl: identity.qrImageUrl || item.qrUrl || "",
+            nfcUrl: identity.nfcUrl || item.nfcUrl,
+          },
+        });
+      }
+
       for (let index = 0; index < missingCount; index += 1) {
         const sequenceNumber = nextSequenceNumber + index + 1;
         const internalLabel = buildInternalLabel(batch.prefix, sequenceNumber);
+        const shortCode = await generateUniqueDigitalShortCode();
         const identity = buildProductionDigitalIdentity({
           internalLabel,
+          shortCode,
           requestOrigin,
         });
         const created = await tx.operationDigitalBatchItem.create({
@@ -97,7 +123,7 @@ export async function POST(
             qrUrl: identity.qrImageUrl || "",
             nfcUrl: identity.nfcUrl,
             activationUrl: identity.activationFallbackUrl,
-            shortCode: null,
+            shortCode,
             nfcProgrammed: false,
             qrPrepared: false,
             preparedAt,
@@ -115,29 +141,6 @@ export async function POST(
             quantity: existingCount + missingCount,
             endNumber: Math.max(existingBatch.endNumber, existingBatch.startNumber + existingCount + missingCount - 1),
             status: existingBatch.status === "draft" ? "generated" : existingBatch.status,
-          },
-        });
-      }
-
-      for (const item of productionOrder.digitalItems) {
-        if (item.productionOrderId === productionOrderId) continue;
-        const identity = buildProductionDigitalIdentity({
-          internalLabel: item.internalLabel,
-          requestOrigin,
-        });
-        await tx.operationDigitalBatchItem.update({
-          where: { id: item.id },
-          data: {
-            productionOrderId,
-            shortCode: item.shortCode && item.shortCode !== item.internalLabel ? item.shortCode : null,
-            activationUrl: item.activationUrl || identity.activationFallbackUrl,
-            qrUrl: item.qrUrl || identity.qrImageUrl || "",
-            nfcUrl: item.nfcUrl || identity.nfcUrl,
-            nfcProgrammed: false,
-            qrPrepared: false,
-            preparedAt,
-            preparedBy: createdById,
-            status: "generated",
           },
         });
       }
