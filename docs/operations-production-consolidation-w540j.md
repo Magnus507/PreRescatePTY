@@ -48,3 +48,10 @@ Consolidar Produccion como la ventana principal donde nace cada unidad trazable,
 - No se toco activacion legacy.
 - No se activo desde operaciones.
 - No se asigno usuario final desde operaciones.
+
+## Inventario trazable
+
+- La salida de Produccion sigue terminando en unidades fisicas trazables.
+- `available` sigue significando listo para reserva operativa.
+- `reserved` sigue significando reservado para pedido, no usuario final.
+- El `shortCode` sigue siendo canónico y no se regenera en Inventario.

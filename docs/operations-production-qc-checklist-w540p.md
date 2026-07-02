@@ -20,3 +20,10 @@
 - No se asigna usuario final.
 - No se activa desde Operaciones.
 - No se crea despacho automaticamente.
+
+## Inventario trazable
+
+- QC deja la unidad lista para Inventario como unidad fisica trazable.
+- `available` es reserva habilitada, no activacion.
+- `reserved` sigue siendo una reserva operativa, no usuario final.
+- `delivered` con `not_activated` sigue siendo una alerta operativa visible.

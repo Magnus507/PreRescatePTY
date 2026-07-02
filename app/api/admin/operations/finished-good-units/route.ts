@@ -18,8 +18,14 @@ export async function GET(req: NextRequest) {
 
   const searchParams = req.nextUrl.searchParams;
   const status = searchParams.get("status") || undefined;
+  const inventoryStatus = searchParams.get("inventoryStatus") || undefined;
+  const qaStatus = searchParams.get("qaStatus") || undefined;
   const productType = searchParams.get("productType") || undefined;
   const productCode = searchParams.get("productCode") || undefined;
+  const finishedGoodId = searchParams.get("finishedGoodId") || undefined;
+  const productionOrderId = searchParams.get("productionOrderId") || undefined;
+  const internalLabel = searchParams.get("internalLabel") || undefined;
+  const shortCode = searchParams.get("shortCode") || undefined;
   const activationStatus = searchParams.get("activationStatus") || undefined;
   const reservedOrderId = searchParams.get("reservedOrderId") || undefined;
   const deliveredPendingActivation = searchParams.get("deliveredPendingActivation") === "true";
@@ -27,15 +33,29 @@ export async function GET(req: NextRequest) {
 
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
+  if (inventoryStatus) where.status = inventoryStatus;
+  if (qaStatus) where.qaStatus = qaStatus;
   if (productType) where.productType = productType;
   if (productCode) where.productCode = productCode;
+  if (finishedGoodId) where.digitalBatchItemId = finishedGoodId;
+  if (productionOrderId) where.digitalBatchItem = { productionOrderId };
+  if (internalLabel) where.internalLabel = { contains: internalLabel, mode: "insensitive" };
+  if (shortCode) where.digitalBatchItem = { ...(where.digitalBatchItem as Record<string, unknown> || {}), shortCode: { contains: shortCode, mode: "insensitive" } };
   if (activationStatus) where.activationStatus = activationStatus;
   if (reservedOrderId) where.reservedOrderId = reservedOrderId;
   if (deliveredPendingActivation) {
     where.status = "delivered";
     where.activationStatus = "not_activated";
   }
-  if (search) where.internalLabel = { contains: search, mode: "insensitive" };
+  if (search) {
+    where.OR = [
+      { internalLabel: { contains: search, mode: "insensitive" } },
+      { shortCode: { contains: search, mode: "insensitive" } },
+      { productCode: { contains: search, mode: "insensitive" } },
+      { productName: { contains: search, mode: "insensitive" } },
+      { reservedOrderId: { contains: search, mode: "insensitive" } },
+    ];
+  }
 
   try {
     const units = await prisma.operationFinishedGoodUnit.findMany({
@@ -43,17 +63,27 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
       include: {
         digitalBatch: true,
-        digitalBatchItem: true,
-        printOrder: true,
+        digitalBatchItem: {
+          include: {
+            productionOrder: { select: { id: true, code: true, status: true } },
+          },
+        },
+        printOrder: { select: { id: true, code: true, status: true } },
         events: { orderBy: { createdAt: "asc" } },
       },
     });
     const normalizedUnits = units.map((unit) => {
       const deliveredPendingActivation = isDeliveredPendingActivation(unit);
+      const productionOrder = unit.digitalBatchItem?.productionOrder || null;
       return {
         ...unit,
+        inventoryStatus: unit.status,
         deliveredPendingActivation,
         alertLabel: deliveredPendingActivation ? "Entregado, pendiente de activación" : null,
+        productionOrderId: productionOrder?.id || null,
+        productionOrderCode: productionOrder?.code || null,
+        productionOrderStatus: productionOrder?.status || null,
+        lastEvent: unit.events.at(-1) || null,
       };
     });
 

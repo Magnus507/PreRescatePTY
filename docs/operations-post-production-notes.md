@@ -350,6 +350,14 @@
 - No se usó `prisma db push`.
 - No se usó `prisma migrate reset`.
 - No se tocaron migraciones historicas.
+
+## Inventario trazable
+
+- El inventario operativo real sigue viviendo en `OperationFinishedGoodUnit`.
+- `available` significa disponible para reserva de pedido, no asignación final.
+- `reserved` significa reservado para pedido, no usuario final.
+- `delivered` con `not_activated` sigue siendo un estado operativo visible.
+- El QR / shortCode / NFC siguen siendo canónicos y no se editan desde Inventario.
 - No se toco checkout legacy ni `Order` / `Product` legacy.
 
 ## W5.39B - Preparación digital por orden de producción

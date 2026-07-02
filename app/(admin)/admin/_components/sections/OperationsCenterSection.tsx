@@ -218,7 +218,7 @@ export function OperationsCenterSection({
   role,
 }: OperationsCenterSectionProps) {
   const [activeTab, setActiveTab] = useState<OperationsTab>("overview");
-  const [inventoryTab, setInventoryTab] = useState<InventoryTab>("summary");
+  const [inventoryTab, setInventoryTab] = useState<InventoryTab>("units");
   const [productionTab, setProductionTab] = useState<ProductionTab>("orders");
   const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
   const [dashboard, setDashboard] = useState<OperationsDashboardSummary | null>(null);
