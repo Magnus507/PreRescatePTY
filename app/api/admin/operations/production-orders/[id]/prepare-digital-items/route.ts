@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { buildInternalLabel, buildInternalUrl } from "../../../digital-batches/digital-batches.helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,9 @@ export async function POST(
         include: {
           digitalItems: {
             orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
+            include: {
+              batch: true,
+            },
           },
         },
       });
@@ -46,28 +50,72 @@ export async function POST(
         };
       }
 
-      const candidateItems = await tx.operationDigitalBatchItem.findMany({
-        where: {
-          productionOrderId: null,
-          status: { in: ["available", "generated"] },
-          batch: {
+      const existingBatch = productionOrder.digitalItems[0]?.batch || null;
+      const batch =
+        existingBatch ||
+        (await tx.operationDigitalBatch.create({
+          data: {
+            code: `PROD-${productionOrder.code}-${productionOrder.id.slice(0, 8)}`,
+            name: `Lote digital ${productionOrder.code}`,
             productType: productionOrder.outputType,
+            finishedGoodCode: null,
+            prefix: productionOrder.code.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "PROD",
+            startNumber: 1,
+            endNumber: Math.max(targetQuantity, 1),
+            quantity: Math.max(targetQuantity, 1),
+            status: "generated",
+            notes: JSON.stringify({
+              productionOrderId,
+              source: "production-order-prepare-digital-items",
+            }),
           },
-        },
-        orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
-        take: missingCount,
-      });
+        }));
 
-      if (candidateItems.length < missingCount) {
-        throw new Error("INSUFFICIENT_DIGITAL_ITEMS");
-      }
-
+      const nextSequenceNumber = productionOrder.digitalItems.reduce(
+        (max, item) => Math.max(max, item.sequenceNumber),
+        0
+      );
       const preparedAt = new Date();
       const createdById = auth.session.user.id || null;
+      const createdItems = [];
 
-      const updatedItems = [];
-      for (const item of candidateItems) {
-        const updated = await tx.operationDigitalBatchItem.update({
+      for (let index = 0; index < missingCount; index += 1) {
+        const sequenceNumber = nextSequenceNumber + index + 1;
+        const internalLabel = buildInternalLabel(batch.prefix, sequenceNumber);
+        const created = await tx.operationDigitalBatchItem.create({
+          data: {
+            batchId: batch.id,
+            productionOrderId,
+            internalLabel,
+            sequenceNumber,
+            qrUrl: buildInternalUrl("/digital-batches/qr", internalLabel),
+            nfcUrl: buildInternalUrl("/digital-batches/nfc", internalLabel),
+            activationUrl: buildInternalUrl("/activar", internalLabel),
+            shortCode: internalLabel,
+            nfcProgrammed: false,
+            qrPrepared: false,
+            preparedAt,
+            preparedBy: createdById,
+            status: "generated",
+          },
+        });
+        createdItems.push(created);
+      }
+
+      if (existingBatch) {
+        await tx.operationDigitalBatch.update({
+          where: { id: existingBatch.id },
+          data: {
+            quantity: existingCount + missingCount,
+            endNumber: Math.max(existingBatch.endNumber, existingBatch.startNumber + existingCount + missingCount - 1),
+            status: existingBatch.status === "draft" ? "generated" : existingBatch.status,
+          },
+        });
+      }
+
+      for (const item of productionOrder.digitalItems) {
+        if (item.productionOrderId === productionOrderId) continue;
+        await tx.operationDigitalBatchItem.update({
           where: { id: item.id },
           data: {
             productionOrderId,
@@ -80,18 +128,18 @@ export async function POST(
             status: "generated",
           },
         });
-        updatedItems.push(updated);
       }
 
       await tx.operationProductionEvent.create({
         data: {
           productionOrderId,
           eventType: "DIGITAL_PREPARATION_CREATED",
-          quantity: updatedItems.length,
+          quantity: missingCount,
           reason: "Preparacion digital creada",
           metadataJson: JSON.stringify({
             productionOrderId,
-            createdItemIds: updatedItems.map((item) => item.id),
+            createdItemIds: createdItems.map((item) => item.id),
+            batchId: batch.id,
           }),
           createdById,
         },
@@ -115,7 +163,7 @@ export async function POST(
 
       return {
         productionOrder: refreshed,
-        createdItems: updatedItems,
+        createdItems,
         existingCount,
         targetQuantity,
         inconsistent: false,
@@ -128,10 +176,6 @@ export async function POST(
 
     return NextResponse.json({ preparation: result }, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "INSUFFICIENT_DIGITAL_ITEMS") {
-      return NextResponse.json({ error: "No hay suficientes recursos digitales disponibles para preparar" }, { status: 409 });
-    }
-
     console.error("[operations/production-orders/:id/prepare-digital-items] POST error:", error);
     return NextResponse.json({ error: "Error al preparar recursos digitales" }, { status: 500 });
   }

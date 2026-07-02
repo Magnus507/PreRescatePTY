@@ -338,5 +338,16 @@ Pendiente para W5.39L:
 ## W5.39L — Smoke completo punta a punta
 
 - El smoke validó producción, QC, inventario y despacho con prefijo aislado.
+
+## W5.40E - Generacion de lote digital desde Produccion
+
+- La preparacion digital ahora crea o reutiliza el lote digital de la orden cuando no existen items suficientes.
+- Cada item nuevo queda vinculado a `productionOrderId` con `internalLabel`, `shortCode`, `activationUrl`, `qrUrl` y `nfcUrl` consistentes.
+- La UI de Produccion ahora habla de `Generar QR/link de produccion` o `Actualizar preparacion digital` segun el estado real de la orden.
+- El bloque muestra el estado de NFC y QR por unidad, y mantiene `Enviar a imprenta` bloqueado hasta que todas las lineas esten completas.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se tocaron migraciones historicas.
+- No se toco checkout legacy ni `Order` / `Product` legacy.
 - La limpieza automática dejó `remainingSmokeRecords = 0`.
 - No hubo activación ni usuario final desde operaciones.

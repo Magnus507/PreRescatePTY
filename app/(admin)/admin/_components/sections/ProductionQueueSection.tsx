@@ -210,6 +210,8 @@ export default function ProductionQueueSection() {
     const ready = items.filter((item) => item.nfcProgrammed && item.qrPrepared).length;
     return { total: items.length, ready };
   }, [selectedProductionOrder]);
+  const digitalPreparationLabel = digitalProgress.total > 0 ? "Actualizar preparación digital" : "Generar QR/link de producción";
+  const digitalPreparationEmpty = digitalProgress.total === 0;
 
   const printOrder = useMemo(() => {
     const batchId = selectedProductionOrder?.digitalItems?.[0]?.batchId;
@@ -634,14 +636,18 @@ export default function ProductionQueueSection() {
                 className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-violet-800 disabled:opacity-50"
               >
                 {preparingDigitalOrderId === selectedProductionOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Preparar recursos digitales
+                {digitalPreparationLabel}
               </button>
             </div>
 
             <div className="mt-4 flex items-center gap-3 text-sm font-semibold text-slate-600">
               <span>Progreso:</span>
               <span className="font-black text-slate-950">{digitalProgress.ready}/{digitalProgress.total}</span>
-              <span className="text-slate-400">Lista para imprenta cuando todas las líneas estén completas.</span>
+              <span className="text-slate-400">
+                {digitalPreparationEmpty
+                  ? "Aún no hay QR/link generados para esta orden. Genera los recursos digitales para crear las etiquetas internas y programar los NFC."
+                  : "Recursos digitales generados para esta orden. Programa cada NFC con su link y marca el QR como preparado."}
+              </span>
             </div>
 
             <div className="mt-4 grid gap-3">
@@ -655,13 +661,13 @@ export default function ProductionQueueSection() {
                       <div>
                         <p className="text-sm font-black text-slate-950">{item.internalLabel}</p>
                         <p className="mt-1 text-xs font-semibold text-slate-500">
-                          {item.shortCode || "Sin shortCode"} · {item.activationUrl || "Sin link"}
+                          {item.shortCode || "Sin shortCode"} · {item.activationUrl || "Sin link"} · {item.nfcProgrammed ? "NFC programado" : "NFC pendiente"} · {item.qrPrepared ? "QR preparado" : "QR pendiente"}
                         </p>
                       </div>
                       <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
                         ready ? "border-emerald-200 bg-emerald-50 text-emerald-800" : partial ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-white text-slate-700"
                       }`}>
-                        {badge}
+                        {badge === "Lista para imprenta" ? "Lista para imprenta" : badge}
                       </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -670,7 +676,7 @@ export default function ProductionQueueSection() {
                         onClick={() => item.activationUrl && navigator.clipboard.writeText(item.activationUrl)}
                         className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700"
                       >
-                        Copiar link
+                        Copiar link de activación
                       </button>
                       <button
                         type="button"
@@ -699,9 +705,9 @@ export default function ProductionQueueSection() {
                 <div>
                   <p className="text-xs font-black uppercase tracking-widest text-slate-500">Orden a imprenta</p>
                   <p className="mt-1 text-sm font-semibold text-slate-600">
-                    Esta acción envía los QR/link preparados a imprenta. No crea inventario ni asigna usuario final.
-                  </p>
-                </div>
+                  Esta acción envía los QR/link preparados a imprenta. No crea inventario ni asigna usuario final, y solo queda habilitada cuando todas las líneas están completas.
+                </p>
+              </div>
                 <button
                   type="button"
                   onClick={() => handleSendToPrint(selectedProductionOrder)}
