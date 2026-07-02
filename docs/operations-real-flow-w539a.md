@@ -41,3 +41,28 @@ Pedidos → Producción → preparación digital → imprenta → recepción →
 ## Nota
 
 Este documento complementa la auditoría visual y las notas post-producción previas.
+## W5.39C-D-E-F — Imprenta, recepción, ensamblaje físico y envío a QC
+
+- `POST /api/admin/operations/production-orders/[id]/send-to-print`
+- `POST /api/admin/operations/production-orders/[id]/mark-print-received`
+- `POST /api/admin/operations/production-orders/[id]/unit-assembly/[preparationId]/assembled`
+- `POST /api/admin/operations/production-orders/[id]/unit-assembly/[preparationId]/packaging-completed`
+- `POST /api/admin/operations/production-orders/[id]/unit-assembly/[preparationId]/complete`
+- `POST /api/admin/operations/production-orders/[id]/send-to-qa`
+
+Reglas vigentes:
+
+- No se crea inventario `available` todavía.
+- No se asigna usuario final.
+- No se ejecuta QC Pass en este bloque.
+- No se hace despacho.
+
+Estados operativos usados:
+
+- `sent_to_print`
+- `print_received`
+- `qa_pending`
+
+Observación:
+
+- El flujo deja las unidades listas para revisión de calidad. El paso de aprobación final queda para W5.39G.

@@ -116,3 +116,17 @@
 - No se tocó `Order` / `Product` legacy.
 - No se tocó activación legacy.
 - No se hizo push.
+## W5.39C-D-E-F — Imprenta, recepción, ensamblaje físico y envío a QC
+
+Se añadió el handoff operativo desde Producción hacia imprenta y QC.
+
+- Botón para enviar a imprenta desde la orden de producción.
+- Botón para marcar imprenta recibida.
+- Acciones por unidad para ensamblaje físico.
+- Botón para enviar a QC.
+
+No forma parte de este bloque:
+
+- QC Pass.
+- Inventario `available`.
+- Usuario final.

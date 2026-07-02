@@ -57,6 +57,7 @@ interface ProductionOrder {
   updatedAt: string;
   digitalItems?: Array<{
     id: string;
+    batchId: string;
     internalLabel: string;
     shortCode: string | null;
     activationUrl: string | null;
@@ -65,6 +66,18 @@ interface ProductionOrder {
     status: string;
     preparedAt: string | null;
     notes: string | null;
+  }>;
+  printOrders?: Array<{
+    id: string;
+    code: string;
+    supplierName: string;
+    status: string;
+    sentAt: string | null;
+    receivedAt: string | null;
+    quantity: number;
+    rangeStartLabel: string;
+    rangeEndLabel: string;
+    items: Array<{ id: string; internalLabel: string; status: string }>;
   }>;
 }
 
@@ -183,6 +196,7 @@ const ACTIONS_BY_STATUS: Record<string, Array<{ label: string; eventType: Produc
 export default function ProductionQueueSection() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [productionOrders, setProductionOrders] = useState<ProductionOrder[]>([]);
+  const [printOrders, setPrintOrders] = useState<Array<{ id: string; digitalBatchId: string; code: string; supplierName: string; status: string; sentAt: string | null; receivedAt: string | null; quantity: number; rangeStartLabel: string; rangeEndLabel: string; items: Array<{ id: string; internalLabel: string; status: string }> }>>([]);
   const [counts, setCounts] = useState<Counts>({ pending: 0, inProduction: 0, packing: 0, done: 0 });
   const [loading, setLoading] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(true);
@@ -214,6 +228,12 @@ export default function ProductionQueueSection() {
     return { total: items.length, ready };
   }, [selectedProductionOrder]);
 
+  const printOrder = useMemo(() => {
+    const batchId = selectedProductionOrder?.digitalItems?.[0]?.batchId;
+    if (!batchId) return null;
+    return printOrders.find((order) => order.digitalBatchId === batchId) || null;
+  }, [printOrders, selectedProductionOrder]);
+
   const loadProductionOrders = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
       setRefreshingOrders(true);
@@ -236,6 +256,17 @@ export default function ProductionQueueSection() {
     } finally {
       setLoadingOrders(false);
       setRefreshingOrders(false);
+    }
+  }, []);
+
+  const loadPrintOrders = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/operations/print-orders", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudieron cargar ordenes a imprenta");
+      setPrintOrders(Array.isArray(data.printOrders) ? data.printOrders : []);
+    } catch {
+      toast.error("Error al cargar ordenes a imprenta");
     }
   }, []);
 
@@ -291,8 +322,9 @@ export default function ProductionQueueSection() {
   useEffect(() => {
     loadQueue();
     loadProductionOrders();
+    loadPrintOrders();
     loadAssemblyCandidates();
-  }, [loadAssemblyCandidates, loadQueue, loadProductionOrders]);
+  }, [loadAssemblyCandidates, loadQueue, loadProductionOrders, loadPrintOrders]);
 
   const formatDate = (value: string) => {
     return new Date(value).toLocaleDateString("es-PA", {
@@ -590,6 +622,51 @@ export default function ProductionQueueSection() {
     }
   };
 
+  const handleSendToPrint = async (order: ProductionOrder) => {
+    setSavingDigitalKey(`${order.id}:send-to-print`);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${order.id}/send-to-print`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo enviar a imprenta");
+      toast.success("Orden enviada a imprenta");
+      await Promise.all([loadProductionOrders({ silent: true }), loadPrintOrders()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al enviar a imprenta");
+    } finally {
+      setSavingDigitalKey(null);
+    }
+  };
+
+  const handleMarkPrintReceived = async (order: ProductionOrder) => {
+    setSavingDigitalKey(`${order.id}:mark-print-received`);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${order.id}/mark-print-received`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo marcar la recepción");
+      toast.success("Imprenta recibida");
+      await Promise.all([loadProductionOrders({ silent: true }), loadPrintOrders()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al marcar recepción");
+    } finally {
+      setSavingDigitalKey(null);
+    }
+  };
+
+  const handleSendToQa = async (order: ProductionOrder) => {
+    setSavingDigitalKey(`${order.id}:send-to-qa`);
+    try {
+      const res = await fetch(`/api/admin/operations/production-orders/${order.id}/send-to-qa`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo enviar a QC");
+      toast.success("Enviado a QC");
+      await loadProductionOrders({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al enviar a QC");
+    } finally {
+      setSavingDigitalKey(null);
+    }
+  };
+
   const filtered = statusFilter ? queue.filter((o) => o.productionStatus === statusFilter) : queue;
 
   // If we're viewing a specific order's fabrication detail
@@ -681,6 +758,88 @@ export default function ProductionQueueSection() {
                   </div>
                 );
               })}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">Orden a imprenta</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-600">
+                    Esta acción envía los QR/link preparados a imprenta. No crea inventario ni asigna usuario final.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSendToPrint(selectedProductionOrder)}
+                  disabled={digitalProgress.total === 0 || digitalProgress.ready !== digitalProgress.total}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-800 disabled:opacity-50"
+                >
+                  {savingDigitalKey === `${selectedProductionOrder.id}:send-to-print` ? "Enviando..." : "Enviar a imprenta"}
+                </button>
+              </div>
+
+              {printOrder ? (
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="font-mono text-xs font-black text-primary">{printOrder.code}</p>
+                    <p className="mt-1 text-sm font-black text-slate-950">{printOrder.supplierName}</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      Estado: {printOrder.status} · Cantidad: {printOrder.quantity} · {printOrder.rangeStartLabel} - {printOrder.rangeEndLabel}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkPrintReceived(selectedProductionOrder)}
+                    disabled={printOrder.status === "received"}
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
+                  >
+                    {savingDigitalKey === `${selectedProductionOrder.id}:mark-print-received` ? "Marcando..." : "Marcar imprenta recibida"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">Ensamblaje físico</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-600">
+                    En esta etapa se completa chip + sticker y empaque antes de enviar a QC.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSendToQa(selectedProductionOrder)}
+                  disabled={!printOrder || printOrder.status !== "received" || (selectedProductionOrder.digitalItems || []).some((item) => item.status !== "assembled")}
+                  className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 disabled:opacity-50"
+                >
+                  {savingDigitalKey === `${selectedProductionOrder.id}:send-to-qa` ? "Enviando..." : "Enviar a QC"}
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3">
+                {(selectedProductionOrder.digitalItems || []).map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-mono text-xs font-black text-primary">{item.internalLabel}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{item.shortCode || "Sin shortCode"}</p>
+                      </div>
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                        {item.status}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")} className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800">Chip + sticker ensamblado</button>
+                      <button type="button" onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800">Empaque etiquetado</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {printOrder?.status === "received" && (
+                <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold text-blue-900">
+                  QC pendiente. Las unidades ya están listas para revisión de calidad. El inventario final se habilitará solo con QC Pass.
+                </div>
+              )}
             </div>
           </section>
         )}

@@ -264,3 +264,17 @@
 - No se usó `prisma db push`.
 - No se usó `prisma migrate reset`.
 - No se tocaron migraciones historicas.
+## W5.39C-D-E-F — Imprenta, recepción, ensamblaje físico y envío a QC
+
+Este bloque conecta Producción con imprenta y deja las unidades en `qa_pending`.
+
+- La orden se puede enviar a imprenta solo cuando todas las líneas digitales tienen NFC programado y QR preparado.
+- La recepción de imprenta marca los ítems como impresos y habilita el ensamblaje físico.
+- El ensamblaje físico se mantiene antes de QC Pass.
+- El envío a QC no crea inventario final.
+
+Pendiente para W5.39G:
+
+- QC Pass / Fail.
+- Creación de inventario `available`.
+- Reserva o despacho posterior.
