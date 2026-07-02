@@ -54,7 +54,7 @@ export async function POST(
       const updatedOrder = await tx.operationCommercialOrder.update({
         where: { id: order.id },
         data: {
-          status: "pending_stock",
+          status: "accepted",
           fulfillmentStatus: "pending",
         },
       });

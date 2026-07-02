@@ -26,3 +26,4 @@ Inventario real = `OperationFinishedGoodUnit`.
 - No asignar usuario final desde Operaciones.
 - No activar desde Operaciones.
 - Pedidos reservara solo unidades `available` con `qaStatus = passed` y `activationStatus = not_activated`.
+- Si un pedido se rechaza o cancela antes del despacho, la reserva operativa puede liberarse.

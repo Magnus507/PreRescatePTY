@@ -107,6 +107,10 @@ export async function POST(
         throw new Error("INTERNAL_ORDER_NO_RESERVATION");
       }
 
+      if (!["accepted", "confirmed", "draft"].includes(order.status) && order.paymentStatus !== "paid") {
+        throw new Error("ORDER_NOT_READY_FOR_RESERVATION");
+      }
+
       const reservationResults = [];
       const missingItems = [];
 
@@ -172,6 +176,10 @@ export async function POST(
         { error: "Los pedidos internos no reservan unidades. Deben producir inventario." },
         { status: 400 }
       );
+    }
+
+    if (error instanceof Error && error.message === "ORDER_NOT_READY_FOR_RESERVATION") {
+      return NextResponse.json({ error: "El pedido debe estar aceptado para reservar etiqueta interna" }, { status: 400 });
     }
 
     console.error("[operations/commercial-orders/:id/reserve-units] POST error:", error);

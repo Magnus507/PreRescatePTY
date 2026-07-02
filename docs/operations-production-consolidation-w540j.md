@@ -55,3 +55,4 @@ Consolidar Produccion como la ventana principal donde nace cada unidad trazable,
 - `available` sigue significando listo para reserva operativa.
 - `reserved` sigue significando reservado para pedido, no usuario final.
 - El `shortCode` sigue siendo canónico y no se regenera en Inventario.
+- Pedidos usa esta salida para reservar etiqueta interna o para fabricar cuando no hay stock suficiente.

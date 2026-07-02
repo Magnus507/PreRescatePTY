@@ -358,6 +358,14 @@
 - `reserved` significa reservado para pedido, no usuario final.
 - `delivered` con `not_activated` sigue siendo un estado operativo visible.
 - El QR / shortCode / NFC siguen siendo canónicos y no se editan desde Inventario.
+
+## Pedidos operativos
+
+- Pedidos se comporta como puerta operativa del flujo comercial.
+- Aceptar, rechazar y cancelar no asignan usuario final.
+- La reserva de etiqueta interna se hace solo sobre unidades `available` con `qaStatus = passed`.
+- Si no hay stock suficiente, el pedido puede enviar la demanda a Produccion.
+- El despacho exige reserva previa.
 - No se toco checkout legacy ni `Order` / `Product` legacy.
 
 ## W5.39B - Preparación digital por orden de producción

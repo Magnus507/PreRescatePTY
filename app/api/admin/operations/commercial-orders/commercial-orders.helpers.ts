@@ -2,8 +2,10 @@ import { z } from "zod";
 
 export const COMMERCIAL_ORDER_STATUSES = [
   "draft",
-  "confirmed",
+  "accepted",
+  "rejected",
   "cancelled",
+  "confirmed",
 ] as const;
 
 export const COMMERCIAL_PAYMENT_STATUSES = [
@@ -29,6 +31,8 @@ export const COMMERCIAL_CUSTOMER_TYPES = [
 
 export const COMMERCIAL_ORDER_EVENT_TYPES = [
   "CREATED",
+  "ACCEPTED",
+  "REJECTED",
   "CONFIRMED",
   "PAYMENT_PENDING",
   "PAID",

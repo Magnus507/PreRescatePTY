@@ -87,8 +87,16 @@ export async function POST(
         throw new Error("CANCELLED_COMMERCIAL_ORDER");
       }
 
+      if (commercialOrder.status === "rejected" && !["REFUNDED", "CANCELLED"].includes(data.eventType)) {
+        throw new Error("REJECTED_COMMERCIAL_ORDER");
+      }
+
+      if (["CANCELLED", "REJECTED"].includes(data.eventType) && commercialOrder.dispatchId) {
+        throw new Error("COMMERCIAL_ORDER_HAS_DISPATCH");
+      }
+
       if (data.eventType === "FULFILLMENT_REQUESTED") {
-        if (commercialOrder.status !== "confirmed" && commercialOrder.paymentStatus !== "paid") {
+        if (!["accepted", "confirmed"].includes(commercialOrder.status) && commercialOrder.paymentStatus !== "paid") {
           throw new Error("COMMERCIAL_ORDER_NOT_READY_FOR_FULFILLMENT");
         }
 
@@ -125,6 +133,12 @@ export async function POST(
       }
 
       let dispatchId = commercialOrder.dispatchId;
+      const reservedUnits = ["CANCELLED", "REJECTED"].includes(data.eventType)
+        ? await tx.operationFinishedGoodUnit.findMany({
+            where: { reservedOrderId: commercialOrder.id, status: "reserved" },
+            select: { id: true, internalLabel: true },
+          })
+        : [];
 
       if (data.eventType === "FULFILLMENT_REQUESTED") {
         const dispatch = await tx.operationDispatch.create({
@@ -191,8 +205,10 @@ export async function POST(
         dispatchId?: string;
       } = {};
 
-      if (data.eventType === "CONFIRMED") {
-        updateData.status = "confirmed";
+      if (data.eventType === "ACCEPTED" || data.eventType === "CONFIRMED") {
+        updateData.status = "accepted";
+      } else if (data.eventType === "REJECTED") {
+        updateData.status = "rejected";
       } else if (data.eventType === "PAID") {
         updateData.paymentStatus = "paid";
       } else if (data.eventType === "PAYMENT_PENDING") {
@@ -206,6 +222,32 @@ export async function POST(
         updateData.status = "cancelled";
       } else if (data.eventType === "REFUNDED") {
         updateData.paymentStatus = "refunded";
+      }
+
+      if (["CANCELLED", "REJECTED"].includes(data.eventType) && reservedUnits.length > 0) {
+        await tx.operationFinishedGoodUnit.updateMany({
+          where: { id: { in: reservedUnits.map((unit) => unit.id) } },
+          data: {
+            status: "available",
+            reservedOrderId: null,
+            reservedAt: null,
+          },
+        });
+
+        await tx.operationFinishedGoodUnitEvent.createMany({
+          data: reservedUnits.map((unit) => ({
+            unitId: unit.id,
+            eventType: "RELEASED",
+            reason: `Liberada por ${data.eventType === "REJECTED" ? "rechazo" : "cancelación"} del pedido ${commercialOrder.code}`,
+            referenceType: "commercial_order",
+            referenceId: commercialOrder.id,
+            metadataJson: JSON.stringify({
+              commercialOrderId: commercialOrder.id,
+              commercialOrderCode: commercialOrder.code,
+              status: data.eventType.toLowerCase(),
+            }),
+          })),
+        });
       }
 
       const updatedCommercialOrder =
@@ -238,6 +280,13 @@ export async function POST(
     if (error instanceof Error && error.message === "CANCELLED_COMMERCIAL_ORDER") {
       return NextResponse.json(
         { error: "No se pueden registrar eventos sobre pedidos comerciales cancelados salvo REFUNDED" },
+        { status: 400 }
+      );
+    }
+
+    if (error instanceof Error && error.message === "REJECTED_COMMERCIAL_ORDER") {
+      return NextResponse.json(
+        { error: "No se pueden registrar eventos sobre pedidos comerciales rechazados salvo CANCELLED o REFUNDED" },
         { status: 400 }
       );
     }

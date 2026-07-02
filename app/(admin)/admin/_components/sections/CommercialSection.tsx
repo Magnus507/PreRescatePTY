@@ -17,6 +17,8 @@ import {
 import { toast } from "sonner";
 
 type CommercialEventType =
+  | "ACCEPTED"
+  | "REJECTED"
   | "CONFIRMED"
   | "PAYMENT_PENDING"
   | "PAID"
@@ -164,7 +166,9 @@ const EMPTY_FORM: CommercialFormState = {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   draft: { label: "Borrador", color: "bg-slate-50 border-slate-200 text-slate-700" },
-  confirmed: { label: "Confirmado", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+  accepted: { label: "Aceptado", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+  confirmed: { label: "Aceptado", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+  rejected: { label: "Rechazado", color: "bg-rose-50 border-rose-200 text-rose-800" },
   cancelled: { label: "Cancelado", color: "bg-red-50 border-red-200 text-red-700" },
 };
 
@@ -250,6 +254,8 @@ function applyOrderTypeChange(current: CommercialFormState, customerType: string
 }
 
 const EVENT_SUCCESS_COPY: Record<CommercialEventType, string> = {
+  ACCEPTED: "Pedido comercial aceptado",
+  REJECTED: "Pedido comercial rechazado",
   CONFIRMED: "Pedido comercial confirmado",
   PAYMENT_PENDING: "Pago marcado como pendiente",
   PAID: "Pedido marcado como pagado",
@@ -260,8 +266,14 @@ const EVENT_SUCCESS_COPY: Record<CommercialEventType, string> = {
 
 const ACTIONS_BY_STATUS: Record<string, Array<{ label: string; eventType: CommercialEventType; tone: string }>> = {
   draft: [
-    { label: "Aceptar pedido", eventType: "CONFIRMED", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
-    { label: "Rechazar pedido", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+    { label: "Aceptar pedido", eventType: "ACCEPTED", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
+    { label: "Rechazar pedido", eventType: "REJECTED", tone: "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100" },
+    { label: "Cancelar pedido", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
+  ],
+  accepted: [
+    { label: "Marcar pago", eventType: "PAID", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
+    { label: "Pago pendiente", eventType: "PAYMENT_PENDING", tone: "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100" },
+    { label: "Cancelar pedido", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
   ],
   confirmed: [
     { label: "Marcar pago", eventType: "PAID", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
@@ -306,7 +318,7 @@ function canRequestFulfillment(order: CommercialOrder) {
     !order.dispatch &&
     order.status !== "cancelled" &&
     hasFinishedGoodItems &&
-    (order.status === "confirmed" || order.paymentStatus === "paid")
+    (order.status === "accepted" || order.status === "confirmed" || order.paymentStatus === "paid")
   );
 }
 
@@ -362,12 +374,13 @@ export function CommercialSection() {
     const commercialOrders = orders.filter((order) => !isInternalOrder(order));
     const internal = orders.filter((order) => isInternalOrder(order)).length;
     const pending = commercialOrders.filter((order) => order.status === "draft").length;
-    const confirmed = commercialOrders.filter((order) => order.status === "confirmed").length;
+    const confirmed = commercialOrders.filter((order) => ["accepted", "confirmed"].includes(order.status)).length;
+    const rejected = commercialOrders.filter((order) => order.status === "rejected").length;
     const paid = commercialOrders.filter((order) => order.paymentStatus === "paid").length;
     const cancelled = commercialOrders.filter((order) => order.status === "cancelled").length;
     const fulfillmentPending = commercialOrders.filter((order) => order.fulfillmentStatus === "pending").length;
     const total = commercialOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-    return { pending, confirmed, paid, cancelled, fulfillmentPending, total, internal };
+    return { pending, confirmed, rejected, paid, cancelled, fulfillmentPending, total, internal };
   }, [orders]);
 
   const statCards: StatCardConfig[] = [
@@ -770,7 +783,8 @@ export function CommercialSection() {
         : [];
     }
 
-    const actions = ACTIONS_BY_STATUS[order.status] || [];
+    const normalizedStatus = order.status === "confirmed" ? "accepted" : order.status;
+    const actions = ACTIONS_BY_STATUS[normalizedStatus] || [];
 
     if (!canRequestFulfillment(order)) {
       return actions;

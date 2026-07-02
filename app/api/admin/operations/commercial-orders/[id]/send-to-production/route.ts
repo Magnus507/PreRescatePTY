@@ -42,7 +42,7 @@ export async function POST(
       });
 
       if (!commercialOrder) return null;
-      if (commercialOrder.status === "cancelled") {
+      if (commercialOrder.status === "cancelled" || commercialOrder.status === "rejected") {
         throw new Error("COMMERCIAL_ORDER_CANCELLED");
       }
 
