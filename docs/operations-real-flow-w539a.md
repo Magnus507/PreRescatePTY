@@ -133,3 +133,49 @@ Movimientos / Historial:
 Pendiente para W5.39L:
 
 - smoke completo del flujo end-to-end.
+
+## W5.39L — Smoke completo punta a punta
+
+Prefijo usado:
+
+- `W539L_SMOKE_20260702T16063`
+
+Escenario A:
+
+- pedido interno creado
+- producción creada
+- QC Pass ejecutado
+- 2 unidades quedaron `available`
+- no se creó despacho
+
+Escenario B:
+
+- pedido cliente/empresa creado
+- producción creada
+- QC Pass ejecutado
+- 2 unidades quedaron `reserved`
+- despacho creado
+- entrega ejecutada
+- unidades quedaron `delivered` con `activationStatus = not_activated`
+
+Escenario C:
+
+- QC Fail validado en una unidad separada
+- unidad quedó `qa_failed`
+- no quedó `available`
+- no quedó `reserved`
+
+Limpieza:
+
+- ejecutada automáticamente por el script
+- `remainingSmokeRecords = 0`
+
+Confirmaciones:
+
+- no usuario final
+- no activación desde operaciones
+- no inventario sin QC Pass
+- no despacho sin unidades reservadas y aprobadas
+- no checkout legacy
+- no Order/Product legacy
+- no `db push` / `migrate reset`

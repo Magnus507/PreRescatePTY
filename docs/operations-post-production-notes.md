@@ -300,3 +300,9 @@ Pendiente para W5.39H:
 Pendiente para W5.39L:
 
 - smoke end-to-end del flujo completo.
+
+## W5.39L — Smoke completo punta a punta
+
+- El smoke validó producción, QC, inventario y despacho con prefijo aislado.
+- La limpieza automática dejó `remainingSmokeRecords = 0`.
+- No hubo activación ni usuario final desde operaciones.

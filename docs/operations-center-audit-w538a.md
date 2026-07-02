@@ -152,3 +152,11 @@ Pendiente:
 Pendiente:
 
 - smoke completo y auditoría final.
+
+## W5.39L — Smoke completo punta a punta
+
+- Smoke ejecutado con prefijo aislado.
+- Flujo interno: `available`.
+- Flujo cliente/empresa: `reserved` + despacho + `delivered` pendiente de activación.
+- Caso QC Fail: `qa_failed`.
+- Limpieza automática confirmada.
