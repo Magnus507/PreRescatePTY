@@ -15,7 +15,6 @@ import {
   RefreshCw,
   RotateCcw,
   Route,
-  Printer,
   ShieldCheck,
   ShoppingCart,
   Truck,
@@ -26,14 +25,11 @@ import { ChipAdmin } from "../../_types/admin";
 import { CreateBatchSection } from "./CreateBatchSection";
 import ProductionQueueSection from "./ProductionQueueSection";
 import { DigitalResourcesSection } from "./DigitalResourcesSection";
-import { PrintOrdersSection } from "./PrintOrdersSection";
 import { FinishedGoodsSection } from "./FinishedGoodsSection";
 import { FinishedGoodUnitsSection } from "./FinishedGoodUnitsSection";
 import { PhysicalInventorySection } from "./PhysicalInventorySection";
 import { InventoryMovementsSection } from "./InventoryMovementsSection";
-import { PackingSection } from "./PackingSection";
 import { DispatchSection } from "./DispatchSection";
-import { QualitySection } from "./QualitySection";
 import { HistorySection } from "./HistorySection";
 import { CommercialSection } from "./CommercialSection";
 import { WarrantySection } from "./WarrantySection";
@@ -44,9 +40,7 @@ type OperationsTab =
   | "overview"
   | "commercial"
   | "inventory"
-  | "print"
   | "production"
-  | "quality"
   | "dispatch"
   | "postsales"
   | "movements"
@@ -141,9 +135,7 @@ const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }>
   { id: "overview", label: "Panel operativo", icon: Activity },
   { id: "commercial", label: "Pedidos", icon: ShoppingCart },
   { id: "inventory", label: "Inventario", icon: Boxes },
-  { id: "print", label: "Imprenta", icon: Printer },
   { id: "production", label: "Produccion", icon: Factory },
-  { id: "quality", label: "Calidad / QA", icon: ClipboardCheck },
   { id: "dispatch", label: "Despacho", icon: Truck },
   { id: "postsales", label: "Postventa", icon: RotateCcw },
   { id: "movements", label: "Movimientos", icon: Route },
@@ -157,11 +149,7 @@ const INVENTORY_TABS: Array<{ id: InventoryTab; label: string }> = [
   { id: "base", label: "Productos base" },
 ];
 
-const PRODUCTION_TABS: Array<{ id: ProductionTab; label: string }> = [
-  { id: "orders", label: "Ordenes" },
-  { id: "assembly", label: "Ensamblaje" },
-  { id: "packing", label: "Empaque / Lotes" },
-];
+const PRODUCTION_TABS: Array<{ id: ProductionTab; label: string }> = [{ id: "orders", label: "Flujo madre" }];
 
 const POSTSALES_TABS: Array<{ id: PostsalesTab; label: string }> = [
   { id: "warranties", label: "Garantias" },
@@ -288,10 +276,6 @@ export function OperationsCenterSection({
   const HealthIcon = health.icon;
 
   const renderContent = () => {
-    if (activeTab === "print") {
-      return <PrintOrdersSection />;
-    }
-
     if (activeTab === "movements") {
       return <InventoryMovementsSection />;
     }
@@ -302,10 +286,6 @@ export function OperationsCenterSection({
 
     if (activeTab === "commercial") {
       return <CommercialSection />;
-    }
-
-    if (activeTab === "quality") {
-      return <QualitySection />;
     }
 
     if (activeTab === "inventory") {
@@ -389,10 +369,10 @@ export function OperationsCenterSection({
                   })}
                 </div>
               </div>
-            </div>
-          </section>
+          </div>
+        </section>
           {productionTab === "orders" && <ProductionQueueSection />}
-          {productionTab === "assembly" && (
+          {productionTab !== "orders" && (
             <CreateBatchSection
               createCount={createCount}
               setCreateCount={setCreateCount}
@@ -403,7 +383,6 @@ export function OperationsCenterSection({
               loadChipDetail={loadChipDetail}
             />
           )}
-          {productionTab === "packing" && <PackingSection />}
         </div>
       );
     }
