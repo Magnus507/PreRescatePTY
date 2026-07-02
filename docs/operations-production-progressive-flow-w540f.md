@@ -14,13 +14,20 @@ Evitar que la pantalla de Produccion muestre todas las fases del flujo al mismo 
 - El resultado final solo aparece cuando hay unidades con QC pasado o fallado.
 - Cada item digital muestra:
   - `internalLabel`
-  - `shortCode`
+  - `shortCode` solo cuando exista una fuente real
   - `activationUrl`
   - `qrUrl`
   - `nfcUrl`
   - estados NFC / QR
   - acciones de copia
   - acciones de marcacion operativa
+
+## W5.40G - Identidad digital real
+
+- `internalLabel` es la referencia operativa.
+- `shortCode` no se inventa a partir de Produccion.
+- `activationUrl` es la URL canónica para NFC y QR.
+- `qrUrl` se usa para renderizar y descargar el QR visual.
 
 ## Alcance excluido
 
@@ -33,4 +40,3 @@ Evitar que la pantalla de Produccion muestre todas las fases del flujo al mismo 
 - No se asigno usuario final.
 - No se activo desde operaciones.
 - No se creo despacho.
-

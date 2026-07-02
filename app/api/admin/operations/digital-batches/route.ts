@@ -5,9 +5,9 @@ import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import {
   CreateDigitalBatchSchema,
   buildInternalLabel,
-  buildInternalUrl,
   getFirstValidationMessage,
 } from "./digital-batches.helpers";
+import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
 
 export const dynamic = "force-dynamic";
 
@@ -84,12 +84,14 @@ export async function POST(req: NextRequest) {
             data: Array.from({ length: quantity }, (_, index) => {
               const sequenceNumber = data.startNumber + index;
               const internalLabel = buildInternalLabel(data.prefix, sequenceNumber);
+              const identity = buildProductionDigitalIdentity({ internalLabel });
               return {
                 internalLabel,
                 sequenceNumber,
-                qrUrl: buildInternalUrl("/digital-batches/qr", internalLabel),
-                nfcUrl: buildInternalUrl("/digital-batches/nfc", internalLabel),
-                activationUrl: buildInternalUrl("/activar", internalLabel),
+                qrUrl: identity.qrImageUrl,
+                nfcUrl: identity.nfcUrl,
+                activationUrl: identity.activationUrl,
+                shortCode: null,
                 status: "available",
               };
             }),

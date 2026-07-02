@@ -6,9 +6,9 @@ import {
   DigitalBatchActionSchema,
   UpdateDigitalBatchSchema,
   buildInternalLabel,
-  buildInternalUrl,
   getFirstValidationMessage,
 } from "../digital-batches.helpers";
+import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
 
 export const dynamic = "force-dynamic";
 
@@ -147,12 +147,14 @@ export async function POST(
               data: Array.from({ length: quantity }, (_, index) => {
                 const sequenceNumber = batch.startNumber + index;
                 const internalLabel = buildInternalLabel(batch.prefix, sequenceNumber);
+                const identity = buildProductionDigitalIdentity({ internalLabel });
                 return {
                   internalLabel,
                   sequenceNumber,
-                  qrUrl: buildInternalUrl("/digital-batches/qr", internalLabel),
-                  nfcUrl: buildInternalUrl("/digital-batches/nfc", internalLabel),
-                  activationUrl: buildInternalUrl("/activar", internalLabel),
+                  qrUrl: identity.qrImageUrl,
+                  nfcUrl: identity.nfcUrl,
+                  activationUrl: identity.activationUrl,
+                  shortCode: null,
                   status: "available",
                 };
               }),

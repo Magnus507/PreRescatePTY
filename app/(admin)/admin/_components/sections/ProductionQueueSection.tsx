@@ -147,6 +147,12 @@ function getPrintStatusLabel(status: string | null) {
   return map[status] || status;
 }
 
+function isLikelyRealShortCode(shortCode: string | null | undefined, internalLabel: string) {
+  const value = shortCode?.trim() || "";
+  if (!value) return false;
+  return value !== internalLabel;
+}
+
 interface AssemblyCandidate {
   id: string;
   internalLabel: string;
@@ -242,6 +248,63 @@ export default function ProductionQueueSection() {
     if (!batchId) return null;
     return printOrders.find((order) => order.digitalBatchId === batchId) || null;
   }, [printOrders, selectedProductionOrder]);
+
+  const copyTextToClipboard = useCallback(async (text: string, successMessage: string) => {
+    if (!text) {
+      toast.error("No hay contenido para copiar");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(successMessage);
+    } catch {
+      const fallback = document.createElement("textarea");
+      fallback.value = text;
+      document.body.appendChild(fallback);
+      fallback.select();
+      try {
+        document.execCommand("copy");
+        toast.success(successMessage);
+      } catch {
+        toast.error("No se pudo copiar el contenido");
+      } finally {
+        document.body.removeChild(fallback);
+      }
+    }
+  }, []);
+
+  const handleCopyQrPayload = useCallback((payload: string) => {
+    void copyTextToClipboard(payload, "Payload QR copiado");
+  }, [copyTextToClipboard]);
+
+  const handleCopyNfcUrl = useCallback((url: string) => {
+    void copyTextToClipboard(url, "URL NFC copiada");
+  }, [copyTextToClipboard]);
+
+  const handleDownloadQr = useCallback(async (item: NonNullable<ProductionOrder["digitalItems"]>[number]) => {
+    if (!item.qrUrl) {
+      toast.error("Falta QR visual para descargar");
+      return;
+    }
+
+    try {
+      const response = await fetch(item.qrUrl);
+      if (!response.ok) throw new Error("No se pudo descargar el QR");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `QR-${item.internalLabel}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast.success("QR descargado");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al descargar QR");
+    }
+  }, []);
 
   const digitalItems = selectedProductionOrder?.digitalItems || [];
   const hasDigitalItems = digitalItems.length > 0;
@@ -694,17 +757,20 @@ export default function ProductionQueueSection() {
                 const partial = item.nfcProgrammed || item.qrPrepared;
                 const badge = ready ? "Lista para imprenta" : partial ? "Parcial" : "Pendiente";
                 const activationPath = getPublicActivationPath(item.activationUrl);
-                const qrTarget = item.qrUrl || item.activationUrl || "";
+                const qrTarget = item.activationUrl || "";
                 const nfcTarget = item.nfcUrl || item.activationUrl || "";
+                const shortCodeIsReal = isLikelyRealShortCode(item.shortCode, item.internalLabel);
                 return (
                   <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div className="space-y-1">
                         <p className="text-sm font-black text-slate-950">{item.internalLabel}</p>
-                        <p className="text-xs font-semibold text-slate-500">shortCode: {item.shortCode || "Sin shortCode"}</p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          shortCode: {shortCodeIsReal ? item.shortCode : "No generado"}
+                        </p>
                         <p className="text-xs font-semibold text-slate-500">Activación: {activationPath || "Sin link"}</p>
-                        <p className="text-xs font-semibold text-slate-500">QR: {item.qrUrl || item.activationUrl || "Sin QR"}</p>
-                        <p className="text-xs font-semibold text-slate-500">NFC: {item.nfcUrl || item.activationUrl || "Sin NFC"}</p>
+                        <p className="text-xs font-semibold text-slate-500">QR payload: {item.activationUrl || "Sin QR"}</p>
+                        <p className="text-xs font-semibold text-slate-500">NFC: {nfcTarget || "Sin NFC"}</p>
                         <p className="text-xs font-semibold text-slate-500">
                           NFC {item.nfcProgrammed ? "programado" : "pendiente"} · QR {item.qrPrepared ? "preparado" : "pendiente"}
                         </p>
@@ -715,44 +781,68 @@ export default function ProductionQueueSection() {
                         {badge}
                       </span>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => item.activationUrl && navigator.clipboard.writeText(item.activationUrl)}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700"
-                      >
-                        Copiar link
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => qrTarget && navigator.clipboard.writeText(qrTarget)}
-                        className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-800"
-                      >
-                        Copiar QR
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => nfcTarget && navigator.clipboard.writeText(nfcTarget)}
-                        className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-cyan-800"
-                      >
-                        Copiar NFC
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")}
-                        disabled={Boolean(savingDigitalKey)}
-                        className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800 disabled:opacity-50"
-                      >
-                        NFC programado
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")}
-                        disabled={Boolean(savingDigitalKey)}
-                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
-                      >
-                        QR preparado
-                      </button>
+                    <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                        {item.qrUrl ? (
+                          <img
+                            src={item.qrUrl}
+                            alt={`QR para ${item.internalLabel}`}
+                            className="h-auto w-full rounded-xl"
+                          />
+                        ) : (
+                          <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-xs font-semibold text-slate-400">
+                            QR no disponible
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => item.activationUrl && handleCopyNfcUrl(item.activationUrl)}
+                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700"
+                          >
+                            Copiar URL NFC
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyQrPayload(qrTarget)}
+                            className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-800"
+                          >
+                            Copiar enlace QR
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadQr(item)}
+                            className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-cyan-800"
+                          >
+                            Descargar QR
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "nfc-programmed")}
+                            disabled={Boolean(savingDigitalKey)}
+                            className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-sky-800 disabled:opacity-50"
+                          >
+                            NFC programado
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMarkDigitalItem(selectedProductionOrder.id, item.id, "qr-prepared")}
+                            disabled={Boolean(savingDigitalKey)}
+                            className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 disabled:opacity-50"
+                          >
+                            QR preparado
+                          </button>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-500">
+                          <p className="font-black uppercase tracking-widest text-slate-400">QR visual</p>
+                          <p className="mt-1 break-all text-slate-600">{item.qrUrl || "QR no disponible"}</p>
+                          <p className="mt-2 font-black text-slate-900">
+                            {item.activationUrl ? "El QR codifica la misma URL canónica que NFC." : "Falta URL de activación para esta unidad."}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );

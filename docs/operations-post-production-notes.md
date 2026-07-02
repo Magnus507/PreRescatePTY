@@ -360,5 +360,18 @@ Pendiente para W5.39L:
 - No se uso `prisma migrate reset`.
 - No se tocaron migraciones historicas.
 - No se toco checkout legacy ni `Order` / `Product` legacy.
+
+## W5.40G - Identidad digital real y QR visual descargable
+
+- La preparacion digital deja de confundir `internalLabel` con `shortCode`.
+- `internalLabel` sigue siendo la etiqueta operativa de trazabilidad.
+- `shortCode` solo se muestra cuando existe una fuente real; si no existe, la UI lo marca como no generado.
+- El QR visual se renderiza desde el endpoint publico de QR usando la `activationUrl` canónica como payload.
+- El NFC copia la misma `activationUrl` canónica, sin payloads distintos ni atajos inventados.
+- El QR puede descargarse desde la propia tarjeta de la unidad.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se tocaron migraciones historicas.
+- No se toco checkout legacy ni `Order` / `Product` legacy.
 - La limpieza automática dejó `remainingSmokeRecords = 0`.
 - No hubo activación ni usuario final desde operaciones.

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
-import { buildInternalLabel, buildInternalUrl } from "../../../digital-batches/digital-batches.helpers";
+import { buildInternalLabel } from "../../../digital-batches/digital-batches.helpers";
+import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
 
 export const dynamic = "force-dynamic";
 
@@ -78,20 +79,25 @@ export async function POST(
       const preparedAt = new Date();
       const createdById = auth.session.user.id || null;
       const createdItems = [];
+      const requestOrigin = req.headers.get("origin");
 
       for (let index = 0; index < missingCount; index += 1) {
         const sequenceNumber = nextSequenceNumber + index + 1;
         const internalLabel = buildInternalLabel(batch.prefix, sequenceNumber);
+        const identity = buildProductionDigitalIdentity({
+          internalLabel,
+          requestOrigin,
+        });
         const created = await tx.operationDigitalBatchItem.create({
           data: {
             batchId: batch.id,
             productionOrderId,
             internalLabel,
             sequenceNumber,
-            qrUrl: buildInternalUrl("/digital-batches/qr", internalLabel),
-            nfcUrl: buildInternalUrl("/digital-batches/nfc", internalLabel),
-            activationUrl: buildInternalUrl("/activar", internalLabel),
-            shortCode: internalLabel,
+            qrUrl: identity.qrImageUrl,
+            nfcUrl: identity.nfcUrl,
+            activationUrl: identity.activationUrl,
+            shortCode: null,
             nfcProgrammed: false,
             qrPrepared: false,
             preparedAt,
@@ -115,12 +121,18 @@ export async function POST(
 
       for (const item of productionOrder.digitalItems) {
         if (item.productionOrderId === productionOrderId) continue;
+        const identity = buildProductionDigitalIdentity({
+          internalLabel: item.internalLabel,
+          requestOrigin,
+        });
         await tx.operationDigitalBatchItem.update({
           where: { id: item.id },
           data: {
             productionOrderId,
-            shortCode: item.shortCode || item.internalLabel,
-            activationUrl: item.activationUrl || item.qrUrl,
+            shortCode: item.shortCode && item.shortCode !== item.internalLabel ? item.shortCode : null,
+            activationUrl: item.activationUrl || identity.activationUrl,
+            qrUrl: item.qrUrl || identity.qrImageUrl,
+            nfcUrl: item.nfcUrl || identity.nfcUrl,
             nfcProgrammed: false,
             qrPrepared: false,
             preparedAt,

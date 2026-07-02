@@ -10,7 +10,7 @@ Hacer que la orden de produccion pueda generar su lote digital operativo desde e
 - Los items nuevos quedan vinculados a la orden con `productionOrderId`.
 - Cada item se crea con:
   - `internalLabel`
-  - `shortCode`
+  - `shortCode` solo si existe una fuente real
   - `qrUrl`
   - `nfcUrl`
   - `activationUrl`
@@ -21,6 +21,14 @@ Hacer que la orden de produccion pueda generar su lote digital operativo desde e
   - `Actualizar preparacion digital`
 - El CTA `Enviar a imprenta` sigue bloqueado hasta que todas las lineas esten completas.
 
+## W5.40G - Identidad digital real
+
+- `internalLabel` es la etiqueta operativa.
+- `shortCode` no se inventa desde la orden de produccion.
+- `activationUrl` es la URL canonica que se usa para NFC y QR.
+- `qrUrl` apunta al endpoint de QR publico que representa `activationUrl`.
+- La UI permite ver y descargar el QR directamente desde Produccion.
+
 ## Alcance excluido
 
 - No se uso `prisma db push`.
@@ -29,4 +37,3 @@ Hacer que la orden de produccion pueda generar su lote digital operativo desde e
 - No se toco checkout legacy.
 - No se tocaron `Order` / `Product` legacy.
 - No se toco activacion legacy.
-
