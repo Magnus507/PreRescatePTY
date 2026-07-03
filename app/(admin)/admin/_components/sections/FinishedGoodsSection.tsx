@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 
 const FLOW = [
-  "Produccion",
+  "Producción",
   "QC",
   "Empaque",
   "Inventario terminado",
@@ -27,7 +27,7 @@ const FLOW = [
 ];
 
 const FUTURE_ACTIONS = [
-  { label: "Enviar a punto de venta", hint: "Gestionar desde Despacho o Comercial" },
+  { label: "Revisar salida comercial", hint: "Gestionar desde Centro de Operaciones" },
 ];
 
 const FINISHED_GOOD_STATUS_CONFIG: Record<string, { label: string; color: string }> = {

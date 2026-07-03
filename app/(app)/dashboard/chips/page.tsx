@@ -217,13 +217,13 @@ export default function ChipsPage() {
               <div className="h-24 w-24 rounded-[2.5rem] bg-white mx-auto mb-6 flex items-center justify-center text-slate-300 group-hover:scale-110 group-hover:text-primary transition-all shadow-sm">
                  <Cpu className="h-12 w-12" />
               </div>
-              <h3 className="text-2xl font-black tracking-tight mb-2">No tienes dispositivos</h3>
-              <p className="text-muted-foreground max-w-sm mx-auto mb-8 font-medium italic underline decoration-slate-200 underline-offset-4">Todavía no has vinculado ningún sticker a tu cuenta.</p>
+              <h3 className="text-2xl font-black tracking-tight mb-2">Aún no tienes chips activados</h3>
+              <p className="text-muted-foreground max-w-sm mx-auto mb-8 font-medium italic underline decoration-slate-200 underline-offset-4">Usa el código incluido en tu producto para activar uno y vincularlo a tu cuenta.</p>
               <button 
                 onClick={() => setActiveTab("activate")}
                 className="bg-primary text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.05] transition-all flex items-center gap-2 mx-auto"
               >
-                Activar Sticker Ahora <ChevronRight className="h-4 w-4" />
+                Activar chip ahora <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           ) : (

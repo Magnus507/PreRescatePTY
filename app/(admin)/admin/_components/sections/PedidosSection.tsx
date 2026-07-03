@@ -973,7 +973,7 @@ export function PedidosSection() {
                 }}
                 className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-violet-700 transition-all hover:bg-violet-100"
               >
-                Enviar a Producción
+                Ir a Producción
               </button>
             )}
             {order.canArchiveOrder && (
