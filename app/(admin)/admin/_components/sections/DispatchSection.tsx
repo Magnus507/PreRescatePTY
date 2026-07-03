@@ -23,8 +23,6 @@ import {
 import { toast } from "sonner";
 import { DispatchViewModel } from "@/lib/operations/dispatch-view-model";
 
-type DispatchEventType = "RESERVED" | "PICKED" | "PACKED" | "RELEASED" | "DISPATCHED" | "DELIVERED" | "CANCELLED";
-
 interface DispatchType {
   key: string;
   label: string;
@@ -119,16 +117,6 @@ const DISPATCH_STATUS_CONFIG: Record<string, { label: string; color: string }> =
   dispatched: { label: "Pedido enviado", color: "bg-purple-50 border-purple-200 text-purple-800" },
   delivered: { label: "Pedido entregado", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
   cancelled: { label: "Cancelado", color: "bg-red-50 border-red-200 text-red-700" },
-};
-
-const DISPATCH_EVENT_SUCCESS_COPY: Record<DispatchEventType, string> = {
-  RESERVED: "Despacho reservado",
-  PICKED: "Unidad separada",
-  PACKED: "Pedido preparado",
-  RELEASED: "Reserva liberada",
-  DISPATCHED: "Despacho marcado como salido",
-  DELIVERED: "Despacho entregado",
-  CANCELLED: "Despacho cancelado",
 };
 
 const EMPTY_DISPATCH_FORM: DispatchFormState = {
@@ -368,33 +356,74 @@ export function DispatchSection() {
     }
   };
 
-  const handleDispatchEvent = async (dispatch: DispatchViewModel, eventType: DispatchEventType) => {
-    const eventKey = `${dispatch.id}:${eventType}`;
+  const markUnitPicked = async (dispatch: DispatchViewModel, unitId: string, picked: boolean) => {
+    const eventKey = `${dispatch.id}:unit:${unitId}:${picked ? "on" : "off"}`;
     setSavingEventKey(eventKey);
-
     try {
-      const res = await fetch(`/api/admin/operations/dispatches/${dispatch.id}/events`, {
+      const res = await fetch(`/api/admin/operations/dispatches/${dispatch.id}/mark-unit-picked`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventType,
-          reason: DISPATCH_EVENT_SUCCESS_COPY[eventType],
-          referenceType: "dispatch",
-          referenceId: dispatch.code,
-        }),
+        body: JSON.stringify({ unitId, picked }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "No se pudo registrar evento de despacho");
-      }
-
-      toast.success(DISPATCH_EVENT_SUCCESS_COPY[eventType]);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo marcar la unidad");
       await loadDispatches({ silent: true });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Error al registrar evento de despacho";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : "No se pudo marcar la unidad");
+    } finally {
+      setSavingEventKey(null);
+    }
+  };
+
+  const markPrepared = async (dispatch: DispatchViewModel) => {
+    const eventKey = `${dispatch.id}:prepared`;
+    setSavingEventKey(eventKey);
+    try {
+      const res = await fetch(`/api/admin/operations/dispatches/${dispatch.id}/mark-prepared`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo marcar preparado");
+      await loadDispatches({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo marcar preparado");
+    } finally {
+      setSavingEventKey(null);
+    }
+  };
+
+  const markSent = async (dispatch: DispatchViewModel) => {
+    const eventKey = `${dispatch.id}:sent`;
+    setSavingEventKey(eventKey);
+    try {
+      const res = await fetch(`/api/admin/operations/dispatches/${dispatch.id}/mark-sent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo marcar enviado");
+      await loadDispatches({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo marcar enviado");
+    } finally {
+      setSavingEventKey(null);
+    }
+  };
+
+  const confirmDelivery = async (dispatch: DispatchViewModel) => {
+    const eventKey = `${dispatch.id}:delivered`;
+    setSavingEventKey(eventKey);
+    try {
+      const res = await fetch(`/api/admin/operations/dispatches/${dispatch.id}/confirm-delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo confirmar la entrega");
+      await loadDispatches({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo confirmar la entrega");
     } finally {
       setSavingEventKey(null);
     }
@@ -630,7 +659,7 @@ export function DispatchSection() {
                                 <input
                                   type="checkbox"
                                   checked={unit.picked}
-                                  onChange={() => handleDispatchEvent(dispatch, "PICKED")}
+                                  onChange={(event) => void markUnitPicked(dispatch, unit.id, event.target.checked)}
                                   disabled={!dispatch.canMarkUnitPicked || Boolean(savingEventKey)}
                                   className="h-4 w-4 rounded border-slate-300 text-primary"
                                 />
@@ -649,15 +678,7 @@ export function DispatchSection() {
                     <div className="flex flex-col gap-2 lg:w-56">
                       <button
                         type="button"
-                        onClick={() => handleDispatchEvent(dispatch, "PICKED")}
-                        disabled={!dispatch.canMarkUnitPicked || Boolean(savingEventKey)}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50 disabled:opacity-50"
-                      >
-                        Marcar unidad separada
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDispatchEvent(dispatch, "RESERVED")}
+                        onClick={() => void markPrepared(dispatch)}
                         disabled={!dispatch.canMarkPrepared || Boolean(savingEventKey)}
                         className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-800 transition-all hover:bg-blue-100 disabled:opacity-50"
                       >
@@ -665,7 +686,7 @@ export function DispatchSection() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDispatchEvent(dispatch, "DISPATCHED")}
+                        onClick={() => void markSent(dispatch)}
                         disabled={!dispatch.canMarkSent || Boolean(savingEventKey)}
                         className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-purple-800 transition-all hover:bg-purple-100 disabled:opacity-50"
                       >
@@ -673,7 +694,7 @@ export function DispatchSection() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDispatchEvent(dispatch, "DELIVERED")}
+                        onClick={() => void confirmDelivery(dispatch)}
                         disabled={!dispatch.canConfirmDelivery || Boolean(savingEventKey)}
                         className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-800 transition-all hover:bg-emerald-100 disabled:opacity-50"
                       >

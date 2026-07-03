@@ -80,7 +80,15 @@ function getStatusLabel(status: string) {
 }
 
 export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewModel {
-  const firstEventMeta = dispatch.events?.map(parseMetadata).find(Boolean) || null;
+  const eventMetas = dispatch.events?.map(parseMetadata).filter(Boolean) || [];
+  const firstEventMeta = eventMetas[0] || null;
+  const pickedMap = new Map<string, string | null>();
+  for (const meta of eventMetas) {
+    const unitId = typeof meta?.unitId === "string" ? meta.unitId : null;
+    if (!unitId) continue;
+    const picked = Boolean(meta?.picked);
+    pickedMap.set(unitId, picked ? (typeof meta?.pickedAt === "string" ? meta.pickedAt : new Date().toISOString()) : null);
+  }
   const orderId = String(firstEventMeta?.orderId || firstEventMeta?.commercialOrderId || firstEventMeta?.referenceId || "");
   const orderCode = String(firstEventMeta?.orderCode || firstEventMeta?.commercialOrderCode || dispatch.destinationReference || dispatch.code);
   const customerName = String(firstEventMeta?.customerName || dispatch.destinationName || "Sin nombre");
@@ -90,7 +98,8 @@ export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewMode
   const address = String(firstEventMeta?.shippingAddress || dispatch.destinationAddress || "");
   const deliveryReference = String(firstEventMeta?.shippingNotes || dispatch.destinationReference || "");
   const units = dispatch.items.map((item) => {
-    const picked = item.status === "picked" || item.status === "packed" || item.status === "dispatched" || item.status === "delivered";
+    const pickedAt = item.unitId ? pickedMap.get(item.unitId) ?? null : null;
+    const picked = Boolean(pickedAt) || item.status === "picked" || item.status === "packed" || item.status === "dispatched" || item.status === "delivered";
     return {
       id: item.unitId || item.id,
       internalLabel: item.internalLabel || item.unitRecord?.internalLabel || "Sin internalLabel",
@@ -100,7 +109,7 @@ export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewMode
       inventoryStatus: item.unitRecord?.status || item.status || "reserved",
       activationStatus: item.unitRecord?.activationStatus || "not_activated",
       picked,
-      pickedAt: item.pickedAt ? item.pickedAt.toISOString() : null,
+      pickedAt: pickedAt || (item.pickedAt ? item.pickedAt.toISOString() : null),
     };
   });
   const allUnitsPicked = units.length > 0 && units.every((unit) => unit.picked);
