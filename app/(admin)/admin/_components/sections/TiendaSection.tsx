@@ -18,6 +18,23 @@ interface Product {
   requiresPersonalization: boolean;
 }
 
+interface StockRow {
+  productCode: string;
+  productName: string;
+  productType: string;
+  storeProductId: string | null;
+  storeVisible: boolean;
+  availableCount: number;
+  reservedCount: number;
+  qaPendingCount: number;
+  qaFailedCount: number;
+  dispatchedCount: number;
+  deliveredCount: number;
+  activatedCount: number;
+  totalUnits: number;
+  lastUpdatedAt: string | null;
+}
+
 const PRODUCT_TYPES = [
   { value: "sticker", label: "Sticker" },
   { value: "llavero", label: "Llavero" },
@@ -40,6 +57,7 @@ const PRODUCT_TYPE_BADGES: Record<string, { color: string; label: string }> = {
 
 export function TiendaSection() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [stockRows, setStockRows] = useState<StockRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -60,9 +78,14 @@ export function TiendaSection() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/products");
-      const data = await res.json();
-      if (data.products) setProducts(data.products);
+      const [productsRes, stockRes] = await Promise.all([
+        fetch("/api/admin/products"),
+        fetch("/api/admin/operations/inventory/stock"),
+      ]);
+      const productsData = await productsRes.json();
+      const stockData = await stockRes.json();
+      if (productsData.products) setProducts(productsData.products);
+      if (stockData.stock) setStockRows(stockData.stock);
     } catch {
       toast.error("Error al cargar productos");
     } finally {
@@ -132,6 +155,10 @@ export function TiendaSection() {
     setShowModal(true);
   };
 
+  const getStockForProduct = (product: Product) => {
+    return stockRows.find((row) => row.storeProductId === product.id || row.productType === product.productType || row.productName === product.name) || null;
+  };
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-32 gap-4">
       <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -147,7 +174,7 @@ export function TiendaSection() {
             <Store className="h-8 w-8 text-primary shadow-xl shadow-primary/20" /> Catálogo comercial
           </h2>
           <p className="text-sm text-muted-foreground font-medium mt-1">
-            Productos, variantes y presentación comercial. El stock físico operativo se administra en Inventario.
+            Catálogo comercial. El stock físico se calcula desde Inventario.
           </p>
         </div>
         
@@ -208,10 +235,29 @@ export function TiendaSection() {
                     <span className="text-2xl font-black text-primary italic">${p.price.toFixed(2)}</span>
                  </div>
                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-black uppercase text-slate-400">Stock comercial</span>
-                    <span className={`text-lg font-black ${p.stock > 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>{p.stock}</span>
+                    <span className="text-[10px] font-black uppercase text-slate-400">Stock operativo</span>
+                    {(() => {
+                      const stock = getStockForProduct(p);
+                      const value = stock ? stock.availableCount : p.stock;
+                      return <span className={`text-lg font-black ${value > 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>{value}</span>;
+                    })()}
                  </div>
               </div>
+
+              {(() => {
+                const stock = getStockForProduct(p);
+                return stock ? (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-700">Vinculado a Inventario</span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600">Disponible {stock.availableCount}</span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600">Reservado {stock.reservedCount}</span>
+                  </div>
+                ) : (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-700">Sin vínculo operativo</span>
+                  </div>
+                );
+              })()}
 
               <div className="flex gap-2">
                  <button onClick={() => openEdit(p)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all">

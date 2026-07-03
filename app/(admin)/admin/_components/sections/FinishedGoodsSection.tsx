@@ -142,6 +142,7 @@ export function FinishedGoodsSection() {
   const [editingFinishedGood, setEditingFinishedGood] = useState<FinishedGood | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [form, setForm] = useState<FinishedGoodFormState>(EMPTY_FINISHED_GOOD_FORM);
   const [editForm, setEditForm] = useState<FinishedGoodEditFormState>(EMPTY_FINISHED_GOOD_EDIT_FORM);
   const [movementTarget, setMovementTarget] = useState<FinishedGood | null>(null);
@@ -260,6 +261,25 @@ export function FinishedGoodsSection() {
       notes: item.notes || "",
       status: item.status || "active",
     });
+  };
+
+  const publishToStore = async (item: FinishedGood) => {
+    setPublishingId(item.id);
+    try {
+      const res = await fetch(`/api/admin/operations/finished-goods/${item.id}/publish-to-store`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visible: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo publicar en Tienda");
+      toast.success(data.message || "Producto publicado en catálogo comercial");
+      await loadFinishedGoods({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al publicar en Tienda");
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   const closeEditModal = () => {
@@ -640,15 +660,26 @@ export function FinishedGoodsSection() {
                           <Edit3 className="h-4 w-4" />
                           Editar
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => openMovementModal(item)}
-                          disabled={savingMovement || savingEdit}
-                          className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 transition-all hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <PackageCheck className="h-4 w-4" />
-                          Registrar movimiento
-                        </button>
+                        <div className="mt-2 flex flex-col gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openMovementModal(item)}
+                            disabled={savingMovement || savingEdit}
+                            className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-800 transition-all hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <PackageCheck className="h-4 w-4" />
+                            Registrar movimiento
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => publishToStore(item)}
+                            disabled={publishingId === item.id || savingMovement || savingEdit}
+                            className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {publishingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />}
+                            Publicar en Tienda
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
