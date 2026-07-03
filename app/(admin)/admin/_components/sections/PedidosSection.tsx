@@ -800,6 +800,141 @@ export function PedidosSection() {
     };
   };
 
+  const isInternalOrder = (order: Order) =>
+    order.orderType === "internal_replenishment" ||
+    order.displayOrderCode?.startsWith("INT-") ||
+    order.operationsReferenceCode?.startsWith("INT-") ||
+    order.orderNumber.startsWith("INT-");
+
+  const renderInternalOrderCard = (order: Order) => {
+    const isExpanded = expandedOrderIds.has(order.id);
+    const expanded = isExpanded;
+    const stop = (event: React.MouseEvent) => event.stopPropagation();
+    const productionCode = order.productionOrder?.code || `PROD-${order.orderNumber}`;
+    const productionStatus = order.productionOrder?.status || "pending";
+
+    return (
+      <article
+        key={order.id}
+        onClick={() => toggleExpandedOrder(order)}
+        className={`rounded-[2rem] border bg-white p-5 md:p-6 shadow-sm transition-all hover:shadow-lg ${expanded ? "border-violet-200" : "border-violet-100"}`}
+      >
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex-1 space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-violet-400">Código principal</p>
+                <p className="mt-1 font-mono text-lg font-black break-all text-violet-950">#{getVisibleCustomerCode(order)}</p>
+              </div>
+              <span className="px-3 py-1.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-black uppercase tracking-widest">
+                Pedido interno
+              </span>
+              <span className="px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">
+                {order.orderStatusLabel || order.orderStatus}
+              </span>
+              <span className="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-black uppercase tracking-widest">
+                {formatDateTime(order.createdAt)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Producto</p>
+                <p className="mt-2 text-sm font-black text-slate-900">{order.operationalProductName || "Sticker PreRescatePTY"}</p>
+                <p className="text-xs font-semibold text-slate-500">{order.operationalProductCode || "PRP-FG-STICKER"}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Cantidad</p>
+                <p className="mt-2 text-sm font-black text-slate-900">{order.operationalQuantity || 1} unidad física</p>
+                <p className="text-xs font-semibold text-slate-500">{order.commercialItemName || "Reposición interna"} x{order.commercialQuantity || 1}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Motivo</p>
+                <p className="mt-2 text-sm font-black text-slate-900">{order.shippingNotes || "Reposición de inventario"}</p>
+                <p className="text-xs font-semibold text-slate-500">Sin usuario final ni despacho</p>
+              </div>
+            </div>
+
+            {expanded && (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Reposición interna</p>
+                  <div className="space-y-2 text-sm">
+                    <p className="font-semibold text-slate-700">Código: {getVisibleCustomerCode(order)}</p>
+                    <p className="font-semibold text-slate-700">Fecha: {formatDateTime(order.createdAt)}</p>
+                    <p className="font-semibold text-slate-700">Motivo: {order.shippingNotes || "Reposición de inventario"}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-white p-4 space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Producción vinculada</p>
+                  <p className="text-sm font-black text-slate-900">{productionCode} · {productionStatus}</p>
+                  <p className="text-xs font-semibold text-slate-500">La producción genera stock físico disponible tras QC.</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-row gap-2 lg:flex-col lg:w-44 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                stop(e);
+                toggleExpandedOrder(order);
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-900 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-800"
+            >
+              <View className="h-4 w-4" />
+              {expanded ? "Contraer" : "Expandir"}
+            </button>
+            {order.productionOrder ? (
+              <Link
+                href="/admin?tab=inventory"
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-violet-700 transition-all hover:bg-violet-100 text-center"
+              >
+                Ver Producción
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  stop(e);
+                  toast.info("La producción se crea y sigue desde el Centro de Operaciones.");
+                }}
+                className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-violet-700 transition-all hover:bg-violet-100"
+              >
+                Enviar a Producción
+              </button>
+            )}
+            {order.canArchiveOrder && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  stop(e);
+                  handleStatusChange(order.id, "cancelled", "Archivado");
+                }}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50"
+              >
+                Archivar
+              </button>
+            )}
+            {canDeleteTestOrder(order) && (
+              <button
+                type="button"
+                onClick={(e) => handleDeleteOrder(e, order)}
+                disabled={deletingOrderId === order.id}
+                className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100 disabled:opacity-50"
+              >
+                {deletingOrderId === order.id ? "Eliminando..." : "Eliminar pedido"}
+              </button>
+            )}
+          </div>
+        </div>
+      </article>
+    );
+  };
+
   if (loading && orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -1636,6 +1771,9 @@ export function PedidosSection() {
 
       <div className="space-y-3">
         {filteredOrders.map((order) => {
+          if (isInternalOrder(order)) {
+            return renderInternalOrderCard(order);
+          }
           const isCorporateOrder = order.orderType === "corporate_employee_purchase";
           const isExpanded = expandedOrderIds.has(order.id);
           const collapsedByDefault = ["paid", "rejected", "cancelled", "completed"].includes(order.orderStatus);
