@@ -69,12 +69,18 @@ interface Order {
   canApprovePayment?: boolean;
   canRejectPayment?: boolean;
   canArchiveOrder?: boolean;
+  canAcceptOrder?: boolean;
+  canRejectOrder?: boolean;
+  canReserveInternalLabel?: boolean;
+  canSendToProduction?: boolean;
+  canCreateDispatch?: boolean;
   orderStatusLabel?: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
   customerDocument: string;
   amount: number;
+  currency?: string;
   orderStatus: string;
   paymentStatus: string;
   paymentMethod: string | null;
@@ -129,6 +135,16 @@ interface Order {
   operationsReferenceCode?: string | null;
   channel?: string | null;
   deliveryReference?: string | null;
+  productionOrder?: {
+    id: string;
+    code: string;
+    status: string;
+  } | null;
+  dispatch?: {
+    id: string;
+    code: string;
+    status: string;
+  } | null;
   reservedUnits?: Array<{
     id: string;
     internalLabel?: string | null;
@@ -417,6 +433,28 @@ export function PedidosSection() {
       default: return <span className="px-2 py-1 bg-slate-500/10 text-slate-600 rounded-lg text-xs font-bold uppercase">{status}</span>;
     }
   };
+
+  const filteredOrders = orders.filter((o) => {
+    if (activeTab === "pending") return o.paymentStatus === "pending";
+    if (activeTab === "under_review") return o.paymentStatus === "under_review";
+    if (activeTab === "paid") return o.paymentStatus === "paid";
+    if (activeTab === "rejected") return o.paymentStatus === "rejected";
+    if (activeTab === "completed") return o.orderStatus === "completed";
+    return true;
+  });
+
+  const getOrderTypeLabel = (order: Order) => {
+    if (order.orderType === "corporate_employee_purchase") return "Empresa";
+    if (order.orderType === "internal") return "Interno";
+    if (order.orderType === "customer") return "Cliente";
+    return order.orderType || "Cliente";
+  };
+
+  const formatDateTime = (value: string) =>
+    new Intl.DateTimeFormat("es-PA", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
 
   if (loading && orders.length === 0) {
     return (
@@ -1181,113 +1219,203 @@ export function PedidosSection() {
       </div>
       </div>
 
-      <div className="bg-card border border-border rounded-[1.25rem] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-sans">
-             <thead className="bg-muted/50 border-b border-border">
-                <tr>
-                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest pl-5">ID / Fecha</th>
-                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest">Cliente</th>
-                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest">Contacto</th>
-                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest">Monto (Items)</th>
-                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest">Estado</th>
-                   <th className="p-3 text-[11px] font-black uppercase text-muted-foreground tracking-widest pr-5">Acciones</th>
-                </tr>
-             </thead>
-             <tbody className="divide-y divide-border">
-                {orders.filter(o => {
-                  if (activeTab === 'pending') return o.paymentStatus === 'pending';
-                  if (activeTab === 'under_review') return o.paymentStatus === 'under_review';
-                  if (activeTab === 'paid') return o.paymentStatus === 'paid';
-                  if (activeTab === 'rejected') return o.paymentStatus === 'rejected';
-                  if (activeTab === 'completed') return o.orderStatus === 'completed';
-                  return true;
-                }).map(o => (
-                   <tr key={o.id} className="hover:bg-accent/30 transition-all">
-                      <td className={`p-3 pl-5 ${o.orderType === "corporate_employee_purchase" ? "border-l-4 border-l-blue-400" : ""}`}>
-                         <div className="flex items-center gap-2 flex-wrap">
-                           <p className="font-mono font-bold text-sm break-all" title={getVisibleCustomerCode(o)}>#{getVisibleCustomerCode(o)}</p>
-                           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                             Ref. operativa: {getOperationalReference(o)}
-                           </p>
-                           {o.orderType === "corporate_employee_purchase" && (
-                             <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold uppercase tracking-widest inline-flex items-center gap-1">
-                               <Building2 className="h-3 w-3" /> Corporativo
-                             </span>
-                           )}
-                           <button
-                             type="button"
-                             onClick={() => copyOrderNumber(getVisibleCustomerCode(o))}
-                             className="text-[9px] px-2 py-0.5 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
-                         title="Copiar código cliente"
-                           >
-                             Copiar
-                           </button>
-                         </div>
-                         <p className="text-[10px] uppercase text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
-                      </td>
-                      <td className="p-3">
-                         <p className="font-black text-sm">{o.customerName || "—"}</p>
-                         {o.customerDocument && <p className="text-xs text-muted-foreground">{o.customerDocument}</p>}
-                         {o.orderType === "corporate_employee_purchase" && (
-                           <p className="text-[10px] font-bold text-blue-600 mt-1 inline-flex items-center gap-1">
-                             <Building2 className="h-3 w-3" /> Empresa
-                           </p>
-                         )}
-                      </td>
-                      <td className="p-3 space-y-1">
-                         {o.customerEmail && <p className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded max-w-fit truncate">{o.customerEmail}</p>}
-                         {o.customerPhone && (
-                            <Link href={`https://wa.me/${o.customerPhone.replace(/\D/g, '')}`} target="_blank" className="text-[10px] font-bold bg-green-500/10 text-green-700 px-2 py-0.5 rounded max-w-fit block hover:bg-green-500/20">
-                               WA: {o.customerPhone}
-                            </Link>
-                         )}
-                      </td>
-                      <td className="p-3">
-                         <p className="font-black text-base text-primary">${o.amount.toFixed(2)}</p>
-                         {o.orderType === "corporate_employee_purchase" && o.corporateEmployeeItems ? (
-                           <>
-                             <p className="text-[10px] font-black uppercase text-muted-foreground">
-                               {o.corporateEmployeeItems.length} empleado{o.corporateEmployeeItems.length === 1 ? "" : "s"}
-                             </p>
-                             <p className="text-[10px] font-black uppercase text-muted-foreground">
-                               {o.corporateEmployeeItems.reduce((s, i) => s + (i.product?.name ? 1 : 0), 0)} producto{o.corporateEmployeeItems.reduce((s, i) => s + (i.product?.name ? 1 : 0), 0) === 1 ? "" : "s"}
-                             </p>
-                           </>
-                         ) : (
-                           <>
-                              <p className="text-[10px] font-black uppercase text-muted-foreground">{o.commercialItemName || o.items[0]?.productType || "Combo no especificado"}</p>
-                             <p className="text-[10px] font-black uppercase text-muted-foreground">{o.commercialQuantity ? `${o.commercialQuantity} combo${o.commercialQuantity === 1 ? "" : "s"} / ${o.operationalQuantity || o.commercialQuantity} unidad${(o.operationalQuantity || o.commercialQuantity) === 1 ? "" : "es"} físicas` : "0 unidades físicas"}</p>
-                           </>
-                         )}
-                      </td>
-                      <td className="p-3">
-                         {getStatusBadge(o.orderStatus, o.paymentStatus)}
-                         {(o.paymentProofUrl || o.paymentProofAvailable) && <p className="text-[9px] font-black text-emerald-600 uppercase mt-1">✓ Comprobante enviado</p>}
-                      </td>
-                      <td className="p-3 pr-5">
-                         <button
-                           onClick={() => {
-                             setSelectedOrder(o);
-                             setViewMode("detail");
-                           }}
-                           className="p-2 border border-border rounded-lg hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-center"
-                         >
-                            <View className="h-4 w-4" />
-                         </button>
-                      </td>
-                   </tr>
-                ))}
-                {orders.length === 0 && (
-                   <tr>
-                      <td colSpan={6} className="p-12 text-center text-muted-foreground font-bold">
-                         No hay pedidos registrados
-                      </td>
-                   </tr>
-                )}
-             </tbody>
-          </table>
-        </div>
+      <div className="grid gap-4">
+        {filteredOrders.map((order) => {
+          const isCorporateOrder = order.orderType === "corporate_employee_purchase";
+          const hasReceipt = Boolean(order.paymentProofUrl || order.paymentProofAvailable);
+          const unitQty = order.operationalQuantity || order.commercialQuantity || order.items.reduce((sum, item) => sum + item.quantity, 0);
+          const actionTone = order.orderStatus === "cancelled" ? "border-red-200 bg-red-50" : "border-slate-200 bg-white";
+
+          return (
+            <article key={order.id} className={`rounded-[2rem] border p-5 md:p-6 shadow-sm transition-all hover:shadow-lg ${actionTone}`}>
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex-1 space-y-5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className={`rounded-2xl border px-4 py-3 ${isCorporateOrder ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-slate-50"}`}>
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Código principal</p>
+                      <p className="mt-1 font-mono text-lg font-black break-all" title={getVisibleCustomerCode(order)}>
+                        #{getVisibleCustomerCode(order)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Ref. operativa</p>
+                      <p className="mt-1 text-xs font-black text-slate-700 break-all">{getOperationalReference(order)}</p>
+                    </div>
+                    {isCorporateOrder && (
+                      <span className="px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1">
+                        <Building2 className="h-3.5 w-3.5" /> Corporativo
+                      </span>
+                    )}
+                    {hasReceipt && (
+                      <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">
+                        Comprobante enviado
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Cliente</p>
+                      <p className="mt-2 text-sm font-black text-slate-900">{order.customerName || "—"}</p>
+                      <p className="text-xs text-slate-500 break-all">{order.customerEmail || "Sin email"}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Canal</p>
+                      <p className="mt-2 text-sm font-black text-slate-900">{order.channel || "checkout"}</p>
+                      <p className="text-xs text-slate-500 break-all">{order.deliveryReference || "Sin referencia"}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Total</p>
+                      <p className="mt-2 text-2xl font-black text-primary">${order.amount.toFixed(2)}</p>
+                      <p className="text-xs text-slate-500">{unitQty} item{unitQty === 1 ? "" : "s"} · {order.currency || "USD"}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Actualizado</p>
+                      <p className="mt-2 text-sm font-black text-slate-900">{formatDateTime(order.createdAt)}</p>
+                      <p className="text-xs text-slate-500">{order.dispatch ? `Despacho ${order.dispatch.code}` : "Sin despacho"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Detalle operativo</p>
+                          <p className="mt-1 text-sm font-black text-slate-900">Tipo: {getOrderTypeLabel(order)}</p>
+                        </div>
+                        {getStatusBadge(order.orderStatus, order.paymentStatus)}
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <p className="font-semibold text-slate-700">Contacto: {order.customerName} · {order.customerEmail || "Sin email"} · {order.customerPhone || "Sin teléfono"}</p>
+                        <p className="font-semibold text-slate-700">Referencia de entrega: {order.deliveryReference || "Sin referencia"}</p>
+                        <p className="font-semibold text-slate-700">
+                          Pago: {getPaymentReviewLabel(order)}
+                          {hasReceipt ? " · Comprobante enviado" : ""}
+                        </p>
+                        {order.paymentProofUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setReceiptModalOrder(order)}
+                            className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50"
+                          >
+                            Ver comprobante
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-slate-200 bg-white p-4 space-y-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Item</p>
+                      <div className="space-y-2">
+                        <p className="text-sm font-black text-slate-900">{order.commercialItemName || order.items[0]?.productType || "Combo no especificado"} x{order.commercialQuantity || 1}</p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          Comercial: {order.commercialTotal ? `$${order.commercialTotal.toFixed(2)}` : `$${order.amount.toFixed(2)}`}
+                        </p>
+                        <p className="text-xs font-semibold text-slate-700">
+                          Operativo: {order.operationalProductName || "Sticker PreRescatePTY"} x{order.operationalQuantity || order.commercialQuantity || 1}
+                        </p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          {order.operationalProductCode || "PRP-FG-STICKER"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Unidades reservadas</p>
+                        {order.reservedUnits && order.reservedUnits.length > 0 ? (
+                          <div className="mt-2 space-y-2">
+                            {order.reservedUnits.map((unit) => (
+                              <div key={unit.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                                <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel || "Sin etiqueta"}</p>
+                                <p className="text-xs text-slate-500">/{unit.shortCode || "sin-shortCode"}</p>
+                                <p className="text-[10px] font-semibold text-slate-600">
+                                  QC: {unit.qaStatus || "pendiente"} · Inventario: {unit.inventoryStatus || "pendiente"}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-sm font-semibold text-slate-500">Sin unidades reservadas</p>
+                        )}
+                      </div>
+
+                      {order.productionOrder && (
+                        <div className="rounded-2xl border border-violet-200 bg-violet-50 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-500">Producción vinculada</p>
+                          <p className="mt-1 text-sm font-black text-violet-900">{order.productionOrder.code} · {order.productionOrder.status}</p>
+                        </div>
+                      )}
+                      {order.dispatch && (
+                        <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-600">Despacho</p>
+                          <p className="mt-1 text-sm font-black text-cyan-900">{order.dispatch.code} · {order.dispatch.status}</p>
+                        </div>
+                      )}
+                      {order.blockedReasons && order.blockedReasons.length > 0 && (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-700">Bloqueos</p>
+                          <p className="mt-1 text-xs font-semibold text-amber-800">{order.blockedReasons.join(" · ")}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-row gap-2 lg:flex-col lg:w-44 shrink-0">
+                  <button
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setViewMode("detail");
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-900 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-800"
+                  >
+                    <View className="h-4 w-4" />
+                    Ver
+                  </button>
+                  {order.canApprovePayment && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setViewMode("detail");
+                        setReviewAction("approve");
+                      }}
+                      className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-all hover:bg-emerald-100"
+                    >
+                      Aprobar pago
+                    </button>
+                  )}
+                  {order.canRejectPayment && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setViewMode("detail");
+                        setReviewAction("reject");
+                      }}
+                      className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100"
+                    >
+                      Rechazar pago
+                    </button>
+                  )}
+                  {order.canArchiveOrder && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setViewMode("detail");
+                      }}
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50"
+                    >
+                      Archivar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+        {filteredOrders.length === 0 && (
+          <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white p-12 text-center text-muted-foreground font-bold">
+            No hay pedidos registrados
+          </div>
+        )}
       </div>
     </div>
   );
