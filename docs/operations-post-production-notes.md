@@ -1,5 +1,16 @@
 # Notas post-produccion del Centro de Operaciones
 
+## W5.40U - Sincronizacion de pedidos reales a Operaciones
+
+- Los pedidos reales de cliente y empresa ahora se sincronizan hacia `OperationCommercialOrder` desde los flujos existentes.
+- El flujo legacy de `Order` no se borra ni se reemplaza.
+- La sincronizacion es idempotente por fuente (`sourceType` + `sourceId`) y actualiza la orden operativa sin duplicarla.
+- Pedidos creados desde checkout normal, pedidos manuales y pedidos corporativos quedan visibles en `Centro de Operaciones > Pedidos`.
+- No se toco QR/link/NFC.
+- No se uso `prisma db push`.
+- No se uso `prisma migrate reset`.
+- No se tocaron migraciones historicas.
+
 ## W5.40O - Lista para QC crea unidad trazable
 
 - La accion visible en Ensamblaje fisico paso a `Marcar lista para QC`.

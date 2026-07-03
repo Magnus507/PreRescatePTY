@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
+import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
 import { z } from "zod";
 
 const ManualOrderSchema = z.object({
@@ -42,34 +43,63 @@ export async function POST(req: NextRequest) {
 
   const orderNumber = await generateOrderNumber("manual");
   // Crear la orden manual
-  const order = await prisma.order.create({
-    data: {
-      userId,
-      orderNumber,
-      amount: pkg.price,
-      orderStatus: "pending",
-      paymentStatus: "pending",
-      paymentMethod: data.paymentMethod,
-      customerName: data.customerName,
-      customerEmail: data.customerEmail,
-      customerPhone: data.customerPhone || null,
-      customerDocument: data.customerDocument || null,
-      shippingAddress: data.shippingAddress || null,
-      shippingCity: data.shippingCity || null,
-      shippingNotes: data.shippingNotes || null,
-      provider: "manual",
-      packageId: pkg.id,
-      items: {
-        create: [
-          {
-            productType: pkg.name,
-            quantity: pkg.maxChips,
-            unitPrice: pkg.price,
-            totalPrice: pkg.price,
-          },
-        ],
-      },
-    }
+  const order = await prisma.$transaction(async (tx) => {
+    const createdOrder = await tx.order.create({
+      data: {
+        userId,
+        orderNumber,
+        amount: pkg.price,
+        orderStatus: "pending",
+        paymentStatus: "pending",
+        paymentMethod: data.paymentMethod,
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        customerPhone: data.customerPhone || null,
+        customerDocument: data.customerDocument || null,
+        shippingAddress: data.shippingAddress || null,
+        shippingCity: data.shippingCity || null,
+        shippingNotes: data.shippingNotes || null,
+        provider: "manual",
+        packageId: pkg.id,
+        items: {
+          create: [
+            {
+              productType: pkg.name,
+              quantity: pkg.maxChips,
+              unitPrice: pkg.price,
+              totalPrice: pkg.price,
+            },
+          ],
+        },
+      }
+    });
+
+    await syncRealOrderToOperations(tx, {
+      sourceType: "checkout",
+      sourceId: createdOrder.id,
+      sourceCode: createdOrder.orderNumber,
+      orderType: "customer",
+      customerName: createdOrder.customerName,
+      contactEmail: createdOrder.customerEmail,
+      contactPhone: createdOrder.customerPhone,
+      customerReference: createdOrder.providerReference,
+      paymentStatus: createdOrder.paymentStatus,
+      paymentReference: createdOrder.manualPaymentReference || createdOrder.paymentProofUrl || null,
+      currency: createdOrder.currency,
+      notes: "Sincronizado desde pedido manual de paquete",
+      totalAmount: createdOrder.amount,
+      items: [
+        {
+          productCode: pkg.name,
+          productName: pkg.name,
+          quantity: 1,
+          unitPrice: createdOrder.amount,
+          unit: "unit",
+        },
+      ],
+    });
+
+    return createdOrder;
   });
 
   return NextResponse.json({ order });

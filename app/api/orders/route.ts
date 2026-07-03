@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { generateOrderNumber } from "@/lib/order-number";
+import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
 import { orderCreateSchema, validateOrThrow } from "@/lib/validations";
 import { BUSINESS_RULES } from "@/domains/shared/constants";
 
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest) {
 
       const totalPrice = pricedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
-      return await tx.order.create({
+      const createdOrder = await tx.order.create({
         data: {
           userId,
           orderNumber: nextNumber,
@@ -164,6 +165,31 @@ export async function POST(req: NextRequest) {
           }
         }
       });
+
+      await syncRealOrderToOperations(tx, {
+        sourceType: "legacy_order",
+        sourceId: createdOrder.id,
+        sourceCode: createdOrder.orderNumber,
+        orderType: "customer",
+        customerName: createdOrder.customerName || `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim(),
+        contactEmail: createdOrder.customerEmail,
+        contactPhone: createdOrder.customerPhone,
+        customerReference: createdOrder.providerReference,
+        paymentStatus: createdOrder.paymentStatus,
+        paymentReference: createdOrder.manualPaymentReference || createdOrder.paymentProofUrl || null,
+        currency: createdOrder.currency,
+        notes: `Sincronizado desde pedido legacy ${createdOrder.orderNumber}`,
+        totalAmount: createdOrder.amount,
+        items: pricedItems.map((item) => ({
+          productCode: item.productType,
+          productName: item.productType,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          unit: "unit",
+        })),
+      });
+
+      return createdOrder;
     });
 
     return NextResponse.json({ order });

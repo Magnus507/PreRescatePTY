@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
+import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
 import { normalizePaymentProofUrl } from "@/lib/payment-proof";
 import { rateLimit } from "@/lib/rateLimit";
 
@@ -164,6 +165,37 @@ export async function POST(req: NextRequest) {
         orderId: createdOrder.id,
         status: "payment_under_review",
       },
+    });
+
+    const organizationDetails = await tx.organization.findUnique({
+      where: { id: organization.id },
+      select: { legalName: true, displayName: true, contactEmail: true, contactPhone: true },
+    });
+
+    await syncRealOrderToOperations(tx, {
+      sourceType: "customer_request",
+      sourceId: createdOrder.id,
+      sourceCode: createdOrder.orderNumber,
+      orderType: "enterprise",
+      companyName: organizationDetails?.displayName || organizationDetails?.legalName || null,
+      contactName: organizationDetails?.displayName || organizationDetails?.legalName || null,
+      contactEmail: organizationDetails?.contactEmail || null,
+      contactPhone: organizationDetails?.contactPhone || null,
+      customerReference: normalizedProofUrl || createdOrder.orderNumber,
+      paymentStatus: createdOrder.paymentStatus,
+      paymentReference: normalizedProofUrl,
+      currency: createdOrder.currency,
+      notes: "Sincronizado desde solicitudes corporativas aprobadas",
+      totalAmount: createdOrder.amount,
+      organizationId: organization.id,
+      salesChannel: "organization",
+      items: corporateItems.map((item) => ({
+        productCode: item.productId,
+        productName: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        unit: "unit",
+      })),
     });
 
     // Audit log

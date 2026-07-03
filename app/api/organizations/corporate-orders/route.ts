@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
+import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
 
 type ProductSelection = {
   productId: string;
@@ -189,6 +190,37 @@ export async function POST(req: NextRequest) {
 
     await tx.corporateOrderEmployeeItem.createMany({
       data: corporateItems.map((item) => ({ ...item, orderId: created.id })),
+    });
+
+    const organizationDetails = await tx.organization.findUnique({
+      where: { id: organization.id },
+      select: { legalName: true, displayName: true, contactEmail: true, contactPhone: true },
+    });
+
+    await syncRealOrderToOperations(tx, {
+      sourceType: "organization_order",
+      sourceId: created.id,
+      sourceCode: created.orderNumber,
+      orderType: "enterprise",
+      companyName: organizationDetails?.displayName || organizationDetails?.legalName || null,
+      contactName: organizationDetails?.displayName || organizationDetails?.legalName || null,
+      contactEmail: organizationDetails?.contactEmail || null,
+      contactPhone: organizationDetails?.contactPhone || null,
+      customerReference: created.paymentProofUrl || created.orderNumber,
+      paymentStatus: created.paymentStatus,
+      paymentReference: created.paymentProofUrl || null,
+      currency: created.currency,
+      notes: "Sincronizado desde pedido corporativo real",
+      totalAmount: created.amount,
+      organizationId: organization.id,
+      salesChannel: "organization",
+      items: corporateItems.map((item) => ({
+        productCode: item.productId,
+        productName: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        unit: "unit",
+      })),
     });
 
     await tx.organizationMember.updateMany({

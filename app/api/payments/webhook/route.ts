@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PaymentService } from "@/domains/shared/services/payment.service";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
+import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
 import Stripe from "stripe";
 import { Prisma } from "@prisma/client";
 import { ACCOUNT_TYPES } from "@/domains/shared/constants";
@@ -66,7 +67,16 @@ export async function POST(req: NextRequest) {
 
       // 1. Validate the user and package exist
       const [user, pkg] = await Promise.all([
-        prisma.user.findUnique({ where: { id: userId }, select: { id: true, accountId: true } }),
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            accountId: true,
+            email: true,
+            phone: true,
+            profile: { select: { firstName: true, lastName: true } },
+          },
+        }),
         prisma.package.findUnique({ where: { id: packageId } }),
       ]);
 
@@ -107,7 +117,7 @@ export async function POST(req: NextRequest) {
 
         const orderNumber = await generateOrderNumber("stripe");
 
-        await tx.order.create({
+        const createdOrder = await tx.order.create({
           data: {
             orderNumber,
             userId,
@@ -119,6 +129,31 @@ export async function POST(req: NextRequest) {
             provider: "stripe",
             providerReference,
           },
+        });
+
+        await syncRealOrderToOperations(tx, {
+          sourceType: "checkout",
+          sourceId: providerReference,
+          sourceCode: orderNumber,
+          orderType: pkg.accountType === "company" ? "enterprise" : "customer",
+          customerName: user.profile ? `${user.profile.firstName} ${user.profile.lastName}`.trim() : user.email,
+          contactEmail: user.email,
+          contactPhone: user.phone || null,
+          customerReference: providerReference,
+          paymentStatus: "paid",
+          paymentReference: providerReference,
+          currency: session.currency ?? "usd",
+          notes: `Sincronizado desde checkout Stripe ${session.id}`,
+          totalAmount: createdOrder.amount,
+          items: [
+            {
+              productCode: pkg.name,
+              productName: pkg.name,
+              quantity: 1,
+              unitPrice: createdOrder.amount,
+              unit: "unit",
+            },
+          ],
         });
       });
 
