@@ -212,7 +212,7 @@ export function PedidosSection() {
   const [rejectingPaymentOrder, setRejectingPaymentOrder] = useState<Order | null>(null);
   const [paymentRejectionReason, setPaymentRejectionReason] = useState("");
   const [paymentRejectionError, setPaymentRejectionError] = useState("");
-  const [removingPaymentProofOrderId, setRemovingPaymentProofOrderId] = useState<string | null>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [showInternalOrderModal, setShowInternalOrderModal] = useState(false);
   const [creatingInternalOrder, setCreatingInternalOrder] = useState(false);
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
@@ -543,6 +543,61 @@ export function PedidosSection() {
     setPaymentRejectionError("");
   }, []);
 
+  const canDeleteTestOrder = useCallback((order: Order) => {
+    const haystack = [
+      order.orderNumber,
+      order.customerName,
+      order.customerEmail,
+      order.paymentReference,
+      order.operationalReference,
+      order.deliveryReference,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const isMarkedTest = /test|prueba|demo|seed|sandbox|mock|fake/.test(haystack);
+    const hasNoAdvancedOps =
+      !order.paymentProofUrl &&
+      !order.manualPaymentReference &&
+      !order.productionOrder &&
+      !order.dispatch &&
+      !order.reservedUnits?.length;
+    const isUnstarted = order.orderStatus === "pending" && order.paymentStatus === "pending";
+    return isMarkedTest && hasNoAdvancedOps && isUnstarted;
+  }, []);
+
+  const handleDeleteOrder = useCallback(async (event: React.MouseEvent, order: Order) => {
+    event.stopPropagation();
+    if (!canDeleteTestOrder(order)) {
+      toast.error("Solo se pueden eliminar pedidos de prueba sin trazabilidad.");
+      return;
+    }
+
+    const confirmed = window.confirm("Esto eliminará el pedido de prueba por completo. ¿Continuar?");
+    if (!confirmed) return;
+
+    setDeletingOrderId(order.id);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/test-delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (res.ok) {
+        toast.success("Pedido de prueba eliminado.");
+        await loadOrders();
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      toast.error(data?.error || "No se pudo eliminar el pedido.");
+    } catch {
+      toast.error("No se pudo eliminar el pedido.");
+    } finally {
+      setDeletingOrderId(null);
+    }
+  }, [canDeleteTestOrder, loadOrders]);
+
   const handleConfirmRejectPayment = useCallback(async () => {
     if (!rejectingPaymentOrder) return;
     const reason = paymentRejectionReason.trim();
@@ -589,35 +644,6 @@ export function PedidosSection() {
       setReviewAction(null);
     }
   }, [loadOrders, paymentRejectionReason, rejectingPaymentOrder]);
-
-  const handleRemovePaymentProof = useCallback(async (event: React.MouseEvent, order: Order) => {
-    event.stopPropagation();
-    const confirmed = window.confirm(
-      "Esto eliminará el comprobante cargado y devolverá el pago a pendiente. ¿Continuar?"
-    );
-    if (!confirmed) return;
-
-    setRemovingPaymentProofOrderId(order.id);
-    try {
-      const res = await fetch(`/api/admin/orders/${order.id}/payment-proof`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data?.error || "No se pudo eliminar el comprobante.");
-        return;
-      }
-
-      toast.success("Comprobante eliminado.");
-      await loadOrders();
-    } catch {
-      toast.error("No se pudo eliminar el comprobante.");
-    } finally {
-      setRemovingPaymentProofOrderId(null);
-    }
-  }, [loadOrders]);
 
   const handleCreateInternalOrder = async () => {
     if (!internalOrderForm.finishedGoodId.trim()) {
@@ -1703,14 +1729,16 @@ export function PedidosSection() {
                             >
                               Ver comprobante
                             </button>
-                            <button
-                              type="button"
-                              onClick={(e) => handleRemovePaymentProof(e, order)}
-                              disabled={removingPaymentProofOrderId === order.id}
-                              className="inline-flex w-fit items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-100 disabled:opacity-50"
-                            >
-                              {removingPaymentProofOrderId === order.id ? "Eliminando..." : "Eliminar comprobante"}
-                            </button>
+                            {canDeleteTestOrder(order) && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteOrder(e, order)}
+                                disabled={deletingOrderId === order.id}
+                                className="inline-flex w-fit items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-100 disabled:opacity-50"
+                              >
+                                {deletingOrderId === order.id ? "Eliminando..." : "Eliminar pedido"}
+                              </button>
+                            )}
                             <p className="text-[10px] font-bold text-emerald-700">Comprobante enviado por el cliente. Pago en revisión.</p>
                           </div>
                         ) : (

@@ -138,6 +138,18 @@ function getComboMultiplier(label: string | null | undefined) {
   return 1;
 }
 
+function getComboPricing(label: string | null | undefined) {
+  const normalized = (label || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (!normalized) return null;
+  if (normalized.includes("combo duo")) return { price: 45, unitsPerCombo: 2, commercialQuantity: 1 };
+  if (normalized.includes("combo familiar")) return { price: 65, unitsPerCombo: 3, commercialQuantity: 1 };
+  if (normalized.includes("combo hogar full")) return { price: 95, unitsPerCombo: 5, commercialQuantity: 1 };
+  if (normalized.includes("combo empresa")) return { price: 250, unitsPerCombo: 20, commercialQuantity: 1 };
+  if (normalized.includes("combo corporativo")) return { price: 450, unitsPerCombo: 50, commercialQuantity: 1 };
+  if (normalized.includes("combo estandar")) return { price: 25, unitsPerCombo: 1, commercialQuantity: 1 };
+  return null;
+}
+
 function getBlockedReasons(order: OperationsOrderInput, paymentProofAvailable: boolean) {
   const reasons: string[] = [];
 
@@ -163,10 +175,12 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const paymentStatusLabel = getPaymentLabel(order.paymentStatus, paymentProofAvailable);
   const firstItem = order.items[0] || null;
   const commercialItemName = firstItem?.productType || null;
-  const commercialQuantity = firstItem?.quantity || 0;
-  const commercialUnitPrice = firstItem?.unitPrice || 0;
-  const commercialTotal = firstItem?.totalPrice ?? 0;
-  const comboMultiplier = getComboMultiplier(commercialItemName);
+  const comboPricing = getComboPricing(commercialItemName);
+  const fallbackQuantity = firstItem?.quantity || 0;
+  const commercialQuantity = comboPricing?.commercialQuantity ?? fallbackQuantity;
+  const commercialUnitPrice = comboPricing?.price ?? firstItem?.unitPrice ?? 0;
+  const commercialTotal = comboPricing?.price ? comboPricing.price * commercialQuantity : firstItem?.totalPrice ?? 0;
+  const comboMultiplier = comboPricing?.unitsPerCombo ?? getComboMultiplier(commercialItemName);
   const operationalProductCode = commercialItemName?.toUpperCase().startsWith("COMBO_")
     ? "PRP-FG-STICKER"
     : commercialItemName?.toUpperCase().includes("STICKER")

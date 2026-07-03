@@ -8,9 +8,11 @@ export type CommercialItemMappingInput = {
 };
 
 export type CommercialProductMappingResult = {
+  commercialQuantity: number;
   operationalProductCode: string;
   operationalProductName: string;
   operationalQuantity: number;
+  unitPrice: number;
   sourceLabel: string;
   operationalMappingStatus: "mapped" | "unmapped";
 };
@@ -40,6 +42,33 @@ function resolveQuantityFromName(productName: string | null | undefined) {
   return null;
 }
 
+function resolveCommercialComboPrice(productName: string | null | undefined) {
+  const normalized = normalizeType(productName || "");
+  if (normalized.includes("DUO")) return 45;
+  if (normalized.includes("FAMILIAR")) return 65;
+  if (normalized.includes("HOGAR_FULL") || normalized.includes("HOGARFULL")) return 95;
+  if (normalized.includes("EMPRESA")) return 250;
+  if (normalized.includes("CORPORATIVO")) return 450;
+  if (normalized.includes("ESTANDAR") || normalized.includes("STANDARD")) return 25;
+  return null;
+}
+
+function resolveCommercialQuantityForCombo(
+  inputQuantity: number,
+  packageQuantity: number | null,
+  comboName: string | null | undefined
+) {
+  const normalizedCombo = normalizeType(comboName || "");
+  if (!packageQuantity) return Math.max(1, Number(inputQuantity || 1));
+  if (normalizedCombo.includes("DUO") && inputQuantity === packageQuantity) return 1;
+  if (normalizedCombo.includes("FAMILIAR") && inputQuantity === packageQuantity) return 1;
+  if (normalizedCombo.includes("HOGAR_FULL") && inputQuantity === packageQuantity) return 1;
+  if (normalizedCombo.includes("EMPRESA") && inputQuantity === packageQuantity) return 1;
+  if (normalizedCombo.includes("CORPORATIVO") && inputQuantity === packageQuantity) return 1;
+  if (normalizedCombo.includes("ESTANDAR") && inputQuantity === packageQuantity) return 1;
+  return Math.max(1, Number(inputQuantity || 1));
+}
+
 export async function mapCommercialItemToOperationalRequirement(
   input: CommercialItemMappingInput
 ): Promise<CommercialProductMappingResult> {
@@ -49,12 +78,21 @@ export async function mapCommercialItemToOperationalRequirement(
   if (normalizedType.startsWith("COMBO_")) {
     const pkg = await resolvePackageQuantity(input.providerReference);
     const quantityFromName = resolveQuantityFromName(sourceLabel);
-    const mappedQuantity = Math.max(1, Number(input.quantity || 1)) * Math.max(1, pkg?.maxChips || quantityFromName || 1);
+    const commercialQuantity = resolveCommercialQuantityForCombo(
+      Math.max(1, Number(input.quantity || 1)),
+      pkg?.maxChips || quantityFromName || null,
+      sourceLabel
+    );
+    const unitsPerCombo = Math.max(1, pkg?.maxChips || quantityFromName || 1);
+    const operationalQuantity = commercialQuantity * unitsPerCombo;
+    const unitPrice = resolveCommercialComboPrice(sourceLabel) ?? 0;
 
     return {
+      commercialQuantity,
       operationalProductCode: "PRP-FG-STICKER",
       operationalProductName: "Sticker PreRescatePTY",
-      operationalQuantity: mappedQuantity,
+      operationalQuantity,
+      unitPrice,
       sourceLabel: pkg ? `${sourceLabel} → ${pkg.name}` : `${sourceLabel} → stock operativo pendiente de mapeo`,
       operationalMappingStatus: pkg || quantityFromName ? "mapped" : "unmapped",
     };
@@ -62,18 +100,22 @@ export async function mapCommercialItemToOperationalRequirement(
 
   if (normalizedType === "CHIP_EXTRA") {
     return {
+      commercialQuantity: Math.max(1, Number(input.quantity || 1)),
       operationalProductCode: "PRP-FG-STICKER",
       operationalProductName: "Sticker PreRescatePTY",
       operationalQuantity: Math.max(1, Number(input.quantity || 1)),
+      unitPrice: 0,
       sourceLabel,
       operationalMappingStatus: "mapped",
     };
   }
 
   return {
+    commercialQuantity: Math.max(1, Number(input.quantity || 1)),
     operationalProductCode: "PRP-FG-STICKER",
     operationalProductName: "Sticker PreRescatePTY",
     operationalQuantity: Math.max(1, Number(input.quantity || 1)),
+    unitPrice: 0,
     sourceLabel,
     operationalMappingStatus: "mapped",
   };

@@ -121,9 +121,9 @@ export async function syncRealOrderToOperations(
       finishedGoodId: item.finishedGoodId?.trim() || null,
       productCode: mapping.operationalProductCode,
       productName: mapping.operationalProductName,
-      quantity: mapping.operationalQuantity,
+      quantity: mapping.commercialQuantity,
       unitPrice: item.unitPrice,
-      totalPrice: item.quantity * item.unitPrice,
+      totalPrice: mapping.commercialQuantity * item.unitPrice,
       unit: item.unit?.trim() || "unit",
       notes: mapping.operationalMappingStatus === "unmapped"
         ? `${mapping.sourceLabel} | mapping:unmapped`
