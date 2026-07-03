@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Loader2, View, CheckCircle2, Truck, RefreshCw, ExternalLink, Building2, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle } from "lucide-react";
+import { Loader2, View, CheckCircle2, Truck, RefreshCw, ExternalLink, Building2, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle, X } from "lucide-react";
 const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => ({ default: mod.QRCodeCanvas })), { ssr: false });
 import { toast } from "sonner";
 import Link from "next/link";
@@ -50,6 +50,14 @@ interface CorporateEmployeeItem {
     serialPublic: string;
     status: string;
   } | null;
+}
+
+interface FinishedGoodOption {
+  id: string;
+  code: string;
+  name: string;
+  unit: string;
+  balance: number;
 }
 
 interface Order {
@@ -164,12 +172,20 @@ export function PedidosSection() {
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [reviewNote, setReviewNote] = useState("");
   const [updating, setUpdating] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'paid' | 'rejected' | 'completed'>('all');
   const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [markingDelivered, setMarkingDelivered] = useState(false);
   const initializedOrderIdRef = useRef<string | null>(null);
+  const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
+  const [showInternalOrderModal, setShowInternalOrderModal] = useState(false);
+  const [creatingInternalOrder, setCreatingInternalOrder] = useState(false);
+  const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
+  const [internalOrderForm, setInternalOrderForm] = useState({
+    finishedGoodId: "",
+    quantity: "1",
+    reason: "Reposición de inventario",
+  });
 
   const loadOrders = useCallback(async (options?: { silent?: boolean }) => {
     const isSilent = options?.silent ?? false;
@@ -187,9 +203,22 @@ export function PedidosSection() {
     }
   }, []);
 
+  const loadFinishedGoods = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/operations/finished-goods", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) {
+        setFinishedGoods(Array.isArray(data.finishedGoods) ? data.finishedGoods : []);
+      }
+    } catch {
+      toast.error("No se pudo cargar Inventario PT");
+    }
+  }, []);
+
   useEffect(() => {
     loadOrders();
-  }, [loadOrders]);
+    loadFinishedGoods();
+  }, [loadFinishedGoods, loadOrders]);
 
   useEffect(() => {
     loadOrdersRef.current = loadOrders;
@@ -311,12 +340,13 @@ export function PedidosSection() {
     }
   };
 
-  const handleApprove = async () => {
-    if (!selectedOrder || selectedOrder.provider !== "manual") return;
+  const handleApprove = async (targetOrder?: Order) => {
+    const order = targetOrder ?? selectedOrder;
+    if (!order || order.provider !== "manual") return;
     setReviewAction("approve");
     setUpdating(true);
     try {
-      const res = await fetch(`/api/admin/orders/${selectedOrder.id}/approve`, {
+      const res = await fetch(`/api/admin/orders/${order.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -346,8 +376,9 @@ export function PedidosSection() {
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedOrder || selectedOrder.provider !== "manual") return;
+  const handleReject = async (targetOrder?: Order) => {
+    const order = targetOrder ?? selectedOrder;
+    if (!order || order.provider !== "manual") return;
     const trimmedNote = reviewNote.trim();
     if (!trimmedNote) {
       toast.error("Indique el motivo del rechazo.");
@@ -356,7 +387,7 @@ export function PedidosSection() {
     setReviewAction("reject");
     setUpdating(true);
     try {
-      const res = await fetch(`/api/admin/orders/${selectedOrder.id}/reject`, {
+      const res = await fetch(`/api/admin/orders/${order.id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -434,21 +465,64 @@ export function PedidosSection() {
     }
   };
 
-  const filteredOrders = orders.filter((o) => {
-    if (activeTab === "pending") return o.paymentStatus === "pending";
-    if (activeTab === "under_review") return o.paymentStatus === "under_review";
-    if (activeTab === "paid") return o.paymentStatus === "paid";
-    if (activeTab === "rejected") return o.paymentStatus === "rejected";
-    if (activeTab === "completed") return o.orderStatus === "completed";
-    return true;
-  });
+  const toggleExpandedOrder = useCallback((order: Order) => {
+    setExpandedOrderIds((current) => {
+      const next = new Set(current);
+      if (next.has(order.id)) next.delete(order.id);
+      else next.add(order.id);
+      return next;
+    });
+  }, []);
 
-  const getOrderTypeLabel = (order: Order) => {
-    if (order.orderType === "corporate_employee_purchase") return "Empresa";
-    if (order.orderType === "internal") return "Interno";
-    if (order.orderType === "customer") return "Cliente";
-    return order.orderType || "Cliente";
+  const handleCreateInternalOrder = async () => {
+    if (!internalOrderForm.finishedGoodId.trim()) {
+      toast.error("Selecciona el producto a fabricar");
+      return;
+    }
+
+    const quantity = Number(internalOrderForm.quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      toast.error("La cantidad debe ser mayor a 0");
+      return;
+    }
+
+    setCreatingInternalOrder(true);
+    try {
+      const selectedFinishedGood = finishedGoods.find((item) => item.id === internalOrderForm.finishedGoodId);
+      const res = await fetch("/api/admin/operations/commercial-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerType: "internal",
+          internalReason: internalOrderForm.reason.trim() || "Reposición de inventario",
+          items: [
+            {
+              finishedGoodId: internalOrderForm.finishedGoodId,
+              productCode: selectedFinishedGood?.code || undefined,
+              productName: selectedFinishedGood?.name || "Producto interno",
+              quantity,
+              unitPrice: 0,
+              unit: selectedFinishedGood?.unit || "unit",
+            },
+          ],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo crear el pedido interno");
+      }
+      toast.success(`Pedido interno ${data.commercialOrder?.code || "creado"} enviado a producción`);
+      setShowInternalOrderModal(false);
+      setInternalOrderForm({ finishedGoodId: "", quantity: "1", reason: "Reposición de inventario" });
+      await loadOrders({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al crear el pedido interno");
+    } finally {
+      setCreatingInternalOrder(false);
+    }
   };
+
+  const filteredOrders = orders;
 
   const formatDateTime = (value: string) =>
     new Intl.DateTimeFormat("es-PA", {
@@ -597,14 +671,14 @@ export function PedidosSection() {
                        <div className="flex gap-3">
                          <button
                            disabled={updating || !canAdminApproveManual(selectedOrder)}
-                           onClick={handleApprove}
+                           onClick={() => void handleApprove(selectedOrder)}
                            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                          >
                            {reviewAction === "approve" ? "Aprobando..." : "Aprobar pago"}
                          </button>
                          <button
                            disabled={updating || !canAdminRejectManual(selectedOrder)}
-                           onClick={handleReject}
+                           onClick={() => void handleReject(selectedOrder)}
                            className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
                          >
                            {reviewAction === "reject" ? "Rechazando..." : "Rechazar pago"}
@@ -965,14 +1039,14 @@ export function PedidosSection() {
                                <div className="flex flex-col gap-2">
                                  <button
                                     disabled={updating || !canAdminApproveManual(selectedOrder)}
-                                   onClick={handleApprove}
+                                   onClick={() => void handleApprove(selectedOrder)}
                                     className="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                                  >
                                    {reviewAction === "approve" ? "Aprobando..." : "Aprobar pago"}
                                  </button>
                                  <button
                                     disabled={updating || !canAdminRejectManual(selectedOrder)}
-                                   onClick={handleReject}
+                                   onClick={() => void handleReject(selectedOrder)}
                                     className="w-full px-4 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
                                  >
                                    {reviewAction === "reject" ? "Rechazando..." : "Rechazar pago"}
@@ -1187,59 +1261,130 @@ export function PedidosSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between">
-         <div>
-            <h1 className="text-2xl font-black uppercase tracking-tighter">Gestión de Pedidos</h1>
-            <p className="text-muted-foreground text-sm font-medium">CRM manual para validación de compras y pagos.</p>
-         </div>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-         <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 w-fit">
-            {([
-              { id: 'all', label: 'Todos' },
-              { id: 'pending', label: 'Pending' },
-              { id: 'under_review', label: 'Under Review' },
-              { id: 'paid', label: 'Paid' },
-              { id: 'rejected', label: 'Rejected' },
-              { id: 'completed', label: 'Completados' }
-            ] as const).map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                 {tab.label}
-              </button>
-            ))}
-         </div>
-         <div className="flex items-center gap-2">
-            <button onClick={() => loadOrders({ silent: true })} disabled={refreshing} className="p-3 border border-border rounded-xl hover:bg-accent transition-all">
-               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
-         </div>
-      </div>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black uppercase tracking-tighter">Gestión de Pedidos</h1>
+          <p className="text-muted-foreground text-sm font-medium">
+            Bandeja operativa para validar compras existentes y generar pedidos internos de reposición.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowInternalOrderModal(true)}
+            className="rounded-xl bg-primary px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950"
+          >
+            Crear pedido interno
+          </button>
+          <button onClick={() => loadOrders({ silent: true })} disabled={refreshing} className="p-3 border border-border rounded-xl hover:bg-accent transition-all">
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-4">
+      {showInternalOrderModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/70 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Pedido interno</p>
+                <h3 className="mt-2 text-2xl font-black tracking-tight">Reposición de inventario</h3>
+                <p className="mt-1 text-sm text-slate-500">La creación de pedidos se gestiona desde los flujos de origen; Pedidos solo opera pedidos existentes.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInternalOrderModal(false)}
+                className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Producto</span>
+                <select
+                  value={internalOrderForm.finishedGoodId}
+                  onChange={(event) => setInternalOrderForm((current) => ({ ...current, finishedGoodId: event.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium"
+                >
+                  <option value="">Selecciona un producto</option>
+                  {finishedGoods.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} · {item.code} · stock {item.balance}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Cantidad</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={internalOrderForm.quantity}
+                    onChange={(event) => setInternalOrderForm((current) => ({ ...current, quantity: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Motivo</span>
+                  <input
+                    type="text"
+                    value={internalOrderForm.reason}
+                    onChange={(event) => setInternalOrderForm((current) => ({ ...current, reason: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowInternalOrderModal(false)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleCreateInternalOrder()}
+                disabled={creatingInternalOrder}
+                className="rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+              >
+                {creatingInternalOrder ? "Creando..." : "Crear pedido interno"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3">
         {filteredOrders.map((order) => {
           const isCorporateOrder = order.orderType === "corporate_employee_purchase";
+          const isExpanded = expandedOrderIds.has(order.id);
+          const collapsedByDefault = ["paid", "rejected", "cancelled", "completed"].includes(order.orderStatus);
+          const expanded = isExpanded || !collapsedByDefault;
           const hasReceipt = Boolean(order.paymentProofUrl || order.paymentProofAvailable);
-          const unitQty = order.operationalQuantity || order.commercialQuantity || order.items.reduce((sum, item) => sum + item.quantity, 0);
-          const actionTone = order.orderStatus === "cancelled" ? "border-red-200 bg-red-50" : "border-slate-200 bg-white";
+          const commercialQty = order.commercialQuantity || order.items[0]?.quantity || 1;
+          const operationalQty = order.operationalQuantity || commercialQty;
+
+          const stop = (event: React.MouseEvent) => event.stopPropagation();
 
           return (
-            <article key={order.id} className={`rounded-[2rem] border p-5 md:p-6 shadow-sm transition-all hover:shadow-lg ${actionTone}`}>
+            <article
+              key={order.id}
+              onClick={() => toggleExpandedOrder(order)}
+              className={`rounded-[2rem] border bg-white p-5 md:p-6 shadow-sm transition-all hover:shadow-lg ${expanded ? "border-slate-200" : "border-slate-100"}`}
+            >
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex-1 space-y-5">
+                <div className="flex-1 space-y-4">
                   <div className="flex flex-wrap items-center gap-3">
                     <div className={`rounded-2xl border px-4 py-3 ${isCorporateOrder ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-slate-50"}`}>
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Código principal</p>
-                      <p className="mt-1 font-mono text-lg font-black break-all" title={getVisibleCustomerCode(order)}>
-                        #{getVisibleCustomerCode(order)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Ref. operativa</p>
-                      <p className="mt-1 text-xs font-black text-slate-700 break-all">{getOperationalReference(order)}</p>
+                      <p className="mt-1 font-mono text-lg font-black break-all">#{getVisibleCustomerCode(order)}</p>
                     </div>
                     {isCorporateOrder && (
                       <span className="px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1">
@@ -1253,6 +1398,16 @@ export function PedidosSection() {
                     )}
                   </div>
 
+                  <div className="flex flex-wrap items-center gap-2">
+                    {getStatusBadge(order.orderStatus, order.paymentStatus)}
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                      {order.paymentStatusLabel || getPaymentReviewLabel(order)}
+                    </span>
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      {expanded ? "Expandida" : "Expandir"}
+                    </span>
+                  </div>
+
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Cliente</p>
@@ -1260,14 +1415,14 @@ export function PedidosSection() {
                       <p className="text-xs text-slate-500 break-all">{order.customerEmail || "Sin email"}</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Canal</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{order.channel || "checkout"}</p>
-                      <p className="text-xs text-slate-500 break-all">{order.deliveryReference || "Sin referencia"}</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Monto</p>
+                      <p className="mt-2 text-2xl font-black text-primary">${order.amount.toFixed(2)}</p>
+                      <p className="text-xs text-slate-500">{order.currency || "USD"}</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Total</p>
-                      <p className="mt-2 text-2xl font-black text-primary">${order.amount.toFixed(2)}</p>
-                      <p className="text-xs text-slate-500">{unitQty} item{unitQty === 1 ? "" : "s"} · {order.currency || "USD"}</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Resumen</p>
+                      <p className="mt-2 text-sm font-black text-slate-900">{order.commercialItemName || order.items[0]?.productType || "Combo no especificado"} x{commercialQty}</p>
+                      <p className="text-xs text-slate-500">{operationalQty} unidades físicas</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Actualizado</p>
@@ -1276,107 +1431,105 @@ export function PedidosSection() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Detalle operativo</p>
-                          <p className="mt-1 text-sm font-black text-slate-900">Tipo: {getOrderTypeLabel(order)}</p>
+                  {expanded && (
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Envío y pago</p>
+                        <div className="space-y-2 text-sm">
+                          <p className="font-semibold text-slate-700">Canal: {order.channel || "checkout"}</p>
+                          <p className="font-semibold text-slate-700">Teléfono: {order.customerPhone || "Sin teléfono"}</p>
+                          <p className="font-semibold text-slate-700">Contacto: {order.customerName}</p>
+                          <p className="font-semibold text-slate-700">Ciudad / área: {order.shippingCity || "Sin ciudad"}</p>
+                          <p className="font-semibold text-slate-700">Dirección exacta: {order.shippingAddress || "Sin dirección"}</p>
+                          <p className="font-semibold text-slate-700">Notas: {order.shippingNotes || "Sin notas"}</p>
+                          <p className="font-semibold text-slate-700">Método de pago: {getPaymentMethodLabel(order.paymentMethod)}</p>
+                          <p className="font-semibold text-slate-700">Pago: {getPaymentReviewLabel(order)}</p>
                         </div>
-                        {getStatusBadge(order.orderStatus, order.paymentStatus)}
-                      </div>
-                      <div className="space-y-2 text-sm">
-                        <p className="font-semibold text-slate-700">Contacto: {order.customerName} · {order.customerEmail || "Sin email"} · {order.customerPhone || "Sin teléfono"}</p>
-                        <p className="font-semibold text-slate-700">Referencia de entrega: {order.deliveryReference || "Sin referencia"}</p>
-                        <p className="font-semibold text-slate-700">
-                          Pago: {getPaymentReviewLabel(order)}
-                          {hasReceipt ? " · Comprobante enviado" : ""}
-                        </p>
-                        {order.paymentProofUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setReceiptModalOrder(order)}
-                            className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50"
-                          >
-                            Ver comprobante
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-3xl border border-slate-200 bg-white p-4 space-y-3">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Item</p>
-                      <div className="space-y-2">
-                        <p className="text-sm font-black text-slate-900">{order.commercialItemName || order.items[0]?.productType || "Combo no especificado"} x{order.commercialQuantity || 1}</p>
-                        <p className="text-xs font-semibold text-slate-500">
-                          Comercial: {order.commercialTotal ? `$${order.commercialTotal.toFixed(2)}` : `$${order.amount.toFixed(2)}`}
-                        </p>
-                        <p className="text-xs font-semibold text-slate-700">
-                          Operativo: {order.operationalProductName || "Sticker PreRescatePTY"} x{order.operationalQuantity || order.commercialQuantity || 1}
-                        </p>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          {order.operationalProductCode || "PRP-FG-STICKER"}
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3">
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Unidades reservadas</p>
-                        {order.reservedUnits && order.reservedUnits.length > 0 ? (
-                          <div className="mt-2 space-y-2">
-                            {order.reservedUnits.map((unit) => (
-                              <div key={unit.id} className="rounded-xl border border-slate-200 bg-white p-3">
-                                <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel || "Sin etiqueta"}</p>
-                                <p className="text-xs text-slate-500">/{unit.shortCode || "sin-shortCode"}</p>
-                                <p className="text-[10px] font-semibold text-slate-600">
-                                  QC: {unit.qaStatus || "pendiente"} · Inventario: {unit.inventoryStatus || "pendiente"}
-                                </p>
-                              </div>
-                            ))}
+                        {order.paymentProofUrl ? (
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                stop(e);
+                                setReceiptModalOrder(order);
+                              }}
+                              className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50"
+                            >
+                              Ver comprobante
+                            </button>
+                            <p className="text-[10px] font-bold text-emerald-700">Comprobante enviado por el cliente. Pago en revisión.</p>
                           </div>
                         ) : (
-                          <p className="mt-2 text-sm font-semibold text-slate-500">Sin unidades reservadas</p>
+                          <p className="text-[10px] font-bold text-slate-500">No se adjuntó comprobante de pago.</p>
                         )}
                       </div>
 
-                      {order.productionOrder && (
-                        <div className="rounded-2xl border border-violet-200 bg-violet-50 p-3">
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-500">Producción vinculada</p>
-                          <p className="mt-1 text-sm font-black text-violet-900">{order.productionOrder.code} · {order.productionOrder.status}</p>
+                      <div className="rounded-3xl border border-slate-200 bg-white p-4 space-y-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Item comercial y operativo</p>
+                        <p className="text-sm font-black text-slate-900">{order.commercialItemName || order.items[0]?.productType || "Combo no especificado"} x{commercialQty}</p>
+                        <p className="text-xs font-semibold text-slate-500">Comercial total: ${order.commercialTotal ? order.commercialTotal.toFixed(2) : order.amount.toFixed(2)}</p>
+                        <p className="text-sm font-black text-slate-900">{order.operationalProductName || "Sticker PreRescatePTY"} x{operationalQty}</p>
+                        <p className="text-xs font-semibold text-slate-700">{order.operationalProductCode || "PRP-FG-STICKER"}</p>
+
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Unidades reservadas</p>
+                          {order.reservedUnits && order.reservedUnits.length > 0 ? (
+                            <div className="mt-2 space-y-2">
+                              {order.reservedUnits.map((unit) => (
+                                <div key={unit.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                                  <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel || "Sin etiqueta"}</p>
+                                  <p className="text-xs text-slate-500">/{unit.shortCode || "sin-shortCode"}</p>
+                                  <p className="text-[10px] font-semibold text-slate-600">QC: {unit.qaStatus || "pendiente"} · Inventario: {unit.inventoryStatus || "pendiente"}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-sm font-semibold text-slate-500">Sin unidades reservadas</p>
+                          )}
                         </div>
-                      )}
-                      {order.dispatch && (
-                        <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-3">
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-600">Despacho</p>
-                          <p className="mt-1 text-sm font-black text-cyan-900">{order.dispatch.code} · {order.dispatch.status}</p>
-                        </div>
-                      )}
-                      {order.blockedReasons && order.blockedReasons.length > 0 && (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-700">Bloqueos</p>
-                          <p className="mt-1 text-xs font-semibold text-amber-800">{order.blockedReasons.join(" · ")}</p>
-                        </div>
-                      )}
+
+                        {order.productionOrder && (
+                          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-500">Producción vinculada</p>
+                            <p className="mt-1 text-sm font-black text-violet-900">{order.productionOrder.code} · {order.productionOrder.status}</p>
+                          </div>
+                        )}
+                        {order.dispatch && (
+                          <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-600">Despacho</p>
+                            <p className="mt-1 text-sm font-black text-cyan-900">{order.dispatch.code} · {order.dispatch.status}</p>
+                          </div>
+                        )}
+                        {order.blockedReasons && order.blockedReasons.length > 0 && (
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-700">Bloqueos</p>
+                            <p className="mt-1 text-xs font-semibold text-amber-800">{order.blockedReasons.join(" · ")}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="flex flex-row gap-2 lg:flex-col lg:w-44 shrink-0">
                   <button
-                    onClick={() => {
-                      setSelectedOrder(order);
-                      setViewMode("detail");
+                    type="button"
+                    onClick={(e) => {
+                      stop(e);
+                      toggleExpandedOrder(order);
                     }}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-900 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-800"
                   >
                     <View className="h-4 w-4" />
-                    Ver
+                    {expanded ? "Contraer" : "Expandir"}
                   </button>
                   {order.canApprovePayment && (
                     <button
-                      onClick={() => {
+                      type="button"
+                      onClick={(e) => {
+                        stop(e);
                         setSelectedOrder(order);
-                        setViewMode("detail");
-                        setReviewAction("approve");
+                        void handleApprove(order);
                       }}
                       className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-all hover:bg-emerald-100"
                     >
@@ -1385,10 +1538,11 @@ export function PedidosSection() {
                   )}
                   {order.canRejectPayment && (
                     <button
-                      onClick={() => {
+                      type="button"
+                      onClick={(e) => {
+                        stop(e);
                         setSelectedOrder(order);
-                        setViewMode("detail");
-                        setReviewAction("reject");
+                        void handleReject(order);
                       }}
                       className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100"
                     >
@@ -1397,9 +1551,10 @@ export function PedidosSection() {
                   )}
                   {order.canArchiveOrder && (
                     <button
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setViewMode("detail");
+                      type="button"
+                      onClick={(e) => {
+                        stop(e);
+                        handleStatusChange(order.id, "cancelled", "Archivado");
                       }}
                       className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50"
                     >
