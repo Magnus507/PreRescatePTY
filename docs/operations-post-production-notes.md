@@ -1,5 +1,14 @@
 # Notas post-produccion del Centro de Operaciones
 
+## W5.40V - Layout admin full width
+
+- El layout del Admin ahora permite colapsar el sidebar izquierdo para liberar ancho del contenido.
+- El estado se recuerda en `localStorage` para que el usuario conserve su preferencia.
+- Centro de Operaciones y módulos grandes pueden usar más ancho horizontal cuando el menú está colapsado.
+- No se tocó backend.
+- No se tocó Prisma.
+- No se tocó flujo operativo.
+
 ## W5.40U - Sincronizacion de pedidos reales a Operaciones
 
 - Los pedidos reales de cliente y empresa ahora se sincronizan hacia `OperationCommercialOrder` desde los flujos existentes.

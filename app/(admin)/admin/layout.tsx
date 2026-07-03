@@ -6,14 +6,36 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, Cpu, Users, Building2, Shield,
-  LogOut, Settings, Package, Activity, ChevronRight, Search, Menu, X, Store, Crown
+  LogOut, Settings, Package, Activity, ChevronRight, Search, Menu, X, Store, Crown,
+  PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 
 import type { Session } from "next-auth";
 
 const ADMIN_ROLES = ["admin", "superadmin", "imprenta"];
 
-function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut }: { session: Session; closeMobileMenu?: () => void; isLoggingOut: boolean; setIsLoggingOut: (val: boolean) => void }) {
+type AdminNavItem = {
+  label: string;
+  id: string;
+  icon: React.ElementType<{ className?: string }>;
+  isFuture?: boolean;
+};
+
+function AdminSidebar({
+  session,
+  closeMobileMenu,
+  isLoggingOut,
+  setIsLoggingOut,
+  collapsed = false,
+  onToggleCollapse,
+}: {
+  session: Session;
+  closeMobileMenu?: () => void;
+  isLoggingOut: boolean;
+  setIsLoggingOut: (val: boolean) => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}) {
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab") || "dashboard";
   const role = session.user?.role;
@@ -26,7 +48,7 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
       ? { title: "Imprenta", sub: "PreRescue ID", icon: Store, color: "bg-indigo-600 shadow-indigo-500/40" }
       : { title: "Admin", sub: "PreRescue ID", icon: Shield, color: "bg-primary shadow-primary/40" };
 
-  const nav = [
+  const nav: AdminNavItem[] = [
     { label: "Dashboard", id: "dashboard", icon: LayoutDashboard },
     { label: "Usuarios", id: "users", icon: Users },
     { label: "Gestión de Chips", id: "chips", icon: Cpu },
@@ -39,19 +61,31 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
   ].filter(item => !isPrintRole || item.id === 'inventory');
 
   return (
-    <aside className="w-full h-full bg-white dark:bg-[#0f1419] flex flex-col z-40">
-      <div className="p-10 flex items-center justify-between">
-        <div className="flex items-center gap-4 font-black text-3xl tracking-tighter text-slate-900 dark:text-white animate-in fade-in duration-500">
-          <div className={`h-12 w-12 ${branding.color} rounded-[1.25rem] flex items-center justify-center shadow-2xl -rotate-6 group`}>
+    <aside className={`h-full bg-white dark:bg-[#0f1419] flex flex-col z-40 transition-all duration-300 ${collapsed ? "w-[84px]" : "w-80"}`}>
+      <div className={`${collapsed ? "p-4 gap-3 flex-col" : "p-10"} flex items-center justify-between`}>
+        <div className={`flex items-center font-black tracking-tighter text-slate-900 dark:text-white animate-in fade-in duration-500 ${collapsed ? "flex-col gap-2 text-xs text-center" : "gap-4 text-3xl"}`}>
+          <div className={`h-12 w-12 ${branding.color} rounded-[1.25rem] flex items-center justify-center shadow-2xl -rotate-6 group shrink-0`}>
             <branding.icon className="h-6 w-6 text-white group-hover:scale-110 group-hover:rotate-6 transition-all duration-500" />
           </div>
-          <div className="flex flex-col">
-            <span className="leading-none">{branding.title}</span>
-            <span className={`text-[10px] uppercase tracking-[0.4em] mt-1 opacity-70 ${isFounder ? 'text-amber-600' : 'text-primary'}`}>
-              <span className="text-red-500">Pre</span><span className="text-black dark:text-white">Rescue</span> <span className="text-red-500">ID</span>
-            </span>
-          </div>
+          {!collapsed && (
+            <div className="flex flex-col">
+              <span className="leading-none">{branding.title}</span>
+              <span className={`text-[10px] uppercase tracking-[0.4em] mt-1 opacity-70 ${isFounder ? 'text-amber-600' : 'text-primary'}`}>
+                <span className="text-red-500">Pre</span><span className="text-black dark:text-white">Rescue</span> <span className="text-red-500">ID</span>
+              </span>
+            </div>
+          )}
         </div>
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Mostrar menú lateral" : "Ocultar menú lateral"}
+            title={collapsed ? "Mostrar menú" : "Ocultar menú"}
+            className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 dark:border-[#2a3a4f] bg-slate-50 dark:bg-[#1a2333] text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 transition-all"
+          >
+            {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          </button>
+        )}
         {closeMobileMenu && (
           <button onClick={closeMobileMenu} className="md:hidden p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white">
             <X className="h-6 w-6" />
@@ -59,7 +93,7 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
         )}
       </div>
 
-      <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
+      <nav className={`flex-1 overflow-y-auto ${collapsed ? "px-2 space-y-1" : "px-4 space-y-1.5"}`}>
         {nav.map((item) => {
           const isActive = currentTab === item.id;
           const isFuture = 'isFuture' in item;
@@ -69,39 +103,41 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
               key={item.id}
               href={`/admin?tab=${item.id}`}
               onClick={closeMobileMenu}
-              className={`flex items-center justify-between group px-5 py-4 rounded-2xl text-[11px] uppercase tracking-[0.2em] font-black transition-all duration-500 ${isActive
+              title={collapsed ? item.label : undefined}
+              aria-label={item.label}
+              className={`flex items-center group rounded-2xl text-[11px] uppercase tracking-[0.2em] font-black transition-all duration-500 ${collapsed ? "justify-center px-3 py-4" : "justify-between px-5 py-4"} ${isActive
                   ? "bg-gradient-to-r from-primary to-primary/80 text-white shadow-xl shadow-primary/20 translate-x-1"
                   : isFuture
                     ? "text-primary/60 hover:bg-primary/5 hover:text-primary border border-dashed border-primary/20"
                     : "text-slate-400 dark:text-slate-500 hover:bg-slate-100/50 dark:hover:bg-[#1a2333] hover:text-slate-900 dark:hover:text-white"
                 }`}
             >
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center ${collapsed ? "gap-0" : "gap-3"}`}>
                 <item.icon className={`h-5 w-5 transition-transform duration-300 ${isActive ? "scale-110" : "group-hover:scale-110 opacity-70"}`} />
-                {item.label}
+                {!collapsed && item.label}
                 {isFuture && (
                   <span className="ml-2 px-1.5 py-0.5 bg-primary/10 text-[8px] rounded-md font-bold text-primary animate-pulse">
                     Misión
                   </span>
                 )}
               </div>
-              {isActive && <ChevronRight className="h-4 w-4 opacity-50" />}
+              {!collapsed && isActive && <ChevronRight className="h-4 w-4 opacity-50" />}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-6 mt-auto border-t border-slate-100 dark:border-[#1a2333] space-y-4">
+      <div className={`${collapsed ? "p-3" : "p-6"} mt-auto border-t border-slate-100 dark:border-[#1a2333] space-y-4`}>
         <div className="flex items-center gap-3 px-2">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/20 dark:to-primary/10 flex items-center justify-center text-primary font-black border border-primary/20 dark:border-primary/20 uppercase">
             {session.user?.email?.[0]}
           </div>
-          <div className="overflow-hidden">
+          {!collapsed && <div className="overflow-hidden">
             <p className="text-xs font-black text-slate-900 dark:text-white truncate leading-none mb-1">{session.user?.email}</p>
             <p className={`text-[10px] font-black uppercase tracking-tighter opacity-60 ${isFounder ? 'text-amber-600' : ''}`}>
               {isFounder ? "Fundador Supremo" : session.user.role === "superadmin" ? "Soberano" : session.user.role === "imprenta" ? "Gestor Imprenta" : "Operador Admin"}
             </p>
-          </div>
+          </div>}
         </div>
         <button
           disabled={isLoggingOut}
@@ -110,10 +146,10 @@ function AdminSidebar({ session, closeMobileMenu, isLoggingOut, setIsLoggingOut 
             await signOut({ redirect: false });
             window.location.href = "/login";
           }}
-          className="flex items-center justify-center gap-3 px-4 py-3.5 w-full rounded-2xl text-sm font-black text-white bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.98] transition-all shadow-lg disabled:opacity-50"
+          className={`flex items-center justify-center gap-3 px-4 py-3.5 w-full rounded-2xl text-sm font-black text-white bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 ${collapsed ? "md:justify-center md:px-2" : ""}`}
         >
           {isLoggingOut ? <Activity className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-          {isLoggingOut ? "Saliendo..." : "Cerrar Sesión"}
+          {!collapsed && (isLoggingOut ? "Saliendo..." : "Cerrar Sesión")}
         </button>
       </div>
     </aside>
@@ -155,6 +191,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const role = session?.user?.role || "";
   const isFounder = session?.user?.email === "admin@prerescatepty.com";
   const isPrintRole = role === 'imprenta';
@@ -168,6 +205,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("admin-sidebar-collapsed");
+    if (stored !== null) {
+      setSidebarCollapsed(stored === "true");
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("admin-sidebar-collapsed", String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -287,19 +335,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Desktop Sidebar */}
-        <div className="hidden md:flex md:w-80 border-r border-slate-200 dark:border-[#1a2333]">
+        <div className={`${sidebarCollapsed ? "md:w-[84px]" : "md:w-80"} hidden md:flex border-r border-slate-200 dark:border-[#1a2333] transition-all duration-300`}>
           <Suspense fallback={<div className="w-full bg-white dark:bg-[#0f1419]" />}>
             <AdminSidebar 
               session={session as Session} 
               isLoggingOut={isLoggingOut} 
               setIsLoggingOut={setIsLoggingOut}
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
             />
           </Suspense>
         </div>
 
         {/* Content Area */}
         <main className="flex-1 overflow-x-hidden relative">
-          <div className="max-w-[1700px] mx-auto p-6 sm:p-10 lg:p-12">
+          <div className={`${sidebarCollapsed ? "max-w-none" : "max-w-[1700px]"} mx-auto w-full p-6 sm:p-10 lg:p-12 transition-all duration-300`}>
             {children}
           </div>
         </main>
