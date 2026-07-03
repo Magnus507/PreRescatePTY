@@ -55,6 +55,8 @@ interface Order {
   id: string;
   provider: string;
   orderNumber: string;
+  sourceOrderNumber?: string | null;
+  operationalReference?: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -365,6 +367,27 @@ export function PedidosSection() {
     }
   };
 
+  const getVisibleCustomerCode = (order: Order) => {
+    if (order.sourceOrderNumber?.trim()) return order.sourceOrderNumber.trim();
+    if (order.orderNumber.startsWith("OP-CLI-")) return order.orderNumber.replace(/^OP-CLI-/, "");
+    if (order.orderNumber.startsWith("OP-EMP-")) return order.orderNumber.replace(/^OP-EMP-/, "");
+    return order.orderNumber;
+  };
+
+  const getOperationalReference = (order: Order) => {
+    if (order.operationalReference?.trim()) return order.operationalReference.trim();
+    if (order.orderNumber.startsWith("OP-")) return order.orderNumber;
+    return `OP-CLI-${order.orderNumber}`;
+  };
+
+  const getPaymentReviewLabel = (order: Order) => {
+    if (order.paymentStatus === "rejected") return "Pago rechazado";
+    if (order.paymentStatus === "paid") return "Pago aprobado";
+    if (order.paymentProofUrl) return "Comprobante pendiente de revisión";
+    if (order.paymentStatus === "under_review") return "Pago en revisión";
+    return getPaymentStatusLabel(order.paymentStatus);
+  };
+
   const getStatusBadge = (status: string, paymentStatus?: string) => {
     if (paymentStatus === "rejected") {
       return <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase">Pago Rechazado</span>;
@@ -413,7 +436,7 @@ export function PedidosSection() {
                <div>
                   <div className="flex items-center gap-3">
                      <div className="flex items-center gap-2">
-                       <h2 className="text-2xl font-black uppercase tracking-tighter" title={selectedOrder.orderNumber}>Pedido #{selectedOrder.orderNumber}</h2>
+                       <h2 className="text-2xl font-black uppercase tracking-tighter" title={getVisibleCustomerCode(selectedOrder)}>Pedido #{getVisibleCustomerCode(selectedOrder)}</h2>
                        {isCorporateOrder && (
                          <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-widest inline-flex items-center gap-1">
                            <Building2 className="h-3.5 w-3.5" /> Corporativo
@@ -430,8 +453,11 @@ export function PedidosSection() {
                      </div>
                      {getStatusBadge(selectedOrder.orderStatus, selectedOrder.paymentStatus)}
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
+                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
                     {isCorporateOrder ? "Pedido corporativo" : "Logística de Despacho & CRM"}
+                  </p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mt-1">
+                    Referencia operativa: {getOperationalReference(selectedOrder)}
                   </p>
                </div>
             </div>
@@ -473,7 +499,7 @@ export function PedidosSection() {
                      </div>
                      <div className="flex flex-wrap gap-2">
                        <span className="px-3 py-1 bg-white rounded-full text-[10px] font-bold border border-blue-200">
-                         Estado: {selectedOrder.paymentStatus === "paid" ? "Pagado" : selectedOrder.paymentStatus === "under_review" ? "En revisión" : selectedOrder.paymentStatus}
+                         Estado: {getPaymentReviewLabel(selectedOrder)}
                        </span>
                        {selectedOrder.adminReviewStatus && (
                          <span className="px-3 py-1 bg-white rounded-full text-[10px] font-bold border border-blue-200">
@@ -487,9 +513,9 @@ export function PedidosSection() {
                    </div>
 
                    {/* Payment proof */}
-                   {selectedOrder.paymentProofUrl && (
-                     <div className="rounded-[2rem] border border-slate-200 p-5 bg-white">
-                       <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary mb-3">Comprobante de pago</h3>
+                       {selectedOrder.paymentProofUrl && (
+                         <div className="rounded-[2rem] border border-slate-200 p-5 bg-white">
+                           <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary mb-3">Comprobante de pago</h3>
                        <div className="aspect-video max-w-md rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
                          {/* eslint-disable-next-line @next/next/no-img-element */}
                          <img
@@ -821,20 +847,25 @@ export function PedidosSection() {
                            Comprobante
                         </h3>
                         {selectedOrder.paymentProofUrl ? (
-                           <div className="bg-white dark:bg-slate-900 p-4 rounded-[1.75rem] border border-border shadow-sm">
-                              <div className="aspect-video max-w-sm rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => setReceiptModalOrder(selectedOrder)}>
-                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                 <img
-                                   src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")}
-                                   alt="Pago"
-                                   className="object-contain w-full h-full p-2"
-                                   onError={(e) => { if (e.currentTarget.src !== selectedOrder.paymentProofUrl) e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
-                                 />
-                              </div>
+                          <>
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-[1.75rem] border border-border shadow-sm">
+                               <div className="aspect-video max-w-sm rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => setReceiptModalOrder(selectedOrder)}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")}
+                                    alt="Pago"
+                                    className="object-contain w-full h-full p-2"
+                                    onError={(e) => { if (e.currentTarget.src !== selectedOrder.paymentProofUrl) e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
+                                  />
+                               </div>
                               <button onClick={() => setReceiptModalOrder(selectedOrder)} className="mt-3 w-full px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all">
-                                 Ver comprobante
-                              </button>
-                           </div>
+                                  Ver comprobante
+                               </button>
+                            </div>
+                            <p className="mt-3 text-[10px] font-bold text-amber-700">
+                              Comprobante cargado por el cliente. Pendiente de aprobación o rechazo.
+                            </p>
+                          </>
                         ) : (
                            <div className="bg-white dark:bg-slate-900 p-6 rounded-[1.75rem] border border-border shadow-sm text-center">
                               <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">No se adjuntó comprobante de pago.</p>
@@ -1228,8 +1259,8 @@ export function PedidosSection() {
                            </>
                          ) : (
                            <>
-                             <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0]?.productType || "Combo no especificado"}</p>
-                             <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${o.items[0].quantity} chip${o.items[0].quantity === 1 ? "" : "s"} incluido${o.items[0].quantity === 1 ? "" : "s"}` : "0 chips incluidos"}</p>
+                              <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0]?.productType || "Combo no especificado"}</p>
+                             <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${o.items[0].quantity} combo${o.items[0].quantity === 1 ? "" : "s"} / ${o.items.reduce((sum, item) => sum + item.quantity, 0)} unidad${o.items.reduce((sum, item) => sum + item.quantity, 0) === 1 ? "" : "es"} físicas` : "0 unidades físicas"}</p>
                            </>
                          )}
                       </td>

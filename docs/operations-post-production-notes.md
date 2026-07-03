@@ -1,5 +1,13 @@
 # Notas post-produccion del Centro de Operaciones
 
+## W5.40V - Pedidos operativos con combo visible y comprobante
+
+- Pedidos ahora muestran el codigo visible del cliente y la referencia operativa interna por separado.
+- Los combos se leen como demanda comercial y se traducen a cantidad fisica operativa.
+- El comprobante subido por el cliente se muestra en Centro de Operaciones y queda sujeto a aprobacion o rechazo.
+- La aprobacion y rechazo del pago se mantienen como revision administrativa, sin activar ni despachar automaticamente.
+- No se toco backend destructivo, Prisma ni migraciones historicas.
+
 ## W5.40V - Layout admin full width
 
 - El layout del Admin ahora permite colapsar el sidebar izquierdo para liberar ancho del contenido.

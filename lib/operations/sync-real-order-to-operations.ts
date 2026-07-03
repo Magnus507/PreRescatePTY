@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { mapCommercialItemToOperationalRequirement } from "@/lib/operations/commercial-product-mapping";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
@@ -108,28 +109,37 @@ export async function syncRealOrderToOperations(
     notes,
   } satisfies Prisma.OperationCommercialOrderCreateInput;
 
-  const itemData = input.items.map((item) => ({
-    finishedGoodId: item.finishedGoodId?.trim() || null,
-    productCode: item.productCode?.trim() || null,
-    productName: item.productName,
-    quantity: item.quantity,
-    unitPrice: item.unitPrice,
-    totalPrice: item.quantity * item.unitPrice,
-    unit: item.unit?.trim() || "unit",
-    notes: null,
+  const mappedItems = await Promise.all(input.items.map(async (item) => {
+    const mapping = await mapCommercialItemToOperationalRequirement({
+      productType: item.productCode || item.productName,
+      quantity: item.quantity,
+      providerReference: input.customerReference || input.sourceCode || null,
+      productName: item.productName,
+    });
+
+    return {
+      finishedGoodId: item.finishedGoodId?.trim() || null,
+      productCode: mapping.operationalProductCode,
+      productName: mapping.operationalProductName,
+      quantity: mapping.operationalQuantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.quantity * item.unitPrice,
+      unit: item.unit?.trim() || "unit",
+      notes: `${mapping.sourceLabel}`,
+    };
   }));
 
   if (existing) {
     const updated = await db.operationCommercialOrder.update({
       where: { id: existing.id },
-      data: {
-        ...orderData,
-        items: {
-          deleteMany: {},
-          create: itemData,
+        data: {
+          ...orderData,
+          items: {
+            deleteMany: {},
+          create: mappedItems,
+          },
         },
-      },
-    });
+      });
 
     return { order: updated, created: false, sourceMarker };
   }
@@ -138,7 +148,7 @@ export async function syncRealOrderToOperations(
     data: {
       ...orderData,
       items: {
-        create: itemData,
+        create: mappedItems,
       },
     },
   });
