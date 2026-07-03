@@ -5,7 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Cpu, Users, Building2, Shield,
+  LayoutDashboard, Users, Building2, Shield,
   LogOut, Settings, Package, Activity, ChevronRight, Search, Menu, X, Store, Crown,
   PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
@@ -51,11 +51,8 @@ function AdminSidebar({
   const nav: AdminNavItem[] = [
     { label: "Dashboard", id: "dashboard", icon: LayoutDashboard },
     { label: "Usuarios", id: "users", icon: Users },
-    { label: "Gestión de Chips", id: "chips", icon: Cpu },
-    { label: "Tienda Admin", id: "tienda", icon: Store },
     { label: "Cuentas Corporativas", id: "empresas", icon: Building2 },
     { label: "Centro de Operaciones", id: "inventory", icon: Package },
-    { label: "Ventas & Pedidos", id: "pedidos", icon: Activity },
     { label: "Ajustes Sistema", id: "settings", icon: Settings },
     { label: "Administradores", id: "admins", icon: Shield },
   ].filter(item => !isPrintRole || item.id === 'inventory');

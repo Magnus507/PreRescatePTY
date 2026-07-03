@@ -15,8 +15,6 @@ import { UsersSection } from "./_components/sections/UsersSection";
 import { OrganizationsSection } from "./_components/sections/OrganizationsSection";
 import { OperationsCenterSection } from "./_components/sections/OperationsCenterSection";
 import { AdminsSection } from "./_components/sections/AdminsSection";
-import { PedidosSection } from "./_components/sections/PedidosSection";
-import { TiendaSection } from "./_components/sections/TiendaSection";
 import { SettingsSection } from "./_components/sections/SettingsSection";
 
 // Details
@@ -154,6 +152,15 @@ function AdminDashboard() {
     subtitle: "Infraestructura PreRescatePTY v3.1",
     placeholder: "Buscar..." 
   };
+
+  const redirectTab = admin.tab === "pedidos" || admin.tab === "tienda" || admin.tab === "chips"
+    ? "inventory"
+    : null;
+  const operationsInitialTab = admin.tab === "pedidos"
+    ? "commercial"
+    : admin.tab === "tienda" || admin.tab === "chips"
+      ? "inventory"
+      : "overview";
 
   const headerWrapperClassName = isOperationsTab
     ? "w-full px-6 py-10 relative z-10"
@@ -361,7 +368,7 @@ function AdminDashboard() {
             />
           )}
 
-          {admin.tab === "inventory" && (
+          {["inventory", "pedidos", "tienda", "chips"].includes(admin.tab) && (
             <OperationsCenterSection
               loadChipDetail={admin.chips.loadChipDetail}
               createCount={createCount}
@@ -376,7 +383,16 @@ function AdminDashboard() {
               createdBatch={createdBatch}
               exportCSV={handleExportCSV}
               role={role}
+              initialTab={operationsInitialTab}
             />
+          )}
+
+          {redirectTab && admin.tab !== "inventory" && (
+            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              {admin.tab === "pedidos" && "Ventas & Pedidos ahora se gestiona desde Centro de Operaciones > Pedidos."}
+              {admin.tab === "tienda" && "Tienda Admin ahora se gestiona desde Centro de Operaciones > Inventario."}
+              {admin.tab === "chips" && "Gestión de Chips ahora se gestiona desde Centro de Operaciones > Inventario."}
+            </div>
           )}
 
           {admin.tab === "admins" && (
@@ -389,14 +405,6 @@ function AdminDashboard() {
                onUpdateAdmin={admin.users.updateAdmin}
                onDeleteAdmin={admin.users.deleteAdmin}
             />
-          )}
-
-          {admin.tab === "pedidos" && (
-            <PedidosSection />
-          )}
-
-          {admin.tab === "tienda" && (
-            <TiendaSection />
           )}
 
           {admin.tab === "settings" && (

@@ -51,6 +51,7 @@ interface OperationsCenterSectionProps {
   exportCSV: () => void;
   loadChipDetail: (id: string) => void;
   role?: string;
+  initialTab?: OperationsTab;
 }
 
 interface OperationsDashboardSummary {
@@ -200,13 +201,18 @@ export function OperationsCenterSection({
   exportCSV,
   loadChipDetail,
   role,
+  initialTab = "overview",
 }: OperationsCenterSectionProps) {
-  const [activeTab, setActiveTab] = useState<OperationsTab>("overview");
+  const [activeTab, setActiveTab] = useState<OperationsTab>(initialTab);
   const [productionTab, setProductionTab] = useState<ProductionTab>("orders");
   const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
   const [dashboard, setDashboard] = useState<OperationsDashboardSummary | null>(null);
   const [dashboardGeneratedAt, setDashboardGeneratedAt] = useState<string | null>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const loadDashboard = useCallback(async () => {
     setLoadingDashboard(true);
