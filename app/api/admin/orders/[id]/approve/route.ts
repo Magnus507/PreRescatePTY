@@ -223,7 +223,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         where: { id },
         data: {
           paymentStatus: "paid",
-          orderStatus: "completed",
+          orderStatus: "processing",
           adminReviewStatus: "approved",
           adminReviewedAt: new Date(),
           adminReviewedById: adminId,

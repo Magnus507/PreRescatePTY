@@ -125,10 +125,33 @@ export async function GET() {
       })),
     }));
 
+    const reservedUnits = await prisma.operationFinishedGoodUnit.findMany({
+      where: {
+        reservedOrderId: { in: orders.map((order) => order.id) },
+        status: "reserved",
+      },
+      select: {
+        id: true,
+        reservedOrderId: true,
+        internalLabel: true,
+        qaStatus: true,
+        activationStatus: true,
+      },
+      orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
+    });
+
+    const reservedUnitsByOrderId = reservedUnits.reduce<Record<string, typeof reservedUnits>>((acc, unit) => {
+      if (!unit.reservedOrderId) return acc;
+      acc[unit.reservedOrderId] = acc[unit.reservedOrderId] || [];
+      acc[unit.reservedOrderId].push(unit);
+      return acc;
+    }, {});
+
     return NextResponse.json({
       orders: ordersWithExistingChips.map((order) => ({
         ...order,
         ...buildOperationsOrderViewModel(order as Parameters<typeof buildOperationsOrderViewModel>[0]),
+        reservedUnits: reservedUnitsByOrderId[order.id] || [],
       })),
     });
   } catch (error) {

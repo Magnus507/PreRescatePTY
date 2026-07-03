@@ -42,6 +42,11 @@ export type OperationsOrderInput = {
   shippingCity?: string | null;
   shippingNotes?: string | null;
   customerDocument?: string | null;
+  dispatch?: {
+    id: string;
+    code: string;
+    status: string;
+  } | null;
   items: OperationsOrderItem[];
 };
 
@@ -114,8 +119,10 @@ function getOrderStatusLabel(orderStatus: string) {
   switch (orderStatus) {
     case "pending":
       return "Pendiente";
+    case "accepted":
+      return "Pago aprobado / pendiente de reserva";
     case "processing":
-      return "En revisión";
+      return "Pago aprobado / pendiente de reserva";
     case "shipped":
       return "Enviado";
     case "completed":
@@ -193,12 +200,15 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const canApprovePayment = paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
   const canRejectPayment = paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
   const canArchiveOrder = order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
-  const canAcceptOrder = order.orderStatus === "pending" || order.orderStatus === "processing";
-  const canRejectOrder = order.orderStatus === "pending" || order.orderStatus === "processing";
+  const canAcceptOrder = order.orderStatus === "pending" || order.orderStatus === "processing" || order.orderStatus === "accepted";
+  const canRejectOrder = order.orderStatus === "pending" || order.orderStatus === "processing" || order.orderStatus === "accepted";
   const canReserveInternalLabel =
-    canAcceptOrder && (order.paymentStatus === "paid" || order.adminReviewStatus === "approved" || paymentProofAvailable);
+    order.provider === "manual" &&
+    (order.paymentStatus === "paid" || order.adminReviewStatus === "approved" || paymentProofAvailable) &&
+    order.orderStatus !== "cancelled" &&
+    order.orderStatus !== "completed";
   const canSendToProduction = canReserveInternalLabel && order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
-  const canCreateDispatch = canSendToProduction && paymentStatusLabel !== "Pago pendiente";
+  const canCreateDispatch = Boolean(order.dispatch) === false && canSendToProduction && paymentStatusLabel !== "Pago pendiente";
   const blockedReasons = getBlockedReasons(order, paymentProofAvailable);
 
   return {

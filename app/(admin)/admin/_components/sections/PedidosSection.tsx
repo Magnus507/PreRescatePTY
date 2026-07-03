@@ -213,6 +213,21 @@ export function PedidosSection() {
   const [paymentRejectionReason, setPaymentRejectionReason] = useState("");
   const [paymentRejectionError, setPaymentRejectionError] = useState("");
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [reserveOrder, setReserveOrder] = useState<Order | null>(null);
+  const [availableUnits, setAvailableUnits] = useState<Array<{
+    id: string;
+    internalLabel: string;
+    shortCode: string | null;
+    productCode: string;
+    productName: string;
+    qaStatus: string | null;
+    inventoryStatus: string | null;
+    activationStatus: string;
+    createdAt: string;
+  }>>([]);
+  const [selectedReserveUnitIds, setSelectedReserveUnitIds] = useState<string[]>([]);
+  const [loadingReserveUnits, setLoadingReserveUnits] = useState(false);
+  const [savingReserveUnits, setSavingReserveUnits] = useState(false);
   const [showInternalOrderModal, setShowInternalOrderModal] = useState(false);
   const [creatingInternalOrder, setCreatingInternalOrder] = useState(false);
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
@@ -598,6 +613,60 @@ export function PedidosSection() {
     }
   }, [canDeleteTestOrder, loadOrders]);
 
+  const openReserveModal = useCallback(async (event: React.MouseEvent, order: Order) => {
+    event.stopPropagation();
+    const requiredProductCode = order.operationalProductCode || "PRP-FG-STICKER";
+    setReserveOrder(order);
+    setLoadingReserveUnits(true);
+    setSelectedReserveUnitIds([]);
+    try {
+      const res = await fetch(`/api/admin/operations/inventory/available-units?productCode=${encodeURIComponent(requiredProductCode)}`, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo cargar unidades disponibles");
+      setAvailableUnits(Array.isArray(data.units) ? data.units : []);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo cargar unidades disponibles");
+      setAvailableUnits([]);
+    } finally {
+      setLoadingReserveUnits(false);
+    }
+  }, []);
+
+  const confirmReserveUnits = useCallback(async () => {
+    if (!reserveOrder) return;
+    const required = Number(reserveOrder.operationalQuantity || 1);
+    if (selectedReserveUnitIds.length !== required) {
+      toast.error(`Debes seleccionar exactamente ${required} unidades.`);
+      return;
+    }
+    setSavingReserveUnits(true);
+    try {
+      for (const unitId of selectedReserveUnitIds) {
+        const res = await fetch(`/api/admin/operations/finished-good-units/${unitId}/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reserve",
+            referenceType: "commercial_order",
+            referenceId: reserveOrder.id.replace(/^internal-/, ""),
+            reason: `Reservado para pedido ${reserveOrder.orderNumber}`,
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "No se pudo reservar la unidad");
+        }
+      }
+      toast.success("Etiqueta interna reservada.");
+      setReserveOrder(null);
+      await loadOrders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo reservar la unidad");
+    } finally {
+      setSavingReserveUnits(false);
+    }
+  }, [loadOrders, reserveOrder, selectedReserveUnitIds]);
+
   const handleConfirmRejectPayment = useCallback(async () => {
     if (!rejectingPaymentOrder) return;
     const reason = paymentRejectionReason.trim();
@@ -933,6 +1002,30 @@ export function PedidosSection() {
         </div>
       </article>
     );
+  };
+
+  const sendToDispatch = async (event: React.MouseEvent, order: Order) => {
+    event.stopPropagation();
+    if (!order.reservedUnits || order.reservedUnits.length === 0) {
+      toast.error("Primero reserva una etiqueta interna.");
+      return;
+    }
+    const dispatchCode = `DSP-${order.orderNumber}`;
+    try {
+      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id.replace(/^internal-/, "")}/create-dispatch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: dispatchCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo crear el despacho");
+      }
+      toast.success("Despacho creado.");
+      await loadOrders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo crear el despacho");
+    }
   };
 
   if (loading && orders.length === 0) {
@@ -1956,6 +2049,27 @@ export function PedidosSection() {
                       Aprobar pago
                     </button>
                   )}
+                  {order.canReserveInternalLabel && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        stop(e);
+                        void openReserveModal(e, order);
+                      }}
+                      className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-violet-700 transition-all hover:bg-violet-100"
+                    >
+                      Reservar etiqueta interna
+                    </button>
+                  )}
+                  {order.reservedUnits && order.reservedUnits.length > 0 && order.canCreateDispatch && (
+                    <button
+                      type="button"
+                      onClick={(e) => void sendToDispatch(e, order)}
+                      className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-cyan-700 transition-all hover:bg-cyan-100"
+                    >
+                      Enviar a despacho
+                    </button>
+                  )}
                   {order.canRejectPayment && (
                     <button
                       type="button"
@@ -1985,7 +2099,7 @@ export function PedidosSection() {
             </article>
           );
         })}
-        {rejectingPaymentOrder && (
+      {rejectingPaymentOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
             <div
               className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl"
@@ -2052,9 +2166,78 @@ export function PedidosSection() {
                 </button>
               </div>
             </div>
+        </div>
+      )}
+      {reserveOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-500">Reservar etiqueta interna</p>
+                <h3 className="mt-2 text-xl font-black text-slate-900">{getVisibleCustomerCode(reserveOrder)}</h3>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Producto requerido: {reserveOrder.operationalProductName || "Sticker PreRescatePTY"} · Cantidad requerida: {reserveOrder.operationalQuantity || 1}
+                </p>
+              </div>
+              <button type="button" onClick={() => setReserveOrder(null)} className="rounded-full border border-slate-200 bg-slate-50 p-2 text-slate-500 hover:bg-slate-100" aria-label="Cerrar">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {loadingReserveUnits ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm font-semibold text-slate-500">Cargando unidades disponibles...</div>
+              ) : (
+                <>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+                    Seleccionadas: {selectedReserveUnitIds.length} / {reserveOrder.operationalQuantity || 1}
+                  </div>
+                  <div className="max-h-80 space-y-2 overflow-auto pr-1">
+                    {availableUnits.length > 0 ? availableUnits.map((unit) => {
+                      const selected = selectedReserveUnitIds.includes(unit.id);
+                      return (
+                        <button
+                          type="button"
+                          key={unit.id}
+                          onClick={() => {
+                            setSelectedReserveUnitIds((current) => {
+                              const exists = current.includes(unit.id);
+                              if (exists) return current.filter((id) => id !== unit.id);
+                              if (current.length >= Number(reserveOrder.operationalQuantity || 1)) return current;
+                              return [...current, unit.id];
+                            });
+                          }}
+                          className={`w-full rounded-2xl border p-4 text-left transition-all ${selected ? "border-violet-300 bg-violet-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}
+                        >
+                          <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel}</p>
+                          <p className="text-xs text-slate-500">{unit.shortCode || "sin-shortCode"} · {unit.productCode} · {unit.qaStatus} · {unit.inventoryStatus} · {unit.activationStatus}</p>
+                        </button>
+                      );
+                    }) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm font-semibold text-slate-500">No hay unidades disponibles para reservar.</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => setReserveOrder(null)} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmReserveUnits()}
+                disabled={savingReserveUnits}
+                className="rounded-2xl border border-violet-200 bg-violet-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-violet-700 disabled:opacity-50"
+              >
+                {savingReserveUnits ? "Reservando..." : "Confirmar reserva"}
+              </button>
+            </div>
           </div>
-        )}
-        {filteredOrders.length === 0 && (
+        </div>
+      )}
+      {filteredOrders.length === 0 && (
           <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white p-12 text-center text-muted-foreground font-bold">
             No hay pedidos registrados
           </div>
