@@ -711,17 +711,17 @@ export function FinishedGoodsSection() {
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <PackageCheck className="mb-4 h-6 w-6 text-emerald-600" />
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Balance de catálogo</h4>
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Disponible</h4>
           <p className="mt-2 text-2xl font-black text-slate-950">{formatQuantity(metrics.available)}</p>
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <Factory className="mb-4 h-6 w-6 text-blue-600" />
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Desde empaque</h4>
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reservado / Despachado</h4>
           <p className="mt-2 text-2xl font-black text-slate-950">{metrics.fromPacking}</p>
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <Boxes className="mb-4 h-6 w-6 text-amber-600" />
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Activos</h4>
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Activados</h4>
           <p className="mt-2 text-2xl font-black text-slate-950">{metrics.active}</p>
         </article>
       </div>
@@ -937,7 +937,7 @@ export function FinishedGoodsSection() {
                       ["total", "Total"],
                       ["available", "Disponibles"],
                       ["reserved", "Reservadas"],
-                      ["qaPending", "QC pendiente"],
+                      ["qaPending", "Pendiente QC"],
                       ["qaFailed", "QC fallido"],
                       ["dispatched", "Despachadas"],
                       ["delivered", "Entregadas"],
@@ -956,7 +956,7 @@ export function FinishedGoodsSection() {
                       ["all", "Todas"],
                       ["available", "Disponibles"],
                       ["reserved", "Reservadas"],
-                      ["qa_pending", "Pendientes QC"],
+                      ["qa_pending", "Pendiente QC"],
                       ["qa_failed", "Fallidas QC"],
                       ["dispatched", "Despachadas"],
                       ["activated", "Activadas"],

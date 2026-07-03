@@ -498,14 +498,14 @@ export function DispatchSection() {
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-amber-600" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Draft</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Borrador</span>
           </div>
           <p className="text-2xl font-black">{metrics.draft}</p>
         </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <PackageCheck className="h-4 w-4 text-cyan-600" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Reserved</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Reservado</span>
           </div>
           <p className="text-2xl font-black">{metrics.reserved}</p>
         </div>
@@ -540,7 +540,7 @@ export function DispatchSection() {
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 mb-2">
             <ClipboardCheck className="h-4 w-4 text-emerald-600" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Items</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Unidades</span>
           </div>
           <p className="text-2xl font-black">{formatQuantity(metrics.itemQuantity)}</p>
         </div>
@@ -718,7 +718,7 @@ export function DispatchSection() {
                   <p className="text-[10px] font-black uppercase tracking-widest text-primary">Despacho</p>
                   <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear despacho</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Selecciona producto terminado disponible. La reserva o salida se registra con acciones por estado.
+                    Selecciona producto terminado disponible. La entrega física no activa el chip.
                   </p>
                 </div>
                 <button

@@ -1260,7 +1260,7 @@ export function PedidosSection() {
                             </h3>
                           </div>
                           <span className="px-3 py-1 bg-white rounded-full text-[9px] font-bold border border-indigo-200">
-                            {completed}/{total} completados
+                            {completed}/{total} entregados
                           </span>
                         </div>
 
@@ -2060,7 +2060,18 @@ export function PedidosSection() {
                       Reservar etiqueta interna
                     </button>
                   )}
-                  {order.reservedUnits && order.reservedUnits.length > 0 && order.canCreateDispatch && (
+                  {order.dispatch ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        stop(e);
+                        toggleExpandedOrder(order);
+                      }}
+                      className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-cyan-700 transition-all hover:bg-cyan-100"
+                    >
+                      Ver despacho
+                    </button>
+                  ) : order.reservedUnits && order.reservedUnits.length > 0 && order.canCreateDispatch ? (
                     <button
                       type="button"
                       onClick={(e) => void sendToDispatch(e, order)}
@@ -2068,7 +2079,7 @@ export function PedidosSection() {
                     >
                       Enviar a despacho
                     </button>
-                  )}
+                  ) : null}
                   {order.canRejectPayment && (
                     <button
                       type="button"

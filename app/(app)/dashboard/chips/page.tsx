@@ -314,9 +314,10 @@ export default function ChipsPage() {
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3 text-center md:text-left">Accesorios vinculados</p>
                       <div className="space-y-2">
                         {chip.orderItems.map((acc) => {
-                          const orderStatusLabel = acc.order.orderStatus === "completed" ? "Completado" :
-                            acc.order.orderStatus === "shipped" ? "Enviado" :
-                            acc.order.orderStatus === "pending" ? "Pendiente" :
+                          const orderStatusLabel = acc.order.orderStatus === "completed" ? "Pedido entregado" :
+                            acc.order.orderStatus === "shipped" ? "Pedido enviado" :
+                            acc.order.orderStatus === "processing" ? "Preparando pedido" :
+                            acc.order.orderStatus === "pending" ? "Pago pendiente" :
                             acc.order.orderStatus;
                           return (
                             <div key={acc.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
@@ -330,6 +331,7 @@ export default function ChipsPage() {
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0 ${
                                 acc.order.orderStatus === "completed" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
                                 acc.order.orderStatus === "shipped" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                                acc.order.orderStatus === "processing" ? "bg-cyan-100 text-cyan-700 border-cyan-200" :
                                 "bg-slate-100 text-slate-600 border-slate-200"
                               }`}>
                                 {orderStatusLabel}
