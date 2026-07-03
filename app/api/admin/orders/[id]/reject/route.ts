@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 
 const RejectSchema = z.object({
   adminReviewNotes: z.string().optional(),
+  reason: z.string().optional(),
 });
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (!parsed.success) {
     return NextResponse.json({ error: "Datos inválidos", details: parsed.error.flatten() }, { status: 400 });
   }
-  const notes = parsed.data.adminReviewNotes || null;
+  const notes = parsed.data.adminReviewNotes || parsed.data.reason || null;
 
   // Buscar orden manual pendiente de revisión
   const order = await prisma.order.findUnique({

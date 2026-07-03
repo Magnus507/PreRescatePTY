@@ -178,6 +178,10 @@ export function PedidosSection() {
   const [markingDelivered, setMarkingDelivered] = useState(false);
   const initializedOrderIdRef = useRef<string | null>(null);
   const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
+  const [rejectingPaymentOrder, setRejectingPaymentOrder] = useState<Order | null>(null);
+  const [paymentRejectionReason, setPaymentRejectionReason] = useState("");
+  const [paymentRejectionError, setPaymentRejectionError] = useState("");
+  const [removingPaymentProofOrderId, setRemovingPaymentProofOrderId] = useState<string | null>(null);
   const [showInternalOrderModal, setShowInternalOrderModal] = useState(false);
   const [creatingInternalOrder, setCreatingInternalOrder] = useState(false);
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
@@ -473,6 +477,108 @@ export function PedidosSection() {
       return next;
     });
   }, []);
+
+  const normalizeProofUrl = useCallback((url?: string | null) => {
+    if (!url) return null;
+    const trimmed = url.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+    if (trimmed.startsWith("/")) return trimmed;
+    return `/${trimmed}`;
+  }, []);
+
+  const handleOpenProof = useCallback((event: React.MouseEvent, url?: string | null) => {
+    event.stopPropagation();
+    const proofUrl = normalizeProofUrl(url);
+    if (!proofUrl) {
+      toast.error("No hay comprobante disponible.");
+      return;
+    }
+    window.open(resolveImageSrc(proofUrl, "payment-proofs"), "_blank", "noopener,noreferrer");
+  }, [normalizeProofUrl]);
+
+  const handleOpenRejectPayment = useCallback((event: React.MouseEvent, order: Order) => {
+    event.stopPropagation();
+    setRejectingPaymentOrder(order);
+    setPaymentRejectionReason(order.paymentRejectionReason || order.adminReviewNotes || "");
+    setPaymentRejectionError("");
+  }, []);
+
+  const handleConfirmRejectPayment = useCallback(async () => {
+    if (!rejectingPaymentOrder) return;
+    const reason = paymentRejectionReason.trim();
+    if (reason.length < 5) {
+      setPaymentRejectionError("Indica el motivo del rechazo.");
+      return;
+    }
+
+    setReviewAction("reject");
+    setUpdating(true);
+    setPaymentRejectionError("");
+    try {
+      const res = await fetch(`/api/admin/orders/${rejectingPaymentOrder.id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason,
+          adminReviewNotes: reason,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Pago rechazado correctamente.");
+        setRejectingPaymentOrder(null);
+        setPaymentRejectionReason("");
+        setPaymentRejectionError("");
+        await loadOrders();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          toast.error(data?.message || "El pago ya fue revisado o el pedido cambió de estado.");
+        } else if (res.status === 403) {
+          toast.error("No tienes permiso para revisar este pago.");
+        } else if (res.status === 404) {
+          toast.error("El pedido ya no está disponible.");
+        } else {
+          toast.error(data?.error || "No se pudo actualizar el pago. Inténtalo nuevamente.");
+        }
+      }
+    } catch {
+      toast.error("No se pudo actualizar el pago. Inténtalo nuevamente.");
+    } finally {
+      setUpdating(false);
+      setReviewAction(null);
+    }
+  }, [loadOrders, paymentRejectionReason, rejectingPaymentOrder]);
+
+  const handleRemovePaymentProof = useCallback(async (event: React.MouseEvent, order: Order) => {
+    event.stopPropagation();
+    const confirmed = window.confirm(
+      "Esto eliminará el comprobante cargado y devolverá el pago a pendiente. ¿Continuar?"
+    );
+    if (!confirmed) return;
+
+    setRemovingPaymentProofOrderId(order.id);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/payment-proof`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error || "No se pudo eliminar el comprobante.");
+        return;
+      }
+
+      toast.success("Comprobante eliminado.");
+      await loadOrders();
+    } catch {
+      toast.error("No se pudo eliminar el comprobante.");
+    } finally {
+      setRemovingPaymentProofOrderId(null);
+    }
+  }, [loadOrders]);
 
   const handleCreateInternalOrder = async () => {
     if (!internalOrderForm.finishedGoodId.trim()) {
@@ -1450,12 +1556,19 @@ export function PedidosSection() {
                             <button
                               type="button"
                               onClick={(e) => {
-                                stop(e);
-                                setReceiptModalOrder(order);
+                                handleOpenProof(e, order.paymentProofUrl);
                               }}
                               className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50"
                             >
                               Ver comprobante
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleRemovePaymentProof(e, order)}
+                              disabled={removingPaymentProofOrderId === order.id}
+                              className="inline-flex w-fit items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-100 disabled:opacity-50"
+                            >
+                              {removingPaymentProofOrderId === order.id ? "Eliminando..." : "Eliminar comprobante"}
                             </button>
                             <p className="text-[10px] font-bold text-emerald-700">Comprobante enviado por el cliente. Pago en revisión.</p>
                           </div>
@@ -1541,8 +1654,7 @@ export function PedidosSection() {
                       type="button"
                       onClick={(e) => {
                         stop(e);
-                        setSelectedOrder(order);
-                        void handleReject(order);
+                        handleOpenRejectPayment(e, order);
                       }}
                       className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100"
                     >
@@ -1566,6 +1678,75 @@ export function PedidosSection() {
             </article>
           );
         })}
+        {rejectingPaymentOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
+            <div
+              className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.35em] text-red-500">Rechazar pago</p>
+                  <h3 className="mt-2 text-xl font-black text-slate-900">{getVisibleCustomerCode(rejectingPaymentOrder)}</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">Indica el motivo para registrar el rechazo.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectingPaymentOrder(null);
+                    setPaymentRejectionReason("");
+                    setPaymentRejectionError("");
+                  }}
+                  className="rounded-full border border-slate-200 bg-slate-50 p-2 text-slate-500 hover:bg-slate-100"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                  Motivo del rechazo
+                </label>
+                <textarea
+                  value={paymentRejectionReason}
+                  onChange={(event) => {
+                    setPaymentRejectionReason(event.target.value);
+                    if (paymentRejectionError) setPaymentRejectionError("");
+                  }}
+                  className="min-h-32 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium outline-none focus:border-red-300 focus:ring-4 focus:ring-red-100"
+                  placeholder="Explica por qué se rechaza el pago..."
+                />
+                {paymentRejectionError && (
+                  <p className="text-xs font-bold text-red-600">{paymentRejectionError}</p>
+                )}
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectingPaymentOrder(null);
+                    setPaymentRejectionReason("");
+                    setPaymentRejectionError("");
+                  }}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleConfirmRejectPayment()}
+                  disabled={updating}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {reviewAction === "reject" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {reviewAction === "reject" ? "Rechazando..." : "Confirmar rechazo"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {filteredOrders.length === 0 && (
           <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white p-12 text-center text-muted-foreground font-bold">
             No hay pedidos registrados
