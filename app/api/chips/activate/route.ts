@@ -83,6 +83,31 @@ export async function POST(req: NextRequest) {
 
   const chip = claimToken.chip;
 
+  const finishedGoodUnit = chip.internalLabel
+    ? await prisma.operationFinishedGoodUnit.findFirst({
+        where: {
+          internalLabel: chip.internalLabel,
+          activationStatus: "not_activated",
+          status: { in: ["dispatched", "delivered"] },
+        },
+        select: {
+          id: true,
+          status: true,
+          activationStatus: true,
+          reservedOrderId: true,
+        },
+      })
+    : null;
+
+  if (!finishedGoodUnit) {
+    return NextResponse.json(
+      {
+        error: "Este producto todavía no está listo para activación. Debe estar entregado o en despacho.",
+      },
+      { status: 409 }
+    );
+  }
+
   if (!ACTIVATABLE_CHIP_STATUSES.includes(chip.status as (typeof ACTIVATABLE_CHIP_STATUSES)[number])) {
     return NextResponse.json(
       { error: "Este chip no está disponible para activación" },
