@@ -14,12 +14,13 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
-  const body = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const action = body.action === "unpublish" ? "unpublish" : "publish";
 
-  try {
-    const finishedGood = await prisma.operationFinishedGood.findUnique({
-      where: { id },
-      select: { id: true, code: true, name: true, productType: true },
+    try {
+      const finishedGood = await prisma.operationFinishedGood.findUnique({
+        where: { id },
+        select: { id: true, code: true, name: true, productType: true },
     });
 
     if (!finishedGood) {
@@ -35,14 +36,23 @@ export async function POST(
       operationsProductName: finishedGood.name,
       productType: finishedGood.code,
       defaultPrice: typeof body.price === "number" ? body.price : typeof body.price === "string" ? Number(body.price) : null,
+      description: typeof body.description === "string" ? body.description : null,
       category: typeof body.category === "string" ? body.category : null,
-      visible: typeof body.visible === "boolean" ? body.visible : true,
+      visible: action === "unpublish" ? false : typeof body.visible === "boolean" ? body.visible : true,
+      image: typeof body.imageUrl === "string" ? body.imageUrl : null,
     });
 
     return NextResponse.json({
       success: true,
+      action,
       ...result,
-      message: result.created ? "Producto publicado en catálogo comercial" : "Producto actualizado en catálogo comercial",
+      published: action === "publish" ? true : false,
+      message:
+        action === "unpublish"
+          ? "Producto despublicado del catálogo comercial"
+          : result.created
+            ? "Producto publicado en catálogo comercial"
+            : "Producto actualizado en catálogo comercial",
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

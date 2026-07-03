@@ -126,38 +126,11 @@ export function TiendaSection() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`¿Eliminar ${name}?`)) return;
-    try {
-      const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        toast.success("Producto eliminado");
-        loadProducts();
-      }
-    } catch {
-      toast.error("Error al eliminar");
-    }
-  };
-
-  const openEdit = (p: Product) => {
-    setEditingProduct(p);
-    setFormData({
-      name: p.name,
-      description: p.description || "",
-      price: p.price.toString(),
-      category: p.category,
-      stock: p.stock.toString(),
-      image: p.image || "",
-      productType: p.productType || "otro",
-      estimatedProductionTime: p.estimatedProductionTime || "",
-      requiresPersonalization: p.requiresPersonalization
-    });
-    setShowModal(true);
-  };
-
   const getStockForProduct = (product: Product) => {
     return stockRows.find((row) => row.storeProductId === product.id || row.productType === product.productType || row.productName === product.name) || null;
   };
+
+  const isInventoryPublished = (product: Product) => Boolean(product.description?.includes("[operationsProductCode:"));
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -179,15 +152,16 @@ export function TiendaSection() {
         </div>
         
         <button 
-          onClick={() => {
-            setEditingProduct(null);
-            setFormData({ name: "", description: "", price: "", category: "Accesorios", stock: "0", image: "", productType: "otro", estimatedProductionTime: "", requiresPersonalization: false });
-            setShowModal(true);
-          }}
-          className="px-8 py-4 bg-primary text-white text-[11px] font-black uppercase tracking-widest rounded-[1.5rem] hover:opacity-90 transition-all shadow-xl shadow-primary/20 flex items-center gap-2 group"
+          type="button"
+          disabled
+          className="px-8 py-4 bg-slate-200 text-slate-500 text-[11px] font-black uppercase tracking-widest rounded-[1.5rem] shadow-xl shadow-slate-200/40 flex items-center gap-2 group cursor-not-allowed"
         >
-          <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform" /> Nuevo ítem comercial
+          <Plus className="h-5 w-5" /> Catálogo desde Inventario
         </button>
+      </div>
+
+      <div className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-800">
+        El catálogo se administra desde Inventario. Tienda Admin solo muestra productos publicados.
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -259,13 +233,23 @@ export function TiendaSection() {
                 );
               })()}
 
-              <div className="flex gap-2">
-                 <button onClick={() => openEdit(p)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all">
+              <div className="flex flex-col gap-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  El catálogo se administra desde Inventario
+                </div>
+                <div className="flex gap-2">
+                  <button disabled className="flex-1 py-4 bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-2xl cursor-not-allowed">
                     Editar
-                 </button>
-                 <button onClick={() => handleDelete(p.id, p.name)} className="p-4 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white rounded-2xl transition-all group/del shadow-sm">
+                  </button>
+                  <button disabled className="p-4 bg-rose-50 text-rose-300 rounded-2xl cursor-not-allowed shadow-sm" title="Administrado desde Inventario">
                     <Trash2 className="h-4 w-4" />
-                 </button>
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className={`inline-flex rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${isInventoryPublished(p) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                  {isInventoryPublished(p) ? "Publicado desde Inventario" : "Sin vínculo operativo"}
+                </span>
               </div>
             </div>
           </div>

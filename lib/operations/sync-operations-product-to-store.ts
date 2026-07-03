@@ -7,6 +7,8 @@ export type SyncOperationsProductToStoreInput = {
   defaultPrice?: number | null;
   category?: string | null;
   visible?: boolean;
+  description?: string | null;
+  image?: string | null;
 };
 
 export type SyncOperationsProductToStoreResult = {
@@ -50,7 +52,8 @@ export async function syncOperationsProductToStore(
 
   const existing = existingByMarker || existingByCode;
   const descriptionBase = existing?.description?.replace(/\n\[operationsProductCode:[^\]]+\]/g, "").trim() || "";
-  const nextDescription = `${descriptionBase}${marker}`.trim();
+  const customDescription = input.description?.trim() || "";
+  const nextDescription = `${customDescription || descriptionBase}${marker}`.trim();
   const visible = input.visible ?? true;
 
   if (existing) {
@@ -63,6 +66,7 @@ export async function syncOperationsProductToStore(
         price: input.defaultPrice !== undefined && input.defaultPrice !== null ? input.defaultPrice : existing.price,
         productType: productType || operationsProductCode,
         isActive: visible ?? existing.isActive,
+        image: input.image !== undefined ? input.image : existing.image,
       },
     });
 
@@ -82,11 +86,11 @@ export async function syncOperationsProductToStore(
       price: input.defaultPrice ?? 0,
       category: input.category || "general",
       stock: 0,
-      image: null,
       productType: productType || operationsProductCode,
       estimatedProductionTime: null,
       requiresPersonalization: false,
       isActive: visible,
+      image: input.image ?? null,
     },
   });
 

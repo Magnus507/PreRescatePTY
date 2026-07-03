@@ -62,6 +62,17 @@ interface FinishedGood {
   packingBatch: PackingBatchOption | null;
 }
 
+interface StoreProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  category: string;
+  image: string | null;
+  isActive: boolean;
+  productType: string;
+}
+
 interface FinishedGoodFormState {
   code: string;
   name: string;
@@ -78,6 +89,14 @@ interface FinishedGoodEditFormState {
   unit: string;
   notes: string;
   status: string;
+}
+
+interface PublishFormState {
+  price: string;
+  description: string;
+  category: string;
+  imageUrl: string;
+  visible: boolean;
 }
 
 type FinishedGoodEventType =
@@ -115,6 +134,14 @@ const EMPTY_FINISHED_GOOD_EDIT_FORM: FinishedGoodEditFormState = {
   status: "active",
 };
 
+const EMPTY_PUBLISH_FORM: PublishFormState = {
+  price: "",
+  description: "",
+  category: "Accesorios",
+  imageUrl: "",
+  visible: true,
+};
+
 const EMPTY_MOVEMENT_FORM: MovementFormState = {
   eventType: "RECEIPT",
   quantity: "",
@@ -123,6 +150,12 @@ const EMPTY_MOVEMENT_FORM: MovementFormState = {
   referenceId: "",
   metadataJson: "",
 };
+
+function extractOperationsProductCodeFromDescription(value: string | null) {
+  if (!value) return null;
+  const match = value.match(/\[operationsProductCode:([^\]]+)\]/);
+  return match?.[1] || null;
+}
 
 const FINISHED_GOOD_EVENT_OPTIONS: Array<{ value: FinishedGoodEventType; label: string }> = [
   { value: "RECEIPT", label: "Entrada" },
@@ -135,6 +168,7 @@ const FINISHED_GOOD_EVENT_OPTIONS: Array<{ value: FinishedGoodEventType; label: 
 
 export function FinishedGoodsSection() {
   const [finishedGoods, setFinishedGoods] = useState<FinishedGood[]>([]);
+  const [storeProducts, setStoreProducts] = useState<StoreProduct[]>([]);
   const [packingBatches, setPackingBatches] = useState<PackingBatchOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -148,6 +182,8 @@ export function FinishedGoodsSection() {
   const [movementTarget, setMovementTarget] = useState<FinishedGood | null>(null);
   const [movementForm, setMovementForm] = useState<MovementFormState>(EMPTY_MOVEMENT_FORM);
   const [savingMovement, setSavingMovement] = useState(false);
+  const [publishTarget, setPublishTarget] = useState<FinishedGood | null>(null);
+  const [publishForm, setPublishForm] = useState<PublishFormState>(EMPTY_PUBLISH_FORM);
 
   const loadFinishedGoods = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -157,14 +193,18 @@ export function FinishedGoodsSection() {
     }
 
     try {
-      const res = await fetch("/api/admin/operations/finished-goods", { cache: "no-store" });
-      const data = await res.json();
+      const [finishedGoodsRes, storeProductsRes] = await Promise.all([
+        fetch("/api/admin/operations/finished-goods", { cache: "no-store" }),
+        fetch("/api/admin/products", { cache: "no-store" }),
+      ]);
+      const [data, storeData] = await Promise.all([finishedGoodsRes.json(), storeProductsRes.json()]);
 
-      if (!res.ok) {
+      if (!finishedGoodsRes.ok) {
         throw new Error(data.error || "No se pudo cargar productos base");
       }
 
       setFinishedGoods(Array.isArray(data.finishedGoods) ? data.finishedGoods : []);
+      setStoreProducts(Array.isArray(storeData.products) ? storeData.products : []);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error al cargar productos base";
       toast.error(message);
@@ -263,23 +303,74 @@ export function FinishedGoodsSection() {
     });
   };
 
+  const openPublishModal = (item: FinishedGood) => {
+    const existing = storeProducts.find((product) => extractOperationsProductCodeFromDescription(product.description) === item.code);
+    setPublishTarget(item);
+    setPublishForm({
+      price: existing ? String(existing.price) : "",
+      description: existing?.description?.replace(/\n\[operationsProductCode:[^\]]+\]/g, "").trim() || "",
+      category: existing?.category || "Accesorios",
+      imageUrl: existing?.image || "",
+      visible: existing ? existing.isActive : true,
+    });
+  };
+
+  const closePublishModal = () => {
+    if (publishingId) return;
+    setPublishTarget(null);
+    setPublishForm(EMPTY_PUBLISH_FORM);
+  };
+
   const publishToStore = async (item: FinishedGood) => {
     setPublishingId(item.id);
     try {
       const res = await fetch(`/api/admin/operations/finished-goods/${item.id}/publish-to-store`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visible: true }),
+        body: JSON.stringify({
+          action: "publish",
+          price: publishForm.price === "" ? undefined : Number(publishForm.price),
+          description: publishForm.description.trim() || undefined,
+          category: publishForm.category.trim() || undefined,
+          visible: publishForm.visible,
+          imageUrl: publishForm.imageUrl.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo publicar en Tienda");
       toast.success(data.message || "Producto publicado en catálogo comercial");
       await loadFinishedGoods({ silent: true });
+      setPublishTarget(null);
+      setPublishForm(EMPTY_PUBLISH_FORM);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al publicar en Tienda");
     } finally {
       setPublishingId(null);
     }
+  };
+
+  const unpublishFromStore = async (item: FinishedGood) => {
+    if (!confirm("El producto dejará de verse en la tienda del cliente. No se borra inventario.")) return;
+    setPublishingId(item.id);
+    try {
+      const res = await fetch(`/api/admin/operations/finished-goods/${item.id}/publish-to-store`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "unpublish" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo despublicar");
+      toast.success(data.message || "Producto despublicado");
+      await loadFinishedGoods({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al despublicar");
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
+  const getPublishedStoreProduct = (item: FinishedGood) => {
+    return storeProducts.find((product) => extractOperationsProductCodeFromDescription(product.description) === item.code) || null;
   };
 
   const closeEditModal = () => {
@@ -672,12 +763,19 @@ export function FinishedGoodsSection() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => publishToStore(item)}
+                            onClick={() => {
+                              const published = getPublishedStoreProduct(item);
+                              if (published?.isActive) {
+                                void unpublishFromStore(item);
+                                return;
+                              }
+                              openPublishModal(item);
+                            }}
                             disabled={publishingId === item.id || savingMovement || savingEdit}
                             className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {publishingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />}
-                            Publicar en Tienda
+                            {getPublishedStoreProduct(item)?.isActive ? "Dejar de publicar" : "Publicar en Tienda"}
                           </button>
                         </div>
                       </td>
@@ -1051,6 +1149,110 @@ export function FinishedGoodsSection() {
                 >
                   {savingMovement ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
                   Guardar movimiento
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {publishTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void publishToStore(publishTarget);
+              }}
+              className="space-y-6 p-6 md:p-8"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Publicar en tienda</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{publishTarget.name}</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Define precio, descripción, categoría, visibilidad e imagen comercial.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closePublishModal}
+                  disabled={publishingId === publishTarget.id}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Precio</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={publishForm.price}
+                    onChange={(event) => setPublishForm((current) => ({ ...current, price: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categoría</span>
+                  <input
+                    value={publishForm.category}
+                    onChange={(event) => setPublishForm((current) => ({ ...current, category: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Accesorios"
+                  />
+                </label>
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Descripción comercial</span>
+                  <textarea
+                    value={publishForm.description}
+                    onChange={(event) => setPublishForm((current) => ({ ...current, description: event.target.value }))}
+                    className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Texto comercial visible para cliente"
+                  />
+                </label>
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Imagen</span>
+                  <input
+                    value={publishForm.imageUrl}
+                    onChange={(event) => setPublishForm((current) => ({ ...current, imageUrl: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="https://..."
+                  />
+                </label>
+                <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={publishForm.visible}
+                    onChange={(event) => setPublishForm((current) => ({ ...current, visible: event.target.checked }))}
+                    className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Visible para cliente
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closePublishModal}
+                  disabled={publishingId === publishTarget.id}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={publishingId === publishTarget.id}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {publishingId === publishTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />}
+                  Publicar
                 </button>
               </div>
             </form>
