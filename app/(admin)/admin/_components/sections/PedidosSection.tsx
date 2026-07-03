@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Loader2, View, CheckCircle2, Truck, RefreshCw, ExternalLink, Building2, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle } from "lucide-react";
 const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => ({ default: mod.QRCodeCanvas })), { ssr: false });
@@ -184,7 +185,7 @@ export function PedidosSection() {
       initializedOrderIdRef.current = selectedOrder.id;
       setReviewNote(selectedOrder.adminReviewNotes || "");
     }
-  }, [selectedOrder?.id]);
+  }, [selectedOrder, selectedOrder?.adminReviewNotes]);
 
   useEffect(() => {
     const handleWindowFocus = () => {
@@ -527,16 +528,16 @@ export function PedidosSection() {
                    </div>
 
                    {/* Payment proof */}
-                       {selectedOrder.paymentProofUrl && (
+                   {selectedOrder.paymentProofUrl && (
                          <div className="rounded-[2rem] border border-slate-200 p-5 bg-white">
                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-primary mb-3">Comprobante de pago</h3>
-                       <div className="aspect-video max-w-md rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
-                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                         <img
+                       <div className="relative aspect-video max-w-md overflow-hidden rounded-xl border border-border bg-slate-100 cursor-zoom-in" onClick={() => window.open(selectedOrder.paymentProofUrl!, '_blank')}>
+                         <Image
                            src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")}
                            alt="Pago"
-                           className="object-contain w-full h-full p-2"
-                           onError={(e) => { if (e.currentTarget.src !== selectedOrder.paymentProofUrl) e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
+                           fill
+                           sizes="(max-width: 768px) 100vw, 448px"
+                           className="object-contain p-2"
                          />
                        </div>
                      </div>
@@ -863,13 +864,13 @@ export function PedidosSection() {
                         {selectedOrder.paymentProofUrl ? (
                           <>
                             <div className="bg-white dark:bg-slate-900 p-4 rounded-[1.75rem] border border-border shadow-sm">
-                               <div className="aspect-video max-w-sm rounded-xl border border-border overflow-hidden bg-slate-100 cursor-zoom-in" onClick={() => setReceiptModalOrder(selectedOrder)}>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
+                               <div className="relative aspect-video max-w-sm overflow-hidden rounded-xl border border-border bg-slate-100 cursor-zoom-in" onClick={() => setReceiptModalOrder(selectedOrder)}>
+                                  <Image
                                     src={resolveImageSrc(selectedOrder.paymentProofUrl, "payment-proofs")}
                                     alt="Pago"
-                                    className="object-contain w-full h-full p-2"
-                                    onError={(e) => { if (e.currentTarget.src !== selectedOrder.paymentProofUrl) e.currentTarget.src = selectedOrder.paymentProofUrl!; }}
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 384px"
+                                    className="object-contain p-2"
                                   />
                                </div>
                               <button onClick={() => setReceiptModalOrder(selectedOrder)} className="mt-3 w-full px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all">

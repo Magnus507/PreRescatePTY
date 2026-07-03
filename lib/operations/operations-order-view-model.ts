@@ -127,6 +127,29 @@ function getOrderStatusLabel(orderStatus: string) {
   }
 }
 
+function getComboMultiplier(label: string | null | undefined) {
+  const normalized = (label || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (!normalized) return 1;
+  if (normalized.includes("combo_duo") || normalized.includes("combo duo")) return 2;
+  if (normalized.includes("combo_familiar") || normalized.includes("combo familiar")) return 3;
+  if (normalized.includes("combo_hogar_full") || normalized.includes("combo hogar full")) return 5;
+  if (normalized.includes("combo_empresa") || normalized.includes("combo empresa")) return 20;
+  if (normalized.includes("combo_estandar") || normalized.includes("combo estandar")) return 1;
+  return 1;
+}
+
+function getBlockedReasons(order: OperationsOrderInput, paymentProofAvailable: boolean) {
+  const reasons: string[] = [];
+
+  if (order.orderStatus === "cancelled") reasons.push("Pedido archivado");
+  if (order.orderStatus === "completed") reasons.push("Pedido finalizado");
+  if (!paymentProofAvailable && order.paymentStatus !== "paid") reasons.push("Sin comprobante");
+  if (order.paymentStatus === "rejected") reasons.push("Pago rechazado");
+  if (order.adminReviewStatus === "rejected") reasons.push("Revisión rechazada");
+
+  return reasons;
+}
+
 export function buildOperationsOrderViewModel(order: OperationsOrderInput): OperationsOrderViewModel {
   const displayOrderCode = order.providerReference?.trim()?.startsWith("PR-")
     ? order.providerReference.trim()
@@ -143,6 +166,7 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const commercialQuantity = firstItem?.quantity || 0;
   const commercialUnitPrice = firstItem?.unitPrice || 0;
   const commercialTotal = firstItem?.totalPrice ?? 0;
+  const comboMultiplier = getComboMultiplier(commercialItemName);
   const operationalProductCode = commercialItemName?.toUpperCase().startsWith("COMBO_")
     ? "PRP-FG-STICKER"
     : commercialItemName?.toUpperCase().includes("STICKER")
@@ -151,19 +175,17 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const operationalProductName = operationalProductCode === "PRP-FG-STICKER"
     ? "Sticker PreRescatePTY"
     : commercialItemName;
-  const operationalQuantity = commercialQuantity;
-  const blockedReasons: string[] = [];
+  const operationalQuantity = commercialQuantity * comboMultiplier;
   const canApprovePayment = paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
   const canRejectPayment = paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
-  const canArchiveOrder = order.orderStatus !== "cancelled";
-  const canAcceptOrder = order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
-  const canRejectOrder = order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
-  const canReserveInternalLabel = order.orderStatus !== "cancelled" && order.orderStatus !== "completed" && (order.paymentStatus === "paid" || order.adminReviewStatus === "approved");
-  const canSendToProduction = order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
-  const canCreateDispatch = order.orderStatus !== "cancelled" && order.orderStatus !== "completed" && paymentStatusLabel !== "Pago pendiente";
-
-  if (!paymentProofAvailable) blockedReasons.push("Sin comprobante");
-  if (order.orderStatus === "cancelled") blockedReasons.push("Pedido archivado");
+  const canArchiveOrder = order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
+  const canAcceptOrder = order.orderStatus === "pending" || order.orderStatus === "processing";
+  const canRejectOrder = order.orderStatus === "pending" || order.orderStatus === "processing";
+  const canReserveInternalLabel =
+    canAcceptOrder && (order.paymentStatus === "paid" || order.adminReviewStatus === "approved" || paymentProofAvailable);
+  const canSendToProduction = canReserveInternalLabel && order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
+  const canCreateDispatch = canSendToProduction && paymentStatusLabel !== "Pago pendiente";
+  const blockedReasons = getBlockedReasons(order, paymentProofAvailable);
 
   return {
     id: order.id,

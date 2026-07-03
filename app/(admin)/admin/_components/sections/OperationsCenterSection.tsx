@@ -26,7 +26,7 @@ import ProductionQueueSection from "./ProductionQueueSection";
 import { PhysicalInventorySection } from "./PhysicalInventorySection";
 import { DispatchSection } from "./DispatchSection";
 import { HistorySection } from "./HistorySection";
-import { CommercialSection } from "./CommercialSection";
+import { PedidosSection } from "./PedidosSection";
 import { WarrantySection } from "./WarrantySection";
 import { ReplacementSection } from "./ReplacementSection";
 import { ReturnSection } from "./ReturnSection";
@@ -270,7 +270,7 @@ export function OperationsCenterSection({
     }
 
     if (activeTab === "commercial") {
-      return <CommercialSection />;
+      return <PedidosSection />;
     }
 
     if (activeTab === "inventory") {
