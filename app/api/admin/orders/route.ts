@@ -6,79 +6,7 @@ import { USER_ROLES } from "@/domains/shared/constants";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { OrderNotificationService } from "@/domains/notifications/services/order-notification.service";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
-
-function normalizeOrderPresentation(order: {
-  id: string;
-  orderNumber: string;
-  provider: string;
-  providerReference: string | null;
-  paymentStatus: string;
-  paymentMethod: string | null;
-  paymentProofUrl: string | null;
-  manualPaymentReference: string | null;
-  adminReviewStatus: string | null;
-  adminReviewNotes: string | null;
-  orderStatus: string;
-  orderType: string;
-  updatedAt: Date;
-  items: Array<{ productType: string; quantity: number; totalPrice: number; unitPrice: number }>;
-}) {
-  const displayOrderCode = order.providerReference?.trim()?.startsWith("PR-")
-    ? order.providerReference.trim()
-    : order.orderNumber.startsWith("OP-")
-      ? order.orderNumber.replace(/^OP-(CLI|EMP)-/, "")
-      : order.orderNumber;
-  const operationsOrderCode = order.orderNumber.startsWith("OP-")
-    ? order.orderNumber
-    : `OP-CLI-${displayOrderCode}`;
-  const paymentProofAvailable = Boolean(order.paymentProofUrl || order.manualPaymentReference);
-  const paymentStatusHuman =
-    order.paymentStatus === "rejected"
-      ? "Pago rechazado"
-      : order.paymentStatus === "paid"
-        ? "Pago aprobado"
-        : paymentProofAvailable
-          ? "Pago en revisión"
-          : "Pago pendiente";
-
-  const firstItem = order.items[0] || null;
-  const commercialItemName = firstItem?.productType || null;
-  const commercialQuantity = firstItem?.quantity || 0;
-  const commercialTotal = firstItem?.totalPrice ?? 0;
-  const operationalProductCode = commercialItemName?.toUpperCase().startsWith("COMBO_")
-    ? "PRP-FG-STICKER"
-    : commercialItemName?.toUpperCase().includes("STICKER")
-      ? "PRP-FG-STICKER"
-      : null;
-  const operationalProductName = operationalProductCode === "PRP-FG-STICKER"
-    ? "Sticker PreRescatePTY"
-    : commercialItemName;
-  const operationalQuantity = operationalProductCode ? commercialQuantity : commercialQuantity;
-
-  return {
-    displayOrderCode,
-    operationsOrderCode,
-    sourceType: order.provider,
-    sourceId: order.id,
-    paymentStatus: order.paymentStatus,
-    paymentStatusHuman,
-    paymentMethod: order.paymentMethod,
-    paymentProofUrl: order.paymentProofUrl,
-    paymentProofAvailable,
-    paymentSubmittedAt: paymentProofAvailable ? order.updatedAt.toISOString() : null,
-    paymentReference: order.manualPaymentReference || order.paymentProofUrl || null,
-    paymentRejectionReason: order.adminReviewStatus === "rejected" ? order.adminReviewNotes : null,
-    canApprovePayment: paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected",
-    canRejectPayment: paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected",
-    canArchiveOrder: order.orderStatus !== "cancelled",
-    commercialItemName,
-    commercialQuantity,
-    commercialTotal,
-    operationalProductCode,
-    operationalProductName,
-    operationalQuantity,
-  };
-}
+import { buildOperationsOrderViewModel } from "@/lib/operations/operations-order-view-model";
 
 async function isAdmin() {
   const session = await getServerSession(authOptions);
@@ -200,7 +128,7 @@ export async function GET() {
     return NextResponse.json({
       orders: ordersWithExistingChips.map((order) => ({
         ...order,
-        ...normalizeOrderPresentation(order as Parameters<typeof normalizeOrderPresentation>[0]),
+        ...buildOperationsOrderViewModel(order as Parameters<typeof buildOperationsOrderViewModel>[0]),
       })),
     });
   } catch (error) {

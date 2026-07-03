@@ -63,10 +63,12 @@ interface Order {
   paymentSubmittedAt?: string | null;
   paymentReference?: string | null;
   paymentRejectionReason?: string | null;
+  paymentStatusLabel?: string | null;
   paymentStatusHuman?: string | null;
   canApprovePayment?: boolean;
   canRejectPayment?: boolean;
   canArchiveOrder?: boolean;
+  orderStatusLabel?: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -123,6 +125,18 @@ interface Order {
   operationalProductCode?: string | null;
   operationalProductName?: string | null;
   operationalQuantity?: number | null;
+  operationsReferenceCode?: string | null;
+  channel?: string | null;
+  deliveryReference?: string | null;
+  reservedUnits?: Array<{
+    id: string;
+    internalLabel?: string | null;
+    shortCode?: string | null;
+    qaStatus?: string | null;
+    inventoryStatus?: string | null;
+    activationStatus?: string | null;
+  }>;
+  blockedReasons?: string[];
 }
 
 export function PedidosSection() {
@@ -380,6 +394,7 @@ export function PedidosSection() {
   };
 
   const getPaymentReviewLabel = (order: Order) => {
+    if (order.paymentStatusLabel?.trim()) return order.paymentStatusLabel.trim();
     if (order.paymentStatus === "rejected") return "Pago rechazado";
     if (order.paymentStatus === "paid") return "Pago aprobado";
     if (order.paymentProofAvailable || order.paymentProofUrl || order.manualPaymentReference) return "Pago en revisión";
@@ -453,10 +468,10 @@ export function PedidosSection() {
                      {getStatusBadge(selectedOrder.orderStatus, selectedOrder.paymentStatus)}
                   </div>
                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">
-                    {isCorporateOrder ? "Pedido corporativo" : "Logística de Despacho & CRM"}
+                    {isCorporateOrder ? "Pedido corporativo" : "Operación canónica de pedidos"}
                   </p>
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mt-1">
-                    Referencia operativa: {getOperationalReference(selectedOrder)}
+                    Referencia operativa: {selectedOrder.operationsReferenceCode || getOperationalReference(selectedOrder)}
                   </p>
                </div>
             </div>
@@ -1240,8 +1255,8 @@ export function PedidosSection() {
                            </>
                          ) : (
                            <>
-                              <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0]?.productType || "Combo no especificado"}</p>
-                             <p className="text-[10px] font-black uppercase text-muted-foreground">{o.items[0] ? `${o.items[0].quantity} combo${o.items[0].quantity === 1 ? "" : "s"} / ${o.items.reduce((sum, item) => sum + item.quantity, 0)} unidad${o.items.reduce((sum, item) => sum + item.quantity, 0) === 1 ? "" : "es"} físicas` : "0 unidades físicas"}</p>
+                              <p className="text-[10px] font-black uppercase text-muted-foreground">{o.commercialItemName || o.items[0]?.productType || "Combo no especificado"}</p>
+                             <p className="text-[10px] font-black uppercase text-muted-foreground">{o.commercialQuantity ? `${o.commercialQuantity} combo${o.commercialQuantity === 1 ? "" : "s"} / ${o.operationalQuantity || o.commercialQuantity} unidad${(o.operationalQuantity || o.commercialQuantity) === 1 ? "" : "es"} físicas` : "0 unidades físicas"}</p>
                            </>
                          )}
                       </td>
