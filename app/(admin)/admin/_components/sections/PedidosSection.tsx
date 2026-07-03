@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, View, CheckCircle2, Truck, RefreshCw, Trash2, ExternalLink, Building2, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle } from "lucide-react";
+import { Loader2, View, CheckCircle2, Truck, RefreshCw, ExternalLink, Building2, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle } from "lucide-react";
 const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => ({ default: mod.QRCodeCanvas })), { ssr: false });
 import { toast } from "sonner";
 import Link from "next/link";
@@ -57,6 +57,16 @@ interface Order {
   orderNumber: string;
   sourceOrderNumber?: string | null;
   operationalReference?: string | null;
+  displayOrderCode?: string | null;
+  operationsOrderCode?: string | null;
+  paymentProofAvailable?: boolean;
+  paymentSubmittedAt?: string | null;
+  paymentReference?: string | null;
+  paymentRejectionReason?: string | null;
+  paymentStatusHuman?: string | null;
+  canApprovePayment?: boolean;
+  canRejectPayment?: boolean;
+  canArchiveOrder?: boolean;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -107,6 +117,12 @@ interface Order {
   }[];
   corporateEmployeeItems?: CorporateEmployeeItem[];
   organizationMemberId?: string;
+  commercialItemName?: string | null;
+  commercialQuantity?: number | null;
+  commercialTotal?: number | null;
+  operationalProductCode?: string | null;
+  operationalProductName?: string | null;
+  operationalQuantity?: number | null;
 }
 
 export function PedidosSection() {
@@ -339,35 +355,17 @@ export function PedidosSection() {
     }
   };
 
-  const clearCancelledOrders = async () => {
-    if (!confirm("¿Deseas eliminar permanentemente TODAS las órdenes canceladas? Esta acción no se puede deshacer.")) return;
-    
-    setUpdating(true);
-    try {
-      const res = await fetch("/api/admin/orders?bulk=cancelled", { method: "DELETE", cache: "no-store" });
-      if (res.ok) {
-        toast.success("Órdenes canceladas eliminadas correctamente");
-        loadOrders();
-      } else {
-        toast.error("Error al eliminar órdenes");
-      }
-    } catch {
-      toast.error("Error de conexión");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   const copyOrderNumber = async (orderNumber: string) => {
     try {
       await navigator.clipboard.writeText(orderNumber);
-      toast.success("Número de pedido copiado");
+      toast.success("Código cliente copiado");
     } catch {
-      toast.error("No se pudo copiar el número");
+      toast.error("No se pudo copiar el código cliente");
     }
   };
 
   const getVisibleCustomerCode = (order: Order) => {
+    if (order.displayOrderCode?.trim()) return order.displayOrderCode.trim();
     if (order.sourceOrderNumber?.trim()) return order.sourceOrderNumber.trim();
     if (order.orderNumber.startsWith("OP-CLI-")) return order.orderNumber.replace(/^OP-CLI-/, "");
     if (order.orderNumber.startsWith("OP-EMP-")) return order.orderNumber.replace(/^OP-EMP-/, "");
@@ -375,6 +373,7 @@ export function PedidosSection() {
   };
 
   const getOperationalReference = (order: Order) => {
+    if (order.operationsOrderCode?.trim()) return order.operationsOrderCode.trim();
     if (order.operationalReference?.trim()) return order.operationalReference.trim();
     if (order.orderNumber.startsWith("OP-")) return order.orderNumber;
     return `OP-CLI-${order.orderNumber}`;
@@ -383,7 +382,7 @@ export function PedidosSection() {
   const getPaymentReviewLabel = (order: Order) => {
     if (order.paymentStatus === "rejected") return "Pago rechazado";
     if (order.paymentStatus === "paid") return "Pago aprobado";
-    if (order.paymentProofUrl) return "Comprobante pendiente de revisión";
+    if (order.paymentProofAvailable || order.paymentProofUrl || order.manualPaymentReference) return "Pago en revisión";
     if (order.paymentStatus === "under_review") return "Pago en revisión";
     return getPaymentStatusLabel(order.paymentStatus);
   };
@@ -444,9 +443,9 @@ export function PedidosSection() {
                        )}
                        <button
                          type="button"
-                         onClick={() => copyOrderNumber(selectedOrder.orderNumber)}
+                         onClick={() => copyOrderNumber(getVisibleCustomerCode(selectedOrder))}
                          className="text-[9px] px-2 py-1 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
-                         title="Copiar número de pedido"
+                         title="Copiar código cliente"
                        >
                          Copiar
                        </button>
@@ -547,7 +546,7 @@ export function PedidosSection() {
                            onClick={handleApprove}
                            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                          >
-                           {reviewAction === "approve" ? "Aprobando..." : "Aprobar pago corporativo"}
+                           {reviewAction === "approve" ? "Aprobando..." : "Aprobar pago"}
                          </button>
                          <button
                            disabled={updating || !canAdminRejectManual(selectedOrder)}
@@ -860,10 +859,10 @@ export function PedidosSection() {
                                </div>
                               <button onClick={() => setReceiptModalOrder(selectedOrder)} className="mt-3 w-full px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all">
                                   Ver comprobante
-                               </button>
+                              </button>
                             </div>
                             <p className="mt-3 text-[10px] font-bold text-amber-700">
-                              Comprobante cargado por el cliente. Pendiente de aprobación o rechazo.
+                              Comprobante enviado por el cliente. Pago en revisión.
                             </p>
                           </>
                         ) : (
@@ -915,14 +914,14 @@ export function PedidosSection() {
                                    onClick={handleApprove}
                                     className="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                                  >
-                                   {reviewAction === "approve" ? "Aprobando..." : "Aprobar Pago"}
+                                   {reviewAction === "approve" ? "Aprobando..." : "Aprobar pago"}
                                  </button>
                                  <button
                                     disabled={updating || !canAdminRejectManual(selectedOrder)}
                                    onClick={handleReject}
                                     className="w-full px-4 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
                                  >
-                                   {reviewAction === "reject" ? "Rechazando..." : "Rechazar Pago"}
+                                   {reviewAction === "reject" ? "Rechazando..." : "Rechazar pago"}
                                  </button>
                               </div>
                               </>
@@ -1082,21 +1081,9 @@ export function PedidosSection() {
               return (
                 <div className="px-6 py-5 border-t border-border bg-muted/30 flex justify-between items-center gap-4">
                   <div className="flex gap-4">
-                    {selectedOrder.orderStatus === "cancelled" && (
-                       <button onClick={async () => {
-                          if(!confirm("¿Eliminar de forma permanente? No se puede deshacer.")) return;
-                          setUpdating(true);
-                          try {
-                            const res = await fetch(`/api/admin/orders?id=${selectedOrder.id}`, { method: "DELETE", cache: "no-store" });
-                            if (res.ok) { toast.success("Orden borrada"); setSelectedOrder(null); loadOrders(); }
-                          } finally { setUpdating(false); }
-                       }} disabled={updating} className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all">
-                          Eliminar Permanente
-                       </button>
-                    )}
                     {canCancel && (
-                      <button onClick={() => handleStatusChange(selectedOrder.id, "cancelled", "Cancelado")} disabled={updating} className="px-6 py-3 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">
-                        Declinar Orden
+                      <button onClick={() => handleStatusChange(selectedOrder.id, "cancelled", "Archivado")} disabled={updating} className="px-6 py-3 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">
+                        Archivar pedido
                       </button>
                     )}
                     {!isPaymentApproved && selectedOrder.orderStatus !== "cancelled" && selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && (
@@ -1171,15 +1158,6 @@ export function PedidosSection() {
             ))}
          </div>
          <div className="flex items-center gap-2">
-            <button 
-              onClick={clearCancelledOrders} 
-              disabled={updating || loading}
-              className="p-3 border border-red-100 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
-              title="Limpiar Cancelados"
-            >
-               <Trash2 className="h-4 w-4" />
-               <span className="hidden sm:inline">Limpiar Cancelados</span>
-            </button>
             <button onClick={() => loadOrders({ silent: true })} disabled={refreshing} className="p-3 border border-border rounded-xl hover:bg-accent transition-all">
                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
@@ -1212,7 +1190,10 @@ export function PedidosSection() {
                    <tr key={o.id} className="hover:bg-accent/30 transition-all">
                       <td className={`p-3 pl-5 ${o.orderType === "corporate_employee_purchase" ? "border-l-4 border-l-blue-400" : ""}`}>
                          <div className="flex items-center gap-2 flex-wrap">
-                           <p className="font-mono font-bold text-sm break-all" title={o.orderNumber}>#{o.orderNumber}</p>
+                           <p className="font-mono font-bold text-sm break-all" title={getVisibleCustomerCode(o)}>#{getVisibleCustomerCode(o)}</p>
+                           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                             Ref. operativa: {getOperationalReference(o)}
+                           </p>
                            {o.orderType === "corporate_employee_purchase" && (
                              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold uppercase tracking-widest inline-flex items-center gap-1">
                                <Building2 className="h-3 w-3" /> Corporativo
@@ -1220,9 +1201,9 @@ export function PedidosSection() {
                            )}
                            <button
                              type="button"
-                             onClick={() => copyOrderNumber(o.orderNumber)}
+                             onClick={() => copyOrderNumber(getVisibleCustomerCode(o))}
                              className="text-[9px] px-2 py-0.5 rounded-md border border-border text-muted-foreground hover:text-slate-900 hover:bg-slate-50"
-                             title="Copiar número de pedido"
+                         title="Copiar código cliente"
                            >
                              Copiar
                            </button>
@@ -1266,7 +1247,7 @@ export function PedidosSection() {
                       </td>
                       <td className="p-3">
                          {getStatusBadge(o.orderStatus, o.paymentStatus)}
-                         {o.paymentProofUrl && <p className="text-[9px] font-black text-emerald-600 uppercase mt-1">✓ Pago Subido</p>}
+                         {(o.paymentProofUrl || o.paymentProofAvailable) && <p className="text-[9px] font-black text-emerald-600 uppercase mt-1">✓ Comprobante enviado</p>}
                       </td>
                       <td className="p-3 pr-5">
                          <button
