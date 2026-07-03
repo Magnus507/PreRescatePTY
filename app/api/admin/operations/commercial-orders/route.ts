@@ -70,6 +70,57 @@ const commercialOrderInclude = {
 
 const productionNotesMarkerPattern = /\[commercialOrderId:([^\]]+)\]/;
 
+async function createInternalProductionOrder(
+  tx: Prisma.TransactionClient,
+  commercialOrder: {
+    id: string;
+    code: string;
+    customerType: string;
+    items: Array<{
+      quantity: number;
+      productCode: string | null;
+      productName: string;
+      notes: string | null;
+      finishedGoodId: string | null;
+      unit: string;
+    }>;
+  },
+  createdById: string | null
+) {
+  const totalQuantity = commercialOrder.items.reduce((sum, item) => sum + item.quantity, 0);
+  const firstItem = commercialOrder.items[0];
+  const outputType = firstItem?.productCode || firstItem?.productName || "internal";
+  const productionNotesMarker = `[commercialOrderId:${commercialOrder.id}]`;
+  const productionNotes = `${productionNotesMarker} Pedido interno para fabricar inventario.`;
+
+  return tx.operationProductionOrder.create({
+    data: {
+      code: `PROD-${commercialOrder.code}`,
+      title: `Producción interna desde ${commercialOrder.code}`,
+      status: "draft",
+      plannedQuantity: totalQuantity,
+      producedQuantity: 0,
+      outputType,
+      notes: productionNotes,
+      events: {
+        create: {
+          eventType: "CREATED",
+          quantity: totalQuantity,
+          reason: `Orden creada desde pedido interno ${commercialOrder.code}`,
+          metadataJson: JSON.stringify({
+            commercialOrderId: commercialOrder.id,
+            commercialOrderCode: commercialOrder.code,
+            itemCount: commercialOrder.items.length,
+            productType: outputType,
+            orderSource: "internal",
+          }),
+          createdById,
+        },
+      },
+    },
+  });
+}
+
 export async function GET() {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
@@ -195,7 +246,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      return tx.operationCommercialOrder.create({
+      const createdOrder = await tx.operationCommercialOrder.create({
         data: {
           code,
           status: data.status || "draft",
@@ -227,12 +278,13 @@ export async function POST(req: NextRequest) {
             create: {
               eventType: "CREATED",
               amount: totalAmount,
-              reason: "Pedido comercial creado",
+              reason: isInternal ? (data.internalReason || "Pedido interno creado") : "Pedido comercial creado",
               metadataJson: JSON.stringify({
                 itemCount: items.length,
                 salesChannel: isInternal ? "internal" : data.salesChannel || "admin",
                 customerType,
                 dispatchId: data.dispatchId || null,
+                internalReason: isInternal ? (data.internalReason || null) : null,
               }),
               createdById,
             },
@@ -240,6 +292,24 @@ export async function POST(req: NextRequest) {
         },
         include: commercialOrderInclude,
       });
+      if (isInternal) {
+        const productionOrder = await createInternalProductionOrder(tx, createdOrder, createdById);
+        await tx.operationCommercialOrder.update({
+          where: { id: createdOrder.id },
+          data: {
+            status: "accepted",
+            fulfillmentStatus: "requested",
+          },
+        });
+        return {
+          ...createdOrder,
+          status: "accepted",
+          fulfillmentStatus: "requested",
+          productionOrder,
+        };
+      }
+
+      return createdOrder;
     });
 
     return NextResponse.json({ commercialOrder }, { status: 201 });

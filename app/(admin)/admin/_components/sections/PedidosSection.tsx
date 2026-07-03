@@ -164,6 +164,37 @@ interface Order {
   blockedReasons?: string[];
 }
 
+interface InternalCommercialOrderItem {
+  id: string;
+  quantity: number;
+  totalPrice: number;
+  unitPrice: number;
+  productCode?: string | null;
+  productName?: string | null;
+  finishedGood?: {
+    id: string;
+    code: string;
+    name: string;
+    productType: string;
+  } | null;
+}
+
+interface InternalCommercialOrder {
+  id: string;
+  code: string;
+  customerType: string;
+  status: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  customerReference?: string | null;
+  notes?: string | null;
+  totalAmount: number;
+  currency: string;
+  createdAt: string;
+  items?: InternalCommercialOrderItem[];
+  productionOrder?: { id: string; code: string; status: string } | null;
+}
+
 export function PedidosSection() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,9 +227,17 @@ export function PedidosSection() {
     if (!isSilent) setLoading(true);
     if (isSilent) setRefreshing(true);
     try {
-      const res = await fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: "no-store" });
-      const data = await res.json();
-      setOrders(data.orders || []);
+      const [legacyRes, internalRes] = await Promise.all([
+        fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/admin/operations/commercial-orders?_t=${Date.now()}`, { cache: "no-store" }),
+      ]);
+      const [legacyData, internalData] = await Promise.all([legacyRes.json(), internalRes.json()]);
+      const internalOrders = Array.isArray(internalData.commercialOrders)
+        ? internalData.commercialOrders
+            .filter((order: InternalCommercialOrder) => order.customerType === "internal")
+            .map((order: InternalCommercialOrder) => mapInternalCommercialOrder(order))
+        : [];
+      setOrders([...(legacyData.orders || []), ...internalOrders].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
     } catch {
       toast.error(isSilent ? "No se pudo actualizar pedidos" : "Error al cargar pedidos");
     } finally {
@@ -600,6 +639,8 @@ export function PedidosSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerType: "internal",
+          sourceType: "internal",
+          customerReference: "Inventario PT",
           internalReason: internalOrderForm.reason.trim() || "Reposición de inventario",
           items: [
             {
@@ -635,6 +676,103 @@ export function PedidosSection() {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(value));
+
+  const mapInternalCommercialOrder = (order: {
+    id: string;
+    code: string;
+    customerType: string;
+    status: string;
+    paymentStatus: string;
+    fulfillmentStatus: string;
+    customerReference?: string | null;
+    notes?: string | null;
+    totalAmount: number;
+    currency: string;
+    createdAt: string;
+    items?: Array<{
+      id: string;
+      quantity: number;
+      totalPrice: number;
+      unitPrice: number;
+      productCode?: string | null;
+      productName?: string | null;
+      finishedGood?: { id: string; code: string; name: string; productType: string } | null;
+    }>;
+    productionOrder?: { id: string; code: string; status: string } | null;
+  }): Order => {
+    const firstItem = order.items?.[0];
+    const productCode = firstItem?.finishedGood?.code || firstItem?.productCode || null;
+    const productName = firstItem?.finishedGood?.name || firstItem?.productName || "Producto interno";
+    const quantity = firstItem?.quantity || 0;
+    return {
+      id: `internal-${order.id}`,
+      provider: "manual",
+      orderNumber: order.code,
+      sourceOrderNumber: order.code,
+      operationalReference: order.code,
+      displayOrderCode: order.code,
+      operationsOrderCode: order.code,
+      paymentProofAvailable: false,
+      paymentSubmittedAt: null,
+      paymentReference: null,
+      paymentRejectionReason: null,
+      paymentStatusLabel: "Pedido interno",
+      paymentStatusHuman: "Pedido interno",
+      canApprovePayment: false,
+      canRejectPayment: false,
+      canArchiveOrder: true,
+      canAcceptOrder: false,
+      canRejectOrder: false,
+      canReserveInternalLabel: false,
+      canSendToProduction: false,
+      canCreateDispatch: false,
+      orderStatusLabel: "Producción interna",
+      customerName: "Inventario PT",
+      customerEmail: "",
+      customerPhone: "",
+      customerDocument: "",
+      amount: order.totalAmount || 0,
+      currency: order.currency || "USD",
+      orderStatus: order.status || "pending",
+      paymentStatus: order.paymentStatus || "pending",
+      paymentMethod: null,
+      manualPaymentReference: null,
+      adminReviewStatus: null,
+      adminReviewNotes: null,
+      paymentProofUrl: null,
+      shippingAddress: null,
+      shippingCity: null,
+      shippingNotes: order.notes || "Reposición de inventario",
+      createdAt: order.createdAt,
+      orderType: "internal_replenishment",
+      corporateDeliveryStatus: null,
+      estimatedDeliveryDate: null,
+      deliveryNote: null,
+      items: [
+        {
+          id: firstItem?.id || order.id,
+          productType: productCode || productName,
+          quantity,
+          totalPrice: firstItem?.totalPrice || 0,
+        },
+      ],
+      chipClaimTokens: [],
+      corporateEmployeeItems: [],
+      commercialItemName: "Reposición de inventario",
+      commercialQuantity: quantity || 1,
+      commercialTotal: order.totalAmount || 0,
+      operationalProductCode: productCode,
+      operationalProductName: productName,
+      operationalQuantity: quantity || 1,
+      operationsReferenceCode: order.code,
+      channel: "internal",
+      deliveryReference: order.customerReference || null,
+      productionOrder: order.productionOrder || null,
+      dispatch: null,
+      reservedUnits: [],
+      blockedReasons: [],
+    };
+  };
 
   if (loading && orders.length === 0) {
     return (
@@ -1421,6 +1559,9 @@ export function PedidosSection() {
                     </option>
                   ))}
                 </select>
+                {finishedGoods.length === 0 && (
+                  <p className="mt-2 text-xs font-bold text-amber-700">No hay productos base activos en Inventario.</p>
+                )}
               </label>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -1457,7 +1598,7 @@ export function PedidosSection() {
               <button
                 type="button"
                 onClick={() => void handleCreateInternalOrder()}
-                disabled={creatingInternalOrder}
+                disabled={creatingInternalOrder || !internalOrderForm.finishedGoodId.trim() || finishedGoods.length === 0}
                 className="rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
               >
                 {creatingInternalOrder ? "Creando..." : "Crear pedido interno"}
