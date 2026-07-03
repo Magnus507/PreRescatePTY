@@ -13,12 +13,20 @@ interface Product {
   name: string;
   description: string | null;
   price: number;
+  currency?: string;
   category: string;
-  stock: number;
-  image: string | null;
+  stock?: number;
+  availableStock?: number;
+  reservedStock?: number;
+  image?: string | null;
+  imageUrl?: string | null;
   productType: string;
   estimatedProductionTime: string | null;
   requiresPersonalization: boolean;
+  operationsProductCode?: string | null;
+  isPublished?: boolean;
+  isVisible?: boolean;
+  stockSource?: string | null;
 }
 
 interface ProfileOption {
@@ -80,7 +88,7 @@ export default function TiendaPage() {
     fetch("/api/products")
       .then(res => res.json())
       .then(data => {
-        if (data.products) setProducts(data.products);
+        if (Array.isArray(data.products)) setProducts(data.products);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -297,13 +305,13 @@ export default function TiendaPage() {
                        p.productType || 'Producto'}
                     </span>
                  </div>
-                 {p.image ? (
+                 {(p.imageUrl || p.image) ? (
                    <Image
-                     src={resolveImageSrc(p.image, "general")}
+                     src={resolveImageSrc(p.imageUrl || p.image, "general")}
                      alt={p.name}
                      fill
                      className="object-cover group-hover:scale-110 transition-transform duration-700"
-                     onError={(e) => { if (p.image && e.currentTarget.src !== p.image) e.currentTarget.src = p.image; }}
+                     unoptimized={Boolean((p.imageUrl || p.image)?.startsWith("http"))}
                    />
                  ) : (
                    <Store className="h-20 w-20 md:h-24 md:w-24 text-slate-200 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700" />
@@ -329,6 +337,23 @@ export default function TiendaPage() {
                    </div>
                 )}
 
+                <div className="flex items-center gap-2 mb-4 text-[10px] md:text-xs font-black uppercase tracking-widest w-fit px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600">
+                  {(p.availableStock ?? p.stock ?? 0) > 0 ? (
+                    <>
+                      <CheckCircle2 className="h-3 w-3 md:h-4 md:w-4 text-emerald-500" />
+                      Disponible {p.availableStock ?? p.stock}
+                      {typeof p.reservedStock === "number" && p.reservedStock > 0 && (
+                        <span className="font-semibold normal-case tracking-normal text-slate-400">· Reservado {p.reservedStock}</span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-amber-500" />
+                      Sin stock operativo
+                    </>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between pt-4 md:pt-6 border-t border-slate-50 dark:border-slate-800">
                    <div className="flex flex-col">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Inversión</span>
@@ -336,9 +361,10 @@ export default function TiendaPage() {
                    </div>
                    <button 
                      onClick={() => handleOpenCheckout(p)}
-                     className="bg-slate-900 dark:bg-primary text-white px-8 py-4 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:shadow-2xl hover:shadow-primary/40 active:scale-95 transition-all flex items-center gap-2"
+                     disabled={(p.availableStock ?? p.stock ?? 0) === 0}
+                     className="bg-slate-900 dark:bg-primary text-white px-8 py-4 rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest hover:shadow-2xl hover:shadow-primary/40 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                    >
-                     Solicitar <ShoppingCart className="h-4 w-4" />
+                     {(p.availableStock ?? p.stock ?? 0) > 0 ? <>Solicitar <ShoppingCart className="h-4 w-4" /></> : <>Agotado <ShoppingCart className="h-4 w-4" /></>}
                    </button>
                 </div>
               </div>
