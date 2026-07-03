@@ -74,33 +74,43 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    await syncRealOrderToOperations(tx, {
+    return createdOrder;
+  });
+
+  let operationsSyncWarning: string | null = null;
+  try {
+    await syncRealOrderToOperations(prisma, {
       sourceType: "checkout",
-      sourceId: createdOrder.id,
-      sourceCode: createdOrder.orderNumber,
+      sourceId: order.id,
+      sourceCode: order.orderNumber,
       orderType: "customer",
-      customerName: createdOrder.customerName,
-      contactEmail: createdOrder.customerEmail,
-      contactPhone: createdOrder.customerPhone,
-      customerReference: createdOrder.providerReference,
-      paymentStatus: createdOrder.paymentStatus,
-      paymentReference: createdOrder.manualPaymentReference || createdOrder.paymentProofUrl || null,
-      currency: createdOrder.currency,
+      customerName: order.customerName,
+      contactEmail: order.customerEmail,
+      contactPhone: order.customerPhone,
+      customerReference: order.providerReference,
+      paymentStatus: order.paymentStatus,
+      paymentReference: order.manualPaymentReference || order.paymentProofUrl || null,
+      currency: order.currency,
       notes: "Sincronizado desde pedido manual de paquete",
-      totalAmount: createdOrder.amount,
+      totalAmount: order.amount,
       items: [
         {
           productCode: pkg.name,
           productName: pkg.name,
           quantity: 1,
-          unitPrice: createdOrder.amount,
+          unitPrice: order.amount,
           unit: "unit",
         },
       ],
     });
+  } catch (error) {
+    console.error("[operations-sync] Failed to sync order", {
+      sourceType: "checkout",
+      sourceId: order.id,
+      error,
+    });
+    operationsSyncWarning = "Pedido creado, pero no se pudo sincronizar automáticamente con Operaciones.";
+  }
 
-    return createdOrder;
-  });
-
-  return NextResponse.json({ order });
+  return NextResponse.json({ order, operationsSyncWarning });
 }

@@ -125,21 +125,23 @@ export async function syncRealOrderToOperations(
       unitPrice: item.unitPrice,
       totalPrice: item.quantity * item.unitPrice,
       unit: item.unit?.trim() || "unit",
-      notes: `${mapping.sourceLabel}`,
+      notes: mapping.operationalMappingStatus === "unmapped"
+        ? `${mapping.sourceLabel} | mapping:unmapped`
+        : `${mapping.sourceLabel}`,
     };
   }));
 
   if (existing) {
     const updated = await db.operationCommercialOrder.update({
       where: { id: existing.id },
-        data: {
-          ...orderData,
-          items: {
-            deleteMany: {},
+      data: {
+        ...orderData,
+        items: {
+          deleteMany: {},
           create: mappedItems,
-          },
         },
-      });
+      },
+    });
 
     return { order: updated, created: false, sourceMarker };
   }

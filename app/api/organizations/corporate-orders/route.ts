@@ -192,26 +192,36 @@ export async function POST(req: NextRequest) {
       data: corporateItems.map((item) => ({ ...item, orderId: created.id })),
     });
 
-    const organizationDetails = await tx.organization.findUnique({
+    await tx.organizationMember.updateMany({
+      where: { id: { in: memberIds }, organizationId: organization.id },
+      data: { corporateStatus: "approved_unpaid" },
+    });
+
+    return created;
+  });
+
+  let operationsSyncWarning: string | null = null;
+  try {
+    const organizationDetails = await prisma.organization.findUnique({
       where: { id: organization.id },
       select: { legalName: true, displayName: true, contactEmail: true, contactPhone: true },
     });
 
-    await syncRealOrderToOperations(tx, {
+    await syncRealOrderToOperations(prisma, {
       sourceType: "organization_order",
-      sourceId: created.id,
-      sourceCode: created.orderNumber,
+      sourceId: order.id,
+      sourceCode: order.orderNumber,
       orderType: "enterprise",
       companyName: organizationDetails?.displayName || organizationDetails?.legalName || null,
       contactName: organizationDetails?.displayName || organizationDetails?.legalName || null,
       contactEmail: organizationDetails?.contactEmail || null,
       contactPhone: organizationDetails?.contactPhone || null,
-      customerReference: created.paymentProofUrl || created.orderNumber,
-      paymentStatus: created.paymentStatus,
-      paymentReference: created.paymentProofUrl || null,
-      currency: created.currency,
+      customerReference: order.paymentProofUrl || order.orderNumber,
+      paymentStatus: order.paymentStatus,
+      paymentReference: order.paymentProofUrl || null,
+      currency: order.currency,
       notes: "Sincronizado desde pedido corporativo real",
-      totalAmount: created.amount,
+      totalAmount: order.amount,
       organizationId: organization.id,
       salesChannel: "organization",
       items: corporateItems.map((item) => ({
@@ -222,14 +232,14 @@ export async function POST(req: NextRequest) {
         unit: "unit",
       })),
     });
-
-    await tx.organizationMember.updateMany({
-      where: { id: { in: memberIds }, organizationId: organization.id },
-      data: { corporateStatus: "approved_unpaid" },
+  } catch (error) {
+    console.error("[operations-sync] Failed to sync order", {
+      sourceType: "organization_order",
+      sourceId: order.id,
+      error,
     });
+    operationsSyncWarning = "Pedido creado, pero no se pudo sincronizar automáticamente con Operaciones.";
+  }
 
-    return created;
-  });
-
-  return NextResponse.json({ order }, { status: 201 });
+  return NextResponse.json({ order, operationsSyncWarning }, { status: 201 });
 }

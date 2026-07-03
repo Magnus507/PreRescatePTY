@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       const providerReference =
         typeof session.payment_intent === "string" ? session.payment_intent : session.id;
 
-      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const createdOrder = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const existingOrder = await tx.order.findFirst({
           where: {
             provider: "stripe",
@@ -130,11 +130,18 @@ export async function POST(req: NextRequest) {
             providerReference,
           },
         });
+        return createdOrder;
+      });
 
-        await syncRealOrderToOperations(tx, {
+      if (!createdOrder) {
+        return NextResponse.json({ received: true });
+      }
+
+      try {
+        await syncRealOrderToOperations(prisma, {
           sourceType: "checkout",
           sourceId: providerReference,
-          sourceCode: orderNumber,
+          sourceCode: createdOrder.orderNumber,
           orderType: pkg.accountType === "company" ? "enterprise" : "customer",
           customerName: user.profile ? `${user.profile.firstName} ${user.profile.lastName}`.trim() : user.email,
           contactEmail: user.email,
@@ -155,7 +162,13 @@ export async function POST(req: NextRequest) {
             },
           ],
         });
-      });
+      } catch (error) {
+        logger.error("[operations-sync] Failed to sync order", {
+          sourceType: "checkout",
+          sourceId: providerReference,
+          error,
+        });
+      }
 
       logger.info(`[Webhook] ✅ Package '${pkg.name}' activated for user ${userId} on account ${user.accountId}`);
     }

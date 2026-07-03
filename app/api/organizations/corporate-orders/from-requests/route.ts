@@ -167,37 +167,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const organizationDetails = await tx.organization.findUnique({
-      where: { id: organization.id },
-      select: { legalName: true, displayName: true, contactEmail: true, contactPhone: true },
-    });
-
-    await syncRealOrderToOperations(tx, {
-      sourceType: "customer_request",
-      sourceId: createdOrder.id,
-      sourceCode: createdOrder.orderNumber,
-      orderType: "enterprise",
-      companyName: organizationDetails?.displayName || organizationDetails?.legalName || null,
-      contactName: organizationDetails?.displayName || organizationDetails?.legalName || null,
-      contactEmail: organizationDetails?.contactEmail || null,
-      contactPhone: organizationDetails?.contactPhone || null,
-      customerReference: normalizedProofUrl || createdOrder.orderNumber,
-      paymentStatus: createdOrder.paymentStatus,
-      paymentReference: normalizedProofUrl,
-      currency: createdOrder.currency,
-      notes: "Sincronizado desde solicitudes corporativas aprobadas",
-      totalAmount: createdOrder.amount,
-      organizationId: organization.id,
-      salesChannel: "organization",
-      items: corporateItems.map((item) => ({
-        productCode: item.productId,
-        productName: item.productId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        unit: "unit",
-      })),
-    });
-
     // Audit log
     await tx.auditLog.create({
       data: {
@@ -216,11 +185,53 @@ export async function POST(req: NextRequest) {
     return createdOrder;
   });
 
+  let operationsSyncWarning: string | null = null;
+  try {
+    const organizationDetails = await prisma.organization.findUnique({
+      where: { id: organization.id },
+      select: { legalName: true, displayName: true, contactEmail: true, contactPhone: true },
+    });
+
+    await syncRealOrderToOperations(prisma, {
+      sourceType: "customer_request",
+      sourceId: order.id,
+      sourceCode: order.orderNumber,
+      orderType: "enterprise",
+      companyName: organizationDetails?.displayName || organizationDetails?.legalName || null,
+      contactName: organizationDetails?.displayName || organizationDetails?.legalName || null,
+      contactEmail: organizationDetails?.contactEmail || null,
+      contactPhone: organizationDetails?.contactPhone || null,
+      customerReference: normalizedProofUrl || order.orderNumber,
+      paymentStatus: order.paymentStatus,
+      paymentReference: normalizedProofUrl,
+      currency: order.currency,
+      notes: "Sincronizado desde solicitudes corporativas aprobadas",
+      totalAmount: order.amount,
+      organizationId: organization.id,
+      salesChannel: "organization",
+      items: corporateItems.map((item) => ({
+        productCode: item.productId,
+        productName: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        unit: "unit",
+      })),
+    });
+  } catch (error) {
+    console.error("[operations-sync] Failed to sync order", {
+      sourceType: "customer_request",
+      sourceId: order.id,
+      error,
+    });
+    operationsSyncWarning = "Pedido creado, pero no se pudo sincronizar automáticamente con Operaciones.";
+  }
+
   return NextResponse.json({
     orderId: order.id,
     orderNumber: order.orderNumber,
     totalAmount: order.amount,
     itemCount: corporateItems.length,
     requestCount: requests.length,
+    operationsSyncWarning,
   }, { status: 201 });
 }
