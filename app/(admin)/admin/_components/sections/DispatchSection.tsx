@@ -21,8 +21,9 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { DispatchViewModel } from "@/lib/operations/dispatch-view-model";
 
-type DispatchEventType = "RESERVED" | "RELEASED" | "DISPATCHED" | "DELIVERED" | "CANCELLED";
+type DispatchEventType = "RESERVED" | "PICKED" | "PACKED" | "RELEASED" | "DISPATCHED" | "DELIVERED" | "CANCELLED";
 
 interface DispatchType {
   key: string;
@@ -40,50 +41,6 @@ interface FinishedGoodOption {
   status: string;
   unit: string;
   balance: number;
-}
-
-interface DispatchItem {
-  id: string;
-  dispatchId: string;
-  finishedGoodId: string | null;
-  unitId?: string | null;
-  internalLabel?: string | null;
-  productCode?: string | null;
-  productName?: string | null;
-  status?: string;
-  quantity: number;
-  unit: string;
-  notes: string | null;
-  finishedGood?: FinishedGoodOption | null;
-  unitRecord?: {
-    id: string;
-    internalLabel: string;
-    productCode: string;
-    productName: string;
-    status: string;
-    qaStatus: string | null;
-    activationStatus: string;
-  } | null;
-}
-
-interface OperationDispatch {
-  id: string;
-  code: string;
-  status: string;
-  destinationType: string;
-  destinationName: string | null;
-  destinationReference: string | null;
-  destinationAddress: string | null;
-  scheduledAt: string | null;
-  sentAt: string | null;
-  dispatchedAt: string | null;
-  deliveredAt: string | null;
-  notes: string | null;
-  carrierName: string | null;
-  trackingReference: string | null;
-  createdAt: string;
-  updatedAt: string;
-  items: DispatchItem[];
 }
 
 interface DispatchFormItem {
@@ -151,40 +108,27 @@ const TIMELINE_STEPS = [
 ];
 
 const DISPATCH_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: "Borrador", color: "bg-slate-50 border-slate-200 text-slate-700" },
-  reserved: { label: "Reservado", color: "bg-amber-50 border-amber-200 text-amber-800" },
-  released: { label: "Liberado", color: "bg-blue-50 border-blue-200 text-blue-800" },
-  dispatched: { label: "Despachado", color: "bg-purple-50 border-purple-200 text-purple-800" },
-  delivered: { label: "Entregado", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+  draft: { label: "Pendiente de preparación", color: "bg-slate-50 border-slate-200 text-slate-700" },
+  pending_pick: { label: "Pendiente de preparación", color: "bg-amber-50 border-amber-200 text-amber-800" },
+  pending_preparation: { label: "Pendiente de preparación", color: "bg-amber-50 border-amber-200 text-amber-800" },
+  reserved: { label: "Pendiente de preparación", color: "bg-amber-50 border-amber-200 text-amber-800" },
+  released: { label: "Pendiente de preparación", color: "bg-amber-50 border-amber-200 text-amber-800" },
+  prepared: { label: "Pedido preparado", color: "bg-blue-50 border-blue-200 text-blue-800" },
+  sent: { label: "Pedido enviado", color: "bg-purple-50 border-purple-200 text-purple-800" },
+  shipped: { label: "Pedido enviado", color: "bg-purple-50 border-purple-200 text-purple-800" },
+  dispatched: { label: "Pedido enviado", color: "bg-purple-50 border-purple-200 text-purple-800" },
+  delivered: { label: "Pedido entregado", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
   cancelled: { label: "Cancelado", color: "bg-red-50 border-red-200 text-red-700" },
 };
 
 const DISPATCH_EVENT_SUCCESS_COPY: Record<DispatchEventType, string> = {
   RESERVED: "Despacho reservado",
+  PICKED: "Unidad separada",
+  PACKED: "Pedido preparado",
   RELEASED: "Reserva liberada",
   DISPATCHED: "Despacho marcado como salido",
   DELIVERED: "Despacho entregado",
   CANCELLED: "Despacho cancelado",
-};
-
-const DISPATCH_ACTIONS_BY_STATUS: Record<string, Array<{ label: string; eventType: DispatchEventType; tone: string }>> = {
-  draft: [
-    { label: "Reservar", eventType: "RESERVED", tone: "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100" },
-    { label: "Despachar", eventType: "DISPATCHED", tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100" },
-    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
-  ],
-  reserved: [
-    { label: "Liberar reserva", eventType: "RELEASED", tone: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100" },
-    { label: "Despachar", eventType: "DISPATCHED", tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100" },
-    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
-  ],
-  released: [
-    { label: "Despachar", eventType: "DISPATCHED", tone: "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100" },
-    { label: "Cancelar", eventType: "CANCELLED", tone: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" },
-  ],
-  dispatched: [
-    { label: "Marcar entregado", eventType: "DELIVERED", tone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" },
-  ],
 };
 
 const EMPTY_DISPATCH_FORM: DispatchFormState = {
@@ -199,7 +143,7 @@ const EMPTY_DISPATCH_FORM: DispatchFormState = {
 };
 
 export function DispatchSection() {
-  const [dispatches, setDispatches] = useState<OperationDispatch[]>([]);
+  const [dispatches, setDispatches] = useState<DispatchViewModel[]>([]);
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -283,7 +227,7 @@ export function DispatchSection() {
       .sort((a, b) => a.code.localeCompare(b.code));
   }, [finishedGoods]);
 
-  const formatDate = (value: string | null) => {
+  const formatDate = (value: string | null | undefined) => {
     if (!value) return "Sin fecha";
     return new Date(value).toLocaleDateString("es-PA", {
       day: "2-digit",
@@ -294,10 +238,6 @@ export function DispatchSection() {
 
   const formatQuantity = (value: number) => {
     return new Intl.NumberFormat("es-PA", { maximumFractionDigits: 2 }).format(value);
-  };
-
-  const getDestinationLabel = (destinationType: string) => {
-    return DISPATCH_TYPES.find((type) => type.key === destinationType)?.label || destinationType;
   };
 
   const updateForm = (field: keyof DispatchFormState, value: string) => {
@@ -428,7 +368,7 @@ export function DispatchSection() {
     }
   };
 
-  const handleDispatchEvent = async (dispatch: OperationDispatch, eventType: DispatchEventType) => {
+  const handleDispatchEvent = async (dispatch: DispatchViewModel, eventType: DispatchEventType) => {
     const eventKey = `${dispatch.id}:${eventType}`;
     setSavingEventKey(eventKey);
 
@@ -635,102 +575,115 @@ export function DispatchSection() {
             </p>
           </div>
         ) : (
-          <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Code</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Destino</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Referencia</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Dirección</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Items</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Fechas</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {dispatches.map((dispatch) => {
-                  const status = DISPATCH_STATUS_CONFIG[dispatch.status] || {
-                    label: dispatch.status,
-                    color: "bg-slate-50 border-slate-200 text-slate-700",
-                  };
-                  const actions = DISPATCH_ACTIONS_BY_STATUS[dispatch.status] || [];
-
-                  return (
-                    <tr key={dispatch.id} className="hover:bg-slate-50/70">
-                      <td className="px-4 py-4">
-                        <span className="font-mono text-xs font-black text-primary">{dispatch.code}</span>
-                        {dispatch.notes && <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-slate-500">{dispatch.notes}</p>}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${status.color}`}>
+          <div className="mt-5 grid gap-4">
+            {dispatches.map((dispatch) => {
+              const status = DISPATCH_STATUS_CONFIG[dispatch.status] || {
+                label: dispatch.status,
+                color: "bg-slate-50 border-slate-200 text-slate-700",
+              };
+              return (
+                <article key={dispatch.id} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex-1 space-y-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Despacho</p>
+                          <p className="mt-1 font-mono text-xl font-black text-slate-950">{dispatch.code}</p>
+                        </div>
+                        <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60">Pedido</p>
+                          <p className="mt-1 font-mono text-lg font-black text-primary">#{dispatch.orderCode}</p>
+                        </div>
+                        <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${status.color}`}>
                           {status.label}
                         </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-xs font-black text-slate-900">{getDestinationLabel(dispatch.destinationType)}</p>
-                        <p className="mt-1 text-[11px] font-semibold text-slate-500">{dispatch.destinationName || "Sin nombre"}</p>
-                      </td>
-                      <td className="px-4 py-4 text-xs font-semibold text-slate-500">{dispatch.destinationReference || "Sin referencia"}</td>
-                      <td className="px-4 py-4 text-xs font-semibold text-slate-500">{dispatch.destinationAddress || "Sin dirección"}</td>
-                      <td className="px-4 py-4">
-                        <div className="min-w-[220px] space-y-1">
-                          {dispatch.items.map((item) => (
-                            <p key={item.id} className="text-[11px] font-semibold text-slate-600">
-                              <span className="font-mono font-black text-slate-900">
-                                {item.unitRecord?.internalLabel || item.internalLabel || item.finishedGood?.code || "Unidad"}
-                              </span>
-                              {" "}· {item.unitRecord?.productName || item.finishedGood?.name || "Producto"} · {formatQuantity(item.quantity)} {item.unit}
-                              {item.unitRecord ? ` · ${item.unitRecord.status}` : ""}
-                            </p>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Cliente</p>
+                          <p className="mt-2 text-sm font-black text-slate-900">{dispatch.customerName}</p>
+                          <p className="text-xs font-semibold text-slate-500">{dispatch.customerEmail || "Sin email"}</p>
+                          <p className="text-xs font-semibold text-slate-500">{dispatch.customerPhone || "Sin teléfono"}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Entrega</p>
+                          <p className="mt-2 text-sm font-black text-slate-900">{dispatch.city || "Sin ciudad"}</p>
+                          <p className="text-xs font-semibold text-slate-500">{dispatch.address || "Sin dirección"}</p>
+                          <p className="text-xs font-semibold text-slate-500">{dispatch.deliveryReference || "Sin referencia"}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Fechas</p>
+                          <p className="mt-2 text-xs font-semibold text-slate-500">Creado: {formatDate(dispatch.createdAt)}</p>
+                          <p className="text-xs font-semibold text-slate-500">Preparado: {formatDate(dispatch.preparedAt)}</p>
+                          <p className="text-xs font-semibold text-slate-500">Enviado: {formatDate(dispatch.sentAt)}</p>
+                          <p className="text-xs font-semibold text-slate-500">Entregado: {formatDate(dispatch.deliveredAt)}</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Productos a separar</p>
+                        <div className="mt-3 grid gap-2">
+                          {dispatch.units.map((unit) => (
+                            <div key={unit.id} className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 md:flex-row md:items-center md:justify-between">
+                              <label className="flex items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={unit.picked}
+                                  onChange={() => handleDispatchEvent(dispatch, "PICKED")}
+                                  disabled={!dispatch.canMarkUnitPicked || Boolean(savingEventKey)}
+                                  className="h-4 w-4 rounded border-slate-300 text-primary"
+                                />
+                                <span className="font-mono text-sm font-black text-primary">{unit.internalLabel}</span>
+                              </label>
+                              <div className="grid gap-1 text-xs font-semibold text-slate-500 md:text-right">
+                                <p>{unit.productName} · {unit.productCode}</p>
+                                <p>{unit.shortCode || "Sin shortCode"} · {unit.inventoryStatus} · {unit.activationStatus}</p>
+                              </div>
+                            </div>
                           ))}
                         </div>
-                        {dispatch.status === "delivered" && (
-                          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-800">
-                            Entrega confirmada no activa el producto ni asigna usuario final
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="min-w-[170px] text-[11px] font-semibold text-slate-500">
-                          <p>Creado: {formatDate(dispatch.createdAt)}</p>
-                          <p>Prog.: {formatDate(dispatch.scheduledAt)}</p>
-                          <p>Salida: {formatDate(dispatch.sentAt)}</p>
-                          <p>Salida: {formatDate(dispatch.dispatchedAt)}</p>
-                          <p>Entregado: {formatDate(dispatch.deliveredAt)}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        {actions.length === 0 ? (
-                          <span className="text-[11px] font-bold text-slate-400">Sin acciones</span>
-                        ) : (
-                          <div className="flex min-w-[220px] flex-wrap gap-2">
-                            {actions.map((action) => {
-                              const eventKey = `${dispatch.id}:${action.eventType}`;
-                              const isSaving = savingEventKey === eventKey;
+                      </div>
+                    </div>
 
-                              return (
-                                <button
-                                  key={action.eventType}
-                                  type="button"
-                                  onClick={() => handleDispatchEvent(dispatch, action.eventType)}
-                                  disabled={Boolean(savingEventKey)}
-                                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-50 ${action.tone}`}
-                                >
-                                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />}
-                                  {action.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    <div className="flex flex-col gap-2 lg:w-56">
+                      <button
+                        type="button"
+                        onClick={() => handleDispatchEvent(dispatch, "PICKED")}
+                        disabled={!dispatch.canMarkUnitPicked || Boolean(savingEventKey)}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        Marcar unidad separada
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDispatchEvent(dispatch, "RESERVED")}
+                        disabled={!dispatch.canMarkPrepared || Boolean(savingEventKey)}
+                        className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-800 transition-all hover:bg-blue-100 disabled:opacity-50"
+                      >
+                        Marcar pedido preparado
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDispatchEvent(dispatch, "DISPATCHED")}
+                        disabled={!dispatch.canMarkSent || Boolean(savingEventKey)}
+                        className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-purple-800 transition-all hover:bg-purple-100 disabled:opacity-50"
+                      >
+                        Marcar pedido enviado
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDispatchEvent(dispatch, "DELIVERED")}
+                        disabled={!dispatch.canConfirmDelivery || Boolean(savingEventKey)}
+                        className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-800 transition-all hover:bg-emerald-100 disabled:opacity-50"
+                      >
+                        Confirmar entrega
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

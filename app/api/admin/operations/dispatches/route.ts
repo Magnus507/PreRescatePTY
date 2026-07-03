@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { buildDispatchViewModel } from "@/lib/operations/dispatch-view-model";
 import {
   CreateDispatchSchema,
   getFirstValidationMessage,
@@ -52,7 +53,10 @@ export async function GET() {
       include: dispatchInclude,
     });
 
-    return NextResponse.json({ dispatches });
+    return NextResponse.json({
+      success: true,
+      dispatches: dispatches.map((dispatch) => buildDispatchViewModel(dispatch as never)),
+    });
   } catch (error) {
     console.error("[operations/dispatches] GET error:", error);
     return NextResponse.json(

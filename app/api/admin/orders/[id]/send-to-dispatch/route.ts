@@ -116,7 +116,7 @@ export async function POST(
 
       await tx.order.update({
         where: { id: order.id },
-        data: { orderStatus: "shipped" },
+        data: { orderStatus: "processing" },
       });
 
       await tx.operationFinishedGoodUnit.updateMany({

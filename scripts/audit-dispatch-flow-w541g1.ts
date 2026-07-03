@@ -51,7 +51,15 @@ async function main() {
 
   const orderDispatchIds = new Set<string>();
   for (const dispatch of dispatches) {
-    if (dispatch.events.some((event) => event.referenceType === "order")) {
+    const meta = dispatch.events.map((event) => {
+      if (!event.metadataJson) return null;
+      try {
+        return JSON.parse(event.metadataJson) as { orderId?: string };
+      } catch {
+        return null;
+      }
+    }).find(Boolean);
+    if (meta?.orderId || dispatch.events.some((event) => event.referenceType === "order")) {
       orderDispatchIds.add(dispatch.id);
     }
   }
@@ -73,11 +81,16 @@ async function main() {
   console.log("=== W5.41G.1 AUDIT ===");
   console.log(`Pedidos con pago aprobado y reserva completa sin despacho: ${readyToDispatch.length}`);
   console.log(`Pedidos con reserva incompleta: ${reservedIncomplete.length}`);
-  console.log(`Despachos pendientes: ${dispatches.filter((dispatch) => ["draft", "pending_pick", "reserved", "released"].includes(dispatch.status)).length}`);
+  console.log(`Despachos pending_pick: ${dispatches.filter((dispatch) => dispatch.status === "pending_pick").length}`);
+  console.log(`Despachos pending_preparation: ${dispatches.filter((dispatch) => dispatch.status === "pending_preparation").length}`);
+  console.log(`Despachos draft: ${dispatches.filter((dispatch) => dispatch.status === "draft").length}`);
+  console.log(`Despachos pendientes: ${dispatches.filter((dispatch) => ["draft", "pending_pick", "pending_preparation", "reserved", "released"].includes(dispatch.status)).length}`);
   console.log(`Despachos enviados: ${dispatches.filter((dispatch) => dispatch.status === "dispatched").length}`);
   console.log(`Despachos entregados: ${dispatches.filter((dispatch) => dispatch.status === "delivered").length}`);
   console.log(`Despachos sin unidades: ${dispatches.filter((dispatch) => dispatch.items.length === 0).length}`);
   console.log(`Despachos con unidades que no pertenecen al pedido: 0`);
+  console.log(`Despachos donde orderCode no puede resolverse: ${dispatches.filter((dispatch) => !dispatch.destinationReference && !dispatch.code).length}`);
+  console.log(`Despachos donde customer/delivery no puede resolverse: ${dispatches.filter((dispatch) => !dispatch.destinationName && !dispatch.destinationAddress).length}`);
   console.log(`Unidades dispatched sin despacho: ${units.filter((unit) => (unit.status === "dispatched" || unit.dispatchedAt) && !unit.reservedOrderId).length}`);
   console.log(`Unidades delivered/dispatched con activationStatus activated por error: ${units.filter((unit) => ["dispatched", "delivered"].includes(unit.status) && unit.activationStatus === "activated").length}`);
   console.log(`Pedidos enviados sin despacho: ${orders.filter((order) => order.orderStatus === "shipped" && !orderDispatchIds.has(order.id)).length}`);
