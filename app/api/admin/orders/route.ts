@@ -140,6 +140,45 @@ export async function GET() {
       orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
     });
 
+    const dispatches = await prisma.operationDispatch.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        events: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            referenceType: true,
+            referenceId: true,
+            metadataJson: true,
+          },
+        },
+      },
+    });
+
+    const dispatchByOrderId = new Map<
+      string,
+      { id: string; code: string; status: string }
+    >();
+    for (const dispatch of dispatches) {
+      for (const event of dispatch.events) {
+        const payload = (() => {
+          if (!event.metadataJson) return null;
+          try {
+            return JSON.parse(event.metadataJson) as { orderId?: string; orderCode?: string };
+          } catch {
+            return null;
+          }
+        })();
+        const orderId = payload?.orderId || (event.referenceType === "order" ? event.referenceId : null);
+        if (orderId && !dispatchByOrderId.has(orderId)) {
+          dispatchByOrderId.set(orderId, {
+            id: dispatch.id,
+            code: dispatch.code,
+            status: dispatch.status,
+          });
+        }
+      }
+    }
+
     const reservedUnitsByOrderId = reservedUnits.reduce<Record<string, typeof reservedUnits>>((acc, unit) => {
       if (!unit.reservedOrderId) return acc;
       acc[unit.reservedOrderId] = acc[unit.reservedOrderId] || [];
@@ -152,6 +191,7 @@ export async function GET() {
         ...order,
         ...buildOperationsOrderViewModel(order as Parameters<typeof buildOperationsOrderViewModel>[0]),
         reservedUnits: reservedUnitsByOrderId[order.id] || [],
+        dispatch: dispatchByOrderId.get(order.id) || null,
       })),
     });
   } catch (error) {

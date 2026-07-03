@@ -1010,18 +1010,17 @@ export function PedidosSection() {
       toast.error("Primero reserva una etiqueta interna.");
       return;
     }
-    const dispatchCode = `DSP-${order.orderNumber}`;
     try {
-      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id.replace(/^internal-/, "")}/create-dispatch`, {
+      const res = await fetch(`/api/admin/orders/${order.id}/send-to-dispatch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: dispatchCode }),
+        body: JSON.stringify({}),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data.error || "No se pudo crear el despacho");
       }
-      toast.success("Despacho creado.");
+      toast.success(data.message || "Despacho creado.");
       await loadOrders();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo crear el despacho");
