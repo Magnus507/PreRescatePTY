@@ -18,6 +18,22 @@ export type InventoryStockRow = {
   lastUpdatedAt: string | null;
 };
 
+export type InventoryUnitDetail = {
+  id: string;
+  internalLabel: string;
+  shortCode: string | null;
+  productCode: string;
+  productName: string;
+  qaStatus: string | null;
+  inventoryStatus: string;
+  activationStatus: string;
+  reservedOrderId: string | null;
+  dispatchId: string | null;
+  productionOrderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 function emptyRow(code: string, name: string, productType: string, productId: string | null, visible: boolean): InventoryStockRow {
   return {
     productCode: code,
@@ -34,6 +50,19 @@ function emptyRow(code: string, name: string, productType: string, productId: st
     activatedCount: 0,
     totalUnits: 0,
     lastUpdatedAt: null,
+  };
+}
+
+function emptySummary() {
+  return {
+    total: 0,
+    available: 0,
+    reserved: 0,
+    qaPending: 0,
+    qaFailed: 0,
+    dispatched: 0,
+    delivered: 0,
+    activated: 0,
   };
 }
 
@@ -110,30 +139,76 @@ export async function loadInventoryStockDetail(productCode: string) {
     select: {
       id: true,
       internalLabel: true,
+      productCode: true,
+      productName: true,
       qaStatus: true,
       status: true,
       activationStatus: true,
       reservedOrderId: true,
+      dispatchedAt: true,
+      deliveredAt: true,
+      createdAt: true,
       updatedAt: true,
+      dispatchItems: {
+        select: {
+          dispatchId: true,
+          dispatch: {
+            select: { id: true },
+          },
+        },
+        take: 1,
+      },
       digitalBatchItem: {
         select: { shortCode: true, productionOrderId: true },
       },
     },
   });
 
+  const summary = units.reduce((acc, unit) => {
+    acc.total += 1;
+    if (unit.status === "available" && unit.qaStatus === "passed" && unit.activationStatus === "not_activated" && !unit.reservedOrderId) {
+      acc.available += 1;
+    }
+    if (unit.status === "reserved" || unit.reservedOrderId) {
+      acc.reserved += 1;
+    }
+    if (unit.status === "qa_pending" || unit.qaStatus === "pending") {
+      acc.qaPending += 1;
+    }
+    if (unit.status === "qa_failed" || unit.qaStatus === "failed") {
+      acc.qaFailed += 1;
+    }
+    if (unit.status === "dispatched" || unit.dispatchedAt) {
+      acc.dispatched += 1;
+    }
+    if (unit.status === "delivered" || unit.deliveredAt) {
+      acc.delivered += 1;
+    }
+    if (unit.activationStatus === "activated") {
+      acc.activated += 1;
+    }
+    return acc;
+  }, emptySummary());
+
   return {
-    summary: row || null,
+    summary: {
+      ...(row || null),
+      ...summary,
+    },
     units: units.map((unit) => ({
       id: unit.id,
       internalLabel: unit.internalLabel,
       shortCode: unit.digitalBatchItem?.shortCode || null,
+      productCode: unit.productCode,
+      productName: unit.productName,
       qaStatus: unit.qaStatus,
       inventoryStatus: unit.status,
       activationStatus: unit.activationStatus,
       reservedOrderId: unit.reservedOrderId,
+      dispatchId: unit.dispatchItems[0]?.dispatchId || null,
       productionOrderId: unit.digitalBatchItem?.productionOrderId || null,
-      dispatchId: null,
+      createdAt: unit.createdAt.toISOString(),
       updatedAt: unit.updatedAt.toISOString(),
-    })),
+    })) as InventoryUnitDetail[],
   };
 }

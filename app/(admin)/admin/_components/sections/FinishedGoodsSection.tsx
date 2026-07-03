@@ -62,6 +62,24 @@ interface FinishedGood {
   packingBatch: PackingBatchOption | null;
 }
 
+interface InventoryUnitDetail {
+  id: string;
+  internalLabel: string;
+  shortCode: string | null;
+  productCode: string;
+  productName: string;
+  qaStatus: string | null;
+  inventoryStatus: string;
+  activationStatus: string;
+  reservedOrderId: string | null;
+  dispatchId: string | null;
+  productionOrderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+type InventoryUnitsFilter = "all" | "available" | "reserved" | "qa_pending" | "qa_failed" | "dispatched" | "activated";
+
 interface StoreProduct {
   id: string;
   name: string;
@@ -184,6 +202,23 @@ export function FinishedGoodsSection() {
   const [savingMovement, setSavingMovement] = useState(false);
   const [publishTarget, setPublishTarget] = useState<FinishedGood | null>(null);
   const [publishForm, setPublishForm] = useState<PublishFormState>(EMPTY_PUBLISH_FORM);
+  const [unitsTarget, setUnitsTarget] = useState<FinishedGood | null>(null);
+  const [unitsLoading, setUnitsLoading] = useState(false);
+  const [unitsError, setUnitsError] = useState("");
+  const [unitsFilter, setUnitsFilter] = useState<InventoryUnitsFilter>("all");
+  const [unitDetails, setUnitDetails] = useState<{
+    summary: {
+      total: number;
+      available: number;
+      reserved: number;
+      qaPending: number;
+      qaFailed: number;
+      dispatched: number;
+      delivered: number;
+      activated: number;
+    } | null;
+    units: InventoryUnitDetail[];
+  }>({ summary: null, units: [] });
 
   const loadFinishedGoods = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) {
@@ -227,6 +262,31 @@ export function FinishedGoodsSection() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error al cargar batches de empaque";
       toast.error(message);
+    }
+  }, []);
+
+  const loadUnitDetails = useCallback(async (item: FinishedGood) => {
+    setUnitsTarget(item);
+    setUnitsLoading(true);
+    setUnitsError("");
+    setUnitsFilter("all");
+    try {
+      const res = await fetch(`/api/admin/operations/inventory/units?productCode=${encodeURIComponent(item.code)}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudieron cargar las unidades");
+      }
+      setUnitDetails({
+        summary: data.summary || null,
+        units: Array.isArray(data.units) ? data.units : [],
+      });
+    } catch (error) {
+      setUnitsError(error instanceof Error ? error.message : "Error al cargar las unidades");
+      setUnitDetails({ summary: null, units: [] });
+    } finally {
+      setUnitsLoading(false);
     }
   }, []);
 
@@ -321,6 +381,14 @@ export function FinishedGoodsSection() {
     setPublishForm(EMPTY_PUBLISH_FORM);
   };
 
+  const closeUnitsModal = () => {
+    if (unitsLoading) return;
+    setUnitsTarget(null);
+    setUnitsError("");
+    setUnitsFilter("all");
+    setUnitDetails({ summary: null, units: [] });
+  };
+
   const publishToStore = async (item: FinishedGood) => {
     setPublishingId(item.id);
     try {
@@ -372,6 +440,25 @@ export function FinishedGoodsSection() {
   const getPublishedStoreProduct = (item: FinishedGood) => {
     return storeProducts.find((product) => extractOperationsProductCodeFromDescription(product.description) === item.code) || null;
   };
+
+  const filteredUnits = unitDetails.units.filter((unit) => {
+    switch (unitsFilter) {
+      case "available":
+        return unit.inventoryStatus === "available" && unit.qaStatus === "passed" && unit.activationStatus === "not_activated" && !unit.reservedOrderId;
+      case "reserved":
+        return unit.inventoryStatus === "reserved" || Boolean(unit.reservedOrderId);
+      case "qa_pending":
+        return unit.inventoryStatus === "qa_pending" || unit.qaStatus === "pending";
+      case "qa_failed":
+        return unit.inventoryStatus === "qa_failed" || unit.qaStatus === "failed";
+      case "dispatched":
+        return unit.inventoryStatus === "dispatched";
+      case "activated":
+        return unit.activationStatus === "activated";
+      default:
+        return true;
+    }
+  });
 
   const closeEditModal = () => {
     if (savingEdit) return;
@@ -728,6 +815,10 @@ export function FinishedGoodsSection() {
                         {formatQuantity(item.balance)}
                       </td>
                       <td className="px-4 py-4">
+                        <div className="mb-2 grid grid-cols-2 gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">Disp {formatQuantity(item.balance)}</span>
+                          <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">PT {item.unit}</span>
+                        </div>
                         {item.packingBatch ? (
                           <div>
                             <p className="font-mono text-xs font-black text-slate-900">{item.packingBatch.code}</p>
@@ -742,6 +833,15 @@ export function FinishedGoodsSection() {
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(item.createdAt)}</td>
                       <td className="px-4 py-4 text-xs font-semibold text-slate-500">{formatDate(item.updatedAt)}</td>
                       <td className="px-4 py-4">
+                        <button
+                          type="button"
+                          onClick={() => void loadUnitDetails(item)}
+                          disabled={unitsLoading || savingEdit || savingMovement}
+                          className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Warehouse className="h-4 w-4" />
+                          Ver unidades
+                        </button>
                         <button
                           type="button"
                           onClick={() => openEditModal(item)}
@@ -802,6 +902,122 @@ export function FinishedGoodsSection() {
           ))}
         </div>
       </section>
+
+      {unitsTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-6xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Inventario real</p>
+                <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                  {unitsTarget.code} · {unitsTarget.name}
+                </h3>
+                <p className="mt-1 text-sm font-semibold text-slate-500">Detalle de unidades físicas por internalLabel.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeUnitsModal}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-6">
+              {unitsLoading ? (
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm font-semibold text-slate-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Cargando unidades...
+                </div>
+              ) : unitsError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{unitsError}</div>
+              ) : (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      ["total", "Total"],
+                      ["available", "Disponibles"],
+                      ["reserved", "Reservadas"],
+                      ["qaPending", "QC pendiente"],
+                      ["qaFailed", "QC fallido"],
+                      ["dispatched", "Despachadas"],
+                      ["delivered", "Entregadas"],
+                      ["activated", "Activadas"],
+                    ].map(([key, label]) => (
+                      <div key={key} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+                        <p className="mt-2 text-2xl font-black text-slate-950">
+                          {formatQuantity((unitDetails.summary?.[key as keyof NonNullable<typeof unitDetails.summary>] as number) || 0)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {[
+                      ["all", "Todas"],
+                      ["available", "Disponibles"],
+                      ["reserved", "Reservadas"],
+                      ["qa_pending", "Pendientes QC"],
+                      ["qa_failed", "Fallidas QC"],
+                      ["dispatched", "Despachadas"],
+                      ["activated", "Activadas"],
+                    ].map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setUnitsFilter(key as InventoryUnitsFilter)}
+                        className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest transition ${
+                          unitsFilter === key
+                            ? "border-primary bg-primary text-white"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Etiqueta</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Short code</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">QC</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Inventario</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Activación</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Pedido</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Despacho</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Actualizado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredUnits.map((unit) => (
+                          <tr key={unit.id}>
+                            <td className="px-4 py-3 font-mono text-xs font-black text-primary">{unit.internalLabel}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-600">{unit.shortCode || "Sin shortCode"}</td>
+                            <td className="px-4 py-3 text-xs font-semibold text-slate-600">{unit.qaStatus || "n/a"}</td>
+                            <td className="px-4 py-3 text-xs font-semibold text-slate-600">{unit.inventoryStatus}</td>
+                            <td className="px-4 py-3 text-xs font-semibold text-slate-600">{unit.activationStatus}</td>
+                            <td className="px-4 py-3 text-xs font-semibold text-slate-600">{unit.reservedOrderId || "—"}</td>
+                            <td className="px-4 py-3 text-xs font-semibold text-slate-600">{unit.dispatchId || "—"}</td>
+                            <td className="px-4 py-3 text-xs font-semibold text-slate-500">{formatDate(unit.updatedAt)}</td>
+                          </tr>
+                        ))}
+                        {filteredUnits.length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                              No hay unidades para este filtro.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
