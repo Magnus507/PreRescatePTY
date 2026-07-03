@@ -14,7 +14,6 @@ import {
   PackageCheck,
   RefreshCw,
   RotateCcw,
-  Route,
   ShieldCheck,
   ShoppingCart,
   Truck,
@@ -24,11 +23,7 @@ import { toast } from "sonner";
 import { ChipAdmin } from "../../_types/admin";
 import { CreateBatchSection } from "./CreateBatchSection";
 import ProductionQueueSection from "./ProductionQueueSection";
-import { DigitalResourcesSection } from "./DigitalResourcesSection";
-import { FinishedGoodsSection } from "./FinishedGoodsSection";
-import { FinishedGoodUnitsSection } from "./FinishedGoodUnitsSection";
 import { PhysicalInventorySection } from "./PhysicalInventorySection";
-import { InventoryMovementsSection } from "./InventoryMovementsSection";
 import { DispatchSection } from "./DispatchSection";
 import { HistorySection } from "./HistorySection";
 import { CommercialSection } from "./CommercialSection";
@@ -43,10 +38,7 @@ type OperationsTab =
   | "production"
   | "dispatch"
   | "postsales"
-  | "movements"
   | "history";
-
-type InventoryTab = "summary" | "units" | "digital" | "base";
 type ProductionTab = "orders" | "assembly" | "packing";
 type PostsalesTab = "warranties" | "replacements" | "returns";
 
@@ -138,15 +130,7 @@ const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }>
   { id: "production", label: "Produccion", icon: Factory },
   { id: "dispatch", label: "Despacho", icon: Truck },
   { id: "postsales", label: "Postventa", icon: RotateCcw },
-  { id: "movements", label: "Movimientos", icon: Route },
   { id: "history", label: "Historial", icon: History },
-];
-
-const INVENTORY_TABS: Array<{ id: InventoryTab; label: string }> = [
-  { id: "summary", label: "Resumen inventario" },
-  { id: "units", label: "Unidades físicas" },
-  { id: "digital", label: "Recursos digitales" },
-  { id: "base", label: "Productos base" },
 ];
 
 const PRODUCTION_TABS: Array<{ id: ProductionTab; label: string }> = [{ id: "orders", label: "Flujo madre" }];
@@ -218,7 +202,6 @@ export function OperationsCenterSection({
   role,
 }: OperationsCenterSectionProps) {
   const [activeTab, setActiveTab] = useState<OperationsTab>("overview");
-  const [inventoryTab, setInventoryTab] = useState<InventoryTab>("units");
   const [productionTab, setProductionTab] = useState<ProductionTab>("orders");
   const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
   const [dashboard, setDashboard] = useState<OperationsDashboardSummary | null>(null);
@@ -276,10 +259,6 @@ export function OperationsCenterSection({
   const HealthIcon = health.icon;
 
   const renderContent = () => {
-    if (activeTab === "movements") {
-      return <InventoryMovementsSection />;
-    }
-
     if (activeTab === "dispatch") {
       return <DispatchSection />;
     }
@@ -292,45 +271,15 @@ export function OperationsCenterSection({
       return (
         <div className="space-y-6">
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Inventario trazable</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
-                  El inventario real vive en las unidades físicas. Los recursos digitales, el catálogo de productos base y el resumen solo acompañan ese flujo.
-                </p>
-                <p className="mt-2 text-xs font-semibold text-slate-400">
-                  QR, shortCode y enlaces de activación siguen el proceso; la asignación de usuario final ocurre fuera de este módulo.
-                </p>
-              </div>
-              <div className="overflow-x-auto">
-                <div className="flex min-w-max gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950" role="tablist" aria-label="Subsecciones de inventario">
-                  {INVENTORY_TABS.map((tab) => {
-                    const active = inventoryTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={active}
-                        onClick={() => setInventoryTab(tab.id)}
-                        className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                          active
-                            ? "bg-white text-primary shadow-sm dark:bg-slate-800"
-                            : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Inventario físico</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Stock operativo y materiales de fabricación en una sola vista trazable. Los recursos digitales y productos base quedan fuera de la superficie principal.
+            </p>
+            <p className="mt-2 text-xs font-semibold text-slate-400">
+              QR, shortCode y enlaces de activación siguen su flujo propio; esta vista no asigna usuario final.
+            </p>
           </section>
-          {inventoryTab === "summary" && <PhysicalInventorySection />}
-          {inventoryTab === "units" && <FinishedGoodUnitsSection />}
-          {inventoryTab === "digital" && <DigitalResourcesSection />}
-          {inventoryTab === "base" && <FinishedGoodsSection />}
+          <PhysicalInventorySection />
         </div>
       );
     }

@@ -53,6 +53,14 @@
 - `Postventa` ahora contiene subtabs para `Garantias`, `Reemplazos` y `Devoluciones`.
 - La taxonomia visual refleja mejor el flujo real sin eliminar funcionalidades.
 
+## W5.40W - Unificacion comercial / inventario
+
+- `Tienda Admin` quedo como catalogo comercial de productos.
+- `Inventario` quedo como vista fisica/operativa con stock trazable y materiales de fabricacion.
+- Se retiro `Movimientos` como tab principal del centro de operaciones.
+- La superficie principal de `Inventario` ya no expone `Resumen inventario`, `Recursos digitales` ni `Productos base` como tabs de primer nivel.
+- La fuente operativa de inventario visible ahora se concentra en la vista fisica simplificada.
+
 ## Verificacion de alcance
 
 - Los mismos componentes siguen montando los mismos endpoints existentes.

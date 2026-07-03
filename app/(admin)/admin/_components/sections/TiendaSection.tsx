@@ -144,9 +144,11 @@ export function TiendaSection() {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black tracking-tighter flex items-center gap-3 italic">
-            <Store className="h-8 w-8 text-primary shadow-xl shadow-primary/20" /> Tienda PTY Management
+            <Store className="h-8 w-8 text-primary shadow-xl shadow-primary/20" /> Catálogo comercial
           </h2>
-          <p className="text-sm text-muted-foreground font-medium mt-1">Suministros de hardware y accesorios para la red PreRescate.</p>
+          <p className="text-sm text-muted-foreground font-medium mt-1">
+            Productos, variantes y presentación comercial. El stock físico operativo se administra en Inventario.
+          </p>
         </div>
         
         <button 
@@ -157,7 +159,7 @@ export function TiendaSection() {
           }}
           className="px-8 py-4 bg-primary text-white text-[11px] font-black uppercase tracking-widest rounded-[1.5rem] hover:opacity-90 transition-all shadow-xl shadow-primary/20 flex items-center gap-2 group"
         >
-          <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform" /> Nuevo Producto
+          <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform" /> Nuevo ítem comercial
         </button>
       </div>
 
@@ -206,7 +208,7 @@ export function TiendaSection() {
                     <span className="text-2xl font-black text-primary italic">${p.price.toFixed(2)}</span>
                  </div>
                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-black uppercase text-slate-400">Stock</span>
+                    <span className="text-[10px] font-black uppercase text-slate-400">Stock comercial</span>
                     <span className={`text-lg font-black ${p.stock > 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>{p.stock}</span>
                  </div>
               </div>
@@ -337,7 +339,7 @@ export function TiendaSection() {
                     </div>
 
                     <div>
-                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-2 block">Stock Actual</label>
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-2 block">Stock comercial</label>
                        <div className="relative">
                           <Package className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                           <input 
@@ -405,7 +407,7 @@ export function TiendaSection() {
                     <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-5 rounded-[1.5rem] border border-slate-100 font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 shadow-sm">Cancelar</button>
                     <button type="submit" disabled={saving} className="flex-2 py-5 bg-primary text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2">
                        {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-                       {editingProduct ? "Actualizar Inventario" : "Publicar en Tienda"}
+                       {editingProduct ? "Actualizar catálogo" : "Publicar en catálogo"}
                     </button>
                  </div>
               </form>
