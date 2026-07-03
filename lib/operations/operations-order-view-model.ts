@@ -118,15 +118,15 @@ function getPaymentLabel(paymentStatus: string, paymentProofAvailable: boolean) 
 function getOrderStatusLabel(orderStatus: string) {
   switch (orderStatus) {
     case "pending":
-      return "Pendiente";
+      return "Pago pendiente";
     case "accepted":
       return "Pago aprobado / pendiente de reserva";
     case "processing":
-      return "Pago aprobado / pendiente de reserva";
+      return "En despacho / pendiente de preparación";
     case "shipped":
-      return "Enviado";
+      return "Pedido enviado";
     case "completed":
-      return "Completado";
+      return "Pedido entregado";
     case "cancelled":
       return "Archivado";
     default:
@@ -161,7 +161,7 @@ function getBlockedReasons(order: OperationsOrderInput, paymentProofAvailable: b
   const reasons: string[] = [];
 
   if (order.orderStatus === "cancelled") reasons.push("Pedido archivado");
-  if (order.orderStatus === "completed") reasons.push("Pedido finalizado");
+  if (order.orderStatus === "completed") reasons.push("Pedido entregado");
   if (!paymentProofAvailable && order.paymentStatus !== "paid") reasons.push("Sin comprobante");
   if (order.paymentStatus === "rejected") reasons.push("Pago rechazado");
   if (order.adminReviewStatus === "rejected") reasons.push("Revisión rechazada");

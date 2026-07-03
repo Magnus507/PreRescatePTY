@@ -60,10 +60,10 @@ export function getOrderStatusLabel(orderStatus?: string | null, paymentStatus?:
   if (paymentStatus === "rejected") return "Pago Rechazado";
   if (paymentStatus === "under_review") return "Pago en Revisión";
   if (paymentStatus === "paid") return "Pago Aprobado";
-  if (orderStatus === "pending") return "Esperando Pago";
-  if (orderStatus === "processing") return "Trabajando en tu pedido";
-  if (orderStatus === "shipped") return "En camino";
-  if (orderStatus === "completed") return "Completado";
+  if (orderStatus === "pending") return "Pago pendiente";
+  if (orderStatus === "processing") return "Preparando pedido";
+  if (orderStatus === "shipped") return "Pedido enviado";
+  if (orderStatus === "completed") return "Pedido entregado";
   if (orderStatus === "cancelled") return "Cancelado";
   return "Desconocido";
 }

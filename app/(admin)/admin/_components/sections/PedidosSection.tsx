@@ -515,9 +515,9 @@ export function PedidosSection() {
 
     switch(status) {
       case "pending": return <span className="px-2 py-1 bg-amber-500/10 text-amber-600 rounded-lg text-xs font-bold uppercase">Pendiente</span>;
-      case "processing": return <span className="px-2 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-xs font-bold uppercase">Revisión Pagos</span>;
-      case "shipped": return <span className="px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg text-xs font-bold uppercase">Enviado</span>;
-      case "completed": return <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-lg text-xs font-bold uppercase">Completado</span>;
+      case "processing": return <span className="px-2 py-1 bg-blue-500/10 text-blue-600 rounded-lg text-xs font-bold uppercase">Pago aprobado / pendiente de reserva</span>;
+      case "shipped": return <span className="px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg text-xs font-bold uppercase">Pedido enviado</span>;
+      case "completed": return <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-lg text-xs font-bold uppercase">Pedido entregado</span>;
       case "cancelled": return <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase">Cancelada</span>;
       default: return <span className="px-2 py-1 bg-slate-500/10 text-slate-600 rounded-lg text-xs font-bold uppercase">{status}</span>;
     }
@@ -1282,7 +1282,7 @@ export function PedidosSection() {
                             const profile = member?.profile;
                             const groupStatus = (() => {
                               const allDone = groupItems.every(i => i.fulfillmentStatus === "delivered" || i.fulfillmentStatus === "activated");
-                              if (allDone) return { label: "Completado", color: "bg-emerald-100 text-emerald-700 border-emerald-200" };
+                              if (allDone) return { label: "Entregado", color: "bg-emerald-100 text-emerald-700 border-emerald-200" };
                               const anyProduction = groupItems.some(i => i.fulfillmentStatus === "in_production");
                               if (anyProduction) return { label: "En fabricación", color: "bg-purple-100 text-purple-700 border-purple-200" };
                               const allReady = groupItems.every(i => i.fulfillmentStatus === "ready_for_assignment" || i.fulfillmentStatus === "delivered" || i.fulfillmentStatus === "activated");
@@ -1296,7 +1296,7 @@ export function PedidosSection() {
 
                             return (
                               <div key={memberId} className={`bg-white rounded-xl border overflow-hidden ${
-                                groupStatus.label === "Completado" ? "border-emerald-200 bg-emerald-50/30" : "border-indigo-100"
+                                groupStatus.label === "Entregado" ? "border-emerald-200 bg-emerald-50/30" : "border-indigo-100"
                               }`}>
                                 {/* Header */}
                                 <div className="flex items-center justify-between p-4">
@@ -1722,29 +1722,29 @@ export function PedidosSection() {
                     {canShip && (
                        <>
                           <button
-                            onClick={() => handleStatusChange(selectedOrder.id, "shipped", "Enviado")}
+                            onClick={() => handleStatusChange(selectedOrder.id, "shipped", "Pedido enviado")}
                             disabled={updating}
                             className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40"
                           >
-                             Marcar como Enviado
+                             Marcar pedido enviado
                           </button>
 
                           <button
-                            onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")}
+                            onClick={() => handleStatusChange(selectedOrder.id, "completed", "Pedido entregado")}
                             disabled={updating}
                             className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-lg shadow-emerald-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40"
                           >
-                             Finalizar Pedido
+                             Marcar pedido entregado
                           </button>
                        </>
                     )}
                      {canComplete && (
                         <button
-                           onClick={() => handleStatusChange(selectedOrder.id, "completed", "Completado")}
+                           onClick={() => handleStatusChange(selectedOrder.id, "completed", "Pedido entregado")}
                           disabled={updating} 
                           className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all"
                         >
-                          Confirmar Entrega Manual
+                          Confirmar entrega
                        </button>
                     )}
                   </div>

@@ -17,6 +17,9 @@ Hacer visible el inventario físico real por producto y trabajar el despacho sob
   - `dispatched`
   - `delivered`
   - `activated`
+- `available` requiere `qaStatus=passed`, `inventoryStatus=available`, `activationStatus=not_activated` y sin `reservedOrderId`.
+- `reserved` requiere `inventoryStatus=reserved` con `reservedOrderId`.
+- `dispatched` y `delivered` no activan chips.
 
 ## Unidades
 
