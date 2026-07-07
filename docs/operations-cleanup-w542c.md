@@ -18,3 +18,10 @@ This note records the cleanup pass for internal production to stock availability
 
 - Repair is dry-run by default.
 - Real repair requires `CONFIRM_REPAIR_INTERNAL_STOCK_W542C=YES_REPAIR_INTERNAL_STOCK_W542C`.
+
+## W5.42C.1
+
+- Removed leftover visual noise from Pedidos and inventory entry screens.
+- Aligned product table balance with available real units.
+- Normalized primary modals to stay in the viewport with internal scrolling.
+- Left untouched: activation, QR/NFC, shortCode, internalLabel, userId, legacy orders, historical data.

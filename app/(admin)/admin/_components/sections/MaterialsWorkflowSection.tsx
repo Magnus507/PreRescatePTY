@@ -361,15 +361,12 @@ export function MaterialsWorkflowSection() {
           <div className="max-w-3xl">
             <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-700">
               <Archive className="h-4 w-4" />
-              Inventario fisico de insumos
+              Materiales
             </div>
-            <h3 className="text-2xl font-black tracking-tight text-amber-950">Materiales</h3>
+            <h3 className="text-2xl font-black tracking-tight text-amber-950">Inventario de insumos</h3>
             <p className="mt-2 text-sm font-semibold leading-relaxed text-amber-800">
-              Materiales son insumos antes de fabricar: stickers en blanco, pulseras, PVC, cajas y accesorios. No son productos terminados y no son chips digitales.
+              Insumos operativos para fabricar y reponer.
             </p>
-          </div>
-          <div className="rounded-2xl border border-amber-300 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-widest text-amber-700">
-            API conectada
           </div>
         </div>
       </section>

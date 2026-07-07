@@ -1760,9 +1760,9 @@ export function PedidosSection() {
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter">Gestión de Pedidos</h1>
+          <h1 className="text-2xl font-black uppercase tracking-tighter">Pedidos</h1>
           <p className="text-muted-foreground text-sm font-medium">
-            Bandeja operativa para validar compras existentes y generar pedidos internos de reposición.
+            Pedidos existentes y pedidos internos de reposición.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1780,8 +1780,8 @@ export function PedidosSection() {
       </div>
 
       {showInternalOrderModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/70 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/70 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-xl max-h-[calc(100vh-48px)] overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Pedido interno</p>
@@ -2110,7 +2110,7 @@ export function PedidosSection() {
           );
         })}
       {rejectingPaymentOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
             <div
               className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl"
               onClick={(event) => event.stopPropagation()}
@@ -2179,8 +2179,8 @@ export function PedidosSection() {
         </div>
       )}
       {reserveOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-2xl max-h-[calc(100vh-48px)] overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-500">Reservar etiqueta interna</p>

@@ -4,9 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import {
   CreateFinishedGoodSchema,
-  calculateFinishedGoodBalance,
   getFirstValidationMessage,
 } from "./finished-goods.helpers";
+import { loadInventoryStockRows } from "@/lib/operations/inventory-stock";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +31,8 @@ export async function GET() {
   if (!auth.authorized) return auth.response;
 
   try {
+    const stockRows = await loadInventoryStockRows();
+    const balanceByCode = new Map(stockRows.map((row) => [row.productCode, row.availableCount]));
     const finishedGoods = await prisma.operationFinishedGood.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -46,7 +48,7 @@ export async function GET() {
     return NextResponse.json({
       finishedGoods: finishedGoods.map((finishedGood) => ({
         ...finishedGood,
-        balance: calculateFinishedGoodBalance(finishedGood.events),
+        balance: balanceByCode.get(finishedGood.code) ?? 0,
       })),
     });
   } catch (error) {
@@ -134,7 +136,7 @@ export async function POST(req: NextRequest) {
       {
         finishedGood: {
           ...finishedGood,
-          balance: calculateFinishedGoodBalance(finishedGood.events),
+          balance: (await loadInventoryStockRows()).find((row) => row.productCode === finishedGood.code)?.availableCount ?? 0,
         },
       },
       { status: 201 }

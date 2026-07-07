@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import {
-  calculateFinishedGoodBalance,
   getFirstValidationMessage,
   UpdateFinishedGoodSchema,
 } from "../finished-goods.helpers";
 import { Prisma } from "@prisma/client";
+import { loadInventoryStockRows } from "@/lib/operations/inventory-stock";
 
 export const dynamic = "force-dynamic";
 
@@ -59,10 +59,13 @@ export async function GET(
       );
     }
 
+    const stockRows = await loadInventoryStockRows();
+    const balance = stockRows.find((row) => row.productCode === finishedGood.code)?.availableCount ?? 0;
+
     return NextResponse.json({
       finishedGood: {
         ...finishedGood,
-        balance: calculateFinishedGoodBalance(finishedGood.events),
+        balance,
       },
     });
   } catch (error) {

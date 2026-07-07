@@ -3,9 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import {
   CreateFinishedGoodEventSchema,
-  calculateFinishedGoodBalance,
   getFirstValidationMessage,
 } from "../../finished-goods.helpers";
+import { loadInventoryStockRows } from "@/lib/operations/inventory-stock";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +35,7 @@ export async function POST(
         where: { id },
         select: {
           id: true,
+          code: true,
           unit: true,
         },
       });
@@ -57,18 +58,8 @@ export async function POST(
         },
       });
 
-      const events = await tx.operationFinishedGoodEvent.findMany({
-        where: { finishedGoodId: id },
-        select: {
-          eventType: true,
-          quantity: true,
-        },
-      });
-
-      return {
-        event,
-        balance: calculateFinishedGoodBalance(events),
-      };
+      const balance = (await loadInventoryStockRows()).find((row) => row.productCode === finishedGood.code)?.availableCount ?? 0;
+      return { event, balance };
     });
 
     if (!result) {
