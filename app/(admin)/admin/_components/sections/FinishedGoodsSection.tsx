@@ -1,34 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ArrowRight,
-  Boxes,
-  CheckCircle2,
-  Edit3,
-  Factory,
-  Loader2,
-  PackageCheck,
-  Plus,
-  RefreshCw,
-  Store,
-  Warehouse,
-  X,
-} from "lucide-react";
+import { Boxes, CheckCircle2, Edit3, Factory, Loader2, PackageCheck, Plus, RefreshCw, Store, Warehouse, X } from "lucide-react";
 import { toast } from "sonner";
-
-const FLOW = [
-  "Producción",
-  "QC",
-  "Empaque",
-  "Inventario terminado",
-  "Venta",
-  "Salida",
-];
-
-const FUTURE_ACTIONS = [
-  { label: "Revisar salida comercial", hint: "Gestionar desde Centro de Operaciones" },
-];
 
 const FINISHED_GOOD_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   active: { label: "Activo", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
@@ -674,32 +648,13 @@ export function FinishedGoodsSection() {
           <div className="max-w-3xl">
             <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">
               <CheckCircle2 className="h-4 w-4" />
-              Producto vendible
+              Inventario real
             </div>
             <h3 className="text-2xl font-black tracking-tight text-emerald-950">Productos base</h3>
             <p className="mt-2 text-sm font-semibold leading-relaxed text-emerald-800">
-              Catálogo operativo de productos terminados que pueden producirse, reservarse o venderse.
-              Crear un producto base no crea unidades disponibles.
+              Catálogo operativo de productos terminados y su balance actual.
             </p>
           </div>
-          <div className="rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-widest text-emerald-700">
-            Balance calculado por eventos
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-white p-6">
-        <h3 className="mb-5 text-sm font-black uppercase tracking-widest text-slate-500">Ruta de entrada a inventario agregado</h3>
-        <div className="flex overflow-x-auto pb-2">
-          {FLOW.map((step, index) => (
-            <div key={step} className="flex items-center">
-              <div className="min-w-[150px] rounded-2xl bg-slate-50 px-4 py-4 text-center">
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Paso {index + 1}</p>
-                <p className="mt-2 text-sm font-black text-slate-800">{step}</p>
-              </div>
-              {index < FLOW.length - 1 && <ArrowRight className="mx-3 h-4 w-4 text-slate-300" />}
-            </div>
-          ))}
         </div>
       </section>
 
@@ -815,10 +770,6 @@ export function FinishedGoodsSection() {
                         {formatQuantity(item.balance)}
                       </td>
                       <td className="px-4 py-4">
-                        <div className="mb-2 grid grid-cols-2 gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">Disp {formatQuantity(item.balance)}</span>
-                          <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">PT {item.unit}</span>
-                        </div>
                         {item.packingBatch ? (
                           <div>
                             <p className="font-mono text-xs font-black text-slate-900">{item.packingBatch.code}</p>
@@ -888,23 +839,8 @@ export function FinishedGoodsSection() {
         )}
       </section>
 
-      <section className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6">
-        <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-500">Rutas complementarias</h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FUTURE_ACTIONS.map((action) => (
-            <button key={action.label} type="button" disabled className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left opacity-60">
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-700">
-                <Store className="h-4 w-4" />
-                {action.label}
-              </div>
-              <p className="mt-2 text-[11px] font-semibold text-slate-500">{action.hint}</p>
-            </button>
-          ))}
-        </div>
-      </section>
-
       {unitsTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-6xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
               <div>
@@ -1020,7 +956,7 @@ export function FinishedGoodsSection() {
       )}
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
             <form onSubmit={handleCreateFinishedGood} className="space-y-6 p-6 md:p-8">
               <div className="flex items-start justify-between gap-4">

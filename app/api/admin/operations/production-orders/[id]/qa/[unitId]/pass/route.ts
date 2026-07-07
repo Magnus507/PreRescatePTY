@@ -15,6 +15,12 @@ function toJson(value: Record<string, unknown>) {
   return value as Prisma.InputJsonValue;
 }
 
+function isInternalProductionOrder(notes: string | null, code: string | null) {
+  const normalizedNotes = notes || "";
+  const normalizedCode = code || "";
+  return normalizedNotes.includes("Pedido interno para fabricar inventario") || normalizedCode.startsWith("PROD-INT-");
+}
+
 async function refreshCommercialOrder(tx: Prisma.TransactionClient, commercialOrderId: string) {
   const totalRequired = await tx.operationCommercialOrderItem.aggregate({
     where: { commercialOrderId },
@@ -53,7 +59,7 @@ export async function POST(
     const result = await prisma.$transaction(async (tx) => {
       const productionOrder = await tx.operationProductionOrder.findUnique({
         where: { id: productionOrderId },
-        select: { id: true, notes: true, status: true },
+        select: { id: true, code: true, notes: true, status: true },
       });
       if (!productionOrder) return null;
 
@@ -70,15 +76,16 @@ export async function POST(
       }
 
       const commercialOrderId = getCommercialOrderIdFromNotes(productionOrder.notes);
+      const internalProduction = isInternalProductionOrder(productionOrder.notes, productionOrder.code);
       const now = new Date();
       const updated = await tx.operationFinishedGoodUnit.update({
         where: { id: unitId },
         data: {
           qaStatus: "passed",
           activationStatus: "not_activated",
-          status: commercialOrderId ? "reserved" : "available",
-          reservedOrderId: commercialOrderId,
-          reservedAt: commercialOrderId ? now : null,
+          status: commercialOrderId && !internalProduction ? "reserved" : "available",
+          reservedOrderId: commercialOrderId && !internalProduction ? commercialOrderId : null,
+          reservedAt: commercialOrderId && !internalProduction ? now : null,
           events: {
             create: [
               {
@@ -87,11 +94,11 @@ export async function POST(
                 metadataJson: toJson({ productionOrderId, checklist }),
               },
               {
-                eventType: commercialOrderId ? "UNIT_RESERVED_FOR_ORDER" : "INVENTORY_AVAILABLE",
-                reason: commercialOrderId ? "Unidad reservada para pedido origen" : "Unidad disponible en inventario",
-                referenceType: commercialOrderId ? "commercial_order" : "production_order",
-                referenceId: commercialOrderId || productionOrderId,
-                metadataJson: toJson({ productionOrderId, commercialOrderId, checklist }),
+                eventType: commercialOrderId && !internalProduction ? "UNIT_RESERVED_FOR_ORDER" : "INVENTORY_AVAILABLE",
+                reason: commercialOrderId && !internalProduction ? "Unidad reservada para pedido origen" : "Unidad disponible en inventario",
+                referenceType: commercialOrderId && !internalProduction ? "commercial_order" : "production_order",
+                referenceId: commercialOrderId && !internalProduction ? commercialOrderId : productionOrderId,
+                metadataJson: toJson({ productionOrderId, commercialOrderId: internalProduction ? null : commercialOrderId, checklist }),
               },
             ],
           },
@@ -110,6 +117,13 @@ export async function POST(
           digitalBatchId: unit.digitalBatchId,
           qaStatus: "passed",
           status: { in: ["available", "reserved"] },
+        },
+      });
+
+      await tx.operationProductionOrder.update({
+        where: { id: productionOrderId },
+        data: {
+          producedQuantity: { increment: 1 },
         },
       });
 

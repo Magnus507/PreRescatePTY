@@ -1,35 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  ClipboardCheck,
-  Clock,
-  FileText,
-  Globe,
-  Loader2,
-  MapPin,
-  PackageCheck,
-  Plus,
-  RefreshCw,
-  Store,
-  Truck,
-  User,
-  Users,
-  X,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Clock, FileText, Loader2, PackageCheck, Plus, RefreshCw, Truck, X } from "lucide-react";
 import { toast } from "sonner";
 import { DispatchViewModel } from "@/lib/operations/dispatch-view-model";
-
-interface DispatchType {
-  key: string;
-  label: string;
-  icon: React.ElementType;
-  description: string;
-  color: string;
-}
 
 interface FinishedGoodOption {
   id: string;
@@ -58,52 +32,6 @@ interface DispatchFormState {
   notes: string;
   items: DispatchFormItem[];
 }
-
-const DISPATCH_TYPES: DispatchType[] = [
-  {
-    key: "customer",
-    label: "Cliente",
-    icon: User,
-    description: "Despacho a cliente final",
-    color: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  },
-  {
-    key: "point_of_sale",
-    label: "Punto de venta",
-    icon: MapPin,
-    description: "Despacho a punto de venta",
-    color: "bg-cyan-50 text-cyan-700 border-cyan-200",
-  },
-  {
-    key: "external_warehouse",
-    label: "Almacén externo",
-    icon: Store,
-    description: "Salida a bodega externa",
-    color: "bg-purple-50 text-purple-700 border-purple-200",
-  },
-  {
-    key: "internal_delivery",
-    label: "Entrega interna",
-    icon: Users,
-    description: "Entrega operativa interna",
-    color: "bg-blue-50 text-blue-700 border-blue-200",
-  },
-  {
-    key: "other",
-    label: "Otro destino",
-    icon: Globe,
-    description: "Destino operativo especial",
-    color: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  },
-];
-
-const TIMELINE_STEPS = [
-  { label: "Inventario PT", icon: PackageCheck, description: "Producto disponible" },
-  { label: "Reserva", icon: ClipboardCheck, description: "Apartar cantidades" },
-  { label: "Guía", icon: FileText, description: "Referencia logística" },
-  { label: "Salida", icon: Truck, description: "Descuento por ISSUE" },
-  { label: "Entregado", icon: CheckCircle2, description: "Confirmación final" },
-];
 
 const DISPATCH_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   draft: { label: "Pendiente de preparación", color: "bg-slate-50 border-slate-200 text-slate-700" },
@@ -171,12 +99,12 @@ export function DispatchSection() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "No se pudo cargar Inventario PT");
+        throw new Error(data.error || "No se pudo cargar inventario");
       }
 
       setFinishedGoods(Array.isArray(data.finishedGoods) ? data.finishedGoods : []);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Error al cargar Inventario PT";
+      const message = error instanceof Error ? error.message : "Error al cargar inventario";
       toast.error(message);
     }
   }, []);
@@ -437,54 +365,8 @@ export function DispatchSection() {
           Despacho
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
-          Control de salidas desde Inventario PT, reservas, entregas y trazabilidad logística.
+          Salidas registradas y seguimiento de entrega.
         </p>
-      </div>
-
-      <div className="rounded-3xl border-2 border-indigo-200 bg-indigo-50 p-6 dark:border-indigo-800 dark:bg-indigo-950/20">
-        <div className="flex items-start gap-4">
-          <div className="rounded-2xl bg-indigo-100 p-3 dark:bg-indigo-900/50">
-            <AlertTriangle className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-black text-indigo-900 dark:text-indigo-100 mb-2">
-              Despacho descuenta Inventario PT mediante eventos
-            </h3>
-            <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-              Las reservas y salidas se registran como movimientos inmutables. El balance sale de eventos de Inventario PT.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">
-          Flujo de Despacho
-        </h3>
-        <div className="flex items-center justify-between overflow-x-auto pb-4">
-          {TIMELINE_STEPS.map((step, idx) => {
-            const Icon = step.icon;
-            const isLast = idx === TIMELINE_STEPS.length - 1;
-            return (
-              <div key={step.label} className="flex items-center">
-                <div className="flex flex-col items-center text-center min-w-[100px]">
-                  <div className="rounded-xl bg-slate-100 p-2 mb-2 dark:bg-slate-800">
-                    <Icon className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                  </div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
-                    {step.label}
-                  </p>
-                  <p className="text-[9px] font-medium text-slate-500 mt-1">{step.description}</p>
-                </div>
-                {!isLast && (
-                  <div className="mx-2 text-slate-300 dark:text-slate-700">
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
@@ -543,24 +425,6 @@ export function DispatchSection() {
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Unidades</span>
           </div>
           <p className="text-2xl font-black">{formatQuantity(metrics.itemQuantity)}</p>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">Tipos de Despacho</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {DISPATCH_TYPES.map((type) => {
-            const Icon = type.icon;
-            return (
-              <div key={type.key} className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
-                <div className={`rounded-xl p-2 mb-3 inline-flex ${type.color}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <p className="text-xs font-black text-slate-900 dark:text-white mb-1">{type.label}</p>
-                <p className="text-[10px] font-medium text-slate-500">{type.description}</p>
-              </div>
-            );
-          })}
         </div>
       </div>
 
@@ -710,7 +574,7 @@ export function DispatchSection() {
       </section>
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 backdrop-blur-sm">
           <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
             <form onSubmit={handleCreateDispatch} className="space-y-6 p-6 md:p-8">
               <div className="flex items-start justify-between gap-4">
@@ -745,27 +609,12 @@ export function DispatchSection() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo de destino</span>
-                  <select
-                    value={form.destinationType}
-                    onChange={(event) => updateForm("destinationType", event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                  >
-                    {DISPATCH_TYPES.map((type) => (
-                      <option key={type.key} value={type.key}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Destino</span>
                   <input
                     value={form.destinationName}
                     onChange={(event) => updateForm("destinationName", event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="Cliente, POS o almacén"
+                    placeholder="Nombre del destino"
                   />
                 </label>
 
@@ -775,7 +624,7 @@ export function DispatchSection() {
                     value={form.destinationReference}
                     onChange={(event) => updateForm("destinationReference", event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="Pedido, guía o contacto"
+                    placeholder="Referencia de salida"
                   />
                 </label>
 
@@ -795,7 +644,7 @@ export function DispatchSection() {
                     value={form.destinationAddress}
                     onChange={(event) => updateForm("destinationAddress", event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="Dirección operativa de entrega"
+                    placeholder="Dirección de entrega"
                   />
                 </label>
 
