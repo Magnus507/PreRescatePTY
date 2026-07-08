@@ -521,14 +521,15 @@ export function PedidosSection() {
         }
 
         const refreshed = await loadOrders({ silent: true, showErrorToast: false });
+        const orderCode = updatedOrder?.orderNumber || order.orderNumber || getVisibleCustomerCode(order);
         if (refreshed) {
           toast.success(
             shouldKeepSelected
-              ? "Pago aprobado correctamente."
-              : "Pago aprobado. El pedido puede haberse movido a otra pestaña/filtro."
+              ? `Pago aprobado para ${orderCode}.`
+              : `Pago aprobado para ${orderCode}. El pedido fue actualizado y puede haberse movido de pestaña.`
           );
         } else {
-          toast.success("Pago aprobado correctamente.");
+          toast.success(`Pago aprobado para ${orderCode}.`);
           toast.warning("La acción se aplicó, pero no se pudo refrescar la lista. Recarga la página.");
         }
         if (!shouldKeepSelected) {
@@ -609,15 +610,20 @@ export function PedidosSection() {
           );
         }
         const refreshed = await loadOrders({ silent: true, showErrorToast: false });
+        const orderCode = updatedOrder?.orderNumber || order.orderNumber || getVisibleCustomerCode(order);
         toast.success(
           refreshed
-            ? "Pago rechazado correctamente."
-            : "Pago rechazado correctamente. La lista no se pudo refrescar; recarga la página."
+            ? `Pago rechazado para ${orderCode}.`
+            : `Pago rechazado para ${orderCode}. La lista no se pudo refrescar; recarga la página.`
         );
         if (!refreshed) {
           toast.warning("La acción se aplicó, pero no se pudo refrescar la lista. Recarga la página.");
         }
-        setSelectedOrder((current) => (current && current.id === order.id ? null : current));
+        setSelectedOrder((current) =>
+          current && current.id === order.id
+            ? null
+            : current
+        );
       } else if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
         toast.error(data?.message || data?.error || "El pago ya fue revisado o el pedido cambió de estado.");
@@ -1023,6 +1029,23 @@ export function PedidosSection() {
       { all: 0, clients: 0, internal: 0, pending: 0, cancelled: 0 }
     );
   }, [orders]);
+
+  const getFilterCount = useCallback((filterId: PedidoFilter) => {
+    switch (filterId) {
+      case "all":
+        return filterCounts.all;
+      case "clients":
+        return filterCounts.clients;
+      case "internal":
+        return filterCounts.internal;
+      case "pending":
+        return filterCounts.pending;
+      case "cancelled":
+        return filterCounts.cancelled;
+      default:
+        return 0;
+    }
+  }, [filterCounts]);
 
   const emptyStateMessage = useMemo(() => {
     switch (activeFilter) {
@@ -2093,7 +2116,7 @@ export function PedidosSection() {
         <div className="flex min-w-max gap-1" role="tablist" aria-label="Filtros de pedidos">
           {PEDIDO_FILTERS.map((filter) => {
             const active = activeFilter === filter.id;
-            const count = filter.id === "all" ? filterCounts.all : filter.id === "clients" ? filterCounts.clients : filter.id === "internal" ? filterCounts.internal : filterCounts.pending;
+            const count = getFilterCount(filter.id);
             return (
               <button
                 key={filter.id}

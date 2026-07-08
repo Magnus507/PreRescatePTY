@@ -129,6 +129,13 @@ No tocar salvo auditoría:
 Scripts relacionados:
 - `scripts/audit-orders-full-flow-w547a.ts`
 
+Pendiente de validación visual real:
+- aprobar pago con pedido en `under_review`
+- rechazar pago con pedido en `under_review`
+- confirmar toast/mensaje visible
+- confirmar cambio de pestaña o lista entendible
+- confirmar que no se reserve ni despache automáticamente
+
 ### 3.6 Aprobar/Rechazar pago
 
 Cerrado:
@@ -136,8 +143,8 @@ Cerrado:
   - `POST /api/admin/orders/[id]/approve`
   - `POST /api/admin/orders/[id]/reject`
 - View model habilita acciones correctamente.
-- UI ahora muestra feedback visible.
-- UI muestra loading para evitar doble clic.
+- UI ahora muestra feedback visible y loading para evitar doble clic.
+- Los mensajes deben incluir el código del pedido y avisar si cambió de pestaña.
 - Si falla refresh posterior, muestra warning.
 - Las rutas devuelven payload útil para actualizar UI.
 - No se cambió lógica de negocio.
@@ -243,6 +250,7 @@ npx tsx scripts/audit-cancel-order-release-w546c.ts --code <ORDER_CODE>
 - Unidades reservadas sin confundir activación
 - Aprobación / rechazo con feedback visible
 - Cancelación con liberación segura de reserva
+- Conteos de pestañas con contador correcto por filtro
 
 ### 7.2 Validaciones mínimas para cualquier cambio futuro
 
@@ -269,6 +277,7 @@ Un cambio en Pedidos solo se considera listo si:
 - no altera shortCode/internalLabel
 - no abre acciones en estados terminales
 - no introduce silencios en feedback de UI
+- no desalinean los contadores de pestañas con la lista visible
 - no toca datos reales sin necesidad explícita
 
 ## 8. Qué sigue abierto
