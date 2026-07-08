@@ -194,8 +194,28 @@ export async function GET() {
         return {
           ...buildOperationsOrderViewModel({
             ...(order as Parameters<typeof buildOperationsOrderViewModel>[0]),
+            customerName:
+              order.customerName ||
+              `${order.user?.profile?.firstName || ""} ${order.user?.profile?.lastName || ""}`.trim() ||
+              order.user?.email ||
+              "Sin cliente",
+            customerEmail: order.customerEmail || order.user?.email || null,
+            customerPhone: order.customerPhone || order.user?.phone || null,
+            shippingAddress: order.shippingAddress || null,
+            shippingCity: order.shippingCity || null,
+            shippingNotes: order.shippingNotes || null,
             reservedUnits,
             dispatch,
+            user: {
+              email: order.user?.email || null,
+              phone: order.user?.phone || null,
+              profile: order.user?.profile
+                ? {
+                    firstName: order.user.profile.firstName || null,
+                    lastName: order.user.profile.lastName || null,
+                  }
+                : null,
+            },
           }),
           reservedUnits,
           dispatch,

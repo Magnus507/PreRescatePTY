@@ -42,6 +42,14 @@ export type OperationsOrderInput = {
   shippingCity?: string | null;
   shippingNotes?: string | null;
   customerDocument?: string | null;
+  user?: {
+    email?: string | null;
+    phone?: string | null;
+    profile?: {
+      firstName?: string | null;
+      lastName?: string | null;
+    } | null;
+  } | null;
   dispatch?: {
     id: string;
     code: string;
@@ -72,6 +80,9 @@ export type OperationsOrderViewModel = {
   customerName: string;
   customerEmail?: string | null;
   customerPhone?: string | null;
+  shippingAddress?: string | null;
+  shippingCity?: string | null;
+  shippingNotes?: string | null;
   channel: string;
   deliveryReference?: string | null;
   orderStatus: string;
@@ -144,6 +155,11 @@ function getPaymentLabel(paymentStatus: string, paymentProofAvailable: boolean) 
   if (paymentStatus === "paid") return "Pago aprobado";
   if (paymentProofAvailable || paymentStatus === "under_review") return "Pago en revisión";
   return "Pago pendiente";
+}
+
+function getCustomerFallbackName(order: OperationsOrderInput) {
+  const profileName = [order.user?.profile?.firstName, order.user?.profile?.lastName].filter(Boolean).join(" ").trim();
+  return profileName || order.customerName || "Sin cliente";
 }
 
 function getOrderStatusLabel(orderStatus: string) {
@@ -311,6 +327,9 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
     : `OP-CLI-${displayOrderCode}`;
   const paymentProofAvailable = Boolean(order.paymentProofUrl || order.manualPaymentReference);
   const paymentStatusLabel = getPaymentLabel(order.paymentStatus, paymentProofAvailable);
+  const customerName = order.customerName || getCustomerFallbackName(order);
+  const customerEmail = order.customerEmail || order.user?.email || null;
+  const customerPhone = order.customerPhone || order.user?.phone || null;
   const firstItem = order.items[0] || null;
   const commercialItemName = firstItem?.productType || null;
   const comboPricing = getComboPricing(commercialItemName);
@@ -318,6 +337,7 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const commercialQuantity = comboPricing?.commercialQuantity ?? fallbackQuantity;
   const commercialUnitPrice = comboPricing?.price ?? firstItem?.unitPrice ?? 0;
   const commercialTotal = comboPricing?.price ? comboPricing.price * commercialQuantity : firstItem?.totalPrice ?? 0;
+  const amount = order.amount || commercialTotal;
   const comboMultiplier = comboPricing?.unitsPerCombo ?? getComboMultiplier(commercialItemName);
   const operationalProductCode = commercialItemName?.toUpperCase().startsWith("COMBO_")
     ? "PRP-FG-STICKER"
@@ -368,9 +388,12 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
     sourceModel: classification.sourceModel,
     displayOrderCode,
     operationsReferenceCode,
-    customerName: order.customerName,
-    customerEmail: order.customerEmail,
-    customerPhone: order.customerPhone,
+    customerName,
+    customerEmail,
+    customerPhone,
+    shippingAddress: order.shippingAddress || null,
+    shippingCity: order.shippingCity || null,
+    shippingNotes: order.shippingNotes || null,
     channel: order.provider,
     deliveryReference: order.providerReference || null,
     orderStatus: order.orderStatus,
@@ -389,7 +412,7 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
     operationalProductName,
     operationalProductCode,
     operationalQuantity,
-    total: order.amount,
+    total: amount,
     currency: order.currency || "USD",
     reservedUnits: [],
     productionOrder: null,
