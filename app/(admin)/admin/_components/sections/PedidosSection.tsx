@@ -1864,15 +1864,25 @@ export function PedidosSection() {
                                <p className="text-[10px] text-amber-700 font-semibold">Recomendado: indique el motivo del rechazo.</p>
                                <div className="flex flex-col gap-2">
                                  <button
+                                    type="button"
                                     disabled={updating || !canAdminApproveManual(selectedOrder)}
-                                   onClick={() => void handleApprove(selectedOrder)}
+                                   onClick={(e) => {
+                                     e.preventDefault();
+                                     e.stopPropagation();
+                                     void handleApprove(selectedOrder);
+                                   }}
                                     className="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
                                  >
                                    {reviewAction === "approve" ? "Aprobando..." : "Aprobar pago"}
                                  </button>
                                  <button
+                                    type="button"
                                     disabled={updating || !canAdminRejectManual(selectedOrder)}
-                                   onClick={() => void handleReject(selectedOrder)}
+                                   onClick={(e) => {
+                                     e.preventDefault();
+                                     e.stopPropagation();
+                                     void handleReject(selectedOrder);
+                                   }}
                                     className="w-full px-4 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
                                  >
                                    {reviewAction === "reject" ? "Rechazando..." : "Rechazar pago"}
@@ -2230,7 +2240,10 @@ export function PedidosSection() {
           const commercialQty = order.commercialQuantity || order.items[0]?.quantity || 1;
           const operationalQty = order.operationalQuantity || commercialQty;
 
-          const stop = (event: React.MouseEvent) => event.stopPropagation();
+          const stop = (event: React.MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+          };
 
           return (
             <article
