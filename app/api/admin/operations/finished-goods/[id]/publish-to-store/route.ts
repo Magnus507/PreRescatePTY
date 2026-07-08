@@ -46,7 +46,7 @@ export async function POST(
       success: true,
       action,
       ...result,
-      published: action === "publish" ? true : false,
+      published: result.isActive,
       message:
         action === "unpublish"
           ? "Producto despublicado del catálogo comercial"

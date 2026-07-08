@@ -149,6 +149,10 @@ function extractOperationsProductCodeFromDescription(value: string | null) {
   return match?.[1] || null;
 }
 
+function matchesOperationsMarker(product: StoreProduct, code: string) {
+  return extractOperationsProductCodeFromDescription(product.description) === code;
+}
+
 const FINISHED_GOOD_EVENT_OPTIONS: Array<{ value: FinishedGoodEventType; label: string }> = [
   { value: "RECEIPT", label: "Entrada" },
   { value: "RESERVATION", label: "Reserva" },
@@ -338,7 +342,7 @@ export function FinishedGoodsSection() {
   };
 
   const openPublishModal = (item: FinishedGood) => {
-    const existing = storeProducts.find((product) => extractOperationsProductCodeFromDescription(product.description) === item.code);
+    const existing = storeProducts.find((product) => matchesOperationsMarker(product, item.code)) || null;
     setPublishTarget(item);
     setPublishForm({
       price: existing ? String(existing.price) : "",
@@ -381,6 +385,32 @@ export function FinishedGoodsSection() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo publicar en Tienda");
       toast.success(data.message || "Producto publicado en catálogo comercial");
+      if (data.storeProductId) {
+        setStoreProducts((current) => {
+          const next = [...current];
+          const index = next.findIndex((product) => product.id === data.storeProductId);
+          if (index >= 0) {
+            next[index] = {
+              ...next[index],
+              isActive: Boolean(data.isActive),
+              description: next[index].description ?? null,
+              productType: next[index].productType,
+            };
+            return next;
+          }
+
+          if (data.operationsProductCode) {
+            const fallback = current.find((product) => matchesOperationsMarker(product, data.operationsProductCode)) || null;
+            if (fallback) {
+              return current.map((product) =>
+                product.id === fallback.id ? { ...product, isActive: Boolean(data.isActive) } : product
+              );
+            }
+          }
+
+          return current;
+        });
+      }
       await loadFinishedGoods({ silent: true });
       setPublishTarget(null);
       setPublishForm(EMPTY_PUBLISH_FORM);
@@ -412,7 +442,23 @@ export function FinishedGoodsSection() {
   };
 
   const getPublishedStoreProduct = (item: FinishedGood) => {
-    return storeProducts.find((product) => extractOperationsProductCodeFromDescription(product.description) === item.code) || null;
+    const exactMarker = storeProducts.find(
+      (product) => matchesOperationsMarker(product, item.code) && product.isActive
+    ) || null;
+    if (exactMarker) return exactMarker;
+
+    const byProductType = storeProducts.find(
+      (product) => product.isActive && product.productType === item.code
+    ) || null;
+    if (byProductType) return byProductType;
+
+    const byName = storeProducts.find(
+      (product) =>
+        product.isActive &&
+        ((item.code === "PRP-FG-STICKER" && product.name === "Sticker PreRescatePTY") ||
+          (item.code === "PRP-FG-STICKER-EMP" && product.name === "Sticker PreRescatePTY Empresarial"))
+    ) || null;
+    return byName;
   };
 
   const filteredUnits = unitDetails.units.filter((unit) => {
