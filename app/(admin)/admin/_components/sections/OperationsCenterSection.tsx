@@ -532,27 +532,6 @@ export function OperationsCenterSection({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="mb-3 flex items-center gap-2">
-              <div className="h-1.5 w-8 rounded-full bg-primary" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Centro operativo</span>
-            </div>
-            <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white">
-              Centro de Operaciones
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-500">
-              Flujo operativo, comercial, inventario, produccion, postventa y trazabilidad en una sola entrada administrativa.
-            </p>
-          </div>
-          <div className={`flex w-fit items-center gap-2 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${health.tone}`}>
-            <HealthIcon className="h-4 w-4" />
-            {health.label}
-          </div>
-        </div>
-      </section>
-
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex min-w-max gap-1" role="tablist" aria-label="Secciones del Centro de Operaciones">
           {TABS.map((tab) => {

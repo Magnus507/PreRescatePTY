@@ -787,6 +787,10 @@ export function PedidosSection() {
     return paymentStatus === "pending" || paymentReviewing || paymentLabel.includes("revisión") || requiresAction || needsReservation;
   }, []);
 
+  const isProductionTerminalStatus = useCallback((status?: string | null) => {
+    return ["completed", "failed", "cancelled"].includes((status || "").toLowerCase());
+  }, []);
+
   const isInternalOrderForFilters = useCallback((order: Order) => {
     return (
       order.orderType === "internal_replenishment" ||
@@ -799,12 +803,13 @@ export function PedidosSection() {
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const internal = isInternalOrderForFilters(order);
+      const internalFinished = internal && isProductionTerminalStatus(order.productionOrder?.status);
       if (activeFilter === "clients") return !internal;
       if (activeFilter === "internal") return internal;
-      if (activeFilter === "pending") return isPendingOrder(order);
+      if (activeFilter === "pending") return internalFinished ? false : isPendingOrder(order);
       return true;
     });
-  }, [activeFilter, isInternalOrderForFilters, isPendingOrder, orders]);
+  }, [activeFilter, isInternalOrderForFilters, isPendingOrder, isProductionTerminalStatus, orders]);
 
   const filterCounts = useMemo(() => {
     return orders.reduce(
@@ -812,12 +817,13 @@ export function PedidosSection() {
         acc.all += 1;
         if (isInternalOrderForFilters(order)) acc.internal += 1;
         else acc.clients += 1;
-        if (isPendingOrder(order)) acc.pending += 1;
+        const internalFinished = isInternalOrderForFilters(order) && isProductionTerminalStatus(order.productionOrder?.status);
+        if (!internalFinished && isPendingOrder(order)) acc.pending += 1;
         return acc;
       },
       { all: 0, clients: 0, internal: 0, pending: 0 }
     );
-  }, [isInternalOrderForFilters, isPendingOrder, orders]);
+  }, [isInternalOrderForFilters, isPendingOrder, isProductionTerminalStatus, orders]);
 
   const formatDateTime = (value: string) =>
     new Intl.DateTimeFormat("es-PA", {
