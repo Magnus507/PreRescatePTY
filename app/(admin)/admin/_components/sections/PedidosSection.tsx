@@ -226,8 +226,6 @@ const PEDIDO_FILTERS: Array<{ id: PedidoFilter; label: string }> = [
   { id: "cancelled", label: "Cancelados" },
 ];
 
-const ORDERS_UI_BUILD_MARKER = "W5.49D-approve-diagnostics";
-
 export function PedidosSection() {
   const { data: session } = useSession();
   const isSuperadmin = session?.user?.role === "superadmin";
@@ -242,7 +240,6 @@ export function PedidosSection() {
   const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [approvingOrderId, setApprovingOrderId] = useState<string | null>(null);
-  const [lastPaymentActionDebug, setLastPaymentActionDebug] = useState<string | null>(null);
   const [markingDelivered, setMarkingDelivered] = useState(false);
   const initializedOrderIdRef = useRef<string | null>(null);
   const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
@@ -465,21 +462,15 @@ export function PedidosSection() {
 
   const handleApprove = async (targetOrder?: Order) => {
     const order = targetOrder ?? selectedOrder;
-    const orderCode = order ? getVisibleCustomerCode(order) : "sin-pedido";
     if (!order?.id) {
-      setLastPaymentActionDebug(`Debug: approve ignorado para ${orderCode}: falta id`);
       return;
     }
     if (approvingOrderId === order.id) {
-      setLastPaymentActionDebug(`Debug: approve ignorado para ${orderCode}: acción ya en curso`);
       return;
     }
     try {
       setApprovingOrderId(order.id);
       setReviewAction("approve");
-      setLastPaymentActionDebug(`Debug: click aprobar recibido para ${orderCode}`);
-      console.info("[orders:approve]", "click received", { orderId: order.id, orderCode });
-      setLastPaymentActionDebug(`Debug: enviando POST approve para ${orderCode}`);
       const res = await fetch(`/api/admin/orders/${order.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -487,8 +478,6 @@ export function PedidosSection() {
           adminReviewNotes: reviewNote.trim() || undefined,
         }),
       });
-      setLastPaymentActionDebug(`Debug: POST approve respondió ${res.status} para ${orderCode}`);
-      console.info("[orders:approve]", "response", { orderId: order.id, orderCode, status: res.status });
 
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -552,23 +541,17 @@ export function PedidosSection() {
         }
       } else if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
-        setLastPaymentActionDebug(`Debug: POST approve 409 para ${orderCode}`);
         toast.error(data?.message || data?.error || "El pago ya fue revisado o el pedido cambió de estado.");
       } else if (res.status === 403) {
-        setLastPaymentActionDebug(`Debug: POST approve 403 para ${orderCode}`);
         toast.error("No tienes permiso para revisar este pago.");
       } else if (res.status === 404) {
-        setLastPaymentActionDebug(`Debug: POST approve 404 para ${orderCode}`);
         toast.error("El pedido ya no está disponible.");
       } else {
         const data = await res.json().catch(() => ({}));
-        setLastPaymentActionDebug(`Debug: POST approve ${res.status} para ${orderCode}`);
         toast.error(data?.message || data?.error || "No se pudo actualizar el pago. Inténtalo nuevamente.");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo actualizar el pago. Inténtalo nuevamente.";
-      setLastPaymentActionDebug(`Debug: excepción approve para ${orderCode}: ${message}`);
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar el pago. Inténtalo nuevamente.");
     } finally {
       setApprovingOrderId(null);
       setReviewAction(null);
@@ -577,13 +560,10 @@ export function PedidosSection() {
 
   const handleReject = async (targetOrder?: Order) => {
     const order = targetOrder ?? selectedOrder;
-    const orderCode = order ? getVisibleCustomerCode(order) : "sin-pedido";
     if (!order?.id) {
-      setLastPaymentActionDebug(`Debug: reject ignorado para ${orderCode}: falta id`);
       return;
     }
     if (rejectingOrderId === order.id) {
-      setLastPaymentActionDebug(`Debug: reject ignorado para ${orderCode}: acción ya en curso`);
       return;
     }
     const trimmedNote = reviewNote.trim();
@@ -592,7 +572,6 @@ export function PedidosSection() {
       return;
     }
     if (approvingOrderId === order.id) {
-      setLastPaymentActionDebug(`Debug: reject bloqueado para ${orderCode}: approve ya en curso`);
       return;
     }
     setRejectingOrderId(order.id);
@@ -2149,9 +2128,6 @@ export function PedidosSection() {
           <p className="text-muted-foreground text-sm font-medium">
             Pedidos existentes y pedidos internos de reposición.
           </p>
-          <p className="mt-1 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-            {ORDERS_UI_BUILD_MARKER}
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -2166,12 +2142,6 @@ export function PedidosSection() {
           </button>
         </div>
       </div>
-      {lastPaymentActionDebug && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-mono font-semibold text-slate-600">
-          {lastPaymentActionDebug}
-        </div>
-      )}
-
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-1">
         <div className="flex min-w-max gap-1" role="tablist" aria-label="Filtros de pedidos">
           {PEDIDO_FILTERS.map((filter) => {

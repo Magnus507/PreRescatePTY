@@ -129,13 +129,6 @@ No tocar salvo auditoría:
 Scripts relacionados:
 - `scripts/audit-orders-full-flow-w547a.ts`
 
-Pendiente de validación visual real:
-- aprobar pago con pedido en `under_review`
-- rechazar pago con pedido en `under_review`
-- confirmar toast/mensaje visible
-- confirmar cambio de pestaña o lista entendible
-- confirmar que no se reserve ni despache automáticamente
-
 ### 3.6 Aprobar/Rechazar pago
 
 Cerrado:
@@ -144,10 +137,18 @@ Cerrado:
   - `POST /api/admin/orders/[id]/reject`
 - View model habilita acciones correctamente.
 - UI ahora muestra feedback visible y loading para evitar doble clic.
+- Botones duplicados o renders alternos quedaron protegidos con handlers explícitos por acción/pedido.
+- La prueba real en producción con `PR-2026-000558` ya validó el flujo completo.
 - Los mensajes deben incluir el código del pedido y avisar si cambió de pestaña.
 - Si falla refresh posterior, muestra warning.
 - Las rutas devuelven payload útil para actualizar UI.
 - No se cambió lógica de negocio.
+- `POST approve` respondió `200` en la validación real.
+- El pedido avanzó a `paymentStatus=paid` y `status=processing`.
+- Apareció `Reservar etiqueta interna`.
+- No se reservó automáticamente.
+- No se despachó automáticamente.
+- No se tocó activación.
 
 No tocar salvo auditoría:
 - handlers de aprobar/rechazar en `PedidosSection`
@@ -282,11 +283,12 @@ Un cambio en Pedidos solo se considera listo si:
 
 ## 8. Qué sigue abierto
 
-Pendiente de validación visual ocasional, no de corrección funcional:
+Pendiente de validación ocasional, no de corrección funcional:
 - consistencia visual fina de la pestaña Pedidos en escritorio y móvil
 - percepción de cambio de filtro cuando una orden pasa a estado terminal
 - experiencia al refrescar listas grandes
 - mensajes de ayuda en escenarios extremos
+- prueba manual de `Rechazar pago` en un pedido `under_review` si todavía no se hizo
 
 No requiere cambiar negocio, solo revisar UX si aparece un reporte nuevo.
 
@@ -303,3 +305,7 @@ El foco futuro debe ser preservar:
 - auditorías read-only para cualquier ajuste posterior
 
 Este documento sirve como barrera para evitar regresiones en uno de los flujos más sensibles del sistema.
+
+Nota:
+- No reintroducir debug visible en producción salvo bloque explícito de diagnóstico.
+- `approve` debe permanecer en `processing` para permitir la reserva posterior.
