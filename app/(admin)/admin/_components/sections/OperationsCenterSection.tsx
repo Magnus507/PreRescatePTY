@@ -11,7 +11,6 @@ import {
   History,
   Loader2,
   PackageCheck,
-  RefreshCw,
   RotateCcw,
   ShieldCheck,
   ShoppingCart,
@@ -184,13 +183,6 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat("es-PA", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
 export function OperationsCenterSection({
   createCount,
   setCreateCount,
@@ -206,7 +198,6 @@ export function OperationsCenterSection({
   const [productionTab, setProductionTab] = useState<ProductionTab>("orders");
   const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
   const [dashboard, setDashboard] = useState<OperationsDashboardSummary | null>(null);
-  const [dashboardGeneratedAt, setDashboardGeneratedAt] = useState<string | null>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
 
   useEffect(() => {
@@ -224,7 +215,6 @@ export function OperationsCenterSection({
       }
 
       setDashboard((data as OperationsDashboardResponse).dashboard);
-      setDashboardGeneratedAt((data as OperationsDashboardResponse).generatedAt);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo cargar el resumen operativo");
     } finally {
@@ -399,31 +389,6 @@ export function OperationsCenterSection({
 
     return (
       <div className="space-y-6">
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Resumen operativo real</h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">
-                Resumen corto de actividad operativa y carga actual.
-              </p>
-              {dashboardGeneratedAt && (
-                <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Actualizado {formatTime(dashboardGeneratedAt)}
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={loadDashboard}
-              disabled={loadingDashboard}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950"
-            >
-              {loadingDashboard ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Actualizar
-            </button>
-          </div>
-        </section>
-
         {loadingDashboard && !dashboard ? (
           <div className="flex min-h-[260px] items-center justify-center rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-3 text-sm font-black uppercase tracking-widest text-slate-400">

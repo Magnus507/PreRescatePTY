@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Loader2, View, CheckCircle2, Truck, RefreshCw, ExternalLink, Building2, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle, X } from "lucide-react";
@@ -195,6 +195,15 @@ interface InternalCommercialOrder {
   productionOrder?: { id: string; code: string; status: string } | null;
 }
 
+type PedidoFilter = "all" | "clients" | "internal" | "pending";
+
+const PEDIDO_FILTERS: Array<{ id: PedidoFilter; label: string }> = [
+  { id: "all", label: "Todos" },
+  { id: "clients", label: "Pedidos de clientes" },
+  { id: "internal", label: "Pedidos internos" },
+  { id: "pending", label: "Pendientes" },
+];
+
 export function PedidosSection() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -231,6 +240,7 @@ export function PedidosSection() {
   const [showInternalOrderModal, setShowInternalOrderModal] = useState(false);
   const [creatingInternalOrder, setCreatingInternalOrder] = useState(false);
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
+  const [activeFilter, setActiveFilter] = useState<PedidoFilter>("all");
   const [internalOrderForm, setInternalOrderForm] = useState({
     finishedGoodId: "",
     quantity: "1",
@@ -764,7 +774,50 @@ export function PedidosSection() {
     }
   };
 
-  const filteredOrders = orders;
+  const isPendingOrder = useCallback((order: Order) => {
+    const paymentStatus = (order.paymentStatus || "").toLowerCase();
+    const paymentLabel = (order.paymentStatusLabel || order.paymentStatusHuman || "").toLowerCase();
+    const paymentReviewing = paymentStatus === "under_review" || paymentStatus === "payment_review" || paymentStatus === "pending_review";
+    const requiresAction = Boolean(order.canApprovePayment || order.canRejectPayment || order.canReserveInternalLabel);
+    const needsReservation =
+      order.paymentStatus === "paid" &&
+      !order.dispatch &&
+      Boolean(order.reservedUnits?.length === 0 || !order.reservedUnits?.length);
+
+    return paymentStatus === "pending" || paymentReviewing || paymentLabel.includes("revisión") || requiresAction || needsReservation;
+  }, []);
+
+  const isInternalOrderForFilters = useCallback((order: Order) => {
+    return (
+      order.orderType === "internal_replenishment" ||
+      order.displayOrderCode?.startsWith("INT-") ||
+      order.operationsOrderCode?.startsWith("INT-") ||
+      order.orderNumber.startsWith("INT-")
+    );
+  }, []);
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const internal = isInternalOrderForFilters(order);
+      if (activeFilter === "clients") return !internal;
+      if (activeFilter === "internal") return internal;
+      if (activeFilter === "pending") return isPendingOrder(order);
+      return true;
+    });
+  }, [activeFilter, isInternalOrderForFilters, isPendingOrder, orders]);
+
+  const filterCounts = useMemo(() => {
+    return orders.reduce(
+      (acc, order) => {
+        acc.all += 1;
+        if (isInternalOrderForFilters(order)) acc.internal += 1;
+        else acc.clients += 1;
+        if (isPendingOrder(order)) acc.pending += 1;
+        return acc;
+      },
+      { all: 0, clients: 0, internal: 0, pending: 0 }
+    );
+  }, [isInternalOrderForFilters, isPendingOrder, orders]);
 
   const formatDateTime = (value: string) =>
     new Intl.DateTimeFormat("es-PA", {
@@ -1779,6 +1832,29 @@ export function PedidosSection() {
         </div>
       </div>
 
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-1">
+        <div className="flex min-w-max gap-1" role="tablist" aria-label="Filtros de pedidos">
+          {PEDIDO_FILTERS.map((filter) => {
+            const active = activeFilter === filter.id;
+            const count = filter.id === "all" ? filterCounts.all : filter.id === "clients" ? filterCounts.clients : filter.id === "internal" ? filterCounts.internal : filterCounts.pending;
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActiveFilter(filter.id)}
+                className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
+                  active ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:bg-white/70 hover:text-slate-800"
+                }`}
+              >
+                {filter.label} ({count})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {showInternalOrderModal && (
         <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/70 p-6 backdrop-blur-sm">
           <div className="w-full max-w-xl max-h-[calc(100vh-48px)] overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
@@ -1862,7 +1938,7 @@ export function PedidosSection() {
       )}
 
       <div className="space-y-3">
-        {filteredOrders.map((order) => {
+        {filteredOrders.map((order: Order) => {
           if (isInternalOrder(order)) {
             return renderInternalOrderCard(order);
           }
@@ -1987,7 +2063,7 @@ export function PedidosSection() {
                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Unidades reservadas</p>
                           {order.reservedUnits && order.reservedUnits.length > 0 ? (
                             <div className="mt-2 space-y-2">
-                              {order.reservedUnits.map((unit) => (
+                              {order.reservedUnits.map((unit: NonNullable<Order["reservedUnits"]>[number]) => (
                                 <div key={unit.id} className="rounded-xl border border-slate-200 bg-white p-3">
                                   <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel || "Sin etiqueta"}</p>
                                   <p className="text-xs text-slate-500">/{unit.shortCode || "sin-shortCode"}</p>
