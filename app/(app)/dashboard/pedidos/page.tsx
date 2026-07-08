@@ -86,6 +86,8 @@ function PedidosContent() {
   // Dynamic instructions
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
 
+  const formatMoney = (value: number | null | undefined) => `$${(Number(value) || 0).toFixed(2)}`;
+
   useEffect(() => {
     loadOrders();
     loadPaymentConfig();
@@ -257,7 +259,7 @@ function PedidosContent() {
                           Copiar
                         </button>
                       </div>
-                      <h3 className={`${isFinalCompactState ? "text-2xl" : "text-3xl"} font-black tracking-tighter`}>${order.amount.toFixed(2)}</h3>
+                      <h3 className={`${isFinalCompactState ? "text-2xl" : "text-3xl"} font-black tracking-tighter`}>{formatMoney(order.amount)}</h3>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString()}</p>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">Pago: {(order.paymentMethod || "manual").replace("_", " ")}</p>
                     </div>
