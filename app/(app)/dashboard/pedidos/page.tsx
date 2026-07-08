@@ -87,6 +87,24 @@ function PedidosContent() {
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
 
   const formatMoney = (value: number | null | undefined) => `$${(Number(value) || 0).toFixed(2)}`;
+  const toSafeDate = (value: unknown): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;
+    if (typeof value === "string" || typeof value === "number") {
+      const date = new Date(value);
+      return Number.isFinite(date.getTime()) ? date : null;
+    }
+    return null;
+  };
+  const formatDateSafe = (value: unknown, fallback = "Sin fecha") => {
+    const date = toSafeDate(value);
+    if (!date) return fallback;
+    return date.toLocaleDateString("es-PA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
 
   useEffect(() => {
     loadOrders();
@@ -260,7 +278,7 @@ function PedidosContent() {
                         </button>
                       </div>
                       <h3 className={`${isFinalCompactState ? "text-2xl" : "text-3xl"} font-black tracking-tighter`}>{formatMoney(order.amount)}</h3>
-                      <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString()}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">{formatDateSafe(order.createdAt)}</p>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">Pago: {(order.paymentMethod || "manual").replace("_", " ")}</p>
                     </div>
                     <OrderStatusBadge

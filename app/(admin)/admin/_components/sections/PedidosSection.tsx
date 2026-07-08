@@ -864,11 +864,37 @@ export function PedidosSection() {
     }
   }, [activeFilter]);
 
-  const formatDateTime = (value: string) =>
-    new Intl.DateTimeFormat("es-PA", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
+  const toSafeDate = (value: unknown): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;
+    if (typeof value === "string" || typeof value === "number") {
+      const date = new Date(value);
+      return Number.isFinite(date.getTime()) ? date : null;
+    }
+    return null;
+  };
+
+  const formatDateSafe = (value: unknown, fallback = "Sin fecha") => {
+    const date = toSafeDate(value);
+    if (!date) return fallback;
+    return date.toLocaleDateString("es-PA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
+  const formatDateTimeSafe = (value: unknown, fallback = "Sin fecha") => {
+    const date = toSafeDate(value);
+    if (!date) return fallback;
+    return date.toLocaleString("es-PA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const mapInternalCommercialOrder = (order: {
     id: string;
@@ -1007,7 +1033,7 @@ export function PedidosSection() {
                 {order.orderStatusLabel || order.orderStatus}
               </span>
               <span className="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-black uppercase tracking-widest">
-                {formatDateTime(order.createdAt)}
+                {formatDateTimeSafe(order.createdAt)}
               </span>
             </div>
 
@@ -1035,7 +1061,7 @@ export function PedidosSection() {
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Reposición interna</p>
                   <div className="space-y-2 text-sm">
                     <p className="font-semibold text-slate-700">Código: {getVisibleCustomerCode(order)}</p>
-                    <p className="font-semibold text-slate-700">Fecha: {formatDateTime(order.createdAt)}</p>
+                    <p className="font-semibold text-slate-700">Fecha: {formatDateTimeSafe(order.createdAt)}</p>
                     <p className="font-semibold text-slate-700">Motivo: {order.shippingNotes || "Reposición de inventario"}</p>
                   </div>
                 </div>
@@ -1235,7 +1261,7 @@ export function PedidosSection() {
                          </span>
                        )}
                        <span className="px-3 py-1 bg-white rounded-full text-[10px] font-bold border border-blue-200">
-                         {new Date(selectedOrder.createdAt).toLocaleDateString()}
+                         {formatDateSafe(selectedOrder.createdAt)}
                        </span>
                      </div>
                    </div>
@@ -2065,7 +2091,7 @@ export function PedidosSection() {
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Actualizado</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{formatDateTime(order.createdAt)}</p>
+                      <p className="mt-2 text-sm font-black text-slate-900">{formatDateTimeSafe(order.createdAt)}</p>
                       <p className="text-xs text-slate-500">{order.dispatch ? `Despacho ${order.dispatch.code}` : "Sin despacho"}</p>
                     </div>
                   </div>
