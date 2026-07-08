@@ -466,12 +466,12 @@ export function PedidosSection() {
   const handleApprove = async (targetOrder?: Order) => {
     const order = targetOrder ?? selectedOrder;
     const orderCode = order ? getVisibleCustomerCode(order) : "sin-pedido";
-    if (!order || order.provider !== "manual") {
-      setLastPaymentActionDebug(`Debug: approve ignorado para ${orderCode}`);
+    if (!order?.id) {
+      setLastPaymentActionDebug(`Debug: approve ignorado para ${orderCode}: falta id`);
       return;
     }
-    if (approvingOrderId || rejectingOrderId) {
-      setLastPaymentActionDebug(`Debug: approve bloqueado por loading para ${orderCode}`);
+    if (approvingOrderId === order.id) {
+      setLastPaymentActionDebug(`Debug: approve ignorado para ${orderCode}: acción ya en curso`);
       return;
     }
     try {
@@ -577,13 +577,24 @@ export function PedidosSection() {
 
   const handleReject = async (targetOrder?: Order) => {
     const order = targetOrder ?? selectedOrder;
-    if (!order || order.provider !== "manual") return;
+    const orderCode = order ? getVisibleCustomerCode(order) : "sin-pedido";
+    if (!order?.id) {
+      setLastPaymentActionDebug(`Debug: reject ignorado para ${orderCode}: falta id`);
+      return;
+    }
+    if (rejectingOrderId === order.id) {
+      setLastPaymentActionDebug(`Debug: reject ignorado para ${orderCode}: acción ya en curso`);
+      return;
+    }
     const trimmedNote = reviewNote.trim();
     if (!trimmedNote) {
       toast.error("Indique el motivo del rechazo.");
       return;
     }
-    if (approvingOrderId || rejectingOrderId) return;
+    if (approvingOrderId === order.id) {
+      setLastPaymentActionDebug(`Debug: reject bloqueado para ${orderCode}: approve ya en curso`);
+      return;
+    }
     setRejectingOrderId(order.id);
     setReviewAction("reject");
     try {
