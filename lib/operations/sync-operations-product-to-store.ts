@@ -17,6 +17,9 @@ export type SyncOperationsProductToStoreResult = {
   created: boolean;
   updated: boolean;
   alreadyPublished: boolean;
+  isActive: boolean;
+  markerPresent: boolean;
+  matchStrategy: "marker" | "productType" | "name" | "fallback" | "none";
 };
 
 function buildHiddenMarker(code: string) {
@@ -39,18 +42,31 @@ export async function syncOperationsProductToStore(
 
   const existingByMarker = await prisma.product.findFirst({
     where: { description: { contains: marker } },
+    orderBy: { updatedAt: "desc" },
   });
 
-  const existingByCode = await prisma.product.findFirst({
-    where: {
-      OR: [
-        { productType: operationsProductCode },
-        { name: operationsProductName },
-      ],
-    },
+  const existingByProductType = await prisma.product.findFirst({
+    where: { productType: operationsProductCode },
+    orderBy: { updatedAt: "desc" },
   });
 
-  const existing = existingByMarker || existingByCode;
+  const existingByName = await prisma.product.findFirst({
+    where: { name: operationsProductName },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const existing =
+    existingByMarker ||
+    existingByProductType ||
+    existingByName ||
+    null;
+  const matchStrategy: "marker" | "productType" | "name" | "fallback" | "none" = existingByMarker
+    ? "marker"
+    : existingByProductType
+      ? "productType"
+      : existingByName
+        ? "name"
+        : "fallback";
   const descriptionBase = existing?.description?.replace(/\n\[operationsProductCode:[^\]]+\]/g, "").trim() || "";
   const customDescription = input.description?.trim() || "";
   const nextDescription = `${customDescription || descriptionBase}${marker}`.trim();
@@ -65,7 +81,7 @@ export async function syncOperationsProductToStore(
         category: input.category || existing.category || "general",
         price: input.defaultPrice !== undefined && input.defaultPrice !== null ? input.defaultPrice : existing.price,
         productType: productType || operationsProductCode,
-        isActive: visible ?? existing.isActive,
+        isActive: Boolean(visible),
         image: input.image !== undefined ? input.image : existing.image,
       },
     });
@@ -76,6 +92,9 @@ export async function syncOperationsProductToStore(
       created: false,
       updated: true,
       alreadyPublished: Boolean(parseHiddenMarker(existing.description || updated.description)),
+      isActive: updated.isActive,
+      markerPresent: Boolean(parseHiddenMarker(updated.description)),
+      matchStrategy,
     };
   }
 
@@ -100,6 +119,9 @@ export async function syncOperationsProductToStore(
     created: true,
     updated: false,
     alreadyPublished: false,
+    isActive: created.isActive,
+    markerPresent: Boolean(parseHiddenMarker(created.description)),
+    matchStrategy,
   };
 }
 

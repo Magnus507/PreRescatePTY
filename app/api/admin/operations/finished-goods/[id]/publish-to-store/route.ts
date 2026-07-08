@@ -14,13 +14,13 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
-    const body = await req.json().catch(() => ({}));
-    const action = body.action === "unpublish" ? "unpublish" : "publish";
+  const body = await req.json().catch(() => ({}));
+  const action = body.action === "unpublish" ? "unpublish" : "publish";
 
-    try {
-      const finishedGood = await prisma.operationFinishedGood.findUnique({
-        where: { id },
-        select: { id: true, code: true, name: true, productType: true },
+  try {
+    const finishedGood = await prisma.operationFinishedGood.findUnique({
+      where: { id },
+      select: { id: true, code: true, name: true, productType: true },
     });
 
     if (!finishedGood) {
