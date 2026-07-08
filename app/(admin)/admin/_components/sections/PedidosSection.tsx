@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Loader2, View, CheckCircle2, Truck, RefreshCw, ExternalLink, Building2, XCircle, Copy, Download, ExternalLink as ExternalLinkIcon, UserRound, AlertCircle, X } from "lucide-react";
@@ -205,6 +206,8 @@ const PEDIDO_FILTERS: Array<{ id: PedidoFilter; label: string }> = [
 ];
 
 export function PedidosSection() {
+  const { data: session } = useSession();
+  const isSuperadmin = session?.user?.role === "superadmin";
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -222,6 +225,7 @@ export function PedidosSection() {
   const [paymentRejectionReason, setPaymentRejectionReason] = useState("");
   const [paymentRejectionError, setPaymentRejectionError] = useState("");
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [permanentlyDeletingOrderId, setPermanentlyDeletingOrderId] = useState<string | null>(null);
   const [reserveOrder, setReserveOrder] = useState<Order | null>(null);
   const [availableUnits, setAvailableUnits] = useState<Array<{
     id: string;
@@ -568,7 +572,7 @@ export function PedidosSection() {
     setPaymentRejectionError("");
   }, []);
 
-  const canDeleteTestOrder = useCallback((order: Order) => {
+  const canSoftDeleteOrder = useCallback((order: Order) => {
     const haystack = [
       order.orderNumber,
       order.customerName,
@@ -581,35 +585,32 @@ export function PedidosSection() {
       .join(" ")
       .toLowerCase();
     const isMarkedTest = /test|prueba|demo|seed|sandbox|mock|fake/.test(haystack);
-    const hasNoAdvancedOps =
-      !order.paymentProofUrl &&
-      !order.manualPaymentReference &&
-      !order.productionOrder &&
-      !order.dispatch &&
-      !order.reservedUnits?.length;
-    const isUnstarted = order.orderStatus === "pending" && order.paymentStatus === "pending";
-    return isMarkedTest && hasNoAdvancedOps && isUnstarted;
+    const isTerminal = order.orderStatus === "completed" || order.orderStatus === "cancelled";
+    return isMarkedTest || !isTerminal;
   }, []);
 
-  const handleDeleteOrder = useCallback(async (event: React.MouseEvent, order: Order) => {
+  const handleSoftDeleteOrder = useCallback(async (event: React.MouseEvent, order: Order) => {
     event.stopPropagation();
-    if (!canDeleteTestOrder(order)) {
-      toast.error("Solo se pueden eliminar pedidos de prueba sin trazabilidad.");
-      return;
-    }
+    const confirmText = window.prompt("Escribe ELIMINAR para confirmar:");
+    if (confirmText !== "ELIMINAR") return;
 
-    const confirmed = window.confirm("Esto eliminará el pedido de prueba por completo. ¿Continuar?");
+    const reason = window.prompt("Motivo opcional para la eliminación segura:");
+    const confirmed = window.confirm("Esto ocultará el pedido de la vista operativa. ¿Continuar?");
     if (!confirmed) return;
 
     setDeletingOrderId(order.id);
     try {
-      const res = await fetch(`/api/admin/orders/${order.id}/test-delete`, {
-        method: "DELETE",
+      const res = await fetch(`/api/admin/orders/${order.id}/delete`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmText: "ELIMINAR",
+          reason,
+        }),
       });
 
       if (res.ok) {
-        toast.success("Pedido de prueba eliminado.");
+        toast.success("Pedido ocultado de la vista operativa.");
         await loadOrders();
         return;
       }
@@ -621,7 +622,49 @@ export function PedidosSection() {
     } finally {
       setDeletingOrderId(null);
     }
-  }, [canDeleteTestOrder, loadOrders]);
+  }, [loadOrders]);
+
+  const handlePermanentDeleteOrder = useCallback(async (event: React.MouseEvent, order: Order) => {
+    event.stopPropagation();
+    if (!isSuperadmin) {
+      toast.error("Solo superadmin puede eliminar permanentemente.");
+      return;
+    }
+
+    const reason = window.prompt("Motivo obligatorio para el borrado permanente:");
+    if (!reason?.trim()) {
+      toast.error("El motivo es obligatorio.");
+      return;
+    }
+
+    const confirmText = window.prompt("Escribe ELIMINAR PERMANENTEMENTE para confirmar:");
+    if (confirmText !== "ELIMINAR PERMANENTEMENTE") return;
+
+    setPermanentlyDeletingOrderId(order.id);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/permanent-delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmText: "ELIMINAR PERMANENTEMENTE",
+          reason,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Pedido eliminado permanentemente.");
+        await loadOrders();
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      toast.error(data?.error || "No se pudo eliminar permanentemente el pedido.");
+    } catch {
+      toast.error("No se pudo eliminar permanentemente el pedido.");
+    } finally {
+      setPermanentlyDeletingOrderId(null);
+    }
+  }, [isSuperadmin, loadOrders]);
 
   const openReserveModal = useCallback(async (event: React.MouseEvent, order: Order) => {
     event.stopPropagation();
@@ -1047,14 +1090,24 @@ export function PedidosSection() {
                 Archivar
               </button>
             )}
-            {canDeleteTestOrder(order) && (
+            {canSoftDeleteOrder(order) && (
               <button
                 type="button"
-                onClick={(e) => handleDeleteOrder(e, order)}
+                onClick={(e) => handleSoftDeleteOrder(e, order)}
                 disabled={deletingOrderId === order.id}
                 className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100 disabled:opacity-50"
               >
                 {deletingOrderId === order.id ? "Eliminando..." : "Eliminar pedido"}
+              </button>
+            )}
+            {isSuperadmin && (
+              <button
+                type="button"
+                onClick={(e) => handlePermanentDeleteOrder(e, order)}
+                disabled={permanentlyDeletingOrderId === order.id}
+                className="rounded-2xl border border-red-300 bg-red-100 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-800 transition-all hover:bg-red-200 disabled:opacity-50"
+              >
+                {permanentlyDeletingOrderId === order.id ? "Eliminando..." : "Eliminar permanentemente"}
               </button>
             )}
           </div>
@@ -2041,14 +2094,24 @@ export function PedidosSection() {
                             >
                               Ver comprobante
                             </button>
-                            {canDeleteTestOrder(order) && (
+                            {canSoftDeleteOrder(order) && (
                               <button
                                 type="button"
-                                onClick={(e) => handleDeleteOrder(e, order)}
+                                onClick={(e) => handleSoftDeleteOrder(e, order)}
                                 disabled={deletingOrderId === order.id}
                                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-100 disabled:opacity-50"
                               >
                                 {deletingOrderId === order.id ? "Eliminando..." : "Eliminar pedido"}
+                              </button>
+                            )}
+                            {isSuperadmin && (
+                              <button
+                                type="button"
+                                onClick={(e) => handlePermanentDeleteOrder(e, order)}
+                                disabled={permanentlyDeletingOrderId === order.id}
+                                className="inline-flex w-fit items-center gap-2 rounded-xl border border-red-300 bg-red-100 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800 hover:bg-red-200 disabled:opacity-50"
+                              >
+                                {permanentlyDeletingOrderId === order.id ? "Eliminando..." : "Eliminar permanentemente"}
                               </button>
                             )}
                             <p className="text-[10px] font-bold text-emerald-700">Comprobante enviado por el cliente. Pago en revisión.</p>
