@@ -113,11 +113,13 @@ interface Order {
   manualPaymentReference: string | null;
   adminReviewStatus: string | null;
   adminReviewNotes: string | null;
+  adminReviewedAt?: string | null;
   paymentProofUrl: string | null;
   shippingAddress: string | null;
   shippingCity: string | null;
   shippingNotes: string | null;
   createdAt: string;
+  updatedAt: string;
   orderType: string | null;
   corporateDeliveryStatus?: string | null;
   estimatedDeliveryDate?: string | null;
@@ -234,13 +236,15 @@ export function PedidosSection() {
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [reviewNote, setReviewNote] = useState("");
   const [updating, setUpdating] = useState(false);
-  const loadOrdersRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const loadOrdersRef = useRef<() => Promise<boolean>>(() => Promise.resolve(true));
   const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
+  const [approvingOrderId, setApprovingOrderId] = useState<string | null>(null);
   const [markingDelivered, setMarkingDelivered] = useState(false);
   const initializedOrderIdRef = useRef<string | null>(null);
   const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
   const [rejectingPaymentOrder, setRejectingPaymentOrder] = useState<Order | null>(null);
+  const [rejectingOrderId, setRejectingOrderId] = useState<string | null>(null);
   const [paymentRejectionReason, setPaymentRejectionReason] = useState("");
   const [paymentRejectionError, setPaymentRejectionError] = useState("");
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
@@ -282,8 +286,9 @@ export function PedidosSection() {
     reason: "Reposición de inventario",
   });
 
-  const loadOrders = useCallback(async (options?: { silent?: boolean }) => {
+  const loadOrders = useCallback(async (options?: { silent?: boolean; showErrorToast?: boolean }) => {
     const isSilent = options?.silent ?? false;
+    const showErrorToast = options?.showErrorToast ?? !isSilent;
     if (!isSilent) setLoading(true);
     if (isSilent) setRefreshing(true);
     try {
@@ -291,6 +296,14 @@ export function PedidosSection() {
         fetch(`/api/admin/orders?_t=${Date.now()}`, { cache: "no-store" }),
         fetch(`/api/admin/operations/commercial-orders?_t=${Date.now()}`, { cache: "no-store" }),
       ]);
+      if (!legacyRes.ok) {
+        const data = await legacyRes.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo cargar pedidos");
+      }
+      if (!internalRes.ok) {
+        const data = await internalRes.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo cargar pedidos internos");
+      }
       const [legacyData, internalData] = await Promise.all([legacyRes.json(), internalRes.json()]);
       const internalOrders = Array.isArray(internalData.commercialOrders)
         ? internalData.commercialOrders
@@ -298,8 +311,12 @@ export function PedidosSection() {
             .map((order: InternalCommercialOrder) => mapInternalCommercialOrder(order))
         : [];
       setOrders([...(legacyData.orders || []), ...internalOrders].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
-    } catch {
-      toast.error(isSilent ? "No se pudo actualizar pedidos" : "Error al cargar pedidos");
+      return true;
+    } catch (error) {
+      if (showErrorToast) {
+        toast.error(error instanceof Error ? error.message : isSilent ? "No se pudo actualizar pedidos" : "Error al cargar pedidos");
+      }
+      return false;
     } finally {
       if (!isSilent) setLoading(false);
       if (isSilent) setRefreshing(false);
@@ -446,8 +463,9 @@ export function PedidosSection() {
   const handleApprove = async (targetOrder?: Order) => {
     const order = targetOrder ?? selectedOrder;
     if (!order || order.provider !== "manual") return;
+    if (approvingOrderId || rejectingOrderId) return;
+    setApprovingOrderId(order.id);
     setReviewAction("approve");
-    setUpdating(true);
     try {
       const res = await fetch(`/api/admin/orders/${order.id}/approve`, {
         method: "POST",
@@ -458,23 +476,79 @@ export function PedidosSection() {
       });
 
       if (res.ok) {
-        toast.success("Pago aprobado correctamente.");
-        setSelectedOrder(null);
-        loadOrders();
+        const data = await res.json().catch(() => ({}));
+        const updatedOrder = data?.order ?? data?.updatedOrder ?? null;
+        const changedStatus = updatedOrder?.orderStatus ?? data?.status ?? null;
+        const changedPaymentStatus = updatedOrder?.paymentStatus ?? data?.paymentStatus ?? "paid";
+        const shouldKeepSelected = Boolean(
+          selectedOrder &&
+          selectedOrder.id === order.id &&
+          selectedOrder.orderStatus === changedStatus &&
+          selectedOrder.paymentStatus === changedPaymentStatus
+        );
+
+        if (updatedOrder) {
+          setOrders((current) =>
+            current.map((item) =>
+              item.id === order.id
+                ? {
+                    ...item,
+                    ...updatedOrder,
+                    orderStatus: updatedOrder.orderStatus ?? item.orderStatus,
+                    paymentStatus: updatedOrder.paymentStatus ?? item.paymentStatus,
+                    adminReviewStatus: updatedOrder.adminReviewStatus ?? item.adminReviewStatus,
+                    adminReviewedAt: updatedOrder.adminReviewedAt ?? item.adminReviewedAt,
+                    adminReviewNotes: updatedOrder.adminReviewNotes ?? item.adminReviewNotes,
+                    updatedAt: updatedOrder.updatedAt ?? item.updatedAt,
+                  }
+                : item
+            )
+          );
+          setSelectedOrder((current) =>
+            current && current.id === order.id
+              ? {
+                  ...current,
+                  ...updatedOrder,
+                  orderStatus: updatedOrder.orderStatus ?? current.orderStatus,
+                  paymentStatus: updatedOrder.paymentStatus ?? current.paymentStatus,
+                  adminReviewStatus: updatedOrder.adminReviewStatus ?? current.adminReviewStatus,
+                  adminReviewedAt: updatedOrder.adminReviewedAt ?? (current as Order & { adminReviewedAt?: string | null }).adminReviewedAt,
+                  adminReviewNotes: updatedOrder.adminReviewNotes ?? current.adminReviewNotes,
+                  updatedAt: updatedOrder.updatedAt ?? current.updatedAt,
+                }
+              : current
+          );
+        }
+
+        const refreshed = await loadOrders({ silent: true, showErrorToast: false });
+        if (refreshed) {
+          toast.success(
+            shouldKeepSelected
+              ? "Pago aprobado correctamente."
+              : "Pago aprobado. El pedido puede haberse movido a otra pestaña/filtro."
+          );
+        } else {
+          toast.success("Pago aprobado correctamente.");
+          toast.warning("La acción se aplicó, pero no se pudo refrescar la lista. Recarga la página.");
+        }
+        if (!shouldKeepSelected) {
+          setSelectedOrder(null);
+        }
       } else if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data?.message || "El pago ya fue revisado o el pedido cambió de estado.");
+        toast.error(data?.message || data?.error || "El pago ya fue revisado o el pedido cambió de estado.");
       } else if (res.status === 403) {
         toast.error("No tienes permiso para revisar este pago.");
       } else if (res.status === 404) {
         toast.error("El pedido ya no está disponible.");
       } else {
-        toast.error("No se pudo actualizar el pago. Inténtalo nuevamente.");
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.message || data?.error || "No se pudo actualizar el pago. Inténtalo nuevamente.");
       }
-    } catch {
-      toast.error("No se pudo actualizar el pago. Inténtalo nuevamente.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar el pago. Inténtalo nuevamente.");
     } finally {
-      setUpdating(false);
+      setApprovingOrderId(null);
       setReviewAction(null);
     }
   };
@@ -487,8 +561,9 @@ export function PedidosSection() {
       toast.error("Indique el motivo del rechazo.");
       return;
     }
+    if (approvingOrderId || rejectingOrderId) return;
+    setRejectingOrderId(order.id);
     setReviewAction("reject");
-    setUpdating(true);
     try {
       const res = await fetch(`/api/admin/orders/${order.id}/reject`, {
         method: "POST",
@@ -499,23 +574,65 @@ export function PedidosSection() {
       });
 
       if (res.ok) {
-        toast.success("Pago rechazado correctamente.");
-        setSelectedOrder(null);
-        loadOrders();
+        const data = await res.json().catch(() => ({}));
+        const updatedOrder = data?.order ?? data?.updatedOrder ?? null;
+        if (updatedOrder) {
+          setOrders((current) =>
+            current.map((item) =>
+              item.id === order.id
+                ? {
+                    ...item,
+                    ...updatedOrder,
+                    orderStatus: updatedOrder.orderStatus ?? item.orderStatus,
+                    paymentStatus: updatedOrder.paymentStatus ?? item.paymentStatus,
+                    adminReviewStatus: updatedOrder.adminReviewStatus ?? item.adminReviewStatus,
+                    adminReviewedAt: updatedOrder.adminReviewedAt ?? item.adminReviewedAt,
+                    adminReviewNotes: updatedOrder.adminReviewNotes ?? item.adminReviewNotes,
+                    updatedAt: updatedOrder.updatedAt ?? item.updatedAt,
+                  }
+                : item
+            )
+          );
+          setSelectedOrder((current) =>
+            current && current.id === order.id
+              ? {
+                  ...current,
+                  ...updatedOrder,
+                  orderStatus: updatedOrder.orderStatus ?? current.orderStatus,
+                  paymentStatus: updatedOrder.paymentStatus ?? current.paymentStatus,
+                  adminReviewStatus: updatedOrder.adminReviewStatus ?? current.adminReviewStatus,
+                  adminReviewedAt: updatedOrder.adminReviewedAt ?? current.adminReviewedAt,
+                  adminReviewNotes: updatedOrder.adminReviewNotes ?? current.adminReviewNotes,
+                  updatedAt: updatedOrder.updatedAt ?? current.updatedAt,
+                }
+              : current
+          );
+        }
+        const refreshed = await loadOrders({ silent: true, showErrorToast: false });
+        toast.success(
+          refreshed
+            ? "Pago rechazado correctamente."
+            : "Pago rechazado correctamente. La lista no se pudo refrescar; recarga la página."
+        );
+        if (!refreshed) {
+          toast.warning("La acción se aplicó, pero no se pudo refrescar la lista. Recarga la página.");
+        }
+        setSelectedOrder((current) => (current && current.id === order.id ? null : current));
       } else if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data?.message || "El pago ya fue revisado o el pedido cambió de estado.");
+        toast.error(data?.message || data?.error || "El pago ya fue revisado o el pedido cambió de estado.");
       } else if (res.status === 403) {
         toast.error("No tienes permiso para revisar este pago.");
       } else if (res.status === 404) {
         toast.error("El pedido ya no está disponible.");
       } else {
-        toast.error("No se pudo actualizar el pago. Inténtalo nuevamente.");
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.message || data?.error || "No se pudo actualizar el pago. Inténtalo nuevamente.");
       }
-    } catch {
-      toast.error("No se pudo actualizar el pago. Inténtalo nuevamente.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar el pago. Inténtalo nuevamente.");
     } finally {
-      setUpdating(false);
+      setRejectingOrderId(null);
       setReviewAction(null);
     }
   };
@@ -791,6 +908,7 @@ export function PedidosSection() {
       return;
     }
 
+    setRejectingOrderId(rejectingPaymentOrder.id);
     setReviewAction("reject");
     setUpdating(true);
     setPaymentRejectionError("");
@@ -827,6 +945,7 @@ export function PedidosSection() {
     } finally {
       setUpdating(false);
       setReviewAction(null);
+      setRejectingOrderId(null);
     }
   }, [loadOrders, paymentRejectionReason, rejectingPaymentOrder]);
 
@@ -1032,6 +1151,7 @@ export function PedidosSection() {
       shippingCity: null,
       shippingNotes: order.notes || "Reposición de inventario",
       createdAt: order.createdAt,
+      updatedAt: order.createdAt,
       orderType: "internal_replenishment",
       corporateDeliveryStatus: null,
       estimatedDeliveryDate: null,
@@ -2271,9 +2391,10 @@ export function PedidosSection() {
                         setSelectedOrder(order);
                         void handleApprove(order);
                       }}
+                      disabled={approvingOrderId === order.id || rejectingOrderId === order.id}
                       className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-all hover:bg-emerald-100"
                     >
-                      Aprobar pago
+                      {approvingOrderId === order.id ? "Aprobando..." : "Aprobar pago"}
                     </button>
                   )}
                   {order.canReserveInternalLabel && (!order.reservedUnits || order.reservedUnits.length === 0) && (
@@ -2315,9 +2436,10 @@ export function PedidosSection() {
                         stop(e);
                         handleOpenRejectPayment(e, order);
                       }}
+                      disabled={approvingOrderId === order.id || rejectingOrderId === order.id}
                       className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100"
                     >
-                      Rechazar pago
+                      {rejectingOrderId === order.id ? "Rechazando..." : "Rechazar pago"}
                     </button>
                   )}
                   {order.canSoftDeleteOrder && (
@@ -2397,11 +2519,11 @@ export function PedidosSection() {
                 <button
                   type="button"
                   onClick={() => void handleConfirmRejectPayment()}
-                  disabled={updating}
+                  disabled={updating || rejectingOrderId === rejectingPaymentOrder.id}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-red-700 disabled:opacity-50"
                 >
-                  {reviewAction === "reject" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {reviewAction === "reject" ? "Rechazando..." : "Confirmar rechazo"}
+                  {rejectingOrderId === rejectingPaymentOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {rejectingOrderId === rejectingPaymentOrder.id ? "Rechazando..." : "Confirmar rechazo"}
                 </button>
               </div>
             </div>

@@ -14,6 +14,17 @@ const ApproveSchema = z.object({
   assignedChipIds: z.array(z.string()).optional(),
 });
 
+type AdminReviewedOrder = {
+  id: string;
+  orderNumber: string;
+  orderStatus: string;
+  paymentStatus: string;
+  adminReviewStatus: string | null;
+  adminReviewedAt: Date | null;
+  adminReviewNotes: string | null;
+  updatedAt: Date;
+};
+
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (
@@ -132,7 +143,24 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       });
     });
 
-    return NextResponse.json({ orderId: order.id });
+    return NextResponse.json({
+      success: true,
+      action: "approve",
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      status: "completed",
+      paymentStatus: "paid",
+      message: "Pago aprobado correctamente.",
+      order: {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        orderStatus: "completed",
+        paymentStatus: "paid",
+        adminReviewStatus: "approved",
+        adminReviewedAt: new Date().toISOString(),
+        adminReviewNotes: notes,
+      },
+    });
   }
 
   // Buscar usuario y accountId
@@ -194,7 +222,24 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       await AccountStateService.invalidateCache(order.userId);
     }
 
-    return NextResponse.json({ orderId: order.id });
+    return NextResponse.json({
+      success: true,
+      action: "approve",
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      status: "completed",
+      paymentStatus: "paid",
+      message: "Pago aprobado correctamente.",
+      order: {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        orderStatus: "completed",
+        paymentStatus: "paid",
+        adminReviewStatus: "approved",
+        adminReviewedAt: new Date().toISOString(),
+        adminReviewNotes: notes,
+      },
+    });
   }
 
   // Validar paquete por order.packageId (solo para órdenes de paquete/chips)
@@ -215,7 +260,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   }
 
   // Actualizar orden y cuenta en transacción
-  let result: { updatedOrder: { id: string }; account: { id: string } };
+  let result: { updatedOrder: AdminReviewedOrder; account: { id: string } };
   try {
     result = await prisma.$transaction(async (tx) => {
       // Actualizar orden
@@ -286,7 +331,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           oldValuesJson: null,
         }
       });
-      return { updatedOrder: { id: updatedOrder.id }, account: { id: account.id } };
+      return { updatedOrder, account: { id: account.id } };
     });
   } catch (error: unknown) {
     const status = typeof error === "object" && error !== null && "status" in error
@@ -302,5 +347,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     await AccountStateService.invalidateCache(order.userId);
   }
 
-  return NextResponse.json({ orderId: result.updatedOrder.id });
+  return NextResponse.json({
+    success: true,
+    action: "approve",
+    orderId: result.updatedOrder.id,
+    orderNumber: result.updatedOrder.orderNumber,
+    status: result.updatedOrder.orderStatus,
+    paymentStatus: result.updatedOrder.paymentStatus,
+    message: "Pago aprobado correctamente.",
+    order: result.updatedOrder,
+  });
 }

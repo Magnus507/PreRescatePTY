@@ -12,6 +12,17 @@ const RejectSchema = z.object({
   reason: z.string().optional(),
 });
 
+type AdminReviewedOrder = {
+  id: string;
+  orderNumber: string;
+  orderStatus: string;
+  paymentStatus: string;
+  adminReviewStatus: string | null;
+  adminReviewedAt: Date | null;
+  adminReviewNotes: string | null;
+  updatedAt: Date;
+};
+
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireRole(ORDER_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
@@ -66,7 +77,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (order.orderType === "corporate_employee_purchase") {
     const memberIds = Array.from(new Set(order.corporateEmployeeItems.map((item) => item.organizationMemberId)));
 
-    let result: { updatedOrder: { id: string } };
+    let result: { updatedOrder: AdminReviewedOrder };
     try {
       result = await prisma.$transaction(async (tx) => {
         const updatedOrder = await tx.order.update({
@@ -117,7 +128,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "No se pudo rechazar la orden" }, { status: 500 });
     }
 
-    return NextResponse.json({ order: result.updatedOrder });
+    return NextResponse.json({
+      success: true,
+      action: "reject",
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      status: "cancelled",
+      paymentStatus: "rejected",
+      message: "Pago rechazado correctamente.",
+      order: result.updatedOrder,
+    });
   }
 
   // Buscar usuario y accountId
@@ -125,7 +145,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const accountId = user?.accountId || null;
 
   // Actualizar orden y crear AuditLog
-  let result: { updatedOrder: { id: string } };
+  let result: { updatedOrder: AdminReviewedOrder };
   try {
     result = await prisma.$transaction(async (tx) => {
       // Actualizar orden
@@ -165,5 +185,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     await AccountStateService.invalidateCache(order.userId);
   }
 
-  return NextResponse.json({ order: result.updatedOrder });
+  return NextResponse.json({
+    success: true,
+    action: "reject",
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    status: result.updatedOrder.orderStatus,
+    paymentStatus: result.updatedOrder.paymentStatus,
+    message: "Pago rechazado correctamente.",
+    order: result.updatedOrder,
+  });
 }
