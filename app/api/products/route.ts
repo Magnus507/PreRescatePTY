@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { extractOperationsProductCode } from "@/lib/operations/sync-operations-product-to-store";
 import { loadInventoryStockRows } from "@/lib/operations/inventory-stock";
 
+function stripOperationsMarker(description: string | null | undefined) {
+  if (!description) return null;
+  return description.replace(/\n?\[operationsProductCode:[^\]]+\]/g, "").trim() || null;
+}
+
 export async function GET() {
   try {
     const [products, stockRows] = await Promise.all([
@@ -27,7 +32,7 @@ export async function GET() {
         return {
           id: product.id,
           name: product.name,
-          description: product.description,
+          description: stripOperationsMarker(product.description),
           price: product.price,
           currency: "USD",
           category: product.category,

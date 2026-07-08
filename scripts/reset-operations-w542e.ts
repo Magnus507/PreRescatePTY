@@ -3,6 +3,25 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 const CONFIRMATION = "RESET_OPERATIONS_W542E";
 
+const BASE_FINISHED_GOODS = [
+  {
+    code: "PRP-FG-STICKER",
+    name: "Sticker PreRescatePTY",
+    productType: "sticker_prerescatepty",
+    unit: "unidad",
+    notes: "Producto terminado base normal. Venta, despacho y activacion siguen siendo etapas separadas.",
+    status: "active",
+  },
+  {
+    code: "PRP-FG-STICKER-EMP",
+    name: "Sticker PreRescatePTY Empresarial",
+    productType: "sticker_prerescatepty_empresarial",
+    unit: "unidad",
+    notes: "Producto terminado base empresarial. Requiere reglas operativas empresariales antes de activacion.",
+    status: "active",
+  },
+];
+
 function hasExecuteFlag(argv: string[]) {
   return argv.includes("--execute");
 }
@@ -146,6 +165,20 @@ async function main() {
       id: { in: orders.map((order) => order.id) },
     },
   });
+
+  for (const finishedGood of BASE_FINISHED_GOODS) {
+    await prisma.operationFinishedGood.upsert({
+      where: { code: finishedGood.code },
+      create: finishedGood,
+      update: {
+        name: finishedGood.name,
+        productType: finishedGood.productType,
+        unit: finishedGood.unit,
+        notes: finishedGood.notes,
+        status: finishedGood.status,
+      },
+    });
+  }
 
   console.log("Reset operativo completado.");
 }
