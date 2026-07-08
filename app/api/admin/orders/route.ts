@@ -188,12 +188,19 @@ export async function GET() {
     }, {});
 
     return NextResponse.json({
-      orders: ordersWithExistingChips.map((order) => ({
-        ...order,
-        ...buildOperationsOrderViewModel(order as Parameters<typeof buildOperationsOrderViewModel>[0]),
-        reservedUnits: reservedUnitsByOrderId[order.id] || [],
-        dispatch: dispatchByOrderId.get(order.id) || null,
-      })),
+      orders: ordersWithExistingChips.map((order) => {
+        const reservedUnits = reservedUnitsByOrderId[order.id] || [];
+        const dispatch = dispatchByOrderId.get(order.id) || null;
+        return {
+          ...buildOperationsOrderViewModel({
+            ...(order as Parameters<typeof buildOperationsOrderViewModel>[0]),
+            reservedUnits,
+            dispatch,
+          }),
+          reservedUnits,
+          dispatch,
+        };
+      }),
     });
   } catch (error) {
     console.error("Fetch orders error:", error);

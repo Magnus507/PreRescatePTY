@@ -47,6 +47,14 @@ export type OperationsOrderInput = {
     code: string;
     status: string;
   } | null;
+  reservedUnits?: Array<{
+    id: string;
+    internalLabel?: string | null;
+    shortCode?: string | null;
+    qaStatus?: string | null;
+    inventoryStatus?: string | null;
+    activationStatus?: string | null;
+  }>;
   items: OperationsOrderItem[];
 };
 
@@ -54,6 +62,11 @@ export type OperationsOrderViewModel = {
   id: string;
   sourceOrderId?: string;
   operationOrderId?: string;
+  orderSource: "legacy_order" | "commercial_order";
+  orderKind: "customer_order" | "internal_replenishment";
+  isCustomerOrder: boolean;
+  isInternalOrder: boolean;
+  sourceModel: "Order" | "OperationCommercialOrder";
   displayOrderCode: string;
   operationsReferenceCode: string;
   customerName: string;
@@ -105,6 +118,17 @@ export type OperationsOrderViewModel = {
   canReserveInternalLabel: boolean;
   canSendToProduction: boolean;
   canCreateDispatch: boolean;
+  requiresAction: boolean;
+  pendingCategory:
+    | "payment_review"
+    | "payment_missing"
+    | "reservation_needed"
+    | "dispatch_needed"
+    | "production_active"
+    | "blocked"
+    | null;
+  pendingReasonLabel: string | null;
+  pendingPriority: number | null;
   blockedReasons: string[];
 };
 
@@ -169,7 +193,90 @@ function getBlockedReasons(order: OperationsOrderInput, paymentProofAvailable: b
   return reasons;
 }
 
+function isTerminalProductionStatus(status?: string | null) {
+  return ["completed", "failed", "cancelled"].includes((status || "").toLowerCase());
+}
+
+function getOrderClassification(order: OperationsOrderInput) {
+  const isCommercialOrder = order.orderNumber.startsWith("OP-");
+  const fallbackInternal = order.orderNumber.startsWith("INT-");
+  const orderKind: "customer_order" | "internal_replenishment" =
+    order.orderType === "internal_replenishment" || fallbackInternal ? "internal_replenishment" : "customer_order";
+
+  return {
+    orderSource: (isCommercialOrder ? "commercial_order" : "legacy_order") as "legacy_order" | "commercial_order",
+    orderKind,
+    isCustomerOrder: orderKind === "customer_order",
+    isInternalOrder: orderKind === "internal_replenishment",
+    sourceModel: isCommercialOrder ? ("OperationCommercialOrder" as const) : ("Order" as const),
+  };
+}
+
+function getPendingState(order: OperationsOrderInput, paymentProofAvailable: boolean) {
+  const paymentStatus = (order.paymentStatus || "").toLowerCase();
+  const reservedUnits = order.reservedUnits || [];
+  const hasReservedUnits = reservedUnits.length > 0;
+  const isInternal = order.orderType === "internal_replenishment" || order.orderNumber.startsWith("INT-");
+  const isTerminal = order.orderStatus === "completed" || order.orderStatus === "cancelled";
+
+  if (isTerminal) {
+    return { requiresAction: false, pendingCategory: null, pendingReasonLabel: null, pendingPriority: null };
+  }
+
+  if (isInternal) {
+    const productionActive = !isTerminalProductionStatus(order.dispatch?.status) && order.orderStatus !== "completed" && order.orderStatus !== "cancelled";
+    if (productionActive) {
+      return {
+        requiresAction: true,
+        pendingCategory: "production_active" as const,
+        pendingReasonLabel: "Producción interna en curso",
+        pendingPriority: 3,
+      };
+    }
+  }
+
+  if (paymentStatus === "under_review" || paymentStatus === "payment_review" || paymentStatus === "pending_review" || order.adminReviewStatus === "pending") {
+    return {
+      requiresAction: true,
+      pendingCategory: "payment_review" as const,
+      pendingReasonLabel: "Revisar comprobante de pago",
+      pendingPriority: 1,
+    };
+  }
+
+  if (paymentStatus === "pending" && !paymentProofAvailable) {
+    return {
+      requiresAction: true,
+      pendingCategory: "payment_missing" as const,
+      pendingReasonLabel: "Pago pendiente",
+      pendingPriority: 1,
+    };
+  }
+
+  const canReserve = Boolean(order.paymentStatus === "paid" || order.adminReviewStatus === "approved" || paymentProofAvailable);
+  if (!isInternal && canReserve && !hasReservedUnits) {
+    return {
+      requiresAction: true,
+      pendingCategory: "reservation_needed" as const,
+      pendingReasonLabel: "Reservar unidad física",
+      pendingPriority: 2,
+    };
+  }
+
+  if (!isInternal && hasReservedUnits && !order.dispatch) {
+    return {
+      requiresAction: true,
+      pendingCategory: "dispatch_needed" as const,
+      pendingReasonLabel: "Enviar a despacho",
+      pendingPriority: 2,
+    };
+  }
+
+  return { requiresAction: false, pendingCategory: null, pendingReasonLabel: null, pendingPriority: null };
+}
+
 export function buildOperationsOrderViewModel(order: OperationsOrderInput): OperationsOrderViewModel {
+  const classification = getOrderClassification(order);
   const displayOrderCode = order.providerReference?.trim()?.startsWith("PR-")
     ? order.providerReference.trim()
     : order.orderNumber.startsWith("OP-")
@@ -210,10 +317,16 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const canSendToProduction = canReserveInternalLabel && order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
   const canCreateDispatch = Boolean(order.dispatch) === false && canSendToProduction && paymentStatusLabel !== "Pago pendiente";
   const blockedReasons = getBlockedReasons(order, paymentProofAvailable);
+  const pendingState = getPendingState(order, paymentProofAvailable);
 
   return {
     id: order.id,
     sourceOrderId: order.id,
+    orderSource: classification.orderSource,
+    orderKind: classification.orderKind,
+    isCustomerOrder: classification.isCustomerOrder,
+    isInternalOrder: classification.isInternalOrder,
+    sourceModel: classification.sourceModel,
     displayOrderCode,
     operationsReferenceCode,
     customerName: order.customerName,
@@ -250,6 +363,10 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
     canReserveInternalLabel,
     canSendToProduction,
     canCreateDispatch,
+    requiresAction: pendingState.requiresAction,
+    pendingCategory: pendingState.pendingCategory,
+    pendingReasonLabel: pendingState.pendingReasonLabel,
+    pendingPriority: pendingState.pendingPriority,
     blockedReasons,
   };
 }

@@ -63,6 +63,13 @@ interface FinishedGoodOption {
 
 interface Order {
   id: string;
+  sourceOrderId?: string;
+  operationOrderId?: string;
+  orderSource?: "legacy_order" | "commercial_order";
+  orderKind?: "customer_order" | "internal_replenishment";
+  isCustomerOrder?: boolean;
+  isInternalOrder?: boolean;
+  sourceModel?: "Order" | "OperationCommercialOrder";
   provider: string;
   orderNumber: string;
   sourceOrderNumber?: string | null;
@@ -83,6 +90,10 @@ interface Order {
   canReserveInternalLabel?: boolean;
   canSendToProduction?: boolean;
   canCreateDispatch?: boolean;
+  requiresAction?: boolean;
+  pendingCategory?: string | null;
+  pendingReasonLabel?: string | null;
+  pendingPriority?: number | null;
   orderStatusLabel?: string | null;
   customerName: string;
   customerEmail: string;
@@ -572,7 +583,7 @@ export function PedidosSection() {
     setPaymentRejectionError("");
   }, []);
 
-  const canSoftDeleteOrder = useCallback((order: Order) => {
+  const isSoftDeletableTestOrder = useCallback((order: Order) => {
     const haystack = [
       order.orderNumber,
       order.customerName,
@@ -585,8 +596,7 @@ export function PedidosSection() {
       .join(" ")
       .toLowerCase();
     const isMarkedTest = /test|prueba|demo|seed|sandbox|mock|fake/.test(haystack);
-    const isTerminal = order.orderStatus === "completed" || order.orderStatus === "cancelled";
-    return isMarkedTest || !isTerminal;
+    return isMarkedTest || (order.orderStatus !== "completed" && order.orderStatus !== "cancelled");
   }, []);
 
   const handleSoftDeleteOrder = useCallback(async (event: React.MouseEvent, order: Order) => {
@@ -817,56 +827,27 @@ export function PedidosSection() {
     }
   };
 
-  const isPendingOrder = useCallback((order: Order) => {
-    const paymentStatus = (order.paymentStatus || "").toLowerCase();
-    const paymentLabel = (order.paymentStatusLabel || order.paymentStatusHuman || "").toLowerCase();
-    const paymentReviewing = paymentStatus === "under_review" || paymentStatus === "payment_review" || paymentStatus === "pending_review";
-    const requiresAction = Boolean(order.canApprovePayment || order.canRejectPayment || order.canReserveInternalLabel);
-    const needsReservation =
-      order.paymentStatus === "paid" &&
-      !order.dispatch &&
-      Boolean(order.reservedUnits?.length === 0 || !order.reservedUnits?.length);
-
-    return paymentStatus === "pending" || paymentReviewing || paymentLabel.includes("revisión") || requiresAction || needsReservation;
-  }, []);
-
-  const isProductionTerminalStatus = useCallback((status?: string | null) => {
-    return ["completed", "failed", "cancelled"].includes((status || "").toLowerCase());
-  }, []);
-
-  const isInternalOrderForFilters = useCallback((order: Order) => {
-    return (
-      order.orderType === "internal_replenishment" ||
-      order.displayOrderCode?.startsWith("INT-") ||
-      order.operationsOrderCode?.startsWith("INT-") ||
-      order.orderNumber.startsWith("INT-")
-    );
-  }, []);
-
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      const internal = isInternalOrderForFilters(order);
-      const internalFinished = internal && isProductionTerminalStatus(order.productionOrder?.status);
-      if (activeFilter === "clients") return !internal;
-      if (activeFilter === "internal") return internal;
-      if (activeFilter === "pending") return internalFinished ? false : isPendingOrder(order);
+      if (activeFilter === "clients") return !order.isInternalOrder;
+      if (activeFilter === "internal") return Boolean(order.isInternalOrder);
+      if (activeFilter === "pending") return Boolean(order.requiresAction);
       return true;
     });
-  }, [activeFilter, isInternalOrderForFilters, isPendingOrder, isProductionTerminalStatus, orders]);
+  }, [activeFilter, orders]);
 
   const filterCounts = useMemo(() => {
     return orders.reduce(
       (acc, order) => {
         acc.all += 1;
-        if (isInternalOrderForFilters(order)) acc.internal += 1;
+        if (order.isInternalOrder) acc.internal += 1;
         else acc.clients += 1;
-        const internalFinished = isInternalOrderForFilters(order) && isProductionTerminalStatus(order.productionOrder?.status);
-        if (!internalFinished && isPendingOrder(order)) acc.pending += 1;
+        if (order.requiresAction) acc.pending += 1;
         return acc;
       },
       { all: 0, clients: 0, internal: 0, pending: 0 }
     );
-  }, [isInternalOrderForFilters, isPendingOrder, isProductionTerminalStatus, orders]);
+  }, [orders]);
 
   const formatDateTime = (value: string) =>
     new Intl.DateTimeFormat("es-PA", {
@@ -903,6 +884,13 @@ export function PedidosSection() {
     const quantity = firstItem?.quantity || 0;
     return {
       id: `internal-${order.id}`,
+      sourceOrderId: order.id,
+      operationOrderId: order.id,
+      orderSource: "commercial_order",
+      orderKind: "internal_replenishment",
+      isCustomerOrder: false,
+      isInternalOrder: true,
+      sourceModel: "OperationCommercialOrder",
       provider: "manual",
       orderNumber: order.code,
       sourceOrderNumber: order.code,
@@ -923,6 +911,12 @@ export function PedidosSection() {
       canReserveInternalLabel: false,
       canSendToProduction: false,
       canCreateDispatch: false,
+      requiresAction: Boolean(order.productionOrder && !["completed", "failed", "cancelled"].includes(order.productionOrder.status)),
+      pendingCategory: order.productionOrder && !["completed", "failed", "cancelled"].includes(order.productionOrder.status) ? "production_active" : null,
+      pendingReasonLabel: order.productionOrder && !["completed", "failed", "cancelled"].includes(order.productionOrder.status)
+        ? "Producción interna en curso"
+        : null,
+      pendingPriority: order.productionOrder && !["completed", "failed", "cancelled"].includes(order.productionOrder.status) ? 3 : null,
       orderStatusLabel: "Producción interna",
       customerName: "Inventario PT",
       customerEmail: "",
@@ -970,12 +964,6 @@ export function PedidosSection() {
       blockedReasons: [],
     };
   };
-
-  const isInternalOrder = (order: Order) =>
-    order.orderType === "internal_replenishment" ||
-    order.displayOrderCode?.startsWith("INT-") ||
-    order.operationsReferenceCode?.startsWith("INT-") ||
-    order.orderNumber.startsWith("INT-");
 
   const renderInternalOrderCard = (order: Order) => {
     const isExpanded = expandedOrderIds.has(order.id);
@@ -1090,7 +1078,7 @@ export function PedidosSection() {
                 Archivar
               </button>
             )}
-            {canSoftDeleteOrder(order) && (
+            {isSoftDeletableTestOrder(order) && (
               <button
                 type="button"
                 onClick={(e) => handleSoftDeleteOrder(e, order)}
@@ -1998,7 +1986,7 @@ export function PedidosSection() {
 
       <div className="space-y-3">
         {filteredOrders.map((order: Order) => {
-          if (isInternalOrder(order)) {
+          if (order.isInternalOrder) {
             return renderInternalOrderCard(order);
           }
           const isCorporateOrder = order.orderType === "corporate_employee_purchase";
@@ -2041,6 +2029,11 @@ export function PedidosSection() {
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
                       {order.paymentStatusLabel || getPaymentReviewLabel(order)}
                     </span>
+                    {order.pendingReasonLabel && (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-700">
+                        {order.pendingReasonLabel}
+                      </span>
+                    )}
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
                       {expanded ? "Expandida" : "Expandir"}
                     </span>
@@ -2094,7 +2087,7 @@ export function PedidosSection() {
                             >
                               Ver comprobante
                             </button>
-                            {canSoftDeleteOrder(order) && (
+                            {isSoftDeletableTestOrder(order) && (
                               <button
                                 type="button"
                                 onClick={(e) => handleSoftDeleteOrder(e, order)}
