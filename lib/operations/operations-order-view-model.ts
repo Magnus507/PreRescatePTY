@@ -350,8 +350,9 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
     ? "Sticker PreRescatePTY"
     : commercialItemName;
   const operationalQuantity = commercialQuantity * comboMultiplier;
-  const canApprovePayment = paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
-  const canRejectPayment = paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
+  const isCancelled = order.orderStatus === "cancelled";
+  const canApprovePayment = !isCancelled && paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
+  const canRejectPayment = !isCancelled && paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
   const canArchiveOrder = order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
   const canAcceptOrder = order.orderStatus === "pending" || order.orderStatus === "processing" || order.orderStatus === "accepted";
   const canRejectOrder = order.orderStatus === "pending" || order.orderStatus === "processing" || order.orderStatus === "accepted";
@@ -427,9 +428,9 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
     canAcceptOrder,
     canRejectOrder,
     canArchiveOrder,
-    canReserveInternalLabel,
-    canSendToProduction,
-    canCreateDispatch,
+    canReserveInternalLabel: !isCancelled && canReserveInternalLabel,
+    canSendToProduction: !isCancelled && canSendToProduction,
+    canCreateDispatch: !isCancelled && canCreateDispatch,
     canSoftDeleteOrder,
     softDeleteLabel,
     softDeleteHelpText,

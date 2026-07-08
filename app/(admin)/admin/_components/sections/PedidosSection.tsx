@@ -214,13 +214,14 @@ interface InternalCommercialOrder {
   productionOrder?: { id: string; code: string; status: string } | null;
 }
 
-type PedidoFilter = "all" | "clients" | "internal" | "pending";
+type PedidoFilter = "all" | "clients" | "internal" | "pending" | "cancelled";
 
 const PEDIDO_FILTERS: Array<{ id: PedidoFilter; label: string }> = [
   { id: "all", label: "Todos" },
   { id: "clients", label: "Pedidos de clientes" },
   { id: "internal", label: "Pedidos internos" },
   { id: "pending", label: "Pendientes" },
+  { id: "cancelled", label: "Cancelados" },
 ];
 
 export function PedidosSection() {
@@ -881,6 +882,8 @@ export function PedidosSection() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
+      if (activeFilter === "cancelled") return order.orderStatus === "cancelled" || order.paymentStatus === "rejected";
+      if (order.orderStatus === "cancelled" || order.paymentStatus === "rejected") return false;
       if (activeFilter === "clients") return !order.isInternalOrder;
       if (activeFilter === "internal") return Boolean(order.isInternalOrder);
       if (activeFilter === "pending") return Boolean(order.requiresAction);
@@ -895,9 +898,10 @@ export function PedidosSection() {
         if (order.isInternalOrder) acc.internal += 1;
         else acc.clients += 1;
         if (order.requiresAction) acc.pending += 1;
+        if (order.orderStatus === "cancelled" || order.paymentStatus === "rejected") acc.cancelled += 1;
         return acc;
       },
-      { all: 0, clients: 0, internal: 0, pending: 0 }
+      { all: 0, clients: 0, internal: 0, pending: 0, cancelled: 0 }
     );
   }, [orders]);
 
@@ -909,6 +913,8 @@ export function PedidosSection() {
         return "No hay pedidos internos.";
       case "pending":
         return "No hay pedidos que requieran acción.";
+      case "cancelled":
+        return "No hay pedidos cancelados.";
       default:
         return "No hay pedidos para mostrar.";
     }
@@ -2441,6 +2447,9 @@ export function PedidosSection() {
             <div className="mt-4 space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-semibold text-amber-900">
                 Esta acción no borra físicamente el pedido. Lo oculta de la vista operativa usando el flujo seguro existente y registra auditoría. No toca unidades físicas, producción, despacho, activación, QR/NFC, shortCode ni internalLabel.
+              </p>
+              <p className="text-sm font-semibold text-amber-900">
+                Si este pedido tiene unidades reservadas que no han sido despachadas, entregadas ni activadas, se liberarán automáticamente.
               </p>
               <input
                 value={softDeleteConfirmText}
