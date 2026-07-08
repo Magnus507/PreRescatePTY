@@ -105,6 +105,7 @@ interface Order {
   customerPhone: string;
   customerDocument: string;
   amount: number;
+  total?: number | null;
   currency?: string;
   orderStatus: string;
   paymentStatus: string;
@@ -244,6 +245,13 @@ export function PedidosSection() {
   const [permanentlyDeletingOrderId, setPermanentlyDeletingOrderId] = useState<string | null>(null);
 
   const formatMoney = (value: number | null | undefined) => `$${(Number(value) || 0).toFixed(2)}`;
+  const getPositiveMoneyValue = (...values: Array<number | null | undefined>) => {
+    for (const value of values) {
+      const normalized = Number(value);
+      if (Number.isFinite(normalized) && normalized > 0) return normalized;
+    }
+    return 0;
+  };
   const [softDeleteOrder, setSoftDeleteOrder] = useState<Order | null>(null);
   const [softDeleteReason, setSoftDeleteReason] = useState("");
   const [softDeleteConfirmText, setSoftDeleteConfirmText] = useState("");
@@ -1248,7 +1256,7 @@ export function PedidosSection() {
                         </div>
                        <div className="bg-white rounded-xl p-4 border border-blue-100">
                          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Total</p>
-                         <p className="font-bold text-2xl text-primary">{formatMoney(selectedOrder.amount)}</p>
+                         <p className="font-bold text-2xl text-primary">{formatMoney(getPositiveMoneyValue(selectedOrder.total, selectedOrder.commercialTotal, selectedOrder.amount))}</p>
                        </div>
                      </div>
                      <div className="flex flex-wrap gap-2">
@@ -1633,7 +1641,7 @@ export function PedidosSection() {
                            Total del Pedido
                         </h3>
                         <div className="bg-slate-900 dark:bg-black p-5 rounded-[1.75rem] text-white shadow-lg">
-                           <p className="text-3xl font-black tracking-tighter text-primary">{formatMoney(selectedOrder.amount)}</p>
+                           <p className="text-3xl font-black tracking-tighter text-primary">{formatMoney(getPositiveMoneyValue(selectedOrder.total, selectedOrder.commercialTotal, selectedOrder.amount))}</p>
                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mt-1">USD</p>
                         </div>
                      </section>
@@ -2081,7 +2089,7 @@ export function PedidosSection() {
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Monto</p>
-                      <p className="mt-2 text-2xl font-black text-primary">{formatMoney(order.amount)}</p>
+                      <p className="mt-2 text-2xl font-black text-primary">{formatMoney(getPositiveMoneyValue(order.total, order.commercialTotal, order.amount))}</p>
                       <p className="text-xs text-slate-500">{order.currency || "USD"}</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -2152,7 +2160,7 @@ export function PedidosSection() {
                       <div className="rounded-3xl border border-slate-200 bg-white p-4 space-y-3">
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Item comercial y operativo</p>
                         <p className="text-sm font-black text-slate-900">{order.commercialItemName || order.items[0]?.productType || "Combo no especificado"} x{commercialQty}</p>
-                        <p className="text-xs font-semibold text-slate-500">Comercial total: {formatMoney(order.commercialTotal ?? order.amount)}</p>
+                        <p className="text-xs font-semibold text-slate-500">Comercial total: {formatMoney(getPositiveMoneyValue(order.commercialTotal, order.total, order.amount))}</p>
                         <p className="text-sm font-black text-slate-900">{order.operationalProductName || "Sticker PreRescatePTY"} x{operationalQty}</p>
                         <p className="text-xs font-semibold text-slate-700">{order.operationalProductCode || "PRP-FG-STICKER"}</p>
 

@@ -46,6 +46,8 @@ interface Order {
   id: string;
   orderNumber: string;
   amount: number;
+  total?: number | null;
+  commercialTotal?: number | null;
   provider: string;
   orderStatus: string;
   paymentStatus: string;
@@ -87,6 +89,13 @@ function PedidosContent() {
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
 
   const formatMoney = (value: number | null | undefined) => `$${(Number(value) || 0).toFixed(2)}`;
+  const getPositiveMoneyValue = (...values: Array<number | null | undefined>) => {
+    for (const value of values) {
+      const normalized = Number(value);
+      if (Number.isFinite(normalized) && normalized > 0) return normalized;
+    }
+    return 0;
+  };
   const toSafeDate = (value: unknown): Date | null => {
     if (!value) return null;
     if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;
@@ -277,7 +286,7 @@ function PedidosContent() {
                           Copiar
                         </button>
                       </div>
-                      <h3 className={`${isFinalCompactState ? "text-2xl" : "text-3xl"} font-black tracking-tighter`}>{formatMoney(order.amount)}</h3>
+                      <h3 className={`${isFinalCompactState ? "text-2xl" : "text-3xl"} font-black tracking-tighter`}>{formatMoney(getPositiveMoneyValue(order.total, order.commercialTotal, order.amount))}</h3>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">{formatDateSafe(order.createdAt)}</p>
                       <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">Pago: {(order.paymentMethod || "manual").replace("_", " ")}</p>
                     </div>
