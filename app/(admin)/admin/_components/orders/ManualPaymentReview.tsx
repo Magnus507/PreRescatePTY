@@ -82,15 +82,25 @@ export function ManualPaymentReview({
             <p className="text-[10px] text-amber-700 font-semibold">Recomendado: indique el motivo del rechazo.</p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
+                type="button"
                 disabled={updating || !canAdminApproveManual(order)}
-                onClick={onApprove}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onApprove();
+                }}
                 className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50"
               >
                 Aprobar Pago
               </button>
               <button
+                type="button"
                 disabled={updating || !canAdminRejectManual(order)}
-                onClick={onReject}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onReject();
+                }}
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
               >
                 Rechazar Pago
