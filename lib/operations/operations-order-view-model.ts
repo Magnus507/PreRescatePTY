@@ -59,6 +59,7 @@ export type OperationsOrderInput = {
     id: string;
     internalLabel?: string | null;
     shortCode?: string | null;
+    status?: string | null;
     qaStatus?: string | null;
     inventoryStatus?: string | null;
     activationStatus?: string | null;
@@ -107,6 +108,7 @@ export type OperationsOrderViewModel = {
     id: string;
     internalLabel?: string | null;
     shortCode?: string | null;
+    status?: string | null;
     qaStatus?: string | null;
     inventoryStatus?: string | null;
     activationStatus?: string | null;
@@ -353,13 +355,16 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const canArchiveOrder = order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
   const canAcceptOrder = order.orderStatus === "pending" || order.orderStatus === "processing" || order.orderStatus === "accepted";
   const canRejectOrder = order.orderStatus === "pending" || order.orderStatus === "processing" || order.orderStatus === "accepted";
+  const hasReservedUnits = (order.reservedUnits || []).length > 0;
+  const isPaymentApproved = order.paymentStatus === "paid" || order.adminReviewStatus === "approved";
   const canReserveInternalLabel =
     order.provider === "manual" &&
-    (order.paymentStatus === "paid" || order.adminReviewStatus === "approved" || paymentProofAvailable) &&
+    isPaymentApproved &&
+    !hasReservedUnits &&
     order.orderStatus !== "cancelled" &&
     order.orderStatus !== "completed";
   const canSendToProduction = canReserveInternalLabel && order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
-  const canCreateDispatch = Boolean(order.dispatch) === false && canSendToProduction && paymentStatusLabel !== "Pago pendiente";
+  const canCreateDispatch = Boolean(order.dispatch) === false && hasReservedUnits && isPaymentApproved && order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
   const blockedReasons = getBlockedReasons(order, paymentProofAvailable);
   const pendingState = getPendingState(order, paymentProofAvailable);
   const testSignals = detectTestOrderSignals(order);

@@ -175,6 +175,7 @@ interface Order {
     id: string;
     internalLabel?: string | null;
     shortCode?: string | null;
+    status?: string | null;
     qaStatus?: string | null;
     inventoryStatus?: string | null;
     activationStatus?: string | null;
@@ -549,6 +550,47 @@ export function PedidosSection() {
     if (order.paymentProofAvailable || order.paymentProofUrl || order.manualPaymentReference) return "Pago en revisión";
     if (order.paymentStatus === "under_review") return "Pago en revisión";
     return getPaymentStatusLabel(order.paymentStatus);
+  };
+
+  const getReservedUnitSummary = (unit: NonNullable<Order["reservedUnits"]>[number]) => {
+    const qcLabel = (() => {
+      switch ((unit.qaStatus || "").toLowerCase()) {
+        case "passed":
+          return "QC: aprobado";
+        case "failed":
+          return "QC: rechazado";
+        case "pending":
+        default:
+          return "QC: pendiente";
+      }
+    })();
+
+    const inventoryLabel = (() => {
+      switch ((unit.status || unit.inventoryStatus || "").toLowerCase()) {
+        case "reserved":
+          return "Reserva: confirmada";
+        case "available":
+          return "Inventario: disponible";
+        case "dispatched":
+          return "Despacho: enviado";
+        case "delivered":
+          return "Entregado";
+        default:
+          return "Inventario: reservado";
+      }
+    })();
+
+    const activationLabel = (() => {
+      switch ((unit.activationStatus || "").toLowerCase()) {
+        case "activated":
+          return "Activación: activada";
+        case "not_activated":
+        default:
+          return "Activación: pendiente";
+      }
+    })();
+
+    return `${qcLabel} · ${inventoryLabel} · ${activationLabel}`;
   };
 
   const getStatusBadge = (status: string, paymentStatus?: string) => {
@@ -2171,8 +2213,7 @@ export function PedidosSection() {
                               {order.reservedUnits.map((unit: NonNullable<Order["reservedUnits"]>[number]) => (
                                 <div key={unit.id} className="rounded-xl border border-slate-200 bg-white p-3">
                                   <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel || "Sin etiqueta"}</p>
-                                  <p className="text-xs text-slate-500">/{unit.shortCode || "sin-shortCode"}</p>
-                                  <p className="text-[10px] font-semibold text-slate-600">QC: {unit.qaStatus || "pendiente"} · Inventario: {unit.inventoryStatus || "pendiente"}</p>
+                                  <p className="text-[10px] font-semibold text-slate-600">{getReservedUnitSummary(unit)}</p>
                                 </div>
                               ))}
                             </div>
@@ -2229,7 +2270,7 @@ export function PedidosSection() {
                       Aprobar pago
                     </button>
                   )}
-                  {order.canReserveInternalLabel && (
+                  {order.canReserveInternalLabel && (!order.reservedUnits || order.reservedUnits.length === 0) && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -2476,7 +2517,7 @@ export function PedidosSection() {
                           className={`w-full rounded-2xl border p-4 text-left transition-all ${selected ? "border-violet-300 bg-violet-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}
                         >
                           <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel}</p>
-                          <p className="text-xs text-slate-500">{unit.shortCode || "sin-shortCode"} · {unit.productCode} · {unit.qaStatus} · {unit.inventoryStatus} · {unit.activationStatus}</p>
+                          <p className="text-xs text-slate-500">{unit.productCode} · {getReservedUnitSummary(unit)}</p>
                         </button>
                       );
                     }) : (

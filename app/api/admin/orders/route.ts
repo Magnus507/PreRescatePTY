@@ -135,6 +135,7 @@ export async function GET() {
         id: true,
         reservedOrderId: true,
         internalLabel: true,
+        status: true,
         qaStatus: true,
         activationStatus: true,
       },
