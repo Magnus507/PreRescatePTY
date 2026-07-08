@@ -118,6 +118,13 @@ export type OperationsOrderViewModel = {
   canReserveInternalLabel: boolean;
   canSendToProduction: boolean;
   canCreateDispatch: boolean;
+  canSoftDeleteOrder: boolean;
+  softDeleteLabel: string;
+  softDeleteHelpText: string;
+  canPermanentDeleteOrder: boolean;
+  permanentDeleteLabel: string;
+  deleteRiskLevel: "normal" | "restricted" | "blocked";
+  deleteBlockedReason: string | null;
   requiresAction: boolean;
   pendingCategory:
     | "payment_review"
@@ -191,6 +198,23 @@ function getBlockedReasons(order: OperationsOrderInput, paymentProofAvailable: b
   if (order.adminReviewStatus === "rejected") reasons.push("Revisión rechazada");
 
   return reasons;
+}
+
+function detectTestOrderSignals(order: OperationsOrderInput) {
+  const haystack = [
+    order.orderNumber,
+    order.providerReference,
+    order.customerName,
+    order.customerEmail,
+    order.customerPhone,
+    order.manualPaymentReference,
+    order.adminReviewNotes,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return /test|prueba|demo|seed|sandbox|mock|fake/.test(haystack);
 }
 
 function isTerminalProductionStatus(status?: string | null) {
@@ -318,6 +342,21 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const canCreateDispatch = Boolean(order.dispatch) === false && canSendToProduction && paymentStatusLabel !== "Pago pendiente";
   const blockedReasons = getBlockedReasons(order, paymentProofAvailable);
   const pendingState = getPendingState(order, paymentProofAvailable);
+  const testSignals = detectTestOrderSignals(order);
+  const isTerminal = order.orderStatus === "cancelled" || order.orderStatus === "completed";
+  const canSoftDeleteOrder = !isTerminal || testSignals;
+  const softDeleteLabel = "Cancelar / ocultar";
+  const softDeleteHelpText = "No borra físicamente. Cancela u oculta el pedido de la vista operativa y registra auditoría.";
+  const canPermanentDeleteOrder = testSignals && isTerminal;
+  const permanentDeleteLabel = "Eliminar permanentemente";
+  const deleteRiskLevel: "normal" | "restricted" | "blocked" = canSoftDeleteOrder
+    ? testSignals
+      ? "restricted"
+      : "normal"
+    : "blocked";
+  const deleteBlockedReason = !canSoftDeleteOrder
+    ? "El pedido ya está finalizado y no puede ocultarse desde Pedidos."
+    : null;
 
   return {
     id: order.id,
@@ -363,6 +402,13 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
     canReserveInternalLabel,
     canSendToProduction,
     canCreateDispatch,
+    canSoftDeleteOrder,
+    softDeleteLabel,
+    softDeleteHelpText,
+    canPermanentDeleteOrder,
+    permanentDeleteLabel,
+    deleteRiskLevel,
+    deleteBlockedReason,
     requiresAction: pendingState.requiresAction,
     pendingCategory: pendingState.pendingCategory,
     pendingReasonLabel: pendingState.pendingReasonLabel,

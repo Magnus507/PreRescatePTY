@@ -90,6 +90,11 @@ interface Order {
   canReserveInternalLabel?: boolean;
   canSendToProduction?: boolean;
   canCreateDispatch?: boolean;
+  canSoftDeleteOrder?: boolean;
+  softDeleteLabel?: string;
+  softDeleteHelpText?: string;
+  canPermanentDeleteOrder?: boolean;
+  permanentDeleteLabel?: string;
   requiresAction?: boolean;
   pendingCategory?: string | null;
   pendingReasonLabel?: string | null;
@@ -237,6 +242,9 @@ export function PedidosSection() {
   const [paymentRejectionError, setPaymentRejectionError] = useState("");
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [permanentlyDeletingOrderId, setPermanentlyDeletingOrderId] = useState<string | null>(null);
+  const [softDeleteOrder, setSoftDeleteOrder] = useState<Order | null>(null);
+  const [softDeleteReason, setSoftDeleteReason] = useState("");
+  const [softDeleteConfirmText, setSoftDeleteConfirmText] = useState("");
   const [reserveOrder, setReserveOrder] = useState<Order | null>(null);
   const [availableUnits, setAvailableUnits] = useState<Array<{
     id: string;
@@ -583,56 +591,48 @@ export function PedidosSection() {
     setPaymentRejectionError("");
   }, []);
 
-  const isSoftDeletableTestOrder = useCallback((order: Order) => {
-    const haystack = [
-      order.orderNumber,
-      order.customerName,
-      order.customerEmail,
-      order.paymentReference,
-      order.operationalReference,
-      order.deliveryReference,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    const isMarkedTest = /test|prueba|demo|seed|sandbox|mock|fake/.test(haystack);
-    return isMarkedTest || (order.orderStatus !== "completed" && order.orderStatus !== "cancelled");
+  const handleSoftDeleteOrder = useCallback((event: React.MouseEvent | undefined, order: Order) => {
+    event?.stopPropagation();
+    setSoftDeleteOrder(order);
+    setSoftDeleteReason(order.adminReviewNotes || "");
+    setSoftDeleteConfirmText("");
   }, []);
 
-  const handleSoftDeleteOrder = useCallback(async (event: React.MouseEvent, order: Order) => {
-    event.stopPropagation();
-    const confirmText = window.prompt("Escribe ELIMINAR para confirmar:");
-    if (confirmText !== "ELIMINAR") return;
+  const confirmSoftDeleteOrder = useCallback(async () => {
+    if (!softDeleteOrder) return;
+    if (softDeleteConfirmText.trim() !== "ELIMINAR") {
+      toast.error("Escribe ELIMINAR para confirmar.");
+      return;
+    }
 
-    const reason = window.prompt("Motivo opcional para la eliminación segura:");
-    const confirmed = window.confirm("Esto ocultará el pedido de la vista operativa. ¿Continuar?");
-    if (!confirmed) return;
-
-    setDeletingOrderId(order.id);
+    setDeletingOrderId(softDeleteOrder.id);
     try {
-      const res = await fetch(`/api/admin/orders/${order.id}/delete`, {
+      const res = await fetch(`/api/admin/orders/${softDeleteOrder.id}/delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           confirmText: "ELIMINAR",
-          reason,
+          reason: softDeleteReason.trim() || undefined,
         }),
       });
 
       if (res.ok) {
-        toast.success("Pedido ocultado de la vista operativa.");
+        toast.success("Pedido cancelado / ocultado de la vista operativa.");
+        setSoftDeleteOrder(null);
+        setSoftDeleteReason("");
+        setSoftDeleteConfirmText("");
         await loadOrders();
         return;
       }
 
       const data = await res.json().catch(() => ({}));
-      toast.error(data?.error || "No se pudo eliminar el pedido.");
+      toast.error(data?.error || "No se pudo cancelar el pedido.");
     } catch {
-      toast.error("No se pudo eliminar el pedido.");
+      toast.error("No se pudo cancelar el pedido.");
     } finally {
       setDeletingOrderId(null);
     }
-  }, [loadOrders]);
+  }, [loadOrders, softDeleteConfirmText, softDeleteOrder, softDeleteReason]);
 
   const handlePermanentDeleteOrder = useCallback(async (event: React.MouseEvent, order: Order) => {
     event.stopPropagation();
@@ -848,6 +848,19 @@ export function PedidosSection() {
       { all: 0, clients: 0, internal: 0, pending: 0 }
     );
   }, [orders]);
+
+  const emptyStateMessage = useMemo(() => {
+    switch (activeFilter) {
+      case "clients":
+        return "No hay pedidos de clientes.";
+      case "internal":
+        return "No hay pedidos internos.";
+      case "pending":
+        return "No hay pedidos que requieran acción.";
+      default:
+        return "No hay pedidos para mostrar.";
+    }
+  }, [activeFilter]);
 
   const formatDateTime = (value: string) =>
     new Intl.DateTimeFormat("es-PA", {
@@ -1066,36 +1079,25 @@ export function PedidosSection() {
                 Ir a Producción
               </button>
             )}
-            {order.canArchiveOrder && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  stop(e);
-                  handleStatusChange(order.id, "cancelled", "Archivado");
-                }}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50"
-              >
-                Archivar
-              </button>
-            )}
-            {isSoftDeletableTestOrder(order) && (
+            {order.canSoftDeleteOrder && (
               <button
                 type="button"
                 onClick={(e) => handleSoftDeleteOrder(e, order)}
                 disabled={deletingOrderId === order.id}
+                title={order.softDeleteHelpText || "No borra físicamente."}
                 className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100 disabled:opacity-50"
               >
-                {deletingOrderId === order.id ? "Eliminando..." : "Eliminar pedido"}
+                {deletingOrderId === order.id ? "Cancelando..." : order.softDeleteLabel || "Cancelar / ocultar"}
               </button>
             )}
-            {isSuperadmin && (
+            {isSuperadmin && order.canPermanentDeleteOrder && (
               <button
                 type="button"
                 onClick={(e) => handlePermanentDeleteOrder(e, order)}
                 disabled={permanentlyDeletingOrderId === order.id}
                 className="rounded-2xl border border-red-300 bg-red-100 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-800 transition-all hover:bg-red-200 disabled:opacity-50"
               >
-                {permanentlyDeletingOrderId === order.id ? "Eliminando..." : "Eliminar permanentemente"}
+                {permanentlyDeletingOrderId === order.id ? "Eliminando..." : order.permanentDeleteLabel || "Eliminar permanentemente"}
               </button>
             )}
           </div>
@@ -1806,9 +1808,13 @@ export function PedidosSection() {
               return (
                 <div className="px-6 py-5 border-t border-border bg-muted/30 flex justify-between items-center gap-4">
                   <div className="flex gap-4">
-                    {canCancel && (
-                      <button onClick={() => handleStatusChange(selectedOrder.id, "cancelled", "Archivado")} disabled={updating} className="px-6 py-3 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">
-                        Archivar pedido
+                    {canCancel && selectedOrder.canSoftDeleteOrder && (
+                      <button
+                        onClick={() => handleSoftDeleteOrder(undefined, selectedOrder)}
+                        disabled={updating}
+                        className="px-6 py-3 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                      >
+                        {selectedOrder.softDeleteLabel || "Cancelar / ocultar"}
                       </button>
                     )}
                     {!isPaymentApproved && selectedOrder.orderStatus !== "cancelled" && selectedOrder.orderStatus !== "shipped" && selectedOrder.orderStatus !== "completed" && (
@@ -2087,24 +2093,25 @@ export function PedidosSection() {
                             >
                               Ver comprobante
                             </button>
-                            {isSoftDeletableTestOrder(order) && (
+                            {order.canSoftDeleteOrder && (
                               <button
                                 type="button"
                                 onClick={(e) => handleSoftDeleteOrder(e, order)}
                                 disabled={deletingOrderId === order.id}
+                                title={order.softDeleteHelpText || "No borra físicamente."}
                                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-100 disabled:opacity-50"
                               >
-                                {deletingOrderId === order.id ? "Eliminando..." : "Eliminar pedido"}
+                                {deletingOrderId === order.id ? "Cancelando..." : order.softDeleteLabel || "Cancelar / ocultar"}
                               </button>
                             )}
-                            {isSuperadmin && (
+                            {isSuperadmin && order.canPermanentDeleteOrder && (
                               <button
                                 type="button"
                                 onClick={(e) => handlePermanentDeleteOrder(e, order)}
                                 disabled={permanentlyDeletingOrderId === order.id}
                                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-red-300 bg-red-100 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-800 hover:bg-red-200 disabled:opacity-50"
                               >
-                                {permanentlyDeletingOrderId === order.id ? "Eliminando..." : "Eliminar permanentemente"}
+                                {permanentlyDeletingOrderId === order.id ? "Eliminando..." : order.permanentDeleteLabel || "Eliminar permanentemente"}
                               </button>
                             )}
                             <p className="text-[10px] font-bold text-emerald-700">Comprobante enviado por el cliente. Pago en revisión.</p>
@@ -2230,16 +2237,17 @@ export function PedidosSection() {
                       Rechazar pago
                     </button>
                   )}
-                  {order.canArchiveOrder && (
+                  {order.canSoftDeleteOrder && (
                     <button
                       type="button"
                       onClick={(e) => {
                         stop(e);
-                        handleStatusChange(order.id, "cancelled", "Archivado");
+                        handleSoftDeleteOrder(e, order);
                       }}
-                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50"
+                      title={order.softDeleteHelpText || "No borra físicamente."}
+                      className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-700 transition-all hover:bg-red-100"
                     >
-                      Archivar
+                      {order.softDeleteLabel || "Cancelar / ocultar"}
                     </button>
                   )}
                 </div>
@@ -2316,6 +2324,80 @@ export function PedidosSection() {
             </div>
         </div>
       )}
+      {softDeleteOrder && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-red-500">Cancelar / ocultar pedido</p>
+                <h3 className="mt-2 text-xl font-black text-slate-900">{getVisibleCustomerCode(softDeleteOrder)}</h3>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  {softDeleteOrder.softDeleteHelpText || "No borra físicamente. Oculta el pedido de la vista operativa y registra auditoría."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSoftDeleteOrder(null);
+                  setSoftDeleteReason("");
+                  setSoftDeleteConfirmText("");
+                }}
+                className="rounded-full border border-slate-200 bg-slate-50 p-2 text-slate-500 hover:bg-slate-100"
+                aria-label="Cerrar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                Motivo
+              </label>
+              <textarea
+                value={softDeleteReason}
+                onChange={(event) => setSoftDeleteReason(event.target.value)}
+                className="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium outline-none focus:border-red-300 focus:ring-4 focus:ring-red-100"
+                placeholder="Explica por qué se cancela u oculta..."
+              />
+            </div>
+
+            <div className="mt-4 space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-900">
+                Esta acción no borra físicamente el pedido. Lo oculta de la vista operativa usando el flujo seguro existente y registra auditoría. No toca unidades físicas, producción, despacho, activación, QR/NFC, shortCode ni internalLabel.
+              </p>
+              <input
+                value={softDeleteConfirmText}
+                onChange={(event) => setSoftDeleteConfirmText(event.target.value)}
+                className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
+                placeholder='Escribe ELIMINAR para confirmar'
+              />
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setSoftDeleteOrder(null);
+                  setSoftDeleteReason("");
+                  setSoftDeleteConfirmText("");
+                }}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmSoftDeleteOrder()}
+                disabled={deletingOrderId === softDeleteOrder.id}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deletingOrderId === softDeleteOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {deletingOrderId === softDeleteOrder.id ? "Cancelando..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {reserveOrder && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[calc(100vh-48px)] overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
@@ -2386,10 +2468,10 @@ export function PedidosSection() {
         </div>
       )}
       {filteredOrders.length === 0 && (
-          <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white p-12 text-center text-muted-foreground font-bold">
-            No hay pedidos registrados
-          </div>
-        )}
+        <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white p-12 text-center text-muted-foreground font-bold">
+          {emptyStateMessage}
+        </div>
+      )}
       </div>
     </div>
   );
