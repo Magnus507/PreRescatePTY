@@ -6,7 +6,7 @@ export type SyncOperationsProductToStoreInput = {
   productType: string;
   defaultPrice?: number | null;
   category?: string | null;
-  visible?: boolean;
+  isActive: boolean;
   description?: string | null;
   image?: string | null;
 };
@@ -70,7 +70,7 @@ export async function syncOperationsProductToStore(
   const descriptionBase = existing?.description?.replace(/\n\[operationsProductCode:[^\]]+\]/g, "").trim() || "";
   const customDescription = input.description?.trim() || "";
   const nextDescription = `${customDescription || descriptionBase}${marker}`.trim();
-  const visible = input.visible ?? true;
+  const nextIsActive = input.isActive;
 
   if (existing) {
     const updated = await prisma.product.update({
@@ -81,7 +81,7 @@ export async function syncOperationsProductToStore(
         category: input.category || existing.category || "general",
         price: input.defaultPrice !== undefined && input.defaultPrice !== null ? input.defaultPrice : existing.price,
         productType: productType || operationsProductCode,
-        isActive: Boolean(visible),
+        isActive: nextIsActive,
         image: input.image !== undefined ? input.image : existing.image,
       },
     });
@@ -108,7 +108,7 @@ export async function syncOperationsProductToStore(
       productType: productType || operationsProductCode,
       estimatedProductionTime: null,
       requiresPersonalization: false,
-      isActive: visible,
+      isActive: nextIsActive,
       image: input.image ?? null,
     },
   });

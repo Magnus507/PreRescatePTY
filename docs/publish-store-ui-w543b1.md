@@ -31,3 +31,11 @@
 - No se toca activación.
 - No se toca QR/NFC.
 - No se toca `shortCode` ni `internalLabel`.
+
+## W5.43B.5 - Contrato definitivo del boton
+- `action: "publish"` fuerza `isActive = true`.
+- `action: "unpublish"` fuerza `isActive = false`.
+- `visible` no puede contradecir la accion.
+- La UI actualiza su estado local con `storeProduct` devuelto por el endpoint.
+- El boton depende de `marker exacto + isActive true`.
+- `stock 0` no bloquea la visibilidad publica.

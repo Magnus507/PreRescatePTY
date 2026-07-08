@@ -82,7 +82,7 @@ async function main() {
     productType: "PRP-FG-STICKER",
     defaultPrice: stickerStore?.price ?? 0,
     category: "accesorios",
-    visible: true,
+    isActive: true,
     description: "Sticker oficial PreRescatePTY para identificación y red de protección.",
   });
 

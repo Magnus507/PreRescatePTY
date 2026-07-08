@@ -38,8 +38,23 @@ export async function POST(
       defaultPrice: typeof body.price === "number" ? body.price : typeof body.price === "string" ? Number(body.price) : null,
       description: typeof body.description === "string" ? body.description : null,
       category: typeof body.category === "string" ? body.category : null,
-      visible: action === "unpublish" ? false : typeof body.visible === "boolean" ? body.visible : true,
+      isActive: action === "publish",
       image: typeof body.imageUrl === "string" ? body.imageUrl : null,
+    });
+
+    const storeProduct = await prisma.product.findUnique({
+      where: { id: result.storeProductId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        isActive: true,
+        productType: true,
+        category: true,
+        price: true,
+        stock: true,
+        image: true,
+      },
     });
 
     return NextResponse.json({
@@ -47,6 +62,8 @@ export async function POST(
       action,
       ...result,
       published: result.isActive,
+      visibleIgnored: action === "publish" && typeof body.visible === "boolean" ? body.visible === false : false,
+      storeProduct,
       message:
         action === "unpublish"
           ? "Producto despublicado del catálogo comercial"

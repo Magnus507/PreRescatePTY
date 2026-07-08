@@ -378,37 +378,24 @@ export function FinishedGoodsSection() {
           price: publishForm.price === "" ? undefined : Number(publishForm.price),
           description: publishForm.description.trim() || undefined,
           category: publishForm.category.trim() || undefined,
-          visible: publishForm.visible,
           imageUrl: publishForm.imageUrl.trim() || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo publicar en Tienda");
+      if (!data.success || data.isActive !== true || data.markerPresent !== true) {
+        throw new Error("La publicación no quedó activa o perdió el marcador técnico");
+      }
       toast.success(data.message || "Producto publicado en catálogo comercial");
-      if (data.storeProductId) {
+      if (data.storeProduct) {
         setStoreProducts((current) => {
           const next = [...current];
-          const index = next.findIndex((product) => product.id === data.storeProductId);
+          const index = next.findIndex((product) => product.id === data.storeProduct.id);
           if (index >= 0) {
-            next[index] = {
-              ...next[index],
-              isActive: Boolean(data.isActive),
-              description: next[index].description ?? null,
-              productType: next[index].productType,
-            };
+            next[index] = { ...next[index], ...data.storeProduct };
             return next;
           }
-
-          if (data.operationsProductCode) {
-            const fallback = current.find((product) => matchesOperationsMarker(product, data.operationsProductCode)) || null;
-            if (fallback) {
-              return current.map((product) =>
-                product.id === fallback.id ? { ...product, isActive: Boolean(data.isActive) } : product
-              );
-            }
-          }
-
-          return current;
+          return [data.storeProduct, ...current];
         });
       }
       await loadFinishedGoods({ silent: true });
@@ -432,7 +419,21 @@ export function FinishedGoodsSection() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo despublicar");
+      if (!data.success || data.isActive !== false) {
+        throw new Error("La despublicación no quedó inactiva");
+      }
       toast.success(data.message || "Producto despublicado");
+      if (data.storeProduct) {
+        setStoreProducts((current) => {
+          const next = [...current];
+          const index = next.findIndex((product) => product.id === data.storeProduct.id);
+          if (index >= 0) {
+            next[index] = { ...next[index], ...data.storeProduct };
+            return next;
+          }
+          return [data.storeProduct, ...current];
+        });
+      }
       await loadFinishedGoods({ silent: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al despublicar");
