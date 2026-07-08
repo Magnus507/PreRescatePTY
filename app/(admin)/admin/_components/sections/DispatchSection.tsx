@@ -503,7 +503,8 @@ export function DispatchSection() {
                           <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Entrega</p>
                           <p className="mt-2 text-sm font-black text-slate-900">{dispatch.city || "Sin ciudad"}</p>
                           <p className="text-xs font-semibold text-slate-500">{dispatch.address || "Sin dirección"}</p>
-                          <p className="text-xs font-semibold text-slate-500">{dispatch.deliveryReference || "Sin referencia"}</p>
+                          <p className="text-xs font-semibold text-slate-500">{dispatch.notes || "Sin notas"}</p>
+                          <p className="text-xs font-semibold text-slate-500">Referencia: {dispatch.deliveryReference || "Sin referencia"}</p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                           <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Fechas</p>

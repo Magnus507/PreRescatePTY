@@ -43,6 +43,20 @@ const dispatchInclude = {
   },
 } as const;
 
+function extractOrderIdFromDispatch(dispatch: { destinationReference?: string | null; events: Array<{ metadataJson?: string | null; referenceType?: string | null; referenceId?: string | null }> }) {
+  for (const event of dispatch.events) {
+    if (event.referenceType === "order" && event.referenceId) return event.referenceId;
+    if (!event.metadataJson) continue;
+    try {
+      const parsed = JSON.parse(event.metadataJson) as { orderId?: string; orderCode?: string };
+      if (parsed.orderId) return parsed.orderId;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 export async function GET() {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
@@ -53,9 +67,40 @@ export async function GET() {
       include: dispatchInclude,
     });
 
+    const orderIds = Array.from(
+      new Set(
+        dispatches
+          .map((dispatch) => extractOrderIdFromDispatch(dispatch))
+          .filter((value): value is string => Boolean(value))
+      )
+    );
+    const sourceOrders = orderIds.length > 0
+      ? await prisma.order.findMany({
+          where: { id: { in: orderIds } },
+          select: {
+            id: true,
+            orderNumber: true,
+            providerReference: true,
+            customerName: true,
+            customerEmail: true,
+            customerPhone: true,
+            shippingCity: true,
+            shippingAddress: true,
+            shippingNotes: true,
+          },
+        })
+      : [];
+    const sourceOrderById = new Map(sourceOrders.map((order) => [order.id, order]));
+
     return NextResponse.json({
       success: true,
-      dispatches: dispatches.map((dispatch) => buildDispatchViewModel(dispatch as never)),
+      dispatches: dispatches.map((dispatch) => {
+        const orderId = extractOrderIdFromDispatch(dispatch);
+        return buildDispatchViewModel({
+          ...dispatch,
+          sourceOrder: orderId ? sourceOrderById.get(orderId) || null : null,
+        });
+      }),
     });
   } catch (error) {
     console.error("[operations/dispatches] GET error:", error);

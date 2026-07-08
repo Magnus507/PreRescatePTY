@@ -45,10 +45,21 @@ export type DispatchViewModel = {
 };
 
 type DispatchLike = OperationDispatch & {
-  items: Array<OperationDispatchItem & {
-    unitRecord?: OperationFinishedGoodUnit | null;
+  items: Array<Pick<OperationDispatchItem, "id" | "quantity" | "unitId" | "internalLabel" | "productCode" | "productName" | "status" | "pickedAt"> & {
+    unitRecord?: Pick<OperationFinishedGoodUnit, "id" | "internalLabel" | "productCode" | "productName" | "status" | "qaStatus" | "activationStatus"> | null;
   }>;
-  events?: OperationDispatchEvent[];
+  events?: Array<Pick<OperationDispatchEvent, "metadataJson" | "referenceType" | "referenceId" | "createdAt">>;
+  sourceOrder?: {
+    id: string;
+    orderNumber: string;
+    providerReference?: string | null;
+    customerName?: string | null;
+    customerEmail?: string | null;
+    customerPhone?: string | null;
+    shippingCity?: string | null;
+    shippingAddress?: string | null;
+    shippingNotes?: string | null;
+  } | null;
 };
 
 function parseMetadata(event: { metadataJson: string | null }) {
@@ -82,6 +93,10 @@ function getStatusLabel(status: string) {
 export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewModel {
   const eventMetas = dispatch.events?.map(parseMetadata).filter(Boolean) || [];
   const firstEventMeta = eventMetas[0] || null;
+  const sourceOrder = dispatch.sourceOrder || null;
+  const liveOrderCode = sourceOrder?.providerReference?.trim()?.startsWith("PR-")
+    ? sourceOrder.providerReference.trim()
+    : sourceOrder?.orderNumber || null;
   const pickedMap = new Map<string, string | null>();
   for (const meta of eventMetas) {
     const unitId = typeof meta?.unitId === "string" ? meta.unitId : null;
@@ -89,14 +104,20 @@ export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewMode
     const picked = Boolean(meta?.picked);
     pickedMap.set(unitId, picked ? (typeof meta?.pickedAt === "string" ? meta.pickedAt : new Date().toISOString()) : null);
   }
-  const orderId = String(firstEventMeta?.orderId || firstEventMeta?.commercialOrderId || firstEventMeta?.referenceId || "");
-  const orderCode = String(firstEventMeta?.orderCode || firstEventMeta?.commercialOrderCode || dispatch.destinationReference || dispatch.code);
-  const customerName = String(firstEventMeta?.customerName || dispatch.destinationName || "Sin nombre");
-  const customerEmail = firstEventMeta?.customerEmail as string | undefined;
-  const customerPhone = firstEventMeta?.customerPhone as string | undefined;
-  const city = firstEventMeta?.shippingCity as string | undefined;
-  const address = String(firstEventMeta?.shippingAddress || dispatch.destinationAddress || "");
-  const deliveryReference = String(firstEventMeta?.shippingNotes || dispatch.destinationReference || "");
+  const orderId = String(sourceOrder?.id || firstEventMeta?.orderId || firstEventMeta?.commercialOrderId || firstEventMeta?.referenceId || "");
+  const orderCode = String(
+    liveOrderCode ||
+      firstEventMeta?.orderCode ||
+      firstEventMeta?.commercialOrderCode ||
+      dispatch.destinationReference ||
+      dispatch.code
+  );
+  const customerName = String(sourceOrder?.customerName || firstEventMeta?.customerName || dispatch.destinationName || "Sin cliente");
+  const customerEmail = sourceOrder?.customerEmail || (firstEventMeta?.customerEmail as string | undefined) || null;
+  const customerPhone = sourceOrder?.customerPhone || (firstEventMeta?.customerPhone as string | undefined) || null;
+  const city = sourceOrder?.shippingCity || (firstEventMeta?.shippingCity as string | undefined) || null;
+  const address = String(sourceOrder?.shippingAddress || firstEventMeta?.shippingAddress || dispatch.destinationAddress || "");
+  const deliveryReference = String(sourceOrder?.shippingNotes || firstEventMeta?.shippingNotes || dispatch.notes || dispatch.destinationReference || "");
   const units = dispatch.items.map((item) => {
     const pickedAt = item.unitId ? pickedMap.get(item.unitId) ?? null : null;
     const picked = Boolean(pickedAt) || item.status === "picked" || item.status === "packed" || item.status === "dispatched" || item.status === "delivered";
@@ -119,7 +140,7 @@ export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewMode
   const canConfirmDelivery = ["sent", "shipped", "dispatched"].includes(dispatch.status);
   const blockedReasons: string[] = [];
   if (!orderId) blockedReasons.push("Pedido origen no resuelto");
-  if (!customerName || customerName === "Sin nombre") blockedReasons.push("Cliente no resuelto");
+  if (!customerName || customerName === "Sin cliente") blockedReasons.push("Cliente no resuelto");
   if (!address) blockedReasons.push("Dirección no resuelta");
 
   return {
