@@ -2321,6 +2321,7 @@ export function PedidosSection() {
           const collapsedByDefault = ["paid", "rejected", "cancelled", "completed"].includes(order.orderStatus);
           const expanded = isExpanded || !collapsedByDefault;
           const hasReceipt = Boolean(order.paymentProofUrl || order.paymentProofAvailable);
+          const isTerminalOrder = ["cancelled", "completed"].includes(order.orderStatus);
           const commercialQty = order.commercialQuantity || order.items[0]?.quantity || 1;
           const operationalQty = order.operationalQuantity || commercialQty;
 
@@ -2347,7 +2348,7 @@ export function PedidosSection() {
                         <Building2 className="h-3.5 w-3.5" /> Corporativo
                       </span>
                     )}
-                    {hasReceipt && (
+                    {hasReceipt && !isTerminalOrder && (
                       <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">
                         Comprobante enviado
                       </span>
@@ -2417,7 +2418,7 @@ export function PedidosSection() {
                             >
                               Ver comprobante
                             </button>
-                            {order.canSoftDeleteOrder && (
+                            {!isTerminalOrder && order.canSoftDeleteOrder && (
                               <button
                                 type="button"
                                 onClick={(e) => handleSoftDeleteOrder(e, order)}
@@ -2438,7 +2439,9 @@ export function PedidosSection() {
                                 {permanentlyDeletingOrderId === order.id ? "Eliminando..." : order.permanentDeleteLabel || "Eliminar permanentemente"}
                               </button>
                             )}
-                            <p className="text-[10px] font-bold text-emerald-700">Comprobante enviado por el cliente. Pago en revisión.</p>
+                            {!isTerminalOrder && (
+                              <p className="text-[10px] font-bold text-emerald-700">Comprobante enviado por el cliente. Pago en revisión.</p>
+                            )}
                           </div>
                         ) : (
                           <p className="text-[10px] font-bold text-slate-500">No se adjuntó comprobante de pago.</p>
@@ -2563,7 +2566,7 @@ export function PedidosSection() {
                       {rejectingOrderId === order.id ? "Rechazando..." : "Rechazar pago"}
                     </button>
                   )}
-                  {order.canSoftDeleteOrder && (
+                  {!isTerminalOrder && order.canSoftDeleteOrder && (
                     <button
                       type="button"
                       onClick={(e) => {
