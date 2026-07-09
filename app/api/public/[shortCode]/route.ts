@@ -5,7 +5,7 @@ import { ConfigRepository } from "@/domains/shared/repositories/config.repositor
 import { decrypt } from "@/lib/encryption";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
-import { CHIP_STATUS } from "@/domains/chips/chip-lifecycle.constants";
+import { resolvePublicProfileByChipShortCode } from "@/lib/public-access/resolve-public-profile-by-chip";
 
 export const dynamic = "force-dynamic";
 
@@ -82,45 +82,21 @@ export async function GET(
       return publicJson(req, { profile: demoProfile });
     }
 
-    const chip = await prisma.chip.findUnique({
-      where: { shortCode },
-      include: {
-        assignedProfile: {
-          include: {
-            contacts: {
-              where: { active: true },
-              orderBy: { priorityOrder: "asc" },
-              include: { contact: true }
-            },
-            organizationMembers: {
-              where: { memberStatus: "active" },
-              include: {
-                organization: true,
-                location: true,
-                departmentRel: true
-              }
-            }
-          },
-        },
-      },
-    });
-
-    if (!chip) {
-      return publicJson(
-        req,
-        { error: "Código no encontrado en el sistema.", status: "not_found" },
-        { status: 404 }
-      );
+    const resolution = await resolvePublicProfileByChipShortCode(shortCode);
+    if (!resolution.ok) {
+      const responseMap: Record<string, { status: number; body: Record<string, string> }> = {
+        chip_not_found: { status: 404, body: { error: "Código no encontrado en el sistema.", status: "not_found" } },
+        chip_not_active: { status: 403, body: { error: "Chip aún no activo", status: "inactive" } },
+        chip_unassigned: { status: 409, body: { error: "Chip sin perfil asignado", status: "unassigned" } },
+        profile_not_found: { status: 404, body: { error: "Perfil no encontrado", status: "not_found" } },
+        profile_not_public: { status: 403, body: { error: "Perfil desactivado temporalmente", status: "hidden" } },
+        unsupported_context: { status: 400, body: { error: "Contexto no soportado", status: "unsupported_context" } },
+      };
+      const mapped = responseMap[resolution.reason];
+      return publicJson(req, mapped.body, { status: mapped.status });
     }
 
-    if (chip.status !== CHIP_STATUS.ACTIVATED || !chip.assignedProfile) {
-      return publicJson(req, {
-        status: "unactivated",
-        message: "Chip aún no activado",
-      });
-    }
-
-    const profile = chip.assignedProfile;
+    const { chip, profile } = resolution;
 
     // Use a local minimal type for organization member to avoid assigning
     // wider Prisma types into narrower inferred types elsewhere.
@@ -207,14 +183,6 @@ export async function GET(
       );
     }
 
-    if (profile.profileVisibilityStatus !== "active") {
-      return publicJson(
-        req,
-        { error: "Perfil desactivado temporalmente", status: "hidden" },
-        { status: 403 }
-      );
-    }
-
     // Helper to calculate age
     const calculateAge = (birthDate: Date | null) => {
       if (!birthDate) return null;
@@ -271,7 +239,7 @@ export async function GET(
         department: orgMember.departmentRel?.name || null,
       } : null,
 
-      emergencyContacts: profile.contacts.map((pc) => ({
+      emergencyContacts: profile.contacts.map((pc: { contact: { fullName: string; phone: string }; relationship: string }) => ({
         fullName: pc.contact.fullName,
         relationship: pc.relationship,
         phone: pc.contact.phone,

@@ -129,3 +129,46 @@ Esta auditoría confirma que:
 - el perfil no abre solo por existir;
 - el riesgo principal es la existencia de perfiles sin dispositivo activo;
 - no hubo escrituras en base de datos durante W6.04A.
+
+## W6.04B - Guardrails de Acceso Público
+
+La regla quedó endurecida para que el acceso público dependa de un chip activo y asignado:
+
+- `Chip.shortCode` sigue siendo la entrada pública
+- el chip debe existir
+- el chip debe estar activo y con `serviceStatus = active`
+- el chip debe tener `assignedProfileId`
+- el perfil asignado debe existir
+- `Profile` no es punto de entrada público directo
+- `DigitalPass` sigue siendo una capa asociada, pero no abre por sí sola
+- `api/public/qr` solo genera QR y no resuelve identidad
+- el flujo corporativo queda preservado para W6.07
+- `KLFUFPK8` sigue siendo `manualDecision`
+
+### Helper central
+
+Se introdujo un helper central:
+
+- `lib/public-access/resolve-public-profile-by-chip.ts`
+
+Responsabilidad:
+
+- resolver por `Chip.shortCode`
+- devolver una razón clara cuando el acceso no sea publicable
+- centralizar el guardrail para `api/public/[shortCode]` y `api/public/[shortCode]/scan`
+
+### Razones de bloqueo
+
+- `chip_not_found`
+- `chip_not_active`
+- `chip_unassigned`
+- `profile_not_found`
+- `profile_not_public`
+- `unsupported_context`
+
+### Recomendación operativa
+
+- no usar `Profile` como ruta pública primaria
+- no permitir acceso por `DigitalPass` aislado
+- mantener el flujo corporativo separado
+- no tocar `KLFUFPK8` hasta una auditoría específica

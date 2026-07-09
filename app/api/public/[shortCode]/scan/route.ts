@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { getReverseGeocoding } from "@/lib/geocoding";
 import { getClientIp } from "@/lib/request-ip";
 import { publicScanSchema } from "@/lib/validations";
+import { resolvePublicProfileByChipShortCode } from "@/lib/public-access/resolve-public-profile-by-chip";
 
 export const dynamic = "force-dynamic";
 
@@ -41,23 +42,26 @@ export async function POST(
       );
     }
 
-    const chip = await prisma.chip.findUnique({
-      where: { shortCode },
-    });
-
-    if (!chip) {
-      return NextResponse.json({ error: "Chip no encontrado" }, { status: 404 });
+    const resolution = await resolvePublicProfileByChipShortCode(shortCode);
+    if (!resolution.ok) {
+      const statusMap: Record<string, number> = {
+        chip_not_found: 404,
+        chip_not_active: 403,
+        chip_unassigned: 409,
+        profile_not_found: 404,
+        profile_not_public: 403,
+        unsupported_context: 400,
+      };
+      return NextResponse.json({ error: "Chip no disponible para escaneo", reason: resolution.reason }, { status: statusMap[resolution.reason] });
     }
 
-    if (chip.status !== "activated" || !chip.assignedProfileId) {
-      return NextResponse.json({ error: "Chip no activo" }, { status: 409 });
-    }
+    const { chip, profile } = resolution;
 
     // Create scan event
     const scanEvent = await prisma.scanEvent.create({
       data: {
         chipId: chip.id,
-        profileId: chip.assignedProfileId,
+        profileId: profile.id,
         accountId: chip.accountId,
         sourceType: scanInput.sourceType,
         ipAddress: ip,
@@ -107,9 +111,9 @@ export async function POST(
         data: updateData
       });
 
-      if (chip.assignedProfileId) {
+      if (profile) {
         await prisma.profile.update({
-          where: { id: chip.assignedProfileId },
+          where: { id: profile.id },
           data: updateData
         });
       }
