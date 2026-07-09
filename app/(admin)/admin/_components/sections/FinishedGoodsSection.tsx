@@ -1715,19 +1715,27 @@ export function FinishedGoodsSection() {
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Producto base operativo</span>
-                  <input
-                    value={mappingForm.finishedGoodId}
-                    onChange={(event) => setMappingForm((current) => ({ ...current, finishedGoodId: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="Selecciona o pega el identificador operativo"
-                  />
-                  <p className="text-[11px] font-semibold text-slate-500">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                     {(() => {
                       const base = storeProducts.find((product) => product.id === mappingForm.finishedGoodId) || null;
-                      if (!base) return "Nombre o código operativo del producto base.";
-                      return `${base.name}${base.productCode ? ` · ${base.productCode}` : ""}`;
+                      if (!base) {
+                        return (
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold text-slate-700">Sin producto base seleccionado</p>
+                            <p className="text-[11px] font-semibold text-slate-500">Nombre o código operativo del producto base.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-1">
+                          <p className="text-sm font-black text-slate-950">{base.name}</p>
+                          <p className="text-[11px] font-semibold text-slate-600">Código: {base.productCode || "Sin código operativo"}</p>
+                          <p className="text-[10px] font-semibold text-slate-500">ID técnico: {base.id}</p>
+                        </div>
+                      );
                     })()}
-                  </p>
+                  </div>
                 </label>
                 <label className="space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Código operativo</span>
