@@ -94,3 +94,40 @@ Estado confirmado:
 - no se creó inventario nuevo
 - no se activaron chips
 
+## W6.03E - Tienda Única Por Secciones
+
+La tienda quedó organizada como una sola experiencia visual por secciones canónicas usando `storeSection` como eje de agrupación.
+
+Comportamiento en admin:
+
+- muestra todas las secciones
+- incluye productos publicados, no publicados y sin mapeo
+- separa claramente:
+  - `personal_devices` = Dispositivos personales
+  - `business_devices` = Dispositivos empresariales
+  - `pet_devices` = Mascotas
+  - `custom_products` = Personalizados
+  - `future` = Futuros / Próximamente
+  - `unmapped` = Sin mapeo operativo
+
+Comportamiento público:
+
+- consume solo productos publicados
+- excluye `Chip Empresarial` porque permanece `isPublished = false`
+- no muestra productos sin mapeo operativo
+
+Estado de arquitectura:
+
+- la tienda sigue siendo única
+- no se implementó el módulo mascotas completo
+- no se habilitó el flujo empresarial completo
+- el centro administrativo principal queda en Centro de Operaciones -> Inventario -> Productos terminados
+- `TiendaSection` queda como vista secundaria/compatibilidad, no como centro de control
+- no se tocó Pedidos
+- no se alteró la lógica de compra, reserva, despacho ni activación
+
+Resultado esperado:
+
+- el admin distingue con claridad catálogo, mapeo y publicación
+- el cliente ve solo lo publicado y agrupado por secciones
+- la base queda preparada para W6.05/W6.07 sin duplicar reglas

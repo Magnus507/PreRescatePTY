@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { extractOperationsProductCode } from "@/lib/operations/sync-operations-product-to-store";
 import { loadInventoryStockRows } from "@/lib/operations/inventory-stock";
+import {
+  getActivationFlowLabel,
+  getDeviceTypeBadgeClass,
+  getDeviceTypeLabel,
+  getPurchaseFlowLabel,
+  getStoreSectionLabel,
+  isStoreSection,
+} from "@/lib/products/product-operational-mapping";
 
 function stripOperationsMarker(description: string | null | undefined) {
   if (!description) return null;
@@ -14,6 +22,15 @@ export async function GET() {
       prisma.product.findMany({
         where: { isActive: true },
         orderBy: { createdAt: "desc" },
+        include: {
+          operationalMapping: {
+            include: {
+              finishedGood: {
+                select: { id: true, code: true, name: true, productType: true, status: true },
+              },
+            },
+          },
+        },
       }),
       loadInventoryStockRows(),
     ]);
@@ -23,9 +40,11 @@ export async function GET() {
     const catalog = products
       .map((product) => {
         const operationsProductCode = extractOperationsProductCode(product);
-        if (!operationsProductCode) return null;
+        const mapping = product.operationalMapping || null;
+        if (!operationsProductCode && !mapping?.isPublished) return null;
+        if (mapping && (!mapping.isPublished || !mapping.storeSection || !isStoreSection(mapping.storeSection))) return null;
 
-        const stock = stockByCode.get(operationsProductCode);
+        const stock = operationsProductCode ? stockByCode.get(operationsProductCode) : null;
         const availableStock = stock?.availableCount ?? 0;
         const reservedStock = stock?.reservedCount ?? 0;
 
@@ -38,9 +57,34 @@ export async function GET() {
           category: product.category,
           imageUrl: product.image,
           operationsProductCode,
+          operationalMapping: mapping
+            ? {
+                id: mapping.id,
+                productId: mapping.productId,
+                finishedGoodId: mapping.finishedGoodId,
+                productCode: mapping.productCode,
+                deviceType: mapping.deviceType,
+                deviceTypeLabel: getDeviceTypeLabel(mapping.deviceType),
+                deviceTypeBadgeClass: getDeviceTypeBadgeClass(mapping.deviceType),
+                storeSection: mapping.storeSection,
+                storeSectionLabel: getStoreSectionLabel(mapping.storeSection),
+                purchaseFlow: mapping.purchaseFlow,
+                purchaseFlowLabel: getPurchaseFlowLabel(mapping.purchaseFlow),
+                activationFlow: mapping.activationFlow,
+                activationFlowLabel: getActivationFlowLabel(mapping.activationFlow),
+                isPublished: mapping.isPublished,
+                requiresCompanyContext: mapping.requiresCompanyContext,
+                requiresApproval: mapping.requiresApproval,
+                requiresPersonalization: mapping.requiresPersonalization,
+                sortOrder: mapping.sortOrder,
+                badgeLabel: mapping.badgeLabel,
+                badgeColor: mapping.badgeColor,
+                finishedGood: mapping.finishedGood,
+              }
+            : null,
           availableStock,
           reservedStock,
-          isPublished: true,
+          isPublished: Boolean(mapping?.isPublished ?? true),
           isVisible: product.isActive,
           stockSource: stock ? "operations_inventory" : "operations_inventory",
           stock: availableStock,

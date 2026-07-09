@@ -63,7 +63,37 @@ interface StoreProduct {
   image: string | null;
   isActive: boolean;
   productType: string;
+  operationalMapping?: {
+    isPublished?: boolean;
+    storeSection?: string | null;
+    storeSectionLabel?: string | null;
+    purchaseFlow?: string | null;
+    purchaseFlowLabel?: string | null;
+    activationFlow?: string | null;
+    activationFlowLabel?: string | null;
+    deviceType?: string | null;
+    deviceTypeLabel?: string | null;
+    productCode?: string | null;
+    badgeLabel?: string | null;
+    badgeColor?: string | null;
+  } | null;
+  operationalMappingMeta?: {
+    isPublished: boolean;
+    storeSection: string;
+    storeSectionLabel: string;
+    purchaseFlow: string;
+    purchaseFlowLabel: string;
+    activationFlow: string;
+    activationFlowLabel: string;
+    deviceType: string;
+    deviceTypeLabel: string;
+    productCode: string | null;
+    badgeLabel: string | null;
+    badgeColor: string | null;
+  } | null;
 }
+
+type StoreProductMapping = NonNullable<StoreProduct["operationalMappingMeta"]>;
 
 interface FinishedGoodFormState {
   code: string;
@@ -161,6 +191,23 @@ const FINISHED_GOOD_EVENT_OPTIONS: Array<{ value: FinishedGoodEventType; label: 
   { value: "ADJUSTMENT", label: "Ajuste" },
   { value: "RETURN", label: "Retorno" },
 ];
+
+const STORE_SECTION_BADGES: Record<string, string> = {
+  personal_devices: "bg-sky-50 text-sky-700 border-sky-200",
+  business_devices: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  pet_devices: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  custom_products: "bg-violet-50 text-violet-700 border-violet-200",
+  future: "bg-slate-50 text-slate-700 border-slate-200",
+};
+
+function getStoreMapping(product: StoreProduct | null): StoreProductMapping | null {
+  if (!product) return null;
+  return (product.operationalMappingMeta || product.operationalMapping || null) as StoreProductMapping | null;
+}
+
+function getMappedStoreProduct(storeProducts: StoreProduct[], code: string) {
+  return storeProducts.find((product) => matchesOperationsMarker(product, code)) || null;
+}
 
 export function FinishedGoodsSection() {
   const [finishedGoods, setFinishedGoods] = useState<FinishedGood[]>([]);
@@ -779,6 +826,8 @@ export function FinishedGoodsSection() {
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Code</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Sección</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Publicación</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Unidad</th>
                   <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Balance</th>
@@ -805,8 +854,46 @@ export function FinishedGoodsSection() {
                         {item.notes && (
                           <p className="mt-1 max-w-xs truncate text-[11px] font-semibold text-slate-500">{item.notes}</p>
                         )}
+                        {(() => {
+                          const mapping = getStoreMapping(getMappedStoreProduct(storeProducts, item.code));
+                          if (!mapping) {
+                            return <p className="mt-1 text-[11px] font-semibold text-amber-600">Sin mapeo operativo</p>;
+                          }
+                          return (
+                            <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                              {mapping.deviceTypeLabel || mapping.deviceType || "Sin tipo"} · {mapping.productCode || item.code}
+                            </p>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-4 text-xs font-bold text-slate-600">{item.productType}</td>
+                      <td className="px-4 py-4">
+                        {(() => {
+                          const mapping = getStoreMapping(getMappedStoreProduct(storeProducts, item.code));
+                          if (!mapping) {
+                            return <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-amber-700">Sin mapeo</span>;
+                          }
+                          const sectionKey = (mapping.storeSection || "future") as keyof typeof STORE_SECTION_BADGES;
+                          return (
+                            <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${STORE_SECTION_BADGES[sectionKey] || STORE_SECTION_BADGES.future}`}>
+                              {mapping.storeSectionLabel || mapping.storeSection || "Sin sección"}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-4 py-4">
+                        {(() => {
+                          const mapping = getStoreMapping(getMappedStoreProduct(storeProducts, item.code));
+                          if (!mapping) {
+                            return <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Sin mapeo</span>;
+                          }
+                          return (
+                            <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${mapping.isPublished ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                              {mapping.isPublished ? "Publicado" : "No publicado"}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="px-4 py-4">
                         <span className={`rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${status.color}`}>
                           {status.label}

@@ -4,6 +4,11 @@ import { useState, useEffect } from "react";
 import { Store, Plus, Package, DollarSign, Trash2, Loader2, X, Clock, AlertTriangle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
+  groupProductsByStoreSection,
+  getStoreSectionTitle,
+  type StoreProductLike,
+} from "@/lib/products/group-products-by-store-section";
+import {
   getActivationFlowLabel,
   getDeviceTypeBadgeClass,
   getDeviceTypeLabel,
@@ -17,12 +22,14 @@ interface Product {
   description: string | null;
   price: number;
   category: string;
-  stock: number;
+  stock?: number;
   image: string | null;
   isActive: boolean;
   productType: string;
   estimatedProductionTime: string | null;
   requiresPersonalization: boolean;
+  availableStock?: number;
+  reservedStock?: number;
   operationalMapping?: {
     id: string;
     productId: string;
@@ -71,6 +78,28 @@ interface Product {
   operationalStock?: StockRow | null;
 }
 
+type MappingMeta = {
+  deviceType: string;
+  deviceTypeLabel: string;
+  deviceTypeBadgeClass: string;
+  storeSection: string;
+  storeSectionLabel: string;
+  purchaseFlow: string;
+  purchaseFlowLabel: string;
+  activationFlow: string;
+  activationFlowLabel: string;
+  isPublished: boolean;
+  requiresCompanyContext: boolean;
+  requiresApproval: boolean;
+  requiresPersonalization: boolean;
+  badgeLabel: string | null;
+  badgeColor: string | null;
+  productCode: string | null;
+  finishedGoodId: string | null;
+  finishedGoodName: string | null;
+  finishedGoodCode: string | null;
+};
+
 interface StockRow {
   productCode: string;
   productName: string;
@@ -116,6 +145,15 @@ const DEVICE_TYPE_BADGE_FALLBACK: Record<string, { color: string; label: string 
   custom_business: { color: "bg-fuchsia-100 text-fuchsia-700", label: "Personalizado" },
   future: { color: "bg-slate-100 text-slate-700", label: "Futuro" },
 };
+
+const SECTION_META = {
+  personal_devices: { accent: "border-sky-200 bg-sky-50/70", label: "01" },
+  business_devices: { accent: "border-indigo-200 bg-indigo-50/70", label: "02" },
+  pet_devices: { accent: "border-emerald-200 bg-emerald-50/70", label: "03" },
+  custom_products: { accent: "border-violet-200 bg-violet-50/70", label: "04" },
+  future: { accent: "border-slate-200 bg-slate-50/70", label: "05" },
+  unmapped: { accent: "border-amber-200 bg-amber-50/70", label: "--" },
+} as const;
 
 export function TiendaSection() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -188,36 +226,43 @@ export function TiendaSection() {
     }
   };
 
-  const getStockForProduct = (product: Product) => {
+  const getStockForProduct = (product: StoreProductLike) => {
     return product.operationalStock || stockRows.find((row) => row.storeProductId === product.id || row.productType === product.productType || row.productName === product.name) || null;
   };
 
-  const getMappingMeta = (product: Product) => product.operationalMappingMeta || (product.operationalMapping ? {
-    deviceType: product.operationalMapping.deviceType,
-    deviceTypeLabel: getDeviceTypeLabel(product.operationalMapping.deviceType),
-    deviceTypeBadgeClass: getDeviceTypeBadgeClass(product.operationalMapping.deviceType),
-    storeSection: product.operationalMapping.storeSection,
-    storeSectionLabel: getStoreSectionLabel(product.operationalMapping.storeSection),
-    purchaseFlow: product.operationalMapping.purchaseFlow,
-    purchaseFlowLabel: getPurchaseFlowLabel(product.operationalMapping.purchaseFlow),
-    activationFlow: product.operationalMapping.activationFlow,
-    activationFlowLabel: getActivationFlowLabel(product.operationalMapping.activationFlow),
-    isPublished: product.operationalMapping.isPublished,
-    requiresCompanyContext: product.operationalMapping.requiresCompanyContext,
-    requiresApproval: product.operationalMapping.requiresApproval,
-    requiresPersonalization: product.operationalMapping.requiresPersonalization,
-    badgeLabel: product.operationalMapping.badgeLabel,
-    badgeColor: product.operationalMapping.badgeColor,
-    productCode: product.operationalMapping.productCode,
-    finishedGoodId: product.operationalMapping.finishedGoodId,
-    finishedGoodName: product.operationalMapping.finishedGood?.name || null,
-    finishedGoodCode: product.operationalMapping.finishedGood?.code || null,
-  } : null);
+  const getMappingMeta = (product: StoreProductLike): MappingMeta | null => {
+    if (product.operationalMappingMeta) return product.operationalMappingMeta as MappingMeta;
+    if (!product.operationalMapping) return null;
 
-  const isInventoryPublished = (product: Product) => {
+    return {
+      deviceType: product.operationalMapping.deviceType || "future",
+      deviceTypeLabel: getDeviceTypeLabel(product.operationalMapping.deviceType),
+      deviceTypeBadgeClass: getDeviceTypeBadgeClass(product.operationalMapping.deviceType),
+      storeSection: product.operationalMapping.storeSection || "future",
+      storeSectionLabel: getStoreSectionLabel(product.operationalMapping.storeSection),
+      purchaseFlow: product.operationalMapping.purchaseFlow || "coming_soon",
+      purchaseFlowLabel: getPurchaseFlowLabel(product.operationalMapping.purchaseFlow),
+      activationFlow: product.operationalMapping.activationFlow || "none",
+      activationFlowLabel: getActivationFlowLabel(product.operationalMapping.activationFlow),
+      isPublished: Boolean(product.operationalMapping.isPublished),
+      requiresCompanyContext: Boolean(product.operationalMapping.requiresCompanyContext),
+      requiresApproval: Boolean(product.operationalMapping.requiresApproval),
+      requiresPersonalization: Boolean(product.operationalMapping.requiresPersonalization),
+      badgeLabel: product.operationalMapping.badgeLabel ?? null,
+      badgeColor: product.operationalMapping.badgeColor ?? null,
+      productCode: product.operationalMapping.productCode ?? null,
+      finishedGoodId: product.operationalMapping.finishedGoodId ?? null,
+      finishedGoodName: product.operationalMapping.finishedGood?.name || null,
+      finishedGoodCode: product.operationalMapping.finishedGood?.code || null,
+    };
+  };
+
+  const isInventoryPublished = (product: StoreProductLike) => {
     const mapping = getMappingMeta(product);
     return mapping ? mapping.isPublished : product.isActive;
   };
+
+  const groupedProducts = groupProductsByStoreSection(products, "admin");
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -251,126 +296,145 @@ export function TiendaSection() {
         El catálogo se administra desde Inventario. Tienda Admin solo muestra productos publicados.
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {products.map(p => (
-          <div key={p.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all group flex flex-col">
-            <div className="aspect-video bg-slate-50 dark:bg-slate-800 flex items-center justify-center relative group-hover:bg-slate-100 transition-colors overflow-hidden">
-                 {p.image ? (
-                   // eslint-disable-next-line @next/next/no-img-element
-                   <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
-                 ) : (
-                   <Store className="h-12 w-12 text-slate-200" />
-                 )}
-               <div className="absolute top-4 right-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm">
-                  {p.category}
-               </div>
-               <div className="absolute bottom-4 left-4">
-                  <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest ${PRODUCT_TYPE_BADGES[p.productType]?.color || PRODUCT_TYPE_BADGES.otro.color}`}>
-                     {PRODUCT_TYPE_BADGES[p.productType]?.label || p.productType}
-                  </span>
-               </div>
-            </div>
-            
-            <div className="p-8 flex-1 flex flex-col">
-              <h3 className="text-xl font-black tracking-tight mb-2 truncate">{p.name}</h3>
-              <p className="text-xs text-slate-400 font-medium line-clamp-2 mb-3 flex-1">{p.description || "Sin descripción"}</p>
-
-              <div className="flex flex-wrap gap-2 mb-6">
-                 {p.estimatedProductionTime && (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-full">
-                       <Clock className="h-3 w-3" />
-                       {p.estimatedProductionTime}
-                    </span>
-                 )}
-                 {p.requiresPersonalization && (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-full">
-                       <AlertTriangle className="h-3 w-3" />
-                       Personalizable
-                    </span>
-                 )}
+      <div className="space-y-8">
+        {groupedProducts.map((group) => (
+          <section key={group.section} className={`rounded-[2.5rem] border ${SECTION_META[group.section as keyof typeof SECTION_META].accent} p-6 shadow-sm`}>
+            <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="rounded-full bg-white px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-500 shadow-sm">{SECTION_META[group.section as keyof typeof SECTION_META].label}</span>
+                  <h3 className="text-2xl font-black tracking-tight">{getStoreSectionTitle(group.section)}</h3>
+                </div>
+                <p className="mt-1 text-sm font-medium text-slate-500">{group.description}</p>
               </div>
+              <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                {group.products.length} producto{group.products.length === 1 ? "" : "s"}
+              </div>
+            </div>
 
-              {(() => {
-                const mapping = getMappingMeta(p);
-                if (!mapping) {
-                  return (
-                    <div className="mb-4 rounded-2xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Sin mapeo</p>
-                      <p className="mt-1 text-xs font-semibold text-amber-700">Este producto aún no está conectado a inventario operativo.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              {group.products.map((p) => (
+                <div key={p.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all group flex flex-col">
+                  <div className="aspect-video bg-slate-50 dark:bg-slate-800 flex items-center justify-center relative group-hover:bg-slate-100 transition-colors overflow-hidden">
+                    {p.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Store className="h-12 w-12 text-slate-200" />
+                    )}
+                    <div className="absolute top-4 right-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm">
+                      {p.category}
                     </div>
-                  );
-                }
-
-                const deviceBadge = DEVICE_TYPE_BADGE_FALLBACK[mapping.deviceType] || DEVICE_TYPE_BADGE_FALLBACK.future;
-                const stock = getStockForProduct(p);
-
-                return (
-                  <div className="mb-5 space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${deviceBadge.color}`}>
-                        {deviceBadge.label}
-                      </span>
-                      <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${mapping.isPublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                        {mapping.isPublished ? "Publicado" : "No publicado"}
+                    <div className="absolute bottom-4 left-4">
+                      <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest ${PRODUCT_TYPE_BADGES[p.productType]?.color || PRODUCT_TYPE_BADGES.otro.color}`}>
+                        {PRODUCT_TYPE_BADGES[p.productType]?.label || p.productType}
                       </span>
                     </div>
-                    <div className="grid gap-2 text-xs font-semibold text-slate-700">
-                      <p>Sección: {mapping.storeSectionLabel}</p>
-                      <p>Flujo: {mapping.purchaseFlowLabel}</p>
-                      <p>Activación: {mapping.activationFlowLabel}</p>
-                      <p>Producto terminado: {mapping.finishedGoodName || "Sin producto terminado"}</p>
-                      <p>Código operativo: {mapping.productCode || "Sin código operativo"}</p>
-                      <p>Requiere empresa: {mapping.requiresCompanyContext ? "Sí" : "No"} · Requiere aprobación: {mapping.requiresApproval ? "Sí" : "No"}</p>
-                      {stock && (
-                        <p>Stock operativo: {stock.availableCount} disponibles · {stock.reservedCount} reservados · {stock.deliveredCount} entregados</p>
+                  </div>
+
+                  <div className="p-8 flex-1 flex flex-col">
+                    <h3 className="text-xl font-black tracking-tight mb-2 truncate">{p.name}</h3>
+                    <p className="text-xs text-slate-400 font-medium line-clamp-2 mb-3 flex-1">{p.description || "Sin descripción"}</p>
+
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {p.estimatedProductionTime && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+                          <Clock className="h-3 w-3" />
+                          {p.estimatedProductionTime}
+                        </span>
+                      )}
+                      {p.requiresPersonalization && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-full">
+                          <AlertTriangle className="h-3 w-3" />
+                          Personalizable
+                        </span>
                       )}
                     </div>
-                    {!mapping.isPublished && (
-                      <p className="text-[10px] font-semibold text-amber-700">Nota: producto empresarial legado/dudoso pendiente de revisión.</p>
-                    )}
-                  </div>
-                );
-              })()}
-              
-              <div className="flex items-center justify-between mb-8">
-                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase text-slate-400">Precio</span>
-                    <span className="text-2xl font-black text-primary italic">${p.price.toFixed(2)}</span>
-                 </div>
-                 <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-black uppercase text-slate-400">Stock operativo</span>
-                    {(() => {
-                      const stock = getStockForProduct(p);
-                      const value = stock ? stock.availableCount : p.stock;
-                      return <span className={`text-lg font-black ${value > 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>{value}</span>;
-                    })()}
-                 </div>
-              </div>
 
-              <div className="flex flex-col gap-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  El catálogo se administra desde Inventario
+                    {(() => {
+                      const mapping = getMappingMeta(p);
+                      if (!mapping) {
+                        return (
+                          <div className="mb-4 rounded-2xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Sin mapeo</p>
+                            <p className="mt-1 text-xs font-semibold text-amber-700">Este producto aún no está conectado a inventario operativo.</p>
+                          </div>
+                        );
+                      }
+
+                      const deviceBadge = DEVICE_TYPE_BADGE_FALLBACK[mapping.deviceType] || DEVICE_TYPE_BADGE_FALLBACK.future;
+                      const stock = getStockForProduct(p);
+
+                      return (
+                        <div className="mb-5 space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${deviceBadge.color}`}>
+                              {deviceBadge.label}
+                            </span>
+                            <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${mapping.isPublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                              {mapping.isPublished ? "Publicado" : "No publicado"}
+                            </span>
+                          </div>
+                          <div className="grid gap-2 text-xs font-semibold text-slate-700">
+                            <p>Sección: {mapping.storeSectionLabel}</p>
+                            <p>Flujo: {mapping.purchaseFlowLabel}</p>
+                            <p>Activación: {mapping.activationFlowLabel}</p>
+                            <p>Producto terminado: {mapping.finishedGoodName || "Sin producto terminado"}</p>
+                            <p>Código operativo: {mapping.productCode || "Sin código operativo"}</p>
+                            <p>Requiere empresa: {mapping.requiresCompanyContext ? "Sí" : "No"} · Requiere aprobación: {mapping.requiresApproval ? "Sí" : "No"}</p>
+                            {stock && (
+                              <p>Stock operativo: {stock.availableCount} disponibles · {stock.reservedCount} reservados · {stock.deliveredCount} entregados</p>
+                            )}
+                          </div>
+                          {!mapping.isPublished && (
+                            <p className="text-[10px] font-semibold text-amber-700">Nota: producto empresarial legado/dudoso pendiente de revisión.</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase text-slate-400">Precio</span>
+                        <span className="text-2xl font-black text-primary italic">${p.price.toFixed(2)}</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-black uppercase text-slate-400">Stock operativo</span>
+                        {(() => {
+                          const stock = getStockForProduct(p);
+                          const value = stock ? stock.availableCount : (p.stock ?? 0);
+                          return <span className={`text-lg font-black ${value > 0 ? "text-slate-900 dark:text-white" : "text-rose-500"}`}>{value}</span>;
+                        })()}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        El catálogo se administra desde Inventario
+                      </div>
+                      <div className="flex gap-2">
+                        <button disabled className="flex-1 py-4 bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-2xl cursor-not-allowed">
+                          Editar
+                        </button>
+                        <button disabled className="p-4 bg-rose-50 text-rose-300 rounded-2xl cursor-not-allowed shadow-sm" title="Administrado desde Inventario">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <span className={`inline-flex rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${isInventoryPublished(p) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                        {isInventoryPublished(p) ? "Publicado desde Inventario" : "Sin vínculo operativo"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button disabled className="flex-1 py-4 bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-2xl cursor-not-allowed">
-                    Editar
-                  </button>
-                  <button disabled className="p-4 bg-rose-50 text-rose-300 rounded-2xl cursor-not-allowed shadow-sm" title="Administrado desde Inventario">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className={`inline-flex rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${isInventoryPublished(p) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                  {isInventoryPublished(p) ? "Publicado desde Inventario" : "Sin vínculo operativo"}
-                </span>
-              </div>
+              ))}
             </div>
-          </div>
+          </section>
         ))}
 
         {products.length === 0 && (
-          <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4 py-32 text-center flex flex-col items-center gap-6 border-4 border-dashed border-slate-100 rounded-[3.5rem]">
+          <div className="py-32 text-center flex flex-col items-center gap-6 border-4 border-dashed border-slate-100 rounded-[3.5rem]">
              <Package className="h-16 w-16 opacity-10 text-slate-400" />
              <div className="space-y-1">
                 <p className="text-lg font-black text-slate-400 uppercase tracking-widest">Almacén Vacío</p>

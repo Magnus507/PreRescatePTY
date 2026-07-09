@@ -7,22 +7,15 @@ import Link from "next/link";
 import { ChevronLeft, ShoppingCart, Store, Package, Loader2, X, MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle, Upload, ArrowRight, UserRound, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { groupProductsByStoreSection, getStoreSectionTitle, type StoreProductLike } from "@/lib/products/group-products-by-store-section";
 
-interface Product {
+interface Product extends StoreProductLike {
   id: string;
   name: string;
   description: string | null;
   price: number;
   currency?: string;
   category: string;
-  stock?: number;
-  availableStock?: number;
-  reservedStock?: number;
-  image?: string | null;
-  imageUrl?: string | null;
-  productType: string;
-  estimatedProductionTime: string | null;
-  requiresPersonalization: boolean;
   operationsProductCode?: string | null;
   isPublished?: boolean;
   isVisible?: boolean;
@@ -99,6 +92,8 @@ export default function TiendaPage() {
         if (data.configs) setPaymentConfig(data.configs);
       });
   }, []);
+
+  const groupedProducts = groupProductsByStoreSection(products, "public");
 
   const loadProfiles = async (product?: Product) => {
     const target = product ?? null;
@@ -281,8 +276,23 @@ export default function TiendaPage() {
            </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-          {products.map((p) => (
+        <div className="space-y-10">
+          {groupedProducts.map((group) => (
+            <section key={group.section} className="space-y-5">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h3 className="text-2xl font-black tracking-tighter uppercase">
+                    {getStoreSectionTitle(group.section)}
+                  </h3>
+                  <p className="text-sm text-muted-foreground font-medium mt-1">{group.description}</p>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  {group.products.length} producto{group.products.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          {group.products.map((p) => (
             <div key={p.id} className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 overflow-hidden group hover:shadow-2xl hover:shadow-slate-200/60 dark:hover:shadow-none transition-all flex flex-col">
               <div className="aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center relative p-8 md:p-12 overflow-hidden transition-colors group-hover:bg-slate-100 dark:group-hover:bg-slate-700">
                  <div className="absolute top-4 right-4 md:top-8 md:right-8 px-3 md:px-4 py-1.5 md:py-2 bg-white dark:bg-slate-900 shadow-xl rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest z-10">
@@ -341,7 +351,7 @@ export default function TiendaPage() {
                   {(p.availableStock ?? p.stock ?? 0) > 0 ? (
                     <>
                       <CheckCircle2 className="h-3 w-3 md:h-4 md:w-4 text-emerald-500" />
-                      Disponible {p.availableStock ?? p.stock}
+                      Disponible {p.availableStock ?? p.stock ?? 0}
                       {typeof p.reservedStock === "number" && p.reservedStock > 0 && (
                         <span className="font-semibold normal-case tracking-normal text-slate-400">· Reservado {p.reservedStock}</span>
                       )}
@@ -369,6 +379,9 @@ export default function TiendaPage() {
                 </div>
               </div>
             </div>
+          ))}
+              </div>
+            </section>
           ))}
 
           {products.length === 0 && (
