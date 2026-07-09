@@ -153,6 +153,16 @@ interface MappingFormState {
   badgeColor: string;
 }
 
+const BADGE_COLOR_OPTIONS = [
+  { value: "sky", label: "Azul claro / sky" },
+  { value: "blue", label: "Azul / blue" },
+  { value: "green", label: "Verde / green" },
+  { value: "purple", label: "Morado / purple" },
+  { value: "gray", label: "Gris / gray" },
+  { value: "red", label: "Rojo / red" },
+  { value: "orange", label: "Naranja / orange" },
+] as const;
+
 type FinishedGoodEventType =
   | "RECEIPT"
   | "RESERVATION"
@@ -1704,16 +1714,23 @@ export function FinishedGoodsSection() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Producto base</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Producto base operativo</span>
                   <input
                     value={mappingForm.finishedGoodId}
                     onChange={(event) => setMappingForm((current) => ({ ...current, finishedGoodId: event.target.value }))}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="ID del producto base"
+                    placeholder="Selecciona o pega el identificador operativo"
                   />
+                  <p className="text-[11px] font-semibold text-slate-500">
+                    {(() => {
+                      const base = storeProducts.find((product) => product.id === mappingForm.finishedGoodId) || null;
+                      if (!base) return "Nombre o código operativo del producto base.";
+                      return `${base.name}${base.productCode ? ` · ${base.productCode}` : ""}`;
+                    })()}
+                  </p>
                 </label>
                 <label className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">productCode</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Código operativo</span>
                   <input
                     value={mappingForm.productCode}
                     onChange={(event) => setMappingForm((current) => ({ ...current, productCode: event.target.value }))}
@@ -1789,12 +1806,16 @@ export function FinishedGoodsSection() {
                 </label>
                 <label className="space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Color badge</span>
-                  <input
+                  <select
                     value={mappingForm.badgeColor}
                     onChange={(event) => setMappingForm((current) => ({ ...current, badgeColor: event.target.value }))}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="indigo / sky / ..."
-                  />
+                  >
+                    <option value="">Selecciona un color</option>
+                    {BADGE_COLOR_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
                 </label>
                 <div className="flex flex-wrap gap-3 md:col-span-2">
                   <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -1814,6 +1835,9 @@ export function FinishedGoodsSection() {
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Personalizable</span>
                   </label>
                 </div>
+                <p className="text-[11px] font-semibold text-slate-500 md:col-span-2">
+                  Este mapeo define cómo el producto base aparece en tienda. No crea inventario ni activa dispositivos.
+                </p>
               </div>
 
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
