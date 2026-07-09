@@ -119,3 +119,27 @@ Puntos clave:
 - el estado terminal del pedido no debe reinterpretarse fuera del contrato actual
 - el panel admin debe seguir mostrando tabs coherentes con la lógica validada
 
+## 9. W6.02B - Protección Visual de Pedidos Congelados
+
+Se aplicaron protecciones visuales y no invasivas para reforzar el congelamiento del módulo de Pedidos sin cambiar reglas funcionales ni endpoints.
+
+Protecciones aplicadas:
+
+- banner informativo en `PedidosSection` indicando que compra, pago, reserva y entrega viven dentro de Pedidos, mientras la activación es un flujo separado
+- aclaración visual para `internalLabel` como etiqueta interna operacional, no código público
+- aclaración visual para `shortCode` y códigos de despacho como elementos públicos o de activación/acceso, no etiquetas de reserva
+- refuerzo visual en `DispatchSection` indicando que la entrega física no activa chips
+
+Garantías mantenidas:
+
+- no se modificó la lógica funcional de Pedidos
+- no se alteraron estados, transiciones, endpoints ni reglas de negocio
+- no se tocó base de datos
+- no se tocó `Product`, `User`, `Account`, `Package`, `Organization`, `OrganizationMember` ni `SystemConfig`
+
+Revisión esperada en UI:
+
+- los tabs siguen iguales
+- no se confunde entrega con activación
+- `internalLabel` y `shortCode` se distinguen visualmente
+- los estados terminales siguen mostrando el flujo congelado sin reinterpretación funcional

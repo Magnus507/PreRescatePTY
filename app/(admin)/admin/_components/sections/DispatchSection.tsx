@@ -455,6 +455,10 @@ export function DispatchSection() {
           </div>
         </div>
 
+        <div className="mt-4 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs font-semibold text-cyan-900">
+          La entrega física no activa chips. El código público/activación/acceso se mantiene separado del inventario interno.
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -528,11 +532,15 @@ export function DispatchSection() {
                                   disabled={!dispatch.canMarkUnitPicked || Boolean(savingEventKey)}
                                   className="h-4 w-4 rounded border-slate-300 text-primary"
                                 />
-                                <span className="font-mono text-sm font-black text-primary">{unit.internalLabel}</span>
+                                <span className="space-y-0.5">
+                                  <span className="block font-mono text-sm font-black text-primary">{unit.internalLabel}</span>
+                                  <span className="block text-[10px] font-semibold text-slate-500">Etiqueta interna operacional, no es código público.</span>
+                                </span>
                               </label>
                               <div className="grid gap-1 text-xs font-semibold text-slate-500 md:text-right">
                                 <p>{unit.productName} · {unit.productCode}</p>
                                 <p>{unit.shortCode || "Sin shortCode"} · {unit.inventoryStatus} · {unit.activationStatus}</p>
+                                <p className="text-[10px] text-slate-400">Código público/activación/acceso, no etiqueta de reserva.</p>
                               </div>
                             </div>
                           ))}

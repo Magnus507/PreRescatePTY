@@ -2192,6 +2192,9 @@ export function PedidosSection() {
           <p className="text-muted-foreground text-sm font-medium">
             Pedidos existentes y pedidos internos de reposición.
           </p>
+          <div className="mt-3 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs font-semibold text-cyan-900">
+            Pedidos gestiona compra, pago, reserva y entrega. La activación del dispositivo es un flujo separado.
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -2462,6 +2465,7 @@ export function PedidosSection() {
                               {order.reservedUnits.map((unit: NonNullable<Order["reservedUnits"]>[number]) => (
                                 <div key={unit.id} className="rounded-xl border border-slate-200 bg-white p-3">
                                   <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel || "Sin etiqueta"}</p>
+                                  <p className="text-[10px] font-semibold text-slate-500">Etiqueta interna operacional, no es código público.</p>
                                   <p className="text-[10px] font-semibold text-slate-600">{getReservedUnitSummary(unit)}</p>
                                 </div>
                               ))}
@@ -2772,6 +2776,7 @@ export function PedidosSection() {
                           className={`w-full rounded-2xl border p-4 text-left transition-all ${selected ? "border-violet-300 bg-violet-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}
                         >
                           <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel}</p>
+                          <p className="text-[10px] font-semibold text-slate-500">Etiqueta interna operacional, no es código público.</p>
                           <p className="text-xs text-slate-500">{unit.productCode} · {getReservedUnitSummary(unit)}</p>
                         </button>
                       );
