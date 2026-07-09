@@ -75,6 +75,69 @@ function normalizeStatus(value: string | null | undefined) {
   return value || "pending";
 }
 
+const TERMINAL_ORDER_STATUSES = new Set(["completed", "delivered"]);
+const TERMINAL_DISPATCH_STATUSES = new Set(["completed", "delivered"]);
+const TERMINAL_PRODUCTION_STATUSES = new Set(["completed", "finished", "done", "failed", "cancelled"]);
+
+function isCancelledRow(row: { status?: string | null; paymentStatus?: string | null }) {
+  return normalizeStatus(row.status) === "cancelled" || normalizeStatus(row.paymentStatus) === "rejected";
+}
+
+function isCompletedLegacyRow(row: {
+  status?: string | null;
+  paymentStatus?: string | null;
+  dispatchStatus?: string | null;
+  deliveredAt?: string | Date | null;
+  productionStatus?: string | null;
+}) {
+  if (isCancelledRow(row)) return false;
+  if (TERMINAL_ORDER_STATUSES.has(normalizeStatus(row.status))) return true;
+  if (TERMINAL_DISPATCH_STATUSES.has(normalizeStatus(row.dispatchStatus))) return true;
+  if (row.deliveredAt) return true;
+  if (TERMINAL_PRODUCTION_STATUSES.has(normalizeStatus(row.productionStatus))) return true;
+  return false;
+}
+
+function isCompletedInternalRow(row: {
+  status?: string | null;
+  paymentStatus?: string | null;
+  dispatchStatus?: string | null;
+  internalStatus?: string | null;
+}) {
+  if (isCancelledRow(row)) return false;
+  if (TERMINAL_ORDER_STATUSES.has(normalizeStatus(row.status))) return true;
+  if (TERMINAL_DISPATCH_STATUSES.has(normalizeStatus(row.dispatchStatus))) return true;
+  if (TERMINAL_PRODUCTION_STATUSES.has(normalizeStatus(row.internalStatus))) return true;
+  return false;
+}
+
+function classifyLegacyTab(row: {
+  status?: string | null;
+  paymentStatus?: string | null;
+  isInternalOrder?: boolean;
+  requiresAction?: boolean;
+  dispatchStatus?: string | null;
+  deliveredAt?: string | Date | null;
+  productionStatus?: string | null;
+}) {
+  if (isCancelledRow(row)) return "cancelled";
+  if (isCompletedLegacyRow(row)) return "completed";
+  if (row.isInternalOrder) return row.requiresAction ? "pending" : "internal";
+  return row.requiresAction ? "pending" : "active";
+}
+
+function classifyInternalTab(row: {
+  status?: string | null;
+  paymentStatus?: string | null;
+  requiresAction?: boolean;
+  dispatchStatus?: string | null;
+  internalStatus?: string | null;
+}) {
+  if (isCancelledRow(row)) return "cancelled";
+  if (isCompletedInternalRow(row)) return "completed";
+  return row.requiresAction ? "pending" : "internal";
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   const [legacyOrders, commercialOrders] = await Promise.all([
@@ -164,15 +227,29 @@ async function main() {
       productionOrderId: null,
       productionStatus: null,
       internalStatus: null,
-      visibleTab: getLegacyVisibleTab(viewModel.requiresAction, order),
-      recommendedTab: getLegacyRecommendedTab(order, reservedUnits, dispatch, viewModel.requiresAction),
+      visibleTab: classifyLegacyTab({
+        status: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+        isInternalOrder: false,
+        requiresAction: viewModel.requiresAction,
+        dispatchStatus: dispatch?.status || null,
+        deliveredAt: dispatch?.deliveredAt || null,
+        productionStatus: null,
+      }),
+      recommendedTab: classifyLegacyTab({
+        status: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+        isInternalOrder: false,
+        requiresAction: viewModel.requiresAction,
+        dispatchStatus: dispatch?.status || null,
+        deliveredAt: dispatch?.deliveredAt || null,
+        productionStatus: null,
+      }),
       reason: getLegacyReason(order, reservedUnits, dispatch, viewModel),
     });
   }
 
   for (const order of commercialOrders) {
-    const isCompleted = normalizeStatus(order.status) === "completed";
-    const isCancelled = normalizeStatus(order.status) === "cancelled";
     const requiresAction = Boolean(order.fulfillmentStatus && !["completed", "failed", "cancelled", "delivered"].includes(order.fulfillmentStatus));
     rows.push({
       kind: "internal",
@@ -197,30 +274,46 @@ async function main() {
       productionOrderId: null,
       productionStatus: null,
       internalStatus: order.fulfillmentStatus || normalizeStatus(order.status),
-      visibleTab: isCancelled ? "cancelled" : requiresAction ? "internal" : isCompleted ? "completed" : "internal",
-      recommendedTab: isCancelled ? "cancelled" : requiresAction ? "internal" : isCompleted ? "completed" : "active",
-      reason: isCancelled
+      visibleTab: classifyInternalTab({
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        requiresAction,
+        dispatchStatus: order.dispatch?.status || null,
+        internalStatus: order.fulfillmentStatus || normalizeStatus(order.status),
+      }),
+      recommendedTab: classifyInternalTab({
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        requiresAction,
+        dispatchStatus: order.dispatch?.status || null,
+        internalStatus: order.fulfillmentStatus || normalizeStatus(order.status),
+      }),
+      reason: isCancelledRow({ status: order.status, paymentStatus: order.paymentStatus })
         ? "cancelled"
-        : requiresAction
-          ? "produccion_interna_pendiente"
-          : isCompleted
-            ? "produccion_interna_completada"
-            : "produccion_interna_activa",
+        : isCompletedInternalRow({
+            status: order.status,
+            paymentStatus: order.paymentStatus,
+            dispatchStatus: order.dispatch?.status || null,
+            internalStatus: order.fulfillmentStatus || normalizeStatus(order.status),
+          })
+          ? "produccion_interna_completada"
+          : "produccion_interna_pendiente",
     });
   }
 
   const current = {
-    all: rows.length,
-    clients: rows.filter((row) => row.kind === "legacy" && !row.isInternalOrder).length,
-    internal: rows.filter((row) => row.isInternalOrder).length,
-    pending: rows.filter((row) => Boolean(row.requiresAction)).length,
-    cancelled: rows.filter((row) => row.status === "cancelled" || row.paymentStatus === "rejected").length,
+    active: rows.filter((row) => row.visibleTab === "active").length,
+    clients: rows.filter((row) => row.visibleTab === "clients").length,
+    internal: rows.filter((row) => row.visibleTab === "internal").length,
+    pending: rows.filter((row) => row.visibleTab === "pending").length,
+    completed: rows.filter((row) => row.visibleTab === "completed").length,
+    cancelled: rows.filter((row) => row.visibleTab === "cancelled").length,
   };
 
   const recommended = {
     active: rows.filter((row) => row.recommendedTab === "active").length,
-    clientsActive: rows.filter((row) => row.recommendedTab === "clientsActive").length,
-    internalActive: rows.filter((row) => row.recommendedTab === "internalActive").length,
+    clients: rows.filter((row) => row.recommendedTab === "clients").length,
+    internal: rows.filter((row) => row.recommendedTab === "internal").length,
     pending: rows.filter((row) => row.recommendedTab === "pending").length,
     completed: rows.filter((row) => row.recommendedTab === "completed").length,
     cancelled: rows.filter((row) => row.recommendedTab === "cancelled").length,
@@ -231,28 +324,6 @@ async function main() {
   for (const row of rows) {
     console.log(JSON.stringify(row, null, 2));
   }
-}
-
-function getLegacyVisibleTab(requiresAction: boolean, order: { orderStatus: string; paymentStatus: string; isInternalOrder?: boolean }) {
-  if (order.orderStatus === "cancelled" || order.paymentStatus === "rejected") return "cancelled";
-  if (order.isInternalOrder) return "internal";
-  if (requiresAction) return "pending";
-  return "active";
-}
-
-function getLegacyRecommendedTab(
-  order: { orderStatus: string; paymentStatus: string; isInternalOrder?: boolean; adminReviewStatus?: string | null },
-  reservedUnits: Array<{ id: string }> ,
-  dispatch: { id: string; status: string; dispatchedAt?: Date | null; deliveredAt?: Date | null } | null,
-  requiresAction: boolean
-) {
-  if (order.orderStatus === "cancelled" || order.paymentStatus === "rejected") return "cancelled";
-  if (order.isInternalOrder) return requiresAction ? "internalActive" : "completed";
-  const isCompleted = Boolean(order.orderStatus === "completed" || dispatch?.deliveredAt || dispatch?.status === "delivered");
-  if (isCompleted) return "completed";
-  if (requiresAction) return "pending";
-  if (reservedUnits.length > 0 || dispatch) return "active";
-  return "active";
 }
 
 function getLegacyReason(

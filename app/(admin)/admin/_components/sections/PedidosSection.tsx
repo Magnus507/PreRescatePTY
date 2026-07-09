@@ -216,15 +216,60 @@ interface InternalCommercialOrder {
   productionOrder?: { id: string; code: string; status: string } | null;
 }
 
-type PedidoFilter = "all" | "clients" | "internal" | "pending" | "cancelled";
+type PedidoFilter = "active" | "clients" | "internal" | "pending" | "completed" | "cancelled";
 
 const PEDIDO_FILTERS: Array<{ id: PedidoFilter; label: string }> = [
-  { id: "all", label: "Todos" },
+  { id: "active", label: "Activos" },
   { id: "clients", label: "Pedidos de clientes" },
   { id: "internal", label: "Pedidos internos" },
   { id: "pending", label: "Pendientes" },
+  { id: "completed", label: "Completados" },
   { id: "cancelled", label: "Cancelados" },
 ];
+
+const TERMINAL_ORDER_STATUSES = new Set(["completed", "delivered"]);
+const TERMINAL_DISPATCH_STATUSES = new Set(["completed", "delivered"]);
+const TERMINAL_PRODUCTION_STATUSES = new Set(["completed", "finished", "done", "failed", "cancelled"]);
+
+function normalizeStatus(value: string | null | undefined) {
+  return (value || "").toLowerCase();
+}
+
+function isCancelledOrder(order: Order) {
+  return normalizeStatus(order.orderStatus) === "cancelled" || normalizeStatus(order.paymentStatus) === "rejected";
+}
+
+function isCompletedOrder(order: Order) {
+  if (isCancelledOrder(order)) return false;
+  const legacyStatus = normalizeStatus(order.orderStatus);
+  const sourceStatus = normalizeStatus((order as Order & { status?: string | null }).status);
+  if (TERMINAL_ORDER_STATUSES.has(legacyStatus)) return true;
+  if (TERMINAL_ORDER_STATUSES.has(sourceStatus)) return true;
+  if (TERMINAL_DISPATCH_STATUSES.has(normalizeStatus(order.corporateDeliveryStatus))) return true;
+  if (order.estimatedDeliveryDate && !Number.isNaN(new Date(order.estimatedDeliveryDate).getTime())) return true;
+  if (Array.isArray(order.corporateEmployeeItems) && order.corporateEmployeeItems.length > 0) {
+    const internalFinished = order.corporateEmployeeItems.every((item) => TERMINAL_PRODUCTION_STATUSES.has(normalizeStatus(item.fulfillmentStatus)));
+    if (internalFinished) return true;
+  }
+  if (order.productionOrder && TERMINAL_PRODUCTION_STATUSES.has(normalizeStatus(order.productionOrder.status))) return true;
+  return false;
+}
+
+function isActiveOrder(order: Order) {
+  return !isCancelledOrder(order) && !isCompletedOrder(order);
+}
+
+function isClientActiveOrder(order: Order) {
+  return isActiveOrder(order) && !order.isInternalOrder;
+}
+
+function isInternalActiveOrder(order: Order) {
+  return isActiveOrder(order) && Boolean(order.isInternalOrder);
+}
+
+function isPendingOrder(order: Order) {
+  return isActiveOrder(order) && Boolean(order.requiresAction || order.canApprovePayment || order.canRejectPayment || order.canReserveInternalLabel || order.canCreateDispatch || order.pendingReasonLabel);
+}
 
 export function PedidosSection() {
   const { data: session } = useSession();
@@ -279,7 +324,7 @@ export function PedidosSection() {
   const [showInternalOrderModal, setShowInternalOrderModal] = useState(false);
   const [creatingInternalOrder, setCreatingInternalOrder] = useState(false);
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
-  const [activeFilter, setActiveFilter] = useState<PedidoFilter>("all");
+  const [activeFilter, setActiveFilter] = useState<PedidoFilter>("active");
   const [internalOrderForm, setInternalOrderForm] = useState({
     finishedGoodId: "",
     quantity: "1",
@@ -1018,39 +1063,46 @@ export function PedidosSection() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      if (activeFilter === "cancelled") return order.orderStatus === "cancelled" || order.paymentStatus === "rejected";
-      if (order.orderStatus === "cancelled" || order.paymentStatus === "rejected") return false;
-      if (activeFilter === "clients") return !order.isInternalOrder;
-      if (activeFilter === "internal") return Boolean(order.isInternalOrder);
-      if (activeFilter === "pending") return Boolean(order.requiresAction);
-      return true;
+      if (activeFilter === "cancelled") return isCancelledOrder(order);
+      if (activeFilter === "completed") return isCompletedOrder(order);
+      if (activeFilter === "pending") return isPendingOrder(order);
+      if (activeFilter === "clients") return isClientActiveOrder(order);
+      if (activeFilter === "internal") return isInternalActiveOrder(order);
+      return isActiveOrder(order);
     });
   }, [activeFilter, orders]);
 
   const filterCounts = useMemo(() => {
     return orders.reduce(
       (acc, order) => {
-        acc.all += 1;
-        if (order.isInternalOrder) acc.internal += 1;
-        else acc.clients += 1;
-        if (order.requiresAction) acc.pending += 1;
-        if (order.orderStatus === "cancelled" || order.paymentStatus === "rejected") acc.cancelled += 1;
+        if (isActiveOrder(order)) {
+          acc.active += 1;
+          if (order.isInternalOrder) acc.internal += 1;
+          else acc.clients += 1;
+          if (isPendingOrder(order)) acc.pending += 1;
+        } else if (isCompletedOrder(order)) {
+          acc.completed += 1;
+        } else if (isCancelledOrder(order)) {
+          acc.cancelled += 1;
+        }
         return acc;
       },
-      { all: 0, clients: 0, internal: 0, pending: 0, cancelled: 0 }
+      { active: 0, clients: 0, internal: 0, pending: 0, completed: 0, cancelled: 0 }
     );
   }, [orders]);
 
   const getFilterCount = useCallback((filterId: PedidoFilter) => {
     switch (filterId) {
-      case "all":
-        return filterCounts.all;
+      case "active":
+        return filterCounts.active;
       case "clients":
         return filterCounts.clients;
       case "internal":
         return filterCounts.internal;
       case "pending":
         return filterCounts.pending;
+      case "completed":
+        return filterCounts.completed;
       case "cancelled":
         return filterCounts.cancelled;
       default:
@@ -1060,16 +1112,20 @@ export function PedidosSection() {
 
   const emptyStateMessage = useMemo(() => {
     switch (activeFilter) {
+      case "active":
+        return "No hay pedidos activos.";
       case "clients":
-        return "No hay pedidos de clientes.";
+        return "No hay pedidos de clientes activos.";
       case "internal":
-        return "No hay pedidos internos.";
+        return "No hay pedidos internos activos.";
       case "pending":
-        return "No hay pedidos que requieran acción.";
+        return "No hay pedidos pendientes.";
+      case "completed":
+        return "No hay pedidos completados.";
       case "cancelled":
         return "No hay pedidos cancelados.";
       default:
-        return "No hay pedidos para mostrar.";
+        return "No hay pedidos activos.";
     }
   }, [activeFilter]);
 

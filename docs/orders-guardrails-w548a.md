@@ -100,7 +100,32 @@ Scripts relacionados:
 - `scripts/audit-order-operational-flow-w546a.ts`
 - `scripts/audit-orders-full-flow-w547a.ts`
 
-### 3.5 Botones y acciones de Pedidos
+### 3.5 Tabs y distribución visual
+
+Cerrado en W5.50B:
+- La vista principal ya no usa `Todos` como total bruto.
+- `Activos` es la vista operativa principal.
+- `Activos` incluye pedidos no cancelados, no rechazados y no completados.
+- `Pedidos de clientes` incluye solo clientes activos.
+- `Pedidos internos` incluye solo internos activos.
+- `Pendientes` incluye solo activos que requieren acción inmediata.
+- `Completados` incluye pedidos terminales exitosos:
+  - pedidos cliente entregados/completados
+  - pedidos con dispatch `delivered` o `completed`
+  - pedidos internos terminados
+- `Cancelados` incluye cancelados/rechazados y queda separado de completados.
+- Conteos y listas usan los mismos helpers.
+- Pedidos completados no deben mezclarse con activos.
+- Pedidos internos terminados no deben quedar en internos activos.
+- `PR-2026-000558` es referencia validada de pedido completado: debe caer en `Completados`, no en `Activos`.
+
+Reglas:
+- No reintroducir `Todos` como conteo bruto en la vista operativa.
+- Si se necesita histórico total, crear otra vista o reporte.
+- No mezclar `Completados` con `Cancelados`.
+- No mezclar `Pendientes` con terminales.
+
+### 3.6 Botones y acciones de Pedidos
 
 Cerrado:
 - Las acciones dependen del estado real del pedido.
@@ -129,7 +154,7 @@ No tocar salvo auditoría:
 Scripts relacionados:
 - `scripts/audit-orders-full-flow-w547a.ts`
 
-### 3.6 Aprobar/Rechazar pago
+### 3.7 Aprobar/Rechazar pago
 
 Cerrado:
 - Backend existe:
@@ -160,7 +185,7 @@ No tocar salvo auditoría:
 Script relacionado:
 - `scripts/audit-orders-full-flow-w547a.ts`
 
-### 3.7 Cancelados
+### 3.8 Cancelados
 
 Cerrado:
 - Existe filtro/pestaña Cancelados.
@@ -251,7 +276,9 @@ npx tsx scripts/audit-cancel-order-release-w546c.ts --code <ORDER_CODE>
 - Unidades reservadas sin confundir activación
 - Aprobación / rechazo con feedback visible
 - Cancelación con liberación segura de reserva
-- Conteos de pestañas con contador correcto por filtro
+- Conteos y listas alineados por helpers
+- `Completados` separado del flujo activo
+- `Activos` sin terminales
 
 ### 7.2 Validaciones mínimas para cualquier cambio futuro
 
@@ -279,6 +306,7 @@ Un cambio en Pedidos solo se considera listo si:
 - no abre acciones en estados terminales
 - no introduce silencios en feedback de UI
 - no desalinean los contadores de pestañas con la lista visible
+- no mezcla `Activos` con pedidos completados
 - no toca datos reales sin necesidad explícita
 
 ## 8. Qué sigue abierto
@@ -289,6 +317,7 @@ Pendiente de validación ocasional, no de corrección funcional:
 - experiencia al refrescar listas grandes
 - mensajes de ayuda en escenarios extremos
 - prueba manual de `Rechazar pago` en un pedido `under_review` si todavía no se hizo
+- verificación ocasional de que pedidos completados sigan fuera de `Activos`
 
 No requiere cambiar negocio, solo revisar UX si aparece un reporte nuevo.
 
@@ -309,3 +338,4 @@ Este documento sirve como barrera para evitar regresiones en uno de los flujos m
 Nota:
 - No reintroducir debug visible en producción salvo bloque explícito de diagnóstico.
 - `approve` debe permanecer en `processing` para permitir la reserva posterior.
+- `PR-2026-000558` queda como referencia de taxonomía `Completados`.
