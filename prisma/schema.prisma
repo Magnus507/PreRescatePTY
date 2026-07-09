@@ -24,6 +24,35 @@ model Product {
   requiresPersonalization Boolean                       @default(false)
   corporateOrderItems     CorporateOrderEmployeeItem[]
   productRequestItems     CorporateProductRequestItem[]
+  operationalMapping      ProductOperationalMapping?
+}
+
+model ProductOperationalMapping {
+  id                  String                   @id @default(cuid())
+  productId           String                   @unique
+  finishedGoodId      String?                  @unique
+  productCode         String?
+  deviceType          String
+  storeSection        String
+  purchaseFlow        String
+  activationFlow      String
+  visibilityRules     String?
+  requiresCompanyContext Boolean                @default(false)
+  requiresApproval    Boolean                  @default(false)
+  requiresPersonalization Boolean              @default(false)
+  isPublished         Boolean                  @default(false)
+  sortOrder           Int                      @default(0)
+  badgeLabel          String?
+  badgeColor          String?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  product             Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  finishedGood        OperationFinishedGood?   @relation(fields: [finishedGoodId], references: [id], onDelete: SetNull)
+
+  @@index([deviceType])
+  @@index([storeSection])
+  @@index([isPublished])
+  @@index([productCode])
 }
 
 model Account {
@@ -923,6 +952,7 @@ model OperationFinishedGood {
   originalReplacements    OperationReplacement[]         @relation("OperationReplacementOriginalFinishedGood")
   replacementReplacements OperationReplacement[]         @relation("OperationReplacementReplacementFinishedGood")
   returns                 OperationReturn[]
+  operationalMapping      ProductOperationalMapping?
   packingBatch            OperationPackingBatch?         @relation(fields: [packingBatchId], references: [id])
 
   @@index([packingBatchId])
