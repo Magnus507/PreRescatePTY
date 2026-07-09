@@ -16,6 +16,18 @@ function stripOperationsMarker(description: string | null | undefined) {
   return description.replace(/\n?\[operationsProductCode:[^\]]+\]/g, "").trim() || null;
 }
 
+function hasValidPublicOperationalBase(mapping: {
+  isPublished: boolean;
+  finishedGoodId: string | null;
+  productCode: string | null;
+  finishedGood?: { status: string } | null;
+} | null) {
+  if (!mapping?.isPublished) return false;
+  if (!mapping.finishedGoodId || !mapping.productCode) return false;
+  if (!mapping.finishedGood) return false;
+  return mapping.finishedGood.status !== "inactive";
+}
+
 export async function GET() {
   try {
     const [products, stockRows] = await Promise.all([
@@ -42,7 +54,8 @@ export async function GET() {
         const operationsProductCode = extractOperationsProductCode(product);
         const mapping = product.operationalMapping || null;
         if (!operationsProductCode && !mapping?.isPublished) return null;
-        if (mapping && (!mapping.isPublished || !mapping.storeSection || !isStoreSection(mapping.storeSection))) return null;
+        if (mapping && (!mapping.storeSection || !isStoreSection(mapping.storeSection))) return null;
+        if (!hasValidPublicOperationalBase(mapping)) return null;
 
         const stock = operationsProductCode ? stockByCode.get(operationsProductCode) : null;
         const availableStock = stock?.availableCount ?? 0;
@@ -84,7 +97,7 @@ export async function GET() {
             : null,
           availableStock,
           reservedStock,
-          isPublished: Boolean(mapping?.isPublished ?? true),
+          isPublished: Boolean(mapping?.isPublished ?? false),
           isVisible: product.isActive,
           stockSource: stock ? "operations_inventory" : "operations_inventory",
           stock: availableStock,

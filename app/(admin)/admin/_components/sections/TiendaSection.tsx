@@ -379,11 +379,14 @@ export function TiendaSection() {
                             <p>Sección: {mapping.storeSectionLabel}</p>
                             <p>Flujo: {mapping.purchaseFlowLabel}</p>
                             <p>Activación: {mapping.activationFlowLabel}</p>
-                            <p>Producto terminado: {mapping.finishedGoodName || "Sin producto terminado"}</p>
-                            <p>Código operativo: {mapping.productCode || "Sin código operativo"}</p>
-                            <p>Requiere empresa: {mapping.requiresCompanyContext ? "Sí" : "No"} · Requiere aprobación: {mapping.requiresApproval ? "Sí" : "No"}</p>
-                            {stock && (
-                              <p>Stock operativo: {stock.availableCount} disponibles · {stock.reservedCount} reservados · {stock.deliveredCount} entregados</p>
+                      <p>Producto terminado: {mapping.finishedGoodName || "Sin producto terminado"}</p>
+                      <p>Código operativo: {mapping.productCode || "Sin código operativo"}</p>
+                      {!mapping.finishedGoodId || !mapping.productCode ? (
+                        <p className="text-[10px] font-semibold text-amber-700">Sin producto base operativo</p>
+                      ) : null}
+                      <p>Requiere empresa: {mapping.requiresCompanyContext ? "Sí" : "No"} · Requiere aprobación: {mapping.requiresApproval ? "Sí" : "No"}</p>
+                      {stock && (
+                        <p>Stock operativo: {stock.availableCount} disponibles · {stock.reservedCount} reservados · {stock.deliveredCount} entregados</p>
                             )}
                           </div>
                           {!mapping.isPublished && (

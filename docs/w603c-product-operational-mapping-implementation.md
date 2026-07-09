@@ -112,9 +112,10 @@ Comportamiento en admin:
 
 Comportamiento público:
 
-- consume solo productos publicados
+- consume solo productos publicados con producto base operativo válido
 - excluye `Chip Empresarial` porque permanece `isPublished = false`
 - no muestra productos sin mapeo operativo
+- no muestra productos con `finishedGoodId` faltante o sin `OperationFinishedGood` asociado
 
 Estado de arquitectura:
 
@@ -131,3 +132,16 @@ Resultado esperado:
 - el admin distingue con claridad catálogo, mapeo y publicación
 - el cliente ve solo lo publicado y agrupado por secciones
 - la base queda preparada para W6.05/W6.07 sin duplicar reglas
+
+## Regla de Base Operativa
+
+Un producto comercial no puede publicarse públicamente si no está conectado a un `OperationFinishedGood` operativo.
+
+Matiz importante:
+
+- `Product` solo no basta para vender
+- `ProductOperationalMapping` solo no basta para vender
+- `OperationFinishedGood` debe existir para que la publicación pública sea válida
+- inventario en cero sí es válido y puede mostrarse como agotado
+- si el producto base no existe, el cliente no debe verlo
+- si el producto base existe pero el stock está en cero, sí puede verse como agotado

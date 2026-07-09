@@ -87,6 +87,7 @@ interface StoreProduct {
     activationFlowLabel: string;
     deviceType: string;
     deviceTypeLabel: string;
+    finishedGoodId: string | null;
     productCode: string | null;
     badgeLabel: string | null;
     badgeColor: string | null;
@@ -875,9 +876,14 @@ export function FinishedGoodsSection() {
                           }
                           const sectionKey = (mapping.storeSection || "future") as keyof typeof STORE_SECTION_BADGES;
                           return (
-                            <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${STORE_SECTION_BADGES[sectionKey] || STORE_SECTION_BADGES.future}`}>
-                              {mapping.storeSectionLabel || mapping.storeSection || "Sin sección"}
-                            </span>
+                            <div className="space-y-1">
+                              <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${STORE_SECTION_BADGES[sectionKey] || STORE_SECTION_BADGES.future}`}>
+                                {mapping.storeSectionLabel || mapping.storeSection || "Sin sección"}
+                              </span>
+                              {!mapping.finishedGoodId || !mapping.productCode ? (
+                                <p className="text-[10px] font-semibold text-amber-700">Sin producto base operativo</p>
+                              ) : null}
+                            </div>
                           );
                         })()}
                       </td>
