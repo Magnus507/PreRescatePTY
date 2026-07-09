@@ -3,6 +3,13 @@
 import { useState, useEffect } from "react";
 import { Store, Plus, Package, DollarSign, Trash2, Loader2, X, Clock, AlertTriangle, Upload } from "lucide-react";
 import { toast } from "sonner";
+import {
+  getActivationFlowLabel,
+  getDeviceTypeBadgeClass,
+  getDeviceTypeLabel,
+  getPurchaseFlowLabel,
+  getStoreSectionLabel,
+} from "@/lib/products/product-operational-mapping";
 
 interface Product {
   id: string;
@@ -16,6 +23,52 @@ interface Product {
   productType: string;
   estimatedProductionTime: string | null;
   requiresPersonalization: boolean;
+  operationalMapping?: {
+    id: string;
+    productId: string;
+    finishedGoodId: string | null;
+    productCode: string | null;
+    deviceType: string;
+    storeSection: string;
+    purchaseFlow: string;
+    activationFlow: string;
+    requiresCompanyContext: boolean;
+    requiresApproval: boolean;
+    requiresPersonalization: boolean;
+    isPublished: boolean;
+    sortOrder: number;
+    badgeLabel: string | null;
+    badgeColor: string | null;
+    finishedGood?: {
+      id: string;
+      code: string;
+      name: string;
+      productType: string;
+      status: string;
+    } | null;
+  } | null;
+  operationalMappingMeta?: {
+    deviceType: string;
+    deviceTypeLabel: string;
+    deviceTypeBadgeClass: string;
+    storeSection: string;
+    storeSectionLabel: string;
+    purchaseFlow: string;
+    purchaseFlowLabel: string;
+    activationFlow: string;
+    activationFlowLabel: string;
+    isPublished: boolean;
+    requiresCompanyContext: boolean;
+    requiresApproval: boolean;
+    requiresPersonalization: boolean;
+    badgeLabel: string | null;
+    badgeColor: string | null;
+    productCode: string | null;
+    finishedGoodId: string | null;
+    finishedGoodName: string | null;
+    finishedGoodCode: string | null;
+  } | null;
+  operationalStock?: StockRow | null;
 }
 
 interface StockRow {
@@ -53,6 +106,15 @@ const PRODUCT_TYPE_BADGES: Record<string, { color: string; label: string }> = {
   combo: { color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400", label: "Combo" },
   initial_chip: { color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400", label: "Primer chip empresarial" },
   otro: { color: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400", label: "Otro" },
+};
+
+const DEVICE_TYPE_BADGE_FALLBACK: Record<string, { color: string; label: string }> = {
+  personal: { color: "bg-sky-100 text-sky-700", label: "Personal" },
+  business: { color: "bg-indigo-100 text-indigo-700", label: "Empresarial" },
+  pet: { color: "bg-emerald-100 text-emerald-700", label: "Mascotas" },
+  custom_personal: { color: "bg-violet-100 text-violet-700", label: "Personalizado" },
+  custom_business: { color: "bg-fuchsia-100 text-fuchsia-700", label: "Personalizado" },
+  future: { color: "bg-slate-100 text-slate-700", label: "Futuro" },
 };
 
 export function TiendaSection() {
@@ -127,10 +189,35 @@ export function TiendaSection() {
   };
 
   const getStockForProduct = (product: Product) => {
-    return stockRows.find((row) => row.storeProductId === product.id || row.productType === product.productType || row.productName === product.name) || null;
+    return product.operationalStock || stockRows.find((row) => row.storeProductId === product.id || row.productType === product.productType || row.productName === product.name) || null;
   };
 
-  const isInventoryPublished = (product: Product) => Boolean(product.description?.includes("[operationsProductCode:"));
+  const getMappingMeta = (product: Product) => product.operationalMappingMeta || (product.operationalMapping ? {
+    deviceType: product.operationalMapping.deviceType,
+    deviceTypeLabel: getDeviceTypeLabel(product.operationalMapping.deviceType),
+    deviceTypeBadgeClass: getDeviceTypeBadgeClass(product.operationalMapping.deviceType),
+    storeSection: product.operationalMapping.storeSection,
+    storeSectionLabel: getStoreSectionLabel(product.operationalMapping.storeSection),
+    purchaseFlow: product.operationalMapping.purchaseFlow,
+    purchaseFlowLabel: getPurchaseFlowLabel(product.operationalMapping.purchaseFlow),
+    activationFlow: product.operationalMapping.activationFlow,
+    activationFlowLabel: getActivationFlowLabel(product.operationalMapping.activationFlow),
+    isPublished: product.operationalMapping.isPublished,
+    requiresCompanyContext: product.operationalMapping.requiresCompanyContext,
+    requiresApproval: product.operationalMapping.requiresApproval,
+    requiresPersonalization: product.operationalMapping.requiresPersonalization,
+    badgeLabel: product.operationalMapping.badgeLabel,
+    badgeColor: product.operationalMapping.badgeColor,
+    productCode: product.operationalMapping.productCode,
+    finishedGoodId: product.operationalMapping.finishedGoodId,
+    finishedGoodName: product.operationalMapping.finishedGood?.name || null,
+    finishedGoodCode: product.operationalMapping.finishedGood?.code || null,
+  } : null);
+
+  const isInventoryPublished = (product: Product) => {
+    const mapping = getMappingMeta(product);
+    return mapping ? mapping.isPublished : product.isActive;
+  };
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -202,6 +289,48 @@ export function TiendaSection() {
                     </span>
                  )}
               </div>
+
+              {(() => {
+                const mapping = getMappingMeta(p);
+                if (!mapping) {
+                  return (
+                    <div className="mb-4 rounded-2xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Sin mapeo</p>
+                      <p className="mt-1 text-xs font-semibold text-amber-700">Este producto aún no está conectado a inventario operativo.</p>
+                    </div>
+                  );
+                }
+
+                const deviceBadge = DEVICE_TYPE_BADGE_FALLBACK[mapping.deviceType] || DEVICE_TYPE_BADGE_FALLBACK.future;
+                const stock = getStockForProduct(p);
+
+                return (
+                  <div className="mb-5 space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${deviceBadge.color}`}>
+                        {deviceBadge.label}
+                      </span>
+                      <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${mapping.isPublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                        {mapping.isPublished ? "Publicado" : "No publicado"}
+                      </span>
+                    </div>
+                    <div className="grid gap-2 text-xs font-semibold text-slate-700">
+                      <p>Sección: {mapping.storeSectionLabel}</p>
+                      <p>Flujo: {mapping.purchaseFlowLabel}</p>
+                      <p>Activación: {mapping.activationFlowLabel}</p>
+                      <p>Producto terminado: {mapping.finishedGoodName || "Sin producto terminado"}</p>
+                      <p>Código operativo: {mapping.productCode || "Sin código operativo"}</p>
+                      <p>Requiere empresa: {mapping.requiresCompanyContext ? "Sí" : "No"} · Requiere aprobación: {mapping.requiresApproval ? "Sí" : "No"}</p>
+                      {stock && (
+                        <p>Stock operativo: {stock.availableCount} disponibles · {stock.reservedCount} reservados · {stock.deliveredCount} entregados</p>
+                      )}
+                    </div>
+                    {!mapping.isPublished && (
+                      <p className="text-[10px] font-semibold text-amber-700">Nota: producto empresarial legado/dudoso pendiente de revisión.</p>
+                    )}
+                  </div>
+                );
+              })()}
               
               <div className="flex items-center justify-between mb-8">
                  <div className="flex flex-col">
@@ -217,21 +346,6 @@ export function TiendaSection() {
                     })()}
                  </div>
               </div>
-
-              {(() => {
-                const stock = getStockForProduct(p);
-                return stock ? (
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-700">Vinculado a Inventario</span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600">Disponible {stock.availableCount}</span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600">Reservado {stock.reservedCount}</span>
-                  </div>
-                ) : (
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-amber-700">Sin vínculo operativo</span>
-                  </div>
-                );
-              })()}
 
               <div className="flex flex-col gap-2">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
