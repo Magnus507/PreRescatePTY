@@ -290,6 +290,7 @@ export function PedidosSection() {
   const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
   const [rejectingPaymentOrder, setRejectingPaymentOrder] = useState<Order | null>(null);
   const [rejectingOrderId, setRejectingOrderId] = useState<string | null>(null);
+  const [sendingToDispatchOrderId, setSendingToDispatchOrderId] = useState<string | null>(null);
   const [paymentRejectionReason, setPaymentRejectionReason] = useState("");
   const [paymentRejectionError, setPaymentRejectionError] = useState("");
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
@@ -1401,12 +1402,17 @@ export function PedidosSection() {
   };
 
   const sendToDispatch = async (event: React.MouseEvent, order: Order) => {
+    event.preventDefault();
     event.stopPropagation();
+    if (sendingToDispatchOrderId === order.id) {
+      return;
+    }
     if (!order.reservedUnits || order.reservedUnits.length === 0) {
       toast.error("Primero reserva una etiqueta interna.");
       return;
     }
     try {
+      setSendingToDispatchOrderId(order.id);
       const res = await fetch(`/api/admin/orders/${order.id}/send-to-dispatch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1420,6 +1426,8 @@ export function PedidosSection() {
       await loadOrders();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo crear el despacho");
+    } finally {
+      setSendingToDispatchOrderId(null);
     }
   };
 
@@ -2536,9 +2544,10 @@ export function PedidosSection() {
                     <button
                       type="button"
                       onClick={(e) => void sendToDispatch(e, order)}
+                      disabled={sendingToDispatchOrderId === order.id}
                       className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-cyan-700 transition-all hover:bg-cyan-100"
                     >
-                      Enviar a despacho
+                      {sendingToDispatchOrderId === order.id ? "Enviando a despacho..." : "Enviar a despacho"}
                     </button>
                   ) : null}
                   {order.canRejectPayment && (

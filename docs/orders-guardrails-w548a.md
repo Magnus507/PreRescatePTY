@@ -185,7 +185,35 @@ No tocar salvo auditoría:
 Script relacionado:
 - `scripts/audit-orders-full-flow-w547a.ts`
 
-### 3.8 Cancelados
+### 3.8 Enviar a despacho
+
+Cerrado:
+- `Enviar a despacho` mantiene endpoint:
+  - `POST /api/admin/orders/[id]/send-to-dispatch`
+- UI tiene loading dedicado por pedido.
+- El botón se deshabilita durante el POST.
+- Se evita doble click visual.
+- No cambia backend ni reglas de negocio.
+- No activa chip.
+- No toca `shortCode` ni `internalLabel`.
+- No marca entregado automáticamente.
+- El despacho real sigue quedando en `pending_pick`.
+- El pedido sigue en `processing`.
+
+No tocar salvo auditoría:
+- handler de `sendToDispatch` en `PedidosSection`
+- ruta `send-to-dispatch`
+- payload de respuesta
+- `loadOrders`
+- estado local del loading por pedido
+
+Regla:
+- No remover el loading dedicado.
+- No permitir doble submit desde UI.
+- No mover el pedido a `completed` al crear despacho.
+- La entrega debe ocurrir en flujo separado.
+
+### 3.9 Cancelados
 
 Cerrado:
 - Existe filtro/pestaña Cancelados.
