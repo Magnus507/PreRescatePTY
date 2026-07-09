@@ -1,16 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import fs from "node:fs/promises";
 import path from "node:path";
-import {
-  ACTIVATION_FLOWS,
-  DEVICE_TYPES,
-  PURCHASE_FLOWS,
-  STORE_SECTIONS,
-  getActivationFlowLabel,
-  getDeviceTypeLabel,
-  getPurchaseFlowLabel,
-  getStoreSectionLabel,
-} from "@/lib/products/product-operational-mapping";
+import { ACTIVATION_FLOWS, DEVICE_TYPES, PURCHASE_FLOWS, STORE_SECTIONS, getActivationFlowLabel, getDeviceTypeLabel, getPurchaseFlowLabel, getStoreSectionLabel } from "@/lib/products/product-operational-mapping";
 
 const prisma = new PrismaClient({
   datasources: {
@@ -21,15 +12,6 @@ const prisma = new PrismaClient({
 });
 
 const reportPath = path.join(process.cwd(), "tmp", "w603c-product-operational-mapping-dry-run.json");
-
-function pickByName(name: string) {
-  const normalized = name.toLowerCase();
-  if (normalized.includes("empresarial") || normalized.includes("business")) return "business";
-  if (normalized.includes("mascota")) return "pet";
-  if (normalized.includes("personalizado")) return "custom_personal";
-  if (normalized.includes("chip")) return "business";
-  return "personal";
-}
 
 async function main() {
   const [products, finishedGoods] = await Promise.all([
@@ -61,21 +43,27 @@ async function main() {
   ]);
 
   const mappings = products.map((product) => {
-    const guessedDeviceType = pickByName(product.name);
+    const guessedDeviceType = (() => {
+      switch (product.name) {
+        case "Primer chip empresarial":
+          return "business" as const;
+        case "Sticker PreRescatePTY":
+          return "personal" as const;
+        case "Chip Empresarial":
+          return "business" as const;
+        case "Sticker PreRescatePTY Empresarial":
+          return "business" as const;
+        default:
+          return "future" as const;
+      }
+    })();
     const finishedGood =
       finishedGoods.find((item) => item.code.toUpperCase() === (product.productType || "").toUpperCase()) ||
       finishedGoods.find((item) => product.name.toLowerCase().includes(item.name.toLowerCase())) ||
       finishedGoods.find((item) => product.description?.toLowerCase().includes(item.code.toLowerCase())) ||
       null;
 
-    const storeSection =
-      guessedDeviceType === "business"
-        ? "business_devices"
-        : guessedDeviceType === "pet"
-          ? "pet_devices"
-          : guessedDeviceType.startsWith("custom")
-            ? "custom_products"
-            : "personal_devices";
+    const storeSection = guessedDeviceType === "business" ? "business_devices" : "personal_devices";
 
     const purchaseFlow =
       guessedDeviceType === "business"
@@ -84,14 +72,7 @@ async function main() {
           ? "direct_purchase"
           : "coming_soon";
 
-    const activationFlow =
-      guessedDeviceType === "business"
-        ? "business_profile"
-        : guessedDeviceType === "pet"
-          ? "pet_profile"
-          : guessedDeviceType.startsWith("custom")
-            ? "custom_flow"
-            : "personal_profile";
+    const activationFlow = guessedDeviceType === "business" ? "business_profile" : "personal_profile";
 
     return {
       productId: product.id,

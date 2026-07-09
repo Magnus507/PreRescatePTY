@@ -76,3 +76,21 @@ Estado actual:
 - publicar la tienda única por secciones
 - hacer backfill real solo cuando exista confirmación explícita posterior
 
+## Resultado del Backfill W6.03C.1
+
+Se ejecutó el backfill controlado con token explícito y quedó así:
+
+- mappings creados/actualizados: 4
+- mappings totales en `ProductOperationalMapping`: 4
+- `Chip Empresarial` quedó con `isPublished = false`
+- los otros 3 productos quedaron publicados según la decisión técnica
+
+Estado confirmado:
+
+- `Product` sigue en 4
+- `OperationFinishedGood` sigue preservado
+- Pedidos no fue tocado
+- no se crearon pedidos
+- no se creó inventario nuevo
+- no se activaron chips
+
