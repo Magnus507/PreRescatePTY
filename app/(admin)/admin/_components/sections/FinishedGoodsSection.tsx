@@ -250,13 +250,20 @@ const FINISHED_GOOD_EVENT_OPTIONS: Array<{ value: FinishedGoodEventType; label: 
   { value: "RETURN", label: "Retorno" },
 ];
 
-const STORE_SECTION_BADGES: Record<string, string> = {
-  personal_devices: "bg-sky-50 text-sky-700 border-sky-200",
-  business_devices: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  pet_devices: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  custom_products: "bg-violet-50 text-violet-700 border-violet-200",
-  future: "bg-slate-50 text-slate-700 border-slate-200",
+const BADGE_COLOR_CLASSES: Record<string, string> = {
+  sky: "bg-sky-50 text-sky-700 border-sky-200",
+  blue: "bg-blue-50 text-blue-700 border-blue-200",
+  green: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  purple: "bg-violet-50 text-violet-700 border-violet-200",
+  gray: "bg-slate-50 text-slate-700 border-slate-200",
+  red: "bg-red-50 text-red-700 border-red-200",
+  orange: "bg-orange-50 text-orange-700 border-orange-200",
 };
+
+function getBadgeColorClasses(value?: string | null) {
+  if (!value) return BADGE_COLOR_CLASSES.gray;
+  return BADGE_COLOR_CLASSES[value] || BADGE_COLOR_CLASSES.gray;
+}
 
 function getStoreMapping(product: StoreProduct | null): StoreProductMapping | null {
   if (!product) return null;
@@ -1002,12 +1009,13 @@ export function FinishedGoodsSection() {
                           if (!mapping) {
                             return <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-amber-700">Sin mapeo</span>;
                           }
-                          const sectionKey = (mapping.storeSection || "future") as keyof typeof STORE_SECTION_BADGES;
+                          const badgeColorClasses = getBadgeColorClasses(mapping.badgeColor);
                           return (
                             <div className="space-y-1">
-                              <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${STORE_SECTION_BADGES[sectionKey] || STORE_SECTION_BADGES.future}`}>
+                              <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${badgeColorClasses}`}>
                                 {mapping.storeSectionLabel || mapping.storeSection || "Sin sección"}
                               </span>
+                              <p className="text-[10px] font-semibold text-slate-500">Color badge: {mapping.badgeColor || "gray"}</p>
                               {!mapping.finishedGoodId || !mapping.productCode ? (
                                 <p className="text-[10px] font-semibold text-amber-700">Sin producto base operativo</p>
                               ) : null}
