@@ -3,6 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Boxes, CheckCircle2, Edit3, Factory, Loader2, PackageCheck, Plus, RefreshCw, Store, Warehouse, X } from "lucide-react";
 import { toast } from "sonner";
+import {
+  ACTIVATION_FLOWS,
+  DEVICE_TYPES,
+  PURCHASE_FLOWS,
+  STORE_SECTIONS,
+  getActivationFlowLabel,
+  getDeviceTypeLabel,
+  getPurchaseFlowLabel,
+  getStoreSectionLabel,
+} from "@/lib/products/product-operational-mapping";
 
 const FINISHED_GOOD_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   active: { label: "Activo", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
@@ -63,6 +73,7 @@ interface StoreProduct {
   image: string | null;
   isActive: boolean;
   productType: string;
+  productCode?: string | null;
   operationalMapping?: {
     isPublished?: boolean;
     storeSection?: string | null;
@@ -89,6 +100,10 @@ interface StoreProduct {
     deviceTypeLabel: string;
     finishedGoodId: string | null;
     productCode: string | null;
+    requiresCompanyContext: boolean;
+    requiresApproval: boolean;
+    requiresPersonalization: boolean;
+    sortOrder: number;
     badgeLabel: string | null;
     badgeColor: string | null;
   } | null;
@@ -120,6 +135,22 @@ interface PublishFormState {
   category: string;
   imageUrl: string;
   visible: boolean;
+}
+
+interface MappingFormState {
+  finishedGoodId: string;
+  productCode: string;
+  deviceType: string;
+  storeSection: string;
+  purchaseFlow: string;
+  activationFlow: string;
+  isPublished: boolean;
+  requiresCompanyContext: boolean;
+  requiresApproval: boolean;
+  requiresPersonalization: boolean;
+  sortOrder: string;
+  badgeLabel: string;
+  badgeColor: string;
 }
 
 type FinishedGoodEventType =
@@ -163,6 +194,22 @@ const EMPTY_PUBLISH_FORM: PublishFormState = {
   category: "Accesorios",
   imageUrl: "",
   visible: true,
+};
+
+const EMPTY_MAPPING_FORM: MappingFormState = {
+  finishedGoodId: "",
+  productCode: "",
+  deviceType: "future",
+  storeSection: "future",
+  purchaseFlow: "coming_soon",
+  activationFlow: "none",
+  isPublished: false,
+  requiresCompanyContext: false,
+  requiresApproval: false,
+  requiresPersonalization: false,
+  sortOrder: "0",
+  badgeLabel: "",
+  badgeColor: "",
 };
 
 const EMPTY_MOVEMENT_FORM: MovementFormState = {
@@ -228,6 +275,9 @@ export function FinishedGoodsSection() {
   const [savingMovement, setSavingMovement] = useState(false);
   const [publishTarget, setPublishTarget] = useState<FinishedGood | null>(null);
   const [publishForm, setPublishForm] = useState<PublishFormState>(EMPTY_PUBLISH_FORM);
+  const [mappingTarget, setMappingTarget] = useState<StoreProduct | null>(null);
+  const [mappingForm, setMappingForm] = useState<MappingFormState>(EMPTY_MAPPING_FORM);
+  const [savingMapping, setSavingMapping] = useState(false);
   const [unitsTarget, setUnitsTarget] = useState<FinishedGood | null>(null);
   const [unitsLoading, setUnitsLoading] = useState(false);
   const [unitsError, setUnitsError] = useState("");
@@ -390,7 +440,7 @@ export function FinishedGoodsSection() {
   };
 
   const openPublishModal = (item: FinishedGood) => {
-    const existing = storeProducts.find((product) => matchesOperationsMarker(product, item.code)) || null;
+    const existing = getMappedStoreProduct(storeProducts, item.code);
     setPublishTarget(item);
     setPublishForm({
       price: existing ? String(existing.price) : "",
@@ -401,10 +451,42 @@ export function FinishedGoodsSection() {
     });
   };
 
+  const openMappingEditor = (item: FinishedGood) => {
+    const storeProduct = getMappedStoreProduct(storeProducts, item.code);
+    if (!storeProduct) {
+      toast.error("No se encontró el producto base asociado");
+      return;
+    }
+
+    const mapping = getStoreMapping(storeProduct);
+    setMappingTarget(storeProduct);
+    setMappingForm({
+      finishedGoodId: mapping?.finishedGoodId || item.id,
+      productCode: mapping?.productCode || item.code,
+      deviceType: mapping?.deviceType || "future",
+      storeSection: mapping?.storeSection || "future",
+      purchaseFlow: mapping?.purchaseFlow || "coming_soon",
+      activationFlow: mapping?.activationFlow || "none",
+      isPublished: mapping?.isPublished ?? false,
+      requiresCompanyContext: mapping?.requiresCompanyContext ?? false,
+      requiresApproval: mapping?.requiresApproval ?? false,
+      requiresPersonalization: mapping?.requiresPersonalization ?? false,
+      sortOrder: String(mapping?.sortOrder ?? 0),
+      badgeLabel: mapping?.badgeLabel || "",
+      badgeColor: mapping?.badgeColor || "",
+    });
+  };
+
   const closePublishModal = () => {
     if (publishingId) return;
     setPublishTarget(null);
     setPublishForm(EMPTY_PUBLISH_FORM);
+  };
+
+  const closeMappingModal = () => {
+    if (savingMapping) return;
+    setMappingTarget(null);
+    setMappingForm(EMPTY_MAPPING_FORM);
   };
 
   const closeUnitsModal = () => {
@@ -456,6 +538,44 @@ export function FinishedGoodsSection() {
     }
   };
 
+  const handleSaveMapping = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!mappingTarget) return;
+
+    setSavingMapping(true);
+    try {
+      const res = await fetch(`/api/admin/products/${mappingTarget.id}/operational-mapping`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          finishedGoodId: mappingForm.finishedGoodId.trim() || null,
+          productCode: mappingForm.productCode.trim() || null,
+          deviceType: mappingForm.deviceType,
+          storeSection: mappingForm.storeSection,
+          purchaseFlow: mappingForm.purchaseFlow,
+          activationFlow: mappingForm.activationFlow,
+          isPublished: mappingForm.isPublished,
+          requiresCompanyContext: mappingForm.requiresCompanyContext,
+          requiresApproval: mappingForm.requiresApproval,
+          requiresPersonalization: mappingForm.requiresPersonalization,
+          sortOrder: Number(mappingForm.sortOrder || 0),
+          badgeLabel: mappingForm.badgeLabel.trim() || null,
+          badgeColor: mappingForm.badgeColor.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo actualizar el mapping");
+      toast.success("Mapping actualizado");
+      await loadFinishedGoods({ silent: true });
+      setMappingTarget(null);
+      setMappingForm(EMPTY_MAPPING_FORM);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al actualizar mapping");
+    } finally {
+      setSavingMapping(false);
+    }
+  };
+
   const unpublishFromStore = async (item: FinishedGood) => {
     if (!confirm("El producto dejará de verse en la tienda del cliente. No se borra inventario.")) return;
     setPublishingId(item.id);
@@ -491,10 +611,8 @@ export function FinishedGoodsSection() {
   };
 
   const getPublishedStoreProduct = (item: FinishedGood) => {
-    const exactMarker = storeProducts.find(
-      (product) => matchesOperationsMarker(product, item.code) && product.isActive
-    ) || null;
-    if (exactMarker) return exactMarker;
+    const exactMarker = getMappedStoreProduct(storeProducts, item.code);
+    if (exactMarker && exactMarker.isActive) return exactMarker;
 
     const byProductType = storeProducts.find(
       (product) => product.isActive && product.productType === item.code
@@ -967,6 +1085,15 @@ export function FinishedGoodsSection() {
                           >
                             {publishingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />}
                             {getPublishedStoreProduct(item)?.isActive ? "Dejar de publicar" : "Publicar en Tienda"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void openMappingEditor(item)}
+                            disabled={publishingId === item.id || savingMovement || savingEdit}
+                            className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-800 transition-all hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                            Editar mapeo
                           </button>
                         </div>
                       </td>
@@ -1545,6 +1672,166 @@ export function FinishedGoodsSection() {
                 >
                   {publishingId === publishTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />}
                   Publicar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {mappingTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl">
+            <form onSubmit={handleSaveMapping} className="space-y-6 p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Editar mapeo operativo</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{mappingTarget.name}</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Define sección, publicación y flujo. El producto base operativo debe existir para publicarse.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeMappingModal}
+                  disabled={savingMapping}
+                  className="rounded-2xl border border-slate-200 p-3 text-slate-400 transition-all hover:bg-slate-50 disabled:opacity-50"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Producto base</span>
+                  <input
+                    value={mappingForm.finishedGoodId}
+                    onChange={(event) => setMappingForm((current) => ({ ...current, finishedGoodId: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="ID del producto base"
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">productCode</span>
+                  <input
+                    value={mappingForm.productCode}
+                    onChange={(event) => setMappingForm((current) => ({ ...current, productCode: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="PRP-FG-..."
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo de dispositivo</span>
+                  <select
+                    value={mappingForm.deviceType}
+                    onChange={(event) => setMappingForm((current) => ({ ...current, deviceType: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  >
+                    {DEVICE_TYPES.map((value) => (
+                      <option key={value} value={value}>{getDeviceTypeLabel(value)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Sección</span>
+                  <select
+                    value={mappingForm.storeSection}
+                    onChange={(event) => setMappingForm((current) => ({ ...current, storeSection: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  >
+                    {STORE_SECTIONS.map((value) => (
+                      <option key={value} value={value}>{getStoreSectionLabel(value)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Flujo de compra</span>
+                  <select
+                    value={mappingForm.purchaseFlow}
+                    onChange={(event) => setMappingForm((current) => ({ ...current, purchaseFlow: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  >
+                    {PURCHASE_FLOWS.map((value) => (
+                      <option key={value} value={value}>{getPurchaseFlowLabel(value)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Flujo de activación</span>
+                  <select
+                    value={mappingForm.activationFlow}
+                    onChange={(event) => setMappingForm((current) => ({ ...current, activationFlow: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  >
+                    {ACTIVATION_FLOWS.map((value) => (
+                      <option key={value} value={value}>{getActivationFlowLabel(value)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Orden</span>
+                  <input
+                    type="number"
+                    value={mappingForm.sortOrder}
+                    onChange={(event) => setMappingForm((current) => ({ ...current, sortOrder: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Badge</span>
+                  <input
+                    value={mappingForm.badgeLabel}
+                    onChange={(event) => setMappingForm((current) => ({ ...current, badgeLabel: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Empresarial / Personal / etc."
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Color badge</span>
+                  <input
+                    value={mappingForm.badgeColor}
+                    onChange={(event) => setMappingForm((current) => ({ ...current, badgeColor: event.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="indigo / sky / ..."
+                  />
+                </label>
+                <div className="flex flex-wrap gap-3 md:col-span-2">
+                  <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input type="checkbox" checked={mappingForm.isPublished} onChange={(event) => setMappingForm((current) => ({ ...current, isPublished: event.target.checked }))} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Publicado</span>
+                  </label>
+                  <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input type="checkbox" checked={mappingForm.requiresCompanyContext} onChange={(event) => setMappingForm((current) => ({ ...current, requiresCompanyContext: event.target.checked }))} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Requiere empresa</span>
+                  </label>
+                  <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input type="checkbox" checked={mappingForm.requiresApproval} onChange={(event) => setMappingForm((current) => ({ ...current, requiresApproval: event.target.checked }))} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Requiere aprobación</span>
+                  </label>
+                  <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input type="checkbox" checked={mappingForm.requiresPersonalization} onChange={(event) => setMappingForm((current) => ({ ...current, requiresPersonalization: event.target.checked }))} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Personalizable</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeMappingModal}
+                  disabled={savingMapping}
+                  className="rounded-2xl border border-slate-200 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingMapping}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
+                >
+                  {savingMapping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
+                  Guardar mapping
                 </button>
               </div>
             </form>
