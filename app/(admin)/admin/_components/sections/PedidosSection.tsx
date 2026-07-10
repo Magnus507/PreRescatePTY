@@ -2233,8 +2233,8 @@ export function PedidosSection() {
       </div>
 
       {showInternalOrderModal && (
-        <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/70 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-xl max-h-[calc(100vh-48px)] overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Pedido interno</p>

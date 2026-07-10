@@ -14,25 +14,38 @@ async function generateCommercialOrderCode(
   tx: Prisma.TransactionClient,
   prefix: string
 ) {
-  const existingCodes = await tx.operationCommercialOrder.findMany({
-    where: {
-      code: {
-        startsWith: `${prefix}-`,
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const existingCodes = await tx.operationCommercialOrder.findMany({
+      where: {
+        code: {
+          startsWith: `${prefix}-`,
+        },
       },
-    },
-    select: { code: true },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+      select: { code: true },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
 
-  let maxSequence = 0;
-  for (const order of existingCodes) {
-    const match = order.code.match(new RegExp(`^${prefix}-(\\d+)$`));
-    if (!match) continue;
-    maxSequence = Math.max(maxSequence, Number.parseInt(match[1], 10) || 0);
+    let maxSequence = 0;
+    for (const order of existingCodes) {
+      const match = order.code.match(new RegExp(`^${prefix}-(\\d+)$`));
+      if (!match) continue;
+      maxSequence = Math.max(maxSequence, Number.parseInt(match[1], 10) || 0);
+    }
+
+    const nextCode = `${prefix}-${String(maxSequence + 1).padStart(4, "0")}`;
+
+    const exists = await tx.operationCommercialOrder.findUnique({
+      where: { code: nextCode },
+      select: { id: true },
+    });
+
+    if (!exists) return nextCode;
+
+    await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
   }
 
-  return `${prefix}-${String(maxSequence + 1).padStart(4, "0")}`;
+  throw new Error("COMMERCIAL_ORDER_CODE_COLLISION");
 }
 
 const finishedGoodSelect = {
@@ -342,6 +355,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "El code es requerido para pedidos no internos" },
         { status: 400 }
+      );
+    }
+
+    if (error instanceof Error && error.message === "COMMERCIAL_ORDER_CODE_COLLISION") {
+      return NextResponse.json(
+        { error: "No se pudo generar un código interno único. Intenta nuevamente." },
+        { status: 409 }
       );
     }
 
