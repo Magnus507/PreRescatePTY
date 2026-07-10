@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Cpu, UsersRound,
   Building2, ChevronRight, Settings,
   LogOut, Home, ShoppingCart, Package,
-  Loader2, Menu, X, PanelLeftClose, PanelLeftOpen, Shield, ReceiptText
+  Loader2, Menu, X, PanelLeftClose, PanelLeftOpen, ReceiptText
 } from "lucide-react";
 import { AccountState } from "@/domains/accounts/account.types";
 import { ScanMonitor } from "./_components/ScanMonitor";
@@ -21,7 +21,6 @@ const consumerNavItems = [
   { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
   { href: "/dashboard/perfiles-medicos", label: "Perfiles médicos", icon: UsersRound },
   { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
-  { href: "/dashboard/chips?activate=true", label: "Activar chip", icon: Shield },
   { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
   { href: "/dashboard/pedidos", label: "Mis pedidos", icon: ReceiptText },
   { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
@@ -324,7 +323,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
                   { href: "/dashboard/perfiles-medicos", label: "Perfiles Médicos", icon: UsersRound },
                   { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
-                  { href: "/dashboard/chips?activate=true", label: "Activar Chip", icon: Shield },
                   { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
                   { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
                   { href: "/dashboard/pedidos", label: "Mis Pedidos", icon: Package },
