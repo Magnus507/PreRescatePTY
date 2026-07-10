@@ -337,6 +337,54 @@ El bloque aparece cuando existe al menos uno de estos campos:
 
 La pantalla sigue dependiendo de un chip activo y asignado. La simplificación solo ajusta jerarquía visual y claridad clínica.
 
+## W6.10F - Reconstrucción del Formulario Médico Normal y Persistencia Completa
+
+Se reconstruyó la experiencia del formulario privado para que el usuario entienda qué perfil está creando y para que los campos actuales persistan al crear, guardar y volver a editar.
+
+### Qué cambió
+
+- se añadió una guía inicial con contexto de perfil: adulto, menor de edad, adulto mayor / dependiente y asistencia especial
+- se mejoró la sección de asistencia especial para que tenga una sola zona clara de retorno seguro
+- se eliminó la duplicación visual de notas críticas en la experiencia de escritorio
+- se rehidrató `showSafeReturnLocationPublic` en el editor
+- el retorno seguro quedó más visible y más fácil de revisar al reabrir el formulario
+
+### Persistencia reforzada
+
+Se audita y se mantiene alineado el flujo:
+
+- formulario privado
+- payload de creación
+- payload de actualización
+- edición de perfil
+- vista pública
+
+Campos especiales y de visibilidad implicados:
+
+- `hasCognitiveImpairment`
+- `hasWanderingRisk`
+- `isNonVerbal`
+- `communicationAssistance`
+- `safeReturnInstructions`
+- `showVulnerabilityStatusPublic`
+- `showCommunicationStatusPublic`
+- `showSafeReturnPublic`
+- `showSafeReturnLocationPublic`
+- `additionalNotes`
+- `showAdditionalNotesPublic`
+
+### Qué no cambió
+
+- no cambió el schema
+- no hubo migración
+- no se tocaron chips, activación, pedidos, productos, inventario, empresarial ni mascotas
+- no cambió la regla pública de W6.04
+- no cambió el helper de acceso público
+
+### Compatibilidad
+
+La experiencia pública sigue dependiendo de un chip activo y asignado. La reconstrucción solo fortalece edición, persistencia y claridad del formulario médico normal.
+
 ## Riesgos y Decisiones Pendientes
 
 - si se normalizan tablas médicas o no

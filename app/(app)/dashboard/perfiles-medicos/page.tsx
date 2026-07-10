@@ -68,6 +68,7 @@ interface FamilyProfile {
   showVulnerabilityStatusPublic: boolean;
   showCommunicationStatusPublic: boolean;
   showSafeReturnPublic: boolean;
+  showSafeReturnLocationPublic?: boolean;
   assignedChips: AssignedChip[];
   profileType?: string;
 }
@@ -108,6 +109,7 @@ const emptyForm = {
   showVulnerabilityStatusPublic: false,
   showCommunicationStatusPublic: false,
   showSafeReturnPublic: false,
+  showSafeReturnLocationPublic: false,
 };
 
 const emptyContactForm = {
@@ -243,6 +245,7 @@ export default function FamiliaPage() {
       showVulnerabilityStatusPublic: !!profile.showVulnerabilityStatusPublic,
       showCommunicationStatusPublic: !!profile.showCommunicationStatusPublic,
       showSafeReturnPublic: !!profile.showSafeReturnPublic,
+      showSafeReturnLocationPublic: !!profile.showSafeReturnLocationPublic,
     });
     setEditError("");
   }

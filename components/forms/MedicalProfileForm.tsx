@@ -227,6 +227,63 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     );
   };
 
+  const getProfileAudienceHint = () => {
+    const age = getCalculatedAge();
+    if (age !== null && age < 18) {
+      return { title: "Perfil infantil / menor de edad", desc: "Completa datos básicos, contactos y cualquier apoyo especial que necesite." };
+    }
+    if (age !== null && age >= 60) {
+      return { title: "Perfil de adulto mayor", desc: "Prioriza base médica, contactos y apoyo para memoria, movilidad u orientación." };
+    }
+    if (form.hasCognitiveImpairment || form.hasWanderingRisk || form.isNonVerbal || form.communicationAssistance?.trim() || form.safeReturnInstructions?.trim()) {
+      return { title: "Perfil con asistencia especial", desc: "Incluye instrucciones claras de comunicación y retorno seguro si aplica." };
+    }
+    return { title: "Perfil adulto", desc: "Usa la base médica común y completa solo lo que sea útil en emergencia." };
+  };
+
+  const renderProfileAudienceCards = () => {
+    const age = getCalculatedAge();
+    const cards = [
+      {
+        title: "Adulto",
+        desc: "Base médica normal para un perfil sin contexto especial.",
+        active: !(age !== null && (age < 18 || age >= 60)) && !form.hasCognitiveImpairment && !form.hasWanderingRisk && !form.isNonVerbal && !form.communicationAssistance?.trim() && !form.safeReturnInstructions?.trim(),
+      },
+      {
+        title: "Menor de edad",
+        desc: "Usa fecha de nacimiento y contactos de emergencia.",
+        active: age !== null && age < 18,
+      },
+      {
+        title: "Adulto mayor / dependiente",
+        desc: "Prioriza apoyo de orientación, memoria o movilidad.",
+        active: age !== null && age >= 60,
+      },
+      {
+        title: "Asistencia especial",
+        desc: "Comunicación asistida, desorientación o retorno seguro.",
+        active: !!(form.hasCognitiveImpairment || form.hasWanderingRisk || form.isNonVerbal || form.communicationAssistance?.trim() || form.safeReturnInstructions?.trim()),
+      },
+    ];
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {cards.map((card) => (
+          <div
+            key={card.title}
+            className={`rounded-2xl border p-4 space-y-2 ${card.active ? "border-primary/30 bg-primary/5" : "border-border bg-background"}`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-black uppercase tracking-widest text-slate-900">{card.title}</p>
+              {card.active && <span className="text-[10px] font-black uppercase tracking-widest text-primary">Contexto</span>}
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">{card.desc}</p>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderIdentityFields = (showRequiredHint = false) => (
     <div className="space-y-3">
       {showRequiredHint && (
@@ -292,6 +349,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
       <TextAreaField icon={<Activity className="h-4 w-4" />} label="Alergias" value={form.allergies} onChange={(v: string) => update("allergies", v)} placeholder="Ej: Penicilina..." color="text-red-700" />
       <TextAreaField icon={<ShieldAlert className="h-4 w-4" />} label="Condiciones" value={form.chronicConditions} onChange={(v: string) => update("chronicConditions", v)} placeholder="Ej: Diabetes..." color="text-amber-700" />
       <TextAreaField icon={<Pill className="h-4 w-4" />} label="Medicamentos" value={form.medications} onChange={(v: string) => update("medications", v)} placeholder="Ej: Insulina..." color="text-blue-600" />
+      {renderAdditionalNotesField()}
     </div>
   );
 
@@ -317,7 +375,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
   );
 
   const renderAdditionalNotesField = () => (
-    <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas críticas / instrucciones" value={form.additionalNotes} onChange={(v: string) => { update("additionalNotes", v); }} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
+    <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas críticas e instrucciones generales" value={form.additionalNotes} onChange={(v: string) => { update("additionalNotes", v); }} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
   );
 
   const renderInsuranceFields = () => (
@@ -377,7 +435,6 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
                 color="text-violet-600"
               />
             )}
-            {renderAdditionalNotesField()}
           </div>
         )}
       </div>
@@ -441,6 +498,18 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
                   <Field label="Responsable del lugar" value={form.safeReturnContactName || ""} onChange={(v: string) => update("safeReturnContactName", v)} placeholder="Ej: Tía María García" />
                   <Field label="Teléfono del responsable" value={form.safeReturnContactPhone || ""} onChange={(v: string) => update("safeReturnContactPhone", v)} placeholder="+507 6612-3456" />
                 </div>
+              </div>
+
+              <div>
+                <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección D</h5>
+                <TextAreaField
+                  icon={<Footprints className="h-4 w-4" />}
+                  label="Instrucciones de retorno seguro"
+                  value={form.safeReturnInstructions || ""}
+                  onChange={(v: string) => update("safeReturnInstructions", v)}
+                  placeholder="Cómo ayudar, a dónde llevarlo y qué hacer si se extravía."
+                  color="text-teal-700"
+                />
               </div>
             </div>
           </div>
@@ -592,6 +661,24 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
       {/* Step content */}
       <div className="min-h-[240px] transition-all duration-300">
         {step === 1 && (
+          <div className="rounded-3xl border border-border bg-muted/20 p-4 md:p-6 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary mb-2">Guía inicial</p>
+                <h4 className="text-lg font-black tracking-tight">{getProfileAudienceHint().title}</h4>
+                <p className="text-sm text-muted-foreground mt-1">{getProfileAudienceHint().desc}</p>
+              </div>
+              <div className="shrink-0">{renderAgeBadge()}</div>
+            </div>
+            {renderProfileAudienceCards()}
+            {(() => {
+              const badges = renderPrivateContextBadges();
+              return badges ? <div className="flex flex-wrap gap-2">{badges}</div> : null;
+            })()}
+          </div>
+        )}
+
+        {step === 1 && (
           <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
             <SectionHeader
               icon={<User className="h-5 w-5" />}
@@ -728,6 +815,19 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
   const renderGrid = () => (
     <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 ${disabled ? "opacity-60 pointer-events-none" : ""}`}>
 
+      <div className="lg:col-span-2 rounded-3xl border border-border bg-muted/20 p-4 md:p-6 space-y-4 shadow-inner">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary mb-2">Guía inicial</p>
+            <h3 className="text-xl font-black tracking-tight">{getProfileAudienceHint().title}</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{getProfileAudienceHint().desc}</p>
+          </div>
+          <div className="shrink-0">{renderAgeBadge()}</div>
+        </div>
+        {renderProfileAudienceCards()}
+        <div className="flex flex-wrap gap-2">{renderPrivateContextBadges()}</div>
+      </div>
+
       {/* Identity Section */}
       <div className="space-y-4">
         <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
@@ -750,11 +850,11 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
 
       {/* Medical Section */}
       <div className="space-y-4">
-        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center">
-              <Heart className="h-5 w-5" />
-            </div>
+          <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center">
+                <Heart className="h-5 w-5" />
+              </div>
             <div>
               <h3 className="font-black text-base md:text-lg tracking-tight text-red-600">Base médica esencial</h3>
               <p className="text-xs text-muted-foreground">Información clínica crítica para primera respuesta.</p>
@@ -776,22 +876,21 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
           {renderContactsGuidance()}
         </div>
 
-        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center">
-              <Brain className="h-5 w-5" />
-            </div>
+            <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center">
+                  <Brain className="h-5 w-5" />
+                </div>
             <div>
               <h3 className="font-black text-base md:text-lg tracking-tight text-violet-700">Asistencia especial / retorno seguro</h3>
               <p className="text-xs text-muted-foreground">Información opcional para vulnerabilidad o comunicación asistida.</p>
             </div>
-          </div>
-          {renderSpecialAssistanceFields()}
-          {renderAdditionalNotesField()}
-          <div className="pt-2">
-            {renderSafeReturnFields()}
-          </div>
-        </div>
+              </div>
+              {renderSpecialAssistanceFields()}
+              <div className="pt-2">
+                {renderSafeReturnFields()}
+              </div>
+            </div>
 
         <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
           <div className="flex items-center gap-3">
