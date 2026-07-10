@@ -185,11 +185,15 @@ export default function ChipsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <section className="relative overflow-hidden rounded-[2.25rem] border border-white/10 bg-[linear-gradient(135deg,#05070D_0%,#0F1419_52%,rgba(218,26,33,0.18)_100%)] p-5 shadow-[0_28px_80px_-38px_rgba(0,0,0,0.85)] md:p-7">
+      <section className="relative overflow-hidden rounded-[2.25rem] border border-[#1D2836] bg-[#05070D] p-5 shadow-[0_28px_80px_-38px_rgba(0,0,0,0.85)] md:p-7">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-20 right-[-2rem] h-52 w-52 rounded-full bg-[#DA1A21]/16 blur-3xl" />
-          <div className="absolute bottom-[-5rem] left-[-2rem] h-48 w-48 rounded-full bg-sky-400/10 blur-3xl" />
-          <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.9)_0.8px,transparent_0.8px)] [background-size:18px_18px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(218,26,33,0.16)_0%,rgba(218,26,33,0.06)_24%,transparent_46%),linear-gradient(135deg,rgba(5,7,13,0)_0%,rgba(15,20,25,0.82)_54%,rgba(5,7,13,1)_100%)]" />
+          <div className="absolute inset-0 opacity-[0.14] [background-image:linear-gradient(rgba(239,244,255,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(239,244,255,0.14)_1px,transparent_1px)] [background-size:44px_44px]" />
+          <div className="absolute inset-0 opacity-[0.16] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.72)_0.9px,transparent_0.9px)] [background-size:18px_18px]" />
+          <div className="absolute -right-10 top-8 h-44 w-44 rounded-full border border-[#DA1A21]/25 shadow-[0_0_60px_-18px_rgba(218,26,33,0.72)]" />
+          <div className="absolute right-8 top-24 h-20 w-20 rounded-full border border-[#EFF4FF]/12" />
+          <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-transparent via-[#DA1A21] to-transparent opacity-70" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#EFF4FF]/30 to-transparent" />
         </div>
 
         <div className="relative space-y-5">
@@ -262,12 +266,21 @@ export default function ChipsPage() {
                   key={chip.id}
                   className={`group relative overflow-hidden rounded-[2.25rem] border p-5 md:p-6 transition-all duration-200 ease-out active:scale-[0.995] ${
                     chip.status === "activated"
-                      ? "border-white/10 bg-[linear-gradient(135deg,rgba(5,7,13,0.98)_0%,rgba(15,20,25,0.98)_50%,rgba(218,26,33,0.14)_100%)] text-[#EFF4FF] shadow-[0_22px_55px_-30px_rgba(0,0,0,0.75)]"
+                      ? "border-[#273241] bg-[#05070D] text-[#EFF4FF] shadow-[0_22px_55px_-30px_rgba(0,0,0,0.75)]"
                       : "border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,1)_100%)] text-slate-950 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.28)]"
                   }`}
                 >
-                  <div className={`pointer-events-none absolute inset-0 opacity-100`}>
-                    <div className={`absolute -right-10 -top-10 h-40 w-40 rounded-full blur-3xl ${chip.status === "activated" ? "bg-[#DA1A21]/16" : "bg-slate-900/8"}`} />
+                  <div className="pointer-events-none absolute inset-0 opacity-100">
+                    {chip.status === "activated" ? (
+                      <>
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_9%_22%,rgba(218,26,33,0.16)_0%,transparent_29%),linear-gradient(118deg,rgba(239,244,255,0.08)_0%,transparent_22%,rgba(218,26,33,0.08)_76%,transparent_100%)]" />
+                        <div className="absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(239,244,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(239,244,255,0.13)_1px,transparent_1px)] [background-size:36px_36px]" />
+                        <div className="absolute -left-12 top-8 h-32 w-32 rounded-full border border-[#DA1A21]/22 shadow-[0_0_52px_-20px_rgba(218,26,33,0.7)]" />
+                        <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-[#DA1A21]/70 via-[#EFF4FF]/12 to-transparent" />
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_18%,rgba(15,23,42,0.08)_0%,transparent_34%),linear-gradient(135deg,rgba(255,255,255,0)_0%,rgba(226,232,240,0.58)_100%)]" />
+                    )}
                   </div>
 
                   <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -311,7 +324,7 @@ export default function ChipsPage() {
                       )}
                     </div>
 
-                    <div className="grid gap-4 rounded-[1.5rem] border border-white/10 bg-black/5 p-4 lg:w-[28rem]">
+                    <div className={`grid gap-4 rounded-[1.5rem] p-4 lg:w-[28rem] ${chip.status === "activated" ? "border border-white/10 bg-[#0B111A]/78 shadow-[inset_0_1px_0_rgba(239,244,255,0.08)]" : "border border-slate-200 bg-white/78 shadow-sm"}`}>
                       <div className={`flex items-center gap-3 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-900"}`}>
                         <div className={`flex h-10 w-10 items-center justify-center rounded-[1rem] ${chip.status === "activated" ? "bg-white/10" : "bg-primary/10"} shadow-sm`}>
                            <UserRound className={`h-5 w-5 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-primary"}`} />
@@ -513,9 +526,9 @@ export default function ChipsPage() {
 
 function SummaryPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[1.1rem] border border-white/10 bg-white/8 px-3 py-3 text-center backdrop-blur">
+    <div className="rounded-[1.1rem] border border-[#273241] bg-[#0B111A]/82 px-3 py-3 text-center shadow-[inset_0_1px_0_rgba(239,244,255,0.08)] backdrop-blur">
       <p className="text-lg font-black tracking-tight text-[#EFF4FF]">{value}</p>
-      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#EFF4FF]/62">{label}</p>
+      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#EFF4FF]/72">{label}</p>
     </div>
   );
 }
