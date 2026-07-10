@@ -140,7 +140,6 @@ export default function DashboardPage() {
   const protectedProfiles = allProfiles.filter((profile) => (profile.assignedChips?.length || 0) > 0);
   const unprotectedProfiles = allProfiles.filter((profile) => (profile.assignedChips?.length || 0) === 0);
   const activeChips = state.activeChipsCount || 0;
-  const capacityTotal = state.maxChipsAllocated || 0;
   const hasActiveChip = protectedProfiles.length > 0;
   const primaryCtaHref = unprotectedProfiles.length > 0
     ? "/dashboard/chips?activate=true"
@@ -197,7 +196,6 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-wrap gap-3">
                 <MetricPill label="Chips activos" value={activeChips} />
-                <MetricPill label="Capacidad de cuenta" value={capacityTotal} />
               </div>
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Link
@@ -257,15 +255,6 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-12">
-        <HomeCard
-          title="Perfiles médicos"
-          count={profileCount}
-          description="Gestiona tu información médica y la de tus protegidos."
-          ctaLabel="Gestionar"
-          href="/dashboard/perfiles-medicos"
-          className="lg:col-span-4"
-        />
-
         <HomeCard
           title="Mis dispositivos"
           count={activeChips}

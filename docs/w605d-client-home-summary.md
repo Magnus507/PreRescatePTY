@@ -9,8 +9,9 @@ Esta fase ajusta la pantalla Inicio para que gane marca, use mejor el ancho en d
 - Se reforzó el encabezado con marca y un tono más cercano a app de cliente.
 - Se amplió el uso del ancho en desktop con un hero más protagonista.
 - Se incorporó un preview útil de Perfiles médicos.
+- Se simplificó la pantalla retirando la tarjeta redundante de Perfiles médicos del bloque inferior.
+- Se retiró la métrica de `Capacidad de cuenta` para evitar confusión con el modelo actual.
 - Se conservaron las tarjetas principales:
-  - Perfiles médicos
   - Mis dispositivos
   - Tienda
   - Pedidos como acceso secundario
@@ -28,8 +29,8 @@ Esta fase ajusta la pantalla Inicio para que gane marca, use mejor el ancho en d
 
 ## 4. Pendientes / inferencias
 
-- `Capacidad de cuenta` se conserva como métrica útil, pero el cálculo operativo seguirá revisándose en iteraciones posteriores.
 - La experiencia está pensada primero para celular, con tarjetas apiladas y lectura rápida.
+- El detalle operativo seguirá viviendo en las páginas internas de perfiles, dispositivos, tienda y pedidos.
 
 ## 5. Confirmaciones de alcance
 
