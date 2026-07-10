@@ -98,20 +98,26 @@ const COMBO_META: Record<string, ComboInfo> = {
   },
 };
 
-const BUSINESS_NAMES = ["Combo Empresa", "Corporativo"];
-
 // ─── Helpers ─────────────────────────────────────────────────────
 function getComboMeta(name: string): ComboInfo | null {
   return COMBO_META[name] ?? null;
 }
 
-function isBusinessProduct(name: string): boolean {
-  return BUSINESS_NAMES.some((b) => name.toLowerCase().includes(b.toLowerCase()));
+function isBusinessProduct(product: Product): boolean {
+  const mapping = product.operationalMapping;
+  return (
+    mapping?.storeSection === "business_devices" ||
+    mapping?.deviceType === "business" ||
+    mapping?.purchaseFlow === "company_request" ||
+    mapping?.requiresCompanyContext === true
+  );
 }
 
-function getBusinessLabel(name: string): string {
-  if (name.toLowerCase().includes("corporativo")) return "Corporativo";
-  return "Combo Empresa";
+function getBusinessLabel(product: Product): string {
+  const mapping = product.operationalMapping;
+  if (mapping?.deviceType === "business") return "Empresarial";
+  if (mapping?.purchaseFlow === "company_request") return "Solicitud empresarial";
+  return "Producto empresarial";
 }
 
 // ─── Component ───────────────────────────────────────────────────
@@ -160,8 +166,8 @@ export default function TiendaPage() {
   }, []);
 
   // Separate personal vs business products
-  const personalProducts = products.filter((p) => !isBusinessProduct(p.name));
-  const businessProducts = products.filter((p) => isBusinessProduct(p.name));
+  const personalProducts = products.filter((p) => !isBusinessProduct(p));
+  const businessProducts = products.filter((p) => isBusinessProduct(p));
   const personalGrouped = groupProductsByStoreSection(personalProducts, "public");
 
   const loadProfiles = async (product?: Product) => {
@@ -574,7 +580,7 @@ export default function TiendaPage() {
                         </div>
                         <div>
                           <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tighter">
-                            {getBusinessLabel(p.name)}
+                            {getBusinessLabel(p)}
                           </h3>
                           <p className="text-[11px] font-medium text-slate-400 mt-0.5">
                             {p.description || "Solicitud con flujo separado"}
