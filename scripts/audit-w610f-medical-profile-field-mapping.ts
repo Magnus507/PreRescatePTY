@@ -11,6 +11,12 @@ const EXPECTED_FIELDS = [
   "isNonVerbal",
   "communicationAssistance",
   "safeReturnInstructions",
+  "safeReturnLocationName",
+  "safeReturnAddress",
+  "safeReturnLat",
+  "safeReturnLng",
+  "safeReturnContactName",
+  "safeReturnContactPhone",
   "showVulnerabilityStatusPublic",
   "showCommunicationStatusPublic",
   "showSafeReturnPublic",
@@ -56,6 +62,14 @@ async function main() {
     prisma.digitalPass.count(),
   ]);
 
+  const uiWithoutSchema = EXPECTED_FIELDS.filter((field) => fileScans["components/forms/MedicalProfileForm.tsx"]?.[field] && !schemaFields.includes(field));
+  const schemaWithoutUi = schemaFields.filter((field) => !fileScans["components/forms/MedicalProfileForm.tsx"]?.[field]);
+  const createMissing = EXPECTED_FIELDS.filter((field) => !fileScans["app/api/users/perfiles-medicos/route.ts"]?.[field]);
+  const updateMissing = EXPECTED_FIELDS.filter((field) => !fileScans["app/api/users/perfiles-medicos/[profileId]/route.ts"]?.[field]);
+  const publicMissing = EXPECTED_FIELDS.filter((field) => !fileScans["app/api/public/[shortCode]/route.ts"]?.[field]);
+  const editHydrationMissing = EXPECTED_FIELDS.filter((field) => !fileScans["app/(app)/dashboard/perfiles-medicos/page.tsx"]?.[field]);
+  const hasFailingMapping = uiWithoutSchema.length > 0 || createMissing.length > 0 || updateMissing.length > 0 || publicMissing.length > 0 || editHydrationMissing.length > 0;
+
   const report = {
     summary: {
       writesPerformed: false,
@@ -63,6 +77,7 @@ async function main() {
       generatedAt: new Date().toISOString(),
       headCommit: currentHead,
       expectedScope: "medical profile field mapping only",
+      status: hasFailingMapping ? "fail" : "pass",
     },
     currentDataState: {
       totalProfiles,
@@ -87,6 +102,14 @@ async function main() {
           EXPECTED_FIELDS.filter((field) => !fileScans[file]?.[field]),
         ])
       ),
+    },
+    mappingChecks: {
+      uiWithoutSchema,
+      schemaWithoutUi,
+      createMissing,
+      updateMissing,
+      publicMissing,
+      editHydrationMissing,
     },
     recommendations: [
       "If a field exists in schema but is missing from the form, add it to MedicalProfileForm and the profile edit hydration.",

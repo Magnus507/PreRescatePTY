@@ -69,6 +69,12 @@ interface FamilyProfile {
   showCommunicationStatusPublic: boolean;
   showSafeReturnPublic: boolean;
   showSafeReturnLocationPublic?: boolean;
+  safeReturnLocationName?: string | null;
+  safeReturnAddress?: string | null;
+  safeReturnLat?: number | null;
+  safeReturnLng?: number | null;
+  safeReturnContactName?: string | null;
+  safeReturnContactPhone?: string | null;
   assignedChips: AssignedChip[];
   profileType?: string;
 }
@@ -106,6 +112,12 @@ const emptyForm = {
   isNonVerbal: false,
   communicationAssistance: "",
   safeReturnInstructions: "",
+  safeReturnLocationName: "",
+  safeReturnAddress: "",
+  safeReturnLat: "",
+  safeReturnLng: "",
+  safeReturnContactName: "",
+  safeReturnContactPhone: "",
   showVulnerabilityStatusPublic: false,
   showCommunicationStatusPublic: false,
   showSafeReturnPublic: false,
@@ -242,6 +254,12 @@ export default function FamiliaPage() {
       isNonVerbal: !!profile.isNonVerbal,
       communicationAssistance: profile.communicationAssistance || "",
       safeReturnInstructions: profile.safeReturnInstructions || "",
+      safeReturnLocationName: profile.safeReturnLocationName || "",
+      safeReturnAddress: profile.safeReturnAddress || "",
+      safeReturnLat: profile.safeReturnLat != null ? String(profile.safeReturnLat) : "",
+      safeReturnLng: profile.safeReturnLng != null ? String(profile.safeReturnLng) : "",
+      safeReturnContactName: profile.safeReturnContactName || "",
+      safeReturnContactPhone: profile.safeReturnContactPhone || "",
       showVulnerabilityStatusPublic: !!profile.showVulnerabilityStatusPublic,
       showCommunicationStatusPublic: !!profile.showCommunicationStatusPublic,
       showSafeReturnPublic: !!profile.showSafeReturnPublic,

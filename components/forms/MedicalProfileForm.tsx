@@ -249,27 +249,6 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     </div>
   );
 
-  const renderContactsGuidance = () => (
-    <div className="space-y-3">
-      <div className="flex items-start gap-2 text-[11px] font-semibold text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2.5">
-        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-        <span>
-          Los contactos de emergencia se administran desde el bloque de contactos del perfil. Aquí resumimos quién debe responder y por qué es importante mantenerlos actualizados.
-        </span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="rounded-xl border border-border bg-background p-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contacto principal</p>
-          <p className="text-sm font-semibold mt-1">Usa tu contacto de mayor prioridad para emergencias inmediatas.</p>
-        </div>
-        <div className="rounded-xl border border-border bg-background p-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contacto secundario</p>
-          <p className="text-sm font-semibold mt-1">Añade un respaldo familiar o cuidador si existe.</p>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderAdditionalNotesField = () => (
     <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas críticas e instrucciones generales" value={form.additionalNotes} onChange={(v: string) => { update("additionalNotes", v); }} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
   );
@@ -370,43 +349,6 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     true,
   );
 
-  const renderContactsModule = () => renderModuleShell(
-    "Contactos de emergencia",
-    "Personas que deben responder si hay una urgencia.",
-    renderContactsGuidance(),
-    null,
-    false,
-  );
-
-  const renderMinorModule = () => {
-    const age = getCalculatedAge();
-    const minorSummary = age !== null && age < 18
-      ? `Menor de edad detectado por fecha de nacimiento.`
-      : "Si el perfil pertenece a un menor, usa la fecha de nacimiento para que la vista pública lo identifique con claridad.";
-
-    return renderModuleShell(
-      "Niño / menor de edad",
-      "Contexto de protección para perfiles pediátricos o dependientes.",
-      <div className="space-y-3">
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/80 dark:bg-blue-950/30 dark:border-blue-800 px-3 py-3 text-sm text-blue-800 dark:text-blue-200">
-          {minorSummary}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-border bg-background p-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Badge activo</p>
-            <p className="text-sm font-semibold mt-1">Menor de edad</p>
-          </div>
-          <div className="rounded-2xl border border-border bg-background p-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Uso</p>
-            <p className="text-sm font-semibold mt-1">Sirve como contexto visual, no como un flujo aparte.</p>
-          </div>
-        </div>
-      </div>,
-      null,
-      false,
-    );
-  };
-
   const renderAssistanceModule = () => {
     const hasChildData = (form.hasCognitiveImpairment === true) || (form.hasWanderingRisk === true) || (form.isNonVerbal === true) || Boolean(form.communicationAssistance?.trim());
     const isActive = form.enableSpecialAssistance ?? hasChildData;
@@ -415,6 +357,15 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       "Asistencia especial / condición especial",
       "Comunicación, acompañamiento y señales de apoyo visibles para quien atiende.",
       <div className="space-y-4">
+        <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-2 text-sm">
+          <p className="font-semibold text-muted-foreground">Ayudas útiles</p>
+          <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+            <li>Usa frases cortas y claras.</li>
+            <li>Habla con calma y evita tocar sin avisar.</li>
+            <li>Contacta al responsable si la persona se altera.</li>
+            <li>Pictogramas, gestos o apoyo visual pueden ayudar.</li>
+          </ul>
+        </div>
         <ToggleField
           label="Habilitar asistencia especial"
           checked={isActive}
@@ -439,7 +390,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             {form.isNonVerbal && (
               <TextAreaField
                 icon={<MessageCircle className="h-4 w-4" />}
-                label="Instrucciones de comunicación"
+                label="Cómo comunicarse / qué ayuda"
                 value={form.communicationAssistance || ""}
                 onChange={(v: string) => update("communicationAssistance", v)}
                 placeholder="Ej. Usa pictogramas, frases cortas, tono calmado..."
@@ -465,8 +416,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     const hasCognitiveData = (form.hasCognitiveImpairment === true) || (form.hasWanderingRisk === true);
 
     return renderModuleShell(
-      "Deterioro cognitivo / Alzheimer / demencia",
-      "Bloque prudente para reportar vulnerabilidad cognitiva o riesgo de desorientación.",
+      "Deterioro cognitivo / memoria / desorientación",
+      "Bloque prudente para reportar vulnerabilidad cognitiva o riesgo de extravío.",
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ToggleField label="Deterioro cognitivo reportado" checked={form.hasCognitiveImpairment ?? false} onChange={(v) => update("hasCognitiveImpairment", v)} />
@@ -476,6 +427,9 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
         <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
           <p className="text-xs font-semibold text-muted-foreground">
             Usa este módulo para notas prudentes como “deterioro cognitivo reportado” o “riesgo de desorientación”.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Úsalo junto con contactos de emergencia, retorno seguro e instrucciones de acompañamiento. No añade campos nuevos: ordena la atención con datos reales.
           </p>
           <ToggleField
             label="Mostrar vulnerabilidad en vista pública"
@@ -503,6 +457,12 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       "Retorno seguro / persona perdida",
       "Un bloque separado para emergencias de extravío, retorno a casa o acompañamiento seguro.",
       <div className="space-y-4">
+        <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-2 text-sm">
+          <p className="font-semibold text-muted-foreground">Solo se muestran campos que realmente persisten.</p>
+          <p className="text-xs text-muted-foreground">
+            Si no hay ubicación estructurada, la ayuda se limita a instrucciones, visibilidad pública y los datos que ya existen en el modelo.
+          </p>
+        </div>
         <ToggleField
           label="Habilitar retorno seguro"
           checked={isActive}
@@ -524,26 +484,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
         {isActive && (
           <div className="space-y-4">
             <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
-              <h4 className="font-black text-sm text-teal-700">Ubicación de retorno seguro</h4>
-              <p className="text-xs text-muted-foreground">Define adónde deben llevar a la persona si se extravía.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Nombre del lugar" value={form.safeReturnLocationName || ""} onChange={(v: string) => update("safeReturnLocationName", v)} placeholder="Ej: Casa de tía María" />
-                <Field label="Dirección" value={form.safeReturnAddress || ""} onChange={(v: string) => update("safeReturnAddress", v)} placeholder="Calle, número, referencia" />
-                <Field label="Latitud" value={String(form.safeReturnLat ?? "")} onChange={(v: string) => update("safeReturnLat", v)} placeholder="Ej: 8.9833" />
-                <Field label="Longitud" value={String(form.safeReturnLng ?? "")} onChange={(v: string) => update("safeReturnLng", v)} placeholder="Ej: -79.5167" />
-              </div>
-              {(!form.safeReturnLat && !form.safeReturnLng) && (
-                <div className="text-xs text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2">
-                  <Info className="inline-block mr-2 align-text-top" /> Los mapas no estarán disponibles sin coordenadas.
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Responsable del lugar" value={form.safeReturnContactName || ""} onChange={(v: string) => update("safeReturnContactName", v)} placeholder="Ej: Tía María García" />
-                <Field label="Teléfono del responsable" value={form.safeReturnContactPhone || ""} onChange={(v: string) => update("safeReturnContactPhone", v)} placeholder="+507 6612-3456" />
-              </div>
+              <h4 className="font-black text-sm text-teal-700">Instrucciones de retorno seguro</h4>
+              <p className="text-xs text-muted-foreground">Describe qué hacer, a quién llamar y cómo ayudar a regresar a la persona de forma segura.</p>
               <TextAreaField
                 icon={<Footprints className="h-4 w-4" />}
                 label="Instrucciones de retorno seguro"
@@ -562,6 +504,21 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 checked={form.showSafeReturnLocationPublic ?? false}
                 onChange={(v) => update("showSafeReturnLocationPublic", v)}
               />
+            </div>
+
+            <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
+              <div>
+                <h4 className="font-black text-sm text-slate-700">Ubicación estructurada de retorno</h4>
+                <p className="text-xs text-muted-foreground">Este bloque es opcional, pero real: si lo completas, el sistema puede mostrar una referencia de retorno más precisa.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Nombre del lugar" value={form.safeReturnLocationName || ""} onChange={(v: string) => update("safeReturnLocationName", v)} placeholder="Ej: Casa de tía María" />
+                <Field label="Dirección" value={form.safeReturnAddress || ""} onChange={(v: string) => update("safeReturnAddress", v)} placeholder="Calle, número, referencia" />
+                <Field label="Latitud" value={String(form.safeReturnLat ?? "")} onChange={(v: string) => update("safeReturnLat", v)} placeholder="Ej: 8.9833" />
+                <Field label="Longitud" value={String(form.safeReturnLng ?? "")} onChange={(v: string) => update("safeReturnLng", v)} placeholder="Ej: -79.5167" />
+                <Field label="Responsable del lugar" value={form.safeReturnContactName || ""} onChange={(v: string) => update("safeReturnContactName", v)} placeholder="Ej: Tía María García" />
+                <Field label="Teléfono del responsable" value={form.safeReturnContactPhone || ""} onChange={(v: string) => update("safeReturnContactPhone", v)} placeholder="+507 6612-3456" />
+              </div>
             </div>
           </div>
         )}
@@ -601,8 +558,9 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-4">
           {renderIdentityModule()}
-          {renderContactsModule()}
-          {renderMinorModule()}
+          <div className="rounded-3xl border border-border bg-muted/20 p-4 md:p-5">
+            <p className="text-xs font-semibold text-muted-foreground">Los contactos de emergencia se administran en el bloque propio de contactos del perfil. Este formulario solo concentra datos clínicos y de asistencia.</p>
+          </div>
         </div>
         <div className="space-y-4">
           {renderMedicalModule()}

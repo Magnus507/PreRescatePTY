@@ -429,6 +429,41 @@ La experiencia del formulario se refinó para eliminar la guía inicial grande y
 
 El formulario ahora se percibe como una colección de módulos editables y plegables, más cercana a una interfaz moderna de 2026 y más fácil de revisar sin perder persistencia.
 
+## W6.10F-UX3 - Persistencia Real y Módulos Útiles
+
+Se corrigió la persistencia real de retorno seguro y se eliminaron bloques visuales que no aportaban edición útil.
+
+### Qué se corrigió
+
+- `safeReturnInstructions`, `showSafeReturnPublic` y `showSafeReturnLocationPublic` quedaron rehidratados en edición
+- los campos estructurados de retorno seguro se conservan porque ya existen en el schema y en los endpoints
+- el editor deja de mostrar módulos muertos que no tenían acción real
+- la experiencia de asistencia especial y deterioro cognitivo se apoya en datos reales y en copy útil
+
+### Qué se quitó o compactó
+
+- el bloque grande de contactos de emergencia dentro del formulario
+- el módulo visual de menor de edad como formulario aparte
+- el bloque “Privacidad y vista pública” global
+
+### Qué quedó en módulos útiles
+
+- Deterioro cognitivo / memoria / desorientación
+- Asistencia especial / condición especial
+- Retorno seguro / persona perdida
+- Seguro y médico tratante
+
+### Qué se mantiene
+
+- la base médica sigue en `Profile`
+- los contactos siguen administrándose en su bloque propio del perfil
+- no se agregaron campos falsos
+- no se tocaron schema, migraciones ni acceso público
+
+### Resultado
+
+El formulario ahora prioriza persistencia real, módulos con acción concreta y una edición más honesta para el usuario.
+
 ## Riesgos y Decisiones Pendientes
 
 - si se normalizan tablas médicas o no
