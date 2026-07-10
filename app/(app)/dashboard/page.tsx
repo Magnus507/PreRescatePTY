@@ -156,7 +156,7 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-700">
       <section className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-12">
-          <div className="relative overflow-hidden rounded-[2.75rem] border border-white/10 bg-[linear-gradient(135deg,#05070D_0%,#0F1419_52%,rgba(218,26,33,0.22)_100%)] p-5 shadow-[0_28px_80px_-32px_rgba(0,0,0,0.8)] md:p-7">
+          <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-[linear-gradient(135deg,#05070D_0%,#0F1419_52%,rgba(218,26,33,0.22)_100%)] p-5 shadow-[0_28px_80px_-32px_rgba(0,0,0,0.8)] md:p-7">
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute -top-20 right-[-4rem] h-56 w-56 rounded-full bg-[#DA1A21]/20 blur-3xl" />
               <div className="absolute bottom-[-6rem] left-[-3rem] h-52 w-52 rounded-full bg-sky-400/10 blur-3xl" />
@@ -173,7 +173,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={refreshData}
-                    className="relative h-11 w-11 rounded-2xl border border-white/10 bg-white/8 text-[#EFF4FF]/75 backdrop-blur transition-all hover:border-white/20 hover:text-white"
+                    className="relative h-11 w-11 rounded-[1.15rem] border border-white/10 bg-white/8 text-[#EFF4FF]/75 backdrop-blur transition-all hover:border-white/20 hover:text-white"
                     aria-label="Actualizar panel"
                   >
                     <Bell className="mx-auto h-5 w-5" />
@@ -193,8 +193,8 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  <div className="rounded-full border border-white/10 bg-white/8 px-4 py-2.5 text-left backdrop-blur">
-                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#EFF4FF]/55">Estado</p>
+                  <div className="rounded-[1.15rem] border border-white/10 bg-white/8 px-4 py-2.5 text-left backdrop-blur">
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#EFF4FF]/62">Estado</p>
                     <p className="mt-1 text-sm font-black text-[#EFF4FF]">{state.isInactive ? "Cuenta lista para activar" : "Cuenta activa"}</p>
                   </div>
                   <MetricPill label="Chips activos" value={activeChips} />
@@ -203,24 +203,24 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-3 pt-1 sm:flex-row">
                   <Link
                     href={primaryCtaHref}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.5 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all hover:translate-y-[-1px] hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.15rem] bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.5 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all hover:translate-y-[-1px] hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] sm:w-auto"
                   >
                     {primaryCtaLabel}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                   <Link
                     href="/dashboard/perfiles-medicos"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/8 px-5 py-3.5 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all hover:border-white/20 hover:bg-white/12 sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.15rem] border border-white/12 bg-white/10 px-5 py-3.5 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all hover:border-white/20 hover:bg-white/14 sm:w-auto"
                   >
                     Ver perfiles
                   </Link>
                 </div>
               </div>
 
-              <div className="rounded-[2.25rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_24px_70px_-30px_rgba(0,0,0,0.72)] backdrop-blur-xl md:p-5">
+              <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-4 shadow-[0_24px_70px_-30px_rgba(0,0,0,0.72)] backdrop-blur-xl md:p-5">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#EFF4FF]/55">Vista rápida</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#EFF4FF]/62">Vista rápida</p>
                     <h2 className="mt-1 text-2xl font-black tracking-tight text-[#EFF4FF]">Perfiles médicos</h2>
                   </div>
                   <Link href="/dashboard/perfiles-medicos" className="text-xs font-black uppercase tracking-widest text-[#EFF4FF]/70 transition-colors hover:text-white">
@@ -234,24 +234,24 @@ export default function DashboardPage() {
                     const hasChip = (profile.assignedChips?.length || 0) > 0;
                     const initials = `${profile.firstName?.[0] || ""}${profile.lastName?.[0] || ""}`.trim().toUpperCase() || "PR";
                     return (
-                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.4rem] border border-white/10 bg-[#05070D]/35 p-3.5">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white/18 to-white/8 text-sm font-black text-[#EFF4FF] ring-1 ring-white/10">
+                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-[#05070D]/48 p-3.5">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-gradient-to-br from-white/18 to-white/8 text-sm font-black text-[#EFF4FF] ring-1 ring-white/10">
                           {initials}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-black text-[#EFF4FF]">{fullName}</p>
-                          <p className="truncate text-[11px] text-[#EFF4FF]/60">
+                          <p className="truncate text-[11px] text-[#EFF4FF]/70">
                             {hasChip ? "Protegido" : "Sin chip"}
                             {profile.bloodType ? ` · ${profile.bloodType}` : ""}
                           </p>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20" : "bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/20"}`}>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-500/18 text-emerald-200 ring-1 ring-emerald-300/20" : "bg-amber-500/18 text-amber-200 ring-1 ring-amber-300/20"}`}>
                           {hasChip ? "Protegido" : "Sin chip"}
                         </span>
                       </div>
                     );
                   }) : (
-                    <div className="rounded-[1.4rem] border border-dashed border-white/12 bg-white/5 p-4 text-sm text-[#EFF4FF]/65">
+                    <div className="rounded-[1.2rem] border border-dashed border-white/12 bg-white/6 p-4 text-sm text-[#EFF4FF]/70">
                       Aún no tienes perfiles registrados.
                     </div>
                   )}
@@ -284,17 +284,17 @@ export default function DashboardPage() {
           className="lg:col-span-4"
         />
 
-        <div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center lg:p-6">
+        <div className="rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.97)_0%,rgba(248,250,252,1)_100%)] p-5 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.28)] flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center lg:p-6">
           <div className="space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Mis pedidos</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Mis pedidos</p>
             <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Pedidos recientes</h2>
-            <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+            <p className="text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300">
               Revisa tus pedidos cuando necesites ver estados o historial.
             </p>
           </div>
           <Link
             href="/dashboard/pedidos"
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-3.5 text-sm font-black text-slate-700 transition-all hover:border-primary/30 hover:text-primary dark:text-slate-200"
+            className="inline-flex items-center justify-center gap-2 rounded-[1.1rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-black text-slate-800 transition-all hover:border-primary/30 hover:text-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           >
             Ver pedidos
           </Link>
@@ -306,9 +306,9 @@ export default function DashboardPage() {
 
 function MetricPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-background px-3 py-3 text-center">
+    <div className="rounded-[1.1rem] border border-border/70 bg-background px-3 py-3 text-center">
       <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
-      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground leading-tight">{label}</p>
+      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 leading-tight">{label}</p>
     </div>
   );
 }
@@ -357,18 +357,18 @@ function HomeCard({
       : "bg-white/92 text-slate-900 hover:bg-white";
 
   return (
-    <div className={`relative overflow-hidden rounded-[2rem] border p-6 shadow-sm flex flex-col justify-between gap-4 ${className} ${shellClassName}`}>
+    <div className={`relative overflow-hidden rounded-[1.75rem] border p-6 shadow-sm flex flex-col justify-between gap-4 ${className} ${shellClassName}`}>
       <div className="pointer-events-none absolute inset-0 opacity-100">
         {variant === "device" && (
           <>
-            <div className="absolute -right-8 top-[-2.5rem] h-24 w-24 rounded-full bg-[#DA1A21]/20 blur-2xl" />
-            <div className="absolute bottom-[-3rem] left-[-1rem] h-20 w-20 rounded-full bg-sky-400/10 blur-2xl" />
+            <div className="absolute -right-8 top-[-2.5rem] h-24 w-24 rounded-full bg-[#DA1A21]/12 blur-2xl" />
+            <div className="absolute bottom-[-3rem] left-[-1rem] h-20 w-20 rounded-full bg-sky-400/8 blur-2xl" />
           </>
         )}
         {variant === "shop" && (
           <>
-            <div className="absolute -right-12 top-[-3rem] h-28 w-28 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute bottom-[-2rem] left-[-2rem] h-24 w-24 rounded-full bg-[#DA1A21]/18 blur-3xl" />
+            <div className="absolute -right-12 top-[-3rem] h-28 w-28 rounded-full bg-white/8 blur-3xl" />
+            <div className="absolute bottom-[-2rem] left-[-2rem] h-24 w-24 rounded-full bg-[#DA1A21]/12 blur-3xl" />
           </>
         )}
       </div>
@@ -377,7 +377,7 @@ function HomeCard({
         <div className="flex items-start justify-between gap-3">
           <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${eyebrowClassName}`}>{title}</p>
           {badge && (
-            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${variant === "shop" ? "bg-white/10 text-white ring-1 ring-white/10" : variant === "device" ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20" : "bg-slate-100 text-slate-600 ring-1 ring-border"}`}>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${variant === "shop" ? "bg-white/12 text-white ring-1 ring-white/10" : variant === "device" ? "bg-emerald-500/18 text-emerald-200 ring-1 ring-emerald-300/20" : "bg-slate-100 text-slate-600 ring-1 ring-border"}`}>
               {badge}
             </span>
           )}
@@ -387,7 +387,7 @@ function HomeCard({
       </div>
       <Link
         href={href}
-        className={`relative inline-flex w-fit items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-black transition-all ${buttonClassName} ${variant === "shop" ? "border border-transparent" : "border"}`}
+        className={`relative inline-flex w-fit items-center justify-center gap-2 rounded-[1.1rem] px-4 py-3.5 text-sm font-black transition-all ${buttonClassName} ${variant === "shop" ? "border border-transparent" : "border"}`}
       >
         {ctaLabel}
       </Link>
