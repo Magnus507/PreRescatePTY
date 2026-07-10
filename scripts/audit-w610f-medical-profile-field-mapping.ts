@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 const OUTPUT_PATH = path.join(process.cwd(), "tmp", "w610f-medical-profile-field-mapping-audit.json");
 
 const EXPECTED_FIELDS = [
+  "birthDate",
   "hasCognitiveImpairment",
   "hasWanderingRisk",
   "isNonVerbal",

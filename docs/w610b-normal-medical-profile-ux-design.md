@@ -498,6 +498,58 @@ La ficha pública médica quedó alineada con la estructura modular del formular
 
 La ficha pública ahora refleja la lógica modular del formulario privado sin perder la separación entre ayuda ciudadana, apoyo clínico y retorno seguro.
 
+## W6.10F-UX5 — Edad visible y contexto Alzheimer / demencia
+
+Se aplicó un ajuste final para que la edad no desaparezca en la ficha pública cuando existe fecha de nacimiento, y para que el contexto cognitivo sea más prudente.
+
+### Qué cambió
+
+- si existe `birthDate`, la edad pública se calcula y se muestra
+- en menores de edad, la ficha pública muestra `Edad: X años` y el badge `Menor de edad`
+- el módulo de cognición aclara que aplica para Alzheimer, demencia, pérdida de memoria o riesgo de desorientación
+- no se inventa diagnóstico: solo se describe el contexto que el usuario reporta
+
+### Qué no cambió
+
+- no se creó un campo nuevo
+- no hubo migración
+- no cambió `Chip.shortCode` como puerta de acceso
+- no se tocó W6.04
+- no se tocaron chips, activación, pedidos, productos, inventario ni empresarial
+
+### Resultado
+
+La ficha pública ahora muestra edad cuando existe fecha de nacimiento y comunica el contexto cognitivo con un lenguaje más cuidadoso y útil.
+
+## W6.10F-UX6 — Contactos de rescate únicos
+
+La ficha pública quedó consolidada en un solo bloque final de contactos de rescate para evitar duplicación visual.
+
+### Qué cambió
+
+- se eliminó la duplicación entre "Contactos de emergencia" y "Contactos de rescate"
+- ahora solo existe un bloque público final llamado `Contactos de rescate`
+- cada tarjeta muestra nombre, relación y teléfono si existen
+- el primer contacto puede destacarse como contacto principal
+- se priorizan acciones claras de llamar y WhatsApp cuando hay teléfono válido
+
+### Qué pasa si no hay contactos
+
+- se muestra un aviso pequeño
+- no aparecen tarjetas vacías
+
+### Qué no cambió
+
+- no cambió el schema
+- no hubo migración
+- no cambió `Chip.shortCode`
+- no se tocó W6.04
+- no se tocaron chips, activación, pedidos, productos, inventario ni empresarial
+
+### Resultado
+
+La ficha pública evita duplicación y deja un solo bloque coherente para rescate, contacto y acción rápida.
+
 ## Riesgos y Decisiones Pendientes
 
 - si se normalizan tablas médicas o no

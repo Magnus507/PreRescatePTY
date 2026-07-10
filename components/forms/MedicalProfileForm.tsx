@@ -417,7 +417,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 
     return renderModuleShell(
       "Deterioro cognitivo / memoria / desorientación",
-      "Bloque prudente para reportar vulnerabilidad cognitiva o riesgo de extravío.",
+      "Útil para Alzheimer, demencia, pérdida de memoria o riesgo de desorientación.",
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ToggleField label="Deterioro cognitivo reportado" checked={form.hasCognitiveImpairment ?? false} onChange={(v) => update("hasCognitiveImpairment", v)} />
@@ -426,10 +426,10 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 
         <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
           <p className="text-xs font-semibold text-muted-foreground">
-            Usa este módulo para notas prudentes como “deterioro cognitivo reportado” o “riesgo de desorientación”.
+            Usa este módulo para indicar si la persona puede confundirse, desorientarse, no recordar datos personales o requerir acompañamiento.
           </p>
           <p className="text-xs text-muted-foreground">
-            Úsalo junto con contactos de emergencia, retorno seguro e instrucciones de acompañamiento. No añade campos nuevos: ordena la atención con datos reales.
+            Si se pierde con frecuencia, completa también Retorno seguro / persona perdida. No añade campos nuevos: ordena la atención con datos reales.
           </p>
           <ToggleField
             label="Mostrar vulnerabilidad en vista pública"

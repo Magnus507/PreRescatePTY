@@ -229,8 +229,8 @@ function PublicSupportBlock({ profile }: { profile: EmergencyProfile }) {
           <MessageCircle className="h-5 w-5 text-violet-600" />
         </div>
         <div>
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Asistencia especial / condición especial</h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Apoyo, comunicación y acompañamiento</p>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Deterioro cognitivo / memoria / desorientación</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Útil para Alzheimer, demencia, pérdida de memoria o riesgo de desorientación</p>
         </div>
       </div>
 
@@ -244,7 +244,7 @@ function PublicSupportBlock({ profile }: { profile: EmergencyProfile }) {
         {showVulnerability && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
             <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Deterioro cognitivo reportado</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">Puede requerir instrucciones simples, calma y acompañamiento de un contacto responsable.</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">Puede requerir orientación, frases simples y acompañamiento. Útil para Alzheimer, demencia, pérdida de memoria o riesgo de desorientación.</p>
           </div>
         )}
       </div>
@@ -254,6 +254,11 @@ function PublicSupportBlock({ profile }: { profile: EmergencyProfile }) {
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">Retorno seguro</p>
             <p className="mt-1 text-sm font-semibold text-slate-900 whitespace-pre-wrap">{profile.safeReturn?.instructions}</p>
+            {showVulnerability && (
+              <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-teal-700">
+                Complementa este módulo cuando haya pérdida de memoria, desorientación o necesidad de acompañamiento.
+              </p>
+            )}
           </div>
           {showSafeReturnLocation && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -318,7 +323,7 @@ function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
   if (!profile.emergencyContacts.length) {
     return (
       <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg">
-        <p className="text-sm font-semibold text-slate-600">No hay contactos de emergencia disponibles.</p>
+        <p className="text-sm font-semibold text-slate-600">No hay contactos de rescate disponibles.</p>
       </section>
     );
   }
@@ -330,8 +335,8 @@ function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
           <Heart className="h-5 w-5 text-emerald-600" />
         </div>
         <div>
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Contactos de emergencia</h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Contactos registrados para respuesta inmediata</p>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Contactos de rescate</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Contactar responsable, tutor o cuidador si hace falta</p>
         </div>
       </div>
       <div className="space-y-3">
@@ -339,7 +344,14 @@ function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
           <div key={idx} className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <p className="text-sm font-black uppercase tracking-tight text-slate-900">{contact.fullName}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-black uppercase tracking-tight text-slate-900">{contact.fullName}</p>
+                  {idx === 0 && (
+                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                      Contacto principal
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs uppercase tracking-widest text-slate-500 mt-1">{contact.relationship}</p>
                 <p className="text-sm font-semibold text-slate-700 mt-2">{contact.phone}</p>
               </div>
@@ -556,15 +568,16 @@ function PatientMedicalCard({ profile, isParamedic, showAssistanceBadges = true 
               <Droplets className="h-4 w-4 md:h-5 md:w-5 fill-white" />
               <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SANGRE: {profile.bloodType}</span>
             </div>
-            {profile.isMinor ? (
+            {profile.age !== null && (
+              <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-900 text-white rounded-xl md:rounded-2xl shadow-lg shadow-slate-200">
+                <Calendar className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Edad: {profile.age} años</span>
+              </div>
+            )}
+            {profile.isMinor && (
               <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-blue-600 text-white rounded-xl md:rounded-2xl shadow-lg shadow-blue-200">
                 <Baby className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Menor de edad</span>
-              </div>
-            ) : profile.age !== null && (
-              <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-900 text-white rounded-xl md:rounded-2xl shadow-lg shadow-slate-200">
-                <Calendar className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Edad: {profile.age}</span>
               </div>
             )}
             <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-50 text-slate-950 rounded-xl md:rounded-2xl border border-slate-300 shadow-sm">
@@ -1063,7 +1076,8 @@ export default function EmergencyPage() {
                   {profile.displayName !== `${profile.firstName} ${profile.lastName.charAt(0)}.` && <p className="text-sm font-black text-slate-400 mb-4 mt-1 uppercase tracking-widest">ALIAS: {profile.displayName}</p>}
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3">
                     <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-[#DA1A21] text-white rounded-xl md:rounded-2xl shadow-lg shadow-red-200"><Droplets className="h-4 w-4 md:h-5 md:w-5 fill-white" /><span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SANGRE: {profile.bloodType}</span></div>
-                    {profile.age !== null && <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-900 text-white rounded-xl md:rounded-2xl shadow-lg shadow-slate-200"><Calendar className="h-4 w-4 md:h-5 md:w-5" /><span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Edad: {profile.age}</span></div>}
+                    {profile.age !== null && <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-900 text-white rounded-xl md:rounded-2xl shadow-lg shadow-slate-200"><Calendar className="h-4 w-4 md:h-5 md:w-5" /><span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Edad: {profile.age} años</span></div>}
+                    {profile.isMinor && <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-blue-600 text-white rounded-xl md:rounded-2xl shadow-lg shadow-blue-200"><Baby className="h-4 w-4 md:h-5 md:w-5" /><span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Menor de edad</span></div>}
                     <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-50 text-slate-950 rounded-xl md:rounded-2xl border border-slate-300 shadow-sm"><span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SEXO: {profile.sex === 'M' ? 'MASCULINO' : profile.sex === 'F' ? 'FEMENINO' : 'NO REPORTADO'}</span></div>
                   </div>
                   <div className="mt-4 space-y-2 md:hidden">
@@ -1115,48 +1129,6 @@ export default function EmergencyPage() {
                 <p className="text-sm font-semibold text-amber-900">{extras.emergencyInstructions}</p>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Paramedic emergency contacts at end */}
-        {view === 'paramedic' && profile.emergencyContacts.length > 0 && (
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
-            <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-emerald-50 h-12 w-12 rounded-2xl p-2.5 border border-emerald-100 flex items-center justify-center"><Heart className="h-8 w-8 text-emerald-600 fill-emerald-600 animate-pulse" /></div>
-                  <div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Contactos de Rescate</h2>
-                    <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1">Contactos de emergencia registrados</p>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-6">
-                {profile.emergencyContacts.map((contact, idx) => {
-                  const contactPhone = sanitizeTelPhone(contact.phone);
-                  const whatsappUrl = whatsappUrls[idx] || "";
-                  return (
-                    <div key={idx} className="p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8 shadow-sm">
-                      <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row w-full md:w-auto">
-                        <div className="h-12 w-12 md:h-16 md:w-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-xl md:text-2xl shadow-lg shadow-emerald-100 shrink-0">{contact.fullName[0].toUpperCase()}</div>
-                        <div>
-                          <p className="font-black text-slate-900 uppercase tracking-tight text-xl md:text-2xl leading-none mb-1">{contact.fullName}</p>
-                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full border border-emerald-200">
-                            <ShieldCheck className="h-3 w-3 text-emerald-700" />
-                            <span className="text-[10px] text-emerald-700 font-black uppercase tracking-widest">{contact.relationship}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 sm:flex items-center gap-3 w-full md:w-auto">
-                        <a href={`tel:${contactPhone}`} className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-glow-sm transition-all active:scale-95 shadow-xl shadow-emerald-100/50 btn-premium"><Phone className="h-4 w-4 fill-white" /> Llamar</a>
-                        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-[#25D366] text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all active:scale-95 shadow-xl shadow-emerald-100"><MessageCircle className="h-4 w-4 fill-white" /> WhatsApp</a>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         )}
 

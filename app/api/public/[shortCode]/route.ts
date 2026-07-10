@@ -217,7 +217,7 @@ export async function GET(
       lastName: profile.lastName,
       displayName: profile.displayNamePublic || `${profile.firstName} ${profile.lastName.charAt(0)}.`,
       sex: profile.sex || "No reportado",
-      age: isMinor ? null : calculatedAge, // Hide exact age for minors
+      age: calculatedAge,
       isMinor, // Always computed, never stored
       profileType: profile.profileType,
       bloodType: decryptedBloodType,
