@@ -385,6 +385,50 @@ Campos especiales y de visibilidad implicados:
 
 La experiencia pública sigue dependiendo de un chip activo y asignado. La reconstrucción solo fortalece edición, persistencia y claridad del formulario médico normal.
 
+## W6.10F-UX2 - Formulario Médico Modular y Contraíble
+
+La experiencia del formulario se refinó para eliminar la guía inicial grande y convertir el editor en módulos contraíbles, más claros y más rápidos de recorrer.
+
+### Qué cambió
+
+- se reemplazó la guía inicial extensa por un encabezado mínimo con contexto visual
+- el formulario quedó organizado en módulos/cajas contraíbles
+- cada bloque concentra su propia visibilidad pública cuando aplica
+- la experiencia separa mejor menores, asistencia especial, cognición, retorno seguro y seguro médico
+- la vista de escritorio dejó de depender de una estructura tipo wizard
+
+### Módulos finales
+
+1. Identidad básica
+2. Información médica esencial
+3. Contactos de emergencia
+4. Niño / menor de edad
+5. Asistencia especial / condición especial
+6. Deterioro cognitivo / Alzheimer / demencia
+7. Retorno seguro / persona perdida
+8. Seguro y médico tratante
+
+### Visibilidad por módulo
+
+- `showAdditionalNotesPublic` quedó en el módulo médico esencial
+- `showCommunicationStatusPublic` quedó en asistencia especial
+- `showVulnerabilityStatusPublic` quedó en deterioro cognitivo
+- `showSafeReturnPublic` y `showSafeReturnLocationPublic` quedaron en retorno seguro
+- `showInsuranceProviderPublic`, `showPreferredHospitalPublic`, `showPrimaryDoctorPublic` y `showPrimaryDoctorPhonePublic` quedaron en el módulo de seguro y médico
+
+### Qué no cambió
+
+- no cambió el schema
+- no hubo migración
+- la base médica sigue en `Profile`
+- los contactos siguen en `ProfileContact` / `Contact`
+- no cambió el acceso público
+- no se tocaron chips, activación, pedidos, productos, inventario ni empresarial
+
+### Resultado UX
+
+El formulario ahora se percibe como una colección de módulos editables y plegables, más cercana a una interfaz moderna de 2026 y más fácil de revisar sin perder persistencia.
+
 ## Riesgos y Decisiones Pendientes
 
 - si se normalizan tablas médicas o no

@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { BLOOD_TYPES } from "@/lib/constants";
 import {
-  User, Activity, Heart, ShieldAlert, Pill, FileText,
-  Shield, Stethoscope, ChevronLeft, ChevronRight,
-  Eye, AlertCircle, Info, Brain, Footprints, MessageCircle, Baby, Crown,
+  Activity, ShieldAlert, Pill, FileText,
+  AlertCircle, Info, Brain, Footprints, MessageCircle, Baby, Crown,
 } from "lucide-react";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 import React from "react";
@@ -61,60 +60,14 @@ interface ProfileFormProps {
   };
   onChange: (field: string, value: string | boolean) => void;
   disabled?: boolean;
-  variant?: "grid" | "wizard" | "auto";
 }
-
-// ──────────────────────────────────────────────
-// STEP DEFINITION
-// ──────────────────────────────────────────────
-
-const STEPS = [
-  { id: 1, title: "Identidad básica", description: "Quién eres y cómo contactarte", icon: User },
-  { id: 2, title: "Base médica esencial", description: "Información clínica crítica", icon: Heart },
-  { id: 3, title: "Contactos de emergencia", description: "Personas que deben responder", icon: Shield },
-  { id: 4, title: "Asistencia especial", description: "Apoyo, comunicación y retorno seguro", icon: Brain },
-  { id: 5, title: "Seguro y médico", description: "Cobertura y médico tratante", icon: Stethoscope },
-  { id: 6, title: "Privacidad y vista pública", description: "Qué verá ciudadano y paramédico", icon: Eye },
-] as const;
 
 // ──────────────────────────────────────────────
 // MAIN COMPONENT
 // ──────────────────────────────────────────────
 
-export function MedicalProfileForm({ form, onChange, disabled = false, variant = "auto" }: ProfileFormProps) {
+export function MedicalProfileForm({ form, onChange, disabled = false }: ProfileFormProps) {
   const update = (field: string, value: string | boolean) => onChange(field, value);
-
-  // ── Responsive detection ──
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-
-  const resolvedVariant = variant === "auto" ? (isMobile ? "wizard" : "grid") : variant;
-  const isWizard = resolvedVariant === "wizard";
-
-  // ── Wizard state ──
-  const [step, setStep] = useState(1);
-  const totalSteps = STEPS.length;
-  const canGoNext = step < totalSteps;
-  const canGoPrev = step > 1;
-  const progressPercent = (step / totalSteps) * 100;
-
-  const goNext = () => {
-    if (canGoNext) setStep((s) => s + 1);
-  };
-  const goPrev = () => {
-    if (canGoPrev) setStep((s) => s - 1);
-  };
-
-  // Reset step when switching to wizard mode
-  useEffect(() => {
-    if (isWizard) setStep(1);
-  }, [isWizard]);
 
   // ── Auto-sync toggles — activate when data field has content and toggle is off ──
   // Never deactivates a toggle (only false→true, never true→false)
@@ -227,63 +180,6 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     );
   };
 
-  const getProfileAudienceHint = () => {
-    const age = getCalculatedAge();
-    if (age !== null && age < 18) {
-      return { title: "Perfil infantil / menor de edad", desc: "Completa datos básicos, contactos y cualquier apoyo especial que necesite." };
-    }
-    if (age !== null && age >= 60) {
-      return { title: "Perfil de adulto mayor", desc: "Prioriza base médica, contactos y apoyo para memoria, movilidad u orientación." };
-    }
-    if (form.hasCognitiveImpairment || form.hasWanderingRisk || form.isNonVerbal || form.communicationAssistance?.trim() || form.safeReturnInstructions?.trim()) {
-      return { title: "Perfil con asistencia especial", desc: "Incluye instrucciones claras de comunicación y retorno seguro si aplica." };
-    }
-    return { title: "Perfil adulto", desc: "Usa la base médica común y completa solo lo que sea útil en emergencia." };
-  };
-
-  const renderProfileAudienceCards = () => {
-    const age = getCalculatedAge();
-    const cards = [
-      {
-        title: "Adulto",
-        desc: "Base médica normal para un perfil sin contexto especial.",
-        active: !(age !== null && (age < 18 || age >= 60)) && !form.hasCognitiveImpairment && !form.hasWanderingRisk && !form.isNonVerbal && !form.communicationAssistance?.trim() && !form.safeReturnInstructions?.trim(),
-      },
-      {
-        title: "Menor de edad",
-        desc: "Usa fecha de nacimiento y contactos de emergencia.",
-        active: age !== null && age < 18,
-      },
-      {
-        title: "Adulto mayor / dependiente",
-        desc: "Prioriza apoyo de orientación, memoria o movilidad.",
-        active: age !== null && age >= 60,
-      },
-      {
-        title: "Asistencia especial",
-        desc: "Comunicación asistida, desorientación o retorno seguro.",
-        active: !!(form.hasCognitiveImpairment || form.hasWanderingRisk || form.isNonVerbal || form.communicationAssistance?.trim() || form.safeReturnInstructions?.trim()),
-      },
-    ];
-
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        {cards.map((card) => (
-          <div
-            key={card.title}
-            className={`rounded-2xl border p-4 space-y-2 ${card.active ? "border-primary/30 bg-primary/5" : "border-border bg-background"}`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-black uppercase tracking-widest text-slate-900">{card.title}</p>
-              {card.active && <span className="text-[10px] font-black uppercase tracking-widest text-primary">Contexto</span>}
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{card.desc}</p>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   const renderIdentityFields = (showRequiredHint = false) => (
     <div className="space-y-3">
       {showRequiredHint && (
@@ -378,6 +274,37 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas críticas e instrucciones generales" value={form.additionalNotes} onChange={(v: string) => { update("additionalNotes", v); }} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
   );
 
+  const renderModuleHeader = () => (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary">Perfil médico</p>
+        <h2 className="text-2xl md:text-3xl font-black tracking-tight">Perfil médico</h2>
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          Completa solo la información que aplique. Puedes abrir cada módulo y controlar qué se mostrará públicamente.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {renderPrivateContextBadges()}
+      </div>
+    </div>
+  );
+
+  const renderModuleShell = (title: string, description: string, children: React.ReactNode, summary?: React.ReactNode, openDefault = false) => (
+    <details open={openDefault} className="rounded-3xl border border-border bg-muted/20 shadow-inner group">
+      <summary className="list-none cursor-pointer p-4 md:p-6 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="font-black text-base md:text-lg tracking-tight">{title}</h3>
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+          {summary}
+        </div>
+        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-primary group-open:rotate-180 transition-transform">Abrir</div>
+      </summary>
+      <div className="px-4 pb-4 md:px-6 md:pb-6 space-y-4">
+        {children}
+      </div>
+    </details>
+  );
+
   const renderInsuranceFields = () => (
     <div className="space-y-3">
       <ToggleField
@@ -406,24 +333,108 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     </div>
   );
 
-  const renderSpecialAssistanceFields = () => {
+  // ── MODULAR MODE ──
+
+  const renderIdentityModule = () => renderModuleShell(
+    "Identidad básica",
+    "Datos base para identificar a la persona.",
+    <div className="space-y-4">
+      <div className="flex items-start gap-2 text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl px-3 py-2.5">
+        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+        <span>
+          Para activar tu perfil solo necesitas nombre, apellido y tipo de sangre. Lo demás ayuda a afinar la atención.
+        </span>
+      </div>
+      {renderIdentityFields(true)}
+    </div>,
+    <div className="mt-2 text-xs text-muted-foreground">{renderAgeBadge()}</div>,
+    true,
+  );
+
+  const renderMedicalModule = () => renderModuleShell(
+    "Información médica esencial",
+    "Datos clínicos que deben verse primero en una emergencia.",
+    <div className="space-y-4">
+      {renderMedicalAlertFields(true)}
+      <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-black tracking-tight">Notas críticas y visibilidad</h4>
+            <p className="text-xs text-muted-foreground">Las notas críticas pueden mostrarse públicamente si así lo decides.</p>
+          </div>
+          <ToggleField label="Mostrar notas adicionales" checked={form.showAdditionalNotesPublic} onChange={(v) => update("showAdditionalNotesPublic", v)} />
+        </div>
+      </div>
+    </div>,
+    <div className="mt-2 text-xs text-muted-foreground">Alergias, condiciones, medicamentos y notas críticas.</div>,
+    true,
+  );
+
+  const renderContactsModule = () => renderModuleShell(
+    "Contactos de emergencia",
+    "Personas que deben responder si hay una urgencia.",
+    renderContactsGuidance(),
+    null,
+    false,
+  );
+
+  const renderMinorModule = () => {
+    const age = getCalculatedAge();
+    const minorSummary = age !== null && age < 18
+      ? `Menor de edad detectado por fecha de nacimiento.`
+      : "Si el perfil pertenece a un menor, usa la fecha de nacimiento para que la vista pública lo identifique con claridad.";
+
+    return renderModuleShell(
+      "Niño / menor de edad",
+      "Contexto de protección para perfiles pediátricos o dependientes.",
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/80 dark:bg-blue-950/30 dark:border-blue-800 px-3 py-3 text-sm text-blue-800 dark:text-blue-200">
+          {minorSummary}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-border bg-background p-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Badge activo</p>
+            <p className="text-sm font-semibold mt-1">Menor de edad</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-background p-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Uso</p>
+            <p className="text-sm font-semibold mt-1">Sirve como contexto visual, no como un flujo aparte.</p>
+          </div>
+        </div>
+      </div>,
+      null,
+      false,
+    );
+  };
+
+  const renderAssistanceModule = () => {
     const hasChildData = (form.hasCognitiveImpairment === true) || (form.hasWanderingRisk === true) || (form.isNonVerbal === true) || Boolean(form.communicationAssistance?.trim());
     const isActive = form.enableSpecialAssistance ?? hasChildData;
 
-    return (
-      <div className="space-y-3">
-        <ToggleField label="Necesidades especiales" checked={isActive} onChange={(v) => { update("enableSpecialAssistance", v); if (v) { update("showVulnerabilityStatusPublic", true); update("showCommunicationStatusPublic", true); } }} />
+    return renderModuleShell(
+      "Asistencia especial / condición especial",
+      "Comunicación, acompañamiento y señales de apoyo visibles para quien atiende.",
+      <div className="space-y-4">
+        <ToggleField
+          label="Habilitar asistencia especial"
+          checked={isActive}
+          onChange={(v) => {
+            update("enableSpecialAssistance", v);
+            if (v) {
+              update("showVulnerabilityStatusPublic", true);
+              update("showCommunicationStatusPublic", true);
+            }
+          }}
+        />
 
         {!isActive && hasChildData && (
           <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-            ⚠️ Esta sección tiene información guardada. Activa el toggle para revisarla.
+            Esta sección tiene información guardada. Activa el módulo para revisarla.
           </p>
         )}
 
         {isActive && (
           <div className="space-y-3">
-            <ToggleField label="Deterioro cognitivo / Alzheimer / demencia" checked={form.hasCognitiveImpairment ?? false} onChange={(v) => update("hasCognitiveImpairment", v)} />
-            <ToggleField label="Riesgo de desorientación o extravío" checked={form.hasWanderingRisk ?? false} onChange={(v) => update("hasWanderingRisk", v)} />
             <ToggleField label="Persona no verbal o con comunicación asistida" checked={form.isNonVerbal ?? false} onChange={(v) => update("isNonVerbal", v)} />
             {form.isNonVerbal && (
               <TextAreaField
@@ -431,509 +442,180 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
                 label="Instrucciones de comunicación"
                 value={form.communicationAssistance || ""}
                 onChange={(v: string) => update("communicationAssistance", v)}
-                placeholder="Ej. Usa pictogramas, entiende frases cortas, comunicarse con calma..."
+                placeholder="Ej. Usa pictogramas, frases cortas, tono calmado..."
                 color="text-violet-600"
               />
             )}
+            <div className="rounded-2xl border border-border bg-background/60 p-4">
+              <ToggleField
+                label="Mostrar contexto de asistencia especial"
+                checked={form.showCommunicationStatusPublic ?? false}
+                onChange={(v) => update("showCommunicationStatusPublic", v)}
+              />
+            </div>
           </div>
         )}
-      </div>
+      </div>,
+      null,
+      false,
     );
   };
 
-  const renderSafeReturnFields = () => {
+  const renderCognitiveModule = () => {
+    const hasCognitiveData = (form.hasCognitiveImpairment === true) || (form.hasWanderingRisk === true);
+
+    return renderModuleShell(
+      "Deterioro cognitivo / Alzheimer / demencia",
+      "Bloque prudente para reportar vulnerabilidad cognitiva o riesgo de desorientación.",
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ToggleField label="Deterioro cognitivo reportado" checked={form.hasCognitiveImpairment ?? false} onChange={(v) => update("hasCognitiveImpairment", v)} />
+          <ToggleField label="Riesgo de desorientación" checked={form.hasWanderingRisk ?? false} onChange={(v) => update("hasWanderingRisk", v)} />
+        </div>
+
+        <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground">
+            Usa este módulo para notas prudentes como “deterioro cognitivo reportado” o “riesgo de desorientación”.
+          </p>
+          <ToggleField
+            label="Mostrar vulnerabilidad en vista pública"
+            checked={form.showVulnerabilityStatusPublic ?? false}
+            onChange={(v) => update("showVulnerabilityStatusPublic", v)}
+          />
+        </div>
+
+        {!hasCognitiveData && (
+          <p className="text-[10px] text-muted-foreground bg-slate-100/70 border border-border rounded-xl px-3 py-2">
+            Si no aplica, deja este módulo cerrado. La vista pública no mostrará nada adicional.
+          </p>
+        )}
+      </div>,
+      null,
+      false,
+    );
+  };
+
+  const renderSafeReturnModule = () => {
     const hasChildData = Boolean(form.safeReturnInstructions?.trim()) || Boolean(form.safeReturnLocationName?.trim()) || Boolean(form.safeReturnAddress?.trim()) || Boolean(form.safeReturnContactName?.trim()) || Boolean(form.safeReturnContactPhone?.trim()) || form.safeReturnLat != null || form.safeReturnLng != null;
     const isActive = form.enableSafeReturn ?? hasChildData;
 
-    return (
-      <div className="space-y-3">
-        <ToggleField label="Persona perdida / retorno a casa" checked={isActive} onChange={(v) => {
-          update("enableSafeReturn", v);
-          if (v) {
-            // auto-enable public visibility for safe return when user activates the feature
-            update("showSafeReturnPublic", true);
-            update("showSafeReturnLocationPublic", true);
-          }
-        }} />
+    return renderModuleShell(
+      "Retorno seguro / persona perdida",
+      "Un bloque separado para emergencias de extravío, retorno a casa o acompañamiento seguro.",
+      <div className="space-y-4">
+        <ToggleField
+          label="Habilitar retorno seguro"
+          checked={isActive}
+          onChange={(v) => {
+            update("enableSafeReturn", v);
+            if (v) {
+              update("showSafeReturnPublic", true);
+              update("showSafeReturnLocationPublic", true);
+            }
+          }}
+        />
 
         {!isActive && hasChildData && (
           <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-            ⚠️ Esta sección tiene información guardada. Activa el toggle para revisarla.
+            Esta sección tiene información guardada. Activa el módulo para revisarla.
           </p>
         )}
 
         {isActive && (
-          <div className="p-3 md:p-4 rounded-2xl border border-border bg-muted/20">
-            <h4 className="font-black text-sm text-teal-700">Ubicación de Retorno Seguro</h4>
-            <p className="text-xs text-muted-foreground mt-1">Esta es la ubicación donde debe ser llevada la persona en caso de encontrarse extraviada.</p>
-
-            <div className="mt-3 space-y-3">
-              {/* Sección A: Nombre del lugar + Dirección */}
-              <div>
-                <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección A</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Field label="Nombre del lugar" value={form.safeReturnLocationName || ""} onChange={(v: string) => update("safeReturnLocationName", v)} placeholder="Ej: Casa de tía María" />
-                  <Field label="Dirección" value={form.safeReturnAddress || ""} onChange={(v: string) => update("safeReturnAddress", v)} placeholder="Calle, número, referencia" />
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
+              <h4 className="font-black text-sm text-teal-700">Ubicación de retorno seguro</h4>
+              <p className="text-xs text-muted-foreground">Define adónde deben llevar a la persona si se extravía.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Nombre del lugar" value={form.safeReturnLocationName || ""} onChange={(v: string) => update("safeReturnLocationName", v)} placeholder="Ej: Casa de tía María" />
+                <Field label="Dirección" value={form.safeReturnAddress || ""} onChange={(v: string) => update("safeReturnAddress", v)} placeholder="Calle, número, referencia" />
+                <Field label="Latitud" value={String(form.safeReturnLat ?? "")} onChange={(v: string) => update("safeReturnLat", v)} placeholder="Ej: 8.9833" />
+                <Field label="Longitud" value={String(form.safeReturnLng ?? "")} onChange={(v: string) => update("safeReturnLng", v)} placeholder="Ej: -79.5167" />
+              </div>
+              {(!form.safeReturnLat && !form.safeReturnLng) && (
+                <div className="text-xs text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2">
+                  <Info className="inline-block mr-2 align-text-top" /> Los mapas no estarán disponibles sin coordenadas.
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Sección B: Coordenadas */}
-              <div>
-                <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección B</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Field label="Latitud" value={String(form.safeReturnLat ?? "")} onChange={(v: string) => update("safeReturnLat", v)} placeholder="Ej: 8.9833" />
-                  <Field label="Longitud" value={String(form.safeReturnLng ?? "")} onChange={(v: string) => update("safeReturnLng", v)} placeholder="Ej: -79.5167" />
-                </div>
-                {(!form.safeReturnLat && !form.safeReturnLng) && (
-                  <div className="mt-2 text-xs text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2">
-                    <Info className="inline-block mr-2 align-text-top" /> Los mapas Google Maps y Waze no estarán disponibles sin coordenadas.
-                  </div>
-                )}
+            <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Responsable del lugar" value={form.safeReturnContactName || ""} onChange={(v: string) => update("safeReturnContactName", v)} placeholder="Ej: Tía María García" />
+                <Field label="Teléfono del responsable" value={form.safeReturnContactPhone || ""} onChange={(v: string) => update("safeReturnContactPhone", v)} placeholder="+507 6612-3456" />
               </div>
-
-              {/* Sección C: Responsable */}
-              <div>
-                <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección C</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Field label="Responsable del lugar" value={form.safeReturnContactName || ""} onChange={(v: string) => update("safeReturnContactName", v)} placeholder="Ej: Tía María García" />
-                  <Field label="Teléfono del responsable" value={form.safeReturnContactPhone || ""} onChange={(v: string) => update("safeReturnContactPhone", v)} placeholder="+507 6612-3456" />
-                </div>
-              </div>
-
-              <div>
-                <h5 className="text-xs font-bold uppercase text-muted-foreground mb-2">Sección D</h5>
-                <TextAreaField
-                  icon={<Footprints className="h-4 w-4" />}
-                  label="Instrucciones de retorno seguro"
-                  value={form.safeReturnInstructions || ""}
-                  onChange={(v: string) => update("safeReturnInstructions", v)}
-                  placeholder="Cómo ayudar, a dónde llevarlo y qué hacer si se extravía."
-                  color="text-teal-700"
-                />
-              </div>
+              <TextAreaField
+                icon={<Footprints className="h-4 w-4" />}
+                label="Instrucciones de retorno seguro"
+                value={form.safeReturnInstructions || ""}
+                onChange={(v: string) => update("safeReturnInstructions", v)}
+                placeholder="Cómo ayudar, a dónde llevarlo y qué hacer si se extravía."
+                color="text-teal-700"
+              />
+              <ToggleField
+                label="Mostrar retorno seguro públicamente"
+                checked={form.showSafeReturnPublic ?? false}
+                onChange={(v) => update("showSafeReturnPublic", v)}
+              />
+              <ToggleField
+                label="Mostrar ubicación de retorno seguro"
+                checked={form.showSafeReturnLocationPublic ?? false}
+                onChange={(v) => update("showSafeReturnLocationPublic", v)}
+              />
             </div>
           </div>
         )}
-      </div>
+      </div>,
+      null,
+      false,
     );
   };
 
-  /** Simplified visibility section — medical fields only, auto-sync, no accordion */
-  const renderMedicalVisibilityToggles = () => (
-    <div className="space-y-3">
-      <div className="flex items-start gap-2 text-[11px] font-semibold text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2.5 mb-2">
-        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-        <span>
-          Los campos completados se mostrarán automáticamente en la ficha de Emergencia Médica. Si deseas ocultar alguno de ellos puedes desactivarlo manualmente.
-        </span>
+  const renderInsuranceModule = () => renderModuleShell(
+    "Seguro y médico tratante",
+    "Cubre aseguradora, póliza, hospital y médico de referencia.",
+    <div className="space-y-4">
+      {renderInsuranceFields()}
+      <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
+        <h4 className="font-black text-sm">Médico tratante</h4>
+        {renderDoctorFields()}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <ToggleField label="Mostrar aseguradora" checked={form.showInsuranceProviderPublic} onChange={(v) => update("showInsuranceProviderPublic", v)} />
-        <ToggleField label="Mostrar hospital preferido" checked={form.showPreferredHospitalPublic} onChange={(v) => update("showPreferredHospitalPublic", v)} />
-        <ToggleField label="Mostrar médico tratante" checked={form.showPrimaryDoctorPublic} onChange={(v) => update("showPrimaryDoctorPublic", v)} />
-        <ToggleField label="Mostrar teléfono del médico" checked={form.showPrimaryDoctorPhonePublic} onChange={(v) => update("showPrimaryDoctorPhonePublic", v)} />
-        <ToggleField label="Mostrar notas adicionales" checked={form.showAdditionalNotesPublic} onChange={(v) => update("showAdditionalNotesPublic", v)} />
+      <div className="rounded-2xl border border-border bg-background/60 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ToggleField label="Mostrar aseguradora" checked={form.showInsuranceProviderPublic} onChange={(v) => update("showInsuranceProviderPublic", v)} />
+          <ToggleField label="Mostrar hospital preferido" checked={form.showPreferredHospitalPublic} onChange={(v) => update("showPreferredHospitalPublic", v)} />
+          <ToggleField label="Mostrar médico tratante" checked={form.showPrimaryDoctorPublic} onChange={(v) => update("showPrimaryDoctorPublic", v)} />
+          <ToggleField label="Mostrar teléfono del médico" checked={form.showPrimaryDoctorPhonePublic} onChange={(v) => update("showPrimaryDoctorPhonePublic", v)} />
+        </div>
       </div>
-    </div>
+    </div>,
+    <div className="mt-2 text-xs text-muted-foreground">Seguro, póliza, hospital preferido y médico de referencia.</div>,
+    false,
   );
 
-  // ── Section header renderer (for grid mode sections) ──
-
-  const SectionHeader = ({
-    icon,
-    iconBg,
-    title,
-    description,
-  }: {
-    icon: React.ReactNode;
-    iconBg: string;
-    title: string;
-    description: string;
-  }) => (
-    <div className="flex items-center gap-3">
-      <div className={`h-10 w-10 rounded-xl ${iconBg} flex items-center justify-center`}>
-        {icon}
+  const renderFormModules = () => (
+    <div className={`space-y-4 ${disabled ? "opacity-60 pointer-events-none" : ""}`}>
+      <div className="rounded-3xl border border-border bg-muted/20 p-4 md:p-6 shadow-inner">
+        {renderModuleHeader()}
       </div>
-      <div>
-        <h3 className="font-black text-base md:text-lg tracking-tight">{title}</h3>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-
-  // ── WIZARD MODE ──
-
-  const renderWizard = () => (
-    <div className={`space-y-5 ${disabled ? "opacity-60 pointer-events-none" : ""}`} data-wizard-active={isWizard ? "true" : undefined}>
-      {isWizard && <style>{`
-        [data-wizard-active="true"] + div.flex.gap-6 {
-          display: none !important;
-        }
-      `}</style>}
-
-      {/* Step indicator + progress bar */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          {STEPS.map((s, idx) => (
-            <React.Fragment key={s.id}>
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${
-                    step === s.id
-                      ? "bg-primary text-white shadow-lg shadow-primary/30 scale-110"
-                      : step > s.id
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground/40"
-                  }`}
-                >
-                  {step > s.id ? (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    s.id
-                  )}
-                </div>
-                <span
-                  className={`text-[9px] font-bold uppercase tracking-wider hidden sm:block transition-colors ${
-                    step === s.id ? "text-primary" : "text-muted-foreground/50"
-                  }`}
-                >
-                  {s.title}
-                </span>
-              </div>
-              {idx < STEPS.length - 1 && (
-                <div className="flex-1 h-0.5 mx-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all duration-500"
-                    style={{ width: step > s.id ? "100%" : "0%" }}
-                  />
-                </div>
-              )}
-            </React.Fragment>
-          ))}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        <div className="space-y-4">
+          {renderIdentityModule()}
+          {renderContactsModule()}
+          {renderMinorModule()}
         </div>
-
-        {/* Progress bar (numeric) */}
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-            Paso {step} de {totalSteps}
-          </span>
-          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <span className="text-[10px] font-bold text-muted-foreground/60 w-8 text-right">
-            {Math.round(progressPercent)}%
-          </span>
-        </div>
-      </div>
-
-      {/* Step header */}
-      {(() => {
-        const currentStep = STEPS[step - 1];
-        const StepIcon = currentStep.icon;
-        return (
-          <div className="flex items-center gap-3 px-1">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <StepIcon className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="font-black text-base tracking-tight">{currentStep.title}</h3>
-              <p className="text-xs text-muted-foreground">{currentStep.description}</p>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Info banner (shown on steps 1-4) */}
-        {step <= 4 && (
-          <div className="flex items-start gap-2 text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl px-3 py-2.5">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>
-            Para activar tu perfil solo necesitas nombre, apellido y tipo de sangre. Los demás datos son opcionales, pero ayudan en una emergencia.
-          </span>
-        </div>
-      )}
-
-      {/* Step content */}
-      <div className="min-h-[240px] transition-all duration-300">
-        {step === 1 && (
-          <div className="rounded-3xl border border-border bg-muted/20 p-4 md:p-6 space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary mb-2">Guía inicial</p>
-                <h4 className="text-lg font-black tracking-tight">{getProfileAudienceHint().title}</h4>
-                <p className="text-sm text-muted-foreground mt-1">{getProfileAudienceHint().desc}</p>
-              </div>
-              <div className="shrink-0">{renderAgeBadge()}</div>
-            </div>
-            {renderProfileAudienceCards()}
-            {(() => {
-              const badges = renderPrivateContextBadges();
-              return badges ? <div className="flex flex-wrap gap-2">{badges}</div> : null;
-            })()}
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-            <SectionHeader
-              icon={<User className="h-5 w-5" />}
-              iconBg="bg-primary/10 text-primary"
-              title="Identidad básica"
-              description="Quién eres y cómo contactarte."
-            />
-            {renderIdentityFields(true)}
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-            <SectionHeader
-              icon={<Heart className="h-5 w-5" />}
-              iconBg="bg-red-500/10 text-red-600"
-              title="Base médica esencial"
-              description="Información clínica crítica para emergencias."
-            />
-            {renderMedicalAlertFields(true)}
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-            <SectionHeader
-              icon={<Shield className="h-5 w-5" />}
-              iconBg="bg-blue-500/10 text-blue-600"
-              title="Contactos de emergencia"
-              description="Personas que deben responder si hay una urgencia."
-            />
-            {renderContactsGuidance()}
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="space-y-4">
-            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-              <SectionHeader
-                icon={<Brain className="h-5 w-5" />}
-                iconBg="bg-violet-500/10 text-violet-600"
-                title="Asistencia especial / retorno seguro"
-                description="Apoyo, comunicación y qué hacer si existe una situación de vulnerabilidad."
-              />
-              {renderSpecialAssistanceFields()}
-              <div className="pt-2">
-                {renderSafeReturnFields()}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {step === 5 && (
-          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-            <SectionHeader
-              icon={<Stethoscope className="h-5 w-5" />}
-              iconBg="bg-emerald-500/10 text-emerald-600"
-              title="Seguro y médico tratante"
-              description="Completa estos datos solo si cuentas con seguro o un médico de referencia."
-            />
-            {renderInsuranceFields()}
-            <div className="pt-2">
-              {renderDoctorFields()}
-            </div>
-          </div>
-        )}
-
-        {step === 6 && (
-          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-            <SectionHeader
-              icon={<Eye className="h-5 w-5" />}
-              iconBg="bg-slate-500/10 text-slate-600"
-              title="Privacidad y vista pública"
-              description="Controla qué ve ciudadano y qué ve médico o paramédico."
-            />
-            <div className="space-y-3">
-              <div className="flex items-start gap-2 text-[11px] font-medium text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2.5">
-                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>
-                  La vista ciudadana resume lo esencial. La vista médica o paramédica muestra más contexto clínico sin cambiar el acceso público.
-                </span>
-              </div>
-              {renderMedicalVisibilityToggles()}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Prevent Enter key from submitting the parent form during wizard navigation */}
-      <div onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}>
-        {/* Wizard navigation buttons */}
-        <div className="flex gap-3 pt-2">
-          {canGoPrev ? (
-            <button
-              type="button"
-              onClick={goPrev}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl border-2 border-border font-black text-sm hover:bg-accent active:scale-[0.98] transition-all"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Atrás
-            </button>
-          ) : (
-            <div className="flex-1" />
-          )}
-
-          {canGoNext ? (
-            <button
-              type="button"
-              onClick={goNext}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              Siguiente
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={(e) => {
-                const form = (e.target as HTMLElement).closest("form");
-                if (form) form.requestSubmit();
-              }}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              Guardar Perfil Médico
-            </button>
-          )}
+        <div className="space-y-4">
+          {renderMedicalModule()}
+          {renderAssistanceModule()}
+          {renderCognitiveModule()}
+          {renderSafeReturnModule()}
+          {renderInsuranceModule()}
         </div>
       </div>
     </div>
   );
 
-  // ── GRID MODE ──
-
-  const renderGrid = () => (
-    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 ${disabled ? "opacity-60 pointer-events-none" : ""}`}>
-
-      <div className="lg:col-span-2 rounded-3xl border border-border bg-muted/20 p-4 md:p-6 space-y-4 shadow-inner">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary mb-2">Guía inicial</p>
-            <h3 className="text-xl font-black tracking-tight">{getProfileAudienceHint().title}</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{getProfileAudienceHint().desc}</p>
-          </div>
-          <div className="shrink-0">{renderAgeBadge()}</div>
-        </div>
-        {renderProfileAudienceCards()}
-        <div className="flex flex-wrap gap-2">{renderPrivateContextBadges()}</div>
-      </div>
-
-      {/* Identity Section */}
-      <div className="space-y-4">
-        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <User className="h-5 w-5" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-black text-base md:text-lg tracking-tight">Identidad básica</h3>
-              <p className="text-xs text-muted-foreground">Datos base para identificar a la persona.</p>
-            </div>
-            <div className="shrink-0">
-              {renderAgeBadge()}
-            </div>
-          </div>
-          {renderPrivateContextBadges()}
-          {renderIdentityFields()}
-        </div>
-      </div>
-
-      {/* Medical Section */}
-      <div className="space-y-4">
-          <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center">
-                <Heart className="h-5 w-5" />
-              </div>
-            <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight text-red-600">Base médica esencial</h3>
-              <p className="text-xs text-muted-foreground">Información clínica crítica para primera respuesta.</p>
-            </div>
-          </div>
-          {renderMedicalAlertFields()}
-        </div>
-
-        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight text-blue-700">Contactos de emergencia</h3>
-              <p className="text-xs text-muted-foreground">Personas que deben responder si hay una urgencia.</p>
-            </div>
-          </div>
-          {renderContactsGuidance()}
-        </div>
-
-            <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center">
-                  <Brain className="h-5 w-5" />
-                </div>
-            <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight text-violet-700">Asistencia especial / retorno seguro</h3>
-              <p className="text-xs text-muted-foreground">Información opcional para vulnerabilidad o comunicación asistida.</p>
-            </div>
-              </div>
-              {renderSpecialAssistanceFields()}
-              <div className="pt-2">
-                {renderSafeReturnFields()}
-              </div>
-            </div>
-
-        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight">Seguro y médico tratante</h3>
-              <p className="text-xs text-muted-foreground">Completa estos datos solo si cuentas con seguro o un médico de referencia.</p>
-            </div>
-          </div>
-          {renderInsuranceFields()}
-          <div className="pt-2">
-            {renderDoctorFields()}
-          </div>
-        </div>
-
-        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center">
-              <Eye className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight">Privacidad y vista pública</h3>
-              <p className="text-xs text-muted-foreground">Controla qué se mostrará al ciudadano y qué se amplía para el paramédico.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-2 text-[11px] font-medium text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2.5">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            <span>
-              La vista ciudadana resume lo esencial. La vista médica o paramédica muestra más contexto clínico sin cambiar el acceso público.
-            </span>
-          </div>
-          {renderMedicalVisibilityToggles()}
-        </div>
-      </div>
-
-    </div>
-  );
-
-  // ── RENDER ──
-
-  return isWizard ? renderWizard() : renderGrid();
+  return renderFormModules();
 }
 
 // ──────────────────────────────────────────────
