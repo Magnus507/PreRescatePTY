@@ -154,6 +154,207 @@ function PublicContextBadges({ profile }: { profile: EmergencyProfile }) {
   );
 }
 
+function PublicMedicalAlerts({ profile }: { profile: EmergencyProfile }) {
+  const hasAdditionalNotes = !!profile.publicMedicalExtras?.emergencyInstructions;
+
+  return (
+    <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
+          <AlertTriangle className="h-5 w-5 text-red-600" />
+        </div>
+        <div>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Alertas médicas esenciales</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Información clínica principal para atención inmediata</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <PublicAlertCard
+          tone="red"
+          title="Alergias"
+          value={profile.allergies && profile.allergies.trim() ? profile.allergies : "No reportadas"}
+          note={profile.allergies && !profile.allergies.toLowerCase().includes("no report") ? "Atención crítica" : undefined}
+        />
+        <PublicAlertCard
+          tone="blue"
+          title="Condiciones"
+          value={profile.chronicConditions && profile.chronicConditions.trim() ? profile.chronicConditions : "No reportadas"}
+        />
+        <PublicAlertCard
+          tone="green"
+          title="Medicamentos"
+          value={profile.medications && profile.medications.trim() ? profile.medications : "No reportados"}
+        />
+      </div>
+      {hasAdditionalNotes && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Notas críticas</p>
+          <p className="text-sm font-semibold text-slate-900 whitespace-pre-wrap">{profile.publicMedicalExtras?.emergencyInstructions}</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PublicAlertCard({ tone, title, value, note }: { tone: "red" | "blue" | "green" | "amber"; title: string; value: string; note?: string }) {
+  const palette: Record<string, string> = {
+    red: "border-red-200 bg-red-50 text-red-700",
+    blue: "border-blue-200 bg-blue-50 text-blue-700",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+  };
+
+  return (
+    <div className={`rounded-2xl border px-4 py-3 ${palette[tone]}`}>
+      <p className="text-[10px] font-black uppercase tracking-widest mb-1">{title}</p>
+      <p className="text-sm font-bold text-slate-900 whitespace-pre-wrap">{value}</p>
+      {note && <p className="mt-1 text-[10px] font-black uppercase tracking-widest">{note}</p>}
+    </div>
+  );
+}
+
+function PublicSupportBlock({ profile }: { profile: EmergencyProfile }) {
+  const vulnerability = profile.vulnerabilityStatus;
+  const showCommunication = !!(vulnerability?.isNonVerbal && vulnerability.communicationAssistance);
+  const showVulnerability = !!(vulnerability?.hasCognitiveImpairment || vulnerability?.hasWanderingRisk);
+  const showSafeReturn = !!(profile.safeReturn?.instructions);
+  const showSafeReturnLocation = !!(profile.safeReturn && (profile.safeReturn.locationName || profile.safeReturn.address || profile.safeReturn.contactName || profile.safeReturn.contactPhone || profile.safeReturn.lat != null || profile.safeReturn.lng != null));
+
+  if (!showCommunication && !showVulnerability && !showSafeReturn && !showSafeReturnLocation) return null;
+
+  return (
+    <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center">
+          <MessageCircle className="h-5 w-5 text-violet-600" />
+        </div>
+        <div>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Asistencia especial / condición especial</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Apoyo, comunicación y acompañamiento</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {showCommunication && (
+          <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-violet-700">Comunicación asistida</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">{vulnerability?.communicationAssistance || "Persona no verbal o con comunicación asistida."}</p>
+          </div>
+        )}
+        {showVulnerability && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Deterioro cognitivo reportado</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">Puede requerir instrucciones simples, calma y acompañamiento de un contacto responsable.</p>
+          </div>
+        )}
+      </div>
+
+      {showSafeReturn && (
+        <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 space-y-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">Retorno seguro</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900 whitespace-pre-wrap">{profile.safeReturn?.instructions}</p>
+          </div>
+          {showSafeReturnLocation && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {profile.safeReturn?.locationName && <PublicAlertCard tone="amber" title="Lugar de retorno" value={profile.safeReturn.locationName} />}
+              {profile.safeReturn?.address && <PublicAlertCard tone="amber" title="Dirección" value={profile.safeReturn.address} />}
+              {profile.safeReturn?.contactName && <PublicAlertCard tone="amber" title="Responsable" value={profile.safeReturn.contactName} />}
+              {profile.safeReturn?.contactPhone && (
+                <div className="rounded-2xl border border-teal-200 bg-white px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">Teléfono del responsable</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">{profile.safeReturn.contactPhone}</p>
+                  <a href={`tel:${sanitizeTelPhone(profile.safeReturn.contactPhone)}`} className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+                    <Phone className="h-4 w-4" />
+                    Llamar responsable
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PublicMedicalExtrasBlock({ profile }: { profile: EmergencyProfile }) {
+  const extras = profile.publicMedicalExtras;
+  if (!extras) return null;
+  const hasExtras = !!(extras.insuranceProvider || extras.preferredHospital || extras.primaryDoctorName || extras.primaryDoctorPhone);
+  if (!hasExtras) return null;
+
+  return (
+    <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+          <ShieldCheck className="h-5 w-5 text-emerald-600" />
+        </div>
+        <div>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Seguro / médico tratante</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Visible solo cuando el perfil lo permite</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {extras.insuranceProvider && <PublicExtraItem label="Aseguradora" value={extras.insuranceProvider} />}
+        {extras.preferredHospital && <PublicExtraItem label="Hospital preferido" value={extras.preferredHospital} />}
+        {extras.primaryDoctorName && <PublicExtraItem label="Médico tratante" value={extras.primaryDoctorName} />}
+        {extras.primaryDoctorPhone && (
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Teléfono del médico</p>
+            <p className="text-sm font-bold text-slate-900">{extras.primaryDoctorPhone}</p>
+            <a href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`} className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+              <Phone className="h-4 w-4" />
+              Llamar médico
+            </a>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
+  if (!profile.emergencyContacts.length) {
+    return (
+      <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg">
+        <p className="text-sm font-semibold text-slate-600">No hay contactos de emergencia disponibles.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+          <Heart className="h-5 w-5 text-emerald-600" />
+        </div>
+        <div>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Contactos de emergencia</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Contactos registrados para respuesta inmediata</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {profile.emergencyContacts.map((contact, idx) => (
+          <div key={idx} className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-black uppercase tracking-tight text-slate-900">{contact.fullName}</p>
+                <p className="text-xs uppercase tracking-widest text-slate-500 mt-1">{contact.relationship}</p>
+                <p className="text-sm font-semibold text-slate-700 mt-2">{contact.phone}</p>
+              </div>
+              <a href={`tel:${sanitizeTelPhone(contact.phone)}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+                <Phone className="h-4 w-4" />
+                Llamar
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // @keep-for-future-use — SafeReturnCard remains available for special/citizen views
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SafeReturnCard({ safeReturn }: { safeReturn: EmergencyProfile["safeReturn"] }) {
@@ -810,47 +1011,12 @@ export default function EmergencyPage() {
               </div>
             </div>
 
+            <PublicMedicalAlerts profile={profile} />
+
+            <PublicSupportBlock profile={profile} />
+
             {/* Emergency contacts — citizen view */}
-            {profile.emergencyContacts.length > 0 && (
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-600 rounded-[3rem] blur opacity-10" />
-                <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl space-y-5 md:space-y-8">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-emerald-50 h-12 w-12 rounded-2xl p-2.5 border border-emerald-100 flex items-center justify-center"><Heart className="h-8 w-8 text-emerald-600 fill-emerald-600 animate-pulse" /></div>
-                      <div>
-                        <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Contactos de Rescate</h2>
-                        <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1">Contactos de emergencia registrados</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-6">
-                    {profile.emergencyContacts.map((contact, idx) => {
-                      const contactPhone = sanitizeTelPhone(contact.phone);
-                      const whatsappUrl = whatsappUrls[idx] || "";
-                      return (
-                        <div key={idx} className="p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-emerald-50/30 border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-8 shadow-sm">
-                          <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row w-full md:w-auto">
-                            <div className="h-12 w-12 md:h-16 md:w-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-xl md:text-2xl shadow-lg shadow-emerald-100 shrink-0">{contact.fullName[0].toUpperCase()}</div>
-                            <div>
-                              <p className="font-black text-slate-900 uppercase tracking-tight text-xl md:text-2xl leading-none mb-1">{contact.fullName}</p>
-                              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full border border-emerald-200">
-                                <ShieldCheck className="h-3 w-3 text-emerald-700" />
-                                <span className="text-[10px] text-emerald-700 font-black uppercase tracking-widest">{contact.relationship}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 sm:flex items-center gap-3 w-full md:w-auto">
-                            <a href={`tel:${contactPhone}`} className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:shadow-glow-sm transition-all active:scale-95 shadow-xl shadow-emerald-100/50 btn-premium"><Phone className="h-4 w-4 fill-white" /> Llamar</a>
-                            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-5 py-3 md:px-8 md:py-4 bg-[#25D366] text-white rounded-xl md:rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all active:scale-95 shadow-xl shadow-emerald-100"><MessageCircle className="h-4 w-4 fill-white" /> WhatsApp</a>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
+            <PublicContactsBlock profile={profile} />
           </div>
         )}
 
@@ -917,65 +1083,13 @@ export default function EmergencyPage() {
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Resumen clínico</h3>
-              <p className="text-sm text-slate-600 font-medium">
-                Esta vista prioriza datos médicos útiles para la atención inmediata y respeta los controles de visibilidad del perfil.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <PublicExtraItem label="Tipo de sangre" value={profile.bloodType} />
-                <PublicExtraItem label="Edad" value={profile.age !== null ? String(profile.age) : "No reportada"} />
-                <PublicExtraItem label="Sexo" value={profile.sex === 'M' ? 'Masculino' : profile.sex === 'F' ? 'Femenino' : 'No reportado'} />
-                <PublicExtraItem label="Contacto rápido" value={profile.emergencyContacts[0]?.fullName || "No disponible"} />
-              </div>
-            </div>
+            <PublicMedicalAlerts profile={profile} />
 
-            <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 text-red-600" /><div><p className="text-[10px] font-black uppercase tracking-widest text-red-700">Alergias</p><p className="text-sm font-bold text-slate-900 break-words">{profile.allergies || "No reportado"}</p>{profile.allergies && !profile.allergies.toLowerCase().includes("no report") && <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-red-600">• Atención crítica</p>}</div></div></div>
-              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3"><div className="flex items-start gap-2"><Activity className="mt-0.5 h-4 w-4 text-blue-600" /><div><p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p><p className="text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p></div></div></div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"><div className="flex items-start gap-2"><Pill className="mt-0.5 h-4 w-4 text-emerald-600" /><div><p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p><p className="text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p></div></div></div>
-            </div>
+            <PublicSupportBlock profile={profile} />
 
-            {(profile.isMinor || (profile.age !== null && profile.age >= 60) || profile.vulnerabilityStatus?.hasCognitiveImpairment || profile.vulnerabilityStatus?.hasWanderingRisk || profile.vulnerabilityStatus?.isNonVerbal || profile.vulnerabilityStatus?.communicationAssistance || profile.safeReturn?.instructions) && (
-              <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Asistencia especial y retorno seguro</h3>
-                    <p className="text-sm text-slate-600 font-medium mt-1">Solo aparece cuando hay información relevante para apoyo clínico o acompañamiento.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.isMinor && <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-blue-700">Menor de edad</span>}
-                    {!profile.isMinor && profile.age !== null && profile.age >= 60 && <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-slate-700">Adulto mayor</span>}
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {profile.vulnerabilityStatus?.hasWanderingRisk && (
-                    <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-orange-700">Riesgo de desorientación</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">Mantén supervisión y evita dejar a la persona sola sin apoyo cercano.</p>
-                    </div>
-                  )}
-                  {profile.vulnerabilityStatus?.hasCognitiveImpairment && (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Deterioro cognitivo reportado</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">Puede requerir instrucciones simples y acompañamiento de un contacto responsable.</p>
-                    </div>
-                  )}
-                  {(profile.vulnerabilityStatus?.isNonVerbal || profile.vulnerabilityStatus?.communicationAssistance) && (
-                    <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-violet-700">Comunicación asistida</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">{profile.vulnerabilityStatus?.communicationAssistance || "Puede requerir apoyo para comunicarse."}</p>
-                    </div>
-                  )}
-                  {profile.safeReturn?.instructions && (
-                    <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 md:col-span-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">Instrucciones de retorno seguro</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900 whitespace-pre-wrap">{profile.safeReturn.instructions}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            <PublicMedicalExtrasBlock profile={profile} />
+
+            <PublicContactsBlock profile={profile} />
           </div>
         )}
 

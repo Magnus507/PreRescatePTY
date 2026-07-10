@@ -464,6 +464,40 @@ Se corrigió la persistencia real de retorno seguro y se eliminaron bloques visu
 
 El formulario ahora prioriza persistencia real, módulos con acción concreta y una edición más honesta para el usuario.
 
+## W6.10F-UX4 - Ficha Pública Modular
+
+La ficha pública médica quedó alineada con la estructura modular del formulario privado para que lo esencial se vea primero y lo accesorio quede agrupado con jerarquía clara.
+
+### Qué cambió
+
+- se eliminó el bloque redundante de "Resumen clínico"
+- la vista pública ahora usa bloques separados para alertas médicas, asistencia especial, retorno seguro, seguro y contactos
+- las alergias, condiciones, medicamentos y notas críticas se muestran como señales clínicas concretas
+- la asistencia especial y el retorno seguro aparecen como módulos propios cuando hay datos reales
+- la vista ciudadana sigue siendo simple y de ayuda rápida
+
+### Bloques públicos finales
+
+1. Alertas médicas esenciales
+2. Asistencia especial / condición especial
+3. Deterioro cognitivo / memoria / desorientación
+4. Retorno seguro / persona perdida
+5. Seguro y médico tratante
+6. Contactos de emergencia
+
+### Compatibilidad
+
+- no cambió `Chip.shortCode` como puerta de acceso
+- no cambió la seguridad de W6.04
+- no cambió el helper de resolución pública
+- no se tocaron chips, activación, pedidos, productos ni inventario
+- no se cambió el schema
+- no hubo migración
+
+### Resultado
+
+La ficha pública ahora refleja la lógica modular del formulario privado sin perder la separación entre ayuda ciudadana, apoyo clínico y retorno seguro.
+
 ## Riesgos y Decisiones Pendientes
 
 - si se normalizan tablas médicas o no
