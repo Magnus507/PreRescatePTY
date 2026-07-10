@@ -111,6 +111,49 @@ function SpecialAssistanceBadges({ profile }: { profile: EmergencyProfile }) {
   );
 }
 
+function PublicContextBadges({ profile }: { profile: EmergencyProfile }) {
+  const vs = profile.vulnerabilityStatus;
+  const badges: { label: string; color: string; icon: ReactNode }[] = [];
+
+  if (profile.isMinor) {
+    badges.push({ label: "Menor de edad", color: "bg-blue-100 text-blue-700 border-blue-200", icon: <Baby className="h-3.5 w-3.5" /> });
+  }
+  if (!profile.isMinor && profile.age !== null && profile.age >= 60) {
+    badges.push({ label: "Adulto mayor", color: "bg-slate-100 text-slate-700 border-slate-200", icon: <Crown className="h-3.5 w-3.5" /> });
+  }
+  if ((profile.allergies || "").trim() && !profile.allergies.toLowerCase().includes("no report")) {
+    badges.push({ label: "Alergia crítica", color: "bg-red-100 text-red-700 border-red-200", icon: <AlertTriangle className="h-3.5 w-3.5" /> });
+  }
+  if ((profile.medications || "").trim() && !profile.medications.toLowerCase().includes("no report")) {
+    badges.push({ label: "Medicación importante", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: <Pill className="h-3.5 w-3.5" /> });
+  }
+  if (vs?.hasCognitiveImpairment) {
+    badges.push({ label: "Requiere asistencia", color: "bg-amber-100 text-amber-700 border-amber-200", icon: <Brain className="h-3.5 w-3.5" /> });
+  }
+  if (vs?.hasWanderingRisk) {
+    badges.push({ label: "Riesgo de desorientación", color: "bg-orange-100 text-orange-700 border-orange-200", icon: <Footprints className="h-3.5 w-3.5" /> });
+  }
+  if (vs?.isNonVerbal || vs?.communicationAssistance) {
+    badges.push({ label: "Comunicación asistida", color: "bg-violet-100 text-violet-700 border-violet-200", icon: <MessageCircle className="h-3.5 w-3.5" /> });
+  }
+  if (profile.safeReturn?.instructions) {
+    badges.push({ label: "Retorno seguro", color: "bg-teal-100 text-teal-700 border-teal-200", icon: <Footprints className="h-3.5 w-3.5" /> });
+  }
+
+  if (badges.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap justify-center gap-2">
+      {badges.map((b, i) => (
+        <span key={i} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-black uppercase tracking-widest ${b.color}`}>
+          {b.icon}
+          {b.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // @keep-for-future-use — SafeReturnCard remains available for special/citizen views
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SafeReturnCard({ safeReturn }: { safeReturn: EmergencyProfile["safeReturn"] }) {
@@ -593,17 +636,33 @@ export default function EmergencyPage() {
           <div className="absolute top-[10%] left-[5%] w-64 h-64 bg-white rounded-full blur-[120px]" />
           <div className="absolute bottom-[10%] right-[5%] w-64 h-64 bg-black rounded-full blur-[120px]" />
         </div>
-        <div className="max-w-md w-full text-center space-y-12 relative z-10">
+        <div className="max-w-xl w-full text-center space-y-10 relative z-10">
           <div className="space-y-6">
             <div className="bg-white/20 backdrop-blur-xl rounded-[2.5rem] w-28 h-28 flex items-center justify-center mx-auto border border-white/30 shadow-2xl"><Activity className="h-14 w-14 text-white animate-pulse" /></div>
             <div className="space-y-1"><h1 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-none">PRE RESCUE ID</h1></div>
           </div>
-          <div className="space-y-4"><p className="text-xl font-medium text-white leading-relaxed px-4">¿Cómo puedes ayudar?</p></div>
-          <div className="grid grid-cols-1 gap-5">
-            <button onClick={() => setView('paramedic')} className="group relative w-full bg-white text-[#DA1A21] py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3">Emergencia médica <ShieldCheck className="h-8 w-8" /></button>
-            <button onClick={() => setView('citizen')} className="w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-6 rounded-[2.5rem] font-black text-lg hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest">Soy un ciudadano</button>
+          <div className="space-y-4 px-2">
+            <p className="text-xl md:text-2xl font-medium text-white leading-relaxed">¿Qué tipo de ayuda estás prestando?</p>
+            <p className="text-sm md:text-base text-white/85 font-medium leading-relaxed max-w-lg mx-auto">
+              Elige primero el tipo de ayuda. Los contextos clínicos aparecen como badges informativos dentro del perfil.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <button onClick={() => setView('citizen')} className="w-full bg-white text-[#DA1A21] py-7 rounded-[2.5rem] font-black text-xl sm:text-2xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3">
+              Soy ciudadano
+              <span className="sr-only">Abre la vista simple para ayuda rápida</span>
+            </button>
+            <button onClick={() => setView('paramedic')} className="group relative w-full bg-black/20 backdrop-blur-md border-2 border-white/20 text-white py-7 rounded-[2.5rem] font-black text-xl sm:text-2xl hover:bg-black/30 transition-all active:scale-95 uppercase tracking-widest flex items-center justify-center gap-3">
+              Soy médico / paramédico
+              <ShieldCheck className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="space-y-3">
+            <PublicContextBadges profile={profile} />
             {hasSpecialAssistance && (
-              <button onClick={() => setView('special')} className="inline-flex items-center justify-center gap-2 w-full py-6 bg-amber-500 text-white rounded-[2.5rem] font-black text-lg shadow-2xl hover:bg-amber-600 active:scale-95 transition-all uppercase tracking-wider">Persona perdida / necesita asistencia</button>
+              <p className="text-xs text-white/70 font-semibold leading-relaxed max-w-lg mx-auto">
+                Si hay asistencia especial o retorno seguro, se muestra dentro de la ficha y no como decisión principal.
+              </p>
             )}
           </div>
           <div className="pt-4 flex items-center justify-center gap-10 opacity-40"><div className="h-px bg-white flex-1" /><Droplets className="h-5 w-5" /><div className="h-px bg-white flex-1" /></div>
@@ -741,7 +800,7 @@ export default function EmergencyPage() {
                   <p className="text-sm font-black text-slate-400 uppercase">Usa las acciones manuales de emergencia</p>
                 </div>
                 <button onClick={() => setView('paramedic')} className="flex min-h-11 items-center gap-2 group text-xs font-black text-[#A11218] bg-red-50 px-6 py-3 rounded-xl hover:bg-[#DA1A21] hover:text-white transition-all uppercase tracking-tighter">
-                  Soy personal médico <ShieldCheck className="h-4 w-4" />
+                  Cambiar a vista médica <ShieldCheck className="h-4 w-4" />
                 </button>
               </div>
             </div>

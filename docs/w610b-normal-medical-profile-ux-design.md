@@ -183,6 +183,8 @@ Reglas a conservar:
 ### W6.10C
 
 - rediseñar la pantalla pública inicial ciudadano / médico
+- mantener los badges como contexto visual
+- mover asistencia especial y retorno seguro fuera de la decisión principal
 - sin cambiar schema
 
 ### W6.10D
@@ -197,6 +199,33 @@ Reglas a conservar:
 ### W6.10F
 
 - auditoría final visual y técnica
+
+## W6.10C - Pantalla Pública Inicial
+
+La pantalla pública inicial se simplificó para que la primera decisión sea:
+
+- Soy ciudadano
+- Soy médico / paramédico
+
+### Qué cambió
+
+- Se reemplazó la pregunta genérica por una decisión directa de ayuda.
+- Se reubicó la asistencia especial como contexto dentro de la ficha, no como botón principal.
+- Los badges clínicos quedan visibles como información secundaria.
+- La vista ciudadano conserva la guía breve y la información crítica.
+- La vista médico / paramédico conserva la información más completa.
+
+### Qué no cambió
+
+- no cambió la ruta pública
+- no cambió `Chip.shortCode` como puerta de acceso
+- no cambió el helper de resolución pública
+- no cambió la seguridad de W6.04
+- no se tocaron chips, activación, pedidos, productos ni inventario
+
+### Compatibilidad
+
+La pantalla sigue dependiendo de un chip activo y asignado. Si el perfil no es publicable, no se expone públicamente.
 
 ## Riesgos y Decisiones Pendientes
 
@@ -215,4 +244,3 @@ La dirección correcta para W6.10B es:
 - ordenar el formulario privado por capas lógicas
 - mantener la base médica común dentro de `Profile` por ahora
 - dejar la normalización de tablas como decisión futura, no inmediata
-
