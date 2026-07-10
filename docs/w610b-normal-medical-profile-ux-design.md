@@ -227,6 +227,41 @@ La pantalla pública inicial se simplificó para que la primera decisión sea:
 
 La pantalla sigue dependiendo de un chip activo y asignado. Si el perfil no es publicable, no se expone públicamente.
 
+## W6.10D - Formulario Privado Reorganizado
+
+El formulario privado quedó reorganizado en una secuencia más clara usando los campos actuales de `Profile`.
+
+### Pasos finales
+
+1. Identidad básica
+2. Base médica esencial
+3. Contactos de emergencia
+4. Asistencia especial / retorno seguro
+5. Seguro y médico tratante
+6. Privacidad y vista pública
+
+### Qué quedó en cada paso
+
+- Identidad básica: nombre, apellido, alias público, fecha de nacimiento, sexo, teléfono y ubicación general si aplica.
+- Base médica esencial: tipo de sangre, alergias, condiciones médicas, medicamentos y notas críticas.
+- Contactos de emergencia: bloque guiado para recordar que los contactos siguen gestionándose en el perfil, sin cambiar el modelo actual.
+- Asistencia especial / retorno seguro: deterioro cognitivo, desorientación, comunicación asistida, notas críticas y retorno seguro.
+- Seguro y médico tratante: aseguradora, póliza, hospital preferido, teléfono de emergencia del seguro, médico tratante y visibilidad asociada.
+- Privacidad y vista pública: toggles públicos existentes y explicación clara de ciudadano/paramédico.
+
+### Qué no cambió
+
+- no cambió el schema
+- no hubo migración
+- la base médica sigue en `Profile`
+- los contactos siguen en `ProfileContact` / `Contact`
+- no cambió el acceso público
+- no se tocaron chips, activación, pedidos, productos, inventario ni empresarial
+
+### Observación UX
+
+Se añadió un resumen visual de contexto privado con badges derivados de los datos actuales, sin introducir lógica de negocio nueva.
+
 ## Riesgos y Decisiones Pendientes
 
 - si se normalizan tablas médicas o no

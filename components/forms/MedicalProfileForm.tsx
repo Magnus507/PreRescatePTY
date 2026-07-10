@@ -5,7 +5,7 @@ import { BLOOD_TYPES } from "@/lib/constants";
 import {
   User, Activity, Heart, ShieldAlert, Pill, FileText,
   Shield, Stethoscope, ChevronLeft, ChevronRight,
-  Eye, AlertCircle, Info, Brain, Footprints, MessageCircle,
+  Eye, AlertCircle, Info, Brain, Footprints, MessageCircle, Baby, Crown,
 } from "lucide-react";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
 import React from "react";
@@ -69,11 +69,12 @@ interface ProfileFormProps {
 // ──────────────────────────────────────────────
 
 const STEPS = [
-  { id: 1, title: "Identidad", description: "Tu nombre y datos de contacto", icon: User },
-  { id: 2, title: "Alerta médica", description: "Información crítica para emergencias", icon: Heart },
-  { id: 3, title: "Seguro y médico", description: "Información adicional para tu protección", icon: Shield },
-  { id: 4, title: "Asistencia", description: "Información de vulnerabilidad y comunicación", icon: Brain },
-  { id: 5, title: "Visibilidad", description: "Controla qué se muestra en Emergencia Médica", icon: Eye },
+  { id: 1, title: "Identidad básica", description: "Quién eres y cómo contactarte", icon: User },
+  { id: 2, title: "Base médica esencial", description: "Información clínica crítica", icon: Heart },
+  { id: 3, title: "Contactos de emergencia", description: "Personas que deben responder", icon: Shield },
+  { id: 4, title: "Asistencia especial", description: "Apoyo, comunicación y retorno seguro", icon: Brain },
+  { id: 5, title: "Seguro y médico", description: "Cobertura y médico tratante", icon: Stethoscope },
+  { id: 6, title: "Privacidad y vista pública", description: "Qué verá ciudadano y paramédico", icon: Eye },
 ] as const;
 
 // ──────────────────────────────────────────────
@@ -151,12 +152,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
   // ── Field-set renderers ──
 
   const renderAgeBadge = () => {
-    if (!form.birthDate) return null;
-    const birthDate = new Date(form.birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    const age = getCalculatedAge();
+    if (age === null) return null;
     // If minor, display a protective badge instead of exact age
     if (age < 18) {
       return (
@@ -169,6 +166,63 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     return (
       <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-black text-slate-500">
         EDAD: {age} AÑOS
+      </div>
+    );
+  };
+
+  const getCalculatedAge = () => {
+    if (!form.birthDate) return null;
+    const birthDate = new Date(form.birthDate);
+    if (Number.isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    return age;
+  };
+
+  const isOlderAdult = (() => {
+    const age = getCalculatedAge();
+    return age !== null && age >= 60;
+  })();
+
+  const renderPrivateContextBadges = () => {
+    const badges: { label: string; color: string; icon: React.ReactNode }[] = [];
+    const age = getCalculatedAge();
+    if (age !== null && age < 18) {
+      badges.push({ label: "Menor de edad", color: "bg-blue-100 text-blue-700 border-blue-200", icon: <Baby className="h-3.5 w-3.5" /> });
+    } else if (isOlderAdult) {
+      badges.push({ label: "Adulto mayor", color: "bg-slate-100 text-slate-700 border-slate-200", icon: <Crown className="h-3.5 w-3.5" /> });
+    }
+    if ((form.allergies || "").trim()) {
+      badges.push({ label: "Alergias declaradas", color: "bg-red-100 text-red-700 border-red-200", icon: <AlertCircle className="h-3.5 w-3.5" /> });
+    }
+    if ((form.medications || "").trim()) {
+      badges.push({ label: "Medicación declarada", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: <Pill className="h-3.5 w-3.5" /> });
+    }
+    if (form.hasCognitiveImpairment) {
+      badges.push({ label: "Requiere asistencia", color: "bg-amber-100 text-amber-700 border-amber-200", icon: <Brain className="h-3.5 w-3.5" /> });
+    }
+    if (form.hasWanderingRisk) {
+      badges.push({ label: "Riesgo de desorientación", color: "bg-orange-100 text-orange-700 border-orange-200", icon: <Footprints className="h-3.5 w-3.5" /> });
+    }
+    if (form.isNonVerbal || form.communicationAssistance?.trim()) {
+      badges.push({ label: "Comunicación asistida", color: "bg-violet-100 text-violet-700 border-violet-200", icon: <MessageCircle className="h-3.5 w-3.5" /> });
+    }
+    if (form.safeReturnInstructions?.trim()) {
+      badges.push({ label: "Retorno seguro", color: "bg-teal-100 text-teal-700 border-teal-200", icon: <Footprints className="h-3.5 w-3.5" /> });
+    }
+
+    if (badges.length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {badges.map((b, i) => (
+          <span key={i} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-black uppercase tracking-widest ${b.color}`}>
+            {b.icon}
+            {b.label}
+          </span>
+        ))}
       </div>
     );
   };
@@ -241,6 +295,31 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
     </div>
   );
 
+  const renderContactsGuidance = () => (
+    <div className="space-y-3">
+      <div className="flex items-start gap-2 text-[11px] font-semibold text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2.5">
+        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+        <span>
+          Los contactos de emergencia se administran desde el bloque de contactos del perfil. Aquí resumimos quién debe responder y por qué es importante mantenerlos actualizados.
+        </span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="rounded-xl border border-border bg-background p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contacto principal</p>
+          <p className="text-sm font-semibold mt-1">Usa tu contacto de mayor prioridad para emergencias inmediatas.</p>
+        </div>
+        <div className="rounded-xl border border-border bg-background p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contacto secundario</p>
+          <p className="text-sm font-semibold mt-1">Añade un respaldo familiar o cuidador si existe.</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAdditionalNotesField = () => (
+    <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas críticas / instrucciones" value={form.additionalNotes} onChange={(v: string) => { update("additionalNotes", v); }} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
+  );
+
   const renderInsuranceFields = () => (
     <div className="space-y-3">
       <ToggleField
@@ -267,10 +346,6 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
       <Field label="Nombre del médico" value={form.primaryDoctorName || ""} onChange={(v: string) => { update("primaryDoctorName", v); }} placeholder="Opcional" />
       <Field label="Teléfono del médico" value={form.primaryDoctorPhone || ""} onChange={(v: string) => { update("primaryDoctorPhone", v); }} placeholder="Opcional" />
     </div>
-  );
-
-  const renderAdditionalNotesField = () => (
-    <TextAreaField icon={<FileText className="h-4 w-4" />} label="Notas adicionales" value={form.additionalNotes} onChange={(v: string) => { update("additionalNotes", v); }} placeholder="Ej: alergias severas, indicaciones de rescate..." color="text-slate-600" />
   );
 
   const renderSpecialAssistanceFields = () => {
@@ -302,6 +377,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
                 color="text-violet-600"
               />
             )}
+            {renderAdditionalNotesField()}
           </div>
         )}
       </div>
@@ -504,9 +580,9 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
       })()}
 
       {/* Info banner (shown on steps 1-4) */}
-      {step <= 4 && (
-        <div className="flex items-start gap-2 text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl px-3 py-2.5">
-          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+        {step <= 4 && (
+          <div className="flex items-start gap-2 text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl px-3 py-2.5">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>
             Para activar tu perfil solo necesitas nombre, apellido y tipo de sangre. Los demás datos son opcionales, pero ayudan en una emergencia.
           </span>
@@ -520,8 +596,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
             <SectionHeader
               icon={<User className="h-5 w-5" />}
               iconBg="bg-primary/10 text-primary"
-              title="Identidad"
-              description="Datos base para identificar a la persona."
+              title="Identidad básica"
+              description="Quién eres y cómo contactarte."
             />
             {renderIdentityFields(true)}
           </div>
@@ -532,42 +608,22 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
             <SectionHeader
               icon={<Heart className="h-5 w-5" />}
               iconBg="bg-red-500/10 text-red-600"
-              title="Alerta médica"
-              description="Información crítica para primera respuesta."
+              title="Base médica esencial"
+              description="Información clínica crítica para emergencias."
             />
             {renderMedicalAlertFields(true)}
           </div>
         )}
 
         {step === 3 && (
-          <div className="space-y-4">
-            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-              <SectionHeader
-                icon={<Shield className="h-5 w-5" />}
-                iconBg="bg-blue-500/10 text-blue-600"
-                title="Seguro médico"
-                description="Completa estos datos solo si cuentas con seguro."
-              />
-              {renderInsuranceFields()}
-            </div>
-            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-              <SectionHeader
-                icon={<Stethoscope className="h-5 w-5" />}
-                iconBg="bg-emerald-500/10 text-emerald-600"
-                title="Médico tratante"
-                description="Solo se mostrará públicamente si lo autorizas en privacidad."
-              />
-              {renderDoctorFields()}
-            </div>
-            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-              <SectionHeader
-                icon={<FileText className="h-5 w-5" />}
-                iconBg="bg-slate-500/10 text-slate-600"
-                title="Instrucciones especiales"
-                description="Detalles útiles para actuar más rápido en emergencia."
-              />
-              {renderAdditionalNotesField()}
-            </div>
+          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
+            <SectionHeader
+              icon={<Shield className="h-5 w-5" />}
+              iconBg="bg-blue-500/10 text-blue-600"
+              title="Contactos de emergencia"
+              description="Personas que deben responder si hay una urgencia."
+            />
+            {renderContactsGuidance()}
           </div>
         )}
 
@@ -577,19 +633,13 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
               <SectionHeader
                 icon={<Brain className="h-5 w-5" />}
                 iconBg="bg-violet-500/10 text-violet-600"
-                title="Asistencia especial"
-                description="Información opcional para ayudar en situaciones de desorientación, vulnerabilidad o comunicación asistida."
+                title="Asistencia especial / retorno seguro"
+                description="Apoyo, comunicación y qué hacer si existe una situación de vulnerabilidad."
               />
               {renderSpecialAssistanceFields()}
-            </div>
-            <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
-              <SectionHeader
-                icon={<Footprints className="h-5 w-5" />}
-                iconBg="bg-teal-500/10 text-teal-600"
-                title="Retorno seguro"
-                description="Instrucciones para situaciones de desorientación."
-              />
-              {renderSafeReturnFields()}
+              <div className="pt-2">
+                {renderSafeReturnFields()}
+              </div>
             </div>
           </div>
         )}
@@ -597,12 +647,35 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
         {step === 5 && (
           <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
             <SectionHeader
+              icon={<Stethoscope className="h-5 w-5" />}
+              iconBg="bg-emerald-500/10 text-emerald-600"
+              title="Seguro y médico tratante"
+              description="Completa estos datos solo si cuentas con seguro o un médico de referencia."
+            />
+            {renderInsuranceFields()}
+            <div className="pt-2">
+              {renderDoctorFields()}
+            </div>
+          </div>
+        )}
+
+        {step === 6 && (
+          <div className="p-0 md:p-6 rounded-none md:rounded-3xl md:border md:border-border md:bg-muted/20 space-y-4 md:shadow-inner">
+            <SectionHeader
               icon={<Eye className="h-5 w-5" />}
               iconBg="bg-slate-500/10 text-slate-600"
-              title="Visibilidad médica"
-              description="Los campos completados se mostrarán automáticamente en la ficha de Emergencia Médica."
+              title="Privacidad y vista pública"
+              description="Controla qué ve ciudadano y qué ve médico o paramédico."
             />
-            {renderMedicalVisibilityToggles()}
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 text-[11px] font-medium text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2.5">
+                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  La vista ciudadana resume lo esencial. La vista médica o paramédica muestra más contexto clínico sin cambiar el acceso público.
+                </span>
+              </div>
+              {renderMedicalVisibilityToggles()}
+            </div>
           </div>
         )}
       </div>
@@ -663,13 +736,14 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
               <User className="h-5 w-5" />
             </div>
             <div className="flex-1">
-              <h3 className="font-black text-base md:text-lg tracking-tight">Identidad</h3>
+              <h3 className="font-black text-base md:text-lg tracking-tight">Identidad básica</h3>
               <p className="text-xs text-muted-foreground">Datos base para identificar a la persona.</p>
             </div>
             <div className="shrink-0">
               {renderAgeBadge()}
             </div>
           </div>
+          {renderPrivateContextBadges()}
           {renderIdentityFields()}
         </div>
       </div>
@@ -682,8 +756,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
               <Heart className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight text-red-600">Alerta médica</h3>
-              <p className="text-xs text-muted-foreground">Información crítica para primera respuesta.</p>
+              <h3 className="font-black text-base md:text-lg tracking-tight text-red-600">Base médica esencial</h3>
+              <p className="text-xs text-muted-foreground">Información clínica crítica para primera respuesta.</p>
             </div>
           </div>
           {renderMedicalAlertFields()}
@@ -695,76 +769,61 @@ export function MedicalProfileForm({ form, onChange, disabled = false, variant =
               <Shield className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight text-blue-700">Seguro médico</h3>
-              <p className="text-xs text-muted-foreground">Completa estos datos solo si cuentas con seguro.</p>
+              <h3 className="font-black text-base md:text-lg tracking-tight text-blue-700">Contactos de emergencia</h3>
+              <p className="text-xs text-muted-foreground">Personas que deben responder si hay una urgencia.</p>
             </div>
           </div>
-          {renderInsuranceFields()}
+          {renderContactsGuidance()}
         </div>
 
-        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-              <Stethoscope className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight text-emerald-700">Médico tratante</h3>
-              <p className="text-xs text-muted-foreground">Solo se mostrará públicamente si lo autorizas en privacidad.</p>
-            </div>
-          </div>
-          {renderDoctorFields()}
-        </div>
-
-        <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center">
-              <FileText className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight">Instrucciones especiales</h3>
-              <p className="text-xs text-muted-foreground">Detalles útiles para actuar más rápido en emergencia.</p>
-            </div>
-          </div>
-          {renderAdditionalNotesField()}
-        </div>
-
-        {/* Special Assistance Section */}
         <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center">
               <Brain className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight text-violet-700">Asistencia especial</h3>
+              <h3 className="font-black text-base md:text-lg tracking-tight text-violet-700">Asistencia especial / retorno seguro</h3>
               <p className="text-xs text-muted-foreground">Información opcional para vulnerabilidad o comunicación asistida.</p>
             </div>
           </div>
           {renderSpecialAssistanceFields()}
+          {renderAdditionalNotesField()}
+          <div className="pt-2">
+            {renderSafeReturnFields()}
+          </div>
         </div>
 
         <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
-              <Footprints className="h-5 w-5" />
+            <div className="h-10 w-10 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center">
+              <Shield className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-black text-base md:text-lg tracking-tight text-teal-700">Retorno seguro</h3>
-              <p className="text-xs text-muted-foreground">Instrucciones para situaciones de desorientación.</p>
+              <h3 className="font-black text-base md:text-lg tracking-tight">Seguro y médico tratante</h3>
+              <p className="text-xs text-muted-foreground">Completa estos datos solo si cuentas con seguro o un médico de referencia.</p>
             </div>
           </div>
-          {renderSafeReturnFields()}
+          {renderInsuranceFields()}
+          <div className="pt-2">
+            {renderDoctorFields()}
+          </div>
         </div>
 
-        {/* Simplified Medical Visibility section — no accordion, no hidden state */}
         <div className="p-4 md:p-6 rounded-2xl md:rounded-3xl border border-border bg-muted/20 space-y-4 shadow-inner">
-          <div className="flex items-center gap-3 mb-1">
+          <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center">
               <Eye className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-black text-base tracking-tight">Visibilidad médica</h3>
-              <p className="text-xs text-muted-foreground font-medium">Los campos completados se mostrarán automáticamente en la ficha de Emergencia Médica.</p>
+              <h3 className="font-black text-base md:text-lg tracking-tight">Privacidad y vista pública</h3>
+              <p className="text-xs text-muted-foreground">Controla qué se mostrará al ciudadano y qué se amplía para el paramédico.</p>
             </div>
+          </div>
+          <div className="flex items-start gap-2 text-[11px] font-medium text-muted-foreground bg-slate-100/80 dark:bg-slate-900/60 border border-border rounded-xl px-3 py-2.5">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>
+              La vista ciudadana resume lo esencial. La vista médica o paramédica muestra más contexto clínico sin cambiar el acceso público.
+            </span>
           </div>
           {renderMedicalVisibilityToggles()}
         </div>
