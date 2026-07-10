@@ -491,7 +491,7 @@ function PatientMedicalCard({ profile, isParamedic, showAssistanceBadges = true 
   return (
     <div className="relative group">
       <div className="absolute -inset-1 bg-gradient-to-r from-[#DA1A21] to-red-600 rounded-[3.5rem] blur opacity-15 group-hover:opacity-25 transition duration-1000" />
-      <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-white shadow-2xl flex flex-col md:flex-row items-center gap-5 md:gap-8 overflow-hidden">
+      <div className="relative bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-white shadow-2xl flex flex-col xl:grid xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] xl:items-start gap-5 md:gap-8 overflow-hidden">
         {profile.photoUrl ? (
           <div className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border-[4px] md:border-[6px] border-slate-50 shadow-2xl flex-shrink-0 relative group-hover:scale-105 transition-transform duration-500">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -568,20 +568,24 @@ function PatientMedicalCard({ profile, isParamedic, showAssistanceBadges = true 
               <span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SEXO: {profile.sex === 'M' ? 'MASCULINO' : profile.sex === 'F' ? 'FEMENINO' : 'NO REPORTADO'}</span>
             </div>
           </div>
+        </div>
 
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-red-700">Alergias</p>
-              <p className="mt-1 text-sm font-bold text-slate-900 break-words">{profile.allergies || "No reportado"}</p>
-              {hasAllergies && <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-red-600">Atención crítica</p>}
-            </div>
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p>
-              <p className="mt-1 text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p>
-            </div>
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p>
-              <p className="mt-1 text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p>
+        <div className="mt-4 xl:mt-0 w-full">
+          <div className="rounded-[2rem] border border-slate-100 bg-slate-50/80 p-3 md:p-4 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-700">Alergias</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 break-words">{profile.allergies || "No reportado"}</p>
+                {hasAllergies && <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-red-600">Atención crítica</p>}
+              </div>
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p>
+              </div>
             </div>
           </div>
         </div>

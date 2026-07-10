@@ -225,6 +225,27 @@ Reglas a conservar:
 - no cambió el acceso público por `Chip.shortCode`
 - no se tocaron migraciones ni helpers de resolución pública
 
+## W6.10F-UX8 - Ficha superior desktop alineada con móvil
+
+### Qué se ajustó
+
+- la vista móvil se mantiene como referencia aprobada
+- la ficha superior de desktop ahora refleja la misma información principal integrada
+- alergias, condiciones y medicamentos viven dentro de la misma ficha, con una tarjeta contenedora más clara en pantallas anchas
+
+### Qué se conserva
+
+- sangre, edad, menor de edad y sexo siguen visibles como badges principales
+- no se reintroduce el bloque duplicado de `Alertas médicas esenciales`
+- no cambió W6.04
+- no cambió el schema
+
+### Objetivo visual
+
+- desktop debe sentirse como una previsualización fiel de la vista móvil
+- las tarjetas médicas deben verse limpias, alineadas y sin ocupar espacio vacío innecesario
+- no debe aparecer una segunda sección clínica separada debajo de la ficha superior
+
 ## W6.10C - Pantalla Pública Inicial
 
 La pantalla pública inicial se simplificó para que la primera decisión sea:
