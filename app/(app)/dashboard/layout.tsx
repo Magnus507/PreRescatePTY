@@ -50,17 +50,17 @@ function NavLink({ href, label, icon: Icon, pathname, activateMode, collapsed }:
       href={href}
       title={collapsed ? label : undefined}
       aria-label={collapsed ? label : undefined}
-      className={`flex items-center ${collapsed ? "justify-center px-3" : "justify-between px-4"} group py-3.5 rounded-2xl text-sm font-black transition-all duration-300 ${
+      className={`group flex items-center ${collapsed ? "justify-center px-3" : "justify-between px-4"} py-3.5 rounded-[1.1rem] text-sm font-black transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none ${
         isActive
-          ? "bg-primary text-white shadow-xl shadow-primary/20 translate-x-1"
-          : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+          ? "bg-gradient-to-r from-[#DA1A21] to-[#B9141B] text-white shadow-[0_14px_30px_-18px_rgba(218,26,33,0.85)] translate-x-1"
+          : "text-slate-500 dark:text-slate-400 hover:bg-white/75 dark:hover:bg-[#1a2333]/80 hover:text-slate-900 dark:hover:text-white hover:shadow-[0_10px_24px_-20px_rgba(15,23,42,0.25)]"
       }`}
     >
       <div className={`flex items-center ${collapsed ? "" : "gap-3"}`}>
         <Icon className={`h-5 w-5 transition-transform duration-300 ${isActive ? "scale-110" : "group-hover:scale-110 opacity-70"}`} />
         {!collapsed && <span>{label}</span>}
       </div>
-      {!collapsed && isActive && <ChevronRight className="h-4 w-4 opacity-50 transition-transform group-hover:translate-x-1" />}
+      {!collapsed && isActive && <ChevronRight className="h-4 w-4 opacity-70 transition-transform group-hover:translate-x-1" />}
     </Link>
   );
 }
@@ -155,10 +155,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-white dark:bg-[#050812] selection:bg-primary selection:text-white">
       <ScanMonitor />
-      <div className="max-w-[1600px] mx-auto flex h-screen">
+      <div className="mx-auto flex h-screen w-full max-w-[1920px]">
         {/* Sidebar */}
-        <aside className={`hidden lg:flex flex-col bg-slate-50/80 dark:bg-[#0f1419]/80 backdrop-blur-xl border-r border-slate-200/60 dark:border-[#1a2333]/60 p-4 z-10 transition-all duration-300 ${isSidebarCollapsed ? "w-24" : "w-80"}`}>
-          <div className="flex items-center justify-between gap-3 px-2 pb-4 border-b border-slate-200/70 dark:border-[#1a2333]">
+        <aside className={`hidden lg:flex flex-col bg-[linear-gradient(180deg,rgba(248,250,252,0.92)_0%,rgba(241,245,249,0.86)_100%)] dark:bg-[linear-gradient(180deg,rgba(15,20,25,0.92)_0%,rgba(10,17,40,0.92)_100%)] backdrop-blur-xl border-r border-slate-200/70 dark:border-[#1a2333]/70 p-4 z-10 transition-all duration-300 ${isSidebarCollapsed ? "w-24" : "w-80"}`}>
+          <div className="flex items-center justify-between gap-3 px-2 pb-4 border-b border-slate-200/80 dark:border-[#1a2333]">
             {!isSidebarCollapsed && (
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.35em] text-slate-400 dark:text-slate-500">Panel Cliente</p>
@@ -168,7 +168,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed((value) => !value)}
-              className="h-11 w-11 rounded-2xl border border-slate-200 dark:border-[#2a3a4f] bg-white/80 dark:bg-[#141c29] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 transition-all"
+              className="h-11 w-11 rounded-[1.1rem] border border-slate-200 dark:border-[#2a3a4f] bg-white/85 dark:bg-[#141c29] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-primary hover:border-primary/30 transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none"
               aria-label={isSidebarCollapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
             >
               {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
@@ -180,9 +180,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {isCorporate ? (
               /* ========== CORPORATE SIDEBAR ========== */
               <>
-                <div className="p-4 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 dark:border-indigo-500/30 mb-4">
+                <div className="p-4 rounded-[1.25rem] bg-indigo-500/6 dark:bg-indigo-500/12 border border-indigo-500/20 dark:border-indigo-500/30 mb-4 shadow-[0_12px_30px_-24px_rgba(79,70,229,0.35)]">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-indigo-500 dark:bg-indigo-600 text-white flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-[0.9rem] bg-indigo-500 dark:bg-indigo-600 text-white flex items-center justify-center shadow-sm">
                       <Building2 className="h-5 w-5" />
                     </div>
                     <div>
@@ -212,10 +212,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
           </div>
 
-          <div className="mt-6 pt-6 border-t border-slate-100 dark:border-[#1a2333]">
-             <div className={`p-4 rounded-3xl bg-slate-50 dark:bg-[#1a2333]/40 border border-slate-100 dark:border-[#2a3a4f] group hover:border-primary/20 dark:hover:border-primary/30 transition-all cursor-pointer ${isSidebarCollapsed ? "text-center" : ""}`}>
+          <div className="mt-6 pt-6 border-t border-slate-100/80 dark:border-[#1a2333]">
+             <div className={`p-4 rounded-[1.3rem] bg-white/85 dark:bg-[#1a2333]/50 border border-slate-100 dark:border-[#2a3a4f] group hover:border-primary/20 dark:hover:border-primary/30 transition-all duration-200 ease-out cursor-pointer ${isSidebarCollapsed ? "text-center" : ""}`}>
                 <div className="flex items-center gap-3">
-                   <div className="h-10 w-10 rounded-2xl bg-white dark:bg-[#2a3a4f] border border-slate-200 dark:border-[#3a4a5f] flex items-center justify-center font-black text-primary text-sm shadow-sm dark:shadow-primary/10">
+                   <div className="h-10 w-10 rounded-[1rem] bg-white dark:bg-[#2a3a4f] border border-slate-200 dark:border-[#3a4a5f] flex items-center justify-center font-black text-primary text-sm shadow-sm dark:shadow-primary/10">
                       {session?.user?.email?.[0].toUpperCase()}
                    </div>
                    {!isSidebarCollapsed && (
@@ -232,11 +232,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
              </div>
               {!isCorporate && (
                 <div className={`grid ${isSidebarCollapsed ? "grid-cols-1" : "grid-cols-2"} gap-2 mt-3`}>
-                  <Link href="/dashboard/pedidos" className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-black text-xs hover:shadow-lg hover:shadow-indigo-600/20 active:scale-95 transition-all shadow-lg shadow-indigo-600/20">
+                  <Link href="/dashboard/pedidos" className="flex items-center justify-center gap-2 py-4 rounded-[1.1rem] bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-black text-xs hover:shadow-lg hover:shadow-indigo-600/20 active:scale-95 transition-all duration-200 ease-out shadow-lg shadow-indigo-600/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none">
                      <Package className="h-3.5 w-3.5" /> {!isSidebarCollapsed && "Pedidos"}
                   </Link>
                   {!isSidebarCollapsed && (
-                    <Link href="/dashboard/compras" className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 text-white font-black text-xs hover:shadow-lg hover:shadow-slate-900/20 active:scale-95 transition-all shadow-lg shadow-slate-900/10">
+                    <Link href="/dashboard/compras" className="flex items-center justify-center gap-2 py-4 rounded-[1.1rem] bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 text-white font-black text-xs hover:shadow-lg hover:shadow-slate-900/20 active:scale-95 transition-all duration-200 ease-out shadow-lg shadow-slate-900/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none">
                        <ShoppingCart className="h-3.5 w-3.5" /> Tienda
                     </Link>
                   )}
@@ -244,7 +244,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
              
 			  <div className={`grid gap-2 mt-3 ${isSidebarCollapsed ? "grid-cols-1" : "grid-cols-2"}`}>
-                <Link href="/" className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white dark:bg-[#1a2333] border border-slate-200 dark:border-[#2a3a4f] text-slate-600 dark:text-slate-300 font-extrabold text-[10px] uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-[#2a3a4f] transition-all">
+                <Link href="/" className="flex items-center justify-center gap-2 py-3.5 rounded-[1.05rem] bg-white dark:bg-[#1a2333] border border-slate-200 dark:border-[#2a3a4f] text-slate-600 dark:text-slate-300 font-extrabold text-[10px] uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-[#2a3a4f] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none">
                   <Home className="h-3.5 w-3.5" /> Inicio
                 </Link>
                 <button 
@@ -254,7 +254,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     await signOut({ redirect: false });
                     window.location.href = "/login";
                   }}
-                  className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 font-extrabold text-[10px] uppercase tracking-widest hover:bg-red-100 dark:hover:bg-red-500/20 transition-all disabled:opacity-50 border border-red-200 dark:border-red-500/30"
+                  className="flex items-center justify-center gap-2 py-3.5 rounded-[1.05rem] bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 font-extrabold text-[10px] uppercase tracking-widest hover:bg-red-100 dark:hover:bg-red-500/20 transition-all duration-200 ease-out disabled:opacity-50 border border-red-200 dark:border-red-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none"
                 >
                   {isLoggingOut ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
                   {isLoggingOut ? "Saliendo..." : "Salir"}
@@ -264,7 +264,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* Mobile bottom nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/90 dark:bg-[#0f1419]/90 backdrop-blur-xl border-t border-slate-200 dark:border-[#1a2333] flex items-center gap-2 overflow-x-auto px-3 py-2 safe-area-bottom">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/92 dark:bg-[#0f1419]/92 backdrop-blur-xl border-t border-slate-200 dark:border-[#1a2333] flex items-center gap-2 overflow-x-auto px-3 py-2 safe-area-bottom">
           {mobileLinks.map((item) => {
             const active = pathname === item.href;
             
@@ -272,8 +272,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition-all duration-300 ${
-                  active ? "bg-primary/20 dark:bg-primary/30 text-primary" : "text-slate-500 dark:text-slate-400"
+                className={`flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-[1rem] px-2 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none ${
+                  active ? "bg-primary/20 dark:bg-primary/30 text-primary shadow-[0_10px_22px_-20px_rgba(218,26,33,0.35)]" : "text-slate-500 dark:text-slate-400"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
@@ -306,13 +306,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={() => setIsMoreMenuOpen(false)}
             />
 
-            <div className="lg:hidden fixed inset-x-0 bottom-0 z-[70] rounded-t-3xl border-t border-slate-200 dark:border-[#1a2333] bg-white dark:bg-[#0f1419] shadow-2xl p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] max-h-[75vh] overflow-y-auto">
+            <div className="lg:hidden fixed inset-x-0 bottom-0 z-[70] rounded-t-[1.6rem] border-t border-slate-200 dark:border-[#1a2333] bg-white dark:bg-[#0f1419] shadow-2xl p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] max-h-[75vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Menú</p>
                 <button
                   type="button"
                   onClick={() => setIsMoreMenuOpen(false)}
-                  className="h-10 w-10 rounded-xl border border-slate-200 dark:border-[#2a3a4f] flex items-center justify-center text-slate-500 dark:text-slate-300"
+                  className="h-10 w-10 rounded-[0.9rem] border border-slate-200 dark:border-[#2a3a4f] flex items-center justify-center text-slate-500 dark:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none"
                   aria-label="Cerrar menú"
                 >
                   <X className="h-5 w-5" />
@@ -334,7 +334,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsMoreMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-[#2a3a4f] bg-white dark:bg-[#141c29] px-4 py-3.5 text-sm font-black text-slate-700 dark:text-slate-200"
+                    className="flex items-center gap-3 rounded-[1rem] border border-slate-200 dark:border-[#2a3a4f] bg-white dark:bg-[#141c29] px-4 py-3.5 text-sm font-black text-slate-700 dark:text-slate-200 transition-all duration-200 ease-out hover:border-primary/30 hover:bg-slate-50 dark:hover:bg-[#1a2333] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none"
                   >
                     <item.icon className="h-4.5 w-4.5" />
                     <span>{item.label}</span>
@@ -361,8 +361,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/30 dark:bg-[#050812]/30">
-          <div className="max-w-6xl mx-auto p-6 md:p-10 lg:p-12 pb-24 md:pb-12">
+        <main className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,rgba(248,250,252,0.72)_0%,rgba(248,250,252,0.38)_100%)] dark:bg-[linear-gradient(180deg,rgba(5,8,18,0.42)_0%,rgba(5,8,18,0.2)_100%)]">
+          <div className="w-full max-w-none px-4 py-6 pb-24 md:px-6 md:py-8 lg:px-8 lg:py-10 xl:px-10 xl:py-12 md:pb-12">
             {children}
           </div>
         </main>
