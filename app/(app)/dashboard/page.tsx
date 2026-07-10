@@ -269,6 +269,8 @@ export default function DashboardPage() {
           description="Revisa tus chips activos y vinculaciones."
           ctaLabel="Ver dispositivos"
           href="/dashboard/chips"
+          badge={activeChips > 0 ? "Activo" : "Sin activar"}
+          variant="device"
           className="lg:col-span-4"
         />
 
@@ -277,11 +279,12 @@ export default function DashboardPage() {
           description="Compra stickers, chips o accesorios."
           ctaLabel="Ir a tienda"
           href="/dashboard/compras"
-          accent="dark"
+          badge="Comercial"
+          variant="shop"
           className="lg:col-span-4"
         />
 
-        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center">
+        <div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center lg:p-6">
           <div className="space-y-2">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Mis pedidos</p>
             <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Pedidos recientes</h2>
@@ -291,7 +294,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/dashboard/pedidos"
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-3.5 text-sm font-black text-slate-700 dark:text-slate-200 transition-all hover:border-primary/30 hover:text-primary"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-3.5 text-sm font-black text-slate-700 transition-all hover:border-primary/30 hover:text-primary dark:text-slate-200"
           >
             Ver pedidos
           </Link>
@@ -316,7 +319,8 @@ function HomeCard({
   ctaLabel,
   href,
   count,
-  accent = "light",
+  badge,
+  variant = "light",
   className = "",
 }: {
   title: string;
@@ -324,19 +328,66 @@ function HomeCard({
   ctaLabel: string;
   href: string;
   count?: number;
-  accent?: "light" | "dark";
+  badge?: string;
+  variant?: "light" | "device" | "shop";
   className?: string;
 }) {
+  const shellClassName = variant === "device"
+    ? "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(15,20,25,0.96)_100%)] text-[#EFF4FF] shadow-[0_20px_55px_-28px_rgba(0,0,0,0.72)]"
+    : variant === "shop"
+      ? "border-white/10 bg-[linear-gradient(135deg,rgba(5,7,13,0.96)_0%,rgba(15,20,25,0.96)_55%,rgba(218,26,33,0.18)_100%)] text-[#EFF4FF] shadow-[0_24px_60px_-30px_rgba(0,0,0,0.78)]"
+      : "border-border bg-card text-foreground";
+
+  const eyebrowClassName = variant === "light"
+    ? "text-muted-foreground"
+    : "text-[#EFF4FF]/60";
+
+  const countClassName = variant === "light"
+    ? "text-slate-900 dark:text-white"
+    : "text-[#EFF4FF]";
+
+  const descriptionClassName = variant === "light"
+    ? "text-muted-foreground"
+    : "text-[#EFF4FF]/72";
+
+  const buttonClassName = variant === "light"
+    ? "border border-border bg-background text-slate-700 dark:text-slate-200 hover:border-primary/30 hover:text-primary"
+    : variant === "shop"
+      ? "bg-[#DA1A21] text-white shadow-[0_12px_28px_-16px_rgba(218,26,33,0.9)] hover:bg-[#B9141B]"
+      : "bg-white/92 text-slate-900 hover:bg-white";
+
   return (
-    <div className={`rounded-[2rem] border p-6 shadow-sm flex flex-col justify-between gap-4 ${className} ${accent === "dark" ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900" : "border-border bg-card"}`}>
-      <div className="space-y-3">
-        <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${accent === "dark" ? "text-white/60" : "text-muted-foreground"}`}>{title}</p>
-        {count !== undefined && <p className={`text-4xl font-black tracking-tighter ${accent === "dark" ? "text-white" : "text-slate-900 dark:text-white"}`}>{count}</p>}
-        <p className={`text-sm font-medium leading-relaxed ${accent === "dark" ? "text-white/70" : "text-muted-foreground"}`}>{description}</p>
+    <div className={`relative overflow-hidden rounded-[2rem] border p-6 shadow-sm flex flex-col justify-between gap-4 ${className} ${shellClassName}`}>
+      <div className="pointer-events-none absolute inset-0 opacity-100">
+        {variant === "device" && (
+          <>
+            <div className="absolute -right-8 top-[-2.5rem] h-24 w-24 rounded-full bg-[#DA1A21]/20 blur-2xl" />
+            <div className="absolute bottom-[-3rem] left-[-1rem] h-20 w-20 rounded-full bg-sky-400/10 blur-2xl" />
+          </>
+        )}
+        {variant === "shop" && (
+          <>
+            <div className="absolute -right-12 top-[-3rem] h-28 w-28 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute bottom-[-2rem] left-[-2rem] h-24 w-24 rounded-full bg-[#DA1A21]/18 blur-3xl" />
+          </>
+        )}
+      </div>
+
+      <div className="relative space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${eyebrowClassName}`}>{title}</p>
+          {badge && (
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${variant === "shop" ? "bg-white/10 text-white ring-1 ring-white/10" : variant === "device" ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20" : "bg-slate-100 text-slate-600 ring-1 ring-border"}`}>
+              {badge}
+            </span>
+          )}
+        </div>
+        {count !== undefined && <p className={`text-4xl font-black tracking-tighter ${countClassName}`}>{count}</p>}
+        <p className={`text-sm font-medium leading-relaxed ${descriptionClassName}`}>{description}</p>
       </div>
       <Link
         href={href}
-        className={`inline-flex w-fit items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-black transition-all ${accent === "dark" ? "bg-white text-slate-900" : "border border-border bg-background text-slate-700 dark:text-slate-200 hover:border-primary/30 hover:text-primary"}`}
+        className={`relative inline-flex w-fit items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-black transition-all ${buttonClassName} ${variant === "shop" ? "border border-transparent" : "border"}`}
       >
         {ctaLabel}
       </Link>
