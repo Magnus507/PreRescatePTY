@@ -784,24 +784,29 @@ export default function EmergencyPage() {
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100"><AlertTriangle className="h-7 w-7 text-amber-500" /></div>
                 <div>
-                  <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Protocolo Ciudadano</h2>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Guía de Primeros Auxilios</p>
+                  <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Información rápida para ayudar de forma segura</h2>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Prioriza claridad, calma y comunicación</p>
                 </div>
               </div>
               <div className="grid gap-4">
-                <InstructionItem number="01" title="Asegura el Entorno" desc="Detente en zona segura y pide espacio. Si estás en un vehículo, enciende las luces de emergencia." />
-                <InstructionItem number="02" title="Evalúa el Daño" desc="¿Hay derrame de combustible? ¿Riesgo de atropello? No te arriesgues." />
-                <InstructionItem number="03" title="Manejo del Trauma" desc="No muevas a la persona ni su cuello. Una lesión cervical es fatal si se manipula sin equipo profesional." />
-                <InstructionItem number="04" title="Comunicación" desc="Háblale por su nombre, dile que la ayuda viene en camino y no permitas que se duerma." />
+                <InstructionItem number="01" title="Haz una pausa segura" desc="Ubícate fuera del riesgo inmediato y deja espacio para que llegue la ayuda profesional." />
+                <InstructionItem number="02" title="Revisa lo crítico" desc="Busca sangrado, inconsciencia, dificultad para respirar o peligro en el entorno." />
+                <InstructionItem number="03" title="No muevas a la persona" desc="Evita mover cuello o columna a menos que exista un peligro inmediato mayor." />
+                <InstructionItem number="04" title="Habla con calma" desc="Usa el nombre o alias público, da instrucciones simples y confirma si responde." />
               </div>
               <div className="pt-8 border-t border-slate-50 flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div className="flex items-center gap-3">
                   <div className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-                  <p className="text-sm font-black text-slate-400 uppercase">Usa las acciones manuales de emergencia</p>
+                  <p className="text-sm font-black text-slate-400 uppercase">Llama y comparte la ubicación si hace falta</p>
                 </div>
-                <button onClick={() => setView('paramedic')} className="flex min-h-11 items-center gap-2 group text-xs font-black text-[#A11218] bg-red-50 px-6 py-3 rounded-xl hover:bg-[#DA1A21] hover:text-white transition-all uppercase tracking-tighter">
-                  Cambiar a vista médica <ShieldCheck className="h-4 w-4" />
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button onClick={() => setView('unknown')} className="flex min-h-11 items-center gap-2 group text-xs font-black text-slate-700 bg-slate-100 px-6 py-3 rounded-xl hover:bg-slate-200 transition-all uppercase tracking-tighter">
+                    Volver al inicio <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => setView('paramedic')} className="flex min-h-11 items-center gap-2 group text-xs font-black text-[#A11218] bg-red-50 px-6 py-3 rounded-xl hover:bg-[#DA1A21] hover:text-white transition-all uppercase tracking-tighter">
+                    Ver vista médica completa <ShieldCheck className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -881,6 +886,7 @@ export default function EmergencyPage() {
                 )}
                 <div className="text-center md:text-left flex-1">
                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-full mb-3 border border-red-100"><span className="text-[10px] font-black uppercase tracking-widest">Ficha de Emergencia</span></div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-2">Información médica más completa para atención de emergencia</p>
                   <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-[0.9] tracking-tighter mb-1 uppercase">{profile.firstName} <br /> {profile.lastName}</h1>
                   {profile.isVerifiedAdmin && (
                     <div className="flex flex-col items-center md:items-start mb-6">
@@ -899,7 +905,28 @@ export default function EmergencyPage() {
                     <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2"><div className="flex items-start gap-2"><Activity className="mt-0.5 h-4 w-4 text-blue-600" /><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p><p className="text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p></div></div></div>
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2"><div className="flex items-start gap-2"><Pill className="mt-0.5 h-4 w-4 text-emerald-600" /><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p><p className="text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p></div></div></div>
                   </div>
+                  <div className="mt-5 flex flex-wrap items-center justify-center md:justify-start gap-3">
+                    <button onClick={() => setView('unknown')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-xs font-black uppercase tracking-tighter text-slate-700 hover:bg-slate-50 transition-all">
+                      Volver al inicio <ArrowLeft className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setView('citizen')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-xs font-black uppercase tracking-tighter text-[#A11218] hover:bg-[#DA1A21] hover:text-white transition-all">
+                      Ver vista ciudadana <Eye className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Resumen clínico</h3>
+              <p className="text-sm text-slate-600 font-medium">
+                Esta vista prioriza datos médicos útiles para la atención inmediata y respeta los controles de visibilidad del perfil.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <PublicExtraItem label="Tipo de sangre" value={profile.bloodType} />
+                <PublicExtraItem label="Edad" value={profile.age !== null ? String(profile.age) : "No reportada"} />
+                <PublicExtraItem label="Sexo" value={profile.sex === 'M' ? 'Masculino' : profile.sex === 'F' ? 'Femenino' : 'No reportado'} />
+                <PublicExtraItem label="Contacto rápido" value={profile.emergencyContacts[0]?.fullName || "No disponible"} />
               </div>
             </div>
 

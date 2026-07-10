@@ -262,6 +262,39 @@ El formulario privado quedó reorganizado en una secuencia más clara usando los
 
 Se añadió un resumen visual de contexto privado con badges derivados de los datos actuales, sin introducir lógica de negocio nueva.
 
+## W6.10E - Vista Ciudadano y Vista Médico / Paramédico
+
+La vista pública normal quedó afinada para separar mejor la experiencia de ayuda rápida y la experiencia clínica.
+
+### Vista ciudadano
+
+- mantiene una lectura simple y segura
+- prioriza nombre o alias, alertas críticas, alergias, condiciones relevantes e instrucciones rápidas
+- muestra contactos de emergencia y acciones de llamada o WhatsApp cuando aplican
+- conserva el retorno seguro y la comunicación asistida como contexto, no como acción principal
+- permite volver al inicio o pasar a la vista médica completa
+
+### Vista médico / paramédico
+
+- mantiene una ficha más completa y clínica
+- enfatiza tipo de sangre, alergias, condiciones, medicamentos y notas críticas
+- muestra seguros y médico tratante solo cuando la visibilidad lo permite
+- conserva los contactos de emergencia al final para no romper la jerarquía clínica
+- ofrece retorno al inicio y cambio a vista ciudadana sin alterar el acceso público
+
+### Qué no cambió
+
+- no cambió `Chip.shortCode` como puerta de acceso
+- no cambió el helper de resolución pública
+- no cambió la seguridad de W6.04
+- no se tocaron chips, activación, pedidos, productos ni inventario
+- no se cambió el schema
+- no hubo migración
+
+### Compatibilidad
+
+La experiencia pública sigue dependiendo de un chip activo y asignado. La mejora de W6.10E solo reorganiza presentación y jerarquía visual.
+
 ## Riesgos y Decisiones Pendientes
 
 - si se normalizan tablas médicas o no
