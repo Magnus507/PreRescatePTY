@@ -246,6 +246,48 @@ Reglas a conservar:
 - las tarjetas médicas deben verse limpias, alineadas y sin ocupar espacio vacío innecesario
 - no debe aparecer una segunda sección clínica separada debajo de la ficha superior
 
+## W6.10F-UX9 - Orden final de ficha pública
+
+La ficha pública quedó reordenada para que la información médica adicional tenga prioridad visual y los contactos de rescate queden siempre al final.
+
+### Orden final de vista médico / paramédico
+
+1. Ficha superior integrada
+2. Deterioro cognitivo / memoria / desorientación, si aplica
+3. Asistencia especial / condición especial, si aplica
+4. Retorno seguro / persona perdida, si aplica
+5. Información médica adicional
+6. Contactos de rescate
+
+### Orden final de vista ciudadano
+
+1. Ficha superior / ayuda rápida
+2. Retorno seguro, si aplica
+3. Asistencia especial o de comunicación, si aplica
+4. Contactos de rescate al final
+
+### Qué se conserva
+
+- la ficha superior sigue integrando alergias, condiciones y medicamentos
+- no se reintroduce `Alertas médicas esenciales` como bloque duplicado
+- no se reintroduce `Resumen clínico`
+- los contactos de rescate mantienen avatar o inicial, nombre destacado, relación en badge y acciones claras
+
+### Información médica adicional
+
+- se muestra como una tarjeta clara con jerarquía fuerte
+- incluye subtítulo de coordinación médica
+- agrupa instrucciones especiales, aseguradora, hospital preferido, médico tratante y teléfono del médico cuando existen
+- si solo hay `additionalNotes` o instrucciones equivalentes visibles, se presentan dentro de esta misma sección con prioridad visual
+
+### Alcance técnico
+
+- no cambió el schema
+- no cambió W6.04
+- no se tocaron migraciones
+- no se tocó el helper de resolución pública
+- no se tocaron chips, activación, pedidos, productos, inventario, empresarial ni mascotas
+
 ## W6.10C - Pantalla Pública Inicial
 
 La pantalla pública inicial se simplificó para que la primera decisión sea:

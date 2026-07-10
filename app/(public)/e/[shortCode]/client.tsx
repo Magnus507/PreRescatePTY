@@ -171,108 +171,162 @@ function PublicAlertCard({ tone, title, value, note }: { tone: "red" | "blue" | 
   );
 }
 
-function PublicSupportBlock({ profile }: { profile: EmergencyProfile }) {
-  const vulnerability = profile.vulnerabilityStatus;
-  const showCommunication = !!(vulnerability?.isNonVerbal && vulnerability.communicationAssistance);
-  const showVulnerability = !!(vulnerability?.hasCognitiveImpairment || vulnerability?.hasWanderingRisk);
-  const showSafeReturn = !!(profile.safeReturn?.instructions);
-  const showSafeReturnLocation = !!(profile.safeReturn && (profile.safeReturn.locationName || profile.safeReturn.address || profile.safeReturn.contactName || profile.safeReturn.contactPhone || profile.safeReturn.lat != null || profile.safeReturn.lng != null));
-
-  if (!showCommunication && !showVulnerability && !showSafeReturn && !showSafeReturnLocation) return null;
-
-  return (
-    <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
-      <div className="flex items-start gap-3">
-        <div className="h-11 w-11 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center">
-          <MessageCircle className="h-5 w-5 text-violet-600" />
-        </div>
-        <div>
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Deterioro cognitivo / memoria / desorientación</h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Útil para Alzheimer, demencia, pérdida de memoria o riesgo de desorientación</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {showCommunication && (
-          <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-violet-700">Comunicación asistida</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{vulnerability?.communicationAssistance || "Persona no verbal o con comunicación asistida."}</p>
-          </div>
-        )}
-        {showVulnerability && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Deterioro cognitivo reportado</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">Puede requerir orientación, frases simples y acompañamiento. Útil para Alzheimer, demencia, pérdida de memoria o riesgo de desorientación.</p>
-          </div>
-        )}
-      </div>
-
-      {showSafeReturn && (
-        <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 space-y-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">Retorno seguro</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900 whitespace-pre-wrap">{profile.safeReturn?.instructions}</p>
-            {showVulnerability && (
-              <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-teal-700">
-                Complementa este módulo cuando haya pérdida de memoria, desorientación o necesidad de acompañamiento.
-              </p>
-            )}
-          </div>
-          {showSafeReturnLocation && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {profile.safeReturn?.locationName && <PublicAlertCard tone="amber" title="Lugar de retorno" value={profile.safeReturn.locationName} />}
-              {profile.safeReturn?.address && <PublicAlertCard tone="amber" title="Dirección" value={profile.safeReturn.address} />}
-              {profile.safeReturn?.contactName && <PublicAlertCard tone="amber" title="Responsable" value={profile.safeReturn.contactName} />}
-              {profile.safeReturn?.contactPhone && (
-                <div className="rounded-2xl border border-teal-200 bg-white px-4 py-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">Teléfono del responsable</p>
-                  <p className="mt-1 text-sm font-bold text-slate-900">{profile.safeReturn.contactPhone}</p>
-                  <a href={`tel:${sanitizeTelPhone(profile.safeReturn.contactPhone)}`} className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                    <Phone className="h-4 w-4" />
-                    Llamar responsable
-                  </a>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
-
 function PublicMedicalExtrasBlock({ profile }: { profile: EmergencyProfile }) {
   const extras = profile.publicMedicalExtras;
-  if (!extras) return null;
-  const hasExtras = !!(extras.insuranceProvider || extras.preferredHospital || extras.primaryDoctorName || extras.primaryDoctorPhone);
+  const hasExtras = !!(
+    extras &&
+    (
+      extras.insuranceProvider ||
+      extras.preferredHospital ||
+      extras.primaryDoctorName ||
+      extras.primaryDoctorPhone ||
+      extras.emergencyInstructions
+    )
+  );
   if (!hasExtras) return null;
 
   return (
-    <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
+    <section className="bg-white border border-emerald-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-5">
       <div className="flex items-start gap-3">
         <div className="h-11 w-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
           <ShieldCheck className="h-5 w-5 text-emerald-600" />
         </div>
         <div>
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Seguro / médico tratante</h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Visible solo cuando el perfil lo permite</p>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Información médica adicional</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 mt-1">Datos complementarios para atención médica y coordinación.</p>
         </div>
       </div>
+      {extras?.emergencyInstructions && (
+        <div className="rounded-[2rem] border border-amber-200 bg-amber-50 p-4 md:p-5 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-2">Instrucciones especiales</p>
+          <p className="text-sm font-semibold text-slate-900 leading-relaxed whitespace-pre-wrap">{extras.emergencyInstructions}</p>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {extras.insuranceProvider && <PublicExtraItem label="Aseguradora" value={extras.insuranceProvider} />}
-        {extras.preferredHospital && <PublicExtraItem label="Hospital preferido" value={extras.preferredHospital} />}
-        {extras.primaryDoctorName && <PublicExtraItem label="Médico tratante" value={extras.primaryDoctorName} />}
-        {extras.primaryDoctorPhone && (
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Teléfono del médico</p>
+        {extras?.insuranceProvider && <PublicExtraItem tone="emerald" label="Aseguradora" value={extras.insuranceProvider} />}
+        {extras?.preferredHospital && <PublicExtraItem tone="blue" label="Hospital preferido" value={extras.preferredHospital} />}
+        {extras?.primaryDoctorName && <PublicExtraItem tone="slate" label="Médico tratante" value={extras.primaryDoctorName} />}
+        {extras?.primaryDoctorPhone && (
+          <div className="rounded-[2rem] border border-emerald-200 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-1">Teléfono del médico</p>
             <p className="text-sm font-bold text-slate-900">{extras.primaryDoctorPhone}</p>
-            <a href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`} className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+            <a href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`} className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
               <Phone className="h-4 w-4" />
               Llamar médico
             </a>
           </div>
         )}
       </div>
+    </section>
+  );
+}
+
+function PublicCognitiveBlock({ profile }: { profile: EmergencyProfile }) {
+  const vulnerability = profile.vulnerabilityStatus;
+  const showBlock = !!(vulnerability?.hasCognitiveImpairment || vulnerability?.hasWanderingRisk);
+  if (!showBlock) return null;
+
+  return (
+    <section className="bg-white border border-violet-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center">
+          <Brain className="h-5 w-5 text-violet-600" />
+        </div>
+        <div>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Deterioro cognitivo / memoria / desorientación</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Útil para Alzheimer, demencia, pérdida de memoria o riesgo de desorientación.</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {vulnerability?.hasCognitiveImpairment && (
+          <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-violet-700">Deterioro cognitivo reportado</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">Puede requerir orientación, frases simples y acompañamiento.</p>
+          </div>
+        )}
+        {vulnerability?.hasWanderingRisk && (
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-orange-700">Riesgo de desorientación</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">Conviene mantener contacto visual y confirmar el entorno antes de mover a la persona.</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PublicAssistanceBlock({ profile }: { profile: EmergencyProfile }) {
+  const vulnerability = profile.vulnerabilityStatus;
+  const showBlock = !!(profile.isMinor || vulnerability?.isNonVerbal || vulnerability?.communicationAssistance);
+  if (!showBlock) return null;
+
+  return (
+    <section className="bg-white border border-amber-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center">
+          <MessageCircle className="h-5 w-5 text-amber-600" />
+        </div>
+        <div>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Asistencia especial / condición especial</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-700 mt-1">Contexto útil para comunicación, apoyo y acompañamiento.</p>
+        </div>
+      </div>
+      <SpecialAssistanceBadges profile={profile} />
+      {vulnerability?.communicationAssistance && (
+        <div className="rounded-[2rem] bg-violet-50 border border-violet-100 p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-violet-700 mb-2">Comunicación asistida</p>
+          <p className="text-sm font-semibold text-slate-900 leading-relaxed whitespace-pre-wrap">{vulnerability.communicationAssistance}</p>
+        </div>
+      )}
+      {profile.isMinor && (
+        <div className="rounded-[2rem] bg-blue-50 border border-blue-100 p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-blue-700 mb-2">Menor de edad</p>
+          <p className="text-sm font-semibold text-slate-900 leading-relaxed">Requiere apoyo responsable y comunicación clara con su tutor o cuidador.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PublicSafeReturnBlock({ profile }: { profile: EmergencyProfile }) {
+  const safeReturn = profile.safeReturn;
+  const showBlock = !!(safeReturn?.instructions || safeReturn?.locationName || safeReturn?.address || safeReturn?.contactName || safeReturn?.contactPhone);
+  if (!showBlock) return null;
+
+  return (
+    <section className="bg-white border border-teal-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center">
+          <Footprints className="h-5 w-5 text-teal-600" />
+        </div>
+        <div>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Retorno seguro / persona perdida</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-teal-700 mt-1">Información para orientar, contactar y devolver con seguridad.</p>
+        </div>
+      </div>
+      {safeReturn?.instructions && (
+        <div className="rounded-[2rem] bg-teal-50 border border-teal-100 p-4">
+          <p className="text-xs font-black uppercase tracking-widest text-teal-700 mb-2">Instrucciones de retorno</p>
+          <p className="text-sm font-semibold text-slate-900 leading-relaxed whitespace-pre-wrap">{safeReturn.instructions}</p>
+        </div>
+      )}
+      {(safeReturn?.locationName || safeReturn?.address || safeReturn?.contactName || safeReturn?.contactPhone) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {safeReturn?.locationName && <PublicAlertCard tone="amber" title="Lugar de retorno" value={safeReturn.locationName} />}
+          {safeReturn?.address && <PublicAlertCard tone="amber" title="Dirección" value={safeReturn.address} />}
+          {safeReturn?.contactName && <PublicAlertCard tone="amber" title="Responsable" value={safeReturn.contactName} />}
+          {safeReturn?.contactPhone && (
+            <div className="rounded-2xl border border-teal-200 bg-white px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">Teléfono del responsable</p>
+              <p className="mt-1 text-sm font-bold text-slate-900">{safeReturn.contactPhone}</p>
+              <a href={`tel:${sanitizeTelPhone(safeReturn.contactPhone)}`} className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+                <Phone className="h-4 w-4" />
+                Llamar responsable
+              </a>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -995,7 +1049,9 @@ export default function EmergencyPage() {
               </div>
             </div>
 
-            <PublicSupportBlock profile={profile} />
+            <PublicCognitiveBlock profile={profile} />
+            <PublicAssistanceBlock profile={profile} />
+            <PublicSafeReturnBlock profile={profile} />
 
             {/* Emergency contacts — citizen view */}
             <PublicContactsBlock profile={profile} />
@@ -1066,10 +1122,10 @@ export default function EmergencyPage() {
               </div>
             </div>
 
-            <PublicSupportBlock profile={profile} />
-
+            <PublicCognitiveBlock profile={profile} />
+            <PublicAssistanceBlock profile={profile} />
+            <PublicSafeReturnBlock profile={profile} />
             <PublicMedicalExtrasBlock profile={profile} />
-
             <PublicContactsBlock profile={profile} />
           </div>
         )}
@@ -1157,9 +1213,17 @@ const InstructionItem = ({ number, title, desc }: { number: string; title: strin
   </div>
 );
 
-const PublicExtraItem = ({ label, value }: { label: string; value: string }) => (
-  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{label}</p>
-    <p className="text-sm font-bold text-slate-900">{value}</p>
-  </div>
-);
+const PublicExtraItem = ({ label, value, tone = "slate" }: { label: string; value: string; tone?: "slate" | "emerald" | "blue" }) => {
+  const palette = {
+    slate: "border-slate-200 bg-slate-50 text-slate-500",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    blue: "border-blue-200 bg-blue-50 text-blue-700",
+  };
+
+  return (
+    <div className={`p-3 rounded-2xl border ${palette[tone]}`}>
+      <p className="text-[10px] font-black uppercase tracking-widest mb-1">{label}</p>
+      <p className="text-sm font-bold text-slate-900">{value}</p>
+    </div>
+  );
+};
