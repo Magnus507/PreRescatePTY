@@ -173,7 +173,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={refreshData}
-                    className="relative h-11 w-11 rounded-[1.15rem] border border-white/10 bg-white/8 text-[#EFF4FF]/75 backdrop-blur transition-all hover:border-white/20 hover:text-white"
+                    className="relative h-11 w-11 rounded-[1.15rem] border border-white/10 bg-white/8 text-[#EFF4FF]/75 backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F1419] motion-reduce:transition-none"
                     aria-label="Actualizar panel"
                   >
                     <Bell className="mx-auto h-5 w-5" />
@@ -203,14 +203,14 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-3 pt-1 sm:flex-row">
                   <Link
                     href={primaryCtaHref}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.15rem] bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.5 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all hover:translate-y-[-1px] hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.15rem] bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.5 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EFF4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F1419] motion-reduce:transition-none sm:w-auto"
                   >
                     {primaryCtaLabel}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                   <Link
                     href="/dashboard/perfiles-medicos"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.15rem] border border-white/12 bg-white/10 px-5 py-3.5 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all hover:border-white/20 hover:bg-white/14 sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.15rem] border border-white/12 bg-white/10 px-5 py-3.5 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/14 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F1419] motion-reduce:transition-none sm:w-auto"
                   >
                     Ver perfiles
                   </Link>
@@ -234,7 +234,7 @@ export default function DashboardPage() {
                     const hasChip = (profile.assignedChips?.length || 0) > 0;
                     const initials = `${profile.firstName?.[0] || ""}${profile.lastName?.[0] || ""}`.trim().toUpperCase() || "PR";
                     return (
-                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-[#05070D]/48 p-3.5">
+                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-[#05070D]/48 p-3.5 transition-all duration-200 ease-out hover:border-white/18 hover:bg-[#05070D]/58">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-gradient-to-br from-white/18 to-white/8 text-sm font-black text-[#EFF4FF] ring-1 ring-white/10">
                           {initials}
                         </div>
@@ -284,7 +284,7 @@ export default function DashboardPage() {
           className="lg:col-span-4"
         />
 
-        <div className="rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.97)_0%,rgba(248,250,252,1)_100%)] p-5 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.28)] flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center lg:p-6">
+        <div className="rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.97)_0%,rgba(248,250,252,1)_100%)] p-5 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.28)] flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center lg:p-6 transition-all duration-200 ease-out hover:border-slate-300/80 hover:shadow-[0_16px_36px_-24px_rgba(15,23,42,0.34)]">
           <div className="space-y-2">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Mis pedidos</p>
             <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Pedidos recientes</h2>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/dashboard/pedidos"
-            className="inline-flex items-center justify-center gap-2 rounded-[1.1rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-black text-slate-800 transition-all hover:border-primary/30 hover:text-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="inline-flex items-center justify-center gap-2 rounded-[1.1rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-black text-slate-800 transition-all duration-200 ease-out hover:-translate-y-px hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-offset-slate-950"
           >
             Ver pedidos
           </Link>
@@ -306,7 +306,7 @@ export default function DashboardPage() {
 
 function MetricPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[1.1rem] border border-border/70 bg-background px-3 py-3 text-center">
+    <div className="rounded-[1.1rem] border border-border/70 bg-background px-3 py-3 text-center transition-colors duration-200 ease-out">
       <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
       <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 leading-tight">{label}</p>
     </div>
@@ -357,7 +357,7 @@ function HomeCard({
       : "bg-white/92 text-slate-900 hover:bg-white";
 
   return (
-    <div className={`relative overflow-hidden rounded-[1.75rem] border p-6 shadow-sm flex flex-col justify-between gap-4 ${className} ${shellClassName}`}>
+    <div className={`group relative overflow-hidden rounded-[1.75rem] border p-6 shadow-sm flex flex-col justify-between gap-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.85)] focus-within:-translate-y-0.5 focus-within:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.85)] motion-reduce:transition-none ${className} ${shellClassName}`}>
       <div className="pointer-events-none absolute inset-0 opacity-100">
         {variant === "device" && (
           <>
@@ -387,7 +387,7 @@ function HomeCard({
       </div>
       <Link
         href={href}
-        className={`relative inline-flex w-fit items-center justify-center gap-2 rounded-[1.1rem] px-4 py-3.5 text-sm font-black transition-all ${buttonClassName} ${variant === "shop" ? "border border-transparent" : "border"}`}
+        className={`relative inline-flex w-fit items-center justify-center gap-2 rounded-[1.1rem] px-4 py-3.5 text-sm font-black transition-all duration-200 ease-out hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:translate-y-0 motion-reduce:transition-none ${buttonClassName} ${variant === "shop" ? "border border-transparent" : "border"}`}
       >
         {ctaLabel}
       </Link>
