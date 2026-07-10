@@ -153,10 +153,10 @@ export default function DashboardPage() {
   const previewProfiles = allProfiles.slice(0, 2);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
       <section className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-12">
-          <div className="relative overflow-hidden rounded-[2.25rem] border border-white/12 bg-[linear-gradient(135deg,#04070C_0%,#0C1118_58%,rgba(218,26,33,0.18)_100%)] p-5 shadow-[0_24px_70px_-34px_rgba(0,0,0,0.78)] md:p-7">
+          <div className="relative overflow-hidden rounded-[1.95rem] border border-white/12 bg-[linear-gradient(135deg,#04070C_0%,#0C1118_58%,rgba(218,26,33,0.18)_100%)] p-4 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.78)] sm:p-5 md:rounded-[2.25rem] md:p-7">
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute -top-20 right-[-4rem] h-56 w-56 rounded-full bg-[#DA1A21]/14 blur-3xl" />
               <div className="absolute bottom-[-6rem] left-[-3rem] h-52 w-52 rounded-full bg-sky-400/8 blur-3xl" />
@@ -164,8 +164,8 @@ export default function DashboardPage() {
               <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.9)_0.8px,transparent_0.8px)] [background-size:18px_18px]" />
             </div>
 
-            <div className="relative grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
-              <div className="space-y-5">
+            <div className="relative grid gap-4 sm:gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
+              <div className="space-y-4 sm:space-y-5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.35em] text-[#EFF4FF] backdrop-blur">
                     <span className="h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_16px_rgba(218,26,33,0.7)]" />
@@ -183,16 +183,16 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                <div className="space-y-3">
-                  <h1 className="max-w-xl text-4xl font-black tracking-tight text-[#EFF4FF] md:text-5xl">
+                <div className="space-y-2 sm:space-y-3">
+                  <h1 className="max-w-xl text-3xl font-black leading-[1.02] tracking-tight text-[#EFF4FF] sm:text-4xl md:text-5xl">
                     {state.isInactive ? "Activa tu protección" : "Tu protección está lista"}
                   </h1>
-                  <p className="max-w-xl text-sm font-medium leading-relaxed text-[#EFF4FF]/78 md:text-base">
+                  <p className="max-w-xl text-[13px] font-medium leading-6 text-[#EFF4FF]/86 sm:text-sm md:text-base md:leading-relaxed">
                     Gestiona tus perfiles y dispositivos desde una experiencia más clara, cálida y lista para actuar.
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2.5 sm:gap-3">
                   <div className="rounded-[1.05rem] border border-white/10 bg-white/6 px-4 py-2.5 text-left backdrop-blur">
                     <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#EFF4FF]/68">Estado</p>
                     <p className="mt-1 text-sm font-black text-[#EFF4FF]">{state.isInactive ? "Cuenta lista para activar" : "Cuenta activa"}</p>
@@ -200,47 +200,47 @@ export default function DashboardPage() {
                   <MetricPill label="Chips activos" value={activeChips} />
                 </div>
 
-                <div className="flex flex-col gap-3 pt-1 sm:flex-row">
+                <div className="flex flex-col gap-2.5 pt-1 sm:flex-row sm:gap-3">
                   <Link
                     href={primaryCtaHref}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.5 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EFF4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.25 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EFF4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none sm:w-auto"
                   >
                     {primaryCtaLabel}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                   <Link
                     href="/dashboard/perfiles-medicos"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] border border-white/12 bg-white/8 px-5 py-3.5 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] border border-white/12 bg-white/8 px-5 py-3.25 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none sm:w-auto"
                   >
                     Ver perfiles
                   </Link>
                 </div>
               </div>
 
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-4 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.68)] backdrop-blur-xl md:p-5">
-                <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+              <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-3.5 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.68)] backdrop-blur-xl sm:p-4 md:rounded-[1.5rem] md:p-5">
+                <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3.5 sm:pb-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#EFF4FF]/68">Vista rápida</p>
-                    <h2 className="mt-1 text-2xl font-black tracking-tight text-[#EFF4FF]">Perfiles médicos</h2>
+                    <h2 className="mt-1 text-[1.35rem] font-black tracking-tight text-[#EFF4FF] sm:text-2xl">Perfiles médicos</h2>
                   </div>
                   <Link href="/dashboard/perfiles-medicos" className="rounded-full px-2 py-1 text-xs font-black uppercase tracking-widest text-[#EFF4FF]/70 transition-colors hover:bg-white/8 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118]">
                     Gestionar
                   </Link>
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-3.5 space-y-2.5 sm:mt-4 sm:space-y-3">
                   {previewProfiles.length > 0 ? previewProfiles.map((profile) => {
                     const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Perfil por configurar";
                     const hasChip = (profile.assignedChips?.length || 0) > 0;
                     const initials = `${profile.firstName?.[0] || ""}${profile.lastName?.[0] || ""}`.trim().toUpperCase() || "PR";
                     return (
-                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.1rem] border border-white/10 bg-[#05070D]/56 p-3.5 transition-all duration-200 ease-out hover:border-white/18 hover:bg-[#05070D]/66">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] bg-gradient-to-br from-white/18 to-white/8 text-sm font-black text-[#EFF4FF] ring-1 ring-white/10">
+                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.05rem] border border-white/10 bg-[#05070D]/56 p-3 transition-all duration-200 ease-out hover:border-white/18 hover:bg-[#05070D]/66">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.9rem] bg-gradient-to-br from-white/18 to-white/8 text-sm font-black text-[#EFF4FF] ring-1 ring-white/10">
                           {initials}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-black text-[#EFF4FF]">{fullName}</p>
-                          <p className="truncate text-[11px] text-[#EFF4FF]/74">
+                          <p className="truncate text-[11px] text-[#EFF4FF]/82">
                             {hasChip ? "Protegido" : "Sin chip"}
                             {profile.bloodType ? ` · ${profile.bloodType}` : ""}
                           </p>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
                       </div>
                     );
                   }) : (
-                    <div className="rounded-[1.1rem] border border-dashed border-white/12 bg-white/8 p-4 text-sm text-[#EFF4FF]/72">
+                    <div className="rounded-[1.1rem] border border-dashed border-white/12 bg-white/8 p-4 text-sm text-[#EFF4FF]/80">
                       Aún no tienes perfiles registrados.
                     </div>
                   )}
@@ -262,7 +262,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-12">
+      <section className="grid gap-3.5 sm:gap-4 lg:grid-cols-12">
         <HomeCard
           title="Mis dispositivos"
           count={activeChips}
@@ -284,10 +284,10 @@ export default function DashboardPage() {
           className="lg:col-span-4 xl:col-span-3"
         />
 
-        <div className="rounded-[1.5rem] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,1)_100%)] p-5 shadow-[0_10px_26px_-20px_rgba(15,23,42,0.28)] flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center lg:p-6 transition-all duration-200 ease-out hover:border-slate-300/80 hover:shadow-[0_16px_34px_-24px_rgba(15,23,42,0.32)]">
+        <div className="rounded-[1.35rem] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,1)_100%)] p-4 shadow-[0_10px_26px_-20px_rgba(15,23,42,0.28)] flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center lg:p-6 transition-all duration-200 ease-out hover:border-slate-300/80 hover:shadow-[0_16px_34px_-24px_rgba(15,23,42,0.32)]">
           <div className="space-y-2">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Mis pedidos</p>
-            <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Pedidos recientes</h2>
+            <h2 className="text-[1.35rem] font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl">Pedidos recientes</h2>
             <p className="text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300">
               Revisa tus pedidos cuando necesites ver estados o historial.
             </p>
@@ -357,7 +357,7 @@ function HomeCard({
       : "bg-white/92 text-slate-900 hover:bg-white";
 
   return (
-    <div className={`group relative overflow-hidden rounded-[1.5rem] border p-6 shadow-sm flex flex-col justify-between gap-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.84)] focus-within:-translate-y-0.5 focus-within:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.84)] motion-reduce:transition-none ${className} ${shellClassName}`}>
+    <div className={`group relative overflow-hidden rounded-[1.35rem] border p-4 shadow-sm flex flex-col justify-between gap-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.84)] focus-within:-translate-y-0.5 focus-within:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.84)] motion-reduce:transition-none sm:p-5 md:p-6 ${className} ${shellClassName}`}>
       <div className="pointer-events-none absolute inset-0 opacity-100">
         {variant === "device" && (
           <>
@@ -382,12 +382,12 @@ function HomeCard({
             </span>
           )}
         </div>
-        {count !== undefined && <p className={`text-4xl font-black tracking-tighter ${countClassName}`}>{count}</p>}
+        {count !== undefined && <p className={`text-[2.35rem] font-black tracking-tighter sm:text-4xl ${countClassName}`}>{count}</p>}
         <p className={`text-sm font-medium leading-relaxed ${descriptionClassName}`}>{description}</p>
       </div>
       <Link
         href={href}
-        className={`relative inline-flex w-fit items-center justify-center gap-2 rounded-[1.05rem] px-4 py-3.5 text-sm font-black transition-all duration-200 ease-out hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:translate-y-0 motion-reduce:transition-none ${buttonClassName} ${variant === "shop" ? "border border-transparent" : "border"}`}
+        className={`relative inline-flex w-fit items-center justify-center gap-2 rounded-[1.05rem] px-4 py-3 text-sm font-black transition-all duration-200 ease-out hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:translate-y-0 motion-reduce:transition-none ${buttonClassName} ${variant === "shop" ? "border border-transparent" : "border"}`}
       >
         {ctaLabel}
       </Link>

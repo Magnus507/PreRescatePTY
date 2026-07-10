@@ -155,7 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-white dark:bg-[#050812] selection:bg-primary selection:text-white">
       <ScanMonitor />
-      <div className="mx-auto flex h-screen w-full max-w-[1920px]">
+      <div className="mx-auto flex h-[100dvh] w-full max-w-[1920px]">
         {/* Sidebar */}
         <aside className={`hidden lg:flex flex-col bg-[linear-gradient(180deg,rgba(248,250,252,0.92)_0%,rgba(241,245,249,0.86)_100%)] dark:bg-[linear-gradient(180deg,rgba(15,20,25,0.92)_0%,rgba(10,17,40,0.92)_100%)] backdrop-blur-xl border-r border-slate-200/70 dark:border-[#1a2333]/70 p-4 z-10 transition-all duration-300 ${isSidebarCollapsed ? "w-24" : "w-80"}`}>
           <div className="flex items-center justify-between gap-3 px-2 pb-4 border-b border-slate-200/80 dark:border-[#1a2333]">
@@ -264,7 +264,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* Mobile bottom nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/92 dark:bg-[#0f1419]/92 backdrop-blur-xl border-t border-slate-200 dark:border-[#1a2333] flex items-center gap-2 overflow-x-auto px-3 py-2 safe-area-bottom">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/88 dark:bg-[#0f1419]/90 backdrop-blur-xl border-t border-slate-200/80 dark:border-[#1a2333] flex items-center gap-1.5 overflow-x-auto px-3 py-1.5 safe-area-bottom shadow-[0_-10px_30px_-24px_rgba(15,23,42,0.45)]">
           {mobileLinks.map((item) => {
             const active = pathname === item.href;
             
@@ -272,7 +272,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-[1rem] px-2 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none ${
+                className={`flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[0.95rem] px-1.5 py-1.5 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none ${
                   active ? "bg-primary/20 dark:bg-primary/30 text-primary shadow-[0_10px_22px_-20px_rgba(218,26,33,0.35)]" : "text-slate-500 dark:text-slate-400"
                 }`}
                 aria-current={active ? "page" : undefined}
@@ -287,7 +287,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <button
               type="button"
               onClick={() => setIsMoreMenuOpen(true)}
-              className={`flex min-h-12 min-w-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition-all duration-300 ${
+              className={`flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[0.95rem] px-1.5 py-1.5 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none ${
                 isMoreMenuOpen ? "bg-primary/20 dark:bg-primary/30 text-primary" : "text-slate-500 dark:text-slate-400"
               }`}
               aria-label="Abrir más opciones"
@@ -362,7 +362,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,rgba(248,250,252,0.72)_0%,rgba(248,250,252,0.38)_100%)] dark:bg-[linear-gradient(180deg,rgba(5,8,18,0.42)_0%,rgba(5,8,18,0.2)_100%)]">
-          <div className="w-full max-w-none px-4 py-6 pb-24 md:px-6 md:py-8 lg:px-8 lg:py-10 xl:px-10 xl:py-12 md:pb-12">
+          <div className="w-full max-w-none px-4 py-5 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:px-6 md:py-8 md:pb-12 lg:px-8 lg:py-10 xl:px-10 xl:py-12">
             {children}
           </div>
         </main>
