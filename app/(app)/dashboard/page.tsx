@@ -156,24 +156,24 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-700">
       <section className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-12">
-          <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-[linear-gradient(135deg,#05070D_0%,#0F1419_52%,rgba(218,26,33,0.22)_100%)] p-5 shadow-[0_28px_80px_-32px_rgba(0,0,0,0.8)] md:p-7">
+          <div className="relative overflow-hidden rounded-[2.25rem] border border-white/12 bg-[linear-gradient(135deg,#04070C_0%,#0C1118_58%,rgba(218,26,33,0.18)_100%)] p-5 shadow-[0_24px_70px_-34px_rgba(0,0,0,0.78)] md:p-7">
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -top-20 right-[-4rem] h-56 w-56 rounded-full bg-[#DA1A21]/20 blur-3xl" />
-              <div className="absolute bottom-[-6rem] left-[-3rem] h-52 w-52 rounded-full bg-sky-400/10 blur-3xl" />
+              <div className="absolute -top-20 right-[-4rem] h-56 w-56 rounded-full bg-[#DA1A21]/14 blur-3xl" />
+              <div className="absolute bottom-[-6rem] left-[-3rem] h-52 w-52 rounded-full bg-sky-400/8 blur-3xl" />
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-              <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.9)_0.8px,transparent_0.8px)] [background-size:18px_18px]" />
+              <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.9)_0.8px,transparent_0.8px)] [background-size:18px_18px]" />
             </div>
 
-            <div className="relative grid gap-6 lg:grid-cols-[1.12fr_0.88fr] lg:items-stretch">
+            <div className="relative grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
               <div className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.35em] text-[#EFF4FF] backdrop-blur">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.35em] text-[#EFF4FF] backdrop-blur">
                     <span className="h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_16px_rgba(218,26,33,0.7)]" />
                     PreRescue ID
                   </div>
                   <button
                     onClick={refreshData}
-                    className="relative h-11 w-11 rounded-[1.15rem] border border-white/10 bg-white/8 text-[#EFF4FF]/75 backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F1419] motion-reduce:transition-none"
+                    className="relative h-11 w-11 rounded-[1.05rem] border border-white/10 bg-white/6 text-[#EFF4FF]/75 backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none"
                     aria-label="Actualizar panel"
                   >
                     <Bell className="mx-auto h-5 w-5" />
@@ -193,8 +193,8 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  <div className="rounded-[1.15rem] border border-white/10 bg-white/8 px-4 py-2.5 text-left backdrop-blur">
-                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#EFF4FF]/62">Estado</p>
+                  <div className="rounded-[1.05rem] border border-white/10 bg-white/6 px-4 py-2.5 text-left backdrop-blur">
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#EFF4FF]/68">Estado</p>
                     <p className="mt-1 text-sm font-black text-[#EFF4FF]">{state.isInactive ? "Cuenta lista para activar" : "Cuenta activa"}</p>
                   </div>
                   <MetricPill label="Chips activos" value={activeChips} />
@@ -203,27 +203,27 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-3 pt-1 sm:flex-row">
                   <Link
                     href={primaryCtaHref}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.15rem] bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.5 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EFF4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F1419] motion-reduce:transition-none sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.5 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EFF4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none sm:w-auto"
                   >
                     {primaryCtaLabel}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                   <Link
                     href="/dashboard/perfiles-medicos"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.15rem] border border-white/12 bg-white/10 px-5 py-3.5 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/14 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F1419] motion-reduce:transition-none sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] border border-white/12 bg-white/8 px-5 py-3.5 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none sm:w-auto"
                   >
                     Ver perfiles
                   </Link>
                 </div>
               </div>
 
-              <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-4 shadow-[0_24px_70px_-30px_rgba(0,0,0,0.72)] backdrop-blur-xl md:p-5">
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-4 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.68)] backdrop-blur-xl md:p-5">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#EFF4FF]/62">Vista rápida</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#EFF4FF]/68">Vista rápida</p>
                     <h2 className="mt-1 text-2xl font-black tracking-tight text-[#EFF4FF]">Perfiles médicos</h2>
                   </div>
-                  <Link href="/dashboard/perfiles-medicos" className="text-xs font-black uppercase tracking-widest text-[#EFF4FF]/70 transition-colors hover:text-white">
+                  <Link href="/dashboard/perfiles-medicos" className="rounded-full px-2 py-1 text-xs font-black uppercase tracking-widest text-[#EFF4FF]/70 transition-colors hover:bg-white/8 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118]">
                     Gestionar
                   </Link>
                 </div>
@@ -234,24 +234,24 @@ export default function DashboardPage() {
                     const hasChip = (profile.assignedChips?.length || 0) > 0;
                     const initials = `${profile.firstName?.[0] || ""}${profile.lastName?.[0] || ""}`.trim().toUpperCase() || "PR";
                     return (
-                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-[#05070D]/48 p-3.5 transition-all duration-200 ease-out hover:border-white/18 hover:bg-[#05070D]/58">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-gradient-to-br from-white/18 to-white/8 text-sm font-black text-[#EFF4FF] ring-1 ring-white/10">
+                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.1rem] border border-white/10 bg-[#05070D]/56 p-3.5 transition-all duration-200 ease-out hover:border-white/18 hover:bg-[#05070D]/66">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] bg-gradient-to-br from-white/18 to-white/8 text-sm font-black text-[#EFF4FF] ring-1 ring-white/10">
                           {initials}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-black text-[#EFF4FF]">{fullName}</p>
-                          <p className="truncate text-[11px] text-[#EFF4FF]/70">
+                          <p className="truncate text-[11px] text-[#EFF4FF]/74">
                             {hasChip ? "Protegido" : "Sin chip"}
                             {profile.bloodType ? ` · ${profile.bloodType}` : ""}
                           </p>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-500/18 text-emerald-200 ring-1 ring-emerald-300/20" : "bg-amber-500/18 text-amber-200 ring-1 ring-amber-300/20"}`}>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-300/20" : "bg-amber-500/20 text-amber-200 ring-1 ring-amber-300/20"}`}>
                           {hasChip ? "Protegido" : "Sin chip"}
                         </span>
                       </div>
                     );
                   }) : (
-                    <div className="rounded-[1.2rem] border border-dashed border-white/12 bg-white/6 p-4 text-sm text-[#EFF4FF]/70">
+                    <div className="rounded-[1.1rem] border border-dashed border-white/12 bg-white/8 p-4 text-sm text-[#EFF4FF]/72">
                       Aún no tienes perfiles registrados.
                     </div>
                   )}
@@ -271,7 +271,7 @@ export default function DashboardPage() {
           href="/dashboard/chips"
           badge={activeChips > 0 ? "Activo" : "Sin activar"}
           variant="device"
-          className="lg:col-span-4"
+          className="lg:col-span-4 xl:col-span-3"
         />
 
         <HomeCard
@@ -281,10 +281,10 @@ export default function DashboardPage() {
           href="/dashboard/compras"
           badge="Comercial"
           variant="shop"
-          className="lg:col-span-4"
+          className="lg:col-span-4 xl:col-span-3"
         />
 
-        <div className="rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.97)_0%,rgba(248,250,252,1)_100%)] p-5 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.28)] flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center lg:p-6 transition-all duration-200 ease-out hover:border-slate-300/80 hover:shadow-[0_16px_36px_-24px_rgba(15,23,42,0.34)]">
+        <div className="rounded-[1.5rem] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(247,249,252,1)_100%)] p-5 shadow-[0_10px_26px_-20px_rgba(15,23,42,0.28)] flex flex-col justify-between gap-4 lg:col-span-12 lg:flex-row lg:items-center lg:p-6 transition-all duration-200 ease-out hover:border-slate-300/80 hover:shadow-[0_16px_34px_-24px_rgba(15,23,42,0.32)]">
           <div className="space-y-2">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Mis pedidos</p>
             <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Pedidos recientes</h2>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/dashboard/pedidos"
-            className="inline-flex items-center justify-center gap-2 rounded-[1.1rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-black text-slate-800 transition-all duration-200 ease-out hover:-translate-y-px hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-offset-slate-950"
+            className="inline-flex items-center justify-center gap-2 rounded-[1.05rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-black text-slate-800 transition-all duration-200 ease-out hover:-translate-y-px hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-offset-slate-950"
           >
             Ver pedidos
           </Link>
@@ -306,7 +306,7 @@ export default function DashboardPage() {
 
 function MetricPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[1.1rem] border border-border/70 bg-background px-3 py-3 text-center transition-colors duration-200 ease-out">
+    <div className="rounded-[1rem] border border-border/70 bg-background px-3 py-3 text-center transition-colors duration-200 ease-out">
       <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
       <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 leading-tight">{label}</p>
     </div>
@@ -357,18 +357,18 @@ function HomeCard({
       : "bg-white/92 text-slate-900 hover:bg-white";
 
   return (
-    <div className={`group relative overflow-hidden rounded-[1.75rem] border p-6 shadow-sm flex flex-col justify-between gap-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.85)] focus-within:-translate-y-0.5 focus-within:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.85)] motion-reduce:transition-none ${className} ${shellClassName}`}>
+    <div className={`group relative overflow-hidden rounded-[1.5rem] border p-6 shadow-sm flex flex-col justify-between gap-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.84)] focus-within:-translate-y-0.5 focus-within:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.84)] motion-reduce:transition-none ${className} ${shellClassName}`}>
       <div className="pointer-events-none absolute inset-0 opacity-100">
         {variant === "device" && (
           <>
-            <div className="absolute -right-8 top-[-2.5rem] h-24 w-24 rounded-full bg-[#DA1A21]/12 blur-2xl" />
-            <div className="absolute bottom-[-3rem] left-[-1rem] h-20 w-20 rounded-full bg-sky-400/8 blur-2xl" />
+            <div className="absolute -right-8 top-[-2.5rem] h-24 w-24 rounded-full bg-[#DA1A21]/10 blur-2xl" />
+            <div className="absolute bottom-[-3rem] left-[-1rem] h-20 w-20 rounded-full bg-sky-400/6 blur-2xl" />
           </>
         )}
         {variant === "shop" && (
           <>
-            <div className="absolute -right-12 top-[-3rem] h-28 w-28 rounded-full bg-white/8 blur-3xl" />
-            <div className="absolute bottom-[-2rem] left-[-2rem] h-24 w-24 rounded-full bg-[#DA1A21]/12 blur-3xl" />
+            <div className="absolute -right-12 top-[-3rem] h-28 w-28 rounded-full bg-white/6 blur-3xl" />
+            <div className="absolute bottom-[-2rem] left-[-2rem] h-24 w-24 rounded-full bg-[#DA1A21]/10 blur-3xl" />
           </>
         )}
       </div>
@@ -377,7 +377,7 @@ function HomeCard({
         <div className="flex items-start justify-between gap-3">
           <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${eyebrowClassName}`}>{title}</p>
           {badge && (
-            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${variant === "shop" ? "bg-white/12 text-white ring-1 ring-white/10" : variant === "device" ? "bg-emerald-500/18 text-emerald-200 ring-1 ring-emerald-300/20" : "bg-slate-100 text-slate-600 ring-1 ring-border"}`}>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${variant === "shop" ? "bg-white/10 text-white ring-1 ring-white/10" : variant === "device" ? "bg-emerald-500/16 text-emerald-200 ring-1 ring-emerald-300/20" : "bg-slate-100 text-slate-600 ring-1 ring-border"}`}>
               {badge}
             </span>
           )}
@@ -387,7 +387,7 @@ function HomeCard({
       </div>
       <Link
         href={href}
-        className={`relative inline-flex w-fit items-center justify-center gap-2 rounded-[1.1rem] px-4 py-3.5 text-sm font-black transition-all duration-200 ease-out hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:translate-y-0 motion-reduce:transition-none ${buttonClassName} ${variant === "shop" ? "border border-transparent" : "border"}`}
+        className={`relative inline-flex w-fit items-center justify-center gap-2 rounded-[1.05rem] px-4 py-3.5 text-sm font-black transition-all duration-200 ease-out hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:translate-y-0 motion-reduce:transition-none ${buttonClassName} ${variant === "shop" ? "border border-transparent" : "border"}`}
       >
         {ctaLabel}
       </Link>
