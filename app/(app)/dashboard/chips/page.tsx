@@ -58,6 +58,9 @@ export default function ChipsPage() {
   const [activating, setActivating] = useState(false);
   const [activationError, setActivationError] = useState("");
   const [activationSuccess, setActivationSuccess] = useState(false);
+  const activeChips = chips.filter((chip) => chip.status === "activated");
+  const suspendedChips = chips.filter((chip) => chip.status === "suspended");
+  const unassignedChips = chips.filter((chip) => !chip.assignedProfileId);
 
   const loadData = async () => {
     try {
@@ -182,117 +185,155 @@ export default function ChipsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-4xl font-black tracking-tighter mb-1 uppercase">Mis Dispositivos</h1>
-          <p className="text-muted-foreground font-medium">Control total de tus stickers NFC y códigos de emergencia</p>
+      <section className="relative overflow-hidden rounded-[2.25rem] border border-white/10 bg-[linear-gradient(135deg,#05070D_0%,#0F1419_52%,rgba(218,26,33,0.18)_100%)] p-5 shadow-[0_28px_80px_-38px_rgba(0,0,0,0.85)] md:p-7">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-20 right-[-2rem] h-52 w-52 rounded-full bg-[#DA1A21]/16 blur-3xl" />
+          <div className="absolute bottom-[-5rem] left-[-2rem] h-48 w-48 rounded-full bg-sky-400/10 blur-3xl" />
+          <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.9)_0.8px,transparent_0.8px)] [background-size:18px_18px]" />
         </div>
-      </div>
+
+        <div className="relative space-y-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.3em] text-[#EFF4FF] backdrop-blur">
+                <span className="h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_14px_rgba(218,26,33,0.7)]" />
+                PreRescue ID
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-black tracking-tight text-[#EFF4FF] md:text-4xl">Mis dispositivos</h1>
+                <p className="max-w-2xl text-sm font-medium leading-relaxed text-[#EFF4FF]/78 md:text-base">
+                  Revisa tus chips activos, vincula un perfil y activa uno nuevo sin perder claridad.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:w-auto">
+              <SummaryPill label="Activos" value={activeChips.length} />
+              <SummaryPill label="Sin perfil" value={unassignedChips.length} />
+              <SummaryPill label="Suspendidos" value={suspendedChips.length} />
+              <SummaryPill label="Perfiles" value={profiles.length} />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Modern Tab Selector */}
-      <div className="flex p-1.5 bg-slate-100 rounded-[2rem] w-fit">
+      <div className="flex w-full flex-col gap-3 rounded-[1.65rem] border border-slate-200/70 bg-slate-100/90 p-1.5 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.3)] sm:flex-row sm:w-fit">
         <button
           onClick={() => { setActiveTab("list"); setActivationSuccess(false); }}
-          className={`flex items-center gap-2 px-8 py-4 rounded-3xl font-black text-xs uppercase tracking-widest transition-all ${
-            activeTab === "list" ? "bg-white text-primary shadow-xl shadow-black/5 scale-105" : "text-slate-500 hover:text-slate-800"
+          className={`flex w-full items-center justify-center gap-2 rounded-[1.35rem] px-5 py-3.5 font-black text-[11px] uppercase tracking-[0.28em] transition-all duration-200 ease-out sm:w-auto ${
+            activeTab === "list" ? "bg-white text-primary shadow-[0_12px_30px_-20px_rgba(15,23,42,0.35)]" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <List className="h-4 w-4" /> Mis Stickers
+          <List className="h-4 w-4" /> Mis dispositivos
         </button>
         <button
           onClick={() => { setActiveTab("activate"); setActivationSuccess(false); }}
-          className={`flex items-center gap-2 px-8 py-4 rounded-3xl font-black text-xs uppercase tracking-widest transition-all ${
-            activeTab === "activate" ? "bg-white text-primary shadow-xl shadow-black/5 scale-105" : "text-slate-500 hover:text-slate-800"
+          className={`flex w-full items-center justify-center gap-2 rounded-[1.35rem] px-5 py-3.5 font-black text-[11px] uppercase tracking-[0.28em] transition-all duration-200 ease-out sm:w-auto ${
+            activeTab === "activate" ? "bg-white text-primary shadow-[0_12px_30px_-20px_rgba(15,23,42,0.35)]" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <Zap className="h-4 w-4" /> Activar Nuevo
+          <Zap className="h-4 w-4" /> Activar chip
         </button>
       </div>
 
       {activeTab === "list" ? (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {chips.length === 0 ? (
-            <div className="text-center py-24 rounded-[3.5rem] border-2 border-dashed border-slate-200 bg-slate-50/50 group hover:border-primary/30 transition-all">
-              <div className="h-24 w-24 rounded-[2.5rem] bg-white mx-auto mb-6 flex items-center justify-center text-slate-300 group-hover:scale-110 group-hover:text-primary transition-all shadow-sm">
+            <div className="text-center rounded-[2.25rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.97)_0%,rgba(248,250,252,1)_100%)] px-5 py-16 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.3)] md:px-10 md:py-20">
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[2rem] bg-slate-950 text-slate-300 shadow-[0_14px_30px_-20px_rgba(15,23,42,0.55)]">
                  <Cpu className="h-12 w-12" />
               </div>
-              <h3 className="text-2xl font-black tracking-tight mb-2">Aún no tienes chips activados</h3>
-              <p className="text-muted-foreground max-w-sm mx-auto mb-8 font-medium italic underline decoration-slate-200 underline-offset-4">Usa el código incluido en tu producto para activar uno y vincularlo a tu cuenta.</p>
+              <h3 className="text-2xl font-black tracking-tight text-slate-950">Aún no tienes chips activos</h3>
+              <p className="mx-auto mt-3 max-w-sm text-sm font-medium leading-relaxed text-slate-600">
+                Usa el código incluido en tu producto para activar uno y vincularlo a tu cuenta.
+              </p>
               <button 
                 onClick={() => setActiveTab("activate")}
-                className="bg-primary text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.05] transition-all flex items-center gap-2 mx-auto"
+                className="mx-auto mt-8 inline-flex items-center gap-2 rounded-[1.15rem] bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-6 py-3.5 text-sm font-black text-white shadow-[0_16px_35px_-18px_rgba(218,26,33,0.9)] transition-all hover:-translate-y-px hover:shadow-[0_20px_40px_-20px_rgba(218,26,33,1)] active:scale-[0.99]"
               >
                 Activar chip ahora <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-4 lg:gap-5">
               {chips.map((chip) => (
                 <div
                   key={chip.id}
-                  className="group relative overflow-hidden rounded-[3rem] border border-border bg-white p-6 md:p-10 flex flex-col md:flex-row items-center gap-8 transition-all hover:shadow-2xl hover:shadow-primary/5 active:scale-[0.99]"
+                  className={`group relative overflow-hidden rounded-[2.25rem] border p-5 md:p-6 transition-all duration-200 ease-out active:scale-[0.995] ${
+                    chip.status === "activated"
+                      ? "border-white/10 bg-[linear-gradient(135deg,rgba(5,7,13,0.98)_0%,rgba(15,20,25,0.98)_50%,rgba(218,26,33,0.14)_100%)] text-[#EFF4FF] shadow-[0_22px_55px_-30px_rgba(0,0,0,0.75)]"
+                      : "border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,1)_100%)] text-slate-950 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.28)]"
+                  }`}
                 >
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 blur-3xl -mr-24 -mt-24 group-hover:bg-primary/10 transition-all" />
-
-                  <div className="relative z-10 flex flex-col items-center">
-                     <div className={`h-24 w-24 rounded-[2.5rem] flex items-center justify-center shadow-lg mb-4 ${chip.status === "activated" ? 'bg-primary text-white shadow-primary/20 rotate-3 group-hover:rotate-6' : 'bg-slate-200 text-slate-400'} transition-transform`}>
-                        <Cpu className="h-12 w-12" />
-                     </div>
-                     <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] ${chip.status === "activated" ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
-                        {chip.status === "activated" ? "Activo" : "Suspendido"}
-                     </span>
+                  <div className={`pointer-events-none absolute inset-0 opacity-100`}>
+                    <div className={`absolute -right-10 -top-10 h-40 w-40 rounded-full blur-3xl ${chip.status === "activated" ? "bg-[#DA1A21]/16" : "bg-slate-900/8"}`} />
                   </div>
 
-                  <div className="flex-1 space-y-6 w-full text-center md:text-left">
-                    <div>
-                       <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
-                          <h4 className="text-3xl font-black font-mono tracking-tighter text-slate-950 uppercase">{chip.serialPublic}</h4>
+                  <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex flex-col items-start gap-4 md:flex-row md:items-center">
+                     <div className={`flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-[1.65rem] shadow-lg ${chip.status === "activated" ? 'bg-gradient-to-br from-[#DA1A21] to-[#B9141B] text-white shadow-[0_16px_30px_-18px_rgba(218,26,33,0.85)]' : 'bg-slate-900 text-slate-200 shadow-[0_16px_30px_-20px_rgba(15,23,42,0.32)]'} transition-transform`}>
+                        <Cpu className="h-9 w-9" />
+                     </div>
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] ${chip.status === "activated" ? "bg-emerald-500/18 text-emerald-200 ring-1 ring-emerald-300/20" : "bg-amber-500/18 text-amber-700 ring-1 ring-amber-300/30"}`}>
+                            {chip.status === "activated" ? "Activo" : "Suspendido"}
+                          </span>
                           {chip.serviceStatus === "limited" && (
-                             <span className="bg-amber-100 text-amber-600 text-[10px] font-black px-3 py-1 rounded-xl uppercase tracking-widest border border-amber-200">Solo Lectura</span>
+                            <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] ${chip.status === "activated" ? "bg-white/10 text-[#EFF4FF]/80 ring-1 ring-white/10" : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"}`}>
+                              Solo lectura
+                            </span>
                           )}
-                       </div>
-                       <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] flex items-center justify-center md:justify-start gap-3">
-                         Código ID: <span className="text-slate-900">{chip.shortCode}</span>
-                         <span className="h-1 w-1 rounded-full bg-slate-300" />
-                         Escaneos: <span className="text-primary">{chip._count.scanEvents}</span>
-                       </p>
+                        </div>
+                        <div>
+                          <h4 className={`text-2xl font-black tracking-tight md:text-3xl ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-950"}`}>
+                            {chip.serialPublic}
+                          </h4>
+                          <p className={`mt-1 text-xs font-medium ${chip.status === "activated" ? "text-[#EFF4FF]/72" : "text-slate-500"}`}>
+                            Código público: <span className={`font-black ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-900"}`}>{chip.shortCode}</span>
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-5">
-                       <div className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
-                          <Smartphone className="h-4 w-4 text-primary" /> NFC Activo
-                       </div>
-                       <div className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
-                          <ShieldCheck className="h-4 w-4 text-primary" /> Seguro Ley 81
-                       </div>
-                       {chip.serviceEndDate && (
-                          <div className="flex items-center gap-2 text-xs font-black text-primary px-3 py-2 rounded-xl bg-primary/5">
-                            <Zap className="h-4 w-4" /> Expira: {new Date(chip.serviceEndDate).toLocaleDateString("es-PA")}
-                          </div>
-                       )}
+                    <div className="grid gap-3 sm:grid-cols-2 lg:w-[34rem] lg:gap-3">
+                      <div className={`flex items-center gap-2 rounded-[1.05rem] px-3 py-2 text-xs font-bold ${chip.status === "activated" ? "bg-white/8 text-[#EFF4FF]/78" : "bg-slate-50 text-slate-600 border border-slate-200"}`}>
+                        <Smartphone className={`h-4 w-4 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-primary"}`} /> NFC activo
+                      </div>
+                      <div className={`flex items-center gap-2 rounded-[1.05rem] px-3 py-2 text-xs font-bold ${chip.status === "activated" ? "bg-white/8 text-[#EFF4FF]/78" : "bg-slate-50 text-slate-600 border border-slate-200"}`}>
+                        <ShieldCheck className={`h-4 w-4 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-primary"}`} /> Seguro Ley 81
+                      </div>
+                      {chip.serviceEndDate && (
+                        <div className={`flex items-center gap-2 rounded-[1.05rem] px-3 py-2 text-xs font-bold sm:col-span-2 ${chip.status === "activated" ? "bg-[#DA1A21]/14 text-[#EFF4FF]" : "bg-primary/5 text-primary"}`}>
+                          <Zap className="h-4 w-4" /> Expira: {new Date(chip.serviceEndDate).toLocaleDateString("es-PA")}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Assignment Selector */}
-                    <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-6">
-                       <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm shadow-primary/10">
-                             <UserRound className="h-5 w-5" />
-                          </div>
-                          <div className="text-left">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">Vincular con:</p>
-                            <p className="text-[11px] font-bold text-slate-900 leading-none">Perfil Médico</p>
-                          </div>
-                       </div>
-                       
-                       <div className="relative flex-1 w-full max-w-sm">
+                    <div className="grid gap-4 rounded-[1.5rem] border border-white/10 bg-black/5 p-4 lg:w-[28rem]">
+                      <div className={`flex items-center gap-3 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-900"}`}>
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-[1rem] ${chip.status === "activated" ? "bg-white/10" : "bg-primary/10"} shadow-sm`}>
+                           <UserRound className={`h-5 w-5 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-primary"}`} />
+                        </div>
+                        <div className="text-left">
+                          <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${chip.status === "activated" ? "text-[#EFF4FF]/64" : "text-slate-500"}`}>Vincular perfil</p>
+                          <p className={`text-sm font-black leading-none ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-900"}`}>Perfil médico</p>
+                        </div>
+                      </div>
+
+                      <div className="relative w-full">
                         <select
                           value={chip.assignedProfileId ?? ""}
                           disabled={assigning === chip.id || chip.status === "inventory"}
                           onChange={(e) => assignProfile(chip.id, e.target.value || null)}
-                          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3.5 text-sm font-black focus:outline-none focus:ring-4 focus:ring-primary/10 appearance-none cursor-pointer transition-all hover:bg-white disabled:opacity-50 text-slate-700 shadow-sm"
+                          className={`w-full appearance-none rounded-[1.15rem] border px-4 py-3 text-sm font-black transition-all focus:outline-none focus:ring-4 cursor-pointer disabled:opacity-50 ${
+                            chip.status === "activated"
+                              ? "border-white/10 bg-white/8 text-[#EFF4FF] focus:ring-[#EFF4FF]/10"
+                              : "border-slate-200 bg-slate-50 text-slate-700 focus:ring-primary/10 hover:bg-white"
+                          }`}
                         >
-                          <option value="">— Seleccionar Perfil —</option>
+                          <option value="">— Seleccionar perfil —</option>
                           {profiles.map((p) => (
                             <option key={p.id} value={p.id}>
                               {p.firstName} {p.lastName} {p.userId ? "(Tú)" : "(Familiar)"}
@@ -300,18 +341,18 @@ export default function ChipsPage() {
                           ))}
                         </select>
                         {assigning === chip.id ? (
-                           <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-primary" />
+                           <Loader2 className={`absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-primary"}`} />
                         ) : (
-                          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 pointer-events-none rotate-90" />
+                          <ChevronRight className={`absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 pointer-events-none rotate-90 ${chip.status === "activated" ? "text-[#EFF4FF]/40" : "text-slate-300"}`} />
                         )}
-                       </div>
+                      </div>
                     </div>
                   </div>
 
                   {/* Accessories linked to this chip */}
                   {chip.orderItems && chip.orderItems.length > 0 && (
-                    <div className="w-full pt-6 border-t border-slate-100">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-3 text-center md:text-left">Accesorios vinculados</p>
+                    <div className={`w-full border-t pt-5 ${chip.status === "activated" ? "border-white/10" : "border-slate-100"}`}>
+                      <p className={`mb-3 text-[10px] font-black uppercase tracking-widest ${chip.status === "activated" ? "text-[#EFF4FF]/60" : "text-slate-500"} text-center md:text-left`}>Accesorios vinculados</p>
                       <div className="space-y-2">
                         {chip.orderItems.map((acc) => {
                           const orderStatusLabel = acc.order.orderStatus === "completed" ? "Pedido entregado" :
@@ -320,10 +361,10 @@ export default function ChipsPage() {
                             acc.order.orderStatus === "pending" ? "Pago pendiente" :
                             acc.order.orderStatus;
                           return (
-                            <div key={acc.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <div key={acc.id} className={`flex items-center justify-between gap-3 rounded-[1rem] p-3 ${chip.status === "activated" ? "bg-white/8 border border-white/10" : "bg-slate-50 border border-slate-100"}`}>
                               <div className="min-w-0 flex-1">
-                                <p className="text-xs font-bold text-slate-900 truncate">{acc.productType}</p>
-                                <p className="text-[10px] text-muted-foreground">
+                                <p className={`truncate text-xs font-bold ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-900"}`}>{acc.productType}</p>
+                                <p className={`text-[10px] ${chip.status === "activated" ? "text-[#EFF4FF]/65" : "text-muted-foreground"}`}>
                                   x{acc.quantity} · ${acc.totalPrice.toFixed(2)}
                                   {acc.order.orderNumber && <span className="ml-1">· #{acc.order.orderNumber}</span>}
                                 </p>
@@ -343,25 +384,25 @@ export default function ChipsPage() {
                     </div>
                   )}
                   {chip.orderItems && chip.orderItems.length === 0 && (
-                    <div className="w-full pt-6 border-t border-slate-100">
-                      <p className="text-[10px] font-medium text-slate-400 text-center md:text-left italic">Aún no tienes accesorios vinculados a este chip.</p>
+                    <div className={`w-full border-t pt-5 ${chip.status === "activated" ? "border-white/10" : "border-slate-100"}`}>
+                      <p className={`text-center text-[10px] italic ${chip.status === "activated" ? "text-[#EFF4FF]/55" : "text-slate-400"} md:text-left`}>Aún no tienes accesorios vinculados a este chip.</p>
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-3 w-full md:w-64">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:w-[28rem]">
                      <a
                         href={`/e/${chip.shortCode}`}
                         target="_blank"
-                        className="flex items-center justify-center gap-3 px-6 py-4 rounded-[1.5rem] bg-slate-950 text-white text-[11px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 hover:-translate-y-1"
+                        className="inline-flex items-center justify-center gap-3 rounded-[1.15rem] bg-slate-950 px-5 py-3.5 text-[11px] font-black uppercase tracking-widest text-white transition-all hover:-translate-y-px hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none"
                       >
                         <ExternalLink className="h-4 w-4" /> Ver Perfil
                       </a>
                       <button
                         onClick={() => toggleChip(chip.id, chip.status)}
-                        className={`flex items-center justify-center gap-3 px-6 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest transition-all ${
+                        className={`inline-flex items-center justify-center gap-3 rounded-[1.15rem] px-5 py-3.5 text-[11px] font-black uppercase tracking-widest transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none ${
                           chip.status === "activated"
-                            ? "bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 shadow-sm"
-                            : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 shadow-sm"
+                            ? "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
+                            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
                         }`}
                       >
                         {chip.status === "activated" ? (
@@ -466,6 +507,15 @@ export default function ChipsPage() {
            </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SummaryPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-[1.1rem] border border-white/10 bg-white/8 px-3 py-3 text-center backdrop-blur">
+      <p className="text-lg font-black tracking-tight text-[#EFF4FF]">{value}</p>
+      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#EFF4FF]/62">{label}</p>
     </div>
   );
 }
