@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { 
-  ChevronRight, Shield, Bell, Loader2, ShieldAlert
+  ChevronRight, Bell, Loader2, ShieldAlert
 } from "lucide-react";
 
 import { AccountState } from "@/domains/accounts/account.types";
@@ -136,7 +136,6 @@ export default function DashboardPage() {
 
   const { state, ownProfile, familyProfiles } = data;
   const allProfiles = [ownProfile, ...(familyProfiles || [])].filter(Boolean) as ProfileSummary[];
-  const profileCount = allProfiles.length;
   const protectedProfiles = allProfiles.filter((profile) => (profile.assignedChips?.length || 0) > 0);
   const unprotectedProfiles = allProfiles.filter((profile) => (profile.assignedChips?.length || 0) === 0);
   const activeChips = state.activeChipsCount || 0;
@@ -156,98 +155,107 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <section className="grid gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-12 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">PreRescue ID</p>
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
-              Tu protección, lista
-            </h1>
-            <p className="max-w-2xl text-sm md:text-base text-muted-foreground font-medium">
-              Gestiona tus perfiles y chips de emergencia.
-            </p>
-          </div>
-
-          <button
-            onClick={refreshData}
-            className="relative h-12 w-12 rounded-2xl bg-white border border-border shadow-sm flex items-center justify-center text-slate-400 hover:text-primary transition-all"
-            aria-label="Actualizar panel"
-          >
-            <Bell className="h-5 w-5" />
-            {data?.notifications?.some((n) => !n.read) && (
-              <span className="absolute top-3 right-3 h-2 w-2 bg-red-500 rounded-full border-2 border-white animate-bounce" />
-            )}
-          </button>
-        </div>
-
-        <div className="lg:col-span-12 rounded-[2.5rem] border border-border bg-[linear-gradient(135deg,rgba(0,122,255,0.18),rgba(220,38,38,0.08),rgba(255,255,255,0.95))] dark:bg-[linear-gradient(135deg,rgba(0,122,255,0.22),rgba(220,38,38,0.10),rgba(8,15,27,0.95))] p-6 md:p-8 shadow-sm">
-          <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr] lg:items-stretch">
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/80 dark:bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary backdrop-blur">
-                <Shield className="h-3.5 w-3.5" />
-                {state.isInactive ? "Cuenta lista para activar" : "Cuenta activa"}
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-                  {state.isInactive ? "Activa tu protección" : "Tu protección está lista"}
-                </h2>
-                <p className="max-w-2xl text-sm md:text-base text-slate-700/80 dark:text-white/75 font-medium leading-relaxed">
-                  Gestiona tus perfiles, dispositivos y chips de emergencia.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <MetricPill label="Chips activos" value={activeChips} />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <Link
-                  href={primaryCtaHref}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-95"
-                >
-                  {primaryCtaLabel}
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  href="/dashboard/perfiles-medicos"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/85 px-5 py-3.5 text-sm font-black text-slate-900 shadow-sm transition-all hover:bg-white"
-                >
-                  Ver perfiles
-                </Link>
-              </div>
+        <div className="lg:col-span-12">
+          <div className="relative overflow-hidden rounded-[2.75rem] border border-white/10 bg-[linear-gradient(135deg,#05070D_0%,#0F1419_52%,rgba(218,26,33,0.22)_100%)] p-5 shadow-[0_28px_80px_-32px_rgba(0,0,0,0.8)] md:p-7">
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute -top-20 right-[-4rem] h-56 w-56 rounded-full bg-[#DA1A21]/20 blur-3xl" />
+              <div className="absolute bottom-[-6rem] left-[-3rem] h-52 w-52 rounded-full bg-sky-400/10 blur-3xl" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+              <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.9)_0.8px,transparent_0.8px)] [background-size:18px_18px]" />
             </div>
 
-            <div className="rounded-[2rem] bg-white/90 dark:bg-[#0f1419]/80 border border-white/70 dark:border-white/10 backdrop-blur p-5 shadow-lg shadow-slate-900/5 flex flex-col justify-between gap-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Perfiles médicos</p>
-                  <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">{profileCount} perfiles</h3>
+            <div className="relative grid gap-6 lg:grid-cols-[1.12fr_0.88fr] lg:items-stretch">
+              <div className="space-y-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.35em] text-[#EFF4FF] backdrop-blur">
+                    <span className="h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_16px_rgba(218,26,33,0.7)]" />
+                    PreRescue ID
+                  </div>
+                  <button
+                    onClick={refreshData}
+                    className="relative h-11 w-11 rounded-2xl border border-white/10 bg-white/8 text-[#EFF4FF]/75 backdrop-blur transition-all hover:border-white/20 hover:text-white"
+                    aria-label="Actualizar panel"
+                  >
+                    <Bell className="mx-auto h-5 w-5" />
+                    {data?.notifications?.some((n) => !n.read) && (
+                      <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_12px_rgba(218,26,33,0.75)]" />
+                    )}
+                  </button>
                 </div>
-                <Link href="/dashboard/perfiles-medicos" className="text-xs font-black uppercase tracking-widest text-primary">
-                  Gestionar
-                </Link>
+
+                <div className="space-y-3">
+                  <h1 className="max-w-xl text-4xl font-black tracking-tight text-[#EFF4FF] md:text-5xl">
+                    {state.isInactive ? "Activa tu protección" : "Tu protección está lista"}
+                  </h1>
+                  <p className="max-w-xl text-sm font-medium leading-relaxed text-[#EFF4FF]/78 md:text-base">
+                    Gestiona tus perfiles y dispositivos desde una experiencia más clara, cálida y lista para actuar.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <div className="rounded-full border border-white/10 bg-white/8 px-4 py-2.5 text-left backdrop-blur">
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#EFF4FF]/55">Estado</p>
+                    <p className="mt-1 text-sm font-black text-[#EFF4FF]">{state.isInactive ? "Cuenta lista para activar" : "Cuenta activa"}</p>
+                  </div>
+                  <MetricPill label="Chips activos" value={activeChips} />
+                </div>
+
+                <div className="flex flex-col gap-3 pt-1 sm:flex-row">
+                  <Link
+                    href={primaryCtaHref}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.5 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all hover:translate-y-[-1px] hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] sm:w-auto"
+                  >
+                    {primaryCtaLabel}
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    href="/dashboard/perfiles-medicos"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/8 px-5 py-3.5 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all hover:border-white/20 hover:bg-white/12 sm:w-auto"
+                  >
+                    Ver perfiles
+                  </Link>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                {previewProfiles.length > 0 ? previewProfiles.map((profile) => {
-                  const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Perfil por configurar";
-                  const hasChip = (profile.assignedChips?.length || 0) > 0;
-                  return (
-                    <div key={profile.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/80 p-3.5">
-                      <div className="min-w-0">
-                        <p className="font-black text-sm text-slate-900 dark:text-white truncate">{fullName}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">
-                          {hasChip ? "Protegido" : "Sin chip"}
-                          {profile.bloodType ? ` · ${profile.bloodType}` : ""}
-                        </p>
-                      </div>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                        {hasChip ? "Protegido" : "Sin chip"}
-                      </span>
-                    </div>
-                  );
-                }) : (
-                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-                    Aún no tienes perfiles registrados.
+              <div className="rounded-[2.25rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_24px_70px_-30px_rgba(0,0,0,0.72)] backdrop-blur-xl md:p-5">
+                <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#EFF4FF]/55">Vista rápida</p>
+                    <h2 className="mt-1 text-2xl font-black tracking-tight text-[#EFF4FF]">Perfiles médicos</h2>
                   </div>
-                )}
+                  <Link href="/dashboard/perfiles-medicos" className="text-xs font-black uppercase tracking-widest text-[#EFF4FF]/70 transition-colors hover:text-white">
+                    Gestionar
+                  </Link>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {previewProfiles.length > 0 ? previewProfiles.map((profile) => {
+                    const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Perfil por configurar";
+                    const hasChip = (profile.assignedChips?.length || 0) > 0;
+                    const initials = `${profile.firstName?.[0] || ""}${profile.lastName?.[0] || ""}`.trim().toUpperCase() || "PR";
+                    return (
+                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.4rem] border border-white/10 bg-[#05070D]/35 p-3.5">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white/18 to-white/8 text-sm font-black text-[#EFF4FF] ring-1 ring-white/10">
+                          {initials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-black text-[#EFF4FF]">{fullName}</p>
+                          <p className="truncate text-[11px] text-[#EFF4FF]/60">
+                            {hasChip ? "Protegido" : "Sin chip"}
+                            {profile.bloodType ? ` · ${profile.bloodType}` : ""}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20" : "bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/20"}`}>
+                          {hasChip ? "Protegido" : "Sin chip"}
+                        </span>
+                      </div>
+                    );
+                  }) : (
+                    <div className="rounded-[1.4rem] border border-dashed border-white/12 bg-white/5 p-4 text-sm text-[#EFF4FF]/65">
+                      Aún no tienes perfiles registrados.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
