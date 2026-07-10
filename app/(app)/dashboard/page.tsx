@@ -167,13 +167,13 @@ export default function DashboardPage() {
             <div className="relative grid gap-4 sm:gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
               <div className="space-y-4 sm:space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-[#0b1118]/78 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.24em] text-[#EFF4FF]/96 backdrop-blur-md shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-[#0b1118]/84 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#EFF4FF] backdrop-blur-md shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">
                     <span className="h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_16px_rgba(218,26,33,0.7)]" />
                     PreRescue ID
                   </div>
                   <button
                     onClick={refreshData}
-                    className="relative h-11 w-11 rounded-[1.05rem] border border-white/12 bg-white/10 text-[#EFF4FF] backdrop-blur transition-all duration-200 ease-out hover:border-white/24 hover:bg-white/14 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none"
+                    className="relative h-11 w-11 rounded-[1.05rem] border border-white/14 bg-white/12 text-[#EFF4FF] backdrop-blur transition-all duration-200 ease-out hover:border-white/24 hover:bg-white/18 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none"
                     aria-label="Actualizar panel"
                   >
                     <Bell className="mx-auto h-5 w-5 drop-shadow-[0_0_10px_rgba(239,244,255,0.18)]" />
@@ -187,14 +187,14 @@ export default function DashboardPage() {
                   <h1 className="max-w-xl text-3xl font-black leading-[1.02] tracking-tight text-[#EFF4FF] sm:text-4xl md:text-5xl">
                     {state.isInactive ? "Activa tu protección" : "Tu protección está lista"}
                   </h1>
-                  <p className="max-w-xl text-[13px] font-medium leading-6 text-[#EFF4FF]/88 sm:text-sm md:text-base md:leading-relaxed">
+                  <p className="max-w-xl text-[13px] font-medium leading-6 text-[#EFF4FF]/94 sm:text-sm md:text-base md:leading-relaxed [text-shadow:0_1px_1px_rgba(0,0,0,0.18)]">
                     Gestiona tus perfiles y dispositivos desde una experiencia más clara, cálida y lista para actuar.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2.5 sm:gap-3">
-                  <div className="rounded-[1.05rem] border border-white/10 bg-white/6 px-4 py-2.5 text-left backdrop-blur">
-                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#EFF4FF]/68">Estado</p>
+                  <div className="rounded-[1.05rem] border border-white/10 bg-white/8 px-4 py-2.5 text-left backdrop-blur">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#EFF4FF]/80">Estado</p>
                     <p className="mt-1 text-sm font-black text-[#EFF4FF]">{state.isInactive ? "Cuenta lista para activar" : "Cuenta activa"}</p>
                   </div>
                   <MetricPill label="Chips activos" value={activeChips} />
@@ -220,10 +220,10 @@ export default function DashboardPage() {
               <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,8,14,0.68)_0%,rgba(11,17,24,0.52)_100%)] p-3.5 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.68)] backdrop-blur-xl sm:p-4 md:rounded-[1.5rem] md:p-5">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3.5 sm:pb-4">
                   <div>
-                    <p className="inline-flex items-center rounded-full border border-white/14 bg-[#0b1118]/82 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.28em] text-[#EFF4FF] shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">Vista rápida</p>
+                    <p className="inline-flex items-center rounded-full border border-white/14 bg-[#0b1118]/88 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-[#EFF4FF] shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">Vista rápida</p>
                     <h2 className="mt-1 text-[1.35rem] font-black tracking-tight text-[#EFF4FF] sm:text-2xl">Perfiles médicos</h2>
                   </div>
-                  <Link href="/dashboard/perfiles-medicos" className="rounded-full border border-white/12 bg-[#0b1118]/62 px-2.5 py-1.5 text-xs font-black uppercase tracking-widest text-[#EFF4FF]/94 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118]">
+                  <Link href="/dashboard/perfiles-medicos" className="rounded-full border border-white/14 bg-[#0b1118]/72 px-2.5 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-[#EFF4FF] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118]">
                     Gestionar
                   </Link>
                 </div>
@@ -240,7 +240,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-black text-[#EFF4FF]/98">{fullName}</p>
-                          <p className="truncate text-[11px] text-[#EFF4FF]/88">
+                          <p className="truncate text-[11px] text-[#EFF4FF]/94">
                             {hasChip ? "Protegido" : "Sin chip"}
                             {profile.bloodType ? ` · ${profile.bloodType}` : ""}
                           </p>
