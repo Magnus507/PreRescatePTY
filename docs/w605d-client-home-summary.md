@@ -2,20 +2,20 @@
 
 ## 1. Alcance
 
-Esta fase simplifica la pantalla Inicio del panel cliente para que vuelva a sentirse rápida, clara, visual y mobile-first.
+Esta fase ajusta la pantalla Inicio para que gane marca, use mejor el ancho en desktop y siga sintiéndose mobile-first.
 
 ## 2. Cambios aplicados
 
-- Se simplificó el encabezado para usar marca y un subtítulo breve.
-- Se dejó un hero principal claro con pocas métricas.
+- Se reforzó el encabezado con marca y un tono más cercano a app de cliente.
+- Se amplió el uso del ancho en desktop con un hero más protagonista.
+- Se incorporó un preview útil de Perfiles médicos.
 - Se conservaron las tarjetas principales:
   - Perfiles médicos
   - Mis dispositivos
   - Tienda
   - Pedidos como acceso secundario
 - Se mantuvo la acción de activar chip como CTA principal contextual.
-- Se retiró la ficha pública como bloque grande independiente.
-- Se evitó el ruido visual de demasiadas secciones, badges y explicaciones.
+- Se evitó el ruido visual de secciones, badges y explicaciones innecesarias.
 - Se mantuvieron rutas existentes y no se tocó la lógica funcional de chips, tienda o pedidos.
 
 ## 3. Decisiones de UX
