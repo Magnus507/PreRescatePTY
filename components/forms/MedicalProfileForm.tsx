@@ -185,7 +185,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       {showRequiredHint && (
         <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2 mb-2">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          <span>Los campos marcados con * son obligatorios.</span>
+          <span>Empieza por nombre, apellido y tipo de sangre. Lo demás puede completarse después.</span>
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -195,6 +195,18 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Alias Público" value={form.displayNamePublic} onChange={(v: string) => update("displayNamePublic", v)} placeholder="Ej: Juan P." />
         <Field label="Teléfono de Contacto" value={form.phone || ""} onChange={(v: string) => update("phone", v)} placeholder="+507 0000-0000" />
+      </div>
+      <div className="space-y-2">
+        <label htmlFor="blood-type-select" className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground ml-1">Tipo de Sangre *</label>
+        <select
+          id="blood-type-select"
+          required
+          value={form.bloodType}
+          onChange={(e) => update("bloodType", e.target.value)}
+          className="w-full rounded-2xl border-2 border-input bg-background px-4 py-3 text-sm font-black appearance-none text-primary shadow-sm input-premium outline-none"
+        >
+          {BLOOD_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
+        </select>
       </div>
       <Field label="Cédula / Identificación" value={form.nationalId || ""} onChange={(v: string) => update("nationalId", v)} placeholder="Opcional" />
       <div className="space-y-2">
@@ -227,21 +239,9 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       {showRequiredHint && (
         <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2 mb-2">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          <span>El tipo de sangre es obligatorio para activar tu perfil.</span>
+          <span>Completa alergias, condiciones y medicamentos con lo más importante primero.</span>
         </div>
       )}
-      <div className="space-y-2">
-        <label htmlFor="blood-type-select" className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground ml-1">Tipo de Sangre *</label>
-        <select
-          id="blood-type-select"
-          required
-          value={form.bloodType}
-          onChange={(e) => update("bloodType", e.target.value)}
-          className="w-full rounded-2xl border-2 border-input bg-background px-4 py-3 text-sm font-black appearance-none text-primary shadow-sm input-premium outline-none"
-        >
-          {BLOOD_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
-        </select>
-      </div>
       <TextAreaField icon={<Activity className="h-4 w-4" />} label="Alergias" value={form.allergies} onChange={(v: string) => update("allergies", v)} placeholder="Ej: Penicilina..." color="text-red-700" />
       <TextAreaField icon={<ShieldAlert className="h-4 w-4" />} label="Condiciones" value={form.chronicConditions} onChange={(v: string) => update("chronicConditions", v)} placeholder="Ej: Diabetes..." color="text-amber-700" />
       <TextAreaField icon={<Pill className="h-4 w-4" />} label="Medicamentos" value={form.medications} onChange={(v: string) => update("medications", v)} placeholder="Ej: Insulina..." color="text-blue-600" />
@@ -315,8 +315,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   // ── MODULAR MODE ──
 
   const renderIdentityModule = () => renderModuleShell(
-    "Identidad básica",
-    "Datos base para identificar a la persona.",
+    "Datos básicos",
+    "Nombre, apellido y sangre primero. Lo demás puede completarse después.",
     <div className="space-y-4">
       <div className="flex items-start gap-2 text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl px-3 py-2.5">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
@@ -332,7 +332,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 
   const renderMedicalModule = () => renderModuleShell(
     "Información médica esencial",
-    "Datos clínicos que deben verse primero en una emergencia.",
+    "Alergias, condiciones y medicamentos que conviene completar con calma.",
     <div className="space-y-4">
       {renderMedicalAlertFields(true)}
       <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
@@ -354,8 +354,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     const isActive = form.enableSpecialAssistance ?? hasChildData;
 
     return renderModuleShell(
-      "Asistencia especial / condición especial",
-      "Comunicación, acompañamiento y señales de apoyo visibles para quien atiende.",
+      "Opcional · Asistencia especial / condición especial",
+      "Comunicación, acompañamiento y señales de apoyo para quien atiende.",
       <div className="space-y-4">
         <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-2 text-sm">
           <p className="font-semibold text-muted-foreground">Ayudas útiles</p>
@@ -416,7 +416,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     const hasCognitiveData = (form.hasCognitiveImpairment === true) || (form.hasWanderingRisk === true);
 
     return renderModuleShell(
-      "Deterioro cognitivo / memoria / desorientación",
+      "Opcional · Deterioro cognitivo / memoria / desorientación",
       "Útil para Alzheimer, demencia, pérdida de memoria o riesgo de desorientación.",
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -454,8 +454,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     const isActive = form.enableSafeReturn ?? hasChildData;
 
     return renderModuleShell(
-      "Retorno seguro / persona perdida",
-      "Un bloque separado para emergencias de extravío, retorno a casa o acompañamiento seguro.",
+      "Opcional · Retorno seguro / persona perdida",
+      "Un bloque separado para extravío, retorno a casa o acompañamiento seguro.",
       <div className="space-y-4">
         <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-2 text-sm">
           <p className="font-semibold text-muted-foreground">Solo se muestran campos que realmente persisten.</p>
@@ -529,8 +529,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   };
 
   const renderInsuranceModule = () => renderModuleShell(
-    "Seguro y médico tratante",
-    "Cubre aseguradora, póliza, hospital y médico de referencia.",
+    "Opcional · Seguro y médico tratante",
+    "Aseguradora, póliza, hospital y médico de referencia.",
     <div className="space-y-4">
       {renderInsuranceFields()}
       <div className="rounded-2xl border border-border bg-background/60 p-4 space-y-3">
