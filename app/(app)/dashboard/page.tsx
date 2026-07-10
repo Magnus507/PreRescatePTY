@@ -2,19 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { 
-  AlertCircle, CheckCircle, 
-  ChevronRight, Building2, Shield, ShieldCheck, Plus, Zap, Heart, 
-  Activity, ArrowUpRight, Smartphone, Bell, Loader2, ExternalLink, ShieldAlert,
-  Camera
+  ChevronRight, Shield, Bell, Loader2, ShieldAlert
 } from "lucide-react";
 
 import { AccountState } from "@/domains/accounts/account.types";
-import { BUSINESS_RULES } from "@/domains/shared/constants";
 
 interface ChipData {
   id: string;
@@ -51,7 +45,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,9 +135,8 @@ export default function DashboardPage() {
   }
 
   const { state, ownProfile, familyProfiles } = data;
-  const isEmployee = state.isCorporate && !state.isOwner;
-  const userEmail = session?.user?.email;
   const allProfiles = [ownProfile, ...(familyProfiles || [])].filter(Boolean) as ProfileSummary[];
+  const profileCount = allProfiles.length;
   const protectedProfiles = allProfiles.filter((profile) => (profile.assignedChips?.length || 0) > 0);
   const unprotectedProfiles = allProfiles.filter((profile) => (profile.assignedChips?.length || 0) === 0);
   const activeChips = state.activeChipsCount || 0;
@@ -159,8 +152,6 @@ export default function DashboardPage() {
     : hasActiveChip
       ? "Ver ficha pública"
       : "Ir a tienda";
-
-  const CHIP_PRICE = BUSINESS_RULES.EXTRA_CHIP_PRICE;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -227,453 +218,48 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* Real-time System Notifications */}
-      {data?.notifications && data.notifications.some(n => !n.read) && (
-        <div className="space-y-3 animate-in slide-in-from-top-4 duration-500">
-           {data.notifications.filter(n => !n.read).map(n => (
-             <div key={n.id} className="p-6 rounded-[2rem] bg-slate-900 text-white shadow-xl shadow-slate-200/50 flex items-start justify-between gap-4 group">
-                <div className="flex items-start gap-4">
-                   <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${n.type === 'warning' ? 'bg-amber-500/20 text-amber-500' : 'bg-primary/20 text-primary'}`}>
-                      {n.type === 'warning' ? <ShieldAlert className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
-                   </div>
-                   <div>
-                      <h4 className="font-black text-sm uppercase tracking-tight">{n.title}</h4>
-                      <p className="text-sm text-slate-400 font-medium mt-1 leading-relaxed">{n.message}</p>
-                   </div>
-                </div>
-                <button 
-                  onClick={async () => {
-                     await fetch("/api/users/notifications", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: n.id })
-                     });
-                     refreshData();
-                  }}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest transition-all"
-                >
-                  Entendido
-                </button>
-             </div>
-           ))}
-        </div>
-      )}
+      <section className="grid gap-4 md:grid-cols-2">
+        <HomeCard
+          title="Perfiles médicos"
+          count={profileCount}
+          description="Gestiona tu información médica y la de tus protegidos."
+          ctaLabel="Gestionar"
+          href="/dashboard/perfiles-medicos"
+        />
 
-      {state.isInactive && (
-        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Protección</p>
-              <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                Tu cuenta está lista para activar
-              </h2>
-              <p className="text-sm text-muted-foreground font-medium leading-relaxed max-w-2xl">
-                Activa tu chip y completa la información médica cuando quieras comenzar.
-              </p>
-            </div>
-            <Link
-              href="/dashboard/chips?activate=true"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-sm font-black text-white"
-            >
-              Activar chip
-            </Link>
-          </div>
-        </div>
-      )}
+        <HomeCard
+          title="Mis dispositivos"
+          count={activeChips}
+          description="Revisa tus chips activos y vinculaciones."
+          ctaLabel="Ver dispositivos"
+          href="/dashboard/chips"
+        />
 
-      {/* Institutional banners */}
-      {isEmployee && (
-        <div className="p-6 rounded-[2rem] border border-indigo-500/30 bg-indigo-500/5 flex items-start gap-4 shadow-sm">
-          <div className="bg-indigo-500 rounded-2xl p-2.5 text-white">
-            <Building2 className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="font-black text-indigo-900 dark:text-indigo-400 uppercase tracking-tighter">Cuenta Institucional</p>
-            <p className="text-sm text-indigo-900/60 dark:text-indigo-400/70 mt-1 font-medium leading-relaxed">
-              Tu acceso fue provisto por tu empresa u organización. Completa tu ficha médica.
+        <HomeCard
+          title="Tienda"
+          description="Compra stickers, chips o accesorios."
+          ctaLabel="Ir a tienda"
+          href="/dashboard/compras"
+          accent="dark"
+        />
+
+        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm flex flex-col justify-between gap-4">
+          <div className="space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Mis pedidos</p>
+            <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Pedidos recientes</h2>
+            <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+              Revisa tus pedidos cuando necesites ver estados o historial.
             </p>
           </div>
-        </div>
-      )}
-
-      <section className="space-y-6">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Perfiles médicos</p>
-            <h2 className="text-2xl font-black tracking-tight">Protección por persona</h2>
-          </div>
-          <Link href="/dashboard/perfiles-medicos" className="text-sm font-black text-primary hover:underline">
-            Gestionar perfiles
+          <Link
+            href="/dashboard/pedidos"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-3.5 text-sm font-black text-slate-700 dark:text-slate-200 transition-all hover:border-primary/30 hover:text-primary"
+          >
+            Ver pedidos
           </Link>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <InfoCard title="Perfiles médicos" value={allProfiles.length} description="Perfiles registrados en tu cuenta." />
-          <InfoCard title="Perfiles protegidos" value={protectedProfiles.length} description="Perfiles con chip activo." />
-          <InfoCard title="Perfiles sin chip" value={unprotectedProfiles.length} description="Perfiles pendientes de vinculación." />
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Resumen rápido</p>
-                <h3 className="text-xl font-black tracking-tight">Perfiles recientes</h3>
-              </div>
-              <Link href="/dashboard/perfiles-medicos" className="text-xs font-black uppercase tracking-widest text-primary">
-                Ver todos
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {allProfiles.slice(0, 3).map((profile) => {
-                const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Perfil por configurar";
-                const hasChip = (profile.assignedChips?.length || 0) > 0;
-                return (
-                  <div key={profile.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background p-4">
-                    <div className="space-y-1">
-                      <p className="font-black text-sm text-slate-900 dark:text-white">{fullName}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {hasChip ? "Protegido" : "Sin chip"}
-                        {profile.bloodType ? ` · ${profile.bloodType}` : ""}
-                      </p>
-                    </div>
-                    <Link href="/dashboard/perfiles-medicos" className="text-xs font-black text-primary">
-                      Gestionar
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Estado de cuenta</p>
-                <h3 className="text-xl font-black tracking-tight">Protección general</h3>
-              </div>
-              <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${state.isInactive ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>
-                {state.isInactive ? "Inactiva" : "Activa"}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <MiniStat label="Chips activos" value={activeChips} />
-              <MiniStat label="Capacidad de cuenta" value={capacityTotal} />
-              <MiniStat label="Sin chip" value={unprotectedProfiles.length} />
-              <Link href="/dashboard/pedidos" className="rounded-2xl border border-dashed border-border/70 bg-background px-4 py-3 text-sm font-black text-primary flex items-center justify-center">
-                Ver mis pedidos
-              </Link>
-            </div>
-          </div>
-        </div>
       </section>
-
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Mis dispositivos</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight">Chips y estados</h2>
-          <p className="mt-2 text-sm text-muted-foreground font-medium leading-relaxed">
-            Revisa tus chips activos y dispositivos vinculados.
-          </p>
-          <div className="mt-5 grid grid-cols-3 gap-3">
-            <MiniStat label="Activos" value={activeChips} />
-            <MiniStat label="Cuenta" value={capacityTotal} />
-            <MiniStat label="Perfiles" value={allProfiles.length} />
-          </div>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/dashboard/chips" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-black text-white">
-              Ver dispositivos
-            </Link>
-            <Link href="/dashboard/chips?activate=true" className="inline-flex items-center gap-2 rounded-2xl border border-border px-4 py-3 text-sm font-black text-slate-700 dark:text-slate-200">
-              Activar chip
-            </Link>
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Ficha pública</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight">Acceso público</h2>
-          <p className="mt-2 text-sm text-muted-foreground font-medium leading-relaxed">
-            Los perfiles con chip activo tienen ficha pública disponible.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/dashboard/perfiles-medicos" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-black text-white">
-              Ver ficha pública
-            </Link>
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Tienda</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight">Tienda</h2>
-          <p className="mt-2 text-sm text-muted-foreground font-medium leading-relaxed">
-            Compra stickers, chips o accesorios disponibles.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/dashboard/compras" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white dark:bg-white dark:text-slate-900">
-              Ir a tienda
-            </Link>
-            <Link href="/dashboard/pedidos" className="inline-flex items-center gap-2 rounded-2xl border border-border px-4 py-3 text-sm font-black text-slate-700 dark:text-slate-200">
-              Ver pedidos
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Medical Profiles Section */}
-      <section>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-             <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                {state.isOrganization ? <Building2 className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
-             </div>
-             <div>
-                <h2 className="text-2xl font-black tracking-tight">
-                  {state.isOrganization ? "Colaboradores" : "Perfiles Médicos"}
-                </h2>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest leading-none mt-1">
-                  {state.isOrganization ? "Gestión Corporativa" : (state.isFamily ? "Gestión Multi-perfil" : "Tu Perfil Personal")}
-                </p>
-             </div>
-          </div>
-          
-          {(state.isFamily || state.isOrganization) && (
-             <Link 
-              href={state.isOrganization ? "/dashboard/empresas" : "/dashboard/perfiles-medicos"} 
-              className="text-primary font-black text-sm flex items-center gap-1.5 hover:bg-primary/5 px-4 py-2 rounded-xl transition-all"
-             >
-                {state.isOrganization ? "Ver Mi Empresa" : "Perfiles Médicos"} <ChevronRight className="h-4 w-4" />
-             </Link>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ownProfile && (
-               <ProfileCard 
-                 profile={ownProfile} 
-                 isOwn 
-                 color="border-primary/20 bg-primary/5 shadow-sm" 
-                 badge="text-primary bg-primary/10"
-                 userEmail={userEmail}
-                 isOrganization={state.isOrganization}
-                 onPhotoUpdate={refreshData}
-               />
-            )}
-
-           {(state.isFamily || state.isOrganization) && familyProfiles && familyProfiles.map((p) => (
-             <ProfileCard key={p.id} profile={p} isOwn={false} color="border-border bg-card shadow-sm" badge="text-muted-foreground bg-muted" userEmail={userEmail} isOrganization={state.isOrganization} onPhotoUpdate={refreshData} />
-           ))}
-           
-           {!state.isFamily && familyProfiles?.length > 0 && (
-               <div className="col-span-full mt-2 p-4 rounded-2xl border border-dashed border-border bg-slate-50/50 flex items-center justify-between">
-                  <p className="text-xs font-medium text-muted-foreground italic">
-                     Tienes {familyProfiles.length} personas registradas.
-                  </p>
-                  <Link href="/dashboard/perfiles-medicos" className="text-[10px] font-black uppercase text-primary hover:underline">Ver todos</Link>
-               </div>
-            )}
-
-            {(state.isFamily || state.isOrganization) && (
-               <Link
-                 href={state.isOrganization ? "/dashboard/empresas" : "/dashboard/perfiles-medicos"}
-                 className="flex flex-col items-center justify-center gap-3 p-8 rounded-[2rem] border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/50 transition-all text-muted-foreground hover:text-primary group"
-               >
-                 <div className="h-12 w-12 rounded-2xl bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-                   <Plus className="h-6 w-6" />
-                 </div>
-                 <div className="text-center">
-                   <p className="font-black text-sm uppercase tracking-widest">
-                     {state.isOrganization ? "Añadir Colaborador" : "Nuevo Perfil Médico"}
-                   </p>
-                   <p className="text-[10px] mt-1 opacity-60">Protecciones activas: {state.activeChipsCount}/{state.maxChipsAllocated}</p>
-                 </div>
-               </Link>
-            )}
-        </div>
-      </section>
-
-      {/* Stats removed for a cleaner interface */}
-
-      {/* Upsell Sections */}
-      {!isEmployee && (
-        <div className={`grid grid-cols-1 ${!state.isFamily ? 'md:grid-cols-2' : ''} gap-6 mt-12`}>
-          {!state.isFamily && (
-            <div className="bg-slate-900 rounded-[3rem] p-10 text-white relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-indigo-500/20 opacity-50" />
-              <div className="relative z-10 flex flex-col justify-between h-full">
-                <div>
-                   <h3 className="text-2xl font-black tracking-tight mb-3">¿Proteges a más personas?</h3>
-                   <p className="text-slate-300 text-sm mb-6 italic">Adquiere un paquete de chips y protege a tus seres queridos fácilmente.</p>
-                </div>
-                <Link href="/dashboard/upgrade" className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all w-fit">
-                  Ver combos multi-perfil <ArrowUpRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-[3rem] p-10 relative overflow-hidden group">
-            <div className="relative z-10 flex flex-col justify-between h-full">
-              <div>
-                 <div className="flex items-center gap-3 mb-3">
-                    <div className="h-10 w-10 bg-emerald-500/20 text-emerald-600 rounded-2xl flex items-center justify-center">
-                       <Zap className="h-5 w-5" />
-                    </div>
-                    <h3 className="text-2xl font-black tracking-tight text-emerald-900 dark:text-emerald-400">Chips Extra</h3>
-                 </div>
-                 <p className="text-emerald-800/70 dark:text-emerald-400/70 text-sm mb-6 font-medium">Adquiere capacidad extra por <strong>${CHIP_PRICE.toFixed(2)} {BUSINESS_RULES.CURRENCY}</strong>.</p>
-              </div>
-              <Link href="/dashboard/compras" className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-xl hover:scale-[1.02] transition-all w-fit">
-                Comprar Chips <Plus className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  );
-}
-
-interface ProfileCardProps {
-  profile: ProfileSummary;
-  isOwn: boolean;
-  color: string;
-  badge: string;
-  userEmail?: string | null;
-  isOrganization: boolean;
-  onPhotoUpdate?: () => void;
-}
-
-function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, onPhotoUpdate }: ProfileCardProps) {
-  const firstName = profile?.firstName || "";
-  const lastName = profile?.lastName || "";
-  const initials = firstName && lastName 
-    ? `${firstName[0]}${lastName[0]}`.toUpperCase()
-    : (userEmail?.[0] || "?").toUpperCase();
-
-  const [uploading, setUploading] = useState(false);
-
-  const handlePhotoClick = (e: React.MouseEvent) => {
-    if (!onPhotoUpdate) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const input = document.getElementById(`profile-photo-input-${profile.id}`) as HTMLInputElement;
-    input?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", "profile");
-    formData.append("bucket", "profile-photos");
-    formData.append("profileId", profile.id);
-
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        onPhotoUpdate?.();
-      } else {
-        toast.error("Error al subir la foto");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error en la conexión");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const fullName = firstName && lastName 
-    ? `${firstName} ${lastName}`
-    : (isOwn ? "Completa tu Perfil" : (isOrganization ? "Pendiente" : "Perfil por configurar"));
-
-  const chipCount = profile?.assignedChips?.length || 0;
-  const isComplete = !!(profile?.firstName && profile?.lastName && profile?.bloodType && profile?.bloodType !== "Pendiente");
-
-  return (
-    <Link 
-      href={isOrganization ? "/dashboard/empresas" : "/dashboard/perfiles-medicos"} 
-      className={`p-6 rounded-[2rem] border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group active:scale-[0.98] ${color}`}
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div 
-            onClick={handlePhotoClick}
-            className={`h-14 w-14 rounded-2xl flex items-center justify-center font-black text-sm relative overflow-hidden group/photo cursor-pointer ${isOwn ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}
-          >
-            {profile.photoUrl ? (
-              <Image 
-                src={profile.photoUrl} 
-                alt="Avatar" 
-                fill 
-                className="object-cover" 
-              />
-            ) : (
-              initials
-            )}
-            
-            {isOwn && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition-opacity">
-                {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-              </div>
-            )}
-          </div>
-          <input 
-            type="file" 
-            id={`profile-photo-input-${profile.id}`} 
-            className="hidden" 
-            accept="image/*"
-            onChange={handleFileChange}
-          />
-          <div>
-            <h4 className="font-black text-lg tracking-tight leading-none group-hover:text-primary transition-colors">{fullName}</h4>
-            <span className={`inline-block mt-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${badge}`}>
-              {isOwn ? "Principal" : (isOrganization ? "Colaborador" : "Perfil Adicional")}
-            </span>
-          </div>
-        </div>
-        {isComplete ? (
-          <CheckCircle className="h-5 w-5 text-success" />
-        ) : (
-          <AlertCircle className="h-5 w-5 text-amber-500" />
-        )}
-      </div>
-
-      {profile.assignedChips?.[0] && (
-        <button 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.open(`/e/${profile.assignedChips[0].shortCode}`, '_blank');
-          }}
-          className="w-full mb-4 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary hover:border-primary/30 transition-all shadow-sm"
-        >
-          <ExternalLink className="h-3.5 w-3.5" /> Ver Pantallazo del Chip
-        </button>
-      )}
-
-      <div className="flex flex-wrap gap-2 mb-4">
-        <div className="px-3 py-1.5 rounded-xl bg-background border flex items-center gap-1.5">
-           <Activity className="h-3.5 w-3.5 text-red-500" />
-           <span className="text-[11px] font-bold uppercase">{profile.bloodType}</span>
-        </div>
-        <div className="px-3 py-1.5 rounded-xl bg-background border flex items-center gap-1.5">
-           <Smartphone className="h-3.5 w-3.5 text-primary" />
-           <span className="text-[11px] font-bold uppercase">{chipCount} {chipCount === 1 ? 'Chip' : 'Chips'}</span>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-end text-[11px] font-black uppercase text-primary tracking-tighter group-hover:translate-x-1 transition-transform">
-        {isOwn ? "Gestionar Perfiles" : "Gestionar Perfil"} <ChevronRight className="h-3 w-3 ml-0.5" />
-      </div>
-    </Link>
   );
 }
 
@@ -686,21 +272,34 @@ function MetricPill({ label, value }: { label: string; value: number }) {
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: number }) {
+function HomeCard({
+  title,
+  description,
+  ctaLabel,
+  href,
+  count,
+  accent = "light",
+}: {
+  title: string;
+  description: string;
+  ctaLabel: string;
+  href: string;
+  count?: number;
+  accent?: "light" | "dark";
+}) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-background px-4 py-3">
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
-    </div>
-  );
-}
-
-function InfoCard({ title, value, description }: { title: string; value: number; description: string }) {
-  return (
-    <div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
-      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">{title}</p>
-      <p className="mt-2 text-4xl font-black tracking-tighter text-slate-900 dark:text-white">{value}</p>
-      <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">{description}</p>
+    <div className={`rounded-[2rem] border p-6 shadow-sm flex flex-col justify-between gap-4 ${accent === "dark" ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900" : "border-border bg-card"}`}>
+      <div className="space-y-3">
+        <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${accent === "dark" ? "text-white/60" : "text-muted-foreground"}`}>{title}</p>
+        {count !== undefined && <p className={`text-4xl font-black tracking-tighter ${accent === "dark" ? "text-white" : "text-slate-900 dark:text-white"}`}>{count}</p>}
+        <p className={`text-sm font-medium leading-relaxed ${accent === "dark" ? "text-white/70" : "text-muted-foreground"}`}>{description}</p>
+      </div>
+      <Link
+        href={href}
+        className={`inline-flex w-fit items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-black transition-all ${accent === "dark" ? "bg-white text-slate-900" : "border border-border bg-background text-slate-700 dark:text-slate-200 hover:border-primary/30 hover:text-primary"}`}
+      >
+        {ctaLabel}
+      </Link>
     </div>
   );
 }
