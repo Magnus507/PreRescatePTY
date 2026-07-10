@@ -288,6 +288,30 @@ La ficha pública quedó reordenada para que la información médica adicional t
 - no se tocó el helper de resolución pública
 - no se tocaron chips, activación, pedidos, productos, inventario, empresarial ni mascotas
 
+## W6.10F-UX10 - Corrección desktop final
+
+Se corrigió la vista pública de escritorio para que la ficha superior mantenga visibles las alertas médicas integradas y para eliminar el bloque duplicado de información médica adicional.
+
+### Qué se corrigió en desktop
+
+- alergias, condiciones y medicamentos vuelven a mostrarse dentro de la ficha superior integrada
+- la información médica adicional queda una sola vez
+- los contactos de rescate siguen al final
+
+### Qué se conserva en móvil
+
+- la ficha móvil queda intacta
+- no aparecen duplicados nuevos
+- los contactos de rescate siguen al final
+
+### Qué no cambió
+
+- no cambió el schema
+- no cambió W6.04
+- no se tocaron migraciones
+- no se reintrodujo `Resumen clínico`
+- no se reintrodujo `Alertas médicas esenciales`
+
 ## W6.10C - Pantalla Pública Inicial
 
 La pantalla pública inicial se simplificó para que la primera decisión sea:

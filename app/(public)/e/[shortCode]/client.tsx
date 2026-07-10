@@ -951,15 +951,6 @@ export default function EmergencyPage() {
     );
   }
 
-  const extras = profile.publicMedicalExtras;
-  const hasExtras = !!(
-    extras?.insuranceProvider ||
-    extras?.preferredHospital ||
-    extras?.primaryDoctorName ||
-    extras?.primaryDoctorPhone ||
-    extras?.emergencyInstructions
-  );
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-24 selection:bg-red-100">
       <div className="bg-white border-b border-slate-200 sticky top-0 z-50 backdrop-blur-lg bg-white/90">
@@ -1105,7 +1096,7 @@ export default function EmergencyPage() {
                     {profile.isMinor && <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-blue-600 text-white rounded-xl md:rounded-2xl shadow-lg shadow-blue-200"><Baby className="h-4 w-4 md:h-5 md:w-5" /><span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">Menor de edad</span></div>}
                     <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 bg-slate-50 text-slate-950 rounded-xl md:rounded-2xl border border-slate-300 shadow-sm"><span className="text-base md:text-xl font-black uppercase tracking-tighter leading-none">SEXO: {profile.sex === 'M' ? 'MASCULINO' : profile.sex === 'F' ? 'FEMENINO' : 'NO REPORTADO'}</span></div>
                   </div>
-                  <div className="mt-4 space-y-2 md:hidden">
+                  <div className="mt-4 space-y-2 md:grid md:grid-cols-3 md:gap-3">
                     <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 text-red-600" /><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-widest text-red-700">Alergias</p><p className="text-sm font-bold text-slate-900 break-words">{profile.allergies || "No reportado"}</p>{profile.allergies && !profile.allergies.toLowerCase().includes("no report") && <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-red-600">• Atención crítica</p>}</div></div></div>
                     <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2"><div className="flex items-start gap-2"><Activity className="mt-0.5 h-4 w-4 text-blue-600" /><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p><p className="text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p></div></div></div>
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2"><div className="flex items-start gap-2"><Pill className="mt-0.5 h-4 w-4 text-emerald-600" /><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p><p className="text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p></div></div></div>
@@ -1130,30 +1121,6 @@ export default function EmergencyPage() {
           </div>
         )}
 
-
-        {/* Medical extras — paramedic view (keeps original format) */}
-        {view === 'paramedic' && hasExtras && (
-          <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-700">Información médica adicional</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {extras?.insuranceProvider && <PublicExtraItem label="Aseguradora" value={extras.insuranceProvider} />}
-              {extras?.preferredHospital && <PublicExtraItem label="Hospital preferido" value={extras.preferredHospital} />}
-              {extras?.primaryDoctorName && <PublicExtraItem label="Médico tratante" value={extras.primaryDoctorName} />}
-            </div>
-            {extras?.primaryDoctorPhone && (
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Teléfono del médico</p><p className="text-sm font-bold text-slate-900">{extras.primaryDoctorPhone}</p></div>
-                <a href={`tel:${sanitizeTelPhone(extras.primaryDoctorPhone)}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white"><Phone className="h-4 w-4" /> Llamar médico</a>
-              </div>
-            )}
-            {extras?.emergencyInstructions && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Instrucciones especiales</p>
-                <p className="text-sm font-semibold text-amber-900">{extras.emergencyInstructions}</p>
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="pt-6 text-center">
           <p className="text-[10px] text-slate-300 font-black tracking-[0.4em] uppercase">PRE-RESCATE PANAMÁ</p>
