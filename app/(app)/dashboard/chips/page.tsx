@@ -185,27 +185,28 @@ export default function ChipsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <section className="relative overflow-hidden rounded-[2.25rem] border border-[#1D2836] bg-[#05070D] p-5 shadow-[0_28px_80px_-38px_rgba(0,0,0,0.85)] md:p-7">
+      <section className="relative overflow-hidden rounded-[2.25rem] border border-[#2A3340] bg-[#05070D] p-5 shadow-[0_28px_80px_-38px_rgba(0,0,0,0.85)] md:p-7">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(218,26,33,0.16)_0%,rgba(218,26,33,0.06)_24%,transparent_46%),linear-gradient(135deg,rgba(5,7,13,0)_0%,rgba(15,20,25,0.82)_54%,rgba(5,7,13,1)_100%)]" />
-          <div className="absolute inset-0 opacity-[0.14] [background-image:linear-gradient(rgba(239,244,255,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(239,244,255,0.14)_1px,transparent_1px)] [background-size:44px_44px]" />
-          <div className="absolute inset-0 opacity-[0.16] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.72)_0.9px,transparent_0.9px)] [background-size:18px_18px]" />
-          <div className="absolute -right-10 top-8 h-44 w-44 rounded-full border border-[#DA1A21]/25 shadow-[0_0_60px_-18px_rgba(218,26,33,0.72)]" />
-          <div className="absolute right-8 top-24 h-20 w-20 rounded-full border border-[#EFF4FF]/12" />
-          <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-transparent via-[#DA1A21] to-transparent opacity-70" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_78%_22%,rgba(218,26,33,0.2)_0%,rgba(218,26,33,0.08)_28%,transparent_58%),radial-gradient(ellipse_at_12%_84%,rgba(37,99,235,0.14)_0%,transparent_48%),linear-gradient(135deg,#05070D_0%,#0A111A_46%,#111827_100%)]" />
+          <div className="absolute inset-0 opacity-[0.18] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.52)_0.7px,transparent_0.8px)] [background-size:22px_22px]" />
+          <div className="absolute -right-20 top-[-3rem] h-72 w-72 rounded-full border border-[#DA1A21]/18 shadow-[0_0_70px_-28px_rgba(218,26,33,0.78)]" />
+          <div className="absolute right-10 top-20 h-44 w-44 rounded-full border border-[#EFF4FF]/10" />
+          <div className="absolute right-24 top-36 h-20 w-20 rounded-full border border-[#10B981]/18" />
+          <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-transparent via-[#DA1A21] to-transparent opacity-85" />
+          <div className="absolute bottom-0 left-0 h-24 w-full bg-[linear-gradient(0deg,rgba(5,7,13,0.72)_0%,transparent_100%)]" />
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#EFF4FF]/30 to-transparent" />
         </div>
 
         <div className="relative space-y-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.3em] text-[#EFF4FF] backdrop-blur">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#3A4658] bg-[#0B111A]/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-white shadow-[inset_0_1px_0_rgba(239,244,255,0.08)] backdrop-blur">
                 <span className="h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_14px_rgba(218,26,33,0.7)]" />
                 PreRescue ID
               </div>
               <div className="space-y-2">
                 <h1 className="text-3xl font-black tracking-tight text-[#EFF4FF] md:text-4xl">Mis dispositivos</h1>
-                <p className="max-w-2xl text-sm font-medium leading-relaxed text-[#EFF4FF]/78 md:text-base">
+                <p className="max-w-2xl text-sm font-semibold leading-relaxed text-[#DCE6F3] md:text-base">
                   Revisa tus chips activos, vincula un perfil y activa uno nuevo sin perder claridad.
                 </p>
               </div>
@@ -266,16 +267,17 @@ export default function ChipsPage() {
                   key={chip.id}
                   className={`group relative overflow-hidden rounded-[2.25rem] border p-5 md:p-6 transition-all duration-200 ease-out active:scale-[0.995] ${
                     chip.status === "activated"
-                      ? "border-[#273241] bg-[#05070D] text-[#EFF4FF] shadow-[0_22px_55px_-30px_rgba(0,0,0,0.75)]"
+                      ? "border-[#2B3544] bg-[#060A11] text-[#EFF4FF] shadow-[0_22px_55px_-30px_rgba(0,0,0,0.75)]"
                       : "border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,1)_100%)] text-slate-950 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.28)]"
                   }`}
                 >
                   <div className="pointer-events-none absolute inset-0 opacity-100">
                     {chip.status === "activated" ? (
                       <>
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_9%_22%,rgba(218,26,33,0.16)_0%,transparent_29%),linear-gradient(118deg,rgba(239,244,255,0.08)_0%,transparent_22%,rgba(218,26,33,0.08)_76%,transparent_100%)]" />
-                        <div className="absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(239,244,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(239,244,255,0.13)_1px,transparent_1px)] [background-size:36px_36px]" />
-                        <div className="absolute -left-12 top-8 h-32 w-32 rounded-full border border-[#DA1A21]/22 shadow-[0_0_52px_-20px_rgba(218,26,33,0.7)]" />
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_10%_18%,rgba(218,26,33,0.18)_0%,transparent_42%),radial-gradient(ellipse_at_84%_12%,rgba(16,185,129,0.1)_0%,transparent_34%),linear-gradient(120deg,#060A11_0%,#0B111A_54%,#101824_100%)]" />
+                        <div className="absolute -left-16 top-6 h-40 w-40 rounded-full border border-[#DA1A21]/18 shadow-[0_0_52px_-22px_rgba(218,26,33,0.72)]" />
+                        <div className="absolute -left-7 top-16 h-20 w-20 rounded-full border border-[#EFF4FF]/10" />
+                        <div className="absolute right-[-5rem] bottom-[-5rem] h-56 w-56 rounded-full border border-[#10B981]/12" />
                         <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-[#DA1A21]/70 via-[#EFF4FF]/12 to-transparent" />
                       </>
                     ) : (
@@ -285,7 +287,7 @@ export default function ChipsPage() {
 
                   <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex flex-col items-start gap-4 md:flex-row md:items-center">
-                     <div className={`flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-[1.65rem] shadow-lg ${chip.status === "activated" ? 'bg-gradient-to-br from-[#DA1A21] to-[#B9141B] text-white shadow-[0_16px_30px_-18px_rgba(218,26,33,0.85)]' : 'bg-slate-900 text-slate-200 shadow-[0_16px_30px_-20px_rgba(15,23,42,0.32)]'} transition-transform`}>
+                      <div className={`flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-[1.65rem] shadow-lg ${chip.status === "activated" ? 'border border-[#FF4248]/35 bg-[#DA1A21] text-white shadow-[0_16px_30px_-18px_rgba(218,26,33,0.85)]' : 'bg-slate-900 text-slate-200 shadow-[0_16px_30px_-20px_rgba(15,23,42,0.32)]'} transition-transform`}>
                         <Cpu className="h-9 w-9" />
                      </div>
                       <div className="space-y-2">
@@ -303,7 +305,7 @@ export default function ChipsPage() {
                           <h4 className={`text-2xl font-black tracking-tight md:text-3xl ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-950"}`}>
                             {chip.serialPublic}
                           </h4>
-                          <p className={`mt-1 text-xs font-medium ${chip.status === "activated" ? "text-[#EFF4FF]/72" : "text-slate-500"}`}>
+                          <p className={`mt-1 text-xs font-semibold ${chip.status === "activated" ? "text-[#DCE6F3]" : "text-slate-500"}`}>
                             Código público: <span className={`font-black ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-900"}`}>{chip.shortCode}</span>
                           </p>
                         </div>
@@ -311,10 +313,10 @@ export default function ChipsPage() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2 lg:w-[34rem] lg:gap-3">
-                      <div className={`flex items-center gap-2 rounded-[1.05rem] px-3 py-2 text-xs font-bold ${chip.status === "activated" ? "bg-white/8 text-[#EFF4FF]/78" : "bg-slate-50 text-slate-600 border border-slate-200"}`}>
+                      <div className={`flex items-center gap-2 rounded-[1.05rem] px-3 py-2 text-xs font-bold ${chip.status === "activated" ? "border border-[#273241] bg-[#0B111A]/88 text-[#DCE6F3]" : "bg-slate-50 text-slate-600 border border-slate-200"}`}>
                         <Smartphone className={`h-4 w-4 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-primary"}`} /> NFC activo
                       </div>
-                      <div className={`flex items-center gap-2 rounded-[1.05rem] px-3 py-2 text-xs font-bold ${chip.status === "activated" ? "bg-white/8 text-[#EFF4FF]/78" : "bg-slate-50 text-slate-600 border border-slate-200"}`}>
+                      <div className={`flex items-center gap-2 rounded-[1.05rem] px-3 py-2 text-xs font-bold ${chip.status === "activated" ? "border border-[#273241] bg-[#0B111A]/88 text-[#DCE6F3]" : "bg-slate-50 text-slate-600 border border-slate-200"}`}>
                         <ShieldCheck className={`h-4 w-4 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-primary"}`} /> Seguro Ley 81
                       </div>
                       {chip.serviceEndDate && (
@@ -324,13 +326,13 @@ export default function ChipsPage() {
                       )}
                     </div>
 
-                    <div className={`grid gap-4 rounded-[1.5rem] p-4 lg:w-[28rem] ${chip.status === "activated" ? "border border-white/10 bg-[#0B111A]/78 shadow-[inset_0_1px_0_rgba(239,244,255,0.08)]" : "border border-slate-200 bg-white/78 shadow-sm"}`}>
+                    <div className={`grid gap-4 rounded-[1.5rem] p-4 lg:w-[28rem] ${chip.status === "activated" ? "border border-[#303C4D] bg-[#0B111A]/94 shadow-[inset_0_1px_0_rgba(239,244,255,0.1)]" : "border border-slate-200 bg-white/78 shadow-sm"}`}>
                       <div className={`flex items-center gap-3 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-900"}`}>
                         <div className={`flex h-10 w-10 items-center justify-center rounded-[1rem] ${chip.status === "activated" ? "bg-white/10" : "bg-primary/10"} shadow-sm`}>
                            <UserRound className={`h-5 w-5 ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-primary"}`} />
                         </div>
                         <div className="text-left">
-                          <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${chip.status === "activated" ? "text-[#EFF4FF]/64" : "text-slate-500"}`}>Vincular perfil</p>
+                          <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${chip.status === "activated" ? "text-[#BFD0E4]" : "text-slate-500"}`}>Vincular perfil</p>
                           <p className={`text-sm font-black leading-none ${chip.status === "activated" ? "text-[#EFF4FF]" : "text-slate-900"}`}>Perfil médico</p>
                         </div>
                       </div>
@@ -342,7 +344,7 @@ export default function ChipsPage() {
                           onChange={(e) => assignProfile(chip.id, e.target.value || null)}
                           className={`w-full appearance-none rounded-[1.15rem] border px-4 py-3 text-sm font-black transition-all focus:outline-none focus:ring-4 cursor-pointer disabled:opacity-50 ${
                             chip.status === "activated"
-                              ? "border-white/10 bg-white/8 text-[#EFF4FF] focus:ring-[#EFF4FF]/10"
+                              ? "border-[#3A4658] bg-[#121A25] text-[#EFF4FF] focus:ring-[#EFF4FF]/10"
                               : "border-slate-200 bg-slate-50 text-slate-700 focus:ring-primary/10 hover:bg-white"
                           }`}
                         >
@@ -526,9 +528,9 @@ export default function ChipsPage() {
 
 function SummaryPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[1.1rem] border border-[#273241] bg-[#0B111A]/82 px-3 py-3 text-center shadow-[inset_0_1px_0_rgba(239,244,255,0.08)] backdrop-blur">
-      <p className="text-lg font-black tracking-tight text-[#EFF4FF]">{value}</p>
-      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#EFF4FF]/72">{label}</p>
+    <div className="rounded-[1.1rem] border border-[#354154] bg-[#0B111A]/95 px-3 py-3 text-center shadow-[inset_0_1px_0_rgba(239,244,255,0.1)] backdrop-blur">
+      <p className="text-xl font-black tracking-tight text-white">{value}</p>
+      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#DCE6F3]">{label}</p>
     </div>
   );
 }
