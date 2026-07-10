@@ -295,6 +295,48 @@ La vista pública normal quedó afinada para separar mejor la experiencia de ayu
 
 La experiencia pública sigue dependiendo de un chip activo y asignado. La mejora de W6.10E solo reorganiza presentación y jerarquía visual.
 
+## W6.10E-FIX - Simplificación de Vista Pública y Capas Especiales
+
+Se aplicó un ajuste visual adicional para reducir redundancia en la vista médico / paramédico.
+
+### Qué cambió
+
+- se eliminó la tarjeta grande de "Resumen clínico" porque repetía sangre, edad, sexo y contacto rápido ya visibles en la ficha superior
+- la vista paramédico ahora pasa directo a bloques clínicos útiles
+- se agregó un bloque condicional de "Asistencia especial y retorno seguro" cuando existen datos relevantes
+- el bloque usa lenguaje prudente y no inventa diagnósticos
+- la vista ciudadano se mantiene simple y no se sobrecarga
+
+### Criterios de asistencia especial
+
+El bloque aparece cuando existe al menos uno de estos campos:
+
+- `hasCognitiveImpairment`
+- `hasWanderingRisk`
+- `isNonVerbal`
+- `communicationAssistance`
+- `safeReturnInstructions`
+
+### Lenguaje cuidadoso
+
+- "Deterioro cognitivo reportado" en lugar de afirmar un diagnóstico específico
+- "Riesgo de desorientación"
+- "Comunicación asistida"
+- "Instrucciones de retorno seguro"
+
+### Qué no cambió
+
+- no cambió `Chip.shortCode` como puerta de acceso
+- no cambió el helper de resolución pública
+- no cambió la seguridad de W6.04
+- no se tocaron chips, activación, pedidos, productos ni inventario
+- no se cambió el schema
+- no hubo migración
+
+### Compatibilidad
+
+La pantalla sigue dependiendo de un chip activo y asignado. La simplificación solo ajusta jerarquía visual y claridad clínica.
+
 ## Riesgos y Decisiones Pendientes
 
 - si se normalizan tablas médicas o no

@@ -935,6 +935,47 @@ export default function EmergencyPage() {
               <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3"><div className="flex items-start gap-2"><Activity className="mt-0.5 h-4 w-4 text-blue-600" /><div><p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p><p className="text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p></div></div></div>
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3"><div className="flex items-start gap-2"><Pill className="mt-0.5 h-4 w-4 text-emerald-600" /><div><p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p><p className="text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p></div></div></div>
             </div>
+
+            {(profile.isMinor || (profile.age !== null && profile.age >= 60) || profile.vulnerabilityStatus?.hasCognitiveImpairment || profile.vulnerabilityStatus?.hasWanderingRisk || profile.vulnerabilityStatus?.isNonVerbal || profile.vulnerabilityStatus?.communicationAssistance || profile.safeReturn?.instructions) && (
+              <div className="bg-white border border-slate-200 rounded-[2rem] p-5 md:p-6 shadow-lg space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Asistencia especial y retorno seguro</h3>
+                    <p className="text-sm text-slate-600 font-medium mt-1">Solo aparece cuando hay información relevante para apoyo clínico o acompañamiento.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.isMinor && <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-blue-700">Menor de edad</span>}
+                    {!profile.isMinor && profile.age !== null && profile.age >= 60 && <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-slate-700">Adulto mayor</span>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {profile.vulnerabilityStatus?.hasWanderingRisk && (
+                    <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-orange-700">Riesgo de desorientación</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">Mantén supervisión y evita dejar a la persona sola sin apoyo cercano.</p>
+                    </div>
+                  )}
+                  {profile.vulnerabilityStatus?.hasCognitiveImpairment && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Deterioro cognitivo reportado</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">Puede requerir instrucciones simples y acompañamiento de un contacto responsable.</p>
+                    </div>
+                  )}
+                  {(profile.vulnerabilityStatus?.isNonVerbal || profile.vulnerabilityStatus?.communicationAssistance) && (
+                    <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-violet-700">Comunicación asistida</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">{profile.vulnerabilityStatus?.communicationAssistance || "Puede requerir apoyo para comunicarse."}</p>
+                    </div>
+                  )}
+                  {profile.safeReturn?.instructions && (
+                    <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 md:col-span-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">Instrucciones de retorno seguro</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900 whitespace-pre-wrap">{profile.safeReturn.instructions}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
