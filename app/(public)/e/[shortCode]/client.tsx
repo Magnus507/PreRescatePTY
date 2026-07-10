@@ -154,48 +154,6 @@ function PublicContextBadges({ profile }: { profile: EmergencyProfile }) {
   );
 }
 
-function PublicMedicalAlerts({ profile }: { profile: EmergencyProfile }) {
-  const hasAdditionalNotes = !!profile.publicMedicalExtras?.emergencyInstructions;
-
-  return (
-    <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg space-y-4">
-      <div className="flex items-start gap-3">
-        <div className="h-11 w-11 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
-          <AlertTriangle className="h-5 w-5 text-red-600" />
-        </div>
-        <div>
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Alertas médicas esenciales</h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Información clínica principal para atención inmediata</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <PublicAlertCard
-          tone="red"
-          title="Alergias"
-          value={profile.allergies && profile.allergies.trim() ? profile.allergies : "No reportadas"}
-          note={profile.allergies && !profile.allergies.toLowerCase().includes("no report") ? "Atención crítica" : undefined}
-        />
-        <PublicAlertCard
-          tone="blue"
-          title="Condiciones"
-          value={profile.chronicConditions && profile.chronicConditions.trim() ? profile.chronicConditions : "No reportadas"}
-        />
-        <PublicAlertCard
-          tone="green"
-          title="Medicamentos"
-          value={profile.medications && profile.medications.trim() ? profile.medications : "No reportados"}
-        />
-      </div>
-      {hasAdditionalNotes && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Notas críticas</p>
-          <p className="text-sm font-semibold text-slate-900 whitespace-pre-wrap">{profile.publicMedicalExtras?.emergencyInstructions}</p>
-        </div>
-      )}
-    </section>
-  );
-}
-
 function PublicAlertCard({ tone, title, value, note }: { tone: "red" | "blue" | "green" | "amber"; title: string; value: string; note?: string }) {
   const palette: Record<string, string> = {
     red: "border-red-200 bg-red-50 text-red-700",
@@ -320,6 +278,12 @@ function PublicMedicalExtrasBlock({ profile }: { profile: EmergencyProfile }) {
 }
 
 function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
+  const subtitle = profile.isMinor
+    ? "Contactar responsable, tutor o cuidador si hace falta."
+    : profile.vulnerabilityStatus?.hasCognitiveImpairment || profile.vulnerabilityStatus?.hasWanderingRisk
+      ? "Contactar cuidador o responsable."
+      : "Contactos de emergencia registrados.";
+
   if (!profile.emergencyContacts.length) {
     return (
       <section className="bg-white border border-slate-200 rounded-[2.5rem] p-5 md:p-6 shadow-lg">
@@ -336,29 +300,49 @@ function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
         </div>
         <div>
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Contactos de rescate</h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Contactar responsable, tutor o cuidador si hace falta</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">{subtitle}</p>
         </div>
       </div>
       <div className="space-y-3">
         {profile.emergencyContacts.map((contact, idx) => (
-          <div key={idx} className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-black uppercase tracking-tight text-slate-900">{contact.fullName}</p>
-                  {idx === 0 && (
-                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                      Contacto principal
+          <div key={idx} className="rounded-[2rem] border border-emerald-100 bg-white p-4 md:p-5 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="h-14 w-14 rounded-[1.35rem] bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center font-black text-lg shadow-lg shadow-emerald-100 flex-shrink-0">
+                  {(contact.fullName?.[0] || "C").toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-base md:text-lg font-black uppercase tracking-tight text-slate-900 break-words">{contact.fullName}</p>
+                    {idx === 0 && (
+                      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                        Contacto principal
+                      </span>
+                    )}
+                  </div>
+                  {contact.relationship && (
+                    <span className="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                      {contact.relationship}
                     </span>
                   )}
+                  <p className="mt-3 text-sm font-semibold text-slate-700 break-words">{contact.phone}</p>
                 </div>
-                <p className="text-xs uppercase tracking-widest text-slate-500 mt-1">{contact.relationship}</p>
-                <p className="text-sm font-semibold text-slate-700 mt-2">{contact.phone}</p>
               </div>
-              <a href={`tel:${sanitizeTelPhone(contact.phone)}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                <Phone className="h-4 w-4" />
-                Llamar
-              </a>
+              <div className="grid grid-cols-2 gap-2 md:min-w-[220px]">
+                <a href={`tel:${sanitizeTelPhone(contact.phone)}`} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-emerald-700 transition-all">
+                  <Phone className="h-4 w-4" />
+                  Llamar
+                </a>
+                <a
+                  href={`https://wa.me/${normalizeWhatsAppPhone(contact.phone)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-4 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-[#128C7E] transition-all"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
+              </div>
             </div>
           </div>
         ))}
@@ -585,38 +569,21 @@ function PatientMedicalCard({ profile, isParamedic, showAssistanceBadges = true 
             </div>
           </div>
 
-          {isParamedic && (
-            <div className="mt-4 space-y-2 md:hidden">
-              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 text-red-600" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-red-700">Alergias</p>
-                    <p className="text-sm font-bold text-slate-900 break-words">{profile.allergies || "No reportado"}</p>
-                    {hasAllergies && <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-red-600">• Atención crítica</p>}
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
-                <div className="flex items-start gap-2">
-                  <Activity className="mt-0.5 h-4 w-4 text-blue-600" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p>
-                    <p className="text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-                <div className="flex items-start gap-2">
-                  <Pill className="mt-0.5 h-4 w-4 text-emerald-600" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p>
-                    <p className="text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p>
-                  </div>
-                </div>
-              </div>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-red-700">Alergias</p>
+              <p className="mt-1 text-sm font-bold text-slate-900 break-words">{profile.allergies || "No reportado"}</p>
+              {hasAllergies && <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-red-600">Atención crítica</p>}
             </div>
-          )}
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Condiciones</p>
+              <p className="mt-1 text-sm font-bold text-slate-900 break-words">{profile.chronicConditions || "No reportado"}</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Medicamentos</p>
+              <p className="mt-1 text-sm font-bold text-slate-900 break-words">{profile.medications || "No reportado"}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1024,8 +991,6 @@ export default function EmergencyPage() {
               </div>
             </div>
 
-            <PublicMedicalAlerts profile={profile} />
-
             <PublicSupportBlock profile={profile} />
 
             {/* Emergency contacts — citizen view */}
@@ -1096,8 +1061,6 @@ export default function EmergencyPage() {
                 </div>
               </div>
             </div>
-
-            <PublicMedicalAlerts profile={profile} />
 
             <PublicSupportBlock profile={profile} />
 

@@ -200,6 +200,31 @@ Reglas a conservar:
 
 - auditoría final visual y técnica
 
+## W6.10F-UX7 - Alertas integradas y contactos de rescate final
+
+### Qué se conserva
+
+- la ficha superior sigue siendo el lugar principal para ver sangre, edad, menor de edad, sexo, alergias, condiciones y medicamentos
+- la vista pública mantiene la base clínica visible en una sola lectura
+
+### Qué se elimina
+
+- se elimina el bloque inferior duplicado de `Alertas médicas esenciales`
+- no se repiten alergias, condiciones ni medicamentos en tarjetas separadas debajo de la ficha superior
+
+### Contactos de rescate
+
+- queda un único bloque de `Contactos de rescate`
+- se recupera una UX visual más fuerte con tarjeta amplia, avatar/inicial, nombre destacado, badge de relación y acciones claras
+- se muestran botones de `Llamar` y `WhatsApp` cuando aplica
+
+### Alcance técnico
+
+- no cambió el schema
+- no cambió W6.04
+- no cambió el acceso público por `Chip.shortCode`
+- no se tocaron migraciones ni helpers de resolución pública
+
 ## W6.10C - Pantalla Pública Inicial
 
 La pantalla pública inicial se simplificó para que la primera decisión sea:
