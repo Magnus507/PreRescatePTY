@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { 
   AlertCircle, CheckCircle, 
   ChevronRight, Building2, Shield, ShieldCheck, Plus, Zap, Heart, 
-  Activity, ArrowUpRight, Smartphone, Bell, Loader2, ExternalLink, ShieldAlert, Truck,
+  Activity, ArrowUpRight, Smartphone, Bell, Loader2, ExternalLink, ShieldAlert,
   Camera
 } from "lucide-react";
 
@@ -148,8 +148,6 @@ export default function DashboardPage() {
   const unprotectedProfiles = allProfiles.filter((profile) => (profile.assignedChips?.length || 0) === 0);
   const activeChips = state.activeChipsCount || 0;
   const capacityTotal = state.maxChipsAllocated || 0;
-  const availableChips = Math.max(capacityTotal - activeChips, 0);
-  const pendingChips = state.physicalChipsInTransitCount || 0;
   const hasActiveChip = protectedProfiles.length > 0;
   const primaryCtaHref = unprotectedProfiles.length > 0
     ? "/dashboard/chips?activate=true"
@@ -169,12 +167,11 @@ export default function DashboardPage() {
       <section className="space-y-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">Inicio</p>
             <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase text-slate-900 dark:text-white">
-              Resumen operativo
+              Inicio
             </h1>
             <p className="max-w-2xl text-sm md:text-base text-muted-foreground font-medium">
-              Resumen de tus perfiles, dispositivos y acciones pendientes.
+              Gestiona tus perfiles, dispositivos y protección PreRescatePTY.
             </p>
           </div>
 
@@ -200,69 +197,31 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2 rounded-[2.5rem] border border-border bg-gradient-to-br from-primary/5 via-background to-background p-6 md:p-8 shadow-sm">
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-                    <Shield className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Estado general</p>
-                    <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                      {state.isInactive ? "Cuenta inactiva" : "Cuenta activa"}
-                    </h2>
-                  </div>
+        <div className="rounded-[2.5rem] border border-border bg-gradient-to-br from-primary/5 via-background to-background p-6 md:p-8 shadow-sm">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                  <Shield className="h-6 w-6" />
                 </div>
-                <p className="max-w-2xl text-sm text-muted-foreground font-medium leading-relaxed">
-                  {state.isInactive
-                    ? "Tu cuenta sigue lista para activarse. Revisa tus perfiles y completa la vinculación de chip cuando estés listo."
-                    : "Tu cuenta está operativa. Revisa qué perfiles ya están protegidos y cuáles todavía esperan chip."}
-                </p>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Protección</p>
+                  <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    {state.isInactive ? "Cuenta lista para activar" : "Cuenta activa y protegida"}
+                  </h2>
+                </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[460px]">
-                <MetricPill label="Perfiles médicos" value={allProfiles.length} />
-                <MetricPill label="Perfiles protegidos" value={protectedProfiles.length} />
-                <MetricPill label="Perfiles sin chip" value={unprotectedProfiles.length} />
-                <MetricPill label="Chips activos" value={activeChips} />
-                <MetricPill label="Chips disponibles" value={availableChips} />
-                <MetricPill label="Pendientes de activar" value={pendingChips} />
-                <MetricPill label="Capacidad de cuenta" value={capacityTotal} />
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[2.5rem] border border-border bg-card p-6 md:p-8 shadow-sm flex flex-col justify-between gap-6">
-            <div className="space-y-3">
-              <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-                <Zap className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Activación rápida</p>
-                <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                  ¿Ya tienes un código?
-                </h2>
-                <p className="mt-2 text-sm text-muted-foreground font-medium leading-relaxed">
-                  Activa tu chip y vincúlalo a un perfil médico.
-                </p>
-              </div>
+              <p className="max-w-2xl text-sm text-muted-foreground font-medium leading-relaxed">
+                {state.isInactive
+                  ? "Activa tu chip o crea tu primer perfil médico para comenzar."
+                  : "Revisa tus perfiles, dispositivos y el siguiente paso más útil para tu cuenta."}
+              </p>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <Link
-                href="/dashboard/chips?activate=true"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.01] active:scale-95"
-              >
-                Activar chip
-              </Link>
-              <Link
-                href="/dashboard/compras"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-3.5 text-sm font-black text-slate-700 dark:text-slate-200 transition-all hover:border-primary/30 hover:text-primary"
-              >
-                Comprar chip
-              </Link>
+            <div className="flex flex-wrap gap-3">
+              <MetricPill label="Perfiles médicos" value={allProfiles.length} />
+              <MetricPill label="Chips activos" value={activeChips} />
+              <MetricPill label="Capacidad de cuenta" value={capacityTotal} />
             </div>
           </div>
         </div>
@@ -301,47 +260,24 @@ export default function DashboardPage() {
       )}
 
       {state.isInactive && (
-        <div className="p-1.5 rounded-[3rem] bg-gradient-to-r from-indigo-500 via-primary to-emerald-500 animate-in zoom-in-95 duration-500 shadow-2xl shadow-primary/20">
-           <div className="bg-slate-950 rounded-[2.8rem] p-10 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
-              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-              <div className="relative z-10 space-y-4 max-w-xl text-center md:text-left">
-                 <div className="flex items-center justify-center md:justify-start gap-3">
-                    <span className="bg-white/10 border border-white/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-blue-300">Bienvenido a PreRescue ID</span>
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                 </div>
-                 <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[1.1]">Activa tu <span className="text-blue-400">Escudo Digital</span> hoy mismo.</h2>
-                 <p className="text-slate-400 text-lg font-medium leading-relaxed">
-                    Tu cuenta está lista, solo falta elegir el combo que mejor se adapte a ti o a tu familia para comenzar a salvar vidas.
-                 </p>
-              </div>
-              <Link 
-                href="/comprar" 
-                className="relative z-10 group bg-white text-slate-950 px-10 py-6 rounded-[2rem] font-black text-lg shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
-              >
-                Ver Combos de Protección
-                <ArrowUpRight className="h-6 w-6 group-hover:rotate-45 transition-transform" />
-              </Link>
-           </div>
-        </div>
-      )}
-
-      {state.physicalChipsInTransitCount > 0 && (
-        <div className="p-6 rounded-[2rem] border border-indigo-100 bg-indigo-50 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
-              <Truck className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-700">Dispositivos en tránsito</p>
-              <h3 className="text-xl font-black tracking-tight text-indigo-950">Hardware en camino</h3>
-              <p className="text-sm font-medium text-indigo-900/70 mt-1">
-                Tienes {state.physicalChipsInTransitCount} dispositivo(s) físicos vinculados a tu cuenta siendo procesados para envío.
+        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Protección</p>
+              <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                Tu cuenta está lista para activar
+              </h2>
+              <p className="text-sm text-muted-foreground font-medium leading-relaxed max-w-2xl">
+                Activa tu chip y completa la información médica cuando quieras comenzar.
               </p>
             </div>
+            <Link
+              href="/dashboard/chips?activate=true"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-sm font-black text-white"
+            >
+              Activar chip
+            </Link>
           </div>
-          <span className="px-4 py-2 rounded-2xl bg-indigo-200/60 text-indigo-700 text-[10px] font-black uppercase tracking-widest w-fit">
-            Logística activa
-          </span>
         </div>
       )}
 
@@ -359,8 +295,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
-      {/* Profiles & Stats follow... */}
 
       <section className="space-y-6">
         <div className="flex items-end justify-between gap-4">
@@ -397,10 +331,10 @@ export default function DashboardPage() {
                   <div key={profile.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background p-4">
                     <div className="space-y-1">
                       <p className="font-black text-sm text-slate-900 dark:text-white">{fullName}</p>
-                      <div className="flex flex-wrap gap-2">
-                        <BadgePill label={hasChip ? "Protegido" : "Sin chip"} tone={hasChip ? "success" : "warning"} />
-                        {profile.bloodType && <BadgePill label={profile.bloodType} tone="neutral" />}
-                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {hasChip ? "Protegido" : "Sin chip"}
+                        {profile.bloodType ? ` · ${profile.bloodType}` : ""}
+                      </p>
                     </div>
                     <Link href="/dashboard/perfiles-medicos" className="text-xs font-black text-primary">
                       Gestionar
@@ -423,9 +357,11 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <MiniStat label="Chips activos" value={activeChips} />
-              <MiniStat label="Chips disponibles" value={availableChips} />
-              <MiniStat label="Pendientes de activar" value={pendingChips} />
               <MiniStat label="Capacidad de cuenta" value={capacityTotal} />
+              <MiniStat label="Sin chip" value={unprotectedProfiles.length} />
+              <Link href="/dashboard/pedidos" className="rounded-2xl border border-dashed border-border/70 bg-background px-4 py-3 text-sm font-black text-primary flex items-center justify-center">
+                Ver mis pedidos
+              </Link>
             </div>
           </div>
         </div>
@@ -436,12 +372,12 @@ export default function DashboardPage() {
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Mis dispositivos</p>
           <h2 className="mt-2 text-2xl font-black tracking-tight">Chips y estados</h2>
           <p className="mt-2 text-sm text-muted-foreground font-medium leading-relaxed">
-            Activos, disponibles y pendientes de activar con datos reales de tu cuenta.
+            Revisa tus chips activos y dispositivos vinculados.
           </p>
           <div className="mt-5 grid grid-cols-3 gap-3">
             <MiniStat label="Activos" value={activeChips} />
-            <MiniStat label="Disponibles" value={availableChips} />
-            <MiniStat label="Pendientes" value={pendingChips} />
+            <MiniStat label="Cuenta" value={capacityTotal} />
+            <MiniStat label="Perfiles" value={allProfiles.length} />
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/dashboard/chips" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-black text-white">
@@ -457,25 +393,20 @@ export default function DashboardPage() {
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Ficha pública</p>
           <h2 className="mt-2 text-2xl font-black tracking-tight">Acceso público</h2>
           <p className="mt-2 text-sm text-muted-foreground font-medium leading-relaxed">
-            {hasActiveChip
-              ? "Revisa o comparte la ficha pública de los perfiles protegidos."
-              : "Necesitas un chip activo para tener ficha pública."}
+            Los perfiles con chip activo tienen ficha pública disponible.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/dashboard/perfiles-medicos" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-black text-white">
               Ver ficha pública
-            </Link>
-            <Link href="/dashboard/perfiles-medicos" className="inline-flex items-center gap-2 rounded-2xl border border-border px-4 py-3 text-sm font-black text-slate-700 dark:text-slate-200">
-              Copiar enlace
             </Link>
           </div>
         </div>
 
         <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Tienda</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight">Productos y combos</h2>
+          <h2 className="mt-2 text-2xl font-black tracking-tight">Tienda</h2>
           <p className="mt-2 text-sm text-muted-foreground font-medium leading-relaxed">
-            Compra chip, sticker, accesorios y combos dentro de la tienda única.
+            Compra stickers, chips o accesorios disponibles.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/dashboard/compras" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white dark:bg-white dark:text-slate-900">
@@ -771,19 +702,5 @@ function InfoCard({ title, value, description }: { title: string; value: number;
       <p className="mt-2 text-4xl font-black tracking-tighter text-slate-900 dark:text-white">{value}</p>
       <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">{description}</p>
     </div>
-  );
-}
-
-function BadgePill({ label, tone }: { label: string; tone: "success" | "warning" | "neutral" }) {
-  const toneClasses = {
-    success: "bg-emerald-50 text-emerald-700",
-    warning: "bg-amber-50 text-amber-700",
-    neutral: "bg-slate-100 text-slate-600",
-  };
-
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${toneClasses[tone]}`}>
-      {label}
-    </span>
   );
 }

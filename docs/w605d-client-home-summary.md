@@ -1,47 +1,36 @@
-# W6.05D - Rediseño del Inicio / Resumen Operativo del Cliente
+# W6.05D - Rediseño del Inicio / Resumen del Cliente
 
 ## 1. Alcance
 
-Esta fase reorganiza la pantalla Inicio del panel cliente para que funcione como un tablero operativo claro con datos ya existentes.
+Esta fase simplifica la pantalla Inicio del panel cliente para que vuelva a sentirse rápida, clara y fácil de leer.
 
 ## 2. Cambios aplicados
 
-- Se redefinió el encabezado para comunicar `Inicio` y `Resumen operativo`.
-- Se priorizó un CTA principal contextual según el estado de la cuenta:
-  - activar chip
-  - ver ficha pública
-  - ir a tienda
-- Se construyó un bloque de estado general con métricas claras:
-  - perfiles médicos
-  - perfiles protegidos
-  - perfiles sin chip
-  - chips activos
-  - chips disponibles
-  - pendientes de activar
-  - capacidad de cuenta
-- Se separó la vista en secciones operativas:
-  - perfiles médicos
-  - dispositivos / chips
-  - activación rápida
-  - ficha pública
-  - tienda
-  - pedidos recientes
-- Se evitó el texto ambiguo `Límite total` en la home.
+- Se simplificó el encabezado para mostrar `Inicio` con un subtítulo breve y directo.
+- Se redujo la cantidad de métricas visibles en la parte superior.
+- Se mantuvo un CTA principal contextual sin convertir la home en un panel técnico.
+- Se conservaron las tarjetas principales:
+  - Perfiles médicos
+  - Mis dispositivos
+  - Activar chip
+  - Tienda
+  - Pedidos como acceso secundario
+- Se retiró la ficha pública como bloque grande independiente.
+- Se evitó el ruido visual de demasiadas badges, métricas y explicaciones.
 - Se mantuvieron rutas existentes y no se tocó la lógica funcional de chips, tienda o pedidos.
 
 ## 3. Decisiones de UX
 
-- El inicio quedó arriba con estado general y CTA principal.
-- Las métricas fueron convertidas en tarjetas legibles para escritorio y móvil.
+- El inicio volvió a una lectura más simple para cliente final.
+- El detalle operativo quedó para las páginas internas.
 - La activación se separó de la compra.
-- La ficha pública se explicó como dependiente de un chip activo.
-- La tienda y los pedidos quedaron como acciones claras de salida.
+- La ficha pública quedó como un mensaje sutil dentro del contexto, no como bloque principal.
+- La tienda y los pedidos siguen accesibles sin saturar la home.
 
 ## 4. Pendientes / inferencias
 
-- `Capacidad de cuenta` usa el dato de capacidad existente del backend, pero conviene seguir revisando si la fórmula refleja exactamente la capacidad operativa esperada.
-- La separación visual de estados de dispositivos sigue dependiendo de lo que exponga el endpoint actual.
-- `Copiar enlace` queda como CTA visualmente preparado; si el flujo final requiere una acción real distinta, se ajustará en una etapa posterior.
+- `Capacidad de cuenta` se conserva como métrica útil, pero el cálculo operativo seguirá revisándose en iteraciones posteriores.
+- El detalle de estados de dispositivos, perfiles y pedidos queda mejor atendido en sus páginas internas.
 
 ## 5. Confirmaciones de alcance
 
@@ -57,3 +46,7 @@ Esta fase reorganiza la pantalla Inicio del panel cliente para que funcione como
 - No se tocó mascotas.
 - No se tocó KLFUFPK8.
 
+## 6. Revisión visual
+
+- Esta versión fue simplificada tras revisión visual para dar una sensación más clara y menos densa.
+- El objetivo es que el cliente entienda lo esencial de un vistazo y siga a las páginas internas para el detalle.
