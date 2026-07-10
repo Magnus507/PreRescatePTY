@@ -333,9 +333,9 @@ function HomeCard({
   className?: string;
 }) {
   const shellClassName = variant === "device"
-    ? "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(15,20,25,0.96)_100%)] text-[#EFF4FF] shadow-[0_20px_55px_-28px_rgba(0,0,0,0.72)]"
+    ? "border-white/10 bg-[linear-gradient(180deg,rgba(10,17,25,0.98)_0%,rgba(13,20,29,0.98)_55%,rgba(15,20,25,0.96)_100%)] text-[#EFF4FF] shadow-[0_20px_55px_-28px_rgba(0,0,0,0.72)]"
     : variant === "shop"
-      ? "border-white/10 bg-[linear-gradient(135deg,rgba(5,7,13,0.96)_0%,rgba(15,20,25,0.96)_55%,rgba(218,26,33,0.18)_100%)] text-[#EFF4FF] shadow-[0_24px_60px_-30px_rgba(0,0,0,0.78)]"
+      ? "border-white/10 bg-[linear-gradient(135deg,rgba(5,7,13,0.98)_0%,rgba(12,18,26,0.96)_55%,rgba(218,26,33,0.16)_100%)] text-[#EFF4FF] shadow-[0_24px_60px_-30px_rgba(0,0,0,0.78)]"
       : "border-border bg-card text-foreground";
 
   const eyebrowClassName = variant === "light"
@@ -354,7 +354,7 @@ function HomeCard({
     ? "border border-border bg-background text-slate-700 dark:text-slate-200 hover:border-primary/30 hover:text-primary"
     : variant === "shop"
       ? "bg-[#DA1A21] text-white shadow-[0_12px_28px_-16px_rgba(218,26,33,0.9)] hover:bg-[#B9141B]"
-      : "bg-white/92 text-slate-900 hover:bg-white";
+      : "border-white/14 bg-[#EFF4FF] text-slate-950 shadow-[0_12px_28px_-18px_rgba(239,244,255,0.2)] hover:bg-white";
 
   return (
     <div className={`group relative overflow-hidden rounded-[1.35rem] border p-4 shadow-sm flex flex-col justify-between gap-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.84)] focus-within:-translate-y-0.5 focus-within:shadow-[0_28px_65px_-34px_rgba(0,0,0,0.84)] motion-reduce:transition-none sm:p-5 md:p-6 ${className} ${shellClassName}`}>
@@ -377,7 +377,7 @@ function HomeCard({
         <div className="flex items-start justify-between gap-3">
           <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${eyebrowClassName}`}>{title}</p>
           {badge && (
-            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${variant === "shop" ? "bg-white/10 text-white ring-1 ring-white/10" : variant === "device" ? "bg-emerald-500/16 text-emerald-200 ring-1 ring-emerald-300/20" : "bg-slate-100 text-slate-600 ring-1 ring-border"}`}>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${variant === "shop" ? "bg-white/10 text-white ring-1 ring-white/10" : variant === "device" ? "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-200/25 shadow-[0_8px_20px_-18px_rgba(16,185,129,0.6)]" : "bg-slate-100 text-slate-600 ring-1 ring-border"}`}>
               {badge}
             </span>
           )}
