@@ -527,13 +527,13 @@ export default function FamiliaPage() {
                 <p className="text-xs text-muted-foreground font-medium">Completa los datos que podrían ayudar en una emergencia.</p>
               </div>
             </div>
-            <form onSubmit={handleAdd} className="space-y-6">
+            <form onSubmit={handleAdd} className="space-y-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
               {addError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{addError}</p>}
               <MedicalProfileForm
                 form={addForm}
                 onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val }))}
               />
-              <div className="sticky bottom-[7.25rem] z-10 -mx-1 rounded-[1.35rem] border border-border/70 bg-background/95 p-3 shadow-[0_16px_38px_-22px_rgba(15,23,42,0.34)] backdrop-blur-md">
+              <div className="mt-2 rounded-[1.35rem] border border-border/70 bg-background/95 p-3 shadow-[0_16px_38px_-22px_rgba(15,23,42,0.34)] backdrop-blur-md">
                 <div className="flex gap-3">
                   <button
                     type="button"
@@ -603,13 +603,13 @@ export default function FamiliaPage() {
                 <p className="text-xs text-muted-foreground font-medium">Actualiza los datos de {editProfile.firstName}.</p>
               </div>
             </div>
-            <form onSubmit={handleEdit} className="space-y-6">
+            <form onSubmit={handleEdit} className="space-y-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
               {editError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{editError}</p>}
               <MedicalProfileForm
                 form={editForm}
                 onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val }))}
               />
-              <div className="sticky bottom-[7.25rem] z-10 -mx-1 rounded-[1.35rem] border border-border/70 bg-background/95 p-3 shadow-[0_16px_38px_-22px_rgba(15,23,42,0.34)] backdrop-blur-md">
+              <div className="mt-2 rounded-[1.35rem] border border-border/70 bg-background/95 p-3 shadow-[0_16px_38px_-22px_rgba(15,23,42,0.34)] backdrop-blur-md">
                 <div className="flex gap-3">
                   <button
                     type="button"
