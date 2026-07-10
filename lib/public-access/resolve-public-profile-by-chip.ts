@@ -10,13 +10,24 @@ export type PublicProfileResolutionReason =
   | "profile_not_public"
   | "unsupported_context";
 
+type ResolvedProfile = Prisma.ProfileGetPayload<{
+  include: {
+    contacts: { include: { contact: true } };
+    organizationMembers: {
+      include: {
+        organization: true;
+        location: true;
+        departmentRel: true;
+      };
+    };
+  };
+}>;
+
 type ResolvedChip = Prisma.ChipGetPayload<{
   include: {
     assignedProfile: {
       include: {
-        contacts: {
-          include: { contact: true };
-        };
+        contacts: { include: { contact: true } };
         organizationMembers: {
           include: {
             organization: true;
@@ -28,7 +39,6 @@ type ResolvedChip = Prisma.ChipGetPayload<{
     };
   };
 }>;
-type ResolvedProfile = NonNullable<ResolvedChip["assignedProfile"]>;
 
 export type PublicProfileResolution =
   | {
