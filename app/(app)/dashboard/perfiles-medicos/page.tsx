@@ -533,7 +533,25 @@ export default function FamiliaPage() {
                 form={addForm}
                 onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val }))}
               />
-              {/* No parent buttons here — wizard handles submit internally */}
+              <div className="sticky bottom-[7.25rem] z-10 -mx-1 rounded-[1.35rem] border border-border/70 bg-background/95 p-3 shadow-[0_16px_38px_-22px_rgba(15,23,42,0.34)] backdrop-blur-md">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdd(false)}
+                    className="flex-1 rounded-[1.05rem] border border-border bg-background px-4 py-3.5 text-sm font-black text-slate-700 transition-all duration-200 ease-out hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addSaving}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-[1.05rem] bg-primary px-4 py-3.5 text-sm font-black text-white shadow-[0_16px_32px_-18px_rgba(218,26,33,0.9)] transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-[0_20px_38px_-20px_rgba(218,26,33,1)] active:scale-[0.99] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EFF4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none"
+                  >
+                    {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Guardar
+                  </button>
+                </div>
+              </div>
             </form>
           </div>
 
@@ -591,7 +609,25 @@ export default function FamiliaPage() {
                 form={editForm}
                 onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val }))}
               />
-              {/* No parent buttons here — wizard handles submit internally */}
+              <div className="sticky bottom-[7.25rem] z-10 -mx-1 rounded-[1.35rem] border border-border/70 bg-background/95 p-3 shadow-[0_16px_38px_-22px_rgba(15,23,42,0.34)] backdrop-blur-md">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditProfile(null)}
+                    className="flex-1 rounded-[1.05rem] border border-border bg-background px-4 py-3.5 text-sm font-black text-slate-700 transition-all duration-200 ease-out hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editSaving}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-[1.05rem] bg-primary px-4 py-3.5 text-sm font-black text-white shadow-[0_16px_32px_-18px_rgba(218,26,33,0.9)] transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-[0_20px_38px_-20px_rgba(218,26,33,1)] active:scale-[0.99] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EFF4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none"
+                  >
+                    {editSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Guardar
+                  </button>
+                </div>
+              </div>
             </form>
           </div>
 
