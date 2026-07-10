@@ -21,7 +21,7 @@ const consumerNavItems = [
   { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
   { href: "/dashboard/perfiles-medicos", label: "Perfiles médicos", icon: UsersRound },
   { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
-  { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
+  { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
   { href: "/dashboard/pedidos", label: "Mis pedidos", icon: ReceiptText },
   { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
   { href: "/dashboard/configuracion", label: "Ajustes", icon: Settings },
@@ -147,7 +147,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     : [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
-        { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
+        { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
       ];
   // Mobile menu handled via lucide icons imported above (Menu/X)
 
@@ -235,7 +235,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                      <Package className="h-3.5 w-3.5" /> {!isSidebarCollapsed && "Pedidos"}
                   </Link>
                   {!isSidebarCollapsed && (
-                    <Link href="/dashboard/compras" className="flex items-center justify-center gap-2 py-4 rounded-[1.1rem] bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 text-white font-black text-xs hover:shadow-lg hover:shadow-slate-900/20 active:scale-95 transition-all duration-200 ease-out shadow-lg shadow-slate-900/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none">
+                    <Link href="/dashboard/tienda" className="flex items-center justify-center gap-2 py-4 rounded-[1.1rem] bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-900 dark:to-slate-800 text-white font-black text-xs hover:shadow-lg hover:shadow-slate-900/20 active:scale-95 transition-all duration-200 ease-out shadow-lg shadow-slate-900/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none">
                        <ShoppingCart className="h-3.5 w-3.5" /> Tienda
                     </Link>
                   )}
@@ -324,7 +324,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   { href: "/dashboard/perfiles-medicos", label: "Perfiles Médicos", icon: UsersRound },
                   { href: "/dashboard/chips", label: "Mis Dispositivos", icon: Cpu },
                   { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
-                  { href: "/dashboard/compras", label: "Tienda", icon: ShoppingCart },
+                  { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
                   { href: "/dashboard/pedidos", label: "Mis Pedidos", icon: Package },
                   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
                 ].map((item) => (
