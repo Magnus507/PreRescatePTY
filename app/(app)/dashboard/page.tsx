@@ -265,7 +265,7 @@ export default function DashboardPage() {
                 <p className="text-3xl font-black tracking-tighter text-foreground">{state.maxChipsAllocated}</p>
                 <div className="flex flex-col items-center">
                   <p className="text-[10px] font-black text-muted-foreground uppercase opacity-60">
-                     Límite Total
+                     Capacidad Total
                   </p>
                 </div>
               </div>
@@ -586,4 +586,3 @@ function ProfileCard({ profile, isOwn, color, badge, userEmail, isOrganization, 
     </Link>
   );
 }
-
