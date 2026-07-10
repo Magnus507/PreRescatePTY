@@ -156,24 +156,24 @@ export default function DashboardPage() {
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
       <section className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-12">
-          <div className="relative overflow-hidden rounded-[1.95rem] border border-white/12 bg-[linear-gradient(135deg,#04070C_0%,#0C1118_58%,rgba(218,26,33,0.18)_100%)] p-4 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.78)] sm:p-5 md:rounded-[2.25rem] md:p-7">
+          <div className="group relative overflow-hidden rounded-[1.9rem] border border-white/12 bg-[linear-gradient(135deg,#04070C_0%,#0C1118_54%,rgba(218,26,33,0.16)_86%,rgba(218,26,33,0.08)_100%)] p-4 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.78)] transition-all duration-300 ease-out hover:border-white/16 hover:shadow-[0_28px_72px_-36px_rgba(0,0,0,0.82)] focus-within:border-white/16 focus-within:shadow-[0_28px_72px_-36px_rgba(0,0,0,0.82)] sm:p-5 md:rounded-[2.25rem] md:p-7 motion-reduce:transition-none">
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -top-20 right-[-4rem] h-56 w-56 rounded-full bg-[#DA1A21]/14 blur-3xl" />
-              <div className="absolute bottom-[-6rem] left-[-3rem] h-52 w-52 rounded-full bg-sky-400/8 blur-3xl" />
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-              <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.9)_0.8px,transparent_0.8px)] [background-size:18px_18px]" />
+              <div className="absolute -top-20 right-[-4rem] h-56 w-56 rounded-full bg-[#DA1A21]/12 blur-3xl transition-opacity duration-300 ease-out group-hover:opacity-90" />
+              <div className="absolute bottom-[-6rem] left-[-3rem] h-52 w-52 rounded-full bg-sky-400/7 blur-3xl transition-opacity duration-300 ease-out group-hover:opacity-80" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="absolute inset-0 opacity-[0.055] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.9)_0.8px,transparent_0.8px)] [background-size:18px_18px]" />
             </div>
 
             <div className="relative grid gap-4 sm:gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
               <div className="space-y-4 sm:space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.35em] text-[#EFF4FF] backdrop-blur">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-[#0b1118]/72 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.3em] text-[#EFF4FF] backdrop-blur-md shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">
                     <span className="h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_16px_rgba(218,26,33,0.7)]" />
                     PreRescue ID
                   </div>
                   <button
                     onClick={refreshData}
-                    className="relative h-11 w-11 rounded-[1.05rem] border border-white/10 bg-white/6 text-[#EFF4FF]/75 backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none"
+                    className="relative h-11 w-11 rounded-[1.05rem] border border-white/10 bg-white/6 text-[#EFF4FF]/78 backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none"
                     aria-label="Actualizar panel"
                   >
                     <Bell className="mx-auto h-5 w-5" />
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                   <h1 className="max-w-xl text-3xl font-black leading-[1.02] tracking-tight text-[#EFF4FF] sm:text-4xl md:text-5xl">
                     {state.isInactive ? "Activa tu protección" : "Tu protección está lista"}
                   </h1>
-                  <p className="max-w-xl text-[13px] font-medium leading-6 text-[#EFF4FF]/86 sm:text-sm md:text-base md:leading-relaxed">
+                  <p className="max-w-xl text-[13px] font-medium leading-6 text-[#EFF4FF]/88 sm:text-sm md:text-base md:leading-relaxed">
                     Gestiona tus perfiles y dispositivos desde una experiencia más clara, cálida y lista para actuar.
                   </p>
                 </div>
@@ -220,10 +220,10 @@ export default function DashboardPage() {
               <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-3.5 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.68)] backdrop-blur-xl sm:p-4 md:rounded-[1.5rem] md:p-5">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3.5 sm:pb-4">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.32em] text-[#EFF4FF]/68">Vista rápida</p>
+                    <p className="inline-flex items-center rounded-full border border-white/12 bg-[#0b1118]/72 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.36em] text-[#EFF4FF]/92 shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">Vista rápida</p>
                     <h2 className="mt-1 text-[1.35rem] font-black tracking-tight text-[#EFF4FF] sm:text-2xl">Perfiles médicos</h2>
                   </div>
-                  <Link href="/dashboard/perfiles-medicos" className="rounded-full px-2 py-1 text-xs font-black uppercase tracking-widest text-[#EFF4FF]/70 transition-colors hover:bg-white/8 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118]">
+                  <Link href="/dashboard/perfiles-medicos" className="rounded-full border border-white/10 bg-white/6 px-2 py-1 text-xs font-black uppercase tracking-widest text-[#EFF4FF]/82 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118]">
                     Gestionar
                   </Link>
                 </div>
