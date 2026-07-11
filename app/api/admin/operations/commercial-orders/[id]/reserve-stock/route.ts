@@ -85,6 +85,18 @@ export async function POST(
       const alreadyReservedQty = await loadReservedQty(tx, order.id, productCode, productType);
       const remainingToReserve = Math.max(0, targetQty - alreadyReservedQty);
 
+      const availableQty = await tx.operationFinishedGoodUnit.count({
+        where: {
+          productCode,
+          productType,
+          status: "available",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: null,
+          dispatchItems: { none: {} },
+        },
+      });
+
       const units = await tx.operationFinishedGoodUnit.findMany({
         where: {
           productCode,
@@ -93,6 +105,7 @@ export async function POST(
           qaStatus: "passed",
           activationStatus: "not_activated",
           reservedOrderId: null,
+          dispatchItems: { none: {} },
         },
         orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
         take: remainingToReserve,
@@ -148,6 +161,8 @@ export async function POST(
         alreadyReservedQty,
         newlyReservedQty,
         requestedQty: targetQty,
+        availableQty,
+        targetReservationQty: remainingToReserve,
         productCode,
         missingQty,
         message:
