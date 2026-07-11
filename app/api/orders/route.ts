@@ -8,6 +8,7 @@ import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-o
 import {
   buildStoreOrderInternalNote,
   calculateStoreOrderFulfillment,
+  parseCustomerFulfillmentSummaryFromInternalNote,
   resolveStoreProductForOrder,
 } from "@/lib/orders/store-order-fulfillment";
 import { orderCreateSchema, validateOrThrow } from "@/lib/validations";
@@ -298,5 +299,10 @@ export async function GET(req: NextRequest) {
     }
   });
 
-  return NextResponse.json({ orders });
+  return NextResponse.json({
+    orders: orders.map((order) => ({
+      ...order,
+      customerFulfillmentSummary: parseCustomerFulfillmentSummaryFromInternalNote(order.adminReviewNotes),
+    })),
+  });
 }

@@ -717,7 +717,9 @@ export default function TiendaPage() {
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Método de pago</label>
                     <div className="w-full bg-slate-900 text-white rounded-2xl px-6 py-5 flex items-center gap-3">
                       <CreditCard className="h-4 w-4 text-[#DA1A21]" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Yappy Manual</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest leading-tight">
+                        Pago manual. Verás Yappy QR y datos bancarios al finalizar o desde Mis pedidos.
+                      </span>
                     </div>
                   </div>
                 </div>

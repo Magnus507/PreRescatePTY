@@ -199,6 +199,7 @@ export function buildStoreOrderInternalNote(
     `Stock/backorder calculado automáticamente.`,
     `Tiene backorder: ${summary.hasBackorder ? "sí" : "no"}.`,
     `Producción estimada: ${summary.productionEstimateDays} días.`,
+    `customerMessage:${summary.hasBackorder ? "Si tu pedido supera el stock disponible, producción estimada: 2 semanas." : "Disponible para pedido."}`,
     ...fragments,
   ].join("\n");
 }
@@ -212,4 +213,34 @@ export function buildOperationalStoreItemNotes(item: StoreOrderResolvedItem) {
     `mode:${item.fulfillmentMode}`,
     `estimateDays:${item.productionEstimateDays}`,
   ].join("|");
+}
+
+export type CustomerFulfillmentSummary = {
+  hasBackorder: boolean;
+  productionEstimateDays: number;
+  customerMessage: string | null;
+};
+
+export function parseCustomerFulfillmentSummaryFromInternalNote(
+  note: string | null | undefined
+): CustomerFulfillmentSummary | null {
+  if (!note) return null;
+
+  const hasBackorderMatch = note.match(/Tiene backorder:\s*(sí|si|no)\./i);
+  const productionEstimateMatch = note.match(/Producción estimada:\s*(\d+)\s*días\./i);
+  const customerMessageMatch = note.match(/customerMessage:(.+)/i);
+
+  const hasBackorder = hasBackorderMatch ? /^s/i.test(hasBackorderMatch[1]) : false;
+  const productionEstimateDays = productionEstimateMatch ? Number(productionEstimateMatch[1]) : 14;
+  const customerMessage = customerMessageMatch?.[1]?.trim() || null;
+
+  if (!hasBackorder && !customerMessageMatch && !productionEstimateMatch) {
+    return null;
+  }
+
+  return {
+    hasBackorder,
+    productionEstimateDays: Number.isFinite(productionEstimateDays) ? productionEstimateDays : 14,
+    customerMessage,
+  };
 }

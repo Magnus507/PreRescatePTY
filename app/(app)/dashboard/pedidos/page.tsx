@@ -56,6 +56,11 @@ interface Order {
   adminReviewStatus: string | null;
   adminReviewNotes: string | null;
   paymentProofUrl: string | null;
+  customerFulfillmentSummary?: {
+    hasBackorder: boolean;
+    productionEstimateDays: number;
+    customerMessage: string | null;
+  } | null;
   createdAt: string;
   items: OrderItem[];
   chipClaimTokens: ChipClaimToken[];
@@ -297,6 +302,25 @@ function PedidosContent() {
                     />
                   </div>
 
+                  {order.customerFulfillmentSummary && (
+                    <div className="rounded-[2rem] border border-sky-200 bg-sky-50/80 p-5 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                          <Truck className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-700">Producción estimada</p>
+                          <p className="text-sm font-bold text-slate-900 leading-relaxed">
+                            {order.customerFulfillmentSummary.customerMessage || "Si tu pedido supera el stock disponible, producción estimada: 2 semanas."}
+                          </p>
+                          <p className="text-[11px] font-medium text-slate-500 mt-1">
+                            Backorder visible · estimado {order.customerFulfillmentSummary.productionEstimateDays} días
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {(order.paymentStatus === "rejected" || order.adminReviewStatus === "rejected") && (
                     <RejectionReasonBox adminReviewNotes={order.adminReviewNotes} />
                   )}
@@ -340,11 +364,12 @@ function PedidosContent() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Comprobante Enviado</span>
                           </div>
                           <h3 className="text-lg font-black text-slate-900 tracking-tight">Pago en revisión</h3>
-                          <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                      <p className="text-[11px] text-slate-500 mt-1 font-medium">
                             Tu comprobante está siendo verificado por el equipo de PreRescate.
                           </p>
                         </div>
                       </div>
+                      <PaymentInstructions paymentConfig={paymentConfig} />
                       {order.paymentProofUrl && (
                         <div className="flex flex-wrap gap-3 pt-2">
                           <a
@@ -363,6 +388,12 @@ function PedidosContent() {
                           <p className="text-sm font-bold text-slate-900">{order.manualPaymentReference}</p>
                         </div>
                       )}
+                      <div className="rounded-2xl border border-emerald-200 bg-white/80 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700 mb-1">Comprobante</p>
+                        <p className="text-sm font-medium text-slate-600">
+                          Puedes volver a subir tu comprobante desde esta tarjeta o desde el mismo pedido si necesitas actualizarlo.
+                        </p>
+                      </div>
                     </div>
                   )}
 
