@@ -1,18 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { resolveImageSrc } from "@/lib/resolve-image-src";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
-  ShoppingCart, Store, Package, Loader2,
+  ShoppingCart, Package, Loader2,
   MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle,
   Upload, ArrowRight, UserRound, Plus, ShieldCheck, Cpu,
   Building2, ChevronDown, ChevronUp, Briefcase, Info
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { groupProductsByStoreSection, type StoreProductLike } from "@/lib/products/group-products-by-store-section";
+import { type StoreProductLike } from "@/lib/products/group-products-by-store-section";
 
 interface Product extends StoreProductLike {
   id: string;
@@ -102,6 +101,19 @@ function getStockMessage(product: Product | null | undefined, quantity: number) 
   return `Tenemos ${availableStock} disponibles. Las ${remaining} restantes entran a producción. Tiempo estimado: 2 semanas.`;
 }
 
+function normalizePrice(price: number | string | null | undefined) {
+  if (typeof price === "number" && Number.isFinite(price)) return price;
+  if (typeof price === "string") {
+    const normalized = Number(price);
+    return Number.isFinite(normalized) ? normalized : 0;
+  }
+  return 0;
+}
+
+function getProductTotal(product: Product | null | undefined, quantity: number) {
+  return normalizePrice(product?.price) * quantity;
+}
+
 // ─── Component ───────────────────────────────────────────────────
 export default function TiendaPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -109,6 +121,7 @@ export default function TiendaPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [catalogQuantities, setCatalogQuantities] = useState<Record<string, number>>({});
   const [showCheckout, setShowCheckout] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -151,19 +164,10 @@ export default function TiendaPage() {
   // Separate personal vs business products
   const personalProducts = products.filter((p) => !isBusinessProduct(p));
   const businessProducts = products.filter((p) => isBusinessProduct(p));
-  const personalGrouped = groupProductsByStoreSection(personalProducts, "public");
-  const primaryStickerProduct = useMemo(
-    () =>
-      personalProducts.find(
-        (product) =>
-          product.operationsProductCode === "PRP-FG-STICKER" ||
-          product.name === "Sticker PreRescatePTY"
-      ) || personalProducts[0] || null,
-    [personalProducts]
-  );
   const selectedStock = getStockValue(selectedProduct);
-  const selectedTotal = Number(selectedProduct?.price || 0) * quantity;
+  const selectedTotal = getProductTotal(selectedProduct, quantity);
   const selectedStockMessage = getStockMessage(selectedProduct, quantity);
+  const getCatalogQuantity = (productId: string) => catalogQuantities[productId] ?? 1;
 
   const loadProfiles = async (product?: Product) => {
     const target = product ?? null;
@@ -290,9 +294,7 @@ export default function TiendaPage() {
 
   const handleSelectProduct = (product: Product, options?: { resetQuantity?: boolean }) => {
     setSelectedProduct(product);
-    if (options?.resetQuantity !== false) {
-      setQuantity(1);
-    }
+    setQuantity(options?.resetQuantity === false ? getCatalogQuantity(product.id) : 1);
     setShowCheckout(true);
     setSelectedProfileId("");
     setProfileOptions([]);
@@ -313,9 +315,18 @@ export default function TiendaPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const updateQuantity = (nextQuantity: number) => {
+  const updateCatalogQuantity = (productId: string, nextQuantity: number) => {
     const normalized = Number.isFinite(nextQuantity) ? Math.min(99, Math.max(1, Math.floor(nextQuantity))) : 1;
-    setQuantity(normalized);
+    setCatalogQuantities((prev) => ({ ...prev, [productId]: normalized }));
+    if (selectedProduct?.id === productId) {
+      setQuantity(normalized);
+    }
+  };
+
+  const handleBusinessProductAction = () => {
+    setShowBusinessSection(true);
+    toast.info("Los pedidos empresariales requieren revisión y flujo separado.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // ─── Loading state ─────────────────────────────────────────────
@@ -421,178 +432,123 @@ export default function TiendaPage() {
 
       {/* ─── Main content (hidden during checkout on mobile) ──── */}
       <div className={showCheckout || showSuccessModal ? "hidden md:block" : "block"}>
-        {/* ─── Sticker principal ──────────────────────────────── */}
         <section className="space-y-5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-end justify-between gap-4">
             <div>
               <h2 className="text-xl sm:text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
-                Sticker PreRescatePTY
+                Productos personales
               </h2>
               <p className="text-xs text-slate-400 font-medium mt-0.5">
-                Compra por cantidad con stock disponible y producción estimada si hace falta.
+                Elige el producto y la cantidad que necesitas.
               </p>
             </div>
           </div>
 
-          {primaryStickerProduct ? (
-            <div className="rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="p-6 sm:p-8">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    {getStockValue(primaryStickerProduct) > 0 ? `Stock disponible: ${getStockValue(primaryStickerProduct)}` : "Producción estimada: 2 semanas"}
-                  </div>
-                  <h3 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 dark:text-white">
-                    {primaryStickerProduct.name}
-                  </h3>
-                  <p className="mt-3 max-w-2xl text-sm font-medium leading-relaxed text-slate-500">
-                    Sticker real para compra individual o por cantidad. Selecciona cuántas unidades quieres y el total se calcula en vivo.
-                  </p>
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Precio unitario</p>
-                      <p className="mt-1 text-2xl font-black tracking-tighter text-slate-950 dark:text-white">${primaryStickerProduct.price.toFixed(2)}</p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stock disponible</p>
-                      <p className="mt-1 text-2xl font-black tracking-tighter text-slate-950 dark:text-white">{getStockValue(primaryStickerProduct)}</p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Producción</p>
-                      <p className="mt-1 text-sm font-bold leading-tight text-slate-700 dark:text-slate-300">Si faltan unidades, entran a producción en ~2 semanas.</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t border-slate-200 bg-slate-50 p-6 sm:p-8 lg:border-l lg:border-t-0 dark:border-slate-800 dark:bg-slate-950/40">
-                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#DA1A21]">Cantidad</p>
-                    <div className="mt-4 flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(quantity - 1)}
-                        aria-label="Disminuir cantidad"
-                        className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 transition-all hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-[#DA1A21]/10 disabled:opacity-40"
-                        disabled={quantity <= 1}
-                      >
-                        <span className="text-2xl font-black">-</span>
-                      </button>
-                      <input
-                        type="number"
-                        min={1}
-                        max={99}
-                        inputMode="numeric"
-                        aria-label="Cantidad de unidades"
-                        value={quantity}
-                        onChange={(event) => updateQuantity(Number(event.target.value))}
-                        className="h-12 flex-1 rounded-2xl border border-slate-200 bg-white px-4 text-center text-lg font-black tracking-tighter text-slate-950 outline-none focus:border-[#DA1A21]/30 focus:ring-4 focus:ring-[#DA1A21]/10 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(quantity + 1)}
-                        aria-label="Aumentar cantidad"
-                        className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 transition-all hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-[#DA1A21]/10"
-                      >
-                        <span className="text-2xl font-black">+</span>
-                      </button>
-                    </div>
-                    <p className="mt-3 text-[10px] font-medium text-slate-400">Puedes pedir más unidades que las disponibles. Las restantes entran a producción.</p>
-                    <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total</p>
-                      <p className="mt-1 text-3xl font-black tracking-tighter text-[#DA1A21]">${selectedProduct ? selectedTotal.toFixed(2) : "0.00"}</p>
-                    </div>
-                    <p className="mt-3 text-[10px] font-medium leading-relaxed text-slate-400">
-                      {selectedStockMessage}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectProduct(primaryStickerProduct, { resetQuantity: false })}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-5 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-[#B9141B] active:scale-[0.98]"
+          {personalProducts.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+              {personalProducts.map((p) => {
+                const isSelected = selectedProduct?.id === p.id;
+                const cardQuantity = getCatalogQuantity(p.id);
+                const stock = getStockValue(p);
+                const total = getProductTotal(p, cardQuantity);
+                const productPrice = normalizePrice(p.price);
+
+                return (
+                  <div
+                    key={p.id}
+                    className={`rounded-[2rem] border bg-white shadow-sm transition-all dark:bg-slate-900 ${
+                      isSelected ? "border-[#DA1A21]/30 ring-4 ring-[#DA1A21]/10" : "border-slate-200 dark:border-slate-800"
+                    }`}
                   >
-                    Crear pedido
-                  </button>
-                  <p className="mt-3 text-center text-[10px] font-medium text-slate-400">
-                    Después de crear el pedido podrás revisar el pago y subir comprobante desde Mis pedidos.
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </section>
-
-        {/* ─── Otros productos ─────────────────────────────────── */}
-        {personalGrouped
-          .filter((g) => g.section === "custom_products")
-          .map((group) =>
-            group.products.length > 0 && (
-              <section key={group.section} className="space-y-4 pt-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">
-                      Otros productos
-                    </h3>
-                    <p className="text-xs text-slate-400 font-medium mt-0.5">{group.description}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {group.products.map((p) => {
-                    const isOutOfStock = getStockValue(p) === 0;
-                    return (
-                      <div key={p.id} className="rounded-[1.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col">
-                        {p.imageUrl || p.image ? (
-                          <div className="aspect-[3/2] bg-slate-50 dark:bg-slate-800 relative overflow-hidden">
-                            <Image
-                              src={resolveImageSrc(p.imageUrl || p.image, "general")}
-                              alt={p.name}
-                              fill
-                              className="object-cover"
-                              unoptimized={Boolean((p.imageUrl || p.image)?.startsWith("http"))}
-                            />
-                          </div>
-                        ) : (
-                          <div className="aspect-[3/2] bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-                            <Store className="h-10 w-10 text-slate-200" />
-                          </div>
-                        )}
-                        <div className="p-4 sm:p-5 flex-1 flex flex-col">
-                          <h4 className="text-sm font-black text-slate-900 dark:text-white mb-1">{p.name}</h4>
-                          <p className="text-[11px] text-slate-400 font-medium line-clamp-2 mb-3 flex-1 leading-relaxed">
-                            {p.description || "Producto disponible"}
+                    <div className="p-5 sm:p-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#DA1A21]">
+                            {isSelected ? "Seleccionado" : "Producto"}
                           </p>
+                          <h3 className="mt-1 text-lg font-black tracking-tighter text-slate-950 dark:text-white">
+                            {p.name}
+                          </h3>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-right dark:border-slate-800 dark:bg-slate-950/40">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Unitario</p>
+                          <p className="text-base font-black text-slate-950 dark:text-white">${productPrice.toFixed(2)}</p>
+                        </div>
+                      </div>
 
-                          {p.requiresPersonalization && (
-                            <div className="flex items-center gap-1.5 mb-3 text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-500/10 w-fit px-2.5 py-1 rounded-lg">
-                              <AlertTriangle className="h-3 w-3" />
-                              Requiere perfil con chip activo
-                            </div>
-                          )}
+                      <p className="mt-3 text-sm font-medium leading-relaxed text-slate-500">
+                        {p.description || "Producto disponible"}
+                      </p>
 
-                          <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800">
-                            <div>
-                              <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Precio</p>
-                              <p className="text-lg font-black text-slate-900 dark:text-white">${p.price.toFixed(2)}</p>
-                            </div>
+                      <div className="mt-4 grid grid-cols-3 gap-3">
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Stock</p>
+                          <p className="mt-1 text-lg font-black tracking-tighter text-slate-950 dark:text-white">{stock}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Cantidad</p>
+                          <div className="mt-2 flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => handleSelectProduct(p)}
-                              disabled={isOutOfStock}
-                              className={`px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                isOutOfStock
-                                  ? "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
-                                  : "bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-800 active:scale-95"
-                              }`}
+                              onClick={() => updateCatalogQuantity(p.id, cardQuantity - 1)}
+                              className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                              aria-label={`Disminuir cantidad de ${p.name}`}
+                              disabled={cardQuantity <= 1}
                             >
-                              {isOutOfStock ? "Agotado" : "Comprar"}
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min={1}
+                              max={99}
+                              value={cardQuantity}
+                              onChange={(event) => updateCatalogQuantity(p.id, Number(event.target.value))}
+                              className="h-8 w-12 rounded-xl border border-slate-200 bg-white text-center text-sm font-black text-slate-950 outline-none focus:border-[#DA1A21]/30 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateCatalogQuantity(p.id, cardQuantity + 1)}
+                              className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                              aria-label={`Aumentar cantidad de ${p.name}`}
+                            >
+                              +
                             </button>
                           </div>
                         </div>
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total</p>
+                          <p className="mt-1 text-lg font-black tracking-tighter text-[#DA1A21]">${total.toFixed(2)}</p>
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )
+
+                      <p className="mt-3 text-[10px] font-medium leading-relaxed text-slate-400">
+                        {getStockMessage(p, cardQuantity)}
+                      </p>
+
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateCatalogQuantity(p.id, cardQuantity);
+                            handleSelectProduct(p, { resetQuantity: false });
+                          }}
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-[#B9141B] active:scale-[0.98]"
+                        >
+                          {isSelected ? "Continuar" : "Seleccionar"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-sm font-black text-slate-900 dark:text-white">No hay productos personales disponibles.</p>
+              <p className="mt-1 text-xs text-slate-400">Vuelve más tarde cuando haya inventario publicado.</p>
+            </div>
           )}
+        </section>
 
         {/* ─── Business section (separated) ─────────────────────── */}
         {businessProducts.length > 0 && (
@@ -660,7 +616,8 @@ export default function TiendaPage() {
                           </span>
                         ) : (
                           <button
-                            onClick={() => handleSelectProduct(p)}
+                            type="button"
+                            onClick={handleBusinessProductAction}
                             className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 active:scale-95 transition-all"
                           >
                             Solicitar atención empresarial
@@ -711,6 +668,9 @@ export default function TiendaPage() {
                 <span>Cuando recibas tu pedido, revisa el pago y sube tu comprobante desde Mis pedidos.</span>
               </div>
             </div>
+            <p className="mt-3 text-[10px] font-medium leading-relaxed text-slate-400">
+              {selectedStockMessage}
+            </p>
           </div>
 
           {/* Form */}
