@@ -5,6 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { generateOrderNumber } from "@/lib/order-number";
 import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
+import {
+  buildStoreOrderInternalNote,
+  calculateStoreOrderFulfillment,
+  resolveStoreProductForOrder,
+} from "@/lib/orders/store-order-fulfillment";
 import { orderCreateSchema, validateOrThrow } from "@/lib/validations";
 import { BUSINESS_RULES } from "@/domains/shared/constants";
 
@@ -40,7 +45,15 @@ export async function POST(req: NextRequest) {
       customerEmail: user.email,
     });
 
-    type OrderItemWithOptionalRefs = { profileId?: string | null; chipId?: string | null };
+    type OrderItemWithOptionalRefs = {
+      profileId?: string | null;
+      chipId?: string | null;
+      resolvedProductId?: string;
+      resolvedProductCode?: string | null;
+      resolvedProductName?: string;
+      resolvedMappingId?: string;
+      resolvedFinishedGoodId?: string;
+    };
 
     const nextNumber = await generateOrderNumber("legacy");
     const pricedItems = await Promise.all(validatedData.items.map(async (item) => {
@@ -60,21 +73,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const storeProduct = await prisma.product.findFirst({
-        where: {
-          isActive: true,
-          OR: [
-            { id: item.productType },
-            { name: item.productType },
-          ],
-        },
-        select: { name: true, price: true, requiresPersonalization: true },
-      });
+      const storeProduct = await resolveStoreProductForOrder(prisma, item.productType);
 
       if (storeProduct) {
         const itemAny = item as Record<string, unknown>;
 
-        if (storeProduct.requiresPersonalization) {
+        if (storeProduct.operationalMapping.deviceType === "custom_personal") {
           const profileId = itemAny.profileId as string | undefined;
           if (!profileId) {
             throw new Error(`El producto "${storeProduct.name}" requiere seleccionar un perfil médico.`);
@@ -111,14 +115,46 @@ export async function POST(req: NextRequest) {
             chipId: chip.id,
             productType: storeProduct.name,
             unitPrice: storeProduct.price,
+            resolvedProductId: storeProduct.id,
+            resolvedProductCode: storeProduct.operationalMapping.productCode,
+            resolvedProductName: storeProduct.name,
+            resolvedMappingId: storeProduct.operationalMapping.id,
+            resolvedFinishedGoodId: storeProduct.operationalMapping.finishedGoodId,
           } as typeof item & { profileId?: string; chipId?: string | null };
         }
 
-        return { ...item, productType: storeProduct.name, unitPrice: storeProduct.price };
+        return {
+          ...item,
+          productType: storeProduct.name,
+          unitPrice: storeProduct.price,
+          resolvedProductId: storeProduct.id,
+          resolvedProductCode: storeProduct.operationalMapping.productCode,
+          resolvedProductName: storeProduct.name,
+          resolvedMappingId: storeProduct.operationalMapping.id,
+          resolvedFinishedGoodId: storeProduct.operationalMapping.finishedGoodId,
+        };
       }
 
       throw new Error("Producto invalido o no disponible");
     }));
+
+    const fulfillmentInput = pricedItems
+      .filter((item) => Boolean((item as OrderItemWithOptionalRefs).resolvedProductId))
+      .map((item) => {
+        const itemWithRefs = item as OrderItemWithOptionalRefs;
+        return {
+          productId: itemWithRefs.resolvedProductId as string,
+          productName: itemWithRefs.resolvedProductName || item.productType,
+          productCode: itemWithRefs.resolvedProductCode || item.productType,
+          productType: item.productType,
+          operationalMappingId: itemWithRefs.resolvedMappingId as string,
+          finishedGoodId: itemWithRefs.resolvedFinishedGoodId as string,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        };
+      });
+
+    const { resolvedItems, summary: fulfillmentSummary } = await calculateStoreOrderFulfillment(fulfillmentInput);
 
     const order = await prisma.$transaction(async (tx) => {
       if (user.profile && (validatedData.shippingAddress || validatedData.shippingCity)) {
@@ -150,6 +186,7 @@ export async function POST(req: NextRequest) {
           customerPhone: validatedData.customerPhone || null,
           customerDocument: validatedData.customerDocument || null,
           providerReference: validatedData.providerReference || null,
+          adminReviewNotes: buildStoreOrderInternalNote(fulfillmentSummary),
           items: {
             create: pricedItems.map(item => {
               const itemWithRefs = item as OrderItemWithOptionalRefs;
@@ -182,14 +219,15 @@ export async function POST(req: NextRequest) {
         paymentStatus: order.paymentStatus,
         paymentReference: order.manualPaymentReference || order.paymentProofUrl || null,
         currency: order.currency,
-        notes: `Sincronizado desde pedido legacy ${order.orderNumber}`,
+        notes: `${buildStoreOrderInternalNote(fulfillmentSummary)}\nSincronizado desde pedido legacy ${order.orderNumber}`,
         totalAmount: order.amount,
-        items: pricedItems.map((item) => ({
-          productCode: item.productType,
-          productName: item.productType,
+        items: resolvedItems.map((item) => ({
+          productCode: item.productCode,
+          productName: item.productName,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           unit: "unit",
+          finishedGoodId: item.finishedGoodId,
         })),
       });
     } catch (error) {
@@ -201,7 +239,7 @@ export async function POST(req: NextRequest) {
       operationsSyncWarning = "Pedido creado, pero no se pudo sincronizar automáticamente con Operaciones.";
     }
 
-    return NextResponse.json({ order, operationsSyncWarning });
+    return NextResponse.json({ order, fulfillmentSummary, operationsSyncWarning });
   } catch (error: unknown) {
     console.error("ORDER_CREATE_ERROR", error);
     const message = error instanceof Error ? error.message : "Error al procesar el pedido";
