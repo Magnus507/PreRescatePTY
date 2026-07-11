@@ -18,7 +18,8 @@ export function getFirstValidationMessage(error: z.ZodError): string {
 }
 
 export function getProductMetadata(productType: string) {
-  if (productType === "sticker_empresarial") {
+  const normalized = productType.trim().toUpperCase();
+  if (normalized === "PRP-FG-STICKER-EMP" || normalized === "STICKER_EMPRESARIAL") {
     return {
       productCode: "PRP-FG-STICKER-EMP",
       productName: "Sticker PreRescatePTY Empresarial",

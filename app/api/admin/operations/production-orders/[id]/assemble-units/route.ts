@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getFirstValidationMessage } from "../../production-orders.helpers";
+import { getProductMetadata } from "@/app/api/admin/operations/finished-good-units/finished-good-units.helpers";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -81,13 +82,12 @@ export async function POST(
 
       for (const item of batchItems) {
         const printOrder = item.printOrderItems[0]?.printOrder || null;
+        const productMetadata = getProductMetadata(item.batch.productType);
         const unit = await tx.operationFinishedGoodUnit.create({
           data: {
             internalLabel: item.internalLabel,
-            productCode: productionOrder.outputType === "sticker_empresarial" ? "PRP-FG-STICKER-EMP" : "PRP-FG-STICKER",
-            productName: productionOrder.outputType === "sticker_empresarial"
-              ? "Sticker PreRescatePTY Empresarial"
-              : "Sticker PreRescatePTY",
+            productCode: productMetadata.productCode,
+            productName: productMetadata.productName,
             productType: productionOrder.outputType,
             digitalBatchId: item.batchId,
             digitalBatchItemId: item.id,

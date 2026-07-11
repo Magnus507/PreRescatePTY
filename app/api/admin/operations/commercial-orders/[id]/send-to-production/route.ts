@@ -94,7 +94,7 @@ export async function POST(
           status: "draft",
           plannedQuantity: totalQuantity,
           producedQuantity: 0,
-          outputType: productInfo.productType,
+          outputType: productInfo.productCode,
           notes: productionNotes,
           events: {
             create: {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -323,6 +324,7 @@ export function PedidosSection() {
   const [loadingReserveUnits, setLoadingReserveUnits] = useState(false);
   const [savingReserveUnits, setSavingReserveUnits] = useState(false);
   const [showInternalOrderModal, setShowInternalOrderModal] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [creatingInternalOrder, setCreatingInternalOrder] = useState(false);
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
   const [activeFilter, setActiveFilter] = useState<PedidoFilter>("active");
@@ -385,6 +387,10 @@ export function PedidosSection() {
     loadOrders();
     loadFinishedGoods();
   }, [loadFinishedGoods, loadOrders]);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     loadOrdersRef.current = loadOrders;
@@ -2232,9 +2238,9 @@ export function PedidosSection() {
         </div>
       </div>
 
-      {showInternalOrderModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
-          <div className="my-6 w-full max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+      {showInternalOrderModal && isClient ? createPortal(
+        <div className="fixed inset-0 z-[999] flex min-h-full items-start justify-center overflow-y-auto bg-slate-950/70 px-4 py-8 backdrop-blur-sm">
+          <div className="my-8 w-full max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Pedido interno</p>
@@ -2311,8 +2317,9 @@ export function PedidosSection() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+      ) : null}
 
       <div className="space-y-3">
         {filteredOrders.map((order: Order) => {
