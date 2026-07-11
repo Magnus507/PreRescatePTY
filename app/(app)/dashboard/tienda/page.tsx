@@ -7,7 +7,7 @@ import {
   ShoppingCart, Package, Loader2,
   MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle,
   Upload, ArrowRight, UserRound, Plus, ShieldCheck, Cpu,
-  Building2, ChevronDown, ChevronUp, Briefcase, Info
+  Info
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -73,13 +73,6 @@ function isBusinessProduct(product: Product): boolean {
   );
 }
 
-function getBusinessLabel(product: Product): string {
-  const mapping = product.operationalMapping;
-  if (mapping?.deviceType === "business") return "Empresarial";
-  if (mapping?.purchaseFlow === "company_request") return "Solicitud empresarial";
-  return "Producto empresarial";
-}
-
 function getStockValue(product: Product | null | undefined) {
   if (!product) return 0;
   const candidates = [product.availableStock, product.stock, product.reservedStock ? Math.max(0, (product.availableStock ?? product.stock ?? 0) - product.reservedStock) : undefined];
@@ -132,7 +125,6 @@ export default function TiendaPage() {
   const [profileOptions, setProfileOptions] = useState<ProfileOption[]>([]);
   const [profileLoading, setProfileLoading] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
-  const [showBusinessSection, setShowBusinessSection] = useState(false);
   const router = useRouter();
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -321,12 +313,6 @@ export default function TiendaPage() {
     if (selectedProduct?.id === productId) {
       setQuantity(normalized);
     }
-  };
-
-  const handleBusinessProductAction = () => {
-    setShowBusinessSection(true);
-    toast.info("Los pedidos empresariales requieren revisión y flujo separado.");
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // ─── Loading state ─────────────────────────────────────────────
@@ -550,85 +536,27 @@ export default function TiendaPage() {
           )}
         </section>
 
-        {/* ─── Business section (separated) ─────────────────────── */}
         {businessProducts.length > 0 && (
-          <section className="space-y-4 pt-4">
-            <button
-              onClick={() => setShowBusinessSection(!showBusinessSection)}
-              className="w-full flex items-center justify-between p-5 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center">
-                  <Building2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          <section className="pt-4">
+            <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50/80 p-5 sm:p-6 dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Compras para empresa</p>
+                  <h2 className="text-lg sm:text-xl font-black tracking-tighter text-slate-900 dark:text-white">
+                    Gestiona pedidos empresariales desde Empresa.
+                  </h2>
+                  <p className="text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-400 max-w-2xl">
+                    Los pedidos empresariales se mantienen en un flujo separado para conservar aprobación, asignación y control internos.
+                  </p>
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-black text-slate-900 dark:text-white">Para empresas</p>
-                  <p className="text-[10px] font-medium text-slate-400">Flujo separado para pedidos empresariales.</p>
-                </div>
+                <Link
+                  href="/dashboard/empresas"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-slate-800 active:scale-[0.98] dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                >
+                  Ir a Empresa <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
-              {showBusinessSection ? (
-                <ChevronUp className="h-5 w-5 text-slate-400" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-slate-400" />
-              )}
-            </button>
-
-            {showBusinessSection && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {businessProducts.map((p) => {
-                  const isOutOfStock = (p.availableStock ?? p.stock ?? 0) === 0;
-                  return (
-                    <div
-                      key={p.id}
-                      className="rounded-[1.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 flex flex-col"
-                    >
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="h-10 w-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center shrink-0">
-                          <Briefcase className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                        </div>
-                        <div>
-                          <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tighter">
-                            {getBusinessLabel(p)}
-                          </h3>
-                          <p className="text-[11px] font-medium text-slate-400 mt-0.5">
-                            {p.description || "Solicitud con flujo separado"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 mb-4">
-                        <Info className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="text-[10px] font-medium text-slate-400">
-                          Los pedidos empresariales requieren revisión y flujo separado.
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800 mt-auto">
-                        <div>
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio</span>
-                          <p className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
-                            ${p.price.toFixed(2)}
-                          </p>
-                        </div>
-                        {isOutOfStock ? (
-                          <span className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-300 font-black text-[10px] uppercase tracking-widest cursor-not-allowed">
-                            Agotado
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleBusinessProductAction}
-                            className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 active:scale-95 transition-all"
-                          >
-                            Solicitar atención empresarial
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            </div>
           </section>
         )}
 
