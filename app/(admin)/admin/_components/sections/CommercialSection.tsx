@@ -220,6 +220,44 @@ function isInternalOrderType(value: string) {
   return value === "internal";
 }
 
+function getCommercialOrderProductCodes(order: CommercialOrder) {
+  return Array.from(
+    new Set(
+      order.items
+        .map((item) => item.finishedGood?.code || item.productCode)
+        .filter((value): value is string => Boolean(value && value.trim()))
+    )
+  );
+}
+
+function getDispatchReadiness(order: CommercialOrder) {
+  const productCodes = getCommercialOrderProductCodes(order);
+  const requestedQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  const reservedCompatibleQty = Math.min(order.reservedUnitsCount || order.reservedUnits?.length || 0, requestedQty);
+  const pendingReservationQty = Math.max(0, requestedQty - reservedCompatibleQty);
+  const isMixed = productCodes.length !== 1;
+  const productCode = productCodes[0] || null;
+  const paymentLabel = PAYMENT_CONFIG[order.paymentStatus]?.label || order.paymentStatus;
+  const paymentHelp =
+    order.paymentStatus === "paid"
+      ? "Pago aprobado. El despacho puede avanzar si la reserva coincide."
+      : order.paymentStatus === "under_review"
+        ? "Pago en revisión. Confirma la política antes de despachar."
+        : "Pago pendiente. Confirma la política antes de despachar.";
+  const readyForDispatch = !isMixed && Boolean(productCode) && reservedCompatibleQty >= requestedQty;
+
+  return {
+    productCode,
+    requestedQty,
+    reservedCompatibleQty,
+    pendingReservationQty,
+    isMixed,
+    paymentLabel,
+    paymentHelp,
+    readyForDispatch,
+  };
+}
+
 function buildInternalOrderCodeHint() {
   return "Código: se generará automáticamente al crear el pedido";
 }
@@ -921,9 +959,10 @@ export function CommercialSection() {
               const actions = getActionsForOrder(order);
               const productionNeed = getProductionNeed(order);
               const requestedQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
-              const reservedQty = order.reservedUnits?.length || 0;
+              const reservedQty = order.reservedUnitsCount ?? order.reservedUnits?.length ?? 0;
               const firstItem = order.items[0];
               const reserveProductCode = firstItem?.finishedGood?.code || firstItem?.productCode || "Sin código";
+              const dispatchReadiness = getDispatchReadiness(order);
 
               return (
                 <article key={order.id} className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
@@ -1065,6 +1104,57 @@ export function CommercialSection() {
                               <p className="mt-1 font-bold text-slate-900">{reserveProductCode}</p>
                             </div>
                           </div>
+                        </div>
+                      )}
+                      {!isInternalOrder(order) && (
+                        <div className={`mt-4 rounded-2xl border p-4 ${dispatchReadiness.readyForDispatch ? "border-cyan-200 bg-cyan-50/80" : "border-amber-200 bg-amber-50/80"}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${dispatchReadiness.readyForDispatch ? "text-cyan-700" : "text-amber-700"}`}>
+                              Estado para despacho
+                            </p>
+                            <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${dispatchReadiness.readyForDispatch ? "border-cyan-200 bg-cyan-100 text-cyan-800" : "border-amber-200 bg-amber-100 text-amber-800"}`}>
+                              {dispatchReadiness.readyForDispatch ? "Listo" : "Bloqueado"}
+                            </span>
+                          </div>
+                          <div className="mt-3 grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">ProductCode</p>
+                              <p className="mt-1 font-bold text-slate-900">{dispatchReadiness.productCode || "Sin productCode"}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cantidad solicitada</p>
+                              <p className="mt-1 font-bold text-slate-900">{dispatchReadiness.requestedQty} unidades</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reservadas compatibles</p>
+                              <p className="mt-1 font-bold text-slate-900">{dispatchReadiness.reservedCompatibleQty} unidades</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pendiente</p>
+                              <p className="mt-1 font-bold text-slate-900">{dispatchReadiness.pendingReservationQty} unidades</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pago</p>
+                              <p className="mt-1 font-bold text-slate-900">{dispatchReadiness.paymentLabel}</p>
+                            </div>
+                          </div>
+                          <p className="mt-3 text-sm font-semibold text-slate-700">{dispatchReadiness.paymentHelp}</p>
+                          {dispatchReadiness.isMixed ? (
+                            <p className="mt-2 text-sm font-semibold text-amber-800">
+                              Pedido mixto: requiere despacho por línea/productCode y no admite despacho simple.
+                            </p>
+                          ) : dispatchReadiness.readyForDispatch ? (
+                            <p className="mt-2 text-sm font-semibold text-cyan-900">
+                              Listo para despacho: {dispatchReadiness.reservedCompatibleQty} unidad(es) reservadas y compatibles.
+                            </p>
+                          ) : (
+                            <p className="mt-2 text-sm font-semibold text-amber-800">
+                              Falta reservar {dispatchReadiness.pendingReservationQty} unidad(es) antes de despachar.
+                            </p>
+                          )}
+                          <p className="mt-2 text-xs font-semibold text-slate-500">
+                            La entrega no activa chips; la activación ocurre después en Mis dispositivos.
+                          </p>
                         </div>
                       )}
                       <div className="mt-4 grid gap-2">
