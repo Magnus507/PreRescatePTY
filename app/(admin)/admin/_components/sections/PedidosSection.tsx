@@ -114,6 +114,12 @@ interface Order {
   manualPaymentReference: string | null;
   adminReviewStatus: string | null;
   adminReviewNotes: string | null;
+  customerFulfillmentSummary?: {
+    hasBackorder: boolean;
+    productionEstimateDays: number;
+    backorderQtyTotal: number;
+    customerMessage: string | null;
+  } | null;
   adminReviewedAt?: string | null;
   paymentProofUrl: string | null;
   shippingAddress: string | null;
@@ -2370,6 +2376,11 @@ export function PedidosSection() {
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
                       {order.paymentStatusLabel || getPaymentReviewLabel(order)}
                     </span>
+                    {order.customerFulfillmentSummary?.hasBackorder && (
+                      <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-violet-700">
+                        Producción requerida · {order.customerFulfillmentSummary.backorderQtyTotal} u.
+                      </span>
+                    )}
                     {order.pendingReasonLabel && (
                       <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-700">
                         {order.pendingReasonLabel}
@@ -2417,6 +2428,17 @@ export function PedidosSection() {
                           <p className="font-semibold text-slate-700">Método de pago: {getPaymentMethodLabel(order.paymentMethod)}</p>
                           <p className="font-semibold text-slate-700">Pago: {getPaymentReviewLabel(order)}</p>
                         </div>
+                        {order.customerFulfillmentSummary?.hasBackorder && (
+                          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 space-y-2">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-700">Backorder visible</p>
+                            <p className="text-sm font-semibold text-violet-900">
+                              {order.customerFulfillmentSummary.customerMessage || "Las unidades faltantes entran a producción."}
+                            </p>
+                            <p className="text-xs font-bold text-violet-700">
+                              Faltante total: {order.customerFulfillmentSummary.backorderQtyTotal} · estimado {order.customerFulfillmentSummary.productionEstimateDays} días
+                            </p>
+                          </div>
+                        )}
                         {order.paymentProofUrl ? (
                           <div className="space-y-2">
                             <button

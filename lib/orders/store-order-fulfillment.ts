@@ -22,6 +22,7 @@ export type StoreOrderResolvedItem = {
 export type StoreOrderFulfillmentSummary = {
   hasBackorder: boolean;
   productionEstimateDays: number;
+  backorderQtyTotal: number;
   items: Array<Pick<StoreOrderResolvedItem, "productId" | "productCode" | "quantity" | "availableStock" | "stockCoveredQty" | "backorderQty" | "fulfillmentMode" | "productionEstimateDays" | "customerMessage">>;
 };
 
@@ -173,6 +174,7 @@ export async function calculateStoreOrderFulfillment(
     summary: {
       hasBackorder: resolvedItems.some((item) => item.backorderQty > 0),
       productionEstimateDays,
+      backorderQtyTotal: resolvedItems.reduce((sum, item) => sum + item.backorderQty, 0),
       items: resolvedItems.map((item) => ({
         productId: item.productId,
         productCode: item.productCode,
@@ -218,6 +220,7 @@ export function buildOperationalStoreItemNotes(item: StoreOrderResolvedItem) {
 export type CustomerFulfillmentSummary = {
   hasBackorder: boolean;
   productionEstimateDays: number;
+  backorderQtyTotal: number;
   customerMessage: string | null;
 };
 
@@ -229,10 +232,12 @@ export function parseCustomerFulfillmentSummaryFromInternalNote(
   const hasBackorderMatch = note.match(/Tiene backorder:\s*(sí|si|no)\./i);
   const productionEstimateMatch = note.match(/Producción estimada:\s*(\d+)\s*días\./i);
   const customerMessageMatch = note.match(/customerMessage:(.+)/i);
+  const backorderMatches = [...note.matchAll(/backorder=(\d+)/gi)];
 
   const hasBackorder = hasBackorderMatch ? /^s/i.test(hasBackorderMatch[1]) : false;
   const productionEstimateDays = productionEstimateMatch ? Number(productionEstimateMatch[1]) : 14;
   const customerMessage = customerMessageMatch?.[1]?.trim() || null;
+  const backorderQtyTotal = backorderMatches.reduce((sum, match) => sum + Number(match[1] || 0), 0);
 
   if (!hasBackorder && !customerMessageMatch && !productionEstimateMatch) {
     return null;
@@ -241,6 +246,7 @@ export function parseCustomerFulfillmentSummaryFromInternalNote(
   return {
     hasBackorder,
     productionEstimateDays: Number.isFinite(productionEstimateDays) ? productionEstimateDays : 14,
+    backorderQtyTotal: Number.isFinite(backorderQtyTotal) ? backorderQtyTotal : 0,
     customerMessage,
   };
 }

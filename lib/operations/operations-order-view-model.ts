@@ -1,3 +1,5 @@
+import { parseCustomerFulfillmentSummaryFromInternalNote } from "@/lib/orders/store-order-fulfillment";
+
 export type OperationsOrderItem = {
   productType: string;
   quantity: number;
@@ -95,6 +97,12 @@ export type OperationsOrderViewModel = {
   paymentMethod?: string | null;
   paymentSubmittedAt?: string | null;
   paymentRejectedReason?: string | null;
+  customerFulfillmentSummary?: {
+    hasBackorder: boolean;
+    productionEstimateDays: number;
+    backorderQtyTotal: number;
+    customerMessage: string | null;
+  } | null;
   commercialItemName?: string | null;
   commercialQuantity?: number | null;
   commercialUnitPrice?: number | null;
@@ -369,6 +377,7 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const blockedReasons = getBlockedReasons(order, paymentProofAvailable);
   const pendingState = getPendingState(order, paymentProofAvailable);
   const testSignals = detectTestOrderSignals(order);
+  const customerFulfillmentSummary = parseCustomerFulfillmentSummaryFromInternalNote(order.adminReviewNotes);
   const isTerminal = order.orderStatus === "cancelled" || order.orderStatus === "completed";
   const canSoftDeleteOrder = !isTerminal || testSignals;
   const softDeleteLabel = "Cancelar / ocultar";
@@ -411,6 +420,7 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
     paymentMethod: order.paymentMethod,
     paymentSubmittedAt: paymentProofAvailable ? order.updatedAt.toISOString() : null,
     paymentRejectedReason: order.adminReviewStatus === "rejected" ? order.adminReviewNotes : null,
+    customerFulfillmentSummary,
     commercialItemName,
     commercialQuantity,
     commercialUnitPrice,

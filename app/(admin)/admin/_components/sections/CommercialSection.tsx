@@ -350,6 +350,16 @@ function getDeliveryReferenceLabel(order: CommercialOrder) {
   return "Sin referencia de entrega";
 }
 
+function getUniqueProductCodes(order: CommercialOrder) {
+  return Array.from(
+    new Set(
+      order.items
+        .map((item) => item.finishedGood?.code || item.productCode)
+        .filter((code): code is string => Boolean(code && code.trim()))
+    )
+  );
+}
+
 export function CommercialSection() {
   const [orders, setOrders] = useState<CommercialOrder[]>([]);
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
@@ -731,11 +741,27 @@ export function CommercialSection() {
     }
   };
 
-  const handleSendToProduction = async (order: CommercialOrder) => {
+  const handleSendToProduction = async (order: CommercialOrder, options?: { mode?: "backorder" | "full"; plannedQuantity?: number }) => {
     setSavingEventKey(`${order.id}:SEND_TO_PRODUCTION`);
     try {
+      const mode = options?.mode || (isInternalOrder(order) ? "full" : "backorder");
+      const payload: Record<string, unknown> = { mode };
+      if (typeof options?.plannedQuantity === "number") {
+        payload.plannedQuantity = options.plannedQuantity;
+      }
+      if (order.paymentStatus === "pending") {
+        const confirmed = window.confirm(
+          "Este pedido sigue con pago pendiente. ¿Confirmas que deseas enviarlo a producción?"
+        );
+        if (!confirmed) {
+          return;
+        }
+        payload.confirmPendingPayment = true;
+      }
       const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/send-to-production`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -801,14 +827,20 @@ export function CommercialSection() {
   };
 
   const getProductionNeed = (order: CommercialOrder) => {
-    const missing = order.items.reduce((sum, item) => {
-      const balance = item.finishedGood?.balance ?? 0;
-      return balance >= item.quantity ? sum : sum + (item.quantity - balance);
+    const productCodes = getUniqueProductCodes(order);
+    const requestedQty = order.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const availableStock = order.items.reduce((sum, item) => {
+      const balance = Number(item.finishedGood?.balance) || 0;
+      return sum + Math.min(balance, Number(item.quantity) || 0);
     }, 0);
-
+    const missing = Math.max(requestedQty - availableStock, 0);
     return {
       needsProduction: missing > 0,
       missing,
+      requestedQty,
+      availableStock,
+      productCodes,
+      isMixed: productCodes.length > 1,
     };
   };
 
@@ -949,6 +981,30 @@ export function CommercialSection() {
                           </p>
                         </div>
                       </div>
+                      {!isInternalOrder(order) && productionNeed.needsProduction && (
+                        <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/80 p-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-violet-700">Producción requerida</p>
+                          <div className="mt-2 grid gap-3 md:grid-cols-3">
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-violet-500">ProductCode</p>
+                              <p className="mt-1 font-bold text-slate-900">{productionNeed.productCodes.join(" · ") || "Sin código"}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-violet-500">Stock disponible</p>
+                              <p className="mt-1 font-bold text-slate-900">{productionNeed.availableStock} / {productionNeed.requestedQty}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-violet-500">Faltante</p>
+                              <p className="mt-1 font-bold text-slate-900">{productionNeed.missing} unidades</p>
+                            </div>
+                          </div>
+                          {productionNeed.isMixed && (
+                            <p className="mt-3 text-[11px] font-semibold text-amber-700">
+                              Este pedido mezcla más de un productCode. Divide la producción por producto antes de enviar por faltante.
+                            </p>
+                          )}
+                        </div>
+                      )}
                       {!isInternalOrder(order) && (
                         <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
                           <div>
@@ -1009,7 +1065,7 @@ export function CommercialSection() {
                               <button
                                 key={action.eventType}
                                 type="button"
-                                onClick={() => handleSendToProduction(order)}
+                                onClick={() => handleSendToProduction(order, { mode: "full" })}
                                 disabled={Boolean(savingEventKey)}
                                 className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-50 ${action.tone}`}
                               >
@@ -1042,15 +1098,15 @@ export function CommercialSection() {
                           Reservar etiqueta interna
                         </button>
                       )}
-                      {!isInternalOrder(order) && productionNeed.needsProduction && order.status !== "cancelled" && (
+                      {!isInternalOrder(order) && productionNeed.needsProduction && !productionNeed.isMixed && order.status !== "cancelled" && (
                         <button
                           type="button"
-                          onClick={() => handleSendToProduction(order)}
+                          onClick={() => handleSendToProduction(order, { mode: "backorder", plannedQuantity: productionNeed.missing })}
                           disabled={Boolean(savingEventKey)}
                           className="inline-flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-violet-800 transition-all hover:bg-violet-100 disabled:opacity-50"
                         >
                           {savingEventKey === `${order.id}:SEND_TO_PRODUCTION` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Factory className="h-4 w-4" />}
-                          Enviar a producción
+                          Crear producción por faltante
                         </button>
                       )}
                       {!isInternalOrder(order) && (order.fulfillmentStatus === "reserved" || order.status === "stock_reserved") && (
