@@ -1,19 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { resolveImageSrc } from "@/lib/resolve-image-src";
 import Link from "next/link";
 import {
   ShoppingCart, Store, Package, Loader2,
   MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle,
   Upload, ArrowRight, UserRound, Plus, ShieldCheck, Cpu,
-  Building2, ChevronDown, ChevronUp, Shield, Home,
-  Heart, Briefcase, Info
+  Building2, ChevronDown, ChevronUp, Briefcase, Info
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { groupProductsByStoreSection, getStoreSectionTitle, type StoreProductLike } from "@/lib/products/group-products-by-store-section";
+import { groupProductsByStoreSection, type StoreProductLike } from "@/lib/products/group-products-by-store-section";
 
 interface Product extends StoreProductLike {
   id: string;
@@ -26,6 +25,10 @@ interface Product extends StoreProductLike {
   isPublished?: boolean;
   isVisible?: boolean;
   stockSource?: string | null;
+  availableStock?: number;
+  reservedStock?: number;
+  estimatedProductionTime: string | null;
+  stock?: number;
 }
 
 interface ProfileOption {
@@ -61,48 +64,6 @@ interface PaymentConfig {
   bank_account_number?: string;
 }
 
-// ─── Combo card config ───────────────────────────────────────────
-interface ComboInfo {
-  name: string;
-  chips: number;
-  useCase: string;
-  icon: React.ElementType;
-  recommended?: boolean;
-}
-
-const COMBO_META: Record<string, ComboInfo> = {
-  "Combo Estándar": {
-    name: "Combo Estándar",
-    chips: 1,
-    useCase: "Para una persona",
-    icon: UserRound,
-  },
-  "Combo Dúo": {
-    name: "Combo Dúo",
-    chips: 2,
-    useCase: "Para ti y un familiar",
-    icon: Heart,
-  },
-  "Combo Familiar": {
-    name: "Combo Familiar",
-    chips: 4,
-    useCase: "Para el hogar",
-    icon: Home,
-  },
-  "Combo Hogar Full": {
-    name: "Combo Hogar Full",
-    chips: 6,
-    useCase: "Mayor cobertura familiar",
-    icon: Shield,
-    recommended: true,
-  },
-};
-
-// ─── Helpers ─────────────────────────────────────────────────────
-function getComboMeta(name: string): ComboInfo | null {
-  return COMBO_META[name] ?? null;
-}
-
 function isBusinessProduct(product: Product): boolean {
   const mapping = product.operationalMapping;
   return (
@@ -120,12 +81,34 @@ function getBusinessLabel(product: Product): string {
   return "Producto empresarial";
 }
 
+function getStockValue(product: Product | null | undefined) {
+  if (!product) return 0;
+  const candidates = [product.availableStock, product.stock, product.reservedStock ? Math.max(0, (product.availableStock ?? product.stock ?? 0) - product.reservedStock) : undefined];
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.floor(value));
+  }
+  return 0;
+}
+
+function getStockMessage(product: Product | null | undefined, quantity: number) {
+  const availableStock = getStockValue(product);
+  if (availableStock <= 0) {
+    return "No tenemos stock disponible ahora. Puedes crear el pedido; producción estimada: 2 semanas.";
+  }
+  if (quantity <= availableStock) {
+    return "Disponible para pedido.";
+  }
+  const remaining = quantity - availableStock;
+  return `Tenemos ${availableStock} disponibles. Las ${remaining} restantes entran a producción. Tiempo estimado: 2 semanas.`;
+}
+
 // ─── Component ───────────────────────────────────────────────────
 export default function TiendaPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const [showCheckout, setShowCheckout] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -169,6 +152,18 @@ export default function TiendaPage() {
   const personalProducts = products.filter((p) => !isBusinessProduct(p));
   const businessProducts = products.filter((p) => isBusinessProduct(p));
   const personalGrouped = groupProductsByStoreSection(personalProducts, "public");
+  const primaryStickerProduct = useMemo(
+    () =>
+      personalProducts.find(
+        (product) =>
+          product.operationsProductCode === "PRP-FG-STICKER" ||
+          product.name === "Sticker PreRescatePTY"
+      ) || personalProducts[0] || null,
+    [personalProducts]
+  );
+  const selectedStock = getStockValue(selectedProduct);
+  const selectedTotal = Number(selectedProduct?.price || 0) * quantity;
+  const selectedStockMessage = getStockMessage(selectedProduct, quantity);
 
   const loadProfiles = async (product?: Product) => {
     const target = product ?? null;
@@ -206,7 +201,7 @@ export default function TiendaPage() {
       const body: CreateOrderBody = {
         items: [{
           productType: selectedProduct.id,
-          quantity: 1,
+          quantity,
           unitPrice: selectedProduct.price,
         }],
         shippingAddress: shippingData.address,
@@ -293,8 +288,11 @@ export default function TiendaPage() {
     }
   };
 
-  const handleSelectCombo = (product: Product) => {
+  const handleSelectProduct = (product: Product, options?: { resetQuantity?: boolean }) => {
     setSelectedProduct(product);
+    if (options?.resetQuantity !== false) {
+      setQuantity(1);
+    }
     setShowCheckout(true);
     setSelectedProfileId("");
     setProfileOptions([]);
@@ -307,11 +305,17 @@ export default function TiendaPage() {
     }, 150);
   };
 
-  const handleChangeCombo = () => {
+  const handleChangeProduct = () => {
     setSelectedProduct(null);
+    setQuantity(1);
     setShowCheckout(false);
     setShippingData({ address: "", city: "", notes: "" });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const updateQuantity = (nextQuantity: number) => {
+    const normalized = Number.isFinite(nextQuantity) ? Math.min(99, Math.max(1, Math.floor(nextQuantity))) : 1;
+    setQuantity(normalized);
   };
 
   // ─── Loading state ─────────────────────────────────────────────
@@ -396,7 +400,7 @@ export default function TiendaPage() {
 
           {/* Subtitle */}
           <p className="text-sm sm:text-base text-white/60 font-medium max-w-lg leading-relaxed mb-4">
-            Compra tus chips PreRescueID y actívalos desde Mis dispositivos cuando los recibas.
+            Compra Sticker PreRescatePTY por cantidad y revisa el pago desde Mis pedidos cuando lo necesites.
           </p>
 
           {/* Microcopy + CTA */}
@@ -417,130 +421,178 @@ export default function TiendaPage() {
 
       {/* ─── Main content (hidden during checkout on mobile) ──── */}
       <div className={showCheckout || showSuccessModal ? "hidden md:block" : "block"}>
-        {/* ─── Personal combos section ─────────────────────────── */}
+        {/* ─── Sticker principal ──────────────────────────────── */}
         <section className="space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
-                Combos personales
+                Sticker PreRescatePTY
               </h2>
               <p className="text-xs text-slate-400 font-medium mt-0.5">
-                Protección para ti y tu familia
+                Compra por cantidad con stock disponible y producción estimada si hace falta.
               </p>
             </div>
           </div>
 
-          {/* Products grid — personal only */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-            {personalGrouped.map((group) =>
-              group.products.map((p) => {
-                const comboMeta = getComboMeta(p.name);
-                const isOutOfStock = (p.availableStock ?? p.stock ?? 0) === 0;
-                const isSelected = selectedProduct?.id === p.id && showCheckout;
-                const ComboIcon = comboMeta?.icon || Store;
-
-                return (
-                  <div
-                    key={p.id}
-                    className={`relative group rounded-[1.5rem] border-2 transition-all duration-300 flex flex-col ${
-                      isSelected
-                        ? "border-[#DA1A21] bg-[#DA1A21]/5 shadow-lg shadow-[#DA1A21]/10"
-                        : "border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-lg"
-                    }`}
-                  >
-                    {/* Recommended badge */}
-                    {comboMeta?.recommended && (
-                      <div className="absolute -top-[1px] -right-[1px] z-10">
-                        <div className="bg-[#DA1A21] text-white text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-bl-[1.2rem] rounded-tr-[1.4rem]">
-                          Recomendado
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Card body */}
-                    <div className="p-5 sm:p-6 flex-1 flex flex-col">
-                      {/* Icon + name */}
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                          isSelected
-                            ? "bg-[#DA1A21] text-white"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                        }`}>
-                          <ComboIcon className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tighter leading-tight">
-                            {p.name}
-                          </h3>
-                          {comboMeta && (
-                            <p className="text-[11px] font-medium text-slate-400 mt-0.5">
-                              {comboMeta.useCase}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Chips included */}
-                      {comboMeta && (
-                        <div className="flex items-center gap-2 mb-3">
-                          <Cpu className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                            {comboMeta.chips} {comboMeta.chips === 1 ? "chip incluido" : "chips incluidos"}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Description */}
-                      {p.description && (
-                        <p className="text-xs text-slate-400 font-medium line-clamp-2 mb-4 flex-1 leading-relaxed">
-                          {p.description}
-                        </p>
-                      )}
-
-                      {/* Availability */}
-                      <div className="mb-4">
-                        {isOutOfStock ? (
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
-                            <AlertTriangle className="h-3 w-3 text-amber-500" />
-                            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Agotado temporalmente</span>
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Disponible</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Price + CTA */}
-                      <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
-                        <div>
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio</span>
-                          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tighter">
-                            ${p.price.toFixed(2)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleSelectCombo(p)}
-                          disabled={isOutOfStock}
-                          className={`px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 ${
-                            isOutOfStock
-                              ? "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
-                              : isSelected
-                              ? "bg-[#DA1A21] text-white shadow-lg shadow-[#DA1A21]/20"
-                              : "bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-800 dark:hover:bg-slate-100 active:scale-95"
-                          }`}
-                        >
-                          {isOutOfStock ? "Agotado" : isSelected ? "Seleccionado" : "Elegir combo"}
-                        </button>
-                      </div>
+          {primaryStickerProduct ? (
+            <div className="rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="p-6 sm:p-8">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {getStockValue(primaryStickerProduct) > 0 ? `Stock disponible: ${getStockValue(primaryStickerProduct)}` : "Producción estimada: 2 semanas"}
+                  </div>
+                  <h3 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 dark:text-white">
+                    {primaryStickerProduct.name}
+                  </h3>
+                  <p className="mt-3 max-w-2xl text-sm font-medium leading-relaxed text-slate-500">
+                    Sticker real para compra individual o por cantidad. Selecciona cuántas unidades quieres y el total se calcula en vivo.
+                  </p>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Precio unitario</p>
+                      <p className="mt-1 text-2xl font-black tracking-tighter text-slate-950 dark:text-white">${primaryStickerProduct.price.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stock disponible</p>
+                      <p className="mt-1 text-2xl font-black tracking-tighter text-slate-950 dark:text-white">{getStockValue(primaryStickerProduct)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Producción</p>
+                      <p className="mt-1 text-sm font-bold leading-tight text-slate-700 dark:text-slate-300">Si faltan unidades, entran a producción en ~2 semanas.</p>
                     </div>
                   </div>
-                );
-              })
-            )}
-          </div>
+                </div>
+                <div className="border-t border-slate-200 bg-slate-50 p-6 sm:p-8 lg:border-l lg:border-t-0 dark:border-slate-800 dark:bg-slate-950/40">
+                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#DA1A21]">Cantidad</p>
+                    <div className="mt-4 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(quantity - 1)}
+                        aria-label="Disminuir cantidad"
+                        className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 transition-all hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-[#DA1A21]/10 disabled:opacity-40"
+                        disabled={quantity <= 1}
+                      >
+                        <span className="text-2xl font-black">-</span>
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        max={99}
+                        inputMode="numeric"
+                        aria-label="Cantidad de unidades"
+                        value={quantity}
+                        onChange={(event) => updateQuantity(Number(event.target.value))}
+                        className="h-12 flex-1 rounded-2xl border border-slate-200 bg-white px-4 text-center text-lg font-black tracking-tighter text-slate-950 outline-none focus:border-[#DA1A21]/30 focus:ring-4 focus:ring-[#DA1A21]/10 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(quantity + 1)}
+                        aria-label="Aumentar cantidad"
+                        className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 transition-all hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-[#DA1A21]/10"
+                      >
+                        <span className="text-2xl font-black">+</span>
+                      </button>
+                    </div>
+                    <p className="mt-3 text-[10px] font-medium text-slate-400">Puedes pedir más unidades que las disponibles. Las restantes entran a producción.</p>
+                    <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total</p>
+                      <p className="mt-1 text-3xl font-black tracking-tighter text-[#DA1A21]">${selectedProduct ? selectedTotal.toFixed(2) : "0.00"}</p>
+                    </div>
+                    <p className="mt-3 text-[10px] font-medium leading-relaxed text-slate-400">
+                      {selectedStockMessage}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectProduct(primaryStickerProduct, { resetQuantity: false })}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-5 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-[#B9141B] active:scale-[0.98]"
+                  >
+                    Crear pedido
+                  </button>
+                  <p className="mt-3 text-center text-[10px] font-medium text-slate-400">
+                    Después de crear el pedido podrás revisar el pago y subir comprobante desde Mis pedidos.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
+
+        {/* ─── Otros productos ─────────────────────────────────── */}
+        {personalGrouped
+          .filter((g) => g.section === "custom_products")
+          .map((group) =>
+            group.products.length > 0 && (
+              <section key={group.section} className="space-y-4 pt-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">
+                      Otros productos
+                    </h3>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">{group.description}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {group.products.map((p) => {
+                    const isOutOfStock = getStockValue(p) === 0;
+                    return (
+                      <div key={p.id} className="rounded-[1.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col">
+                        {p.imageUrl || p.image ? (
+                          <div className="aspect-[3/2] bg-slate-50 dark:bg-slate-800 relative overflow-hidden">
+                            <Image
+                              src={resolveImageSrc(p.imageUrl || p.image, "general")}
+                              alt={p.name}
+                              fill
+                              className="object-cover"
+                              unoptimized={Boolean((p.imageUrl || p.image)?.startsWith("http"))}
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-[3/2] bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                            <Store className="h-10 w-10 text-slate-200" />
+                          </div>
+                        )}
+                        <div className="p-4 sm:p-5 flex-1 flex flex-col">
+                          <h4 className="text-sm font-black text-slate-900 dark:text-white mb-1">{p.name}</h4>
+                          <p className="text-[11px] text-slate-400 font-medium line-clamp-2 mb-3 flex-1 leading-relaxed">
+                            {p.description || "Producto disponible"}
+                          </p>
+
+                          {p.requiresPersonalization && (
+                            <div className="flex items-center gap-1.5 mb-3 text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-500/10 w-fit px-2.5 py-1 rounded-lg">
+                              <AlertTriangle className="h-3 w-3" />
+                              Requiere perfil con chip activo
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800">
+                            <div>
+                              <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Precio</p>
+                              <p className="text-lg font-black text-slate-900 dark:text-white">${p.price.toFixed(2)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectProduct(p)}
+                              disabled={isOutOfStock}
+                              className={`px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                                isOutOfStock
+                                  ? "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
+                                  : "bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-800 active:scale-95"
+                              }`}
+                            >
+                              {isOutOfStock ? "Agotado" : "Comprar"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )
+          )}
 
         {/* ─── Business section (separated) ─────────────────────── */}
         {businessProducts.length > 0 && (
@@ -555,7 +607,7 @@ export default function TiendaPage() {
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-black text-slate-900 dark:text-white">Para empresas</p>
-                  <p className="text-[10px] font-medium text-slate-400">Protección para equipos, colaboradores o instituciones.</p>
+                  <p className="text-[10px] font-medium text-slate-400">Flujo separado para pedidos empresariales.</p>
                 </div>
               </div>
               {showBusinessSection ? (
@@ -590,7 +642,7 @@ export default function TiendaPage() {
 
                       <div className="flex items-center gap-2 mb-4">
                         <Info className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="text-[10px] font-medium text-slate-400">
+                          <span className="text-[10px] font-medium text-slate-400">
                           Los pedidos empresariales requieren revisión y flujo separado.
                         </span>
                       </div>
@@ -608,7 +660,7 @@ export default function TiendaPage() {
                           </span>
                         ) : (
                           <button
-                            onClick={() => handleSelectCombo(p)}
+                            onClick={() => handleSelectProduct(p)}
                             className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 active:scale-95 transition-all"
                           >
                             Solicitar atención empresarial
@@ -623,75 +675,6 @@ export default function TiendaPage() {
           </section>
         )}
 
-        {/* ─── Accessories section (secondary, only if data exists) ── */}
-        {personalGrouped
-          .filter((g) => g.section === "custom_products")
-          .map((group) =>
-            group.products.length > 0 && (
-              <section key={group.section} className="space-y-4 pt-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">
-                      {getStoreSectionTitle(group.section)}
-                    </h3>
-                    <p className="text-xs text-slate-400 font-medium mt-0.5">{group.description}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {group.products.map((p) => {
-                    const isOutOfStock = (p.availableStock ?? p.stock ?? 0) === 0;
-                    return (
-                      <div key={p.id} className="rounded-[1.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col">
-                        {p.imageUrl || p.image ? (
-                          <div className="aspect-[3/2] bg-slate-50 dark:bg-slate-800 relative overflow-hidden">
-                            <Image
-                              src={resolveImageSrc(p.imageUrl || p.image, "general")}
-                              alt={p.name}
-                              fill
-                              className="object-cover"
-                              unoptimized={Boolean((p.imageUrl || p.image)?.startsWith("http"))}
-                            />
-                          </div>
-                        ) : (
-                          <div className="aspect-[3/2] bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-                            <Store className="h-10 w-10 text-slate-200" />
-                          </div>
-                        )}
-                        <div className="p-4 sm:p-5 flex-1 flex flex-col">
-                          <h4 className="text-sm font-black text-slate-900 dark:text-white mb-1">{p.name}</h4>
-                          <p className="text-[11px] text-slate-400 font-medium line-clamp-2 mb-3 flex-1 leading-relaxed">
-                            {p.description || "Accesorio certificado"}
-                          </p>
-
-                          {p.requiresPersonalization && (
-                            <div className="flex items-center gap-1.5 mb-3 text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-500/10 w-fit px-2.5 py-1 rounded-lg">
-                              <AlertTriangle className="h-3 w-3" />
-                              Requiere perfil con chip activo
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800">
-                            <p className="text-lg font-black text-slate-900 dark:text-white">${p.price.toFixed(2)}</p>
-                            <button
-                              onClick={() => handleSelectCombo(p)}
-                              disabled={isOutOfStock}
-                              className={`px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                isOutOfStock
-                                  ? "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
-                                  : "bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-800 active:scale-95"
-                              }`}
-                            >
-                              {isOutOfStock ? "Agotado" : "Elegir"}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )
-          )}
       </div>
 
       {/* ─── Selection summary + Form (inline, mobile-first) ──── */}
@@ -705,36 +688,27 @@ export default function TiendaPage() {
                   <ShoppingCart className="h-6 w-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-[#DA1A21] mb-0.5">Combo seleccionado</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-[#DA1A21] mb-0.5">Producto seleccionado</p>
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tighter truncate">
                     {selectedProduct.name}
                   </h3>
-                  {(() => {
-                    const meta = getComboMeta(selectedProduct.name);
-                    return meta ? (
-                      <p className="text-xs font-medium text-slate-400 mt-0.5">
-                        {meta.chips} {meta.chips === 1 ? "chip incluido" : "chips incluidos"} · ${selectedProduct.price.toFixed(2)}
-                      </p>
-                    ) : (
-                      <p className="text-xs font-medium text-slate-400 mt-0.5">
-                        ${selectedProduct.price.toFixed(2)}
-                      </p>
-                    );
-                  })()}
+                  <p className="text-xs font-medium text-slate-400 mt-0.5">
+                    ${selectedTotal.toFixed(2)} total · cantidad {quantity} · stock {selectedStock}
+                  </p>
                 </div>
               </div>
               <button
-                onClick={handleChangeCombo}
+                onClick={handleChangeProduct}
                 className="shrink-0 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-slate-600 dark:text-slate-300"
               >
-                Cambiar combo
+                Cambiar producto
               </button>
             </div>
 
             <div className="mt-4 pt-4 border-t border-[#DA1A21]/10">
               <div className="flex items-start gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                 <Info className="h-4 w-4 shrink-0 mt-0.5 text-[#DA1A21]/60" />
-                <span>Cuando recibas tus chips, actívalos desde Mis dispositivos.</span>
+                <span>Cuando recibas tu pedido, revisa el pago y sube tu comprobante desde Mis pedidos.</span>
               </div>
             </div>
           </div>
@@ -877,7 +851,7 @@ export default function TiendaPage() {
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                   <span className="text-sm font-black text-slate-500 uppercase tracking-tight">Total</span>
                   <span className="text-2xl sm:text-3xl font-black text-[#DA1A21] tracking-tighter">
-                    ${selectedProduct.price.toFixed(2)}
+                    ${selectedTotal.toFixed(2)}
                   </span>
                 </div>
 
@@ -913,7 +887,7 @@ export default function TiendaPage() {
               Pedido creado
             </h2>
             <p className="text-sm text-slate-400 font-medium max-w-xs mx-auto leading-relaxed">
-              Tu pedido fue creado. Sube tu comprobante y revisa el estado en Mis pedidos.
+              Tu pedido fue creado. Si no hay stock suficiente, la producción estimada es de 2 semanas. Revisa el pago y sube tu comprobante desde Mis pedidos.
             </p>
           </div>
 
@@ -1023,7 +997,7 @@ export default function TiendaPage() {
               Pedido creado
             </h3>
             <p className="text-sm font-bold text-slate-400 mb-8 max-w-sm mx-auto leading-relaxed">
-              Tu pedido fue creado. Sube tu comprobante y revisa el estado en Mis pedidos.
+              Tu pedido fue creado. Si no hay stock suficiente, la producción estimada es de 2 semanas. Revisa el pago y sube tu comprobante desde Mis pedidos.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
