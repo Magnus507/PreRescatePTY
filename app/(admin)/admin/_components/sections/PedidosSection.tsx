@@ -2233,8 +2233,8 @@ export function PedidosSection() {
       </div>
 
       {showInternalOrderModal && (
-        <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
+          <div className="my-6 w-full max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Pedido interno</p>
@@ -2293,7 +2293,7 @@ export function PedidosSection() {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-3">
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
               <button
                 type="button"
                 onClick={() => setShowInternalOrderModal(false)}

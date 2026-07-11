@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { generateSequentialCode } from "@/lib/operations/order-code";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
@@ -80,10 +81,15 @@ export async function POST(
       const productionNotes = isInternal
         ? `${productionNotesMarker} Pedido interno para fabricar inventario.`
         : `${productionNotesMarker} Pedido operativo enviado a producción real.`;
+      const productionCode = await generateSequentialCode({
+        tx,
+        model: "productionOrder",
+        prefix: isInternal ? "PROD-INT" : "PROD",
+      });
 
       const productionOrder = await tx.operationProductionOrder.create({
         data: {
-          code: `PROD-${commercialOrder.code}`,
+          code: productionCode,
           title: productionTitle,
           status: "draft",
           plannedQuantity: totalQuantity,
