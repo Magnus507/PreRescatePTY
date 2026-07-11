@@ -673,16 +673,19 @@ export function CommercialSection() {
     }
     setReservationKey(order.id);
     try {
-      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/reserve-units`, {
+      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/reserve-stock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "auto", allowPartial: false }),
+        body: JSON.stringify({
+          quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
+          confirmPendingPayment: order.paymentStatus === "pending",
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "No se pudieron reservar unidades");
       }
-      toast.success("Unidades reservadas");
+      toast.success(data.message || "Stock reservado");
       await loadOrders({ silent: true });
     } catch (error) {
       toast.error(getErrorMessage(error, "Error al reservar unidades"));
@@ -694,14 +697,17 @@ export function CommercialSection() {
   const handleReleaseUnits = async (order: CommercialOrder) => {
     setReservationKey(order.id);
     try {
-      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/release-units`, {
+      const reason = window.prompt("Motivo de la liberación:") || "";
+      const res = await fetch(`/api/admin/operations/commercial-orders/${order.id}/release-reservation`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "No se pudieron liberar unidades");
       }
-      toast.success("Reserva liberada");
+      toast.success(data.message || "Reserva liberada");
       await loadOrders({ silent: true });
     } catch (error) {
       toast.error(getErrorMessage(error, "Error al liberar unidades"));
@@ -914,6 +920,10 @@ export function CommercialSection() {
             {orders.map((order) => {
               const actions = getActionsForOrder(order);
               const productionNeed = getProductionNeed(order);
+              const requestedQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
+              const reservedQty = order.reservedUnits?.length || 0;
+              const firstItem = order.items[0];
+              const reserveProductCode = firstItem?.finishedGood?.code || firstItem?.productCode || "Sin código";
 
               return (
                 <article key={order.id} className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
@@ -1034,6 +1044,29 @@ export function CommercialSection() {
                           </div>
                         </div>
                       )}
+                      {!isInternalOrder(order) && (
+                        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Reserva de stock</p>
+                          <div className="mt-2 grid gap-3 md:grid-cols-3">
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Stock reservado</p>
+                              <p className="mt-1 font-bold text-slate-900">
+                                {reservedQty} / {requestedQty}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Pendiente de reservar</p>
+                              <p className="mt-1 font-bold text-slate-900">
+                                {Math.max(0, requestedQty - reservedQty)} unidades
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">ProductCode</p>
+                              <p className="mt-1 font-bold text-slate-900">{reserveProductCode}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="mt-4 grid gap-2">
                         {order.items.map((item) => (
                           <div key={item.id} className="flex flex-col gap-2 rounded-2xl bg-white px-4 py-3 text-sm md:flex-row md:items-center md:justify-between">
@@ -1095,7 +1128,7 @@ export function CommercialSection() {
                           className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-blue-800 transition-all hover:bg-blue-100 disabled:opacity-50"
                         >
                           {reservationKey === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
-                          Reservar etiqueta interna
+                          Reservar stock disponible
                         </button>
                       )}
                       {!isInternalOrder(order) && productionNeed.needsProduction && !productionNeed.isMixed && order.status !== "cancelled" && (
@@ -1117,7 +1150,7 @@ export function CommercialSection() {
                           className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-amber-800 transition-all hover:bg-amber-100 disabled:opacity-50"
                           >
                           {reservationKey === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                          Liberar unidades
+                          Liberar reserva
                         </button>
                       )}
                       {!isInternalOrder(order) && (order.status === "stock_reserved" || order.fulfillmentStatus === "reserved") && !order.dispatch && (
