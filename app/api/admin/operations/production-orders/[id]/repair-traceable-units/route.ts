@@ -41,20 +41,20 @@ export async function POST(
 
     try {
       const unit = await prisma.$transaction(async (tx) => {
+        const productMetadata = getProductMetadata(item.batch.productType);
         const existingByBatchItem = await tx.operationFinishedGoodUnit.findUnique({
           where: { digitalBatchItemId: item.id },
         });
         if (existingByBatchItem) {
-          const productMetadata = getProductMetadata(item.batch.productType);
           const linked = await tx.operationFinishedGoodUnit.update({
             where: { id: existingByBatchItem.id },
             data: {
               digitalBatchId: existingByBatchItem.digitalBatchId || item.batchId,
               digitalBatchItemId: existingByBatchItem.digitalBatchItemId || item.id,
               printOrderId: existingByBatchItem.printOrderId || printOrder?.id || null,
-              productCode: existingByBatchItem.productCode || productMetadata.productCode,
-              productName: existingByBatchItem.productName || productMetadata.productName,
-              productType: existingByBatchItem.productType || item.batch.productType,
+              productCode: productMetadata.productCode,
+              productName: productMetadata.productName,
+              productType: item.batch.productType,
               qaStatus: existingByBatchItem.qaStatus && ["passed", "failed"].includes(existingByBatchItem.qaStatus) ? existingByBatchItem.qaStatus : "pending",
               status: existingByBatchItem.qaStatus === "passed" || existingByBatchItem.qaStatus === "failed" ? existingByBatchItem.status : "qa_pending",
               activationStatus: existingByBatchItem.activationStatus || "not_activated",
@@ -68,16 +68,15 @@ export async function POST(
         });
 
         if (existingByLabel) {
-          const productMetadata = getProductMetadata(item.batch.productType);
           const linked = await tx.operationFinishedGoodUnit.update({
             where: { id: existingByLabel.id },
             data: {
               digitalBatchId: existingByLabel.digitalBatchId || item.batchId,
               digitalBatchItemId: existingByLabel.digitalBatchItemId || item.id,
               printOrderId: existingByLabel.printOrderId || printOrder?.id || null,
-              productCode: existingByLabel.productCode || productMetadata.productCode,
-              productName: existingByLabel.productName || productMetadata.productName,
-              productType: existingByLabel.productType || item.batch.productType,
+              productCode: productMetadata.productCode,
+              productName: productMetadata.productName,
+              productType: item.batch.productType,
               qaStatus: existingByLabel.qaStatus && ["passed", "failed"].includes(existingByLabel.qaStatus) ? existingByLabel.qaStatus : "pending",
               status: existingByLabel.qaStatus === "passed" || existingByLabel.qaStatus === "failed" ? existingByLabel.status : "qa_pending",
               activationStatus: existingByLabel.activationStatus || "not_activated",
@@ -86,7 +85,6 @@ export async function POST(
           return { unit: linked, action: "linked" as const };
         }
 
-        const productMetadata = getProductMetadata(item.batch.productType);
         const created = await tx.operationFinishedGoodUnit.create({
           data: {
             internalLabel: item.internalLabel,

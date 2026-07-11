@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { buildProductionAssemblyState, getProductionAssemblyMissingParts } from "@/lib/operations/production-assembly-state";
+import { getProductMetadata } from "@/app/api/admin/operations/finished-good-units/finished-good-units.helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -49,9 +50,9 @@ export async function POST(
             digitalBatchId: existingByLabel.digitalBatchId || item.batchId,
             digitalBatchItemId: existingByLabel.digitalBatchItemId || item.id,
             printOrderId: existingByLabel.printOrderId || printOrder?.id || null,
-            productCode: existingByLabel.productCode || "PRP-FG-STICKER",
-            productName: existingByLabel.productName || "Sticker PreRescatePTY",
-            productType: existingByLabel.productType || item.batch.productType,
+            productCode: getProductMetadata(item.batch.productType).productCode,
+            productName: getProductMetadata(item.batch.productType).productName,
+            productType: item.batch.productType,
             qaStatus: existingByLabel.qaStatus && ["passed", "failed"].includes(existingByLabel.qaStatus) ? existingByLabel.qaStatus : "pending",
             status: existingByLabel.qaStatus === "passed" || existingByLabel.qaStatus === "failed" ? existingByLabel.status : "qa_pending",
             activationStatus: existingByLabel.activationStatus || "not_activated",
@@ -60,8 +61,8 @@ export async function POST(
       : await tx.operationFinishedGoodUnit.create({
           data: {
             internalLabel: item.internalLabel,
-            productCode: "PRP-FG-STICKER",
-            productName: "Sticker PreRescatePTY",
+            productCode: getProductMetadata(item.batch.productType).productCode,
+            productName: getProductMetadata(item.batch.productType).productName,
             productType: item.batch.productType,
             digitalBatchId: item.batchId,
             digitalBatchItemId: item.id,
