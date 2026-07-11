@@ -55,6 +55,20 @@ export async function POST(
         throw new Error("INTERNAL_ORDER_NO_DISPATCH");
       }
 
+      const orderProductCodes = Array.from(
+        new Set(
+          order.items
+            .map((item) => item.productCode?.trim())
+            .filter((value): value is string => Boolean(value))
+        )
+      );
+
+      if (orderProductCodes.length !== 1) {
+        throw new Error("MIXED_OR_MISSING_PRODUCT_CODE");
+      }
+
+      const orderProductCode = orderProductCodes[0];
+
       const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
         where: {
           reservedOrderId: commercialOrderId,
@@ -72,6 +86,10 @@ export async function POST(
       const requiredQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
       if (reservedUnits.length < requiredQuantity) {
         throw new Error("INSUFFICIENT_RESERVED_UNITS");
+      }
+
+      if (reservedUnits.some((unit) => unit.productCode !== orderProductCode)) {
+        throw new Error("PRODUCT_CODE_MISMATCH");
       }
 
       const dispatch = await tx.operationDispatch.create({
@@ -171,6 +189,18 @@ export async function POST(
       return NextResponse.json(
         { error: "Los pedidos internos no crean despacho. Terminan en inventario disponible después de QC." },
         { status: 400 }
+      );
+    }
+    if (error instanceof Error && error.message === "MIXED_OR_MISSING_PRODUCT_CODE") {
+      return NextResponse.json(
+        { error: "La ruta comercial simple solo admite un único productCode canónico en el pedido." },
+        { status: 400 }
+      );
+    }
+    if (error instanceof Error && error.message === "PRODUCT_CODE_MISMATCH") {
+      return NextResponse.json(
+        { error: "Las unidades reservadas no coinciden con el productCode del pedido." },
+        { status: 409 }
       );
     }
     if (error instanceof Error && error.message === "NO_RESERVED_UNITS") {
