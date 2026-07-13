@@ -156,102 +156,109 @@ export default function DashboardPage() {
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
       <section className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-12">
-          <div className="group relative overflow-hidden rounded-[1.9rem] border border-white/12 bg-[linear-gradient(135deg,#04070C_0%,#0C1118_52%,rgba(218,26,33,0.12)_82%,rgba(218,26,33,0.06)_100%)] p-4 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.78)] transition-all duration-300 ease-out hover:border-white/16 hover:shadow-[0_28px_72px_-36px_rgba(0,0,0,0.82)] focus-within:border-white/16 focus-within:shadow-[0_28px_72px_-36px_rgba(0,0,0,0.82)] sm:p-5 md:rounded-[2.25rem] md:p-7 motion-reduce:transition-none">
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -top-20 right-[-4rem] h-56 w-56 rounded-full bg-[#DA1A21]/10 blur-3xl transition-opacity duration-300 ease-out group-hover:opacity-90" />
-              <div className="absolute bottom-[-6rem] left-[-3rem] h-52 w-52 rounded-full bg-sky-400/7 blur-3xl transition-opacity duration-300 ease-out group-hover:opacity-80" />
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-              <div className="absolute inset-0 opacity-[0.055] [background-image:radial-gradient(circle_at_center,rgba(239,244,255,0.9)_0.8px,transparent_0.8px)] [background-size:18px_18px]" />
-            </div>
-
-            <div className="relative grid gap-4 sm:gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
-              <div className="space-y-4 sm:space-y-5">
+          <div className="group relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.26)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-40px_rgba(15,23,42,0.28)] focus-within:shadow-[0_28px_70px_-40px_rgba(15,23,42,0.28)] sm:p-6 md:p-8 motion-reduce:transition-none dark:border-slate-200/80 dark:bg-white">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(218,26,33,0.06),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.05),transparent_32%)]" />
+            <div className="relative grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+              <div className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-[#0b1118]/84 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#EFF4FF] backdrop-blur-md shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">
-                    <span className="h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_16px_rgba(218,26,33,0.7)]" />
+                  <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.18)]">
+                    <span className="h-2 w-2 rounded-full bg-[#DA1A21]" />
                     PreRescue ID
                   </div>
                   <button
                     onClick={refreshData}
-                    className="relative h-11 w-11 rounded-[1.05rem] border border-white/14 bg-white/12 text-[#EFF4FF] backdrop-blur transition-all duration-200 ease-out hover:border-white/24 hover:bg-white/18 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none"
+                    className="relative h-11 w-11 rounded-[1rem] border border-slate-200 bg-white text-slate-600 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.18)] transition-all duration-200 hover:border-[#DA1A21]/20 hover:text-[#DA1A21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none"
                     aria-label="Actualizar panel"
                   >
-                    <Bell className="mx-auto h-5 w-5 drop-shadow-[0_0_10px_rgba(239,244,255,0.18)]" />
+                    <Bell className="mx-auto h-5 w-5" />
                     {data?.notifications?.some((n) => !n.read) && (
-                      <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_12px_rgba(218,26,33,0.75)]" />
+                      <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#DA1A21] shadow-[0_0_12px_rgba(218,26,33,0.45)]" />
                     )}
                   </button>
                 </div>
 
-                <div className="space-y-2 sm:space-y-3">
-                  <h1 className="max-w-xl text-3xl font-black leading-[1.02] tracking-tight text-[#EFF4FF] sm:text-4xl md:text-5xl">
+                <div className="space-y-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500">Dashboard cliente</p>
+                  <h1 className="max-w-xl text-4xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-5xl md:text-6xl">
                     {state.isInactive ? "Activa tu protección" : "Tu protección está lista"}
                   </h1>
-                  <p className="max-w-xl text-[13px] font-medium leading-6 text-[#F4F7FB]/96 sm:text-sm md:text-base md:leading-relaxed [text-shadow:0_1px_1px_rgba(0,0,0,0.18)]">
-                    Gestiona perfiles y dispositivos con una interfaz clara, premium y lista para actuar.
+                  <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                    Gestiona perfiles, dispositivos y acceso público desde una experiencia clara, ligera y premium.
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2.5 sm:gap-3">
-                  <div className="rounded-[1.05rem] border border-white/10 bg-white/8 px-4 py-2.5 text-left backdrop-blur">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F4F7FB]/78">Estado</p>
-                    <p className="mt-1 text-sm font-black text-[#F7FAFF]">{state.isInactive ? "Lista para activar" : "Cuenta activa"}</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.25)]">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Estado</p>
+                    <p className="mt-2 text-sm font-black text-slate-950">{state.isInactive ? "Lista para activar" : "Cuenta activa"}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Visión general de tu protección.</p>
                   </div>
-                  <MetricPill label="Chips activos" value={activeChips} />
+                  <div className="rounded-[1.2rem] border border-slate-200 bg-white p-4 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.25)]">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Chips activos</p>
+                    <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeChips}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Seguimiento de tus dispositivos vinculados.</p>
+                  </div>
+                  <div className="rounded-[1.2rem] border border-slate-200 bg-white p-4 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.25)]">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Perfil público</p>
+                    <p className="mt-2 text-sm font-black text-slate-950">{hasActiveChip ? "Disponible" : "Pendiente"}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Estado visible para emergencias.</p>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-2.5 pt-1 sm:flex-row sm:gap-3">
                   <Link
                     href={primaryCtaHref}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] bg-gradient-to-r from-[#DA1A21] to-[#B9141B] px-5 py-3.25 text-sm font-black text-white shadow-[0_16px_35px_-16px_rgba(218,26,33,0.9)] transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,1)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EFF4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] bg-[#DA1A21] px-5 py-3.25 text-sm font-black text-white shadow-[0_18px_36px_-18px_rgba(218,26,33,0.35)] transition-all duration-200 ease-out hover:-translate-y-px hover:bg-[#B9141B] hover:shadow-[0_22px_40px_-20px_rgba(218,26,33,0.45)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none sm:w-auto"
                   >
                     {primaryCtaLabel}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                   <Link
                     href="/dashboard/perfiles-medicos"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] border border-white/12 bg-white/8 px-5 py-3.25 text-sm font-black text-[#EFF4FF] backdrop-blur transition-all duration-200 ease-out hover:border-white/20 hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] border border-slate-200 bg-white px-5 py-3.25 text-sm font-black text-slate-800 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.18)] transition-all duration-200 ease-out hover:-translate-y-px hover:border-slate-300 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none sm:w-auto"
                   >
                     Ver perfiles
                   </Link>
                 </div>
               </div>
 
-              <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,8,14,0.68)_0%,rgba(11,17,24,0.52)_100%)] p-3.5 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.68)] backdrop-blur-xl sm:p-4 md:rounded-[1.5rem] md:p-5">
-                <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3.5 sm:pb-4">
-                  <div>
-                    <p className="inline-flex items-center rounded-full border border-white/14 bg-[#0b1118]/88 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-[#F4F7FB]/92 shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">Vista rápida</p>
-                    <h2 className="mt-1 text-[1.35rem] font-black tracking-tight text-[#F7FAFF] sm:text-2xl">Perfiles médicos</h2>
+              <div className="rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fafbfc_100%)] p-4 shadow-[0_18px_42px_-28px_rgba(15,23,42,0.22)] sm:p-5">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4">
+                  <div className="space-y-1">
+                    <p className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-600">
+                      Vista rápida
+                    </p>
+                    <h2 className="text-xl font-black tracking-tight text-slate-950 sm:text-2xl">Perfiles médicos</h2>
                   </div>
-                  <Link href="/dashboard/perfiles-medicos" className="rounded-full border border-white/14 bg-[#0b1118]/72 px-2.5 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-[#F4F7FB] transition-all duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none">
+                  <Link href="/dashboard/perfiles-medicos" className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-700 transition-all duration-200 hover:border-slate-300 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none">
                     Gestionar
                   </Link>
                 </div>
 
-                <div className="mt-3.5 space-y-2.5 sm:mt-4 sm:space-y-3">
+                <div className="mt-4 space-y-3">
                   {previewProfiles.length > 0 ? previewProfiles.map((profile) => {
                     const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "Perfil por configurar";
                     const hasChip = (profile.assignedChips?.length || 0) > 0;
                     const initials = `${profile.firstName?.[0] || ""}${profile.lastName?.[0] || ""}`.trim().toUpperCase() || "PR";
                     return (
-                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.05rem] border border-white/10 bg-[#05070D]/66 p-3 transition-all duration-200 ease-out hover:border-white/18 hover:bg-[#05070D]/74">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.9rem] bg-gradient-to-br from-white/18 to-white/8 text-sm font-black text-[#EFF4FF] ring-1 ring-white/10">
+                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.15rem] border border-slate-200 bg-white p-3.5 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.2)] transition-all duration-200 ease-out hover:-translate-y-px hover:border-slate-300 hover:shadow-[0_18px_36px_-26px_rgba(15,23,42,0.22)]">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-slate-950 text-sm font-black text-white shadow-[0_12px_24px_-18px_rgba(15,23,42,0.4)]">
                           {initials}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-black text-[#F7FAFF]">{fullName}</p>
-                          <p className="truncate text-[11px] text-[#F4F7FB]/88">
+                          <p className="truncate text-sm font-black text-slate-950">{fullName}</p>
+                          <p className="truncate text-[11px] text-slate-500">
                             {hasChip ? "Protegido" : "Sin chip"}
                             {profile.bloodType ? ` · ${profile.bloodType}` : ""}
                           </p>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-500/24 text-emerald-100 ring-1 ring-emerald-200/30" : "bg-amber-500/28 text-amber-50 ring-1 ring-amber-200/40"}`}>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"}`}>
                           {hasChip ? "Protegido" : "Sin chip"}
                         </span>
                       </div>
                     );
                   }) : (
-                    <div className="rounded-[1.1rem] border border-dashed border-white/12 bg-white/8 p-4 text-sm text-[#F4F7FB]/84">
+                    <div className="rounded-[1.15rem] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
                       Aún no tienes perfiles registrados.
                     </div>
                   )}
@@ -266,7 +273,7 @@ export default function DashboardPage() {
         <HomeCard
           title="Mis dispositivos"
           count={activeChips}
-          description="Revisa tus chips activos y vinculaciones."
+          description="Revisa chips activos y vinculaciones."
           ctaLabel="Ver dispositivos"
           href="/dashboard/chips"
           badge={activeChips > 0 ? "Activo" : "Sin activar"}
@@ -276,7 +283,7 @@ export default function DashboardPage() {
 
         <HomeCard
           title="Tienda"
-          description="Compra stickers, chips o accesorios."
+          description="Compra stickers, chips y accesorios."
           ctaLabel="Ir a tienda"
           href="/dashboard/compras"
           badge="Comercial"
@@ -300,15 +307,6 @@ export default function DashboardPage() {
           </Link>
         </div>
       </section>
-    </div>
-  );
-}
-
-function MetricPill({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-[1rem] border border-border/70 bg-background px-3 py-3 text-center transition-all duration-200 ease-out hover:border-primary/20 hover:shadow-[0_12px_26px_-22px_rgba(15,23,42,0.28)] focus-within:border-primary/20 focus-within:shadow-[0_12px_26px_-22px_rgba(15,23,42,0.28)] motion-reduce:transition-none">
-      <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
-      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 leading-tight">{label}</p>
     </div>
   );
 }
