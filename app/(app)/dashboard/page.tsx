@@ -187,15 +187,15 @@ export default function DashboardPage() {
                   <h1 className="max-w-xl text-3xl font-black leading-[1.02] tracking-tight text-[#EFF4FF] sm:text-4xl md:text-5xl">
                     {state.isInactive ? "Activa tu protección" : "Tu protección está lista"}
                   </h1>
-                  <p className="max-w-xl text-[13px] font-medium leading-6 text-[#EFF4FF]/94 sm:text-sm md:text-base md:leading-relaxed [text-shadow:0_1px_1px_rgba(0,0,0,0.18)]">
+                  <p className="max-w-xl text-[13px] font-medium leading-6 text-[#F4F7FB]/96 sm:text-sm md:text-base md:leading-relaxed [text-shadow:0_1px_1px_rgba(0,0,0,0.18)]">
                     Gestiona perfiles y dispositivos con una interfaz clara, premium y lista para actuar.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2.5 sm:gap-3">
                   <div className="rounded-[1.05rem] border border-white/10 bg-white/8 px-4 py-2.5 text-left backdrop-blur">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#EFF4FF]/80">Estado</p>
-                    <p className="mt-1 text-sm font-black text-[#EFF4FF]">{state.isInactive ? "Lista para activar" : "Cuenta activa"}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F4F7FB]/78">Estado</p>
+                    <p className="mt-1 text-sm font-black text-[#F7FAFF]">{state.isInactive ? "Lista para activar" : "Cuenta activa"}</p>
                   </div>
                   <MetricPill label="Chips activos" value={activeChips} />
                 </div>
@@ -220,10 +220,10 @@ export default function DashboardPage() {
               <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,8,14,0.68)_0%,rgba(11,17,24,0.52)_100%)] p-3.5 shadow-[0_22px_60px_-34px_rgba(0,0,0,0.68)] backdrop-blur-xl sm:p-4 md:rounded-[1.5rem] md:p-5">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3.5 sm:pb-4">
                   <div>
-                    <p className="inline-flex items-center rounded-full border border-white/14 bg-[#0b1118]/88 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-[#EFF4FF] shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">Vista rápida</p>
-                    <h2 className="mt-1 text-[1.35rem] font-black tracking-tight text-[#EFF4FF] sm:text-2xl">Perfiles médicos</h2>
+                    <p className="inline-flex items-center rounded-full border border-white/14 bg-[#0b1118]/88 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-[#F4F7FB]/92 shadow-[0_10px_24px_-20px_rgba(0,0,0,0.7)]">Vista rápida</p>
+                    <h2 className="mt-1 text-[1.35rem] font-black tracking-tight text-[#F7FAFF] sm:text-2xl">Perfiles médicos</h2>
                   </div>
-                  <Link href="/dashboard/perfiles-medicos" className="rounded-full border border-white/14 bg-[#0b1118]/72 px-2.5 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-[#EFF4FF] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118]">
+                  <Link href="/dashboard/perfiles-medicos" className="rounded-full border border-white/14 bg-[#0b1118]/72 px-2.5 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-[#F4F7FB] transition-all duration-200 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C1118] motion-reduce:transition-none">
                     Gestionar
                   </Link>
                 </div>
@@ -239,19 +239,19 @@ export default function DashboardPage() {
                           {initials}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-black text-[#EFF4FF]/98">{fullName}</p>
-                          <p className="truncate text-[11px] text-[#EFF4FF]/94">
+                          <p className="truncate text-sm font-black text-[#F7FAFF]">{fullName}</p>
+                          <p className="truncate text-[11px] text-[#F4F7FB]/88">
                             {hasChip ? "Protegido" : "Sin chip"}
                             {profile.bloodType ? ` · ${profile.bloodType}` : ""}
                           </p>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-500/24 text-emerald-100 ring-1 ring-emerald-200/30" : "bg-amber-500/24 text-amber-100 ring-1 ring-amber-200/30"}`}>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${hasChip ? "bg-emerald-500/24 text-emerald-100 ring-1 ring-emerald-200/30" : "bg-amber-500/28 text-amber-50 ring-1 ring-amber-200/40"}`}>
                           {hasChip ? "Protegido" : "Sin chip"}
                         </span>
                       </div>
                     );
                   }) : (
-                    <div className="rounded-[1.1rem] border border-dashed border-white/12 bg-white/8 p-4 text-sm text-[#EFF4FF]/80">
+                    <div className="rounded-[1.1rem] border border-dashed border-white/12 bg-white/8 p-4 text-sm text-[#F4F7FB]/84">
                       Aún no tienes perfiles registrados.
                     </div>
                   )}
