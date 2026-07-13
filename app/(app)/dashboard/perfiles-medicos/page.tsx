@@ -416,7 +416,7 @@ export default function FamiliaPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium tracking-tight uppercase italic">Sincronizando expedientes médicos...</p>
+        <p className="text-slate-500 animate-pulse font-medium tracking-tight uppercase">Sincronizando expedientes médicos</p>
       </div>
     );
   }
@@ -424,92 +424,102 @@ export default function FamiliaPage() {
   return (
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700 pb-12">
       <div className={(showAdd || editProfile) ? "hidden" : "block"}>
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-6">
-        <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary">Protección médica</p>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-950 dark:text-white">Perfiles médicos</h1>
-          <p className="max-w-2xl text-sm md:text-base text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-            Gestiona tu información de emergencia y la de tus protegidos desde una vista rápida y cómoda para móvil.
-          </p>
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-6">
+          <div className="space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-primary">Protección médica</p>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-950">Perfiles médicos</h1>
+            <p className="max-w-2xl text-sm md:text-base text-slate-600 font-medium leading-relaxed">
+              Gestiona la información de emergencia de tu cuenta y de tus protegidos con una vista clara y cómoda.
+            </p>
+          </div>
+          <button
+            onClick={() => { setShowAdd(true); setAddError(""); setAddForm({ ...emptyForm }); }}
+            className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-[1.1rem] bg-primary px-5 py-4 text-sm font-black text-white shadow-[0_16px_34px_-18px_rgba(218,26,33,0.32)] transition-all hover:-translate-y-px hover:bg-[#B9141B] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none"
+          >
+            <Plus className="h-4 w-4" /> Añadir perfil
+          </button>
         </div>
-        <button
-          onClick={() => { setShowAdd(true); setAddError(""); setAddForm({ ...emptyForm }); }}
-          className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-[1.2rem] bg-primary px-5 py-4 text-sm font-black text-white shadow-[0_16px_34px_-18px_rgba(218,26,33,0.95)] transition-all hover:-translate-y-px active:scale-[0.99]"
-        >
-          <Plus className="h-4 w-4" /> Añadir Perfil
-        </button>
-      </div>
 
-      {state && (
-        <div className="grid grid-cols-1 gap-4">
-           <div className="rounded-[1.75rem] border border-primary/15 bg-[linear-gradient(180deg,rgba(255,255,255,0.95)_0%,rgba(247,250,252,1)_100%)] p-4 md:p-5 flex items-start gap-4 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.32)] dark:bg-[linear-gradient(180deg,rgba(8,10,14,0.98)_0%,rgba(15,20,25,0.96)_100%)]">
-              <div className="h-12 w-12 rounded-2xl bg-primary text-white flex items-center justify-center shrink-0 shadow-[0_14px_28px_-16px_rgba(218,26,33,0.85)]">
-                 <ShieldCheck className="h-6 w-6" />
+        {state && (
+          <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.18)] md:p-5">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] bg-slate-950 text-white shadow-[0_14px_28px_-18px_rgba(15,23,42,0.28)]">
+                <ShieldCheck className="h-6 w-6" />
               </div>
               <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 mb-1">Perfiles registrados</p>
-                  <p className="font-black text-base md:text-lg tracking-tight text-slate-950 dark:text-white">
-                     {state.familyProfilesCount + 1} {state.familyProfilesCount + 1 === 1 ? 'persona' : 'personas'} registradas
-                  </p>
-                  <p className="mt-1 text-xs md:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">La protección se activa al vincular un chip o sticker.</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500 mb-1">Perfiles registrados</p>
+                <p className="font-black text-base md:text-lg tracking-tight text-slate-950">
+                  {state.familyProfilesCount + 1} {state.familyProfilesCount + 1 === 1 ? "persona" : "personas"} registradas
+                </p>
+                <p className="mt-1 text-xs md:text-sm text-slate-600 font-medium leading-relaxed">
+                  La protección se activa al vincular un chip o sticker.
+                </p>
               </div>
-           </div>
-        </div>
-      )}
-
-      {(!ownProfile && familyProfiles.length === 0) ? (
-        <div className="text-center py-24 rounded-[3rem] border-2 border-dashed border-border group hover:bg-accent/30 transition-all">
-          <div className="h-20 w-20 rounded-[2rem] bg-muted mx-auto mb-6 flex items-center justify-center text-muted-foreground/30 group-hover:scale-110 group-hover:text-primary/30 transition-all">
-             <UserRound className="h-10 w-10" />
+            </div>
           </div>
-          <h3 className="text-2xl font-black tracking-tight mb-2 uppercase italic">Sin Configuración Médica</h3>
-          <p className="text-muted-foreground max-w-sm mx-auto mb-8 font-medium italic">Aún no se ha detectado el perfil base o adicionales para este registro.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6">
-          {ownProfile && (
-            <ProfileCard
-              key={ownProfile.id}
-              profile={ownProfile}
-              onEdit={() => openEdit(ownProfile)}
-              onDelete={() => toast.error("No puedes eliminar el perfil principal de la cuenta.")}
-              isDeleting={false}
-              contactsExpanded={expandedContacts === ownProfile.id}
-              onToggleContacts={() => toggleContacts(ownProfile.id)}
-              contacts={contacts[ownProfile.id] || []}
-              contactsLoading={contactsLoading === ownProfile.id}
-              onDeleteContact={(contactId) => handleDeleteContact(ownProfile.id, contactId)}
-              availableChips={availableChips}
-              onAssignChip={(chipId) => handleAssignChip(ownProfile.id, chipId)}
-              isAssigning={assigningChip === ownProfile.id}
-              isOwn
-              onPhotoUpdate={() => loadProfiles()}
-              onStartAddContact={() => { setAddingContactToProfile(ownProfile.id); setContactError(""); setContactForm({...emptyContactForm}); }}
-            />
-          )}
+        )}
 
-          {familyProfiles.map((profile) => (
-            <ProfileCard
-              key={profile.id}
-              profile={profile}
-              onEdit={() => openEdit(profile)}
-              onDelete={() => handleDelete(profile.id, `${profile.firstName} ${profile.lastName}`)}
-              isDeleting={deleting === profile.id}
-              contactsExpanded={expandedContacts === profile.id}
-              onToggleContacts={() => toggleContacts(profile.id)}
-              contacts={contacts[profile.id] || []}
-              contactsLoading={contactsLoading === profile.id}
-              onDeleteContact={(contactId) => handleDeleteContact(profile.id, contactId)}
-              availableChips={availableChips}
-              onAssignChip={(chipId) => handleAssignChip(profile.id, chipId)}
-              isAssigning={assigningChip === profile.id}
-              onPhotoUpdate={() => loadProfiles()}
-              onStartAddContact={() => { setAddingContactToProfile(profile.id); setContactError(""); setContactForm({...emptyContactForm}); }}
-            />
-          ))}
-        </div>
-      )}
+        {(!ownProfile && familyProfiles.length === 0) ? (
+          <div className="mt-6 rounded-[2rem] border border-dashed border-slate-200 bg-slate-50 px-6 py-20 text-center shadow-[0_16px_36px_-30px_rgba(15,23,42,0.18)] sm:px-10">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-white text-slate-300 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.18)]">
+              <UserRound className="h-10 w-10" />
+            </div>
+            <h3 className="text-2xl font-black tracking-tight text-slate-950">Sin configuración médica</h3>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-slate-600">
+              Aún no se ha detectado un perfil base o adicionales para este registro.
+            </p>
+            <button
+              onClick={() => { setShowAdd(true); setAddError(""); setAddForm({ ...emptyForm }); }}
+              className="mt-8 inline-flex items-center justify-center gap-2 rounded-[1.05rem] bg-primary px-5 py-3.5 text-sm font-black text-white shadow-[0_16px_34px_-18px_rgba(218,26,33,0.32)] transition-all hover:-translate-y-px hover:bg-[#B9141B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none"
+            >
+              <Plus className="h-4 w-4" />
+              Crear primer perfil
+            </button>
+          </div>
+        ) : (
+          <div className="mt-6 grid grid-cols-1 gap-5 md:gap-6">
+            {ownProfile && (
+              <ProfileCard
+                key={ownProfile.id}
+                profile={ownProfile}
+                onEdit={() => openEdit(ownProfile)}
+                onDelete={() => toast.error("No puedes eliminar el perfil principal de la cuenta.")}
+                isDeleting={false}
+                contactsExpanded={expandedContacts === ownProfile.id}
+                onToggleContacts={() => toggleContacts(ownProfile.id)}
+                contacts={contacts[ownProfile.id] || []}
+                contactsLoading={contactsLoading === ownProfile.id}
+                onDeleteContact={(contactId) => handleDeleteContact(ownProfile.id, contactId)}
+                availableChips={availableChips}
+                onAssignChip={(chipId) => handleAssignChip(ownProfile.id, chipId)}
+                isAssigning={assigningChip === ownProfile.id}
+                isOwn
+                onPhotoUpdate={() => loadProfiles()}
+                onStartAddContact={() => { setAddingContactToProfile(ownProfile.id); setContactError(""); setContactForm({ ...emptyContactForm }); }}
+              />
+            )}
 
+            {familyProfiles.map((profile) => (
+              <ProfileCard
+                key={profile.id}
+                profile={profile}
+                onEdit={() => openEdit(profile)}
+                onDelete={() => handleDelete(profile.id, `${profile.firstName} ${profile.lastName}`)}
+                isDeleting={deleting === profile.id}
+                contactsExpanded={expandedContacts === profile.id}
+                onToggleContacts={() => toggleContacts(profile.id)}
+                contacts={contacts[profile.id] || []}
+                contactsLoading={contactsLoading === profile.id}
+                onDeleteContact={(contactId) => handleDeleteContact(profile.id, contactId)}
+                availableChips={availableChips}
+                onAssignChip={(chipId) => handleAssignChip(profile.id, chipId)}
+                isAssigning={assigningChip === profile.id}
+                onPhotoUpdate={() => loadProfiles()}
+                onStartAddContact={() => { setAddingContactToProfile(profile.id); setContactError(""); setContactForm({ ...emptyContactForm }); }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── ADD PROFILE: Mobile inline / Desktop modal ── */}
@@ -799,12 +809,13 @@ function ProfileCard({
   };
 
   return (
-      <div className={`group overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border transition-all hover:shadow-2xl hover:shadow-primary/5 ${contactsExpanded ? 'ring-2 ring-primary/20' : ''} ${isOwn ? 'border-primary/20 bg-primary/5' : 'border-border bg-card'}`}>
-      <div className="p-4 md:p-8 flex flex-col md:flex-row items-start gap-4 md:gap-8">
-         <div className="relative flex flex-row md:flex-col items-center gap-3 md:gap-0 shrink-0">
+      <div className={`group overflow-hidden rounded-[2rem] border bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-34px_rgba(15,23,42,0.22)] focus-within:shadow-[0_24px_50px_-34px_rgba(15,23,42,0.22)] ${contactsExpanded ? 'ring-2 ring-primary/15' : 'border-slate-200'} ${isOwn ? 'shadow-[0_18px_40px_-30px_rgba(15,23,42,0.18)]' : 'shadow-[0_16px_34px_-28px_rgba(15,23,42,0.16)]'}`}>
+      <div className="p-4 md:p-7 flex flex-col gap-5 md:gap-7">
+         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+           <div className="flex flex-row items-center gap-3 md:gap-4 shrink-0">
             <div
               onClick={handlePhotoClick}
-              className={`h-16 w-16 md:h-20 md:w-20 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden relative flex items-center justify-center font-black text-xl md:text-2xl shadow-inner cursor-pointer ${isOwn ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}
+              className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.5rem] font-black text-xl shadow-inner cursor-pointer md:h-20 md:w-20 md:rounded-[1.75rem] ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-900'}`}
             >
                {profile.photoUrl ? (
                  <Image src={profile.photoUrl} alt="Avatar" fill className="object-cover" />
@@ -812,144 +823,145 @@ function ProfileCard({
                  <div className="w-full h-full flex items-center justify-center">{initials}</div>
                )}
                {isOwn && (
-                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
                    {uploading ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <Camera className="h-5 w-5 text-white" />}
                  </div>
                )}
             </div>
             <input type="file" id={`profile-photo-input-${profile.id}`} className="hidden" accept="image/*" onChange={handleFileChange} />
-            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
+            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
                {isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
             </span>
+           </div>
          </div>
 
-         <div className="flex-1 space-y-4 w-full">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-               <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <h3 className="text-xl md:text-2xl font-black tracking-tight leading-tight text-slate-950 dark:text-white">
+         <div className="flex-1 space-y-5 w-full">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+               <div className="space-y-3">
+                  <div className="space-y-1">
+                    <h3 className="text-2xl md:text-3xl font-black tracking-tight leading-tight text-slate-950">
                       {profile.firstName || "Sin nombre"} {profile.lastName || ""}
                     </h3>
                     {profile.displayNamePublic && (
-                      <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.22em]">
-                         Alias: {profile.displayNamePublic}
+                      <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-600">
+                        Alias: {profile.displayNamePublic}
                       </span>
                     )}
                   </div>
-                   <div className="flex flex-wrap gap-2">
-                      <div className="px-3 py-1.5 rounded-full bg-primary/6 border border-primary/10 text-[11px] font-black text-primary uppercase flex items-center gap-2">
-                         <Activity className="h-3.5 w-3.5" /> {profile.bloodType}
+                  <div className="flex flex-wrap gap-2">
+                    <div className="px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-black text-slate-700 uppercase flex items-center gap-2">
+                      <Activity className="h-3.5 w-3.5 text-primary" /> {profile.bloodType}
+                    </div>
+                    {profile.assignedChips.length > 0 ? (
+                      profile.assignedChips.map((c) => (
+                        <div key={c.id} className="px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-black text-emerald-700 uppercase flex items-center gap-2">
+                          <Smartphone className="h-3.5 w-3.5" /> {c.serialPublic}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-[11px] font-black text-amber-700 uppercase flex items-center gap-2">
+                        <AlertCircle className="h-3.5 w-3.5" /> Sin chip
                       </div>
-                      {profile.assignedChips.length > 0 ? (
-                        profile.assignedChips.map((c) => (
-                          <div key={c.id} className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/15 text-[11px] font-black text-emerald-700 dark:text-emerald-300 uppercase flex items-center gap-2">
-                             <Smartphone className="h-3.5 w-3.5" /> {c.serialPublic}
-                          </div>
-                        ))
-                      ) : (
-                         <div className="px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/15 text-[11px] font-black text-amber-700 dark:text-amber-300 uppercase flex items-center gap-2">
-                            <AlertCircle className="h-3.5 w-3.5" /> Sin Chip
-                         </div>
-                      )}
-                      {profile.hasCognitiveImpairment && (
-                        <div className="px-3 py-1.5 rounded-full bg-amber-100 border border-amber-200 text-[11px] font-black text-amber-700 uppercase flex items-center gap-2">
-                           <Brain className="h-3.5 w-3.5" /> Alzheimer
-                        </div>
-                      )}
-                      {profile.hasWanderingRisk && (
-                        <div className="px-3 py-1.5 rounded-full bg-orange-100 border border-orange-200 text-[11px] font-black text-orange-700 uppercase flex items-center gap-2">
-                           <Footprints className="h-3.5 w-3.5" /> Desorientación
-                        </div>
-                      )}
-                      {profile.isNonVerbal && (
-                        <div className="px-3 py-1.5 rounded-full bg-violet-100 border border-violet-200 text-[11px] font-black text-violet-700 uppercase flex items-center gap-2">
-                           <MessageCircle className="h-3.5 w-3.5" /> No verbal
-                        </div>
-                      )}
-                      {profile.safeReturnInstructions && (
-                        <div className="px-3 py-1.5 rounded-full bg-teal-100 border border-teal-200 text-[11px] font-black text-teal-700 uppercase flex items-center gap-2">
-                           <Footprints className="h-3.5 w-3.5" /> Retorno seguro
-                        </div>
-                      )}
-                   </div>
+                    )}
+                    {profile.hasCognitiveImpairment && (
+                      <div className="px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-[11px] font-black text-amber-700 uppercase flex items-center gap-2">
+                        <Brain className="h-3.5 w-3.5" /> Alzheimer
+                      </div>
+                    )}
+                    {profile.hasWanderingRisk && (
+                      <div className="px-3 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-[11px] font-black text-orange-700 uppercase flex items-center gap-2">
+                        <Footprints className="h-3.5 w-3.5" /> Desorientación
+                      </div>
+                    )}
+                    {profile.isNonVerbal && (
+                      <div className="px-3 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-[11px] font-black text-violet-700 uppercase flex items-center gap-2">
+                        <MessageCircle className="h-3.5 w-3.5" /> No verbal
+                      </div>
+                    )}
+                    {profile.safeReturnInstructions && (
+                      <div className="px-3 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-[11px] font-black text-teal-700 uppercase flex items-center gap-2">
+                        <Footprints className="h-3.5 w-3.5" /> Retorno seguro
+                      </div>
+                    )}
+                  </div>
                </div>
 
-                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+               <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
                   {profile.assignedChips.length === 0 && availableChips.length > 0 && (
-                    <div className="relative col-span-2 w-full sm:w-auto sm:col-span-1">
+                    <div className="relative w-full sm:w-auto">
                       <select
                         onChange={(e) => onAssignChip(e.target.value)}
                         disabled={isAssigning}
-                        className="w-full appearance-none rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 pr-9 text-xs font-black uppercase tracking-[0.22em] text-amber-800 cursor-pointer transition-all hover:bg-amber-100 sm:w-auto dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+                        className="w-full appearance-none rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 pr-9 text-xs font-black uppercase tracking-[0.22em] text-amber-800 cursor-pointer transition-all hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                       >
                          <option value="">+ Vincular Chip</option>
                          {availableChips.map(c => (
                            <option key={c.id} value={c.id}>{c.serialPublic}</option>
                          ))}
                       </select>
-                      <Plus className="h-3 w-3 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-amber-700 dark:text-amber-200" />
+                      <Plus className="h-3 w-3 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-amber-700" />
                     </div>
                   )}
                   {profile.assignedChips?.[0] && (
                     <Link 
                       href={`/e/${profile.assignedChips[0].shortCode}`} 
                       target="_blank"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-border bg-background px-4 py-3 text-sm font-black text-slate-700 transition-all hover:border-primary/30 hover:text-primary sm:w-auto dark:bg-slate-950 dark:text-slate-200"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.16)] transition-all hover:-translate-y-px hover:border-slate-300 hover:text-slate-950 sm:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                       title="Ver Perfil Público"
                     >
                        <ExternalLink className="h-4 w-4" />
                        <span>Ficha pública</span>
                     </Link>
                   )}
-                  <button onClick={onEdit} className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-[1rem] border border-border bg-background px-4 py-3 text-sm font-black text-primary transition-all hover:border-primary/30 hover:bg-primary/5" title="Editar Perfil">
+                  <button onClick={onEdit} className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-black text-primary shadow-[0_12px_26px_-22px_rgba(15,23,42,0.16)] transition-all hover:-translate-y-px hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white" title="Editar Perfil">
                      <Pencil className="h-4 w-4" />
                      <span>Editar</span>
                   </button>
-                  <button onClick={onToggleContacts} className={`inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-[1rem] border px-4 py-3 text-sm font-black transition-all ${contactsExpanded ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'border-border bg-background text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 dark:bg-slate-950 dark:text-emerald-300 dark:hover:bg-emerald-950/30'}`}>
+                  <button onClick={onToggleContacts} className={`inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-[1rem] border px-4 py-3 text-sm font-black transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${contactsExpanded ? 'border-primary bg-primary text-white shadow-[0_14px_28px_-18px_rgba(218,26,33,0.3)]' : 'border-slate-200 bg-white text-emerald-700 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.16)] hover:-translate-y-px hover:border-emerald-300 hover:bg-emerald-50'}`}>
                      <Phone className="h-4 w-4" />
                      <span>Contactos</span>
                   </button>
-                  <button onClick={onDelete} disabled={isDeleting} className="col-span-2 inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-[1rem] border border-border bg-background px-4 py-3 text-sm font-black text-slate-500 transition-all hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive disabled:opacity-30">
+                  <button onClick={onDelete} disabled={isDeleting} className="col-span-2 inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-500 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.16)] transition-all hover:-translate-y-px hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white">
                      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                      <span>Eliminar</span>
                   </button>
                </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-4 pt-1">
-               <div className="rounded-[1.15rem] border border-border/60 bg-slate-50/90 p-3.5 dark:bg-slate-900/50">
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400 mb-1">Teléfono</p>
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{profile.phone || "No indicado"}</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+               <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
+                  <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Teléfono</p>
+                  <p className="text-sm font-medium text-slate-800">{profile.phone || "No indicado"}</p>
                </div>
-               <div className="rounded-[1.15rem] border border-border/60 bg-slate-50/90 p-3.5 dark:bg-slate-900/50">
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400 mb-1">Alergias</p>
-                  <p className="text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-100 line-clamp-2">{profile.allergies || "No indicado"}</p>
+               <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
+                  <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Alergias</p>
+                  <p className="line-clamp-2 text-sm font-medium leading-relaxed text-slate-800">{profile.allergies || "No indicado"}</p>
                </div>
-               <div className="rounded-[1.15rem] border border-border/60 bg-slate-50/90 p-3.5 dark:bg-slate-900/50">
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400 mb-1">Condiciones</p>
-                  <p className="text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-100 line-clamp-2">{profile.chronicConditions || "No indicado"}</p>
+               <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
+                  <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Condiciones</p>
+                  <p className="line-clamp-2 text-sm font-medium leading-relaxed text-slate-800">{profile.chronicConditions || "No indicado"}</p>
                </div>
             </div>
          </div>
       </div>
 
        {contactsExpanded && (
-        <div className="bg-muted/30 border-t border-border p-6 md:p-8 animate-in slide-in-from-top-4 duration-500">
-           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="border-t border-slate-200 bg-slate-50/70 p-6 md:p-8 animate-in slide-in-from-top-4 duration-500">
+           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                 <h4 className="flex items-center gap-3 text-xl font-black tracking-tight">
-                    <ShieldCheck className="h-6 w-6 text-primary" /> Guardianes del Perfil
+                 <h4 className="flex items-center gap-3 text-xl font-black tracking-tight text-slate-950">
+                    <ShieldCheck className="h-6 w-6 text-primary" /> Contactos de emergencia
                  </h4>
-                 <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">Configura los contactos de emergencia exclusivos para este perfil.</p>
+                 <p className="mt-1 text-xs font-semibold text-slate-500">Configura los contactos de emergencia exclusivos para este perfil.</p>
               </div>
-              <p className="inline-flex w-fit items-center rounded-full border border-border bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-                 Prioridad Automática de Alerta
+              <p className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.18)]">
+                 Prioridad automática de alerta
               </p>
            </div>
  
            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
               <div className="lg:col-span-12 space-y-4">
-                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-6">
+                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-5">
                     {[0, 1, 2].map((idx) => {
                        const c = contacts[idx];
                        if (!c) {
@@ -957,7 +969,7 @@ function ProfileCard({
                              <button 
                                 key={idx} 
                                 onClick={onStartAddContact}
-                                className="h-24 rounded-[1.4rem] border-2 border-dashed border-border bg-slate-50/90 flex flex-col items-center justify-center text-slate-400 transition-all group hover:border-primary hover:bg-primary/5 hover:text-primary dark:bg-slate-900/40"
+                                className="h-24 rounded-[1.4rem] border-2 border-dashed border-slate-200 bg-white flex flex-col items-center justify-center text-slate-400 transition-all group hover:-translate-y-px hover:border-primary/30 hover:bg-slate-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                              >
                                 <PlusCircle className="h-8 w-8 mb-2 group-hover:scale-110 transition-transform" />
                                 <span className="text-[10px] font-black uppercase tracking-[0.22em]">Añadir Guardián {idx + 1}</span>
@@ -965,27 +977,27 @@ function ProfileCard({
                           );
                        }
                         return (
-                           <div key={c.id} className="group relative flex flex-col gap-3 rounded-[1.4rem] border border-primary/15 bg-white p-4 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.32)] dark:bg-slate-950 dark:border-primary/20 md:p-6">
+                           <div key={c.id} className="group relative flex flex-col gap-3 rounded-[1.4rem] border border-slate-200 bg-white p-4 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.18)] md:p-6">
                              <button 
                                 onClick={() => onDeleteContact(c.id)} 
-                                className="absolute -top-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-white text-destructive shadow-md transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
+                                className="absolute -top-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-destructive shadow-md transition-all opacity-0 group-hover:opacity-100 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                                 title="Eliminar Guardián"
                              >
                                 <Trash2 className="h-4 w-4" />
                              </button>
                              <div className="flex items-center gap-4">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-xl font-black text-white shadow-lg shadow-primary/20">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-xl font-black text-white shadow-[0_14px_28px_-20px_rgba(15,23,42,0.32)]">
                                    {c.fullName[0].toUpperCase()}
                                 </div>
                                 <div className="min-w-0">
-                                   <p className="truncate text-base font-black leading-tight text-slate-950 dark:text-white">{c.fullName}</p>
-                                   <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{c.phone}</p>
+                                   <p className="truncate text-base font-black leading-tight text-slate-950">{c.fullName}</p>
+                                   <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">{c.phone}</p>
                                 </div>
                              </div>
                              
                              <div className="pt-4 border-t border-border/50">
                                 <label className="mb-1 block text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">Vínculo configurado</label>
-                                <div className="flex items-center justify-between rounded-[1.1rem] border border-slate-200/70 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+                                <div className="flex items-center justify-between rounded-[1.1rem] border border-slate-200 bg-slate-50 px-4 py-3">
                                    <span className="text-xs font-black uppercase tracking-[0.18em] text-primary">{c.relationship}</span>
                                    <ShieldCheck className="h-3.5 w-3.5 text-primary/40" />
                                 </div>
@@ -994,7 +1006,7 @@ function ProfileCard({
                              <div className="space-y-3">
                                 <button 
                                   onClick={() => onDeleteContact(c.id)}
-                                  className="mt-2 text-[9px] font-black uppercase tracking-[0.22em] text-destructive hover:underline"
+                                  className="mt-2 text-[9px] font-black uppercase tracking-[0.22em] text-destructive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                                 >
                                   Eliminar permanentemente
                                 </button>
