@@ -9,8 +9,8 @@ interface RejectionReasonBoxProps {
  */
 export function RejectionReasonBox({ adminReviewNotes }: RejectionReasonBoxProps) {
   return (
-    <div className="px-4 py-3 rounded-xl border border-red-200 bg-red-50 text-left">
-      <p className="text-[10px] font-black uppercase tracking-widest text-red-700">
+    <div className="px-4 py-3 rounded-2xl border border-red-200 bg-red-50 text-left">
+      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-700">
         Motivo del rechazo: {adminReviewNotes?.trim() || "No especificado."}
       </p>
     </div>
