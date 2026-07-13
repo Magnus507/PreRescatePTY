@@ -188,14 +188,14 @@ export default function DashboardPage() {
                     {state.isInactive ? "Activa tu protección" : "Tu protección está lista"}
                   </h1>
                   <p className="max-w-xl text-[13px] font-medium leading-6 text-[#EFF4FF]/94 sm:text-sm md:text-base md:leading-relaxed [text-shadow:0_1px_1px_rgba(0,0,0,0.18)]">
-                    Gestiona tus perfiles y dispositivos desde una experiencia más clara, cálida y lista para actuar.
+                    Gestiona perfiles y dispositivos con una interfaz clara, premium y lista para actuar.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2.5 sm:gap-3">
                   <div className="rounded-[1.05rem] border border-white/10 bg-white/8 px-4 py-2.5 text-left backdrop-blur">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#EFF4FF]/80">Estado</p>
-                    <p className="mt-1 text-sm font-black text-[#EFF4FF]">{state.isInactive ? "Cuenta lista para activar" : "Cuenta activa"}</p>
+                    <p className="mt-1 text-sm font-black text-[#EFF4FF]">{state.isInactive ? "Lista para activar" : "Cuenta activa"}</p>
                   </div>
                   <MetricPill label="Chips activos" value={activeChips} />
                 </div>
@@ -289,7 +289,7 @@ export default function DashboardPage() {
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Mis pedidos</p>
             <h2 className="text-[1.35rem] font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl">Pedidos recientes</h2>
             <p className="text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-              Revisa tus pedidos cuando necesites ver estados o historial.
+              Revisa estados e historial cuando lo necesites.
             </p>
           </div>
           <Link
@@ -306,7 +306,7 @@ export default function DashboardPage() {
 
 function MetricPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[1rem] border border-border/70 bg-background px-3 py-3 text-center transition-colors duration-200 ease-out">
+    <div className="rounded-[1rem] border border-border/70 bg-background px-3 py-3 text-center transition-all duration-200 ease-out hover:border-primary/20 hover:shadow-[0_12px_26px_-22px_rgba(15,23,42,0.28)] focus-within:border-primary/20 focus-within:shadow-[0_12px_26px_-22px_rgba(15,23,42,0.28)] motion-reduce:transition-none">
       <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
       <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 leading-tight">{label}</p>
     </div>
