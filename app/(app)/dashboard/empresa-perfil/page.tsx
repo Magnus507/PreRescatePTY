@@ -207,38 +207,45 @@ export default function EmpresaPerfilPage() {
   const profileUrl = `${window.location.origin}/empresa/${profile.shortCode}`;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <Building2 className="h-6 w-6 text-primary" />
+      <div className="rounded-[2rem] bg-white border border-slate-200 shadow-[0_24px_80px_-50px_rgba(15,23,42,0.2)] px-6 py-8 sm:px-8 sm:py-10">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">
+              <Building2 className="h-3.5 w-3.5 text-[#DA1A21]" />
+              <span className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">Ficha corporativa</span>
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-slate-950 text-balance">
+                Perfil Empresarial
+              </h1>
+              <p className="max-w-2xl text-sm sm:text-base font-medium leading-relaxed text-slate-500">
+                Información pública de cortesía para mostrar identidad, contacto y configuración esencial de tu empresa.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-black">Perfil Empresarial</h1>
-            <p className="text-sm text-muted-foreground">Información pública de cortesía</p>
-          </div>
+          <span className={`inline-flex items-center justify-center text-xs px-3 py-1.5 rounded-full font-black border ${
+            profile.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+            profile.status === "hidden" ? "bg-slate-50 text-slate-600 border-slate-200" :
+            "bg-amber-50 text-amber-700 border-amber-200"
+          }`}>
+            {profile.status === "active" ? "Publicado" : profile.status === "hidden" ? "Oculto" : "Borrador"}
+          </span>
         </div>
-        <span className={`text-xs px-3 py-1.5 rounded-full font-bold ${
-          profile.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-          profile.status === "hidden" ? "bg-slate-50 text-slate-500 border border-slate-200" :
-          "bg-amber-50 text-amber-700 border border-amber-200"
-        }`}>
-          {profile.status === "active" ? "Publicado" : profile.status === "hidden" ? "Oculto" : "Borrador"}
-        </span>
       </div>
 
       {/* Logo + QR Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Logo Upload */}
-        <div className="rounded-2xl border bg-card overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/30">
-            <Camera className="h-4 w-4 text-primary" />
-            <h2 className="font-bold text-sm uppercase tracking-widest">Logo / Foto</h2>
+        <div className="rounded-[2rem] border border-slate-200 bg-white overflow-hidden shadow-[0_20px_60px_-45px_rgba(15,23,42,0.22)]">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-200 bg-slate-50">
+            <Camera className="h-4 w-4 text-[#DA1A21]" />
+            <h2 className="font-black text-[10px] uppercase tracking-[0.25em] text-slate-500">Logo / Foto</h2>
           </div>
-          <div className="p-5 flex flex-col items-center gap-4">
+          <div className="p-5 sm:p-6 flex flex-col items-center gap-4">
             {profile.logoUrl ? (
-              <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 relative">
+              <div className="h-28 w-28 rounded-[1.5rem] border border-slate-200 overflow-hidden bg-slate-50 relative shadow-[0_16px_40px_-30px_rgba(15,23,42,0.2)]">
                 <Image
                   src={profile.logoUrl}
                   alt="Logo"
@@ -249,7 +256,7 @@ export default function EmpresaPerfilPage() {
                 />
               </div>
             ) : (
-              <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center">
+              <div className="h-28 w-28 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center">
                 <Building2 className="h-10 w-10 text-slate-300" />
               </div>
             )}
@@ -264,7 +271,7 @@ export default function EmpresaPerfilPage() {
               />
               <label
                 htmlFor="logo-upload"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest cursor-pointer hover:opacity-90 transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#DA1A21] text-white rounded-full font-black text-xs uppercase tracking-widest cursor-pointer hover:bg-[#B9141B] transition-all active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               >
                 {uploadingLogo ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</>
@@ -272,9 +279,9 @@ export default function EmpresaPerfilPage() {
                   <><Upload className="h-4 w-4" /> {profile.logoUrl ? "Cambiar logo" : "Subir logo"}</>
                 )}
               </label>
-              <p className="text-[9px] text-muted-foreground">JPG, PNG, WebP. Máx 5MB.</p>
+              <p className="text-[9px] text-slate-500">JPG, PNG, WebP. Máx 5MB.</p>
             </div>
-            <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer">
+            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer">
               <input
                 type="checkbox"
                 checked={profile.showLogo}
@@ -286,19 +293,19 @@ export default function EmpresaPerfilPage() {
         </div>
 
         {/* QR Code */}
-        <div className="rounded-2xl border bg-card overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/30">
-            <QrCode className="h-4 w-4 text-primary" />
-            <h2 className="font-bold text-sm uppercase tracking-widest">QR del perfil</h2>
+        <div className="rounded-[2rem] border border-slate-200 bg-white overflow-hidden shadow-[0_20px_60px_-45px_rgba(15,23,42,0.22)]">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-200 bg-slate-50">
+            <QrCode className="h-4 w-4 text-[#DA1A21]" />
+            <h2 className="font-black text-[10px] uppercase tracking-[0.25em] text-slate-500">QR del perfil</h2>
           </div>
-          <div className="p-5 flex flex-col items-center gap-4">
-            <div ref={qrRef} className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+          <div className="p-5 sm:p-6 flex flex-col items-center gap-4">
+            <div ref={qrRef} className="bg-white rounded-[1.25rem] p-3 border border-slate-200 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.2)]">
               <QRCodeCanvas value={profileUrl} size={140} level="M" />
             </div>
             <div className="w-full space-y-2">
               <div className="flex gap-2">
                 <input
-                  className="flex-1 border rounded-xl px-3 py-2 text-xs font-mono bg-slate-50 truncate"
+                  className="flex-1 border border-slate-200 rounded-2xl px-3 py-2.5 text-xs font-mono bg-slate-50 text-slate-700 truncate"
                   readOnly
                   value={profileUrl}
                 />
@@ -307,7 +314,7 @@ export default function EmpresaPerfilPage() {
                     navigator.clipboard.writeText(profileUrl);
                     toast.success("Link copiado");
                   }}
-                  className="px-3 py-2 border rounded-xl text-xs font-bold hover:bg-slate-50 shrink-0"
+                  className="px-3 py-2 border border-slate-200 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </button>
@@ -317,13 +324,13 @@ export default function EmpresaPerfilPage() {
                   href={profileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 px-3 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-all"
+                  className="flex-1 px-3 py-2.5 bg-slate-900 text-white rounded-full font-black text-[10px] uppercase tracking-widest text-center hover:bg-slate-800 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 >
                   Abrir perfil
                 </a>
                 <button
                   onClick={downloadQR}
-                  className="flex-1 px-3 py-2 border border-slate-300 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all inline-flex items-center justify-center gap-1"
+                  className="flex-1 px-3 py-2.5 border border-slate-200 rounded-full font-black text-[10px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all inline-flex items-center justify-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 >
                   <Download className="h-3.5 w-3.5" /> QR
                 </button>
@@ -336,11 +343,11 @@ export default function EmpresaPerfilPage() {
       {/* Status + Link (compact) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Visibilidad</label>
+          <label className="text-xs font-black text-slate-500 uppercase tracking-[0.25em]">Visibilidad</label>
           <select
             value={profile.status}
             onChange={(e) => updateField("status", e.target.value)}
-            className="w-full border rounded-xl px-3 py-2.5 text-sm font-bold bg-white"
+            className="w-full border border-slate-200 rounded-2xl px-3 py-2.5 text-sm font-bold bg-white text-slate-900 focus:border-[#DA1A21]/30 focus:ring-2 focus:ring-[#DA1A21]/15 outline-none"
           >
             <option value="draft">Borrador</option>
             <option value="active">Publicado</option>
@@ -348,9 +355,9 @@ export default function EmpresaPerfilPage() {
           </select>
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Link público</label>
+          <label className="text-xs font-black text-slate-500 uppercase tracking-[0.25em]">Link público</label>
           <div className="flex gap-2">
-            <input className="flex-1 border rounded-xl px-3 py-2.5 text-sm font-mono bg-slate-50" readOnly value={profileUrl} />
+            <input className="flex-1 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm font-mono bg-slate-50 text-slate-700" readOnly value={profileUrl} />
             <button
               onClick={async () => {
                 try {
@@ -360,7 +367,7 @@ export default function EmpresaPerfilPage() {
                   toast.error("No se pudo copiar");
                 }
               }}
-              className="px-4 py-2.5 border rounded-xl text-sm font-bold hover:bg-slate-50"
+              className="px-4 py-2.5 border border-slate-200 rounded-2xl text-sm font-black text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             >
               <ExternalLink className="h-4 w-4" />
             </button>
@@ -593,7 +600,7 @@ export default function EmpresaPerfilPage() {
         <button
           onClick={saveProfile}
           disabled={saving}
-          className="px-8 py-3.5 rounded-xl bg-primary text-white font-black text-sm hover:opacity-90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 inline-flex items-center gap-2"
+          className="px-8 py-3.5 rounded-full bg-[#DA1A21] text-white font-black text-xs uppercase tracking-widest hover:bg-[#B9141B] transition-all shadow-lg shadow-[#DA1A21]/20 disabled:opacity-50 inline-flex items-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</> : <><Save className="h-4 w-4" /> Guardar perfil empresarial</>}
         </button>
@@ -606,12 +613,12 @@ export default function EmpresaPerfilPage() {
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border bg-card overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/30">
-        <span className="h-1.5 w-6 bg-primary rounded-full" />
-        <h2 className="font-bold text-sm uppercase tracking-widest">{title}</h2>
+    <div className="rounded-[2rem] border border-slate-200 bg-white overflow-hidden shadow-[0_20px_60px_-45px_rgba(15,23,42,0.22)]">
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-200 bg-slate-50">
+        <span className="h-1.5 w-6 bg-[#DA1A21] rounded-full" />
+        <h2 className="font-black text-[10px] uppercase tracking-[0.25em] text-slate-500">{title}</h2>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-5 sm:p-6">{children}</div>
     </div>
   );
 }
@@ -632,29 +639,29 @@ function FieldWithVisibility({
   textarea?: boolean;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-medium text-muted-foreground">{label}</label>
-        <label className="inline-flex items-center gap-1 text-[9px] font-bold text-muted-foreground cursor-pointer">
+        <label className="text-xs font-black text-slate-600">{label}</label>
+        <label className="inline-flex items-center gap-1 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer">
           <input
             type="checkbox"
             checked={visible}
             onChange={(e) => onVisibilityChange(e.target.checked)}
-            className="h-3 w-3"
+            className="h-3.5 w-3.5 rounded border-slate-300 text-[#DA1A21] focus:ring-[#DA1A21]/20"
           />
           Mostrar
         </label>
       </div>
       {textarea ? (
         <textarea
-          className="w-full border rounded-xl px-3 py-2.5 text-sm font-medium resize-none"
+          className="w-full border border-slate-200 rounded-2xl px-3 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 resize-none focus:border-[#DA1A21]/30 focus:ring-2 focus:ring-[#DA1A21]/15 outline-none"
           rows={3}
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
         />
       ) : (
         <input
-          className="w-full border rounded-xl px-3 py-2.5 text-sm font-medium"
+          className="w-full border border-slate-200 rounded-2xl px-3 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#DA1A21]/30 focus:ring-2 focus:ring-[#DA1A21]/15 outline-none"
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
         />
