@@ -150,6 +150,7 @@ export type OperationsOrderViewModel = {
   pendingCategory:
     | "payment_review"
     | "payment_missing"
+    | "production_required"
     | "reservation_needed"
     | "dispatch_needed"
     | "production_active"
@@ -262,7 +263,11 @@ function getOrderClassification(order: OperationsOrderInput) {
   };
 }
 
-function getPendingState(order: OperationsOrderInput, paymentProofAvailable: boolean) {
+function getPendingState(
+  order: OperationsOrderInput,
+  paymentProofAvailable: boolean,
+  hasBackorder: boolean
+) {
   const paymentStatus = (order.paymentStatus || "").toLowerCase();
   const reservedUnits = order.reservedUnits || [];
   const hasReservedUnits = reservedUnits.length > 0;
@@ -304,6 +309,15 @@ function getPendingState(order: OperationsOrderInput, paymentProofAvailable: boo
   }
 
   const canReserve = Boolean(order.paymentStatus === "paid" || order.adminReviewStatus === "approved" || paymentProofAvailable);
+  if (!isInternal && hasBackorder && canReserve && !hasReservedUnits) {
+    return {
+      requiresAction: true,
+      pendingCategory: "production_required" as const,
+      pendingReasonLabel: "Producción requerida",
+      pendingPriority: 2,
+    };
+  }
+
   if (!isInternal && canReserve && !hasReservedUnits) {
     return {
       requiresAction: true,
@@ -358,6 +372,7 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
     ? "Sticker PreRescatePTY"
     : commercialItemName;
   const operationalQuantity = commercialQuantity * comboMultiplier;
+  const customerFulfillmentSummary = parseCustomerFulfillmentSummaryFromInternalNote(order.adminReviewNotes);
   const isCancelled = order.orderStatus === "cancelled";
   const canApprovePayment = !isCancelled && paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
   const canRejectPayment = !isCancelled && paymentProofAvailable && order.adminReviewStatus !== "approved" && order.adminReviewStatus !== "rejected";
@@ -365,19 +380,25 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const canAcceptOrder = order.orderStatus === "pending" || order.orderStatus === "processing" || order.orderStatus === "accepted";
   const canRejectOrder = order.orderStatus === "pending" || order.orderStatus === "processing" || order.orderStatus === "accepted";
   const hasReservedUnits = (order.reservedUnits || []).length > 0;
+  const hasBackorder = Boolean(customerFulfillmentSummary?.hasBackorder);
   const isPaymentApproved = order.paymentStatus === "paid" || order.adminReviewStatus === "approved";
   const canReserveInternalLabel =
     order.provider === "manual" &&
     isPaymentApproved &&
     !hasReservedUnits &&
+    !hasBackorder &&
     order.orderStatus !== "cancelled" &&
     order.orderStatus !== "completed";
-  const canSendToProduction = canReserveInternalLabel && order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
+  const canSendToProduction =
+    !isCancelled &&
+    !classification.isInternalOrder &&
+    isPaymentApproved &&
+    hasBackorder &&
+    !hasReservedUnits;
   const canCreateDispatch = Boolean(order.dispatch) === false && hasReservedUnits && isPaymentApproved && order.orderStatus !== "cancelled" && order.orderStatus !== "completed";
   const blockedReasons = getBlockedReasons(order, paymentProofAvailable);
-  const pendingState = getPendingState(order, paymentProofAvailable);
+  const pendingState = getPendingState(order, paymentProofAvailable, hasBackorder);
   const testSignals = detectTestOrderSignals(order);
-  const customerFulfillmentSummary = parseCustomerFulfillmentSummaryFromInternalNote(order.adminReviewNotes);
   const isTerminal = order.orderStatus === "cancelled" || order.orderStatus === "completed";
   const canSoftDeleteOrder = !isTerminal || testSignals;
   const softDeleteLabel = "Cancelar / ocultar";
