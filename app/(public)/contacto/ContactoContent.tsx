@@ -4,7 +4,7 @@ import PublicNavbar from "@/components/public/PublicNavbar";
 import PublicFooter from "@/components/public/PublicFooter";
 import PageHero from "@/components/public/PageHero";
 import { Mail, ShieldAlert, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -12,12 +12,18 @@ export default function ContactoPage() {
   const [formData, setFormData] = useState({ name: "", email: "", message: "" });
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) {
+      return;
+    }
+
+    submittingRef.current = true;
     setLoading(true);
     try {
-      const res = await fetch("/api/contacts/publics/public", {
+      const res = await fetch("/api/contacts/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -34,6 +40,7 @@ export default function ContactoPage() {
       console.error(err);
       toast.error("Error de conexión");
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
