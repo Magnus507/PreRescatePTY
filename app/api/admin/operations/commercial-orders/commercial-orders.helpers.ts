@@ -109,8 +109,8 @@ export function resolveCommercialOrderItemKey(item: {
 }
 
 export function getCommercialOrderItemProductType(item: {
-  finishedGood?: { productType: string } | null;
+  finishedGood?: { code: string; productType: string } | null;
   productCode: string | null;
 }) {
-  return item.finishedGood?.productType || item.productCode || "";
+  return item.finishedGood?.code || item.productCode || "";
 }

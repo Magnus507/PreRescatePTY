@@ -292,4 +292,41 @@ describe("reserveCommercialOrderStock", () => {
     expect(result?.summary.reservedQty).toBe(0);
     expect(result?.summary.missingQty).toBe(1);
   });
+
+  it("matches inventory by finishedGood code even when finishedGood productType is a slug", async () => {
+    const tx = createTx(
+      {
+        id: "order-slug",
+        status: "draft",
+        paymentStatus: "paid",
+        items: [
+          {
+            id: "item-1",
+            quantity: 1,
+            productCode: "PRP-FG-STICKER",
+            finishedGoodId: "fg-1",
+            finishedGood: { code: "PRP-FG-STICKER", productType: "sticker_prerescatepty" },
+          },
+        ],
+      },
+      [
+        {
+          id: "unit-1",
+          internalLabel: "U-001",
+          productCode: "PRP-FG-STICKER",
+          productType: "PRP-FG-STICKER",
+          status: "available",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: null,
+          dispatchItems: [],
+        },
+      ]
+    );
+
+    const result = await reserveCommercialOrderStock(tx as never, { orderId: "order-slug", allowPartial: true });
+
+    expect(result?.summary.reservedQty).toBe(1);
+    expect(result?.summary.missingQty).toBe(0);
+  });
 });
