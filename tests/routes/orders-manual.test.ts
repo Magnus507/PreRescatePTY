@@ -31,7 +31,6 @@ import { POST } from "@/app/api/orders/manual/route";
 import { getServerSession } from "next-auth";
 
 const TEST_USER_ID = "test-user-1";
-const TEST_ACCOUNT_ID = "test-account-id";
 const TEST_PACKAGE_ID = "pkg_123";
 
 function createManualOrderRequest(body: Record<string, unknown> = {}) {

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { z } from 'zod'
 import { validateOrThrow, profileUpdateSchema } from '@/lib/validations'
 
 describe('validations: profileUpdateSchema', () => {
@@ -11,7 +12,7 @@ describe('validations: profileUpdateSchema', () => {
       safeReturnLng: '-79.5',
     }
 
-    const parsed = validateOrThrow<any>(profileUpdateSchema as any, payload)
+    const parsed = validateOrThrow(profileUpdateSchema.partial() as z.ZodTypeAny, payload)
     expect(parsed.safeReturnLat).toBeCloseTo(9.5)
     expect(parsed.safeReturnLng).toBeCloseTo(-79.5)
   })
@@ -23,6 +24,6 @@ describe('validations: profileUpdateSchema', () => {
       bloodType: 'O+',
       safeReturnLat: '999',
     }
-    expect(() => validateOrThrow<any>(profileUpdateSchema as any, payload)).toThrow()
+    expect(() => validateOrThrow(profileUpdateSchema.partial() as z.ZodTypeAny, payload)).toThrow()
   })
 })

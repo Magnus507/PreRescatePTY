@@ -70,7 +70,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { dev, isServer, defaultLoaders, webpack }) => {
+  webpack: (config) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = {
       ...(config.resolve.alias || {}),

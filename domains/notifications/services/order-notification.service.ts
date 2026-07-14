@@ -2,8 +2,23 @@ import { EmailService } from "@/domains/shared/services/email.service";
 import { ConfigRepository } from "@/domains/shared/repositories/config.repository";
 import { logger } from "@/lib/logger";
 
+type NotificationOrderItem = {
+  quantity: number;
+  productType: string;
+};
+
+type NotificationOrder = {
+  customerEmail?: string | null;
+  customerName?: string | null;
+  orderNumber: string | number;
+  amount: number;
+  items?: NotificationOrderItem[];
+  shippingCity?: string | null;
+  shippingAddress?: string | null;
+};
+
 export class OrderNotificationService {
-  static async notifyPaymentValidated(order: any) {
+  static async notifyPaymentValidated(order: NotificationOrder) {
     if (!order.customerEmail) return;
 
     try {
@@ -11,9 +26,9 @@ export class OrderNotificationService {
       
       const subject = `Pago Validado - Orden #${order.orderNumber}`;
       
-      const itemsHtml = order.items.map((item: any) => 
-        `<li>${item.quantity}x ${item.productType}</li>`
-      ).join('');
+      const itemsHtml = (order.items ?? [])
+        .map((item) => `<li>${item.quantity}x ${item.productType}</li>`)
+        .join("");
 
       const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
@@ -38,12 +53,12 @@ export class OrderNotificationService {
       `;
 
       await EmailService.send(order.customerEmail, subject, html, fromEmail);
-    } catch (e) {
-      logger.error("[OrderNotificationService] Error sending payment validation email:", e);
+    } catch (error) {
+      logger.error("[OrderNotificationService] Error sending payment validation email:", error);
     }
   }
 
-  static async notifyOrderShipped(order: any) {
+  static async notifyOrderShipped(order: NotificationOrder) {
     if (!order.customerEmail) return;
 
     try {
@@ -71,8 +86,8 @@ export class OrderNotificationService {
       `;
 
       await EmailService.send(order.customerEmail, subject, html, fromEmail);
-    } catch (e) {
-      logger.error("[OrderNotificationService] Error sending shipment email:", e);
+    } catch (error) {
+      logger.error("[OrderNotificationService] Error sending shipment email:", error);
     }
   }
 }

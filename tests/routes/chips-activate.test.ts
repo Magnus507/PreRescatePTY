@@ -96,7 +96,7 @@ function preTransactionDefaults() {
   )
   vi.mocked(rateLimit).mockResolvedValue({ allowed: true } as Awaited<ReturnType<typeof rateLimit>>)
 
-  const chip = createMockChip({ status: CHIP_STATUS.INVENTORY })
+  const chip = createMockChip({ status: CHIP_STATUS.INVENTORY, internalLabel: 'FG-001' })
   const token = createMockChipClaimToken({ chipId: chip.id })
   mockPrisma.chipClaimToken.findUnique.mockResolvedValue({
     ...token,
@@ -108,18 +108,28 @@ function preTransactionDefaults() {
     lastName: 'Perez',
     bloodType: 'O+',
     userId: 'test-user-id',
+    profileVisibilityStatus: 'active',
+  } as never)
+  mockPrisma.operationFinishedGoodUnit.findFirst.mockResolvedValue({
+    id: 'fgu-1',
+    status: 'delivered',
+    activationStatus: 'not_activated',
+    reservedOrderId: null,
   } as never)
 
   return { chip, token }
 }
 
 function transactionHappyPathDefaults(overrides: {
-  chip: ReturnType<typeof createMockChip>
-  token: ReturnType<typeof createMockChipClaimToken>
   profile?: ReturnType<typeof createMockProfile>
 }) {
-  const { chip, token } = overrides
-  const profile = overrides.profile || createMockProfile({ userId: 'test-user-id', id: 'profile-1' })
+  const profile =
+    overrides.profile ||
+    createMockProfile({
+      userId: 'test-user-id',
+      id: 'profile-1',
+      profileVisibilityStatus: 'active',
+    })
   const account = createMockAccount({ maxChipsAllocated: 3 })
 
   mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 1 } as never)
@@ -127,6 +137,12 @@ function transactionHappyPathDefaults(overrides: {
   mockPrisma.chip.count.mockResolvedValue(0 as never)
   mockPrisma.corporateOrderEmployeeItem.findFirst.mockResolvedValue(null as never)
   mockPrisma.profile.findFirst.mockResolvedValue(profile as never)
+  mockPrisma.operationFinishedGoodUnit.findFirst.mockResolvedValue({
+    id: 'fgu-1',
+    status: 'delivered',
+    activationStatus: 'not_activated',
+    reservedOrderId: null,
+  } as never)
   mockPrisma.chip.updateMany.mockResolvedValue({ count: 1 } as never)
   mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' } as never)
 }
@@ -212,14 +228,20 @@ describe('POST /api/chips/activate — pre-transaction', () => {
   })
 
   it('returns 409 when chip status is not activatable', async () => {
-    const chip = createMockChip({ status: CHIP_STATUS.ACTIVATED })
+    const chip = createMockChip({ status: CHIP_STATUS.ACTIVATED, internalLabel: 'FG-001' })
     const token = createMockChipClaimToken({ chipId: chip.id })
     mockPrisma.chipClaimToken.findUnique.mockResolvedValue({ ...token, chip } as never)
+    mockPrisma.operationFinishedGoodUnit.findFirst.mockResolvedValue({
+      id: 'fgu-1',
+      status: 'delivered',
+      activationStatus: 'not_activated',
+      reservedOrderId: null,
+    } as never)
     const req = createActivateRequest({ activationCode: token.activationCode })
     const res = await POST(req)
     const json = await res.json()
     expect(res.status).toBe(409)
-    expect(json.error).toMatch(/disponible/i)
+    expect(json.error).toMatch(/activación/i)
   })
 })
 
@@ -228,14 +250,20 @@ describe('POST /api/chips/activate — pre-transaction', () => {
 describe('POST /api/chips/activate — transaction errors', () => {
   beforeEach(() => {
     resetAllMocks()
-    const { chip, token } = preTransactionDefaults()
-    transactionHappyPathDefaults({ chip, token })
+    preTransactionDefaults()
+    transactionHappyPathDefaults({})
   })
 
   it('returns 400 when the plan chip limit is reached', async () => {
     wrapTransactionErrorsAsHttp400()
     mockPrisma.account.findUnique.mockResolvedValue(createMockAccount({ maxChipsAllocated: 0 }) as never)
     mockPrisma.chip.count.mockResolvedValue(0 as never)
+    mockPrisma.operationFinishedGoodUnit.findFirst.mockResolvedValue({
+      id: 'fgu-1',
+      status: 'delivered',
+      activationStatus: 'not_activated',
+      reservedOrderId: null,
+    } as never)
 
     const req = createActivateRequest({ activationCode: 'ACT000001' })
     const res = await POST(req)
@@ -247,6 +275,12 @@ describe('POST /api/chips/activate — transaction errors', () => {
 
   it('returns 400 when token consumption inside the transaction affects zero rows', async () => {
     mockPrisma.chipClaimToken.updateMany.mockResolvedValue({ count: 0 } as never)
+    mockPrisma.operationFinishedGoodUnit.findFirst.mockResolvedValue({
+      id: 'fgu-1',
+      status: 'delivered',
+      activationStatus: 'not_activated',
+      reservedOrderId: null,
+    } as never)
 
     const req = createActivateRequest({ activationCode: 'ACT000001' })
     const res = await POST(req)
@@ -258,6 +292,12 @@ describe('POST /api/chips/activate — transaction errors', () => {
 
   it('returns 400 when chip activation inside the transaction affects zero rows', async () => {
     mockPrisma.chip.updateMany.mockResolvedValue({ count: 0 } as never)
+    mockPrisma.operationFinishedGoodUnit.findFirst.mockResolvedValue({
+      id: 'fgu-1',
+      status: 'delivered',
+      activationStatus: 'not_activated',
+      reservedOrderId: null,
+    } as never)
 
     const req = createActivateRequest({ activationCode: 'ACT000001' })
     const res = await POST(req)
@@ -269,6 +309,12 @@ describe('POST /api/chips/activate — transaction errors', () => {
 
   it('returns 400 when the profile is missing inside the transaction', async () => {
     mockPrisma.profile.findFirst.mockResolvedValue(null)
+    mockPrisma.operationFinishedGoodUnit.findFirst.mockResolvedValue({
+      id: 'fgu-1',
+      status: 'delivered',
+      activationStatus: 'not_activated',
+      reservedOrderId: null,
+    } as never)
 
     const req = createActivateRequest({ activationCode: 'ACT000001' })
     const res = await POST(req)
@@ -284,8 +330,8 @@ describe('POST /api/chips/activate — transaction errors', () => {
 describe('POST /api/chips/activate — happy path', () => {
   beforeEach(() => {
     resetAllMocks()
-    const { chip, token } = preTransactionDefaults()
-    transactionHappyPathDefaults({ chip, token })
+    preTransactionDefaults()
+    transactionHappyPathDefaults({})
   })
 
   it('activates chip successfully without profileId', async () => {
@@ -307,6 +353,7 @@ describe('POST /api/chips/activate — happy path', () => {
   it('response includes chip shortCode, serialPublic, nfcUrl and qrUrl', async () => {
     const chip = createMockChip({
       status: CHIP_STATUS.INVENTORY,
+      internalLabel: 'FG-001',
       shortCode: 'SC1234',
       serialPublic: 'SER-001',
       nfcUrl: 'https://prerescatepty.com/nfc/chip-1',
@@ -314,7 +361,7 @@ describe('POST /api/chips/activate — happy path', () => {
     })
     const token = createMockChipClaimToken({ chipId: chip.id })
     mockPrisma.chipClaimToken.findUnique.mockResolvedValue({ ...token, chip } as never)
-    transactionHappyPathDefaults({ chip, token })
+    transactionHappyPathDefaults({})
 
     const req = createActivateRequest({ activationCode: token.activationCode })
     const res = await POST(req)
@@ -330,7 +377,6 @@ describe('POST /api/chips/activate — happy path', () => {
   it('invalidates account state cache after successful activation', async () => {
     const req = createActivateRequest({ activationCode: 'ACT000001' })
     const res = await POST(req)
-    const json = await res.json()
     expect(res.status).toBe(200)
     expect(AccountStateService.invalidateCache).toHaveBeenCalledWith('test-user-id')
   })
@@ -338,7 +384,6 @@ describe('POST /api/chips/activate — happy path', () => {
   it('creates audit log after successful activation', async () => {
     const req = createActivateRequest({ activationCode: 'ACT000001' })
     const res = await POST(req)
-    const json = await res.json()
     expect(res.status).toBe(200)
     expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -364,7 +409,7 @@ describe('POST /api/chips/activate — corporate flow', () => {
    * Must be called inside each test's body AFTER resetAllMocks/preTransactionDefaults.
    */
   function setupCorporateHappyPath() {
-    const { chip, token } = preTransactionDefaults()
+    const { chip } = preTransactionDefaults()
     const account = createMockAccount({ maxChipsAllocated: 3 })
     const member = createMockOrganizationMember({
       corporateProfileId: 'corp-profile-1',
@@ -406,7 +451,7 @@ describe('POST /api/chips/activate — corporate flow', () => {
     mockPrisma.corporateOrderEmployeeItem.updateMany.mockResolvedValue({ count: 1 } as never)
     mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' } as never)
 
-    return { chip, token, corporateProfile, member, corpItem }
+    return { chip, corporateProfile, member, corpItem }
   }
 
   // ── Corporate happy path ──
@@ -642,7 +687,6 @@ describe('POST /api/chips/activate — corporate flow', () => {
     const { chip } = setupCorporateHappyPath()
     const req = createActivateRequest({ activationCode: 'ACT000001' })
     const res = await POST(req)
-    const json = await res.json()
     expect(res.status).toBe(200)
     expect(mockPrisma.corporateOrderEmployeeItem.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -658,7 +702,6 @@ describe('POST /api/chips/activate — corporate flow', () => {
     const { chip } = setupCorporateHappyPath()
     const req = createActivateRequest({ activationCode: 'ACT000001' })
     const res = await POST(req)
-    const json = await res.json()
     expect(res.status).toBe(200)
     expect(mockPrisma.chip.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({

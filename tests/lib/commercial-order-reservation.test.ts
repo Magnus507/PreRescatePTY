@@ -42,7 +42,7 @@ function createTx(order: {
       })),
     },
     operationFinishedGoodUnit: {
-      findMany: vi.fn(async ({ where, take }: { where: { id?: { in: string[] }; reservedOrderId?: string | null; productCode: string; productType: string; status: string; qaStatus?: string; activationStatus?: string; dispatchItems: { none: {} } }, take?: number }) => {
+      findMany: vi.fn(async ({ where, take }: { where: { id?: { in: string[] }; reservedOrderId?: string | null; productCode: string; productType: string; status: string; qaStatus?: string; activationStatus?: string; dispatchItems: { none: Record<string, never> } }, take?: number }) => {
         const matched = state.units.filter((unit) => {
           if (where.id && !where.id.in.includes(unit.id)) return false;
           if (unit.productCode !== where.productCode) return false;
@@ -56,7 +56,7 @@ function createTx(order: {
         });
         return typeof take === "number" ? matched.slice(0, take) : matched;
       }),
-      updateMany: vi.fn(async ({ where, data }: { where: { id: { in: string[] }; productCode: string; productType: string; status: string; qaStatus: string; activationStatus: string; reservedOrderId: string | null; dispatchItems: { none: {} } }, data: { status: string; reservedOrderId: string; reservedAt: Date } }) => {
+      updateMany: vi.fn(async ({ where, data }: { where: { id: { in: string[] }; productCode: string; productType: string; status: string; qaStatus: string; activationStatus: string; reservedOrderId: string | null; dispatchItems: { none: Record<string, never> } }, data: { status: string; reservedOrderId: string; reservedAt: Date } }) => {
         let count = 0;
         for (const unit of state.units) {
           if (

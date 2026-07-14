@@ -4,7 +4,6 @@ import { mockPrisma } from '../helpers/mock-prisma'
 import { resetAllMocks } from '../helpers/reset-mocks'
 import { createMockSession } from '../helpers/mock-auth'
 import { createMockProfile } from '../factories/profile.factory'
-import { createMockUser } from '../factories/user.factory'
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -138,15 +137,15 @@ function createPatchRequest(body: Record<string, unknown>): NextRequest {
  */
 function setupPatchMocks(overrides: { oldProfile?: unknown; upsertResult?: unknown } = {}) {
   const oldProfile = overrides.oldProfile ?? createMockProfile({ userId: TEST_USER_ID, accountId: 'test-account-id' })
-  const upsertResult = overrides.upsertResult ?? createMockProfile({ userId: TEST_USER_ID, accountId: 'test-account-id', firstName: 'Updated' })
+  const patchResult = overrides.upsertResult ?? createMockProfile({ userId: TEST_USER_ID, accountId: 'test-account-id', firstName: 'Updated' })
 
   mockPrisma.profile.findUnique.mockResolvedValue(oldProfile as never)
-  mockUpsertByUserId.mockResolvedValue(upsertResult as never)
+  mockUpsertByUserId.mockResolvedValue(patchResult as never)
   mockPrisma.user.update.mockResolvedValue({} as never)
   mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' } as never)
   mockInvalidateCache.mockResolvedValue(undefined as never)
 
-  return { oldProfile, upsertResult }
+  return { oldProfile, patchResult }
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -290,7 +289,7 @@ describe('GET/PATCH /api/users/profile', () => {
 
   it('8. PATCH updates allowed fields successfully', async () => {
     authorizeAsUser()
-    const { upsertResult } = setupPatchMocks()
+    setupPatchMocks()
 
     const body = {
       firstName: 'Carlos',

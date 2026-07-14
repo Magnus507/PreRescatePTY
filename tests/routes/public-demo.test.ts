@@ -162,10 +162,13 @@ describe('Public demo profile behavior', () => {
     setupDefaultMocks()
     // Mock a real chip lookup
     mockPrisma.chip.findUnique.mockResolvedValue({
+      id: 'chip-1',
       shortCode: 'ABC123',
       status: 'activated',
       serviceStatus: 'active',
+      assignedProfileId: 'profile-1',
       assignedProfile: {
+        id: 'profile-1',
         firstName: 'Real',
         lastName: 'User',
         displayNamePublic: 'Real User',

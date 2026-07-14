@@ -33,7 +33,7 @@ export class ConfigRepository {
 
     // 2. Database Fallback
     try {
-      const config = await (prisma as any).systemConfig.findUnique({
+      const config = await prisma.systemConfig.findUnique({
         where: { key }
       });
       const value = config?.value ?? defaultValue;
@@ -51,8 +51,8 @@ export class ConfigRepository {
   }
 
   static async getAll(): Promise<Record<string, string>> {
-    const configs = await (prisma as any).systemConfig.findMany();
-    return configs.reduce((acc: Record<string, string>, curr: any) => {
+    const configs = await prisma.systemConfig.findMany();
+    return configs.reduce((acc: Record<string, string>, curr) => {
       acc[curr.key] = curr.value;
       return acc;
     }, {} as Record<string, string>);
@@ -60,7 +60,7 @@ export class ConfigRepository {
 
   static async set(key: ConfigKey, value: string): Promise<void> {
     // 1. Update Database
-    await (prisma as any).systemConfig.upsert({
+    await prisma.systemConfig.upsert({
       where: { key },
       update: { value },
       create: { key, value }

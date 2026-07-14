@@ -45,15 +45,15 @@ export function createMockSession(overrides: Partial<MockSessionUser> = {}): Moc
  *   import { getServerSession } from 'next-auth'
  *   vi.mocked(getServerSession).mockResolvedValue(createMockSession({ adminRole: 'superadmin' }))
  */
-export function mockGetServerSession(session: MockSession | null = defaultMockSession) {
-  const { getServerSession } = require('next-auth')
+export async function mockGetServerSession(session: MockSession | null = defaultMockSession) {
+  const { getServerSession } = await import('next-auth')
   vi.mocked(getServerSession).mockResolvedValue(session)
 }
 
 /**
  * Clears session mock.
  */
-export function clearSessionMock() {
-  const { getServerSession } = require('next-auth')
+export async function clearSessionMock() {
+  const { getServerSession } = await import('next-auth')
   vi.mocked(getServerSession).mockReset()
 }

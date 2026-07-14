@@ -1,5 +1,5 @@
+import { Prisma, Profile } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { Profile } from "@prisma/client";
 import { encrypt, decrypt } from "@/lib/encryption";
 
 export class ProfileRepository {
@@ -206,7 +206,7 @@ export class ProfileRepository {
     for (const [key, value] of Object.entries(data)) {
       if (value !== undefined) filtered[key] = value;
     }
-    const updateData: any = { ...filtered };
+    const updateData = { ...filtered } as Prisma.ProfileUpdateInput;
     
     if (data.bloodType !== undefined) updateData.bloodType = encrypt(data.bloodType || "");
     if (data.allergies !== undefined) updateData.allergies = encrypt(data.allergies || "");
@@ -243,7 +243,7 @@ export class ProfileRepository {
    * Upsert own profile by user id with encrypted fields.
    */
   static async upsertByUserId(userId: string, data: Partial<Profile>) {
-    const createData: any = {
+    const createData = {
       userId,
       firstName: data.firstName || "",
       lastName: data.lastName || "Sin Perfil",
@@ -294,7 +294,7 @@ export class ProfileRepository {
     for (const [key, value] of Object.entries(data)) {
       if (value !== undefined) filtered[key] = value;
     }
-    const updateData: any = { ...filtered };
+    const updateData = { ...filtered } as Prisma.ProfileUpdateInput;
     if (data.bloodType !== undefined) updateData.bloodType = encrypt(data.bloodType || "");
     if (data.allergies !== undefined) updateData.allergies = encrypt(data.allergies || "");
     if (data.chronicConditions !== undefined) updateData.chronicConditions = encrypt(data.chronicConditions || "");
