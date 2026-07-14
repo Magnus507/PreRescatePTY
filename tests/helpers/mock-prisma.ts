@@ -48,6 +48,7 @@ export interface MockPrismaClient {
   pointOfSale: MockDelegate
   product: MockDelegate
   systemConfig: MockDelegate
+  commerceOrderSyncOutbox: MockDelegate
   corporatePublicProfile: MockDelegate
   corporateOrderEmployeeItem: MockDelegate
   corporateProductRequest: MockDelegate
@@ -84,6 +85,7 @@ export const mockPrisma: MockPrismaClient = {
   pointOfSale: createMockDelegate(),
   product: createMockDelegate(),
   systemConfig: createMockDelegate(),
+  commerceOrderSyncOutbox: createMockDelegate(),
   corporatePublicProfile: createMockDelegate(),
   corporateOrderEmployeeItem: createMockDelegate(),
   corporateProductRequest: createMockDelegate(),

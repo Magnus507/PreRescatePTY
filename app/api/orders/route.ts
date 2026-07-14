@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { generateOrderNumber } from "@/lib/order-number";
-import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
+import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-sync-outbox";
 import {
   buildStoreOrderInternalNote,
   calculateStoreOrderFulfillment,
@@ -38,8 +38,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    let operationsSyncWarning: string | null = null;
-    
+
     const validatedData = validateOrThrow(orderCreateSchema, {
       ...body,
       customerName: body.customerName || (user.profile ? `${user.profile.firstName} ${user.profile.lastName}` : "Usuario"),
@@ -212,25 +211,22 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      return createdOrder;
-    });
-
-    try {
-      await syncRealOrderToOperations(prisma, {
-        sourceType: "legacy_order",
-        sourceId: order.id,
-        sourceCode: order.orderNumber,
+      await enqueueCommerceOrderSyncOutbox(tx, {
+        sourceType: "checkout",
+        sourceId: createdOrder.id,
+        sourceCode: createdOrder.orderNumber,
         orderType: "customer",
-        customerName: order.customerName || `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim(),
-        contactEmail: order.customerEmail,
-        contactPhone: order.customerPhone,
-        customerReference: order.providerReference,
-        paymentStatus: order.paymentStatus,
-        paymentReference: order.manualPaymentReference || order.paymentProofUrl || null,
-        currency: order.currency,
-        notes: `${buildStoreOrderInternalNote(fulfillmentSummary)}\nSincronizado desde pedido legacy ${order.orderNumber}`,
-        totalAmount: order.amount,
+        customerName: createdOrder.customerName || `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim(),
+        contactEmail: createdOrder.customerEmail,
+        contactPhone: createdOrder.customerPhone,
+        customerReference: createdOrder.providerReference,
+        paymentStatus: createdOrder.paymentStatus,
+        paymentReference: createdOrder.manualPaymentReference || createdOrder.paymentProofUrl || null,
+        currency: createdOrder.currency,
+        notes: `${buildStoreOrderInternalNote(fulfillmentSummary)}\nSincronización pendiente hacia Operaciones`,
+        totalAmount: createdOrder.amount,
         items: resolvedItems.map((item) => ({
+          productId: item.productId,
           productCode: item.productCode,
           productName: item.productName,
           quantity: item.quantity,
@@ -243,16 +239,16 @@ export async function POST(req: NextRequest) {
           operationalFinishedGoodId: item.finishedGoodId,
         })),
       });
-    } catch (error) {
-      console.error("[operations-sync] Failed to sync order", {
-        sourceType: "legacy_order",
-        sourceId: order.id,
-        error,
-      });
-      operationsSyncWarning = "Pedido creado, pero no se pudo sincronizar automáticamente con Operaciones.";
-    }
 
-    return NextResponse.json({ order, fulfillmentSummary, operationsSyncWarning });
+      return createdOrder;
+    });
+
+    return NextResponse.json({
+      order,
+      fulfillmentSummary,
+      operationsSyncStatus: "queued",
+      operationsSyncWarning: null,
+    });
   } catch (error: unknown) {
     console.error("ORDER_CREATE_ERROR", error);
     const message = error instanceof Error ? error.message : "Error al procesar el pedido";

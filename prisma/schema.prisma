@@ -634,6 +634,31 @@ model OrderItem {
   @@index([chipId])
 }
 
+model CommerceOrderSyncOutbox {
+  id                String   @id @default(cuid())
+  eventType         String
+  sourceType        String
+  sourceId          String
+  deduplicationKey  String   @unique
+  payloadVersion    Int      @default(1)
+  payloadJson       String
+  status            String   @default("pending")
+  attempts          Int      @default(0)
+  availableAt       DateTime @default(now())
+  lockedAt          DateTime?
+  lockedBy          String?
+  processedAt       DateTime?
+  lastErrorCode     String?
+  lastErrorMessage  String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status, availableAt])
+  @@index([sourceType, sourceId])
+  @@index([lockedAt])
+  @@index([createdAt])
+}
+
 model CorporateOrderEmployeeItem {
   id                   String             @id @default(cuid())
   orderId              String
@@ -1228,6 +1253,8 @@ model OperationDispatchEvent {
 model OperationCommercialOrder {
   id                String                          @id @default(cuid())
   code              String                          @unique
+  sourceType        String?
+  sourceId          String?
   status            String                          @default("draft")
   customerType      String                          @default("customer")
   customerName      String?
@@ -1255,6 +1282,7 @@ model OperationCommercialOrder {
   @@index([salesChannel])
   @@index([paymentStatus])
   @@index([fulfillmentStatus])
+  @@index([sourceType, sourceId])
   @@index([dispatchId])
   @@index([createdAt])
 }

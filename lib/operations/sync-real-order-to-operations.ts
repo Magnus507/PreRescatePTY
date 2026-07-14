@@ -44,7 +44,7 @@ export type SyncRealOrderToOperationsInput = {
 };
 
 function buildSourceMarker(sourceType: string, sourceId: string) {
-  return `[sourceType:${sourceType}][sourceId:${sourceId}]`;
+  return `${sourceType}:${sourceId}`;
 }
 
 function buildOrderCode(input: SyncRealOrderToOperationsInput) {
@@ -64,8 +64,7 @@ function buildCustomerName(input: SyncRealOrderToOperationsInput) {
 }
 
 function buildNotes(input: SyncRealOrderToOperationsInput) {
-  const marker = buildSourceMarker(input.sourceType, input.sourceId);
-  const fragments = [marker];
+  const fragments = [];
 
   if (input.notes?.trim()) {
     fragments.push(input.notes.trim());
@@ -83,7 +82,6 @@ export async function syncRealOrderToOperations(
   input: SyncRealOrderToOperationsInput
 ) {
   const code = buildOrderCode(input);
-  const sourceMarker = buildSourceMarker(input.sourceType, input.sourceId);
   const customerName = buildCustomerName(input);
   const customerReference = input.customerReference?.trim() || null;
   const notes = buildNotes(input);
@@ -91,15 +89,16 @@ export async function syncRealOrderToOperations(
 
   const existing = await db.operationCommercialOrder.findFirst({
     where: {
-      notes: {
-        contains: sourceMarker,
-      },
+      sourceType: input.sourceType,
+      sourceId: input.sourceId,
     },
     select: { id: true },
   });
 
   const orderData = {
     code,
+    sourceType: input.sourceType,
+    sourceId: input.sourceId,
     status: "draft",
     customerType: input.orderType === "enterprise" ? "enterprise" : "customer",
     customerName,
@@ -167,7 +166,7 @@ export async function syncRealOrderToOperations(
       },
     });
 
-    return { order: updated, created: false, sourceMarker };
+    return { order: updated, created: false, sourceKey: buildSourceMarker(input.sourceType, input.sourceId) };
   }
 
   const created = await db.operationCommercialOrder.create({
@@ -179,7 +178,7 @@ export async function syncRealOrderToOperations(
     },
   });
 
-  return { order: created, created: true, sourceMarker };
+  return { order: created, created: true, sourceKey: buildSourceMarker(input.sourceType, input.sourceId) };
 }
 
 export function getOperationCustomerReference(input: {

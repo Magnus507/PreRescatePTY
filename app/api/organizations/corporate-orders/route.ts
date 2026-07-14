@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
-import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
+import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-sync-outbox";
 
 type ProductSelection = {
   productId: string;
@@ -188,6 +188,10 @@ export async function POST(req: NextRequest) {
   }
 
   const orderNumber = await generateOrderNumber();
+  const organizationDetails = await prisma.organization.findUnique({
+    where: { id: organization.id },
+    select: { legalName: true, displayName: true, contactEmail: true, contactPhone: true },
+  });
 
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
@@ -215,31 +219,21 @@ export async function POST(req: NextRequest) {
       data: { corporateStatus: "approved_unpaid" },
     });
 
-    return created;
-  });
-
-  let operationsSyncWarning: string | null = null;
-  try {
-    const organizationDetails = await prisma.organization.findUnique({
-      where: { id: organization.id },
-      select: { legalName: true, displayName: true, contactEmail: true, contactPhone: true },
-    });
-
-    await syncRealOrderToOperations(prisma, {
+    await enqueueCommerceOrderSyncOutbox(tx, {
       sourceType: "organization_order",
-      sourceId: order.id,
-      sourceCode: order.orderNumber,
+      sourceId: created.id,
+      sourceCode: created.orderNumber,
       orderType: "enterprise",
       companyName: organizationDetails?.displayName || organizationDetails?.legalName || null,
       contactName: organizationDetails?.displayName || organizationDetails?.legalName || null,
       contactEmail: organizationDetails?.contactEmail || null,
       contactPhone: organizationDetails?.contactPhone || null,
-      customerReference: order.paymentProofUrl || order.orderNumber,
-      paymentStatus: order.paymentStatus,
-      paymentReference: order.paymentProofUrl || null,
-      currency: order.currency,
-      notes: "Sincronizado desde pedido corporativo real",
-      totalAmount: order.amount,
+      customerReference: paymentProofUrl || created.orderNumber,
+      paymentStatus: created.paymentStatus,
+      paymentReference: paymentProofUrl || null,
+      currency: created.currency,
+      notes: "Sincronización pendiente hacia Operaciones",
+      totalAmount: created.amount,
       organizationId: organization.id,
       salesChannel: "organization",
       items: corporateItems.map((item) => ({
@@ -256,14 +250,16 @@ export async function POST(req: NextRequest) {
         operationalFinishedGoodId: productMap.get(item.productId)?.operationalMapping?.finishedGoodId || null,
       })),
     });
-  } catch (error) {
-    console.error("[operations-sync] Failed to sync order", {
-      sourceType: "organization_order",
-      sourceId: order.id,
-      error,
-    });
-    operationsSyncWarning = "Pedido creado, pero no se pudo sincronizar automáticamente con Operaciones.";
-  }
 
-  return NextResponse.json({ order, operationsSyncWarning }, { status: 201 });
+    return created;
+  });
+
+  return NextResponse.json(
+    {
+      order,
+      operationsSyncStatus: "queued",
+      operationsSyncWarning: null,
+    },
+    { status: 201 }
+  );
 }
