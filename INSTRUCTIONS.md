@@ -31,7 +31,7 @@ PreRescatePTY es un sistema SaaS panameño de identificación médica de emergen
 | Frontend | Next.js 15 (App Router) | Tailwind CSS, Lucide icons, sonner (toasts) |
 | Auth | NextAuth.js (JWT, 30 días) | Credentials provider, admins + users |
 | ORM | Prisma | PostgreSQL en Supabase |
-| Pagos | Stripe (parcial) | Yappy/PagueloFacil en lib/payments.ts (mock) |
+| Pagos | Pago manual | Instrucciones bancarias + comprobante + revisión admin |
 | Email | Resend (EmailService) | Template HTML inline |
 | SMS | Twilio (SmsService) | Solo si TWILIO_* env vars |
 | WhatsApp | WhatsappService | 9 líneas, todo mock |
@@ -60,7 +60,7 @@ src/
 │   ├── email.service.ts (31 líneas)
 │   ├── sms.service.ts (33 líneas)
 │   ├── whatsapp.service.ts (9 líneas — mock)
-│   └── payment.service.ts (65 líneas — Stripe)
+│   └── payment.service.ts (eliminado)
 │
 ├── lib/                              ← UTILIDADES COMPARTIDAS
 │   ├── auth.ts (100 líneas)          ← NextAuth config, login admin+user
@@ -143,7 +143,7 @@ src/
 │       │   └── scan/route.ts        ← ⭐ POST registra escaneo + dispara notificaciones
 │       ├── payments/
 │       │   ├── checkout/route.ts    ← ⚠️ Recibe precio del frontend SIN validar
-│       │   └── webhook/route.ts     ← ⚠️ Stripe webhook sin fulfillment
+│       │   └── webhook/route.ts     ← eliminado
 │       ├── cron/
 │       │   ├── expire-chips/route.ts ← Marca chips expirados (diario)
 │       │   └── notify/route.ts      ← Reintenta notificaciones pendientes (cada minuto)
@@ -218,7 +218,7 @@ Organization ──1:N──→ OrganizationMember
 
 **Notification**: `id, chipId→Chip, eventId, channel("email"|"sms"|"whatsapp"), recipient, status("pending"|"sent"|"failed"), providerResponse, sentAt`
 
-**Order**: `id, userId→User, amount, currency("USD"), paymentStatus("pending"|"completed"|"failed"), provider("manual"|"stripe"|"yappy"), providerReference`
+**Order**: `id, userId→User, amount, currency("USD"), paymentStatus("pending"|"under_review"|"paid"|"rejected"|"cancelled"), provider("manual"|"yappy"), providerReference`
 
 **AdminUser**: `id, email(unique), passwordHash, role("admin"|"superadmin"), status`
 
@@ -341,7 +341,7 @@ Cuando cambias un dato en Package (BD), estos son TODOS los lugares que deben re
 |---|---|
 | Landing/Comprar | ❌ HARDCODEADO |
 | Upgrade page | ❌ HARDCODEADO |
-| Stripe checkout | ❌ Recibe del frontend |
+| Checkout automático | ❌ Eliminado |
 | Chip individual ($25) | ❌ HARDCODEADO en add-chips/route.ts:6 |
 
 ### Límite de chips (Package.maxChips → Account.maxChipsAllocated)
@@ -432,4 +432,4 @@ Una vez que Package tenga todos los campos, el catálogo estático sobra. Accoun
 Eliminar la línea que cambia `"personal"→"usuario"`. Agregar los campos nuevos al upsert.
 
 ### Paso 7: Corregir checkout
-Recibir solo `packageId`, buscar precio real en BD, enviarlo a Stripe.
+Recibir solo `packageId`, buscar precio real en BD y crear pedido manual con instrucciones de pago.

@@ -52,7 +52,7 @@ async function ensureTestOrder(dryRun: boolean) {
     return null;
   }
 
-  const orderNumber = await generateOrderNumber("manual");
+  const orderNumber = await generateOrderNumber();
   return prisma.order.create({
     data: {
       userId: null,

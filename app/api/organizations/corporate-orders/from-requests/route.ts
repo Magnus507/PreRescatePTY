@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 5. Create Order + CorporateOrderEmployeeItems + update requests in transaction
-  const orderNumber = await generateOrderNumber("manual");
+  const orderNumber = await generateOrderNumber();
 
   const order = await prisma.$transaction(async (tx) => {
     const createdOrder = await tx.order.create({

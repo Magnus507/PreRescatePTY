@@ -37,7 +37,8 @@ POST /api/auth/[...nextauth]
 POST /api/chips/activate               # ⭐ Activar chip
 PUT  /api/users/profile                # ⭐ Completar perfil
 GET  /api/account/state                # ⭐ Estado cuenta
-POST /api/payments/checkout            # Crear sesión Stripe
+POST /api/orders/manual                # Crear pedido manual
+POST /api/orders/[id]/payment-proof    # Subir comprobante
 ```
 
 ### 👨‍💼 Admin Only
@@ -143,19 +144,16 @@ geoLat, geoLng, country, city, emergencyMode
    Pregunta "¿Eres médico?" → 2 opciones
 ```
 
-### ✔️ COMPRA DE PLAN (Stripe)
+### ✔️ COMPRA DE PLAN (manual)
 ```
-1. User POST /api/payments/checkout
-   Input: { packageId }
+1. User POST /api/orders/manual
+   Input: { packageId, customerName, customerEmail, paymentMethod, ... }
 2. Backend busca Package en BD (SSOT)
-3. Crea Stripe CheckoutSession con packageId en metadata
-4. Returns checkout URL
-5. User completa pago en Stripe
-6. Stripe envía webhook: "checkout.session.completed"
-7. Backend ❌ NO ACTUALIZA ACCOUNT (bug)
-   Debería:
-   - UPDATE Account.packageId = packageId
-   - UPDATE Account.maxChipsAllocated = Package.maxChips
+3. Crea Order manual con provider: "manual"
+4. Retorna pedido con instrucciones de pago
+5. User sube comprobante a /api/orders/[id]/payment-proof
+6. Admin aprueba o rechaza
+7. Reserva atómica y sync operacional se ejecutan al aprobar
 ```
 
 ---
@@ -169,8 +167,8 @@ geoLat, geoLng, country, city, emergencyMode
 | `domains/accounts/services/account-state.service.ts` | 250+ | Calcula permisos + state | OK pero falta scansCount |
 | `app/api/public/[shortCode]/scan/route.ts` | ~120 | Registra escaneo | ❌ Falta WhatsApp |
 | `app/api/chips/activate/route.ts` | ~150 | Activa chip | ✅ OK |
-| `app/api/payments/checkout/route.ts` | ~40 | Crea sesión Stripe | ✅ OK (ya valida precio) |
-| `app/api/payments/webhook/route.ts` | ? | Webhook Stripe | ❌ NO ACTUALIZA ACCOUNT |
+| `app/api/orders/manual/route.ts` | ~100 | Crea pedido manual | ✅ OK (usa package real) |
+| `app/api/orders/[id]/payment-proof/route.ts` | ~120 | Subida de comprobante | ✅ OK (manual) |
 | `lib/notifications.ts` | 77 | Orquídea de alertas | ✅ OK pero falta WA en scan |
 | `app/page.tsx` | 286+ | Landing | ❌ Planes hardcodeado líneas 12-18 |
 | `app/(public)/comprar/page.tsx` | 110+ | Página de compra | ❌ Planes hardcodeado líneas 9-14 |
@@ -199,11 +197,6 @@ RESEND_FROM_EMAIL="alertas@prerescatepty.com"
 TWILIO_ACCOUNT_SID="ACxxxx"
 TWILIO_AUTH_TOKEN="xxxx"
 TWILIO_PHONE_NUMBER="+15551234567"
-
-# Pagos
-STRIPE_SECRET_KEY="sk_xxxx"
-STRIPE_PUBLISHABLE_KEY="pk_xxxx"
-STRIPE_WEBHOOK_SECRET="whsec_xxxx"
 
 # Cache
 UPSTASH_REDIS_REST_URL="https://..."
@@ -285,7 +278,7 @@ ORDER BY "createdAt" DESC;
 - [ ] ✅ Escaneo → ScanEvent se crea, notificaciones se envían
 - [ ] ✅ Estado → AccountState calcula correctamente
 - [ ] ✅ Permisos → Sidebar muestra secciones correctas
-- [ ] ✅ Pagos → Stripe checkout funciona
+- [ ] ✅ Pagos → flujo manual funciona
 
 ### Security
 - [ ] ✅ Rate limiting activo (intenta 15 logins = bloqueado)
@@ -301,7 +294,7 @@ ORDER BY "createdAt" DESC;
 ### 🔴 P0 (Bloquean)
 - [ ] Planes hardcodeados en UI (no sincronizan con BD)
 - [ ] Seed.ts: accountType 'usuario' es inválido
-- [ ] Webhook Stripe no actualiza Account
+- [ ] Pedido manual no requiere pasarela externa
 - [ ] WhatsApp no se envía en escaneos
 
 ### 🟠 P1 (Funcional)
@@ -365,8 +358,8 @@ Admin Pages:
   └─ Activar chip           → POST /api/chips/activate
 
 ¿Quiero procesar pago?
-  ├─ Crear sesión Stripe   → POST /api/payments/checkout
-  └─ Webhook de Stripe     → POST /api/payments/webhook
+  ├─ Crear pedido manual   → POST /api/orders/manual
+  └─ Subir comprobante    → POST /api/orders/[id]/payment-proof
 
 ¿Soy admin?
   ├─ Ver usuarios          → GET /api/admin/users
@@ -425,7 +418,7 @@ Post-Deploy:
   [ ] Probar flujo de emergencia
   [ ] Probar activación de chip
   [ ] Verificar notificaciones se envían
-  [ ] Probar pago en Stripe
+  [ ] Probar pago manual
   [ ] Verificar admin panel funciona
   [ ] Monitorear performance
 ```

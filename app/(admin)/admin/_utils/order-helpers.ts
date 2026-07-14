@@ -35,9 +35,9 @@ export function getPaymentMethodLabel(method?: string | null): string {
   const map: Record<string, string> = {
     YAPPY: "Yappy",
     BANK_TRANSFER: "Transferencia bancaria",
-    STRIPE: "Tarjeta",
     CARD: "Tarjeta",
     MANUAL: "Manual",
+    LEGACY: "Legado",
     CASH: "Efectivo",
     CHECK: "Cheque",
   };

@@ -1,7 +1,7 @@
 export type PaymentStatus = "pending" | "under_review" | "paid" | "rejected" | "cancelled";
 export type OrderStatus = "pending" | "processing" | "shipped" | "completed" | "cancelled";
 export type AdminReviewStatus = "pending" | "approved" | "rejected";
-export type OrderProvider = "manual" | "stripe" | "legacy" | "admin";
+export type OrderProvider = "manual" | "legacy" | "admin";
 
 type OrderLike = {
   provider?: OrderProvider | string | null;

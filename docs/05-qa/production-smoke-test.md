@@ -18,7 +18,7 @@
 7. [Activación de chip](#7-activación-de-chip)
 8. [Emergencia pública (escaneo de chip)](#8-emergencia-pública)
 9. [Upload / Image proxy](#9-upload--image-proxy)
-10. [Stripe legacy](#10-stripe-legacy)
+10. [Pago manual](#10-pago-manual)
 11. [Admin RBAC por roles](#11-admin-rbac)
 12. [Service worker / Cache post-deploy](#12-service-worker--cache)
 13. [SQL checks útiles en Supabase](#13-sql-checks)
@@ -212,21 +212,23 @@
 
 ---
 
-## 10. Stripe legacy
+## 10. Pago manual
 
-### 10.1 Checkout
-- [ ] Crear orden con Stripe → redirige a checkout de Stripe
-- [ ] Pago exitoso → webhook Stripe actualiza orden
+### 10.1 Alta de pedido
+- [ ] Crear pedido manual desde tienda
+- [ ] Mostrar instrucciones bancarias y referencia de pago
+- [ ] Pedido queda en revisión hasta subir comprobante
 
-### 10.2 Webhook
-- [ ] Stripe webhook recibe `checkout.session.completed`
-- [ ] Orden se actualiza con `paymentStatus: "completed"` y `provider: "stripe"`
-- [ ] Account se actualiza con paquete y chips
+### 10.2 Comprobante y revisión
+- [ ] Subir comprobante
+- [ ] Orden pasa a `paymentStatus: "under_review"`
+- [ ] Admin aprueba o rechaza la orden
+- [ ] Se registra quién tomó la decisión
 
 ### 10.3 Seguridad
-- [ ] Webhook Stripe verifica firma (signing secret)
-- [ ] Webhook Stripe NO puede crear órdenes manuales
-- [ ] Webhook Stripe NO puede cambiar estado de órdenes manuales
+- [ ] El flujo manual no requiere variables de pago externo
+- [ ] El pedido manual no puede aprobarse dos veces
+- [ ] La reserva ocurre de forma atómica al aprobar
 
 ---
 
@@ -370,9 +372,8 @@ WHERE o.provider = 'manual'
   - `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
-  - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`
+  - ninguna variable de pago externo
   - `NEXT_PUBLIC_APP_URL`
-  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - [ ] Supabase Storage buckets creados:
   - `profile-photos` (público)
   - `payment-proofs` (autenticado)

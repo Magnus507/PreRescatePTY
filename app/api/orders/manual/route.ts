@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
 
-  const orderNumber = await generateOrderNumber("manual");
+  const orderNumber = await generateOrderNumber();
   // Crear la orden manual
   const order = await prisma.$transaction(async (tx) => {
     const createdOrder = await tx.order.create({
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
   let operationsSyncWarning: string | null = null;
   try {
     await syncRealOrderToOperations(prisma, {
-      sourceType: "checkout",
+      sourceType: "customer_request",
       sourceId: order.id,
       sourceCode: order.orderNumber,
       orderType: "customer",
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("[operations-sync] Failed to sync order", {
-      sourceType: "checkout",
+      sourceType: "customer_request",
       sourceId: order.id,
       error,
     });

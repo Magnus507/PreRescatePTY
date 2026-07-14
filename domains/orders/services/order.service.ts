@@ -31,15 +31,6 @@ export type RejectManualOrderInput = {
   adminReviewNotes?: string | null;
 };
 
-export type StripeWebhookOrderInput = {
-  userId: string;
-  packageId: string;
-  providerReference: string;
-  amount: number;
-  currency?: string;
-  orderNumber: string;
-};
-
 export class OrderService {
   static async createManualOrder(input: CreateManualOrderInput, db: DbClient = prisma) {
     return db.order.create({ data: input });
@@ -115,32 +106,6 @@ export class OrderService {
         adminReviewedAt: new Date(),
         adminReviewedById: input.adminId,
         adminReviewNotes: input.adminReviewNotes ?? null,
-      },
-    });
-  }
-
-  static async createStripeOrderFromWebhook(input: StripeWebhookOrderInput, db: DbClient = prisma) {
-    const existing = await db.order.findFirst({
-      where: {
-        provider: "stripe",
-        providerReference: input.providerReference,
-      },
-      select: { id: true },
-    });
-    if (existing) return null;
-
-    return db.order.create({
-      data: {
-        orderNumber: input.orderNumber,
-        userId: input.userId,
-        packageId: input.packageId,
-        provider: "stripe",
-        providerReference: input.providerReference,
-        amount: input.amount,
-        currency: input.currency ?? "usd",
-        paymentMethod: "stripe",
-        paymentStatus: "paid",
-        orderStatus: "completed",
       },
     });
   }

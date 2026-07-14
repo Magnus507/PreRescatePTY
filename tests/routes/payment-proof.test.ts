@@ -133,7 +133,7 @@ describe('POST /api/orders/[id]/payment-proof', () => {
   // ─── Provider not manual ────────────────────────────────────────────────
 
   it('4. returns 400 when provider is not manual', async () => {
-    setupDefaultMocks({ provider: 'stripe', paymentStatus: 'paid', orderStatus: 'completed' })
+    setupDefaultMocks({ provider: 'admin', paymentStatus: 'paid', orderStatus: 'completed' })
 
     const req = createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() })
     const res = await POST(req, routeParams())
@@ -300,10 +300,10 @@ describe('POST /api/orders/[id]/payment-proof', () => {
     )
   })
 
-  // ─── Stripe order cannot enter manual review ────────────────────────────
+  // ─── Non-manual order cannot enter manual review ────────────────────────
 
-  it('12. does not allow a Stripe/non-manual order to enter manual review', async () => {
-    setupDefaultMocks({ provider: 'stripe', paymentStatus: 'pending', orderStatus: 'pending' })
+  it('12. does not allow a non-manual order to enter manual review', async () => {
+    setupDefaultMocks({ provider: 'admin', paymentStatus: 'pending', orderStatus: 'pending' })
 
     const req = createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() })
     const res = await POST(req, routeParams())

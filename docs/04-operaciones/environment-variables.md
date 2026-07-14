@@ -12,7 +12,6 @@ Required:
 - SENTRY_DSN (if using Sentry)
 - RESEND_API_KEY (if using Resend)
 - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (if using Twilio)
-- STRIPE_SECRET_KEY (for payments)
 
 Optional / CI:
 - SKIP_LINT_DURING_BUILD (set to "true" to skip lint during local builds)
@@ -20,6 +19,7 @@ Optional / CI:
 Notes:
 - Never commit real secrets. Use your secrets manager (Vercel/Netlify/GCP/AWS) in production.
 - `ENCRYPTION_KEY` must be 32 bytes (or will be hashed to 32 bytes). In production set a stable key.
+- Stripe variables were removed from the runtime and should not be configured for this phase.
 
 
 ---

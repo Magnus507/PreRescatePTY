@@ -5,7 +5,7 @@ import PublicFooter from "@/components/public/PublicFooter";
 import PageHero from "@/components/public/PageHero";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Check, Loader2, CreditCard } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface Package {
@@ -62,11 +62,11 @@ export default function ComprarContent() {
         <section className="py-12 bg-[#05070D]">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div className="glass-card-w2a rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4">
-              <CreditCard className="h-8 w-8 text-[#10B981]" />
+              <div className="h-8 w-8 rounded-full bg-emerald-400/15 border border-emerald-400/30" />
               <div>
-                <p className="text-sm font-bold text-[#EFF4FF]">Métodos de pago</p>
+                <p className="text-sm font-bold text-[#EFF4FF]">Método de pago</p>
                 <p className="text-xs text-[#A0AEC0]">
-                  Puedes pagar con tarjeta a través de Stripe o enviar un comprobante de pago manual mediante los métodos disponibles en la plataforma.
+                  Todos los pedidos se gestionan con pago manual: instrucciones bancarias, comprobante y revisión administrativa.
                 </p>
               </div>
             </div>
@@ -221,7 +221,7 @@ export default function ComprarContent() {
             </h2>
             <div className="space-y-4">
               {[
-                { q: "¿Qué métodos de pago aceptan?", a: "Puedes pagar con tarjeta a través de Stripe o enviar un comprobante de pago manual mediante los métodos disponibles en la plataforma." },
+                { q: "¿Qué métodos de pago aceptan?", a: "Todos los pedidos se pagan de forma manual mediante instrucciones bancarias, comprobante y revisión administrativa." },
                 { q: "¿Hay mensualidades?", a: "No. Todos los planes son de pago único con 2 años de vigencia desde la activación." },
                 { q: "¿Cuánto tiempo dura el servicio?", a: "Cada plan incluye 2 años de cobertura desde la fecha de activación del chip." },
                 { q: "¿Necesito instalar una aplicación?", a: "No. El perfil se abre en el navegador del celular. No requiere instalar ninguna aplicación." },

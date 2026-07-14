@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "La compra no contiene productos válidos" }, { status: 400 });
   }
 
-  const orderNumber = await generateOrderNumber("manual");
+  const orderNumber = await generateOrderNumber();
 
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({

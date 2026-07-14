@@ -106,28 +106,7 @@ function RegistroForm() {
       });
 
       if (signInRes?.ok) {
-        if (packageId) {
-          // Automatic checkout for the selected package
-          try {
-            const checkOutRes = await fetch("/api/payments/checkout", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ 
-                userId: data.userId, 
-                packageId: packageId 
-              }),
-            });
-            const { url } = await checkOutRes.json();
-            if (url) {
-              window.location.href = url;
-              return;
-            }
-          } catch (checkoutErr) {
-            console.error("Failed to auto-redirect to checkout:", checkoutErr);
-          }
-        }
-        
-        router.push("/dashboard");
+        router.push(packageId ? "/comprar" : "/dashboard");
         router.refresh();
       } else {
         router.push("/login?email=" + encodeURIComponent(form.email));

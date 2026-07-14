@@ -1,17 +1,15 @@
 import { prisma } from "@/lib/prisma";
 
-type ProviderType = "manual" | "legacy" | "stripe" | string;
-
-function getPrefix(provider: ProviderType) {
-  return provider === "stripe" ? "STRIPE" : "PR";
+function getPrefix() {
+  return "PR";
 }
 
-export async function generateOrderNumber(provider: ProviderType): Promise<string> {
+export async function generateOrderNumber(): Promise<string> {
   const now = new Date();
   const year = now.getFullYear();
   const startOfYear = new Date(year, 0, 1);
   const endOfYear = new Date(year + 1, 0, 1);
-  const prefix = getPrefix(provider);
+  const prefix = getPrefix();
 
   const yearlyCount = await prisma.order.count({
     where: {

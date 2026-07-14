@@ -220,7 +220,7 @@ describe('SafeDeleteService.deleteUserAccount', () => {
 
   // ─── No external service calls ──────────────────────────────────────────
 
-  it('9. does not call Supabase Auth, Stripe or Storage', async () => {
+  it('9. does not call Supabase Auth, payment providers or Storage', async () => {
     setupDefaultUserLookup()
     setupDefaultTransaction()
 

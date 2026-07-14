@@ -1,6 +1,6 @@
 # PreRescatePTY
 
-**MVP de emergencias médicas con chips QR/NFC** - Next.js 15, React 19, Prisma/PostgreSQL, Stripe, Supabase, Upstash/Redis.
+**MVP de emergencias médicas con chips QR/NFC** - Next.js 15, React 19, Prisma/PostgreSQL, Supabase, Upstash/Redis.
 
 ## 📚 Documentación
 

@@ -45,7 +45,7 @@ const faqs: FAQ[] = [
   { q: "¿Puedo comprar un chip para mi hijo?", a: "Sí. Puedes crear y gestionar perfiles médicos para niños y adultos mayores desde tu cuenta.", category: "Perfiles familiares" },
 
   // Compra y pagos
-  { q: "¿Qué métodos de pago aceptan?", a: "Puedes pagar con tarjeta a través de Stripe o enviar un comprobante de pago manual mediante los métodos disponibles en la plataforma.", category: "Compra y pagos" },
+  { q: "¿Qué métodos de pago aceptan?", a: "Todos los pedidos se pagan de forma manual mediante instrucciones bancarias, comprobante y revisión administrativa.", category: "Compra y pagos" },
   { q: "¿Hay mensualidades?", a: "No. Todos los planes son de pago único con 2 años de vigencia desde la activación.", category: "Compra y pagos" },
   { q: "¿Cuánto tiempo dura el servicio?", a: "Cada plan incluye 2 años de cobertura desde la fecha de activación del chip.", category: "Compra y pagos" },
 

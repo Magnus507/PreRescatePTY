@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       resolvedOperationalProductName?: string | null;
     };
 
-    const nextNumber = await generateOrderNumber("legacy");
+    const nextNumber = await generateOrderNumber();
     const pricedItems = await Promise.all(validatedData.items.map(async (item) => {
       const productType = item.productType.toUpperCase().replace(/\s+/g, "_");
 
@@ -266,7 +266,7 @@ export async function GET(req: NextRequest) {
 
   const userId = session.user.id;
   const providerFilter = new URL(req.url).searchParams.get("provider");
-  const safeProvider = ["manual", "stripe", "admin"].includes(String(providerFilter))
+  const safeProvider = ["manual", "admin", "legacy"].includes(String(providerFilter))
     ? String(providerFilter)
     : null;
 
