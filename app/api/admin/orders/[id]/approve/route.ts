@@ -19,6 +19,27 @@ function buildSourceMarker(sourceType: string, sourceId: string) {
   return `[sourceType:${sourceType}][sourceId:${sourceId}]`;
 }
 
+function buildFulfillmentReviewNotes(
+  baseNotes: string | null,
+  reservation: Awaited<ReturnType<typeof reserveCommercialOrderStock>> | null
+) {
+  if (!reservation || reservation.summary.missingQty <= 0) {
+    return baseNotes;
+  }
+
+  const summaryLines = [
+    `Stock/backorder calculado automáticamente.`,
+    `Tiene backorder: sí.`,
+    `Producción estimada: 14 días.`,
+    `customerMessage:Si tu pedido supera el stock disponible, producción estimada: 2 semanas.`,
+    ...reservation.missingItems.map((item) =>
+      `${item.productCode}: disponible=${item.reservedQty}, solicitada=${item.requestedQty}, backorder=${item.missingQty}, modo=production_backorder, estimado=14d`
+    ),
+  ];
+
+  return [baseNotes?.trim() || null, ...summaryLines].filter(Boolean).join("\n");
+}
+
 type AdminReviewedOrder = {
   id: string;
   orderNumber: string;
@@ -259,6 +280,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (!order.packageId && linkedCommercialOrder) {
     try {
       await prisma.$transaction(async (tx) => {
+        const reservation = await reserveCommercialOrderStock(tx, {
+          orderId: linkedCommercialOrder.id,
+          allowPartial: true,
+        });
+
         await tx.order.update({
           where: { id },
           data: {
@@ -267,13 +293,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             adminReviewStatus: "approved",
             adminReviewedAt: new Date(),
             adminReviewedById: adminId,
-            adminReviewNotes: notes,
+            adminReviewNotes: buildFulfillmentReviewNotes(notes, reservation),
           },
-        });
-
-        await reserveCommercialOrderStock(tx, {
-          orderId: linkedCommercialOrder.id,
-          allowPartial: true,
         });
 
         await tx.auditLog.create({
@@ -342,6 +363,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   let result: { updatedOrder: AdminReviewedOrder; account: { id: string } };
   try {
     result = await prisma.$transaction(async (tx) => {
+      const reservation = linkedCommercialOrder
+        ? await reserveCommercialOrderStock(tx, {
+            orderId: linkedCommercialOrder.id,
+            allowPartial: true,
+          })
+        : null;
+
       // Actualizar orden
       const updatedOrder = await tx.order.update({
         where: { id },
@@ -351,16 +379,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           adminReviewStatus: "approved",
           adminReviewedAt: new Date(),
           adminReviewedById: adminId,
-          adminReviewNotes: notes,
+          adminReviewNotes: buildFulfillmentReviewNotes(notes, reservation),
         }
       });
-
-      if (linkedCommercialOrder) {
-        await reserveCommercialOrderStock(tx, {
-          orderId: linkedCommercialOrder.id,
-          allowPartial: true,
-        });
-      }
 
       // Actualizar cuenta
       const currentAccount = await tx.account.findUnique({

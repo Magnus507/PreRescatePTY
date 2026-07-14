@@ -391,6 +391,46 @@ describe('POST /api/admin/orders/[id]/approve', () => {
     expect(json.error).toMatch(/packageId/i)
   })
 
+  it('10e. persists backorder notes when a direct order has no stock reserved', async () => {
+    setupDefaultMocks({ packageId: null })
+    mockPrisma.operationCommercialOrder.findFirst.mockResolvedValue({ id: 'commercial-order-3' } as never)
+    mockReserveCommercialOrderStock.mockResolvedValue({
+      order: {
+        id: 'commercial-order-3',
+        status: 'needs_production',
+        paymentStatus: 'paid',
+        fulfillmentStatus: 'pending',
+      },
+      reservedUnits: [],
+      missingItems: [
+        {
+          itemId: 'item-1',
+          productCode: 'PRP-FG-STICKER',
+          requestedQty: 1,
+          reservedQty: 0,
+          missingQty: 1,
+        },
+      ],
+      summary: {
+        requestedQty: 1,
+        reservedQty: 0,
+        missingQty: 1,
+        status: 'needs_production',
+      },
+    })
+
+    const req = createApproveRequest()
+    await POST(req, routeParams())
+
+    expect(mockPrisma.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          adminReviewNotes: expect.stringContaining('Tiene backorder: sí.'),
+        }),
+      })
+    )
+  })
+
   // ─── Audit log ──────────────────────────────────────────────────────────
 
   it('11. successful approval creates an audit log with correct action and identifiers', async () => {

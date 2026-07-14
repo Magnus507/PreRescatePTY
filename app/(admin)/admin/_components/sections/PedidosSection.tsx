@@ -2472,7 +2472,11 @@ export function PedidosSection() {
                               </button>
                             )}
                             {!isTerminalOrder && (
-                              <p className="text-[10px] font-bold text-emerald-700">Comprobante enviado por el cliente. Pago en revisión.</p>
+                              <p className="text-[10px] font-bold text-emerald-700">
+                                {order.paymentStatus === "paid" || order.adminReviewStatus === "approved"
+                                  ? "Pago aprobado."
+                                  : "Comprobante enviado por el cliente. Pago en revisión."}
+                              </p>
                             )}
                           </div>
                         ) : (

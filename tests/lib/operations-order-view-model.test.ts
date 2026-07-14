@@ -44,5 +44,6 @@ describe("buildOperationsOrderViewModel", () => {
     expect(order.canSendToProduction).toBe(true);
     expect(order.pendingCategory).toBe("production_required");
     expect(order.pendingReasonLabel).toBe("Producción requerida");
+    expect(order.paymentStatusLabel).toBe("Pago aprobado");
   });
 });
