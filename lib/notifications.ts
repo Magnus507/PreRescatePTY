@@ -20,7 +20,6 @@ export interface EmergencyNotificationData {
   recipient: string;
   type: "email" | "sms" | "whatsapp";
   profileName: string;
-  location?: { lat: number; lng: number };
   shortCode: string;
   notificationId: string;
 }
@@ -28,19 +27,15 @@ export interface EmergencyNotificationData {
 export async function sendEmergencyNotification(
   data: EmergencyNotificationData
 ): Promise<{ success: boolean; providerResponse?: string }> {
-  const { recipient, type, profileName, location, shortCode } = data;
+  const { recipient, type, profileName, shortCode } = data;
   const profileUrl = `${SITE_URL}/e/${shortCode}`;
-
-  const locationMsg = location
-    ? `\nUbicación GPS: https://maps.google.com/?q=${location.lat},${location.lng}`
-    : "";
+  const minimalMessage = `Se registró un escaneo de emergencia asociado a ${profileName}. Revisa el enlace seguro para más información: ${profileUrl}`;
 
   if (type === "email") {
     const html = `
       <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e5e7eb;border-radius:12px">
         <h2 style="color:#dc2626">🚨 Alerta de Emergencia — PreRescue ID PTY</h2>
-        <p>El chip de <strong>${profileName}</strong> fue escaneado. Puede estar en una situación de emergencia.</p>
-        ${location ? `<p><strong>Ubicación GPS:</strong> <a href="https://maps.google.com/?q=${location.lat},${location.lng}">${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}</a></p>` : ""}
+        <p>${minimalMessage}</p>
         <a href="${profileUrl}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#dc2626;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">
           Ver Perfil Médico
         </a>
@@ -54,13 +49,13 @@ export async function sendEmergencyNotification(
   }
 
   if (type === "sms") {
-    const msg = `🚨 Alerta: El chip de ${profileName} fue escaneado. Ver perfil: ${profileUrl}${locationMsg}`;
+    const msg = `🚨 Alerta de emergencia: ${profileName}. ${profileUrl}`;
     const res = await SmsService.send(recipient, msg);
     return { success: res.success, providerResponse: res.data?.sid || res.error };
   }
 
   if (type === "whatsapp") {
-    const msg = `🚨 Alerta: El chip de ${profileName} fue escaneado.\nVer perfil: ${profileUrl}${locationMsg}`;
+    const msg = `🚨 Alerta de emergencia: ${profileName}. ${profileUrl}`;
     const res = await WhatsappService.send(recipient, msg);
     return { success: res.success, providerResponse: res.message || res.error };
   }

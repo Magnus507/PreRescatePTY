@@ -53,7 +53,7 @@ GET  /api/admin/stats
 ### ⏰ Cron (API Key)
 ```
 GET  /api/cron/expire-chips            # Expira chips vencidos (diario)
-GET  /api/cron/notify                  # Reintenta notificaciones (1min)
+GET  /api/cron/notify                  # Procesa notificaciones pendientes y reintentos
 ```
 
 ---
@@ -169,7 +169,7 @@ geoLat, geoLng, country, city, emergencyMode
 | `app/api/chips/activate/route.ts` | ~150 | Activa chip | ✅ OK |
 | `app/api/orders/manual/route.ts` | ~100 | Crea pedido manual | ✅ OK (usa package real) |
 | `app/api/orders/[id]/payment-proof/route.ts` | ~120 | Subida de comprobante | ✅ OK (manual) |
-| `lib/notifications.ts` | 77 | Orquídea de alertas | ✅ OK pero falta WA en scan |
+| `lib/notifications.ts` | 77 | Orquídea de alertas | ✅ OK |
 | `app/page.tsx` | 286+ | Landing | ❌ Planes hardcodeado líneas 12-18 |
 | `app/(public)/comprar/page.tsx` | 110+ | Página de compra | ❌ Planes hardcodeado líneas 9-14 |
 | `app/(app)/dashboard/upgrade/page.tsx` | 183+ | Upgrade | ❌ Planes DIFERENTES líneas 9-42 |
@@ -275,7 +275,7 @@ ORDER BY "createdAt" DESC;
 - [ ] ✅ Registro → Create Account/User/Profile
 - [ ] ✅ Perfil médico → Puede completar
 - [ ] ✅ Activación → Chip se activa con código
-- [ ] ✅ Escaneo → ScanEvent se crea, notificaciones se envían
+- [ ] ✅ Escaneo → ScanEvent se crea, alertas se encolan y cron procesa reintentos
 - [ ] ✅ Estado → AccountState calcula correctamente
 - [ ] ✅ Permisos → Sidebar muestra secciones correctas
 - [ ] ✅ Pagos → flujo manual funciona
@@ -417,7 +417,7 @@ Post-Deploy:
   [ ] Verificar logs de Sentry (0 errors)
   [ ] Probar flujo de emergencia
   [ ] Probar activación de chip
-  [ ] Verificar notificaciones se envían
+  [ ] Verificar alertas se encolan y el cron procesa reintentos
   [ ] Probar pago manual
   [ ] Verificar admin panel funciona
   [ ] Monitorear performance

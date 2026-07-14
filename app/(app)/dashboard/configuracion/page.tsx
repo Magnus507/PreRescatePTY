@@ -391,16 +391,16 @@ export default function ConfiguracionPage() {
             <Section title="Preferencias de alertamiento" icon={Smartphone} color="bg-indigo-600">
                <div className="space-y-4">
                   <div className="flex flex-col gap-3 rounded-[2rem] border border-slate-200 bg-slate-50 p-6 md:flex-row md:items-center">
-                     <div className="inline-flex w-fit items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-blue-700">
-                        Próximamente
+                     <div className="inline-flex w-fit items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-emerald-700">
+                        Activo
                      </div>
                      <p className="text-sm leading-6 text-slate-600">
-                        Estamos preparando controles personalizados para tus notificaciones.
+                        Las alertas de emergencia usan los contactos y permisos configurados en cada perfil. Esta pantalla no gestiona el envío por canal.
                      </p>
                   </div>
-                  <Toggle label="Notificaciones por SMS" description="Recibir alertas de geoposición por texto." defaultChecked disabled />
-                  <Toggle label="Notificaciones por Email" description="Recibir el reporte completo del escaneo por correo." defaultChecked disabled />
-                  <Toggle label="Sonido de Alerta Crítica" description="Activar sonido en tiempo real en el dashboard." defaultChecked disabled />
+                  <Toggle label="Notificaciones por SMS" description="Se resuelven desde los contactos elegibles del perfil." defaultChecked disabled />
+                  <Toggle label="Notificaciones por Email" description="Se resuelven desde los contactos elegibles del perfil." defaultChecked disabled />
+                  <Toggle label="Sonido de Alerta Crítica" description="La alerta operativa se registra en el historial del escaneo." defaultChecked disabled />
                </div>
             </Section>
           )}

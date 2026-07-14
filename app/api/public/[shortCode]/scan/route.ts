@@ -5,6 +5,7 @@ import { getReverseGeocoding } from "@/lib/geocoding";
 import { getClientIp } from "@/lib/request-ip";
 import { publicScanSchema } from "@/lib/validations";
 import { resolvePublicProfileByChipShortCode } from "@/lib/public-access/resolve-public-profile-by-chip";
+import { queueEmergencyNotificationsFromScan } from "@/lib/emergency-alerts";
 
 export const dynamic = "force-dynamic";
 
@@ -57,31 +58,47 @@ export async function POST(
 
     const { chip, profile } = resolution;
 
-    // Create scan event
-    const scanEvent = await prisma.scanEvent.create({
-      data: {
-        chipId: chip.id,
-        profileId: profile.id,
-        accountId: chip.accountId,
-        sourceType: scanInput.sourceType,
-        ipAddress: ip,
-        userAgent: req.headers.get("user-agent") || "unknown",
-        geoLat: scanInput.geoLat ?? null,
-        geoLng: scanInput.geoLng ?? null,
-        geoAccuracy: scanInput.geoAccuracy ?? null,
-        country: scanInput.country || null,
-        city: scanInput.city || null,
-        address: null, 
-        emergencyMode: true,
-        notificationStatus: "disabled",
-      },
-    });
+    const queueResult = await prisma.$transaction(async (tx) => {
+      const scanEvent = await tx.scanEvent.create({
+        data: {
+          chipId: chip.id,
+          profileId: profile.id,
+          accountId: chip.accountId,
+          sourceType: scanInput.sourceType,
+          ipAddress: ip,
+          userAgent: req.headers.get("user-agent") || "unknown",
+          geoLat: scanInput.geoLat ?? null,
+          geoLng: scanInput.geoLng ?? null,
+          geoAccuracy: scanInput.geoAccuracy ?? null,
+          country: scanInput.country || null,
+          city: scanInput.city || null,
+          address: null,
+          emergencyMode: true,
+          notificationStatus: "pending",
+        },
+      });
 
-    // Update chip last scan
-    await prisma.chip.update({
-      where: { id: chip.id },
-      data: { lastScanAt: new Date() },
+      await tx.chip.update({
+        where: { id: chip.id },
+        data: { lastScanAt: new Date() },
+      });
+
+      const notificationPlan = await queueEmergencyNotificationsFromScan(tx, {
+        scanEventId: scanEvent.id,
+        chipId: chip.id,
+        shortCode: chip.shortCode,
+        profileId: profile.id,
+        profileName: profile.displayNamePublic || `${profile.firstName} ${profile.lastName}`,
+        accountId: chip.accountId,
+        publicUrl: `/e/${chip.shortCode}`,
+        location: scanInput.geoLat != null && scanInput.geoLng != null
+          ? { lat: scanInput.geoLat, lng: scanInput.geoLng }
+          : null,
+      });
+
+      return { scanEvent, notificationPlan };
     });
+    const { scanEvent, notificationPlan } = queueResult;
 
     // 0. Background Reverse Geocoding & Profile/Chip Sync
     after(async () => {
@@ -111,16 +128,30 @@ export async function POST(
         data: updateData
       });
 
-      if (profile) {
+      if (scanEvent.profileId) {
         await prisma.profile.update({
-          where: { id: profile.id },
+          where: { id: scanEvent.profileId },
           data: updateData
         });
       }
     });
 
+    const notificationMessage =
+      notificationPlan.status === "pending"
+        ? "Escaneo registrado. Alertas en cola."
+        : notificationPlan.status === "disabled"
+          ? "Escaneo registrado. Las alertas siguen deshabilitadas para este perfil."
+          : "Escaneo registrado. No hay alertas elegibles para enviar.";
+
     return NextResponse.json({
-      message: "Escaneo registrado. Notificaciones automáticas deshabilitadas.",
+      message: notificationMessage,
+      notificationStatus: notificationPlan.status,
+      notificationSummary: {
+        queued: notificationPlan.queued,
+        skipped: notificationPlan.skipped,
+        disabled: notificationPlan.disabled,
+        reason: notificationPlan.reason,
+      },
       scanId: scanEvent.id,
     }, { status: 201 });
   } catch (error) {

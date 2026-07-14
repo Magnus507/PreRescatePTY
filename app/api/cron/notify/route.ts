@@ -1,19 +1,37 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { processPendingEmergencyNotifications } from "@/lib/emergency-alerts";
 
 export const dynamic = "force-dynamic";
 
-const disabledResponse = {
-  disabled: true,
-  processed: 0,
-  sent: 0,
-  failed: 0,
-  message: "Las notificaciones automáticas están deshabilitadas.",
-};
+function authorizeCronRequest(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return { ok: false as const, response: NextResponse.json({ error: "CRON_SECRET no configurado" }, { status: 500 }) };
+  }
 
-export async function POST() {
-  return NextResponse.json(disabledResponse);
+  const auth = req.headers.get("authorization");
+  if (auth !== `Bearer ${secret}`) {
+    return { ok: false as const, response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
+  }
+
+  return { ok: true as const };
 }
 
-export async function GET() {
-  return NextResponse.json(disabledResponse);
+export async function POST(req: Request) {
+  const auth = authorizeCronRequest(req);
+  if (!auth.ok) return auth.response;
+
+  const result = await processPendingEmergencyNotifications(prisma, { limit: 25 });
+  logger.info("[cron/notify] processed emergency notifications", result);
+
+  return NextResponse.json({
+    message: "Notificaciones procesadas",
+    ...result,
+  });
+}
+
+export async function GET(req: Request) {
+  return POST(req);
 }

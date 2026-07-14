@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
     const packageId = typeof (body as { packageId?: unknown }).packageId === "string"
       ? (body as { packageId: string }).packageId
       : null;
+    const userAgent = req.headers.get("user-agent");
 
     let selectedPackage = null;
     if (packageId) {
@@ -108,6 +109,22 @@ export async function POST(req: NextRequest) {
           firstName: "",
           lastName: "",
           bloodType: "Pendiente",
+        },
+      });
+
+      await tx.consent.create({
+        data: {
+          accountId: account.id,
+          userId: newUser.id,
+          consentType: "privacy_policy_and_emergency_alerts",
+          textVersion: "registration-terms-2026-07-14",
+          ipAddress: ip,
+          userAgent,
+          evidenceJson: JSON.stringify({
+            acceptedTerms: true,
+            packageId: selectedPackage?.id || null,
+            accountType: resolvedAccountType,
+          }),
         },
       });
 

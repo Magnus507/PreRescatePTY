@@ -5,8 +5,8 @@ Sistema de notificaciones multi-canal: email (Resend), SMS (Twilio), WhatsApp, y
 
 ## Rutas relacionadas
 - `app/(public)/e/[shortCode]/page.tsx` - WhatsApp manual en página
-- `app/api/public/[shortCode]/scan/route.ts` - Scan logging (status disabled)
-- `app/api/cron/notify/route.ts` - Cron notify (deshabilitado)
+- `app/api/public/[shortCode]/scan/route.ts` - Registro de escaneo y encolado durable de alertas
+- `app/api/cron/notify/route.ts` - Reintento de notificaciones pendientes vía cron
 
 ## Componentes relacionados
 - Minimal links a WhatsApp en página pública
@@ -30,7 +30,10 @@ Sistema de notificaciones multi-canal: email (Resend), SMS (Twilio), WhatsApp, y
 - `WHATSAPP_NUMBER` - WhatsApp manual
 
 ## Tests existentes
-Ninguno.
+- `tests/lib/emergency-alerts.test.ts`
+- `tests/routes/public-scan.test.ts`
+- `tests/routes/cron-notify.test.ts`
+- `tests/routes/auth-register.test.ts`
 
 ## Tests faltantes recomendados
 - Tests de envío email/SMS
@@ -38,11 +41,11 @@ Ninguno.
 - Tests de WhatsApp (aunque es manual)
 
 ## Riesgos detectados
-- Cron notify deshabilitado pero documentado como activo
-- WhatsApp solo como link manual, no automatizado
-- Sin tests de notificaciones
+- El envío depende de proveedores configurados en runtime
+- WhatsApp manual sigue existiendo como fallback de contacto directo
+- Los reintentos necesitan `CRON_SECRET` para ejecutarse
 
 ## Pendientes
-- Reactivar o documentar cron notify como inactivo
-- Considerar automatizar WhatsApp
-- Tests de notificaciones
+- Mantener el cron operativo y monitoreado
+- Revisar métricas de cola, reintentos y fallos permanentes
+- Ampliar cobertura si se agregan nuevos canales

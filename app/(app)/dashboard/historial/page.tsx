@@ -73,12 +73,18 @@ export default function HistorialPage() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Evento de Rescate</span>
-                       <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
                         scan.notificationStatus === "sent" ? "bg-emerald-100 text-emerald-700" :
                         scan.notificationStatus === "failed" ? "bg-red-100 text-red-700" :
+                        scan.notificationStatus === "retrying" ? "bg-amber-100 text-amber-700" :
+                        scan.notificationStatus === "processing" ? "bg-blue-100 text-blue-700" :
+                        scan.notificationStatus === "disabled" ? "bg-slate-200 text-slate-600" :
                         "bg-slate-100 text-slate-500"}`}>
                         {scan.notificationStatus === "sent" ? "✓ Notificado" :
                          scan.notificationStatus === "failed" ? "✗ Error Notif" :
+                         scan.notificationStatus === "retrying" ? "↻ Reintentando" :
+                         scan.notificationStatus === "processing" ? "⏳ Procesando" :
+                         scan.notificationStatus === "disabled" ? "— Deshabilitado" :
                          scan.notificationStatus === "skipped" ? "— No Contacts" : "⏳ Pendiente"}
                        </span>
                     </div>
