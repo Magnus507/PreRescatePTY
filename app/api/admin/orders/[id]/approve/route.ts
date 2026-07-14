@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
+import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-reservation";
 import { canAdminApproveManual } from "@/lib/order-status";
 import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
@@ -13,6 +14,10 @@ const ApproveSchema = z.object({
   adminReviewNotes: z.string().optional(),
   assignedChipIds: z.array(z.string()).optional(),
 });
+
+function buildSourceMarker(sourceType: string, sourceId: string) {
+  return `[sourceType:${sourceType}][sourceId:${sourceId}]`;
+}
 
 type AdminReviewedOrder = {
   id: string;
@@ -275,6 +280,22 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           adminReviewNotes: notes,
         }
       });
+
+      const linkedCommercialOrder = await tx.operationCommercialOrder.findFirst({
+        where: {
+          notes: {
+            contains: buildSourceMarker("legacy_order", order.id),
+          },
+        },
+        select: { id: true },
+      });
+
+      if (linkedCommercialOrder) {
+        await reserveCommercialOrderStock(tx, {
+          orderId: linkedCommercialOrder.id,
+          allowPartial: true,
+        });
+      }
 
       // Actualizar cuenta
       const currentAccount = await tx.account.findUnique({

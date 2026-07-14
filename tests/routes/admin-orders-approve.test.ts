@@ -36,6 +36,7 @@ const mockCalculateCapacityIncrement = vi.hoisted(() => vi.fn())
 const mockWasOrderAlreadyApproved = vi.hoisted(() => vi.fn())
 const mockApplyCapacityIfFirstApproval = vi.hoisted(() => vi.fn())
 const mockReserveAssignedChipsForOrder = vi.hoisted(() => vi.fn())
+const mockReserveCommercialOrderStock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/domains/orders/services/order-fulfillment.service', () => ({
   OrderFulfillmentService: {
@@ -46,6 +47,10 @@ vi.mock('@/domains/orders/services/order-fulfillment.service', () => ({
     applyCapacityIfFirstApproval: mockApplyCapacityIfFirstApproval,
     reserveAssignedChipsForOrder: mockReserveAssignedChipsForOrder,
   },
+}))
+
+vi.mock('@/lib/operations/commercial-order-reservation', () => ({
+  reserveCommercialOrderStock: mockReserveCommercialOrderStock,
 }))
 
 // ─── Imports after mocks ────────────────────────────────────────────────────
@@ -98,11 +103,28 @@ function setupDefaultMocks(orderOverrides: Record<string, unknown> = {}) {
   mockWasOrderAlreadyApproved.mockReturnValue(false)
   mockApplyCapacityIfFirstApproval.mockReturnValue({ maxChipsAllocated: 5, maxProfilesAllocated: 3 })
   mockReserveAssignedChipsForOrder.mockResolvedValue(undefined)
+  mockReserveCommercialOrderStock.mockResolvedValue({
+    order: {
+      id: TEST_ORDER_ID,
+      status: 'stock_reserved',
+      paymentStatus: 'paid',
+      fulfillmentStatus: 'reserved',
+    },
+    reservedUnits: [],
+    missingItems: [],
+    summary: {
+      requestedQty: 1,
+      reservedQty: 1,
+      missingQty: 0,
+      status: 'stock_reserved',
+    },
+  })
   mockInvalidateCache.mockResolvedValue(undefined)
 
   mockPrisma.order.findUnique.mockResolvedValue(
     createEligibleOrder(orderOverrides) as never
   )
+  mockPrisma.operationCommercialOrder.findFirst.mockResolvedValue(null as never)
   mockPrisma.user.findUnique.mockResolvedValue({
     id: TEST_USER_ID,
     accountId: TEST_ACCOUNT_ID,
@@ -141,8 +163,10 @@ describe('POST /api/admin/orders/[id]/approve', () => {
     mockWasOrderAlreadyApproved.mockReset()
     mockApplyCapacityIfFirstApproval.mockReset()
     mockReserveAssignedChipsForOrder.mockReset()
+    mockReserveCommercialOrderStock.mockReset()
     mockInvalidateCache.mockReset()
     mockPrisma.order.findUnique.mockReset()
+    mockPrisma.operationCommercialOrder.findFirst.mockReset()
     mockPrisma.user.findUnique.mockReset()
     mockPrisma.package.findUnique.mockReset()
     mockPrisma.order.update.mockReset()
@@ -267,7 +291,7 @@ describe('POST /api/admin/orders/[id]/approve', () => {
         where: { id: TEST_ORDER_ID },
         data: expect.objectContaining({
           paymentStatus: 'paid',
-          orderStatus: 'completed',
+          orderStatus: 'processing',
           adminReviewStatus: 'approved',
         }),
       })
@@ -315,6 +339,22 @@ describe('POST /api/admin/orders/[id]/approve', () => {
         assignedChipIds: [],
         purchasedChips: 1,
         tokenExpiresAt: expect.any(Date),
+      })
+    )
+  })
+
+  it('10b. successful approval reserves linked commercial stock inside the same transaction', async () => {
+    setupDefaultMocks()
+    mockPrisma.operationCommercialOrder.findFirst.mockResolvedValue({ id: 'commercial-order-1' } as never)
+
+    const req = createApproveRequest()
+    await POST(req, routeParams())
+
+    expect(mockReserveCommercialOrderStock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderId: 'commercial-order-1',
+        allowPartial: true,
       })
     )
   })

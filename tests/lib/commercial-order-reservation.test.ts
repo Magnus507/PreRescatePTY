@@ -1,0 +1,295 @@
+import { describe, expect, it, vi } from "vitest";
+import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-reservation";
+
+type Unit = {
+  id: string;
+  internalLabel: string;
+  productCode: string;
+  productType: string;
+  status: string;
+  qaStatus: string | null;
+  activationStatus: string;
+  reservedOrderId: string | null;
+  dispatchItems: Array<unknown>;
+};
+
+function createTx(order: {
+  id: string;
+  customerType?: string;
+  status?: string;
+  paymentStatus?: string;
+  items: Array<{
+    id: string;
+    quantity: number;
+    productCode: string | null;
+    finishedGoodId: string | null;
+    finishedGood: { code: string; productType: string } | null;
+  }>;
+}, units: Unit[]) {
+  const state = {
+    order,
+    units,
+  };
+
+  return {
+    operationCommercialOrder: {
+      findUnique: vi.fn(async () => state.order),
+      update: vi.fn(async ({ data }: { data: { status?: string; fulfillmentStatus?: string } }) => ({
+        id: state.order.id,
+        status: data.status ?? state.order.status ?? "draft",
+        paymentStatus: state.order.paymentStatus ?? "paid",
+        fulfillmentStatus: data.fulfillmentStatus ?? "pending",
+      })),
+    },
+    operationFinishedGoodUnit: {
+      findMany: vi.fn(async ({ where, take }: { where: { reservedOrderId: string | null; productCode: string; productType: string; status: string; qaStatus: string; activationStatus: string; dispatchItems: { none: {} } }, take: number }) => {
+        const matched = state.units.filter((unit) =>
+          unit.productCode === where.productCode &&
+          unit.productType === where.productType &&
+          unit.status === where.status &&
+          unit.qaStatus === where.qaStatus &&
+          unit.activationStatus === where.activationStatus &&
+          unit.reservedOrderId === where.reservedOrderId &&
+          unit.dispatchItems.length === 0
+        );
+        return matched.slice(0, take);
+      }),
+      updateMany: vi.fn(async ({ where, data }: { where: { id: { in: string[] } }, data: { status: string; reservedOrderId: string; reservedAt: Date } }) => {
+        for (const unit of state.units) {
+          if (where.id.in.includes(unit.id)) {
+            unit.status = data.status;
+            unit.reservedOrderId = data.reservedOrderId;
+          }
+        }
+        return { count: where.id.in.length };
+      }),
+    },
+    operationFinishedGoodUnitEvent: {
+      createMany: vi.fn(async () => ({ count: 0 })),
+    },
+  };
+}
+
+describe("reserveCommercialOrderStock", () => {
+  it("reserves exactly one unit when inventory is sufficient", async () => {
+    const tx = createTx(
+      {
+        id: "order-1",
+        status: "draft",
+        paymentStatus: "paid",
+        items: [
+          {
+            id: "item-1",
+            quantity: 1,
+            productCode: "PRP-FG-STICKER",
+            finishedGoodId: "fg-1",
+            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+          },
+        ],
+      },
+      [
+        {
+          id: "unit-1",
+          internalLabel: "U-001",
+          productCode: "PRP-FG-STICKER",
+          productType: "PRP-FG-STICKER",
+          status: "available",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: null,
+          dispatchItems: [],
+        },
+      ]
+    );
+
+    const result = await reserveCommercialOrderStock(tx as never, { orderId: "order-1", allowPartial: true });
+
+    expect(result?.summary.reservedQty).toBe(1);
+    expect(result?.summary.missingQty).toBe(0);
+    expect(result?.order.status).toBe("stock_reserved");
+    expect(tx.operationFinishedGoodUnit.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.operationFinishedGoodUnitEvent.createMany).toHaveBeenCalledTimes(1);
+    expect(tx.operationCommercialOrder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "order-1" },
+        data: expect.objectContaining({
+          status: "stock_reserved",
+          fulfillmentStatus: "reserved",
+        }),
+      })
+    );
+  });
+
+  it("keeps backorder behavior when inventory is unavailable", async () => {
+    const tx = createTx(
+      {
+        id: "order-2",
+        status: "draft",
+        paymentStatus: "paid",
+        items: [
+          {
+            id: "item-1",
+            quantity: 1,
+            productCode: "PRP-FG-STICKER",
+            finishedGoodId: "fg-1",
+            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+          },
+        ],
+      },
+      []
+    );
+
+    const result = await reserveCommercialOrderStock(tx as never, { orderId: "order-2", allowPartial: true });
+
+    expect(result?.summary.reservedQty).toBe(0);
+    expect(result?.summary.missingQty).toBe(1);
+    expect(result?.order.status).toBe("needs_production");
+    expect(tx.operationFinishedGoodUnit.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("does not duplicate a reservation on repeated approval", async () => {
+    const tx = createTx(
+      {
+        id: "order-3",
+        status: "draft",
+        paymentStatus: "paid",
+        items: [
+          {
+            id: "item-1",
+            quantity: 1,
+            productCode: "PRP-FG-STICKER",
+            finishedGoodId: "fg-1",
+            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+          },
+        ],
+      },
+      [
+        {
+          id: "unit-1",
+          internalLabel: "U-001",
+          productCode: "PRP-FG-STICKER",
+          productType: "PRP-FG-STICKER",
+          status: "available",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: null,
+          dispatchItems: [],
+        },
+      ]
+    );
+
+    const first = await reserveCommercialOrderStock(tx as never, { orderId: "order-3", allowPartial: true });
+    const second = await reserveCommercialOrderStock(tx as never, { orderId: "order-3", allowPartial: true });
+
+    expect(first?.summary.reservedQty).toBe(1);
+    expect(second?.summary.reservedQty).toBe(0);
+    expect(second?.summary.missingQty).toBe(1);
+  });
+
+  it("allows only one of two competing reservations to consume the same unit", async () => {
+    const sharedUnits: Unit[] = [
+      {
+        id: "unit-1",
+        internalLabel: "U-001",
+        productCode: "PRP-FG-STICKER",
+        productType: "PRP-FG-STICKER",
+        status: "available",
+        qaStatus: "passed",
+        activationStatus: "not_activated",
+        reservedOrderId: null,
+        dispatchItems: [],
+      },
+    ];
+
+    const txA = createTx(
+      {
+        id: "order-a",
+        status: "draft",
+        paymentStatus: "paid",
+        items: [
+          {
+            id: "item-1",
+            quantity: 1,
+            productCode: "PRP-FG-STICKER",
+            finishedGoodId: "fg-1",
+            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+          },
+        ],
+      },
+      sharedUnits
+    );
+
+    const txB = createTx(
+      {
+        id: "order-b",
+        status: "draft",
+        paymentStatus: "paid",
+        items: [
+          {
+            id: "item-1",
+            quantity: 1,
+            productCode: "PRP-FG-STICKER",
+            finishedGoodId: "fg-1",
+            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+          },
+        ],
+      },
+      sharedUnits
+    );
+
+    const first = await reserveCommercialOrderStock(txA as never, { orderId: "order-a", allowPartial: true });
+    const second = await reserveCommercialOrderStock(txB as never, { orderId: "order-b", allowPartial: true });
+
+    expect(first?.summary.reservedQty).toBe(1);
+    expect(second?.summary.reservedQty).toBe(0);
+  });
+
+  it("rejects internal orders without reservation", async () => {
+    const tx = createTx(
+      {
+        id: "order-internal",
+        customerType: "internal",
+        status: "draft",
+        paymentStatus: "paid",
+        items: [
+          {
+            id: "item-1",
+            quantity: 1,
+            productCode: "PRP-FG-STICKER",
+            finishedGoodId: "fg-1",
+            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+          },
+        ],
+      },
+      []
+    );
+
+    await expect(
+      reserveCommercialOrderStock(tx as never, { orderId: "order-internal", allowPartial: true })
+    ).rejects.toThrow("INTERNAL_ORDER_NO_RESERVATION");
+  });
+
+  it("does not reserve inventory for a mismapped or missing product because it only uses the order's own finishedGood mapping", async () => {
+    const tx = createTx(
+      {
+        id: "order-mapped",
+        status: "draft",
+        paymentStatus: "paid",
+        items: [
+          {
+            id: "item-1",
+            quantity: 1,
+            productCode: null,
+            finishedGoodId: "fg-1",
+            finishedGood: null,
+          },
+        ],
+      },
+      []
+    );
+
+    const result = await reserveCommercialOrderStock(tx as never, { orderId: "order-mapped", allowPartial: true });
+    expect(result?.summary.reservedQty).toBe(0);
+    expect(result?.summary.missingQty).toBe(1);
+  });
+});

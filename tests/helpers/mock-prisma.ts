@@ -32,6 +32,10 @@ export interface MockPrismaClient {
   chipClaimToken: MockDelegate
   order: MockDelegate
   orderItem: MockDelegate
+  operationCommercialOrder: MockDelegate
+  operationCommercialOrderItem: MockDelegate
+  operationFinishedGoodUnit: MockDelegate
+  operationFinishedGoodUnitEvent: MockDelegate
   auditLog: MockDelegate
   notification: MockDelegate
   scanEvent: MockDelegate
@@ -64,6 +68,10 @@ export const mockPrisma: MockPrismaClient = {
   chipClaimToken: createMockDelegate(),
   order: createMockDelegate(),
   orderItem: createMockDelegate(),
+  operationCommercialOrder: createMockDelegate(),
+  operationCommercialOrderItem: createMockDelegate(),
+  operationFinishedGoodUnit: createMockDelegate(),
+  operationFinishedGoodUnitEvent: createMockDelegate(),
   auditLog: createMockDelegate(),
   notification: createMockDelegate(),
   scanEvent: createMockDelegate(),
