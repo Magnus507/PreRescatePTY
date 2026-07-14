@@ -169,9 +169,9 @@ export default function ConfiguracionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center rounded-[2rem] border border-slate-200/70 bg-white/80 px-6 py-14 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.22)] backdrop-blur">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="mt-4 font-black text-slate-400 uppercase tracking-widest text-xs">Cargando Ajustes...</p>
+        <p className="mt-4 text-[11px] font-black uppercase tracking-[0.34em] text-slate-500">Cargando configuración...</p>
       </div>
     );
   }
@@ -179,48 +179,59 @@ export default function ConfiguracionPage() {
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-4xl font-black tracking-tighter uppercase">Configuración</h1>
-          <p className="text-muted-foreground font-medium italic">Gestiona tu cuenta, seguridad y preferencias del sistema</p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-3">
+          <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 shadow-sm">
+            Ajustes del cliente
+          </div>
+          <div className="max-w-2xl space-y-3">
+            <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Configuración</h1>
+            <p className="max-w-xl text-sm leading-6 text-slate-600 sm:text-base">
+              Gestiona tu cuenta, seguridad y preferencias con una interfaz clara, clínica y fácil de leer.
+            </p>
+          </div>
         </div>
         <button 
           onClick={handleSave}
           disabled={saving}
-          className="bg-primary text-white px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-2xl shadow-primary/30 hover:scale-[1.05] active:scale-[0.95] transition-all flex items-center gap-3"
+          className="inline-flex items-center gap-3 rounded-full bg-slate-950 px-6 py-3.5 text-[11px] font-black uppercase tracking-[0.28em] text-white shadow-[0_18px_40px_-20px_rgba(15,23,42,0.7)] transition-all hover:-translate-y-0.5 hover:bg-slate-900 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
           Guardar Cambios
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         
         {/* Sidebar Navigation */}
-        <div className="space-y-3">
+        <div className="space-y-3 lg:sticky lg:top-6 self-start">
           <SettingsTab 
-            active={activeTab === "perfil"} 
-            icon={User} 
-            label="Perfil de Cuenta" 
-            onClick={() => setActiveTab("perfil")} 
+            active={activeTab === "perfil"}
+            icon={User}
+            label="Perfil de cuenta"
+            description="Datos personales y foto"
+            onClick={() => setActiveTab("perfil")}
           />
           <SettingsTab 
-            active={activeTab === "seguridad"} 
-            icon={Shield} 
-            label="Seguridad & Acceso" 
-            onClick={() => setActiveTab("seguridad")} 
+            active={activeTab === "seguridad"}
+            icon={Shield}
+            label="Seguridad y acceso"
+            description="Contraseña y sesiones"
+            onClick={() => setActiveTab("seguridad")}
           />
           <SettingsTab 
-            active={activeTab === "notificaciones"} 
-            icon={Bell} 
-            label="Notificaciones de Emergencia" 
-            onClick={() => setActiveTab("notificaciones")} 
+            active={activeTab === "notificaciones"}
+            icon={Bell}
+            label="Notificaciones"
+            description="Alertas y avisos"
+            onClick={() => setActiveTab("notificaciones")}
           />
           <SettingsTab 
-            active={activeTab === "plan"} 
-            icon={CreditCard} 
-            label="Suscripción & Plan" 
-            onClick={() => setActiveTab("plan")} 
+            active={activeTab === "plan"}
+            icon={CreditCard}
+            label="Suscripción y plan"
+            description="Estado y gestión"
+            onClick={() => setActiveTab("plan")}
           />
         </div>
 
@@ -230,10 +241,10 @@ export default function ConfiguracionPage() {
           {/* Perfil de Cuenta Section */}
           {activeTab === "perfil" && (
             <div className="space-y-8">
-              <Section title="Foto de Perfil" icon={Camera} color="bg-indigo-600">
-                <div className="flex flex-col md:flex-row items-center gap-8">
+              <Section title="Foto de perfil" icon={Camera} color="bg-slate-900">
+                <div className="flex flex-col items-center gap-6 md:flex-row md:items-center md:gap-8">
                   <div className="relative group">
-                    <div className="h-32 w-32 rounded-[2.5rem] bg-indigo-50 border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden">
+                    <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-[2.25rem] border border-slate-200 bg-slate-50 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.5)] ring-4 ring-white">
                       {photoUrl ? (
                          <div className="relative h-full w-full">
                            <Image
@@ -245,100 +256,100 @@ export default function ConfiguracionPage() {
                            />
                          </div>
                       ) : (
-                         <User className="h-12 w-12 text-indigo-300" />
+                         <User className="h-12 w-12 text-slate-300" />
                       )}
                       {uploadingPhoto && (
-                        <div className="absolute inset-0 bg-indigo-900/60 backdrop-blur-sm flex items-center justify-center">
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm">
                           <Loader2 className="h-8 w-8 animate-spin text-white" />
                         </div>
                       )}
                     </div>
-                    <label className="absolute -bottom-2 -right-2 h-10 w-10 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-xl cursor-pointer hover:scale-110 active:scale-90 transition-all">
+                    <label className="absolute -bottom-2 -right-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg transition-all hover:scale-110 active:scale-95 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
                       <Upload className="h-5 w-5" />
                       <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
                     </label>
                   </div>
-                  <div className="space-y-2 text-center md:text-left">
-                    <p className="font-black text-xl tracking-tight">Tu Imagen Médica</p>
-                    <p className="text-sm text-muted-foreground font-medium max-w-sm">
+                  <div className="max-w-xl space-y-2 text-center md:text-left">
+                    <p className="text-lg font-black tracking-tight text-slate-950">Tu imagen médica</p>
+                    <p className="text-sm leading-6 text-slate-600">
                       Sube una foto clara de tu rostro. Esto ayuda al personal de emergencia a identificarte rápidamente en caso de crisis.
                     </p>
-                    <p className="text-[10px] font-black uppercase text-indigo-600/60 tracking-widest pt-1">WebP Optimizado • Máx 2MB</p>
+                    <p className="pt-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">WebP optimizado • máx. 2MB</p>
                   </div>
                 </div>
               </Section>
 
-              <Section title="Identidad de la Cuenta" icon={User} color="bg-primary">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Section title="Identidad de la cuenta" icon={User} color="bg-primary">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre(s)</label>
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Nombre(s)</label>
                   <input 
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="Tu nombre real"
-                    className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-bold hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 font-semibold text-slate-950 shadow-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Apellido(s)</label>
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Apellido(s)</label>
                   <input 
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Tus apellidos"
-                    className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-bold hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 font-semibold text-slate-950 shadow-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cédula / ID / DNI</label>
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Cédula / ID / DNI</label>
                   <input 
                     type="text"
                     value={nationalId}
                     onChange={(e) => setNationalId(e.target.value)}
                     placeholder="Ej: 8-888-8888"
-                    className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-bold hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 font-semibold text-slate-950 shadow-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Teléfono Vinculado</label>
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Teléfono vinculado</label>
                   <input 
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="Ej: +507 6000-0000"
-                    className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-bold hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 font-semibold text-slate-950 shadow-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dirección de Envío / Residencia</label>
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Dirección de envío / residencia</label>
                   <input 
                     type="text"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="Calle, Edificio, Casa..."
-                    className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-bold hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 font-semibold text-slate-950 shadow-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ciudad / Provincia</label>
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Ciudad / provincia</label>
                   <input 
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder="Ej: Ciudad de Panamá"
-                    className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-bold hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 font-semibold text-slate-950 shadow-sm transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email de Acceso</label>
-                  <div className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 text-slate-500 font-bold italic cursor-not-allowed">
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Email de acceso</label>
+                  <div className="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 font-semibold text-slate-500 shadow-sm">
                     {userEmail}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">ID Universal</label>
-                  <div className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 text-slate-500 font-bold italic cursor-not-allowed uppercase">
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">ID universal</label>
+                  <div className="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 font-semibold uppercase text-slate-500 shadow-sm">
                     {universalId}
                   </div>
                 </div>
@@ -349,27 +360,27 @@ export default function ConfiguracionPage() {
 
           {/* Seguridad Section */}
           {activeTab === "seguridad" && (
-            <Section title="Seguridad del Sistema" icon={Lock} color="bg-slate-900">
+            <Section title="Seguridad del sistema" icon={Lock} color="bg-slate-900">
                <div className="space-y-6">
-                  <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                     <div>
-                        <p className="font-black text-slate-900">Contraseña</p>
-                        <p className="text-xs text-slate-500 font-medium mt-1">Te enviaremos instrucciones para crear una nueva contraseña.</p>
+                  <div className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-slate-50 p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+                     <div className="space-y-1">
+                        <p className="font-black text-slate-950">Contraseña</p>
+                        <p className="text-xs leading-5 text-slate-500">Te enviaremos instrucciones para crear una nueva contraseña.</p>
                      </div>
                      <Link
                        href="/forgot-password"
-                       className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
+                       className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-[11px] font-black uppercase tracking-[0.28em] text-slate-900 transition-all hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                      >
                        Restablecer contraseña
                      </Link>
                   </div>
 
-                  <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                     <div>
-                        <p className="font-black text-slate-900">Gestión de sesiones</p>
-                        <p className="text-xs text-slate-500 font-medium mt-1">Muy pronto podrás consultar y cerrar sesiones abiertas desde otros dispositivos.</p>
+                  <div className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+                     <div className="space-y-1">
+                        <p className="font-black text-slate-950">Gestión de sesiones</p>
+                        <p className="text-xs leading-5 text-slate-500">Muy pronto podrás consultar y cerrar sesiones abiertas desde otros dispositivos.</p>
                      </div>
-                     <span className="text-[10px] font-black text-slate-500 bg-slate-200 px-3 py-1 rounded-full uppercase">Próximamente</span>
+                     <span className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Próximamente</span>
                   </div>
                </div>
             </Section>
@@ -377,13 +388,13 @@ export default function ConfiguracionPage() {
 
           {/* Notificaciones Section */}
           {activeTab === "notificaciones" && (
-            <Section title="Preferencias de Alertamiento" icon={Smartphone} color="bg-indigo-600">
+            <Section title="Preferencias de alertamiento" icon={Smartphone} color="bg-indigo-600">
                <div className="space-y-4">
-                  <div className="p-6 rounded-3xl bg-indigo-50 border border-indigo-100 flex items-center gap-4">
-                     <div className="px-3 py-1.5 rounded-full bg-indigo-200 text-indigo-700 text-[9px] font-black uppercase tracking-widest border border-indigo-200">
+                  <div className="flex flex-col gap-3 rounded-[2rem] border border-slate-200 bg-slate-50 p-6 md:flex-row md:items-center">
+                     <div className="inline-flex w-fit items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-blue-700">
                         Próximamente
                      </div>
-                     <p className="text-sm text-indigo-800/70 font-medium">
+                     <p className="text-sm leading-6 text-slate-600">
                         Estamos preparando controles personalizados para tus notificaciones.
                      </p>
                   </div>
@@ -397,17 +408,17 @@ export default function ConfiguracionPage() {
           {/* Suscripcion & Plan Section */}
           {activeTab === "plan" && (
             <div className="space-y-8 scale-in fade-in duration-500">
-               <Section title="Estado de la Suscripción" icon={CreditCard} color="bg-amber-500">
-                <div className={`p-6 rounded-3xl border ${accountState?.isExpired || accountState?.isInactive ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
-                   <p className={`${accountState?.isExpired || accountState?.isInactive ? 'text-red-900' : 'text-amber-900'} font-black uppercase text-xs tracking-widest mb-2`}>Plan Actual</p>
-                   <p className={`text-2xl font-black ${accountState?.isExpired || accountState?.isInactive ? 'text-red-950' : 'text-amber-950'} uppercase tracking-tighter`}>
+               <Section title="Estado de la suscripción" icon={CreditCard} color="bg-amber-500">
+                <div className={`rounded-[2rem] border p-6 shadow-sm ${accountState?.isExpired || accountState?.isInactive ? 'border-red-100 bg-red-50' : 'border-amber-100 bg-amber-50'}`}>
+                   <p className={`${accountState?.isExpired || accountState?.isInactive ? 'text-red-900' : 'text-amber-900'} mb-2 text-[10px] font-black uppercase tracking-[0.28em]`}>Plan actual</p>
+                   <p className={`text-2xl font-black tracking-tight ${accountState?.isExpired || accountState?.isInactive ? 'text-red-950' : 'text-amber-950'}`}>
                      {accountState?.packageName || "Plan Personal"}
                    </p>
-                   <div className="mt-4 flex items-center justify-between">
-                     <span className={`text-sm font-bold ${accountState?.isExpired || accountState?.isInactive ? 'text-red-900/60' : 'text-amber-900/60'} leading-none`}>
+                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                     <span className={`text-sm font-medium ${accountState?.isExpired || accountState?.isInactive ? 'text-red-900/70' : 'text-amber-900/70'} leading-6`}>
                         {accountState?.serviceEndDate ? `Válido hasta: ${new Date(accountState.serviceEndDate).toLocaleDateString()}` : "Servicio no activado"}
                      </span>
-                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${
+                     <span className={`inline-flex w-fit items-center rounded-full px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] ${
                        accountState?.isInactive ? 'bg-slate-200 text-slate-600' : 
                        accountState?.isExpired ? 'bg-red-200 text-red-900' : 
                        'bg-emerald-200 text-emerald-900'
@@ -416,24 +427,24 @@ export default function ConfiguracionPage() {
                      </span>
                    </div>
                 </div>
-                <Link href="/dashboard/upgrade" className="block w-full text-center py-4 rounded-2xl bg-slate-900 text-white font-black text-sm uppercase tracking-widest hover:opacity-90 transition-all">
+                <Link href="/dashboard/upgrade" className="block w-full rounded-2xl bg-slate-950 px-5 py-4 text-center text-[11px] font-black uppercase tracking-[0.28em] text-white transition-all hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                   {accountState?.isExpired || accountState?.isInactive ? "Activar ahora" : "Gestionar / Mejorar Plan"}
                 </Link>
               </Section>
 
               {/* Danger Zone moved here as it belongs to account/subscription management */}
-              <div className="p-10 rounded-[3rem] bg-red-50 border border-red-100">
-                 <div className="flex items-center gap-4 mb-6 text-red-600">
+              <div className="rounded-[2.5rem] border border-red-100 bg-red-50 p-8 shadow-sm">
+                 <div className="mb-5 flex items-center gap-4 text-red-700">
                     <Trash2 className="h-6 w-6" />
-                    <h3 className="text-xl font-black tracking-tight uppercase">Zona Crítica</h3>
+                    <h3 className="text-xl font-black tracking-tight uppercase">Zona crítica</h3>
                  </div>
-                 <p className="text-sm text-red-900/60 font-medium mb-6 leading-relaxed">
+                 <p className="mb-6 text-sm leading-6 text-red-900/70">
                    Si eliminas tu cuenta, perderás el acceso a todos tus chips y perfiles médicos. Esta acción es definitiva y no se puede deshacer.
                  </p>
                  <button 
                    onClick={handleDeleteAccount}
                    disabled={isDeleting}
-                   className="px-8 py-4 bg-red-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-red-200 hover:bg-red-700 transition-all uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                   className="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-6 py-3.5 text-[11px] font-black uppercase tracking-[0.28em] text-white shadow-[0_18px_40px_-20px_rgba(220,38,38,0.45)] transition-all hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                  >
                    {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
                    Eliminar Cuenta Permanentemente
@@ -460,12 +471,12 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <div className="p-10 rounded-[3.5rem] bg-white border border-border shadow-sm space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+    <div className="space-y-8 rounded-[2.5rem] border border-slate-200 bg-white p-7 shadow-[0_22px_60px_-40px_rgba(15,23,42,0.35)] animate-in fade-in slide-in-from-right-4 duration-500 sm:p-8 lg:p-10">
       <div className="flex items-center gap-4">
-        <div className={`h-12 w-12 rounded-2xl ${color} text-white flex items-center justify-center shadow-lg font-black`}>
+        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${color} text-white shadow-lg`}>
           <Icon className="h-6 w-6" />
         </div>
-        <h3 className="text-2xl font-black tracking-tight uppercase">{title}</h3>
+        <h3 className="text-xl font-black tracking-tight text-slate-950 sm:text-2xl">{title}</h3>
       </div>
       {children}
     </div>
@@ -475,25 +486,31 @@ function Section({
 function SettingsTab({
   icon: Icon,
   label,
+  description,
   active,
   onClick,
 }: {
   icon: LucideIcon;
   label: string;
+  description: string;
   active: boolean;
   onClick: () => void;
 }) {
   return (
-    <div 
+    <button
       onClick={onClick}
-      className={`flex items-center gap-4 p-5 rounded-3xl cursor-pointer transition-all ${active ? "bg-white border border-border shadow-md translate-x-1" : "hover:bg-slate-100/50 text-muted-foreground"}`}
+      type="button"
+      className={`flex w-full items-center gap-4 rounded-[1.75rem] border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:p-5 ${active ? "border-slate-200 bg-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)]" : "border-transparent bg-slate-50/70 hover:border-slate-200 hover:bg-white"}`}
     >
-      <div className={`h-10 w-10 rounded-2xl flex items-center justify-center ${active ? "bg-primary/10 text-primary" : "bg-slate-100"}`}>
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${active ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-500"}`}>
         <Icon className="h-5 w-5" />
       </div>
-      <span className={`font-black text-sm uppercase tracking-tight ${active ? "text-slate-900" : "text-slate-500"}`}>{label}</span>
-      {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
-    </div>
+      <div className="min-w-0 flex-1">
+        <span className={`block text-sm font-black tracking-tight ${active ? "text-slate-950" : "text-slate-700"}`}>{label}</span>
+        <span className={`mt-1 block text-xs leading-5 ${active ? "text-slate-500" : "text-slate-400"}`}>{description}</span>
+      </div>
+      {active && <div className="ml-auto h-2 w-2 rounded-full bg-primary" />}
+    </button>
   );
 }
 
@@ -510,17 +527,18 @@ function Toggle({
 }) {
   const [checked, setChecked] = useState(defaultChecked);
   return (
-    <div 
+    <button
       onClick={() => { if (!disabled) setChecked(!checked); }}
-      className={`flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100 transition-all group ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100/50'}`}
+      type="button"
+      className={`flex w-full items-center justify-between rounded-[2rem] border p-5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:p-6 ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'}`}
     >
-       <div className="max-w-xs">
-          <p className={`font-black ${disabled ? 'text-slate-500' : 'text-slate-900'}`}>{label}</p>
-          <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">{description}</p>
+       <div className="max-w-md pr-6">
+          <p className={`font-black ${disabled ? 'text-slate-600' : 'text-slate-950'}`}>{label}</p>
+          <p className="mt-1 text-xs leading-6 text-slate-500">{description}</p>
        </div>
-       <div className={`w-14 h-8 rounded-full p-1 transition-all ${checked ? "bg-primary" : "bg-slate-300"}`}>
-          <div className={`w-6 h-6 bg-white rounded-full shadow-sm transition-all ${checked ? "translate-x-6" : ""}`} />
+       <div className={`h-8 w-14 rounded-full p-1 transition-all ${checked ? "bg-primary" : "bg-slate-300"}`}>
+          <div className={`h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-6" : ""}`} />
        </div>
-    </div>
+    </button>
   );
 }
