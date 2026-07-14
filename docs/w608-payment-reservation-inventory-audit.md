@@ -35,6 +35,13 @@ La causa raíz fue una separación incompleta entre `Order` y `OperationCommerci
 
 Eso dejaba el sistema en un estado donde el pago quedaba aprobado, pero el inventario reservable no se consumía.
 
+### Significado real de `packageId`
+`packageId` sigue representando el paquete/plan que actualiza cuenta, capacidad y chips en los flujos de suscripción o compra de combos.
+
+No es la fuente de verdad para pedidos directos de tienda de stickers.
+
+Para `Sticker PreRescatePTY`, la reserva correcta sale de la orden comercial sincronizada y de sus `items` con `finishedGoodId` y `productCode` persistidos.
+
 ## 7. Archivos auditados
 - `app/api/admin/orders/[id]/approve/route.ts`
 - `app/api/admin/operations/commercial-orders/[id]/reserve-stock/route.ts`
@@ -60,6 +67,9 @@ Eso dejaba el sistema en un estado donde el pago quedaba aprobado, pero el inven
 - Se reutilizó esa lógica desde el endpoint de reserva comercial.
 - Se conectó la aprobación manual de pagos con el `OperationCommercialOrder` sincronizado por el `sourceMarker` `[sourceType:legacy_order][sourceId:<orderId>]`.
 - La aprobación ahora ejecuta la reserva dentro de la misma transacción del approve.
+- Se corrigió el flujo para distinguir entre:
+  - órdenes de paquete, que siguen requiriendo `packageId`;
+  - órdenes directas de sticker, que pueden aprobarse sin `packageId` si existe la orden comercial sincronizada.
 
 ## 10. Transaccionalidad y concurrencia
 - La aprobación y la reserva quedan dentro de la transacción de `prisma.$transaction`.
@@ -112,6 +122,7 @@ Eso dejaba el sistema en un estado donde el pago quedaba aprobado, pero el inven
 - `schema.prisma`.
 - migraciones.
 - estructura de base de datos.
+- la reserva nunca usa nombre visible ni SKU como fallback inseguro.
 
 ## 17. Validaciones
 - `git diff`

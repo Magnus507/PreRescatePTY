@@ -359,6 +359,38 @@ describe('POST /api/admin/orders/[id]/approve', () => {
     )
   })
 
+  it('10c. approves direct store orders without packageId when the commercial order is linked', async () => {
+    setupDefaultMocks({ packageId: null })
+    mockPrisma.operationCommercialOrder.findFirst.mockResolvedValue({ id: 'commercial-order-2' } as never)
+
+    const req = createApproveRequest()
+    const res = await POST(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.orderId).toBe(TEST_ORDER_ID)
+    expect(mockReserveCommercialOrderStock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderId: 'commercial-order-2',
+        allowPartial: true,
+      })
+    )
+    expect(mockPrisma.account.update).not.toHaveBeenCalled()
+  })
+
+  it('10d. returns a controlled error when a direct order has no packageId and no commercial mapping', async () => {
+    setupDefaultMocks({ packageId: null })
+    mockPrisma.operationCommercialOrder.findFirst.mockResolvedValue(null as never)
+
+    const req = createApproveRequest()
+    const res = await POST(req, routeParams())
+    const json = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/packageId/i)
+  })
+
   // ─── Audit log ──────────────────────────────────────────────────────────
 
   it('11. successful approval creates an audit log with correct action and identifiers', async () => {

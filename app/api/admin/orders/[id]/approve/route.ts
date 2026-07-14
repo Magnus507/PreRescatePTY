@@ -174,6 +174,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Usuario sin cuenta asociada" }, { status: 400 });
   }
 
+  const linkedCommercialOrder = await prisma.operationCommercialOrder.findFirst({
+    where: {
+      notes: {
+        contains: buildSourceMarker("legacy_order", order.id),
+      },
+    },
+    select: { id: true },
+  });
+
   // Detectar órdenes de accesorios personalizados (sin packageId, con profileId/chipId en items)
   const isPersonalizedAccessoryOrder =
     !order.packageId &&
@@ -247,6 +256,71 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     });
   }
 
+  if (!order.packageId && linkedCommercialOrder) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.order.update({
+          where: { id },
+          data: {
+            paymentStatus: "paid",
+            orderStatus: "processing",
+            adminReviewStatus: "approved",
+            adminReviewedAt: new Date(),
+            adminReviewedById: adminId,
+            adminReviewNotes: notes,
+          },
+        });
+
+        await reserveCommercialOrderStock(tx, {
+          orderId: linkedCommercialOrder.id,
+          allowPartial: true,
+        });
+
+        await tx.auditLog.create({
+          data: {
+            accountId: user.accountId!,
+            actorUserId: adminId,
+            entityType: "Order",
+            entityId: order.id,
+            action: "store_order_approved",
+            newValuesJson: null,
+            oldValuesJson: null,
+          },
+        });
+      });
+    } catch (error: unknown) {
+      const status = typeof error === "object" && error !== null && "status" in error
+        ? Number((error as { status?: unknown }).status) || 500
+        : 500;
+      const message = error instanceof Error ? error.message : "Error al aprobar orden";
+      logger.error("[Admin Approve] Store order approval error:", message);
+      return NextResponse.json({ error: "No se pudo aprobar la orden" }, { status });
+    }
+
+    if (order.userId) {
+      await AccountStateService.invalidateCache(order.userId);
+    }
+
+    return NextResponse.json({
+      success: true,
+      action: "approve",
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      status: "processing",
+      paymentStatus: "paid",
+      message: "Pago aprobado correctamente.",
+      order: {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        orderStatus: "processing",
+        paymentStatus: "paid",
+        adminReviewStatus: "approved",
+        adminReviewedAt: new Date().toISOString(),
+        adminReviewNotes: notes,
+      },
+    });
+  }
+
   // Validar paquete por order.packageId (solo para órdenes de paquete/chips)
   if (!order.packageId) {
     return NextResponse.json({ error: "Orden sin packageId" }, { status: 400 });
@@ -279,15 +353,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           adminReviewedById: adminId,
           adminReviewNotes: notes,
         }
-      });
-
-      const linkedCommercialOrder = await tx.operationCommercialOrder.findFirst({
-        where: {
-          notes: {
-            contains: buildSourceMarker("legacy_order", order.id),
-          },
-        },
-        select: { id: true },
       });
 
       if (linkedCommercialOrder) {
