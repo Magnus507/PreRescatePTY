@@ -223,7 +223,7 @@ Resultado: se eliminaron varias vulnerabilidades y se redujo el arrastre de tran
 
 ## 22. Push
 
-Pendiente al momento de redactar esta version del documento.
+Confirmado: `git push origin master`
 
 ## 23. Estado final
 
