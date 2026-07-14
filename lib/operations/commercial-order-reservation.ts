@@ -52,6 +52,36 @@ async function reserveUnitsForOrderItem(
   const productCode = resolveCommercialOrderItemKey(item);
   const productType = getCommercialOrderItemProductType(item);
 
+  const existingReservedUnits = await tx.operationFinishedGoodUnit.findMany({
+    where: {
+      reservedOrderId: orderId,
+      status: "reserved",
+      productCode,
+      productType,
+      dispatchItems: { none: {} },
+    },
+    orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
+    select: {
+      id: true,
+      internalLabel: true,
+      productCode: true,
+      productType: true,
+    },
+  });
+
+  const alreadyReservedQty = existingReservedUnits.length;
+  const requiredQty = Math.max(0, item.quantity - alreadyReservedQty);
+
+  if (requiredQty === 0) {
+    return {
+      productCode,
+      requestedQty: item.quantity,
+      reservedQty: alreadyReservedQty,
+      missingQty: 0,
+      units: existingReservedUnits,
+    };
+  }
+
   const units = await tx.operationFinishedGoodUnit.findMany({
     where: {
       productCode,
@@ -63,45 +93,89 @@ async function reserveUnitsForOrderItem(
       dispatchItems: { none: {} },
     },
     orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
-    take: item.quantity,
-  });
-
-  if (units.length < item.quantity) {
-    return {
-      productCode,
-      requestedQty: item.quantity,
-      reservedQty: units.length,
-      missingQty: item.quantity - units.length,
-      units,
-    };
-  }
-
-  await tx.operationFinishedGoodUnit.updateMany({
-    where: { id: { in: units.map((unit) => unit.id) } },
-    data: {
-      status: "reserved",
-      reservedOrderId: orderId,
-      reservedAt: new Date(),
+    take: requiredQty,
+    select: {
+      id: true,
+      internalLabel: true,
+      productCode: true,
+      productType: true,
     },
   });
 
-  await tx.operationFinishedGoodUnitEvent.createMany({
-    data: units.map((unit) => ({
-      unitId: unit.id,
-      eventType: "RESERVED",
-      reason: `Reservado para pedido comercial ${orderId}`,
-      referenceType: "commercial_order",
-      referenceId: orderId,
-      metadataJson: { orderId, productCode, productType },
-    })),
+  const candidateIds = units.map((unit) => unit.id);
+
+  if (candidateIds.length > 0) {
+    await tx.operationFinishedGoodUnit.updateMany({
+      where: {
+        id: { in: candidateIds },
+        productCode,
+        productType,
+        status: "available",
+        qaStatus: "passed",
+        activationStatus: "not_activated",
+        reservedOrderId: null,
+        dispatchItems: { none: {} },
+      },
+      data: {
+        status: "reserved",
+        reservedOrderId: orderId,
+        reservedAt: new Date(),
+      },
+    });
+
+    const claimedUnits = await tx.operationFinishedGoodUnit.findMany({
+      where: {
+        id: { in: candidateIds },
+        reservedOrderId: orderId,
+        status: "reserved",
+        productCode,
+        productType,
+        dispatchItems: { none: {} },
+      },
+      orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
+      select: {
+        id: true,
+        internalLabel: true,
+        productCode: true,
+        productType: true,
+      },
+    });
+
+    await tx.operationFinishedGoodUnitEvent.createMany({
+      data: claimedUnits.map((unit) => ({
+        unitId: unit.id,
+        eventType: "RESERVED",
+        reason: `Reservado para pedido comercial ${orderId}`,
+        referenceType: "commercial_order",
+        referenceId: orderId,
+        metadataJson: { orderId, productCode, productType },
+      })),
+    });
+  }
+
+  const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
+    where: {
+      reservedOrderId: orderId,
+      status: "reserved",
+      productCode,
+      productType,
+      dispatchItems: { none: {} },
+    },
+    orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
+    select: {
+      id: true,
+      internalLabel: true,
+      productCode: true,
+      productType: true,
+    },
   });
 
   return {
     productCode,
     requestedQty: item.quantity,
-    reservedQty: units.length,
-    missingQty: 0,
-    units,
+    reservedQty: reservedUnits.length,
+    missingQty: Math.max(0, item.quantity - reservedUnits.length),
+    units: reservedUnits,
   };
 }
 
@@ -186,4 +260,3 @@ export async function reserveCommercialOrderStock(
     },
   };
 }
-

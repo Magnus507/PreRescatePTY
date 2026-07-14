@@ -42,26 +42,39 @@ function createTx(order: {
       })),
     },
     operationFinishedGoodUnit: {
-      findMany: vi.fn(async ({ where, take }: { where: { reservedOrderId: string | null; productCode: string; productType: string; status: string; qaStatus: string; activationStatus: string; dispatchItems: { none: {} } }, take: number }) => {
-        const matched = state.units.filter((unit) =>
-          unit.productCode === where.productCode &&
-          unit.productType === where.productType &&
-          unit.status === where.status &&
-          unit.qaStatus === where.qaStatus &&
-          unit.activationStatus === where.activationStatus &&
-          unit.reservedOrderId === where.reservedOrderId &&
-          unit.dispatchItems.length === 0
-        );
-        return matched.slice(0, take);
+      findMany: vi.fn(async ({ where, take }: { where: { id?: { in: string[] }; reservedOrderId?: string | null; productCode: string; productType: string; status: string; qaStatus?: string; activationStatus?: string; dispatchItems: { none: {} } }, take?: number }) => {
+        const matched = state.units.filter((unit) => {
+          if (where.id && !where.id.in.includes(unit.id)) return false;
+          if (unit.productCode !== where.productCode) return false;
+          if (unit.productType !== where.productType) return false;
+          if (unit.status !== where.status) return false;
+          if (where.qaStatus && unit.qaStatus !== where.qaStatus) return false;
+          if (where.activationStatus && unit.activationStatus !== where.activationStatus) return false;
+          if (where.reservedOrderId !== undefined && unit.reservedOrderId !== where.reservedOrderId) return false;
+          if (unit.dispatchItems.length !== 0) return false;
+          return true;
+        });
+        return typeof take === "number" ? matched.slice(0, take) : matched;
       }),
-      updateMany: vi.fn(async ({ where, data }: { where: { id: { in: string[] } }, data: { status: string; reservedOrderId: string; reservedAt: Date } }) => {
+      updateMany: vi.fn(async ({ where, data }: { where: { id: { in: string[] }; productCode: string; productType: string; status: string; qaStatus: string; activationStatus: string; reservedOrderId: string | null; dispatchItems: { none: {} } }, data: { status: string; reservedOrderId: string; reservedAt: Date } }) => {
+        let count = 0;
         for (const unit of state.units) {
-          if (where.id.in.includes(unit.id)) {
+          if (
+            where.id.in.includes(unit.id) &&
+            unit.productCode === where.productCode &&
+            unit.productType === where.productType &&
+            unit.status === where.status &&
+            unit.qaStatus === where.qaStatus &&
+            unit.activationStatus === where.activationStatus &&
+            unit.reservedOrderId === where.reservedOrderId &&
+            unit.dispatchItems.length === 0
+          ) {
             unit.status = data.status;
             unit.reservedOrderId = data.reservedOrderId;
+            count += 1;
           }
         }
-        return { count: where.id.in.length };
+        return { count };
       }),
     },
     operationFinishedGoodUnitEvent: {
@@ -182,8 +195,8 @@ describe("reserveCommercialOrderStock", () => {
     const second = await reserveCommercialOrderStock(tx as never, { orderId: "order-3", allowPartial: true });
 
     expect(first?.summary.reservedQty).toBe(1);
-    expect(second?.summary.reservedQty).toBe(0);
-    expect(second?.summary.missingQty).toBe(1);
+    expect(second?.summary.reservedQty).toBe(1);
+    expect(second?.summary.missingQty).toBe(0);
   });
 
   it("allows only one of two competing reservations to consume the same unit", async () => {
