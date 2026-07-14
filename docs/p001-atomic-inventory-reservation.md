@@ -247,14 +247,15 @@ La fase corrige la integridad de la reserva comercial, pero no resuelve por si s
 
 ## 16. Commit
 
-Pendiente de registrar en esta misma fase.
+`e2418b9` - `fix: make commercial stock reservation atomic`
 
 ## 17. Push
 
-Pendiente de registrar en esta misma fase.
+`git push origin master` ejecutado con exito.
 
 ## 18. Estado final
 
 - La reserva comercial quedo centralizada en una sola funcion.
 - La ruta heredada `reserve-units` ahora reutiliza el flujo actual.
 - `tmp/` permanece fuera de git.
+- `HEAD` quedo alineado con `origin/master` en `e2418b9`.
