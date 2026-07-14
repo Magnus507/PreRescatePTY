@@ -29,12 +29,17 @@ export type SyncRealOrderToOperationsInput = {
   totalAmount?: number;
   salesChannel?: string | null;
   items: Array<{
+    productId?: string | null;
     productCode?: string | null;
     productName: string;
     quantity: number;
     unitPrice: number;
     unit?: string | null;
     finishedGoodId?: string | null;
+    operationalMappingId?: string | null;
+    operationalProductCode?: string | null;
+    operationalProductName?: string | null;
+    operationalFinishedGoodId?: string | null;
   }>;
 };
 
@@ -110,6 +115,25 @@ export async function syncRealOrderToOperations(
   } satisfies Prisma.OperationCommercialOrderCreateInput;
 
   const mappedItems = await Promise.all(input.items.map(async (item) => {
+    const directOperationalProductCode = item.operationalProductCode?.trim() || item.productCode?.trim() || null;
+    const directOperationalProductName = item.operationalProductName?.trim() || item.productName?.trim() || null;
+    const directFinishedGoodId = item.operationalFinishedGoodId?.trim() || item.finishedGoodId?.trim() || null;
+
+    if (directOperationalProductCode && directFinishedGoodId) {
+      return {
+        finishedGoodId: directFinishedGoodId,
+        productCode: directOperationalProductCode,
+        productName: directOperationalProductName || item.productName,
+        quantity: Math.max(1, Math.floor(Number(item.quantity || 1))),
+        unitPrice: item.unitPrice,
+        totalPrice: Math.max(1, Math.floor(Number(item.quantity || 1))) * item.unitPrice,
+        unit: item.unit?.trim() || "unit",
+        notes: item.operationalMappingId
+          ? `[operationalMappingId:${item.operationalMappingId}]`
+          : "[operationalMappingId:unmapped]",
+      };
+    }
+
     const mapping = await mapCommercialItemToOperationalRequirement({
       productType: item.productCode || item.productName,
       quantity: item.quantity,

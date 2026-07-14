@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
       resolvedProductName?: string;
       resolvedMappingId?: string;
       resolvedFinishedGoodId?: string;
+      resolvedOperationalProductCode?: string | null;
+      resolvedOperationalProductName?: string | null;
     };
 
     const nextNumber = await generateOrderNumber("legacy");
@@ -121,6 +123,8 @@ export async function POST(req: NextRequest) {
             resolvedProductName: storeProduct.name,
             resolvedMappingId: storeProduct.operationalMapping.id,
             resolvedFinishedGoodId: storeProduct.operationalMapping.finishedGoodId,
+            resolvedOperationalProductCode: storeProduct.operationalMapping.productCode,
+            resolvedOperationalProductName: storeProduct.operationalMapping.finishedGood?.name || storeProduct.name,
           } as typeof item & { profileId?: string; chipId?: string | null };
         }
 
@@ -133,6 +137,8 @@ export async function POST(req: NextRequest) {
           resolvedProductName: storeProduct.name,
           resolvedMappingId: storeProduct.operationalMapping.id,
           resolvedFinishedGoodId: storeProduct.operationalMapping.finishedGoodId,
+          resolvedOperationalProductCode: storeProduct.operationalMapping.productCode,
+          resolvedOperationalProductName: storeProduct.operationalMapping.finishedGood?.name || storeProduct.name,
         };
       }
 
@@ -150,6 +156,8 @@ export async function POST(req: NextRequest) {
           productType: item.productType,
           operationalMappingId: itemWithRefs.resolvedMappingId as string,
           finishedGoodId: itemWithRefs.resolvedFinishedGoodId as string,
+          operationalProductCode: itemWithRefs.resolvedOperationalProductCode || itemWithRefs.resolvedProductCode || null,
+          operationalProductName: itemWithRefs.resolvedOperationalProductName || itemWithRefs.resolvedProductName || item.productType,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
         };
@@ -229,6 +237,10 @@ export async function POST(req: NextRequest) {
           unitPrice: item.unitPrice,
           unit: "unit",
           finishedGoodId: item.finishedGoodId,
+          operationalMappingId: item.operationalMappingId,
+          operationalProductCode: item.productCode,
+          operationalProductName: item.productName,
+          operationalFinishedGoodId: item.finishedGoodId,
         })),
       });
     } catch (error) {

@@ -113,7 +113,21 @@ export async function POST(req: NextRequest) {
 
   const products = await prisma.product.findMany({
     where: { id: { in: allProductIds }, isActive: true },
-    select: { id: true, price: true },
+    select: {
+      id: true,
+      price: true,
+      name: true,
+      operationalMapping: {
+        select: {
+          id: true,
+          productCode: true,
+          finishedGoodId: true,
+          finishedGood: {
+            select: { id: true, code: true, name: true },
+          },
+        },
+      },
+    },
   });
   const productMap = new Map(products.map((p) => [p.id, p]));
   if (products.length !== allProductIds.length) {
@@ -151,6 +165,10 @@ export async function POST(req: NextRequest) {
       const product = productMap.get(selection.productId);
       if (!product) {
         return NextResponse.json({ error: "Producto inválido" }, { status: 400 });
+      }
+      const mapping = product.operationalMapping;
+      if (!mapping?.productCode || !mapping?.finishedGoodId || !mapping?.finishedGood) {
+        return NextResponse.json({ error: "El producto no tiene un mapping operativo válido" }, { status: 400 });
       }
       const subtotal = product.price * quantity;
       amount += subtotal;
@@ -225,11 +243,17 @@ export async function POST(req: NextRequest) {
       organizationId: organization.id,
       salesChannel: "organization",
       items: corporateItems.map((item) => ({
-        productCode: item.productId,
-        productName: item.productId,
+        productId: item.productId,
+        productCode: productMap.get(item.productId)?.operationalMapping?.productCode || null,
+        productName: productMap.get(item.productId)?.operationalMapping?.finishedGood?.name || productMap.get(item.productId)?.name || item.productId,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         unit: "unit",
+        finishedGoodId: productMap.get(item.productId)?.operationalMapping?.finishedGoodId || null,
+        operationalMappingId: productMap.get(item.productId)?.operationalMapping?.id || null,
+        operationalProductCode: productMap.get(item.productId)?.operationalMapping?.productCode || null,
+        operationalProductName: productMap.get(item.productId)?.operationalMapping?.finishedGood?.name || productMap.get(item.productId)?.name || item.productId,
+        operationalFinishedGoodId: productMap.get(item.productId)?.operationalMapping?.finishedGoodId || null,
       })),
     });
   } catch (error) {

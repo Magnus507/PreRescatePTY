@@ -72,7 +72,23 @@ export async function POST(req: NextRequest) {
     include: {
       items: {
         include: {
-          product: { select: { id: true, name: true, price: true } },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              operationalMapping: {
+                select: {
+                  id: true,
+                  productCode: true,
+                  finishedGoodId: true,
+                  finishedGood: {
+                    select: { id: true, code: true, name: true },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       organizationMember: {
@@ -112,6 +128,10 @@ export async function POST(req: NextRequest) {
     for (const item of request.items) {
       const unitPrice = item.unitPrice;
       const quantity = item.quantity;
+      const mapping = item.product.operationalMapping;
+      if (!mapping?.productCode || !mapping?.finishedGoodId || !mapping?.finishedGood) {
+        return NextResponse.json({ error: "Uno o más productos no tienen un mapping operativo válido" }, { status: 400 });
+      }
       const subtotal = unitPrice * quantity;
       totalAmount += subtotal;
 
@@ -210,11 +230,35 @@ export async function POST(req: NextRequest) {
       organizationId: organization.id,
       salesChannel: "organization",
       items: corporateItems.map((item) => ({
-        productCode: item.productId,
-        productName: item.productId,
+        productId: item.productId,
+        productCode: requests
+          .flatMap((request) => request.items)
+          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.productCode || null,
+        productName: requests
+          .flatMap((request) => request.items)
+          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.finishedGood?.name ||
+          requests.flatMap((request) => request.items).find((requestItem) => requestItem.product.id === item.productId)?.product.name ||
+          item.productId,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         unit: "unit",
+        finishedGoodId: requests
+          .flatMap((request) => request.items)
+          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.finishedGoodId || null,
+        operationalMappingId: requests
+          .flatMap((request) => request.items)
+          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.id || null,
+        operationalProductCode: requests
+          .flatMap((request) => request.items)
+          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.productCode || null,
+        operationalProductName: requests
+          .flatMap((request) => request.items)
+          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.finishedGood?.name ||
+          requests.flatMap((request) => request.items).find((requestItem) => requestItem.product.id === item.productId)?.product.name ||
+          item.productId,
+        operationalFinishedGoodId: requests
+          .flatMap((request) => request.items)
+          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.finishedGoodId || null,
       })),
     });
   } catch (error) {
