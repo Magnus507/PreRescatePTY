@@ -219,8 +219,7 @@ Resultado: se eliminaron varias vulnerabilidades y se redujo el arrastre de tran
 
 ## 21. Commits
 
-- `4f...` lote de emergencia anterior no relacionado con esta remediacion.
-- `pending` para este cierre documental/de dependencias al momento de redactar el reporte.
+- `207c1de` - `chore: patch dependency security advisories`
 
 ## 22. Push
 
