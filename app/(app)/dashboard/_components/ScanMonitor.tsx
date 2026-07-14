@@ -32,18 +32,18 @@ export function ScanMonitor() {
           
           // Sound effect or high-priority toast
           toast.custom(() => (
-            <div className="bg-[#DA1A21] text-white p-6 rounded-[2rem] shadow-2xl flex items-start gap-4 animate-in slide-in-from-right duration-500 border-2 border-white/20">
-              <div className="bg-white/20 p-3 rounded-2xl">
+            <div className="flex items-start gap-4 rounded-[1.75rem] border border-red-100 bg-white p-5 shadow-[0_22px_60px_-34px_rgba(15,23,42,0.55)] animate-in slide-in-from-right duration-500">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white shadow-[0_14px_32px_-18px_rgba(220,38,38,0.6)]">
                 <AlertCircle className="h-6 w-6 animate-pulse" />
               </div>
-              <div className="space-y-1">
-                <p className="font-black uppercase tracking-widest text-[10px] opacity-70">Alerta de Seguridad</p>
-                <p className="text-lg font-black leading-none uppercase tracking-tighter italic">¡CHIP ESCANEADO!</p>
-                <p className="text-xs font-medium opacity-90">Un rescatista ha accedido a la ficha {latestScan.chip.serialPublic}.</p>
+              <div className="min-w-0 space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-red-600">Alerta de seguridad</p>
+                <p className="text-lg font-black leading-tight tracking-tight text-slate-950">Chip escaneado</p>
+                <p className="text-xs leading-5 text-slate-600">Un rescatista ha accedido a la ficha {latestScan.chip.serialPublic}.</p>
                 {latestScan.city && (
-                  <div className="flex items-center gap-1.5 mt-2 bg-white/10 px-2 py-1 rounded-lg w-fit">
+                  <div className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                     <MapPin className="h-3 w-3" />
-                    <span className="text-[10px] font-bold">{latestScan.city}</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.24em]">{latestScan.city}</span>
                   </div>
                 )}
               </div>
