@@ -30,6 +30,45 @@ async function resolvePackageQuantity(providerReference: string | null | undefin
   return pkg ? { name: pkg.name, maxChips: pkg.maxChips } : null;
 }
 
+async function resolveOperationalProductMetadata(productType: string, productName: string | null | undefined) {
+  const candidates = [productType.trim(), productName?.trim() || ""].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const product = await prisma.product.findFirst({
+      where: {
+        OR: [{ productType: candidate }, { name: candidate }],
+      },
+      include: {
+        operationalMapping: {
+          include: {
+            finishedGood: {
+              select: { id: true, code: true, name: true, productType: true, status: true },
+            },
+          },
+        },
+      },
+    });
+
+    const mapping = product?.operationalMapping;
+    if (!product || !mapping || !mapping.isPublished || !mapping.finishedGoodId || !mapping.productCode || !mapping.finishedGood) {
+      continue;
+    }
+
+    if (mapping.finishedGood.status === "inactive") {
+      continue;
+    }
+
+    return {
+      operationalProductCode: mapping.productCode,
+      operationalProductName: mapping.finishedGood.name || product.name,
+      sourceLabel: product.name || candidate,
+      operationalMappingStatus: "mapped" as const,
+    };
+  }
+
+  return null;
+}
+
 function resolveQuantityFromName(productName: string | null | undefined) {
   const normalized = normalizeType(productName || "");
 
@@ -110,13 +149,26 @@ export async function mapCommercialItemToOperationalRequirement(
     };
   }
 
+  const resolved = await resolveOperationalProductMetadata(input.productType, input.productName);
+  if (resolved) {
+    return {
+      commercialQuantity: Math.max(1, Number(input.quantity || 1)),
+      operationalProductCode: resolved.operationalProductCode,
+      operationalProductName: resolved.operationalProductName,
+      operationalQuantity: Math.max(1, Number(input.quantity || 1)),
+      unitPrice: 0,
+      sourceLabel: resolved.sourceLabel,
+      operationalMappingStatus: resolved.operationalMappingStatus,
+    };
+  }
+
   return {
     commercialQuantity: Math.max(1, Number(input.quantity || 1)),
-    operationalProductCode: "PRP-FG-STICKER",
-    operationalProductName: "Sticker PreRescatePTY",
+    operationalProductCode: input.productType.trim(),
+    operationalProductName: input.productName?.trim() || input.productType.trim(),
     operationalQuantity: Math.max(1, Number(input.quantity || 1)),
     unitPrice: 0,
     sourceLabel,
-    operationalMappingStatus: "mapped",
+    operationalMappingStatus: "unmapped",
   };
 }
