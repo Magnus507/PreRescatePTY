@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { moneyToNumber } from "@/lib/money";
 
 type Args = {
   code?: string;
@@ -58,11 +59,11 @@ async function main() {
   console.log(`ordersScanned: ${orders.length}`);
 
   for (const order of orders) {
-    const expectedTotalFromItems = order.items.reduce((sum, item) => sum + item.totalPrice, 0);
+    const expectedTotalFromItems = order.items.reduce((sum, item) => sum + moneyToNumber(item.totalPrice), 0);
     const commercialTotal = expectedTotalFromItems;
     const mismatches = {
-      mismatchAmountVsItems: Number(order.amount || 0) - expectedTotalFromItems,
-      mismatchAmountVsCommercialTotal: Number(order.amount || 0) - commercialTotal,
+      mismatchAmountVsItems: moneyToNumber(order.amount || 0) - expectedTotalFromItems,
+      mismatchAmountVsCommercialTotal: moneyToNumber(order.amount || 0) - commercialTotal,
     };
 
     const fields = {
@@ -116,13 +117,13 @@ async function main() {
             productCode: item.productType,
             productName: item.productType,
             quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
+          unitPrice: moneyToNumber(item.unitPrice),
+          totalPrice: moneyToNumber(item.totalPrice),
           })),
-          amount: order.amount,
+          amount: moneyToNumber(order.amount),
           commercialTotal,
           subtotal: expectedTotalFromItems,
-          total: order.amount,
+          total: moneyToNumber(order.amount),
           expectedTotalFromItems,
           ...mismatches,
           adminFields: Object.fromEntries(

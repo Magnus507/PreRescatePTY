@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { calculateFinishedGoodBalance } from "../finished-goods/finished-goods.helpers";
+import { MoneyInput, parseMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
-function numberOrZero(value: number | null | undefined) {
-  return value || 0;
+function numberOrZero(value: MoneyInput) {
+  return Number.parseFloat(parseMoney(value).toFixed(2));
 }
 
 export async function GET() {

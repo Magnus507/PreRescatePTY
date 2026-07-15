@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { moneyToNumber } from "@/lib/money";
 
 type Args = {
   code?: string;
@@ -115,8 +116,8 @@ async function main() {
   console.log(`ordersScanned: ${orders.length}`);
 
   for (const order of orders) {
-    const itemTotal = order.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
-    const normalizedTotal = normalizeTotal(order.amount || 0, 0, itemTotal);
+    const itemTotal = order.items.reduce((sum, item) => sum + moneyToNumber(item.totalPrice || 0), 0);
+    const normalizedTotal = normalizeTotal(moneyToNumber(order.amount || 0), 0, itemTotal);
     const reservedUnits = await prisma.operationFinishedGoodUnit.findMany({
       where: { reservedOrderId: order.id },
       orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
@@ -162,7 +163,7 @@ async function main() {
       shippingNotes: order.shippingNotes,
       paymentMethod: order.paymentMethod,
       paymentProofAvailable: Boolean(order.paymentProofUrl || order.manualPaymentReference),
-      amount: order.amount,
+      amount: moneyToNumber(order.amount),
       commercialTotal: itemTotal,
       totalNormalized: normalizedTotal,
       items: order.items.map((item) => ({
@@ -170,8 +171,8 @@ async function main() {
         productName: item.productType,
         productCode: item.productType,
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
+        unitPrice: moneyToNumber(item.unitPrice),
+        totalPrice: moneyToNumber(item.totalPrice),
         expectedUnits: item.quantity,
       })),
       reservation: {

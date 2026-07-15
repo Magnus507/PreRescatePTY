@@ -3,6 +3,7 @@ import { Account, Package, Profile, User, Chip } from "@prisma/client";
 import { AccountState, SetupChecklist } from "../account.types";
 import { ACCOUNT_TYPES, USER_ROLES, BUSINESS_RULES } from "@/domains/shared/constants";
 import { redis, isRedisConfigured } from "@/lib/redis";
+import { parseMoney } from "@/lib/money";
 
 export { type SetupChecklist };
 
@@ -171,7 +172,7 @@ export class AccountStateService {
     const state: AccountState = {
       accountId: user.accountId || null,
       packageId: account?.packageId || null,
-      packagePrice: account?.package?.price || 0,
+      packagePrice: parseMoney(account?.package?.price || 0).toNumber(),
       accountType,
       packageName: account?.package?.name || (activeChipsCount > 0 ? "Protección Activa" : "Protección Personal"),
       maxChipsAllocated: maxChipsLimit,

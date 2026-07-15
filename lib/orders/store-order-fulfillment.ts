@@ -8,7 +8,7 @@ export type StoreOrderResolvedItem = {
   productCode: string;
   productType: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice: Prisma.Decimal | Prisma.DecimalJsLike | number | string;
   availableStock: number;
   stockCoveredQty: number;
   backorderQty: number;
@@ -29,7 +29,7 @@ export type StoreOrderFulfillmentSummary = {
 export type ResolvedStoreProduct = {
   id: string;
   name: string;
-  price: number;
+  price: Prisma.Decimal | Prisma.DecimalJsLike | number | string;
   operationalMapping: {
     id: string;
     productCode: string | null;
@@ -138,7 +138,7 @@ export async function calculateStoreOrderFulfillment(
     operationalMappingId: string;
     finishedGoodId: string;
     quantity: number;
-    unitPrice: number;
+    unitPrice: Prisma.Decimal | Prisma.DecimalJsLike | number | string;
   }>
 ): Promise<{ resolvedItems: StoreOrderResolvedItem[]; summary: StoreOrderFulfillmentSummary }> {
   const stockRows = await loadInventoryStockRows();

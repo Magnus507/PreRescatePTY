@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { requireActiveAccountSession } from "@/lib/rbac";
+import { multiplyMoney, parseMoney, serializeMoney } from "@/lib/money";
 import { z } from "zod";
 
 const createRequestSchema = z.object({
@@ -71,7 +72,20 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ requests });
+  return NextResponse.json({
+    requests: requests.map((request) => ({
+      ...request,
+      items: request.items.map((item) => ({
+        ...item,
+        unitPrice: serializeMoney(item.unitPrice),
+        subtotal: serializeMoney(item.subtotal),
+        product: {
+          ...item.product,
+          price: serializeMoney(item.product.price),
+        },
+      })),
+    })),
+  });
 }
 
 // POST /api/organizations/product-requests
@@ -243,11 +257,11 @@ export async function POST(req: NextRequest) {
   // Build request items with prices from DB
   const requestItems = items.map((item) => {
     const product = productMap.get(item.productId)!;
-    const subtotal = product.price * item.quantity;
+    const subtotal = multiplyMoney(product.price, item.quantity);
     return {
       productId: item.productId,
       quantity: item.quantity,
-      unitPrice: product.price,
+      unitPrice: parseMoney(product.price),
       subtotal,
       note: item.note || null,
     };
@@ -281,5 +295,21 @@ export async function POST(req: NextRequest) {
     return created;
   });
 
-  return NextResponse.json({ request }, { status: 201 });
+  return NextResponse.json(
+    {
+      request: {
+        ...request,
+        items: request.items.map((item) => ({
+          ...item,
+          unitPrice: serializeMoney(item.unitPrice),
+          subtotal: serializeMoney(item.subtotal),
+          product: {
+            ...item.product,
+            price: serializeMoney(item.product.price),
+          },
+        })),
+      },
+    },
+    { status: 201 }
+  );
 }

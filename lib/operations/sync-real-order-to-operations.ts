@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { mapCommercialItemToOperationalRequirement } from "@/lib/operations/commercial-product-mapping";
+import { addMoney, moneyToNumber, multiplyMoney, parseMoney } from "@/lib/money";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
@@ -26,14 +27,14 @@ export type SyncRealOrderToOperationsInput = {
   currency?: string | null;
   notes?: string | null;
   organizationId?: string | null;
-  totalAmount?: number;
+  totalAmount?: Prisma.Decimal | Prisma.DecimalJsLike | number | string | null;
   salesChannel?: string | null;
   items: Array<{
     productId?: string | null;
     productCode?: string | null;
     productName: string;
     quantity: number;
-    unitPrice: number;
+    unitPrice: Prisma.Decimal | Prisma.DecimalJsLike | number | string;
     unit?: string | null;
     finishedGoodId?: string | null;
     operationalMappingId?: string | null;
@@ -85,7 +86,9 @@ export async function syncRealOrderToOperations(
   const customerName = buildCustomerName(input);
   const customerReference = input.customerReference?.trim() || null;
   const notes = buildNotes(input);
-  const totalAmount = input.totalAmount ?? input.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const totalAmount = input.totalAmount !== undefined && input.totalAmount !== null
+    ? parseMoney(input.totalAmount)
+    : input.items.reduce((sum, item) => addMoney(sum, multiplyMoney(item.unitPrice, item.quantity)), parseMoney(0));
 
   const existing = await db.operationCommercialOrder.findFirst({
     where: {
@@ -124,8 +127,8 @@ export async function syncRealOrderToOperations(
         productCode: directOperationalProductCode,
         productName: directOperationalProductName || item.productName,
         quantity: Math.max(1, Math.floor(Number(item.quantity || 1))),
-        unitPrice: item.unitPrice,
-        totalPrice: Math.max(1, Math.floor(Number(item.quantity || 1))) * item.unitPrice,
+        unitPrice: moneyToNumber(item.unitPrice),
+        totalPrice: moneyToNumber(multiplyMoney(item.unitPrice, Math.max(1, Math.floor(Number(item.quantity || 1))))),
         unit: item.unit?.trim() || "unit",
         notes: item.operationalMappingId
           ? `[operationalMappingId:${item.operationalMappingId}]`
@@ -145,8 +148,8 @@ export async function syncRealOrderToOperations(
       productCode: mapping.operationalProductCode,
       productName: mapping.operationalProductName,
       quantity: mapping.commercialQuantity,
-      unitPrice: item.unitPrice,
-      totalPrice: mapping.commercialQuantity * item.unitPrice,
+      unitPrice: moneyToNumber(item.unitPrice),
+      totalPrice: moneyToNumber(multiplyMoney(item.unitPrice, mapping.commercialQuantity)),
       unit: item.unit?.trim() || "unit",
       notes: mapping.operationalMappingStatus === "unmapped"
         ? `${mapping.sourceLabel} | mapping:unmapped`

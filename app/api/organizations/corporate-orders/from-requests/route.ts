@@ -5,6 +5,7 @@ import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-
 import { normalizePaymentProofUrl } from "@/lib/payment-proof";
 import { rateLimit } from "@/lib/rateLimit";
 import { requireActiveAccountSession } from "@/lib/rbac";
+import { addMoney, multiplyMoney, parseMoney, serializeMoney } from "@/lib/money";
 
 type RequestSelection = {
   requestIds: string[];
@@ -114,13 +115,13 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. Calculate total and prepare corporate items
-  let totalAmount = 0;
+  let totalAmount = parseMoney(0);
   const corporateItems: Array<{
     organizationMemberId: string;
     productId: string;
     quantity: number;
-    unitPrice: number;
-    subtotal: number;
+    unitPrice: ReturnType<typeof parseMoney>;
+    subtotal: ReturnType<typeof parseMoney>;
   }> = [];
 
   for (const request of requests) {
@@ -131,8 +132,8 @@ export async function POST(req: NextRequest) {
       if (!mapping?.productCode || !mapping?.finishedGoodId || !mapping?.finishedGood) {
         return NextResponse.json({ error: "Uno o más productos no tienen un mapping operativo válido" }, { status: 400 });
       }
-      const subtotal = unitPrice * quantity;
-      totalAmount += subtotal;
+      const subtotal = multiplyMoney(unitPrice, quantity);
+      totalAmount = addMoney(totalAmount, subtotal);
 
       corporateItems.push({
         organizationMemberId: request.organizationMemberId,
@@ -254,7 +255,7 @@ export async function POST(req: NextRequest) {
     {
       orderId: order.id,
       orderNumber: order.orderNumber,
-      totalAmount: order.amount,
+      totalAmount: serializeMoney(order.amount),
       itemCount: corporateItems.length,
       requestCount: requests.length,
       operationsSyncStatus: "queued",

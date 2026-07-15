@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { extractOperationsProductCode } from "@/lib/operations/sync-operations-product-to-store";
 import { loadInventoryStockRows } from "@/lib/operations/inventory-stock";
+import { serializeMoney } from "@/lib/money";
 import {
   getActivationFlowLabel,
   getDeviceTypeBadgeClass,
@@ -65,7 +66,7 @@ export async function GET() {
           id: product.id,
           name: product.name,
           description: stripOperationsMarker(product.description),
-          price: product.price,
+          price: serializeMoney(product.price),
           currency: "USD",
           category: product.category,
           imageUrl: product.image,

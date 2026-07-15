@@ -11,6 +11,7 @@ import {
   parseCustomerFulfillmentSummaryFromInternalNote,
   resolveStoreProductForOrder,
 } from "@/lib/orders/store-order-fulfillment";
+import { addMoney, multiplyMoney, parseMoney, serializeMoney } from "@/lib/money";
 import { orderCreateSchema, validateOrThrow } from "@/lib/validations";
 import { BUSINESS_RULES } from "@/domains/shared/constants";
 
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
       const productType = item.productType.toUpperCase().replace(/\s+/g, "_");
 
       if (productType === "CHIP_EXTRA") {
-        return { ...item, productType, unitPrice: BUSINESS_RULES.EXTRA_CHIP_PRICE };
+        return { ...item, productType, unitPrice: parseMoney(BUSINESS_RULES.EXTRA_CHIP_PRICE) };
       }
 
       if (productType.startsWith("COMBO_") && validatedData.providerReference) {
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
           select: { price: true },
         });
         if (pkg) {
-          return { ...item, productType, unitPrice: pkg.price };
+          return { ...item, productType, unitPrice: parseMoney(pkg.price) };
         }
       }
 
@@ -175,7 +176,10 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const totalPrice = pricedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+      const totalPrice = pricedItems.reduce(
+        (sum, item) => addMoney(sum, multiplyMoney(item.unitPrice, item.quantity)),
+        parseMoney(0)
+      );
 
       const createdOrder = await tx.order.create({
         data: {
@@ -202,7 +206,7 @@ export async function POST(req: NextRequest) {
                 productType: item.productType,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,
-                totalPrice: item.unitPrice * item.quantity,
+                totalPrice: multiplyMoney(item.unitPrice, item.quantity),
                 profileId: itemWithRefs.profileId ?? null,
                 chipId: itemWithRefs.chipId ?? null,
                 productId: itemWithRefs.resolvedProductId ?? null,
@@ -216,7 +220,10 @@ export async function POST(req: NextRequest) {
               };
             })
           }
-        }
+        },
+        include: {
+          items: true,
+        },
       });
 
       await enqueueCommerceOrderSyncOutbox(tx, {
@@ -252,7 +259,15 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({
-      order,
+      order: {
+        ...order,
+        amount: serializeMoney(order.amount),
+        items: (order.items ?? []).map((item) => ({
+          ...item,
+          unitPrice: serializeMoney(item.unitPrice),
+          totalPrice: serializeMoney(item.totalPrice),
+        })),
+      },
       fulfillmentSummary,
       operationsSyncStatus: "queued",
       operationsSyncWarning: null,
@@ -318,6 +333,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     orders: orders.map((order) => ({
       ...order,
+      amount: serializeMoney(order.amount),
+      items: order.items.map((item) => ({
+        ...item,
+        unitPrice: serializeMoney(item.unitPrice),
+        totalPrice: serializeMoney(item.totalPrice),
+      })),
       customerFulfillmentSummary: parseCustomerFulfillmentSummaryFromInternalNote(order.adminReviewNotes),
     })),
   });

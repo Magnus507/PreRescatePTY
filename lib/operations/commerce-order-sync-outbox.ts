@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import { parseMoney } from "@/lib/money";
 import {
   SyncRealOrderToOperationsInput,
   syncRealOrderToOperations,
@@ -42,7 +43,7 @@ type StoredOrderItemSnapshot = {
   productName: string | null;
   productCode: string | null;
   quantity: number;
-  unitPrice: number;
+  unitPrice: Prisma.Decimal | Prisma.DecimalJsLike | number | string;
   operationalMappingId: string | null;
   operationalMappingStatus: string | null;
   operationalFinishedGoodId: string | null;
@@ -63,7 +64,7 @@ type StoredCommerceOrderSnapshot = {
   manualPaymentReference: string | null;
   paymentProofUrl: string | null;
   currency: string | null;
-  amount: number;
+  amount: Prisma.Decimal | Prisma.DecimalJsLike | number | string;
   organizationId: string | null;
   items: StoredOrderItemSnapshot[];
 };
@@ -148,7 +149,7 @@ function buildSyncInputFromStoredOrder(
       productCode: item.productCode || item.operationalProductCode,
       productName: item.productName || item.operationalProductName || item.productType,
       quantity: item.quantity,
-      unitPrice: item.unitPrice,
+      unitPrice: parseMoney(item.unitPrice),
       unit: "unit",
       finishedGoodId: item.operationalFinishedGoodId,
       operationalMappingId: item.operationalMappingId,
@@ -172,7 +173,7 @@ function buildSyncInputFromStoredOrder(
     currency: order.currency,
     notes: `orderId:${order.id}`,
     organizationId: order.organizationId,
-    totalAmount: order.amount,
+    totalAmount: parseMoney(order.amount),
     items,
   };
 }

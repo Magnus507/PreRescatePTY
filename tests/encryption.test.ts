@@ -40,6 +40,12 @@ function encryptLegacyCbc(plaintext: string): string {
   return `${iv.toString('hex')}:${encrypted.toString('hex')}`
 }
 
+function flipBase64UrlChar(value: string) {
+  const lastChar = value.slice(-1)
+  const replacement = lastChar === 'A' ? 'B' : 'A'
+  return `${value.slice(0, -1)}${replacement}`
+}
+
 describe('encryption', () => {
   beforeEach(() => {
     if (!process.env.ENCRYPTION_KEY) {
@@ -103,8 +109,8 @@ describe('encryption', () => {
     expect(prefix).toBe('v2')
     expect(mode).toBe('gcm')
 
-    const tamperedCiphertext = `v2:gcm:${iv}:${authTag}:${ciphertext.slice(0, -1)}A`
-    const tamperedTag = `v2:gcm:${iv}:${authTag.slice(0, -1)}A:${ciphertext}`
+    const tamperedCiphertext = `v2:gcm:${iv}:${authTag}:${flipBase64UrlChar(ciphertext)}`
+    const tamperedTag = `v2:gcm:${iv}:${flipBase64UrlChar(authTag)}:${ciphertext}`
     const truncated = `v2:gcm:${iv}:${authTag}`
 
     expect(() => decrypt(tamperedCiphertext)).toThrow('authentication_failed')

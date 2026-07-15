@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
 import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
+import { parseMoney, serializeMoney } from "@/lib/money";
 import { z } from "zod";
 
 const ManualOrderSchema = z.object({
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId,
         orderNumber,
-        amount: pkg.price,
+        amount: parseMoney(pkg.price),
         orderStatus: "pending",
         paymentStatus: "pending",
         paymentMethod: data.paymentMethod,
@@ -66,12 +67,15 @@ export async function POST(req: NextRequest) {
             {
               productType: pkg.name,
               quantity: pkg.maxChips,
-              unitPrice: pkg.price,
-              totalPrice: pkg.price,
+              unitPrice: parseMoney(pkg.price),
+              totalPrice: parseMoney(pkg.price),
             },
           ],
         },
-      }
+      },
+      include: {
+        items: true,
+      },
     });
 
     return createdOrder;
@@ -112,5 +116,16 @@ export async function POST(req: NextRequest) {
     operationsSyncWarning = "Pedido creado, pero no se pudo sincronizar automáticamente con Operaciones.";
   }
 
-  return NextResponse.json({ order, operationsSyncWarning });
+  return NextResponse.json({
+    order: {
+      ...order,
+      amount: serializeMoney(order.amount),
+      items: (order.items ?? []).map((item) => ({
+        ...item,
+        unitPrice: serializeMoney(item.unitPrice),
+        totalPrice: serializeMoney(item.totalPrice),
+      })),
+    },
+    operationsSyncWarning,
+  });
 }

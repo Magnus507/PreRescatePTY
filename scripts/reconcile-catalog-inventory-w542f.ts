@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { syncOperationsProductToStore } from "../lib/operations/sync-operations-product-to-store";
+import { moneyToNumber } from "@/lib/money";
 
 const prisma = new PrismaClient();
 const CONFIRMATION = "RECONCILE_CATALOG_INVENTORY_W542F";
@@ -80,7 +81,7 @@ async function main() {
     operationsProductCode: "PRP-FG-STICKER",
     operationsProductName: "Sticker PreRescatePTY",
     productType: "PRP-FG-STICKER",
-    defaultPrice: stickerStore?.price ?? 0,
+    defaultPrice: moneyToNumber(stickerStore?.price ?? 0),
     category: "accesorios",
     isActive: true,
     description: "Sticker oficial PreRescatePTY para identificación y red de protección.",

@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma";
+import { moneyToNumber } from "@/lib/money";
 
 type Classification =
   | "SAFE_TEST_DATA"
@@ -82,7 +83,7 @@ type AuditOrder = {
 };
 
 async function main() {
-  const orders: AuditOrder[] = await prisma.order.findMany({
+  const orders = (await prisma.order.findMany({
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -112,7 +113,7 @@ async function main() {
         },
       },
     },
-  });
+  })) as unknown as AuditOrder[];
 
   const units = await prisma.operationFinishedGoodUnit.findMany({
     orderBy: [{ updatedAt: "desc" }],

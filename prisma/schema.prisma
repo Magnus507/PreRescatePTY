@@ -12,7 +12,7 @@ model Product {
   id                      String                        @id @default(cuid())
   name                    String
   description             String?
-  price                   Float
+  price                   Decimal                       @db.Decimal(18, 2)
   image                   String?
   category                String                        @default("general")
   stock                   Int                           @default(0)
@@ -80,7 +80,7 @@ model Package {
   slug                     String?   @unique
   maxChips                 Int
   maxProfiles              Int       @default(1)
-  price                    Float
+  price                    Decimal                       @db.Decimal(18, 2)
   description              String?
   isActive                 Boolean   @default(true)
   accountType              String    @default("personal")
@@ -571,7 +571,7 @@ model Notification {
 model Order {
   id                      String                       @id @default(cuid())
   userId                  String?
-  amount                  Float
+  amount                  Decimal                       @db.Decimal(18, 2)
   currency                String                       @default("USD")
   paymentStatus           String                       @default("pending")
   provider                String                       @default("manual")
@@ -622,8 +622,8 @@ model OrderItem {
   orderId                     String
   productType                 String
   quantity                    Int      @default(1)
-  unitPrice                   Float
-  totalPrice                  Float
+  unitPrice                   Decimal                     @db.Decimal(18, 2)
+  totalPrice                  Decimal                     @db.Decimal(18, 2)
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
   profileId                   String?
@@ -680,8 +680,8 @@ model CorporateOrderEmployeeItem {
   organizationMemberId String
   productId            String
   quantity             Int                @default(1)
-  unitPrice            Float
-  subtotal             Float
+  unitPrice            Decimal                        @db.Decimal(18, 2)
+  subtotal             Decimal                        @db.Decimal(18, 2)
   createdAt            DateTime           @default(now())
   chipId               String?
   fulfillmentStatus    String             @default("pending_assignment")
@@ -735,8 +735,8 @@ model CorporateProductRequestItem {
   requestId String
   productId String
   quantity  Int                     @default(1)
-  unitPrice Float
-  subtotal  Float
+  unitPrice Decimal                        @db.Decimal(18, 2)
+  subtotal  Decimal                        @db.Decimal(18, 2)
   note      String?
   createdAt DateTime                @default(now())
   product   Product                 @relation(fields: [productId], references: [id])
@@ -1279,7 +1279,7 @@ model OperationCommercialOrder {
   salesChannel      String                          @default("admin")
   paymentStatus     String                          @default("pending")
   fulfillmentStatus String                          @default("pending")
-  totalAmount       Float                           @default(0)
+  totalAmount       Decimal                        @default(0) @db.Decimal(18, 2)
   currency          String                          @default("USD")
   dispatchId        String?
   notes             String?
@@ -1309,8 +1309,8 @@ model OperationCommercialOrderItem {
   productCode       String?
   productName       String
   quantity          Float
-  unitPrice         Float
-  totalPrice        Float
+  unitPrice         Decimal                     @db.Decimal(18, 2)
+  totalPrice        Decimal                     @db.Decimal(18, 2)
   unit              String                   @default("unit")
   notes             String?
   createdAt         DateTime                 @default(now())
@@ -1328,7 +1328,7 @@ model OperationCommercialOrderEvent {
   id                String                   @id @default(cuid())
   commercialOrderId String
   eventType         String
-  amount            Float?
+  amount            Decimal?                    @db.Decimal(18, 2)
   reason            String?
   referenceType     String?
   referenceId       String?

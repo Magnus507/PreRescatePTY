@@ -1,6 +1,7 @@
 import { EmailService } from "@/domains/shared/services/email.service";
 import { ConfigRepository } from "@/domains/shared/repositories/config.repository";
 import { logger } from "@/lib/logger";
+import { MoneyInput, serializeMoney } from "@/lib/money";
 
 type NotificationOrderItem = {
   quantity: number;
@@ -11,7 +12,7 @@ type NotificationOrder = {
   customerEmail?: string | null;
   customerName?: string | null;
   orderNumber: string | number;
-  amount: number;
+  amount: MoneyInput;
   items?: NotificationOrderItem[];
   shippingCity?: string | null;
   shippingAddress?: string | null;
@@ -41,7 +42,7 @@ export class OrderNotificationService {
             <ul style="padding-left: 20px; font-size: 14px;">
               ${itemsHtml}
             </ul>
-            <p style="font-weight: bold; margin-bottom: 0;">Total Pago: $${order.amount.toFixed(2)}</p>
+            <p style="font-weight: bold; margin-bottom: 0;">Total Pago: $${serializeMoney(order.amount)}</p>
           </div>
 
           <p>Ya puedes ver tus códigos de activación (si aplica) en tu tablero de pedidos:</p>

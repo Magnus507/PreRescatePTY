@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
 import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-sync-outbox";
 import { requireActiveAccountSession } from "@/lib/rbac";
+import { addMoney, multiplyMoney, parseMoney, serializeMoney } from "@/lib/money";
 
 type ProductSelection = {
   productId: string;
@@ -36,7 +37,7 @@ export async function GET() {
     include: {
       corporateEmployeeItems: {
         include: {
-          product: { select: { id: true, name: true, productType: true } },
+          product: { select: { id: true, name: true, price: true, productType: true } },
           chip: { select: { id: true, shortCode: true, serialPublic: true, status: true, activatedAt: true } },
           organizationMember: {
             select: {
@@ -54,7 +55,21 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ orders });
+  return NextResponse.json({
+    orders: orders.map((order) => ({
+      ...order,
+      amount: serializeMoney(order.amount),
+      corporateEmployeeItems: order.corporateEmployeeItems.map((item) => ({
+        ...item,
+        unitPrice: serializeMoney(item.unitPrice),
+        subtotal: serializeMoney(item.subtotal),
+        product: {
+          ...item.product,
+          price: serializeMoney(item.product.price),
+        },
+      })),
+    })),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -149,11 +164,11 @@ export async function POST(req: NextRequest) {
     organizationMemberId: string;
     productId: string;
     quantity: number;
-    unitPrice: number;
-    subtotal: number;
+    unitPrice: ReturnType<typeof parseMoney>;
+    subtotal: ReturnType<typeof parseMoney>;
   }> = [];
 
-  let amount = 0;
+  let amount = parseMoney(0);
   for (const member of members) {
     for (const selection of member.products || []) {
       const quantity = Math.max(1, Number(selection.quantity || 1));
@@ -165,8 +180,8 @@ export async function POST(req: NextRequest) {
       if (!mapping?.productCode || !mapping?.finishedGoodId || !mapping?.finishedGood) {
         return NextResponse.json({ error: "El producto no tiene un mapping operativo válido" }, { status: 400 });
       }
-      const subtotal = product.price * quantity;
-      amount += subtotal;
+      const subtotal = multiplyMoney(product.price, quantity);
+      amount = addMoney(amount, subtotal);
       corporateItems.push({
         orderId: "",
         organizationMemberId: member.organizationMemberId,
@@ -178,7 +193,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (amount <= 0 || corporateItems.length === 0) {
+  if (amount.lessThanOrEqualTo(0) || corporateItems.length === 0) {
     return NextResponse.json({ error: "La compra no contiene productos válidos" }, { status: 400 });
   }
 
@@ -260,7 +275,11 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(
     {
-      order,
+      order: {
+        ...order,
+        amount: serializeMoney(order.amount),
+      },
+      totalAmount: serializeMoney(order.amount),
       operationsSyncStatus: "queued",
       operationsSyncWarning: null,
     },

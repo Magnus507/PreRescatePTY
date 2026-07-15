@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { moneyToNumber } from "@/lib/money";
 
 type Args = {
   recent: number;
@@ -65,9 +66,9 @@ async function main() {
   };
 
   const rows = orders.map((order) => {
-    const expectedTotalFromItems = order.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+    const expectedTotalFromItems = order.items.reduce((sum, item) => sum + moneyToNumber(item.totalPrice || 0), 0);
     const commercialTotal = expectedTotalFromItems;
-    const total = order.amount || commercialTotal;
+    const total = moneyToNumber(order.amount || commercialTotal);
     const createdAtValid = toSafeDate(order.createdAt) !== null;
     const updatedAtValid = toSafeDate(order.updatedAt) !== null;
 
@@ -82,15 +83,15 @@ async function main() {
     const shippingCityStatus = order.shippingCity ? "OK" : "MISSING";
     const shippingNotesStatus = order.shippingNotes ? "OK" : "MISSING_OPTIONAL";
 
-    const amountStatus = classifyAmount(order.amount || 0, expectedTotalFromItems);
+    const amountStatus = classifyAmount(moneyToNumber(order.amount || 0), expectedTotalFromItems);
     const commercialTotalStatus = commercialTotal > 0 ? "OK" : "MISSING";
-    const normalizedTotalStatus = normalizeTotal(order.amount || 0, commercialTotal, expectedTotalFromItems);
+    const normalizedTotalStatus = normalizeTotal(moneyToNumber(order.amount || 0), commercialTotal, expectedTotalFromItems);
 
     const itemCount = order.items.length;
     const itemsHaveProductCode = order.items.every((item) => Boolean(item.productType));
     const itemsHaveQuantity = order.items.every((item) => Number.isFinite(item.quantity) && item.quantity > 0);
-    const itemsHaveUnitPrice = order.items.every((item) => Number.isFinite(item.unitPrice) && item.unitPrice >= 0);
-    const itemsHaveTotalPrice = order.items.every((item) => Number.isFinite(item.totalPrice) && item.totalPrice >= 0);
+    const itemsHaveUnitPrice = order.items.every((item) => Number.isFinite(moneyToNumber(item.unitPrice)) && moneyToNumber(item.unitPrice) >= 0);
+    const itemsHaveTotalPrice = order.items.every((item) => Number.isFinite(moneyToNumber(item.totalPrice)) && moneyToNumber(item.totalPrice) >= 0);
 
     const risk =
       !createdAtValid || !updatedAtValid || amountStatus !== "OK" || customerNameStatus !== "OK" || customerEmailStatus !== "OK" || customerPhoneStatus !== "OK"
@@ -117,7 +118,7 @@ async function main() {
       shippingCity: order.shippingCity,
       shippingNotes: order.shippingNotes,
       paymentMethod: order.paymentMethod,
-      amount: order.amount,
+      amount: moneyToNumber(order.amount),
       commercialTotal,
       total,
       expectedTotalFromItems,

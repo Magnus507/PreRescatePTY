@@ -1,10 +1,12 @@
+import { Prisma } from "@prisma/client";
 import { parseCustomerFulfillmentSummaryFromInternalNote } from "@/lib/orders/store-order-fulfillment";
+import { parseMoney } from "@/lib/money";
 
 export type OperationsOrderItem = {
   productType: string;
   quantity: number;
-  totalPrice: number;
-  unitPrice: number;
+  totalPrice: Prisma.Decimal | Prisma.DecimalJsLike | number | string;
+  unitPrice: Prisma.Decimal | Prisma.DecimalJsLike | number | string;
   profile?: {
     id: string;
     firstName: string;
@@ -36,7 +38,7 @@ export type OperationsOrderInput = {
   adminReviewNotes: string | null;
   orderStatus: string;
   orderType: string;
-  amount: number;
+  amount: Prisma.Decimal | Prisma.DecimalJsLike | number | string;
   currency?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -359,9 +361,11 @@ export function buildOperationsOrderViewModel(order: OperationsOrderInput): Oper
   const comboPricing = getComboPricing(commercialItemName);
   const fallbackQuantity = firstItem?.quantity || 0;
   const commercialQuantity = comboPricing?.commercialQuantity ?? fallbackQuantity;
-  const commercialUnitPrice = comboPricing?.price ?? firstItem?.unitPrice ?? 0;
-  const commercialTotal = comboPricing?.price ? comboPricing.price * commercialQuantity : firstItem?.totalPrice ?? 0;
-  const amount = order.amount || commercialTotal;
+  const commercialUnitPrice = comboPricing?.price ?? parseMoney(firstItem?.unitPrice ?? 0).toNumber();
+  const commercialTotal = comboPricing?.price
+    ? comboPricing.price * commercialQuantity
+    : parseMoney(firstItem?.totalPrice ?? 0).toNumber();
+  const amount = parseMoney(order.amount ?? commercialTotal).toNumber();
   const comboMultiplier = comboPricing?.unitsPerCombo ?? getComboMultiplier(commercialItemName);
   const operationalProductCode = commercialItemName?.toUpperCase().startsWith("COMBO_")
     ? "PRP-FG-STICKER"
