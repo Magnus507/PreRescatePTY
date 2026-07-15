@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
-import { returnInclude } from "../route";
+import { returnInclude } from "../returns.include";
 
 export const dynamic = "force-dynamic";
 

@@ -6,7 +6,7 @@ import {
   CreateReplacementEventSchema,
   getFirstValidationMessage,
 } from "../../replacements.helpers";
-import { replacementInclude } from "../../route";
+import { replacementInclude } from "../../replacements.include";
 
 export const dynamic = "force-dynamic";
 

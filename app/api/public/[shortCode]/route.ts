@@ -159,14 +159,14 @@ export async function GET(
     }
 
     // Decrypt sensitive fields
-    const decryptedAllergies = decrypt(profile.allergies || "");
-    const decryptedConditions = decrypt(profile.chronicConditions || "");
-    const decryptedBloodType = decrypt(profile.bloodType || "");
-    const decryptedInsuranceProvider = decrypt(profile.insuranceProvider || "");
-    const decryptedPreferredHospital = decrypt(profile.preferredHospital || "");
-    const decryptedPrimaryDoctorName = decrypt(profile.primaryDoctorName || "");
-    const decryptedPrimaryDoctorPhone = decrypt(profile.primaryDoctorPhone || "");
-    const decryptedAdditionalNotes = decrypt(profile.additionalNotes || "");
+    const decryptedAllergies = decrypt(profile.allergies || "", { allowPlaintextLegacy: true });
+    const decryptedConditions = decrypt(profile.chronicConditions || "", { allowPlaintextLegacy: true });
+    const decryptedBloodType = decrypt(profile.bloodType || "", { allowPlaintextLegacy: true });
+    const decryptedInsuranceProvider = decrypt(profile.insuranceProvider || "", { allowPlaintextLegacy: true });
+    const decryptedPreferredHospital = decrypt(profile.preferredHospital || "", { allowPlaintextLegacy: true });
+    const decryptedPrimaryDoctorName = decrypt(profile.primaryDoctorName || "", { allowPlaintextLegacy: true });
+    const decryptedPrimaryDoctorPhone = decrypt(profile.primaryDoctorPhone || "", { allowPlaintextLegacy: true });
+    const decryptedAdditionalNotes = decrypt(profile.additionalNotes || "", { allowPlaintextLegacy: true });
     // Humanitarian Overwrite Logic
     const hasCriticalData = 
       (decryptedAllergies && !decryptedAllergies.toLowerCase().includes("no report")) ||
@@ -204,12 +204,12 @@ export async function GET(
     const isMinor = calculatedAge !== null && calculatedAge < 18;
 
     // Decrypt v2 fields
-    const decryptedCommunicationAssistance = decrypt(profile.communicationAssistance || "");
-    const decryptedSafeReturnInstructions = decrypt(profile.safeReturnInstructions || "");
-    const decryptedSafeReturnLocationName = decrypt(profile.safeReturnLocationName || "");
-    const decryptedSafeReturnAddress = decrypt(profile.safeReturnAddress || "");
-    const decryptedSafeReturnContactName = decrypt(profile.safeReturnContactName || "");
-    const decryptedSafeReturnContactPhone = decrypt(profile.safeReturnContactPhone || "");
+    const decryptedCommunicationAssistance = decrypt(profile.communicationAssistance || "", { allowPlaintextLegacy: true });
+    const decryptedSafeReturnInstructions = decrypt(profile.safeReturnInstructions || "", { allowPlaintextLegacy: true });
+    const decryptedSafeReturnLocationName = decrypt(profile.safeReturnLocationName || "", { allowPlaintextLegacy: true });
+    const decryptedSafeReturnAddress = decrypt(profile.safeReturnAddress || "", { allowPlaintextLegacy: true });
+    const decryptedSafeReturnContactName = decrypt(profile.safeReturnContactName || "", { allowPlaintextLegacy: true });
+    const decryptedSafeReturnContactPhone = decrypt(profile.safeReturnContactPhone || "", { allowPlaintextLegacy: true });
 
     // Build public-safe response (NO email, NO birthdate, NO internal IDs)
     const publicProfile = {

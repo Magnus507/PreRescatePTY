@@ -18,7 +18,7 @@ Optional / CI:
 
 Notes:
 - Never commit real secrets. Use your secrets manager (Vercel/Netlify/GCP/AWS) in production.
-- `ENCRYPTION_KEY` must be 32 bytes (or will be hashed to 32 bytes). In production set a stable key.
+- `ENCRYPTION_KEY` must be a stable 32-byte key. The current implementation accepts either 32 raw UTF-8 bytes or 64 hex characters representing 32 bytes. In production set one stable value and keep it unchanged for legacy CBC reads.
 - Stripe variables were removed from the runtime and should not be configured for this phase.
 
 

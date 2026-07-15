@@ -164,9 +164,9 @@ Cuando se modifique cualquier endpoint o componente relacionado con Profile:
 ## ENCRYPTION_KEY
 
 - **Alcance:** Debe ser idéntica en todos los entornos (local, preview, producción)
-- **Riesgo:** Si la clave cambia, `decrypt()` retorna el ciphertext raw → parece campo corrupto → si se re-guarda, produce doble cifrado
-- **No existe rotación de claves ni versionado**
-- **Recomendación futura:** Agregar versión en el formato de cifrado para permitir rotación
+- **Riesgo:** Si la clave cambia, los datos GCM fallan con autenticación y los CBC legado dejan de descifrarse hasta corregir la clave
+- **Rotación:** el formato ya es versionado; la rotación futura debe ser explícita y planificada
+- **Recomendación:** mantener una sola clave estable por fase de transición y no cambiarla sin plan de migración
 
 ---
 
