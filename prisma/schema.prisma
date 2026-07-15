@@ -1195,7 +1195,7 @@ model OperationFinishedGoodUnit {
   digitalBatchItemId   String?                    @unique
   printOrderId         String?
   status               OperationFinishedGoodUnitStatus @default(qa_pending)
-  qaStatus             OperationFinishedGoodUnitQaStatus?
+  qaStatus             OperationFinishedGoodUnitQaStatus? @default(pending)
   activationStatus     OperationFinishedGoodUnitActivationStatus @default(not_activated)
   activationReferenceType String?
   activationReferenceId String?
@@ -1351,6 +1351,7 @@ model OperationCommercialOrder {
   @@index([salesChannel])
   @@index([paymentStatus])
   @@index([fulfillmentStatus])
+  @@unique([sourceType, sourceId])
   @@index([sourceType, sourceId])
   @@index([dispatchId])
   @@index([createdAt])
