@@ -159,9 +159,9 @@ describe('order factory', () => {
   })
 
   it('applies overrides', () => {
-    const order = createMockOrder({ amount: 50.0, orderStatus: 'approved' })
+    const order = createMockOrder({ amount: 50.0, orderStatus: 'processing' })
     expect(order.amount).toBe(50.0)
-    expect(order.orderStatus).toBe('approved')
+    expect(order.orderStatus).toBe('processing')
   })
 
   it('creates mock order item', () => {

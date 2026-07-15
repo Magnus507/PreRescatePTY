@@ -30,8 +30,7 @@ async function main() {
     (order) =>
       order.paymentStatus === "pending" ||
       order.paymentStatus === "under_review" ||
-      order.adminReviewStatus === "pending" ||
-      order.adminReviewStatus === "under_review"
+      order.adminReviewStatus === "pending"
   );
 
   console.log("=== W5.42D AUDIT ===");

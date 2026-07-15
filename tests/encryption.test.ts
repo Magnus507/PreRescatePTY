@@ -41,9 +41,10 @@ function encryptLegacyCbc(plaintext: string): string {
 }
 
 function flipBase64UrlChar(value: string) {
-  const lastChar = value.slice(-1)
-  const replacement = lastChar === 'A' ? 'B' : 'A'
-  return `${value.slice(0, -1)}${replacement}`
+  if (!value) return value
+  const firstChar = value[0]
+  const replacement = firstChar === 'A' ? 'B' : 'A'
+  return `${replacement}${value.slice(1)}`
 }
 
 describe('encryption', () => {

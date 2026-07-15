@@ -98,7 +98,7 @@ async function main() {
       OR: [
         {
           AND: [
-            { paymentStatus: { in: ["paid", "approved"] } },
+            { paymentStatus: "paid" },
             { OR: [{ adminReviewStatus: "approved" }, { orderStatus: "completed" }] },
           ],
         },

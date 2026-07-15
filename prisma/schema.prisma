@@ -8,6 +8,60 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum OrderPaymentStatus {
+  pending
+  under_review
+  paid
+  rejected
+  cancelled
+}
+
+enum OrderStatus {
+  pending
+  processing
+  shipped
+  completed
+  cancelled
+}
+
+enum OrderAdminReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+enum CommerceOrderSyncOutboxStatus {
+  pending
+  processing
+  processed
+  retrying
+  failed
+}
+
+enum OperationFinishedGoodUnitStatus {
+  assembled
+  available
+  reserved
+  qa_pending
+  qa_failed
+  dispatched
+  delivered
+  activated
+  discarded
+  cancelled
+}
+
+enum OperationFinishedGoodUnitQaStatus {
+  pending
+  passed
+  failed
+}
+
+enum OperationFinishedGoodUnitActivationStatus {
+  not_activated
+  activated
+}
+
 model Product {
   id                      String                        @id @default(cuid())
   name                    String
@@ -573,7 +627,7 @@ model Order {
   userId                  String?
   amount                  Decimal                       @db.Decimal(18, 2)
   currency                String                       @default("USD")
-  paymentStatus           String                       @default("pending")
+  paymentStatus           OrderPaymentStatus            @default(pending)
   provider                String                       @default("manual")
   providerReference       String?
   createdAt               DateTime                     @default(now())
@@ -582,7 +636,7 @@ model Order {
   customerName            String?
   customerPhone           String?
   orderNumber             String                       @unique @default(cuid())
-  orderStatus             String                       @default("pending")
+  orderStatus             OrderStatus                   @default(pending)
   paymentProofUrl         String?
   updatedAt               DateTime                     @updatedAt
   shippingAddress         String?
@@ -591,7 +645,7 @@ model Order {
   packageId               String?
   manualPaymentReference  String?
   paymentMethod           String                       @default("manual")
-  adminReviewStatus       String                       @default("pending")
+  adminReviewStatus       OrderAdminReviewStatus        @default(pending)
   adminReviewedAt         DateTime?
   adminReviewedById       String?
   adminReviewNotes        String?
@@ -657,7 +711,7 @@ model CommerceOrderSyncOutbox {
   deduplicationKey  String   @unique
   payloadVersion    Int      @default(1)
   payloadJson       String
-  status            String   @default("pending")
+  status            CommerceOrderSyncOutboxStatus @default(pending)
   attempts          Int      @default(0)
   availableAt       DateTime @default(now())
   lockedAt          DateTime?
@@ -1140,9 +1194,9 @@ model OperationFinishedGoodUnit {
   digitalBatchId       String?
   digitalBatchItemId   String?                    @unique
   printOrderId         String?
-  status               String                     @default("qa_pending")
-  qaStatus             String?
-  activationStatus     String                     @default("not_activated")
+  status               OperationFinishedGoodUnitStatus @default(qa_pending)
+  qaStatus             OperationFinishedGoodUnitQaStatus?
+  activationStatus     OperationFinishedGoodUnitActivationStatus @default(not_activated)
   activationReferenceType String?
   activationReferenceId String?
   reservedOrderId      String?
