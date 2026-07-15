@@ -18,6 +18,7 @@ describe("commerce-order-sync-outbox", () => {
     resetAllMocks();
     resetMockPrisma();
     mockSyncRealOrderToOperations.mockReset();
+    mockPrisma.order.findUnique.mockReset();
     mockPrisma.$transaction.mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma));
   });
 
@@ -117,6 +118,37 @@ describe("commerce-order-sync-outbox", () => {
         updatedAt: new Date(),
       },
     ] as never);
+    mockPrisma.order.findUnique.mockResolvedValue({
+      id: "order-1",
+      orderNumber: "ORD-001",
+      orderType: "customer",
+      customerName: "Cliente",
+      customerEmail: "cliente@example.com",
+      customerPhone: null,
+      customerDocument: null,
+      providerReference: null,
+      paymentStatus: "pending",
+      manualPaymentReference: null,
+      paymentProofUrl: null,
+      currency: "USD",
+      amount: 25,
+      organizationId: null,
+      items: [
+        {
+          productId: "product-1",
+          productType: "PRD-1",
+          productName: "Producto 1",
+          productCode: "PRD-1",
+          quantity: 1,
+          unitPrice: 25,
+          operationalMappingId: "map-1",
+          operationalMappingStatus: "mapped",
+          operationalFinishedGoodId: "fg-1",
+          operationalProductCode: "PRD-1",
+          operationalProductName: "Producto 1",
+        },
+      ],
+    } as never);
     mockPrisma.commerceOrderSyncOutbox.updateMany.mockResolvedValue({ count: 1 } as never);
     mockPrisma.commerceOrderSyncOutbox.update.mockResolvedValue({ id: "outbox-1" } as never);
     mockSyncRealOrderToOperations.mockResolvedValue({
@@ -180,6 +212,37 @@ describe("commerce-order-sync-outbox", () => {
         updatedAt: new Date(),
       },
     ] as never);
+    mockPrisma.order.findUnique.mockResolvedValue({
+      id: "order-2",
+      orderNumber: "ORD-002",
+      orderType: "customer",
+      customerName: "Cliente",
+      customerEmail: "cliente@example.com",
+      customerPhone: null,
+      customerDocument: null,
+      providerReference: null,
+      paymentStatus: "pending",
+      manualPaymentReference: null,
+      paymentProofUrl: null,
+      currency: "USD",
+      amount: 25,
+      organizationId: null,
+      items: [
+        {
+          productId: "product-2",
+          productType: "PRD-2",
+          productName: "Producto 2",
+          productCode: "PRD-2",
+          quantity: 1,
+          unitPrice: 25,
+          operationalMappingId: "map-2",
+          operationalMappingStatus: "mapped",
+          operationalFinishedGoodId: "fg-2",
+          operationalProductCode: "PRD-2",
+          operationalProductName: "Producto 2",
+        },
+      ],
+    } as never);
     mockPrisma.commerceOrderSyncOutbox.updateMany.mockResolvedValue({ count: 1 } as never);
     mockPrisma.commerceOrderSyncOutbox.update.mockResolvedValue({ id: "outbox-2" } as never);
     mockSyncRealOrderToOperations.mockRejectedValue(new Error("DB timeout"));

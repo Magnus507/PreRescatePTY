@@ -36,6 +36,38 @@ export type CommerceOrderSyncOutboxRow = {
   updatedAt: Date;
 };
 
+type StoredOrderItemSnapshot = {
+  productId: string | null;
+  productType: string;
+  productName: string | null;
+  productCode: string | null;
+  quantity: number;
+  unitPrice: number;
+  operationalMappingId: string | null;
+  operationalMappingStatus: string | null;
+  operationalFinishedGoodId: string | null;
+  operationalProductCode: string | null;
+  operationalProductName: string | null;
+};
+
+type StoredCommerceOrderSnapshot = {
+  id: string;
+  orderNumber: string;
+  orderType: string;
+  customerName: string | null;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  customerDocument: string | null;
+  providerReference: string | null;
+  paymentStatus: string | null;
+  manualPaymentReference: string | null;
+  paymentProofUrl: string | null;
+  currency: string | null;
+  amount: number;
+  organizationId: string | null;
+  items: StoredOrderItemSnapshot[];
+};
+
 export type CommerceOrderSyncBatchSummary = {
   claimed: number;
   processed: number;
@@ -72,6 +104,7 @@ function isPermanentCommerceSyncError(error: unknown) {
   const message = sanitizeErrorMessage(error).toLowerCase();
   return [
     "unmapped",
+    "order_item_unmapped",
     "inconsisten",
     "invalid",
     "inválid",
@@ -88,6 +121,60 @@ function nextRetryAt(attempts: number) {
   const baseDelayMs = 5 * 60 * 1000;
   const cappedDelayMs = Math.min(6 * 60 * 60 * 1000, baseDelayMs * Math.pow(2, Math.max(0, attempts - 1)));
   return new Date(Date.now() + cappedDelayMs);
+}
+
+function isMappedSnapshot(item: StoredOrderItemSnapshot) {
+  return Boolean(
+    item.productId &&
+      item.operationalMappingId &&
+      item.operationalFinishedGoodId &&
+      item.operationalProductCode &&
+      item.operationalProductName &&
+      item.operationalMappingStatus !== "unmapped"
+  );
+}
+
+function buildSyncInputFromStoredOrder(
+  sourceType: SyncRealOrderToOperationsInput["sourceType"],
+  order: StoredCommerceOrderSnapshot
+): SyncRealOrderToOperationsInput {
+  const items = order.items.map((item) => {
+    if (!isMappedSnapshot(item)) {
+      throw new Error("ORDER_ITEM_UNMAPPED");
+    }
+
+    return {
+      productId: item.productId,
+      productCode: item.productCode || item.operationalProductCode,
+      productName: item.productName || item.operationalProductName || item.productType,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      unit: "unit",
+      finishedGoodId: item.operationalFinishedGoodId,
+      operationalMappingId: item.operationalMappingId,
+      operationalProductCode: item.operationalProductCode,
+      operationalProductName: item.operationalProductName,
+      operationalFinishedGoodId: item.operationalFinishedGoodId,
+    };
+  });
+
+  return {
+    sourceType,
+    sourceId: order.id,
+    sourceCode: order.orderNumber,
+    orderType: order.orderType === "corporate_employee_purchase" ? "enterprise" : "customer",
+    customerName: order.customerName,
+    contactEmail: order.customerEmail,
+    contactPhone: order.customerPhone,
+    customerReference: order.providerReference,
+    paymentStatus: order.paymentStatus,
+    paymentReference: order.manualPaymentReference || order.paymentProofUrl || null,
+    currency: order.currency,
+    notes: `orderId:${order.id}`,
+    organizationId: order.organizationId,
+    totalAmount: order.amount,
+    items,
+  };
 }
 
 export async function enqueueCommerceOrderSyncOutbox(
@@ -155,7 +242,7 @@ export async function processCommerceOrderSyncOutboxBatch(
   db: DbClient,
   options: { limit?: number; workerId: string }
 ): Promise<CommerceOrderSyncBatchSummary> {
-  const claimed = await claimCommerceOrderSyncOutboxBatch(db, {
+  const claimed = await claimCommerceOrderSyncOutboxBatch(db as OutboxDbClient, {
     limit: options.limit ?? 10,
     workerId: options.workerId,
   });
@@ -166,14 +253,48 @@ export async function processCommerceOrderSyncOutboxBatch(
 
   for (const event of claimed) {
     try {
-      const payload = JSON.parse(event.payloadJson) as CommerceOrderSyncOutboxPayloadV1;
-
-      if (payload.version !== COMMERCE_ORDER_SYNC_PAYLOAD_VERSION || !payload.syncInput) {
-        throw new Error("UNSUPPORTED_OUTBOX_PAYLOAD_VERSION");
-      }
-
       const result = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-        const syncResult = await syncRealOrderToOperations(tx, payload.syncInput);
+        const order = (await tx.order.findUnique({
+          where: { id: event.sourceId },
+          select: {
+            id: true,
+            orderNumber: true,
+            orderType: true,
+            customerName: true,
+            customerEmail: true,
+            customerPhone: true,
+            customerDocument: true,
+            providerReference: true,
+            paymentStatus: true,
+            manualPaymentReference: true,
+            paymentProofUrl: true,
+            currency: true,
+            amount: true,
+            organizationId: true,
+            items: {
+              select: {
+                productId: true,
+                productType: true,
+                productName: true,
+                productCode: true,
+                quantity: true,
+                unitPrice: true,
+                operationalMappingId: true,
+                operationalMappingStatus: true,
+                operationalFinishedGoodId: true,
+                operationalProductCode: true,
+                operationalProductName: true,
+              },
+            },
+          },
+        })) as StoredCommerceOrderSnapshot | null;
+
+        if (!order) {
+          throw new Error("ORDER_NOT_FOUND");
+        }
+
+        const syncInput = buildSyncInputFromStoredOrder(event.sourceType as SyncRealOrderToOperationsInput["sourceType"], order);
+        const syncResult = await syncRealOrderToOperations(tx, syncInput);
         await tx.commerceOrderSyncOutbox.update({
           where: { id: event.id },
           data: {

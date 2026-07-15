@@ -22,6 +22,7 @@ model Product {
   productType             String                        @default("otro")
   estimatedProductionTime String?
   requiresPersonalization Boolean                       @default(false)
+  orderItems             OrderItem[]
   corporateOrderItems     CorporateOrderEmployeeItem[]
   productRequestItems     CorporateProductRequestItem[]
   operationalMapping      ProductOperationalMapping?
@@ -615,23 +616,35 @@ model Order {
 }
 
 model OrderItem {
-  id          String   @id @default(cuid())
-  orderId     String
-  productType String
-  quantity    Int      @default(1)
-  unitPrice   Float
-  totalPrice  Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  profileId   String?
-  chipId      String?
-  chip        Chip?    @relation("OrderItemChip", fields: [chipId], references: [id])
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  profile     Profile? @relation("OrderItemProfile", fields: [profileId], references: [id])
+  id                          String   @id @default(cuid())
+  orderId                     String
+  productType                 String
+  quantity                    Int      @default(1)
+  unitPrice                   Float
+  totalPrice                  Float
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  profileId                   String?
+  chipId                      String?
+  productId                   String?
+  productName                 String?
+  productCode                 String?
+  operationalMappingId        String?
+  operationalMappingStatus    String?
+  operationalFinishedGoodId   String?
+  operationalProductCode      String?
+  operationalProductName      String?
+  chip                        Chip?    @relation("OrderItemChip", fields: [chipId], references: [id])
+  product                     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  order                       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  profile                     Profile? @relation("OrderItemProfile", fields: [profileId], references: [id])
 
   @@index([orderId])
   @@index([profileId])
   @@index([chipId])
+  @@index([productId])
+  @@index([operationalMappingId])
+  @@index([operationalFinishedGoodId])
 }
 
 model CommerceOrderSyncOutbox {

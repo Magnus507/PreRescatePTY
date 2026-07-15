@@ -206,6 +206,28 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const requestItemSnapshots = requests.flatMap((request) =>
+      request.items.map((requestItem) => ({
+        productId: requestItem.product.id,
+        productCode: requestItem.product.operationalMapping?.productCode || null,
+        productName: requestItem.product.operationalMapping?.finishedGood?.name || requestItem.product.name,
+        quantity: requestItem.quantity,
+        unitPrice: requestItem.unitPrice,
+        unit: "unit",
+        finishedGoodId: requestItem.product.operationalMapping?.finishedGoodId || null,
+        operationalMappingId: requestItem.product.operationalMapping?.id || null,
+        operationalMappingStatus:
+          requestItem.product.operationalMapping?.id &&
+          requestItem.product.operationalMapping?.finishedGoodId &&
+          requestItem.product.operationalMapping?.productCode
+            ? "mapped"
+            : "unmapped",
+        operationalProductCode: requestItem.product.operationalMapping?.productCode || null,
+        operationalProductName: requestItem.product.operationalMapping?.finishedGood?.name || requestItem.product.name,
+        operationalFinishedGoodId: requestItem.product.operationalMapping?.finishedGoodId || null,
+      }))
+    );
+
     await enqueueCommerceOrderSyncOutbox(tx, {
       sourceType: "organization_order",
       sourceId: createdOrder.id,
@@ -223,37 +245,7 @@ export async function POST(req: NextRequest) {
       totalAmount: totalAmount,
       organizationId: organization.id,
       salesChannel: "organization",
-      items: corporateItems.map((item) => ({
-        productId: item.productId,
-        productCode: requests
-          .flatMap((request) => request.items)
-          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.productCode || null,
-        productName: requests
-          .flatMap((request) => request.items)
-          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.finishedGood?.name ||
-          requests.flatMap((request) => request.items).find((requestItem) => requestItem.product.id === item.productId)?.product.name ||
-          item.productId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        unit: "unit",
-        finishedGoodId: requests
-          .flatMap((request) => request.items)
-          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.finishedGoodId || null,
-        operationalMappingId: requests
-          .flatMap((request) => request.items)
-          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.id || null,
-        operationalProductCode: requests
-          .flatMap((request) => request.items)
-          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.productCode || null,
-        operationalProductName: requests
-          .flatMap((request) => request.items)
-          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.finishedGood?.name ||
-          requests.flatMap((request) => request.items).find((requestItem) => requestItem.product.id === item.productId)?.product.name ||
-          item.productId,
-        operationalFinishedGoodId: requests
-          .flatMap((request) => request.items)
-          .find((requestItem) => requestItem.product.id === item.productId)?.product.operationalMapping?.finishedGoodId || null,
-      })),
+      items: requestItemSnapshots,
     });
 
     return createdOrder;

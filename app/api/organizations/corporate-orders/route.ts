@@ -214,6 +214,27 @@ export async function POST(req: NextRequest) {
       data: corporateItems.map((item) => ({ ...item, orderId: created.id })),
     });
 
+    const itemSnapshots = corporateItems.map((item) => {
+      const product = productMap.get(item.productId);
+      return {
+        productId: item.productId,
+        productCode: product?.operationalMapping?.productCode || null,
+        productName: product?.name || item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        unit: "unit",
+        finishedGoodId: product?.operationalMapping?.finishedGoodId || null,
+        operationalMappingId: product?.operationalMapping?.id || null,
+        operationalMappingStatus:
+          product?.operationalMapping?.id && product?.operationalMapping?.finishedGoodId && product?.operationalMapping?.productCode
+            ? "mapped"
+            : "unmapped",
+        operationalProductCode: product?.operationalMapping?.productCode || null,
+        operationalProductName: product?.operationalMapping?.finishedGood?.name || product?.name || item.productId,
+        operationalFinishedGoodId: product?.operationalMapping?.finishedGoodId || null,
+      };
+    });
+
     await tx.organizationMember.updateMany({
       where: { id: { in: memberIds }, organizationId: organization.id },
       data: { corporateStatus: "approved_unpaid" },
@@ -236,19 +257,7 @@ export async function POST(req: NextRequest) {
       totalAmount: created.amount,
       organizationId: organization.id,
       salesChannel: "organization",
-      items: corporateItems.map((item) => ({
-        productId: item.productId,
-        productCode: productMap.get(item.productId)?.operationalMapping?.productCode || null,
-        productName: productMap.get(item.productId)?.operationalMapping?.finishedGood?.name || productMap.get(item.productId)?.name || item.productId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        unit: "unit",
-        finishedGoodId: productMap.get(item.productId)?.operationalMapping?.finishedGoodId || null,
-        operationalMappingId: productMap.get(item.productId)?.operationalMapping?.id || null,
-        operationalProductCode: productMap.get(item.productId)?.operationalMapping?.productCode || null,
-        operationalProductName: productMap.get(item.productId)?.operationalMapping?.finishedGood?.name || productMap.get(item.productId)?.name || item.productId,
-        operationalFinishedGoodId: productMap.get(item.productId)?.operationalMapping?.finishedGoodId || null,
-      })),
+      items: itemSnapshots,
     });
 
     return created;

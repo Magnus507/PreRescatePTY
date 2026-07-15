@@ -205,6 +205,14 @@ export async function POST(req: NextRequest) {
                 totalPrice: item.unitPrice * item.quantity,
                 profileId: itemWithRefs.profileId ?? null,
                 chipId: itemWithRefs.chipId ?? null,
+                productId: itemWithRefs.resolvedProductId ?? null,
+                productName: itemWithRefs.resolvedProductName ?? item.productType,
+                productCode: itemWithRefs.resolvedProductCode ?? item.productType,
+                operationalMappingId: itemWithRefs.resolvedMappingId ?? null,
+                operationalMappingStatus: itemWithRefs.resolvedMappingId ? "mapped" : "unmapped",
+                operationalFinishedGoodId: itemWithRefs.resolvedFinishedGoodId ?? null,
+                operationalProductCode: itemWithRefs.resolvedOperationalProductCode ?? itemWithRefs.resolvedProductCode ?? null,
+                operationalProductName: itemWithRefs.resolvedOperationalProductName ?? itemWithRefs.resolvedProductName ?? item.productType,
               };
             })
           }

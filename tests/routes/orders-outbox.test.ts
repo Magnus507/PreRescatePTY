@@ -143,6 +143,26 @@ describe("POST /api/orders", () => {
     expect(res.status).toBe(200);
     expect(json.operationsSyncStatus).toBe("queued");
     expect(mockPrisma.order.create).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.order.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          items: expect.objectContaining({
+            create: expect.arrayContaining([
+              expect.objectContaining({
+                productId: "product-1",
+                productName: "Producto 1",
+                productCode: "PRD-1",
+                operationalMappingId: "map-1",
+                operationalMappingStatus: "mapped",
+                operationalFinishedGoodId: "fg-1",
+                operationalProductCode: "PRD-1",
+                operationalProductName: "Producto 1",
+              }),
+            ]),
+          }),
+        }),
+      })
+    );
     expect(mockPrisma.commerceOrderSyncOutbox.create).toHaveBeenCalledTimes(1);
     expect(mockPrisma.commerceOrderSyncOutbox.create).toHaveBeenCalledWith(
       expect.objectContaining({
