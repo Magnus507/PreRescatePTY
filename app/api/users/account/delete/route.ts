@@ -4,11 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { SafeDeleteService } from "@/domains/users/services/safe-delete.service";
 import { getClientIp } from "@/lib/request-ip";
-import { requireActiveAccountSession } from "@/lib/rbac";
+import { requireFreshSession } from "@/lib/rbac";
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireActiveAccountSession();
+    const auth = await requireFreshSession();
     if (!auth.authorized) return auth.response;
 
     const userId = auth.session.user.id;

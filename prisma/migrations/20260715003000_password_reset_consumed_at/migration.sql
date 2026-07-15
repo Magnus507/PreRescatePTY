@@ -1,0 +1,2 @@
+ALTER TABLE "PasswordResetToken"
+  ADD COLUMN IF NOT EXISTS "consumedAt" TIMESTAMP(3);

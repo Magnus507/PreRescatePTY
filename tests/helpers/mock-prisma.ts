@@ -16,6 +16,7 @@ function createMockDelegate() {
     updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     upsert: vi.fn().mockResolvedValue({}),
     delete: vi.fn().mockResolvedValue({}),
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     count: vi.fn().mockResolvedValue(0),
     aggregate: vi.fn().mockResolvedValue({ _sum: {}, _avg: {}, _count: 0 }),
     groupBy: vi.fn().mockResolvedValue([]),
@@ -93,8 +94,15 @@ export const mockPrisma: MockPrismaClient = {
   digitalPass: createMockDelegate(),
   appNotification: createMockDelegate(),
   passwordResetToken: createMockDelegate(),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  $transaction: vi.fn(async (fn: any) => fn(mockPrisma)) as any,
+  $transaction: vi.fn(async (arg: unknown) => {
+    if (Array.isArray(arg)) {
+      return Promise.all(arg as Array<Promise<unknown>>)
+    }
+    if (typeof arg === "function") {
+      return (arg as (tx: typeof mockPrisma) => Promise<unknown>)(mockPrisma)
+    }
+    throw new TypeError("Unsupported transaction signature")
+  }) as unknown as MockPrismaClient["$transaction"],
   $connect: vi.fn().mockResolvedValue(undefined),
   $disconnect: vi.fn().mockResolvedValue(undefined),
 }
@@ -122,6 +130,8 @@ export function resetMockPrisma(): void {
       d.upsert.mockResolvedValue({})
       d.delete.mockReset()
       d.delete.mockResolvedValue({})
+      d.deleteMany.mockReset()
+      d.deleteMany.mockResolvedValue({ count: 0 })
       d.count.mockReset()
       d.count.mockResolvedValue(0)
       d.aggregate.mockReset()
@@ -131,8 +141,15 @@ export function resetMockPrisma(): void {
     }
   }
   mockPrisma.$transaction.mockReset()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mockPrisma.$transaction.mockImplementation(async (fn: any) => fn(mockPrisma))
+  mockPrisma.$transaction.mockImplementation(async (arg: unknown) => {
+    if (Array.isArray(arg)) {
+      return Promise.all(arg as Array<Promise<unknown>>)
+    }
+    if (typeof arg === "function") {
+      return (arg as (tx: typeof mockPrisma) => Promise<unknown>)(mockPrisma)
+    }
+    throw new TypeError("Unsupported transaction signature")
+  })
   mockPrisma.$connect.mockReset()
   mockPrisma.$connect.mockResolvedValue(undefined)
   mockPrisma.$disconnect.mockReset()

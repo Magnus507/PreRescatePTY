@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
+import { hashPasswordResetToken } from "@/lib/password-reset";
 
 export async function POST(req: Request) {
   try {
@@ -25,37 +26,66 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "La contraseña debe tener al menos 8 caracteres" }, { status: 400 });
     }
 
+    const tokenHash = hashPasswordResetToken(String(token));
+    const now = new Date();
+
     const resetRecord = await prisma.passwordResetToken.findUnique({
-      where: { token },
+      where: { token: tokenHash },
     });
 
     if (!resetRecord) {
       return NextResponse.json({ error: "El enlace es inválido o ya ha sido utilizado." }, { status: 400 });
     }
 
-    if (resetRecord.expiresAt < new Date()) {
+    if (resetRecord.consumedAt || resetRecord.expiresAt < now) {
       return NextResponse.json({ error: "El enlace ha expirado. Por favor solicita uno nuevo." }, { status: 400 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const emailLower = resetRecord.email;
 
-    // Unified: single table update
-    const user = await prisma.user.findUnique({ where: { email: emailLower } });
-
-    if (user) {
-      await prisma.user.update({
-        where: { email: emailLower },
-        data: { passwordHash: hashedPassword },
+    const result = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.passwordResetToken.updateMany({
+        where: {
+          id: resetRecord.id,
+          token: tokenHash,
+          consumedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { consumedAt: now },
       });
-    } else {
-      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 400 });
+
+      if (claimed.count !== 1) {
+        return { status: 400 as const, body: { error: "El enlace es inválido o ya ha sido utilizado." } };
+      }
+
+      const updatedUser = await tx.user.updateMany({
+        where: { email: emailLower },
+        data: {
+          passwordHash: hashedPassword,
+          sessionVersion: { increment: 1 },
+        },
+      });
+
+      if (updatedUser.count !== 1) {
+        return { status: 400 as const, body: { error: "El enlace es inválido o ya ha sido utilizado." } };
+      }
+
+      await tx.passwordResetToken.deleteMany({
+        where: {
+          email: emailLower,
+          id: { not: resetRecord.id },
+        },
+      });
+
+      return { status: 200 as const, body: { success: true, message: "Contraseña actualizada exitosamente." } };
+    });
+
+    if (result.status !== 200) {
+      return NextResponse.json(result.body, { status: result.status });
     }
 
-    // Delete token after successful use
-    await prisma.passwordResetToken.delete({ where: { id: resetRecord.id } });
-
-    return NextResponse.json({ success: true, message: "Contraseña actualizada exitosamente." });
+    return NextResponse.json(result.body);
   } catch (error) {
     console.error("Reset Password Error:", error);
     return NextResponse.json(

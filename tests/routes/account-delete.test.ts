@@ -70,6 +70,9 @@ function setupDefaultMocks() {
   mockPrisma.user.findUnique.mockResolvedValue({
     id: TEST_USER_ID,
     passwordHash: TEST_PASSWORD_HASH,
+    status: 'active',
+    sessionVersion: 0,
+    deletedAt: null,
   } as never)
   mockBcryptCompare.mockResolvedValue(true as never)
   mockDeleteUserAccount.mockResolvedValue(true as never)
@@ -167,7 +170,15 @@ describe('POST /api/users/account/delete', () => {
 
   it('6. returns 400 when the authenticated user record does not exist', async () => {
     setupDefaultMocks()
-    mockPrisma.user.findUnique.mockResolvedValue(null as never)
+    mockPrisma.user.findUnique
+      .mockResolvedValueOnce({
+        id: TEST_USER_ID,
+        passwordHash: TEST_PASSWORD_HASH,
+        status: 'active',
+        sessionVersion: 0,
+        deletedAt: null,
+      } as never)
+      .mockResolvedValueOnce(null as never)
 
     const req = authorizeAndConfirm()
     const res = await POST(req)

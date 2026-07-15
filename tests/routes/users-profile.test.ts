@@ -103,6 +103,9 @@ function createMockUserWithProfile(overrides: Record<string, unknown> = {}) {
     phone: '+50760001234',
     role: 'owner',
     accountId: 'test-account-id',
+    status: 'active',
+    sessionVersion: 0,
+    deletedAt: null,
     profile: {
       nationalId: '8-123-456',
       assignedChips: [
@@ -120,6 +123,7 @@ function authorizeAsUser(): void {
   vi.mocked(getServerSession).mockResolvedValue(
     createMockSession({ id: TEST_USER_ID, role: 'owner' }) as never
   )
+  mockPrisma.user.findUnique.mockResolvedValue(createMockUserWithProfile() as never)
 }
 
 /**

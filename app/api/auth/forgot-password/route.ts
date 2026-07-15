@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
 import { Resend } from "resend";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
+import { createPasswordResetToken, hashPasswordResetToken } from "@/lib/password-reset";
 
 export async function POST(req: Request) {
   try {
@@ -35,8 +35,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: "Si el correo existe, se ha enviado un enlace de recuperación." });
     }
 
-    // Generate token
-    const token = crypto.randomBytes(32).toString("hex");
+    // Generate token and store only its hash
+    const token = createPasswordResetToken();
+    const tokenHash = hashPasswordResetToken(token);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
     await prisma.$transaction([
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
       prisma.passwordResetToken.create({
         data: {
           email: emailLower,
-          token,
+          token: tokenHash,
           expiresAt,
         },
       }),
@@ -68,10 +69,10 @@ export async function POST(req: Request) {
       });
     } else {
       if (process.env.NODE_ENV === "production") {
-        console.error(`[ForgotPassword] CRITICAL: Email provider not configured. Could not send reset link to ${emailLower}`);
+        console.error(`[ForgotPassword] CRITICAL: Email provider not configured. Could not send reset link to ${emailLower.replace(/(.{2}).+(@.+)/, "$1***$2")}`);
       } else {
         console.warn("Simulated Password Reset Email:");
-        console.warn(`To: ${emailLower}`);
+        console.warn(`To: ${emailLower.replace(/(.{2}).+(@.+)/, "$1***$2")}`);
         console.warn(`Reset Link: ${resetLink}`);
       }
     }

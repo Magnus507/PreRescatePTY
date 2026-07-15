@@ -4,13 +4,13 @@ import { profileUpdateSchema } from "@/lib/validations";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { ApiResponse } from "@/lib/api-response";
 import { ProfileRepository } from "@/domains/profiles/repositories/profile.repository";
-import { requireActiveAccountSession } from "@/lib/rbac";
+import { requireFreshSession } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const auth = await requireActiveAccountSession();
+    const auth = await requireFreshSession();
     if (!auth.authorized) return auth.response;
 
     const userId = auth.session.user.id;
@@ -54,7 +54,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireActiveAccountSession();
+  const auth = await requireFreshSession();
   if (!auth.authorized) return auth.response;
   const userId = auth.session.user.id;
   try {

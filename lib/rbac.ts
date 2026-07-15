@@ -67,15 +67,29 @@ function getEffectiveRole(user: CurrentAuthState) {
 
 async function assertFreshSession(session: Session) {
   const current = await loadCurrentAuthState(session.user.id);
-  if (!current || current.deletedAt || current.status !== "active") {
+  if (!current) {
     return { ok: false as const, response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
   }
 
-  if (current.sessionVersion !== session.user.sessionVersion) {
+  if (
+    current.deletedAt ||
+    (current.status !== undefined && current.status !== "active")
+  ) {
+    return { ok: false as const, response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
+  }
+
+  if (current.sessionVersion !== undefined && current.sessionVersion !== session.user.sessionVersion) {
     return { ok: false as const, response: NextResponse.json({ error: "Sesión revocada" }, { status: 401 }) };
   }
 
-  return { ok: true as const, current };
+  return {
+    ok: true as const,
+    current: {
+      ...current,
+      status: current.status ?? "active",
+      sessionVersion: current.sessionVersion ?? session.user.sessionVersion,
+    },
+  };
 }
 
 /**
@@ -134,6 +148,26 @@ export async function requireActiveAccountSession() {
     authorized: true as const,
     session,
     current: fresh.current as CurrentAuthState & { accountId: string },
+  };
+}
+
+export async function requireFreshSession() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user) {
+    return {
+      authorized: false as const,
+      response: NextResponse.json({ error: "No autorizado" }, { status: 401 }),
+    };
+  }
+
+  const fresh = await assertFreshSession(session);
+  if (!fresh.ok) return { authorized: false as const, response: fresh.response };
+
+  return {
+    authorized: true as const,
+    session,
+    current: fresh.current,
   };
 }
 
