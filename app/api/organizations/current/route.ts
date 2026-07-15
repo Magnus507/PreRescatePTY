@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveAccountSession } from "@/lib/rbac";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.accountId) {
-    return NextResponse.json({ error: "No autorizado o sin cuenta vinculada" }, { status: 401 });
-  }
-
-  const accountId = session.user.accountId;
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
+  const accountId = auth.current.accountId as string;
 
   try {
     const organization = await prisma.organization.findFirst({

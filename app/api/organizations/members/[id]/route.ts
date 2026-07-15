@@ -1,27 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
+import { requireActiveAccountSession } from "@/lib/rbac";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.accountId) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
 
   const organization = await prisma.organization.findFirst({
-    where: { accountId: session.user.accountId },
+    where: { accountId: auth.current.accountId },
     select: { id: true },
   });
   if (!organization) {
     return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
   }
 
-  const userId = session.user.id;
+  const userId = auth.session.user.id;
   const limiter = await rateLimit("organization-member-action", userId, { limit: 30, windowMs: 60_000 });
   if (!limiter.allowed) {
     return NextResponse.json(

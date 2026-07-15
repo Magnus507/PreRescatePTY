@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole, SUPERADMIN_ROLES } from "@/lib/rbac";
+import { bumpUserSessionVersion, requireRole, SUPERADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +36,7 @@ export async function PATCH(
       where: { id },
       data: updateData,
     });
+    await bumpUserSessionVersion(admin.id);
 
     return NextResponse.json({ 
       admin: { 
@@ -74,6 +75,7 @@ export async function DELETE(
       where: { id },
       data: { isAdmin: false, adminRole: null },
     });
+    await bumpUserSessionVersion(id);
 
     return NextResponse.json({ message: "Administrador eliminado correctamente" });
   } catch {

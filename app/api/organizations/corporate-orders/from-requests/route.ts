@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
 import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-sync-outbox";
 import { normalizePaymentProofUrl } from "@/lib/payment-proof";
 import { rateLimit } from "@/lib/rateLimit";
+import { requireActiveAccountSession } from "@/lib/rbac";
 
 type RequestSelection = {
   requestIds: string[];
@@ -13,11 +12,11 @@ type RequestSelection = {
 };
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.accountId || !session?.user?.id) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
 
+  const session = auth.session;
+  const accountId = auth.current.accountId;
   const userId = session.user.id;
 
   // Verify the user is an owner of this account (not just a member)
@@ -38,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   // 1. Verify organization
   const organization = await prisma.organization.findFirst({
-    where: { accountId: session.user.accountId },
+    where: { accountId },
     select: { id: true, status: true },
   });
 

@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { SafeDeleteService } from "@/domains/users/services/safe-delete.service";
 import { getClientIp } from "@/lib/request-ip";
+import { requireActiveAccountSession } from "@/lib/rbac";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const auth = await requireActiveAccountSession();
+    if (!auth.authorized) return auth.response;
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const userId = session.user.id;
+    const userId = auth.session.user.id;
     const ip = getClientIp(req, `account-delete:${userId}`);
     const limiter = await rateLimit("account-delete", `${userId}:${ip}`, {
       limit: 5,

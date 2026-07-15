@@ -82,6 +82,7 @@ export const authOptions: NextAuthOptions = {
           name: user.email,
           role: effectiveRole,
           accountId: user.accountId,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -92,6 +93,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.accountId = user.accountId;
+        token.sessionVersion = user.sessionVersion;
       }
       return token;
     },
@@ -100,6 +102,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.accountId = token.accountId;
+        session.user.sessionVersion = token.sessionVersion;
       }
       return session;
     },

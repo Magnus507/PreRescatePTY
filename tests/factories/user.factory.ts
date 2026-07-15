@@ -8,6 +8,7 @@ export interface MockUser {
   isAdmin: boolean
   adminRole: string | null
   status: string
+  sessionVersion: number
   createdAt: Date
   updatedAt: Date
   lastLoginAt: Date | null
@@ -31,6 +32,7 @@ export function createMockUser(overrides: Partial<MockUser> = {}): MockUser {
     isAdmin: false,
     adminRole: null,
     status: 'active',
+    sessionVersion: 0,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
     lastLoginAt: null,

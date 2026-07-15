@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { adminCreateSchema, adminUpdateSchema, validateOrNull } from "@/lib/validations";
-import { requireRole, SUPERADMIN_ROLES } from "@/lib/rbac";
+import { bumpUserSessionVersion, requireRole, SUPERADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
       where: { id: existing.id },
       data: { isAdmin: true, adminRole: validated.role as string },
     });
+    await bumpUserSessionVersion(admin.id);
     return NextResponse.json({
       admin: { id: admin.id, email: admin.email, role: admin.adminRole, status: admin.status, createdAt: admin.createdAt }
     }, { status: 200 });
@@ -75,6 +76,8 @@ export async function POST(req: NextRequest) {
       status: "active",
     },
   });
+
+  await bumpUserSessionVersion(admin.id);
 
   return NextResponse.json({ admin: { id: admin.id, email: admin.email, role: admin.adminRole, status: admin.status, createdAt: admin.createdAt } }, { status: 201 });
 }
@@ -107,6 +110,7 @@ export async function PATCH(req: NextRequest) {
     where: { id: validated.id },
     data: updateData,
   });
+  await bumpUserSessionVersion(admin.id);
 
   return NextResponse.json({ admin: { id: admin.id, email: admin.email, role: admin.adminRole, status: admin.status, createdAt: admin.createdAt } });
 }

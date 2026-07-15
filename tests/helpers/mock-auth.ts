@@ -6,6 +6,7 @@ export interface MockSessionUser {
   role: string
   adminRole?: string | null
   accountId?: string | null
+  sessionVersion?: number
 }
 
 export interface MockSession {
@@ -22,6 +23,7 @@ export const defaultMockSession: MockSession = {
     role: 'owner',
     adminRole: 'admin',
     accountId: 'test-account-id',
+    sessionVersion: 0,
   },
 }
 

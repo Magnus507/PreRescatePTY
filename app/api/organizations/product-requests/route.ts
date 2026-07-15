@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
+import { requireActiveAccountSession } from "@/lib/rbac";
 import { z } from "zod";
 
 const createRequestSchema = z.object({
@@ -21,13 +20,11 @@ const createRequestSchema = z.object({
 // Company sees requests from their collaborators.
 // Optional query: ?status=pending_company_approval
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.accountId) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
 
   const organization = await prisma.organization.findFirst({
-    where: { accountId: session.user.accountId },
+    where: { accountId: auth.current.accountId },
     select: { id: true },
   });
 
@@ -80,12 +77,9 @@ export async function GET(req: NextRequest) {
 // POST /api/organizations/product-requests
 // Employee creates a product request.
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const userId = session.user.id;
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
+  const userId = auth.session.user.id;
 
   // Rate limit: 10 product requests per minute per user
   const limiter = await rateLimit("product-request", userId, {

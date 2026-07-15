@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { markFinishedGoodUnitActivated } from "@/lib/operations/activate-finished-good-unit";
+import { requireActiveAccountSession } from "@/lib/rbac";
 import {
   ACTIVATABLE_CHIP_STATUSES,
   CHIP_SERVICE_STATUS,
@@ -15,12 +14,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const userId = (session.user as { id: string }).id;
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
+  const userId = auth.session.user.id;
 
   // Rate limit: 5 activation attempts per minute per user
   const limiter = await rateLimit("corporate-chip-activate", userId, {

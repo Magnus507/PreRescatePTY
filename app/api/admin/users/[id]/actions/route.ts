@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { ACCOUNT_TYPES, ORGANIZATION_TYPES, BUSINESS_RULES } from "@/domains/shared/constants";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
-import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
+import { bumpUserSessionVersion, requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           where: { id: userId },
           data: { passwordHash },
         });
+        await bumpUserSessionVersion(userId);
 
         await prisma.appNotification.create({
           data: {
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             accountName: data.legalName || `${user.profile?.firstName} ${user.profile?.lastName} Org`
           },
         });
+        await bumpUserSessionVersion(userId);
 
         // 2. Create Organization record
         const organization = await prisma.organization.create({
@@ -226,6 +228,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           where: { id: user.accountId },
           data: { maxChipsAllocated: { increment: qty } },
         });
+        await bumpUserSessionVersion(userId);
 
         const totalCost = qty * BUSINESS_RULES.EXTRA_CHIP_PRICE;
 

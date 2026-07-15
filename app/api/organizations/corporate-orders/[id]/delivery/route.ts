@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveAccountSession } from "@/lib/rbac";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.accountId || !session?.user?.id) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
 
   const organization = await prisma.organization.findFirst({
-    where: { accountId: session.user.accountId },
+    where: { accountId: auth.current.accountId },
     select: { id: true },
   });
 
@@ -59,7 +56,7 @@ export async function PATCH(
   if (targetStatus) {
     updateData.deliveryStatus = targetStatus;
     updateData.deliveredAt = new Date();
-    updateData.deliveredByUserId = session.user.id;
+    updateData.deliveredByUserId = auth.session.user.id;
   }
   if (typeof deliveryEvidenceUrl === "string") {
     updateData.deliveryEvidenceUrl = deliveryEvidenceUrl;

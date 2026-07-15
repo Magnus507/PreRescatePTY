@@ -1,22 +1,19 @@
 import { NextRequest } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { profileUpdateSchema } from "@/lib/validations";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { ApiResponse } from "@/lib/api-response";
 import { ProfileRepository } from "@/domains/profiles/repositories/profile.repository";
+import { requireActiveAccountSession } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return ApiResponse.unauthorized();
-    }
+    const auth = await requireActiveAccountSession();
+    if (!auth.authorized) return auth.response;
 
-    const userId = session.user.id;
+    const userId = auth.session.user.id;
     const state = await AccountStateService.getAccountState(userId);
 
     const profile = await ProfileRepository.findByUserId(userId);
@@ -57,12 +54,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return ApiResponse.unauthorized();
-  }
-
-  const userId = session.user.id;
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
+  const userId = auth.session.user.id;
   try {
     const raw = await req.json();
     const validation = profileUpdateSchema.partial().safeParse(raw);

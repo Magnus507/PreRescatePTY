@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
 import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-sync-outbox";
+import { requireActiveAccountSession } from "@/lib/rbac";
 
 type ProductSelection = {
   productId: string;
@@ -16,13 +15,11 @@ type MemberSelection = {
 };
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.accountId) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
 
   const organization = await prisma.organization.findFirst({
-    where: { accountId: session.user.accountId },
+    where: { accountId: auth.current.accountId },
     select: { id: true },
   });
 
@@ -61,13 +58,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.accountId || !session?.user?.id) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
 
   const organization = await prisma.organization.findFirst({
-    where: { accountId: session.user.accountId },
+    where: { accountId: auth.current.accountId },
     select: { id: true, status: true },
   });
 
@@ -196,7 +191,7 @@ export async function POST(req: NextRequest) {
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       data: {
-        userId: session.user.id,
+        userId: auth.session.user.id,
         organizationId: organization.id,
         orderType: "corporate_employee_purchase",
         orderNumber,
