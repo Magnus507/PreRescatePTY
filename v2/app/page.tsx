@@ -10,7 +10,7 @@ export default function Home() {
         perfiles, dispositivos, activaciones, escaneos y alertas sobre un mismo backend.
       </p>
       <div className="actions">
-        <Link className="button" href="/dashboard">Entrar al Panel Cliente</Link>
+        <Link className="button" href="/login">Entrar al Panel Cliente</Link>
         <Link className="button secondary" href="/admin">Entrar al Panel Admin</Link>
       </div>
       <section className="section grid">
