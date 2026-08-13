@@ -28,8 +28,8 @@ function visibleValue(value: string | null, allowed: boolean | null) {
   return value?.trim() ? value : "No reportado";
 }
 
-export default async function EmergencyTokenPage({ params }: { params: { token: string } }) {
-  const { token } = params;
+export default async function EmergencyTokenPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
   const supabase = createSupabaseServerClient();
 
   const { data: device } = await supabase
