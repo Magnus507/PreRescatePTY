@@ -1,0 +1,1 @@
+export default function ClientesPage(){return <main className="main"><div className="eyebrow">Administración</div><h1 className="title">Clientes</h1><section className="section card"><h2>Sin clientes V2 todavía</h2><p className="muted">Las cuentas creadas en la nueva plataforma aparecerán aquí.</p></section></main>}
