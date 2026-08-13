@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 type PublicContact = {
   full_name: string;
   relationship: string | null;
