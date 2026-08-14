@@ -9,14 +9,13 @@ type Device = {
   device_number: number;
   status: string;
   public_token: string | null;
-  profile_id: string | null;
 };
 
 type ProfileOption = {
   id: string;
   first_name: string;
   last_name: string;
-  display_name?: string | null;
+  preferred_name?: string | null;
 };
 
 export default function DispositivosPage() {
@@ -31,11 +30,8 @@ export default function DispositivosPage() {
     async function load() {
       const supabase = createSupabaseBrowserClient();
       const [devicesResult, profilesResult] = await Promise.all([
-        supabase
-          .from("v2_devices")
-          .select("id,device_number,status,public_token,profile_id")
-          .order("device_number"),
-        supabase.from("v2_profiles").select("id,first_name,last_name,display_name").order("first_name"),
+        supabase.from("v2_devices").select("id,device_number,status,public_token").order("device_number"),
+        supabase.from("v2_profiles").select("id,first_name,last_name,preferred_name").order("first_name"),
       ]);
 
       if (!active) return;
@@ -94,7 +90,7 @@ export default function DispositivosPage() {
                   <strong>PRS-{String(device.device_number).padStart(6, "0")}</strong>
                   <div className="muted">
                     {device.status}
-                    {device.profile_id ? " - perfil asignado" : " - sin asignar"}
+                    {device.status === "active" ? " - activo" : " - pendiente"}
                   </div>
                 </div>
                 <span>{device.public_token ? "Token listo" : "Sin token"}</span>
