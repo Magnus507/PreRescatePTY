@@ -10,9 +10,12 @@ type Profile = {
   last_name: string;
   preferred_name: string | null;
   blood_type: string | null;
+  birth_date: string | null;
+  sex: string | null;
   allergies: string | null;
   medical_conditions: string | null;
   medications: string | null;
+  preferred_hospital: string | null;
   status: string;
 };
 
@@ -32,7 +35,9 @@ export default function PerfilesPage() {
       const supabase = createSupabaseBrowserClient();
       const { data, error: loadError } = await supabase
         .from("v2_profiles")
-        .select("id,first_name,last_name,preferred_name,blood_type,allergies,medical_conditions,medications,status")
+        .select(
+          "id,first_name,last_name,preferred_name,blood_type,birth_date,sex,allergies,medical_conditions,medications,preferred_hospital,status",
+        )
         .order("created_at", { ascending: false });
 
       if (!active) return;
@@ -57,7 +62,7 @@ export default function PerfilesPage() {
       <div className="topbar">
         <div>
           <h1 className="title">Perfiles</h1>
-          <p className="muted">Personas protegidas dentro de tu cuenta.</p>
+          <p className="muted">Personas protegidas dentro de tu cuenta. Completa aqui lo que se mostrara al escanear.</p>
         </div>
         <Link className="button" href="/dashboard/perfiles/nuevo">
           Crear perfil
@@ -86,19 +91,20 @@ export default function PerfilesPage() {
             </div>
           ) : (
             profiles.map((profile) => (
-              <div className="row" key={profile.id}>
+              <Link className="row rowLink" href={`/dashboard/perfiles/${profile.id}`} key={profile.id}>
                 <div>
                   <strong>{profileName(profile)}</strong>
                   <div className="muted">
-                    {profile.blood_type || "Tipo de sangre no indicado"} - {profile.status}
+                    {profile.blood_type || "Tipo de sangre no indicado"} - {profile.sex || "sexo no indicado"} -{" "}
+                    {profile.status}
                   </div>
                 </div>
                 <span>
-                  {profile.allergies || profile.medical_conditions || profile.medications
+                  {profile.allergies || profile.medical_conditions || profile.medications || profile.preferred_hospital
                     ? "Datos medicos"
                     : "Completar datos"}
                 </span>
-              </div>
+              </Link>
             ))
           )}
         </div>

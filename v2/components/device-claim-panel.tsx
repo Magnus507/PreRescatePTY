@@ -17,7 +17,7 @@ type ClaimResult = {
   profile_name: string;
 };
 
-export function DeviceClaimPanel({ profiles }: { profiles: ProfileOption[] }) {
+export function DeviceClaimPanel({ profiles, onClaimed }: { profiles: ProfileOption[]; onClaimed?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ClaimResult | null>(null);
@@ -75,6 +75,7 @@ export function DeviceClaimPanel({ profiles }: { profiles: ProfileOption[] }) {
         : "Perfil seleccionado",
     });
     event.currentTarget.reset();
+    onClaimed?.();
   }
 
   return (

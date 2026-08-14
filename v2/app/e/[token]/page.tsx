@@ -53,8 +53,8 @@ export default async function EmergencyTokenPage({ params }: { params: Promise<{
       <div className="eyebrow">PreRescatePTY V2 - Perfil de emergencia</div>
       <h1>{publicProfile.display_name}</h1>
       <p>
-        Dispositivo activo PRS-{String(payload.device.device_number).padStart(6, "0")} - informacion mostrada con
-        filtros de visibilidad.
+        Dispositivo activo PRS-{String(payload.device.device_number).padStart(6, "0")}. Informacion mostrada con
+        filtros de visibilidad configurados por el cliente.
       </p>
 
       <section className="section grid">
@@ -101,7 +101,13 @@ export default async function EmergencyTokenPage({ params }: { params: Promise<{
                   <strong>{contact.name}</strong>
                   <div className="muted">{contact.relationship || "Contacto"}</div>
                 </div>
-                <span>{contact.phone || "Sin telefono"}</span>
+                {contact.phone ? (
+                  <a className="button" href={`tel:${contact.phone}`}>
+                    Llamar
+                  </a>
+                ) : (
+                  <span>Sin telefono</span>
+                )}
               </div>
             ))
           )}

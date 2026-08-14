@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
 
@@ -15,7 +16,7 @@ export default function RegistroPage() {
     setStatus("");
 
     if (password !== confirmPassword) {
-      setStatus("Las contraseñas no coinciden.");
+      setStatus("Las contrasenas no coinciden.");
       return;
     }
 
@@ -39,24 +40,54 @@ export default function RegistroPage() {
 
   return (
     <main className="hero">
-      <div className="eyebrow">Registro · PreRescate V2</div>
+      <div className="eyebrow">Registro - PreRescate V2</div>
       <h1>Crea tu cuenta</h1>
-      <p>Tu cuenta será el contenedor principal de tus perfiles, contactos y dispositivos.</p>
-      <form onSubmit={submit} className="card" style={{ marginTop: 24, maxWidth: 520 }}>
-        <label htmlFor="email"><strong>Correo electrónico</strong></label>
-        <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" style={{ width: "100%", marginTop: 10, padding: 14, border: "1px solid #d9dde5", borderRadius: 12, fontSize: 16 }} />
+      <p>Tu cuenta sera el contenedor principal de tus perfiles, contactos y dispositivos.</p>
+      <form onSubmit={submit} className="card authCard">
+        <label>
+          Correo electronico
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            autoComplete="email"
+          />
+        </label>
 
-        <label htmlFor="password" style={{ display: "block", marginTop: 16 }}><strong>Contraseña</strong></label>
-        <input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} autoComplete="new-password" style={{ width: "100%", marginTop: 10, padding: 14, border: "1px solid #d9dde5", borderRadius: 12, fontSize: 16 }} />
+        <label>
+          Contrasena
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
+        </label>
 
-        <label htmlFor="confirmPassword" style={{ display: "block", marginTop: 16 }}><strong>Confirmar contraseña</strong></label>
-        <input id="confirmPassword" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required minLength={8} autoComplete="new-password" style={{ width: "100%", marginTop: 10, padding: 14, border: "1px solid #d9dde5", borderRadius: 12, fontSize: 16 }} />
+        <label>
+          Confirmar contrasena
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
+        </label>
 
-        <button className="button" type="submit" disabled={loading} style={{ border: 0, marginTop: 18 }}>{loading ? "Creando..." : "Crear cuenta"}</button>
+        <button className="button" type="submit" disabled={loading}>
+          {loading ? "Creando..." : "Crear cuenta"}
+        </button>
         {status ? <p className="muted" style={{ fontSize: 14 }}>{status}</p> : null}
       </form>
       <div className="actions">
-        <a className="button secondary" href="/login">Ya tengo cuenta</a>
+        <Link className="button secondary" href="/login">
+          Ya tengo cuenta
+        </Link>
       </div>
     </main>
   );

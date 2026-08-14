@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "../../../lib/supabase/browser";
 
@@ -8,6 +9,7 @@ type Contact = {
   name: string;
   relationship: string | null;
   phone: string;
+  secondary_phone: string | null;
   email: string | null;
   status: string;
 };
@@ -19,16 +21,31 @@ type Profile = {
   preferred_name: string | null;
 };
 
+type ContactLink = {
+  profile_id: string;
+  contact_id: string;
+  priority: number | null;
+  can_receive_alerts: boolean | null;
+  show_publicly: boolean | null;
+};
+
 function profileName(profile: Profile) {
   return (profile.preferred_name || `${profile.first_name} ${profile.last_name}`).trim();
+}
+
+function textValue(value: FormDataEntryValue | null) {
+  const text = String(value || "").trim();
+  return text || null;
 }
 
 export default function ContactosPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [links, setLinks] = useState<ContactLink[]>([]);
   const [accountId, setAccountId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [workingLink, setWorkingLink] = useState("");
   const [error, setError] = useState("");
 
   async function load() {
@@ -61,10 +78,10 @@ export default function ContactosPage() {
 
     setAccountId(membership.account_id);
 
-    const [contactsResult, profilesResult] = await Promise.all([
+    const [contactsResult, profilesResult, linksResult] = await Promise.all([
       supabase
         .from("v2_emergency_contacts")
-        .select("id,name,relationship,phone,email,status")
+        .select("id,name,relationship,phone,secondary_phone,email,status")
         .eq("account_id", membership.account_id)
         .order("created_at", { ascending: false }),
       supabase
@@ -72,13 +89,23 @@ export default function ContactosPage() {
         .select("id,first_name,last_name,preferred_name")
         .eq("account_id", membership.account_id)
         .order("first_name"),
+      supabase
+        .from("v2_profile_emergency_contacts")
+        .select("profile_id,contact_id,priority,can_receive_alerts,show_publicly")
+        .order("priority", { ascending: true }),
     ]);
 
-    if (contactsResult.error || profilesResult.error) {
-      setError(contactsResult.error?.message || profilesResult.error?.message || "No se pudieron cargar los datos.");
+    if (contactsResult.error || profilesResult.error || linksResult.error) {
+      setError(
+        contactsResult.error?.message ||
+          profilesResult.error?.message ||
+          linksResult.error?.message ||
+          "No se pudieron cargar los datos.",
+      );
     } else {
       setContacts((contactsResult.data ?? []) as Contact[]);
       setProfiles((profilesResult.data ?? []) as Profile[]);
+      setLinks((linksResult.data ?? []) as ContactLink[]);
     }
     setLoading(false);
   }
@@ -108,9 +135,10 @@ export default function ContactosPage() {
       .insert({
         account_id: accountId,
         name: String(form.get("name") || "").trim(),
-        relationship: String(form.get("relationship") || "").trim() || null,
+        relationship: textValue(form.get("relationship")),
         phone: String(form.get("phone") || "").trim(),
-        email: String(form.get("email") || "").trim() || null,
+        secondary_phone: textValue(form.get("secondary_phone")),
+        email: textValue(form.get("email")),
       })
       .select("id")
       .single();
@@ -126,6 +154,7 @@ export default function ContactosPage() {
         profile_id: profileId,
         contact_id: contact.id,
         show_publicly: showPublicly,
+        can_receive_alerts: true,
       });
 
       if (linkError) {
@@ -140,6 +169,35 @@ export default function ContactosPage() {
     await load();
   }
 
+  async function togglePublic(link: ContactLink) {
+    setWorkingLink(`${link.profile_id}-${link.contact_id}`);
+    setError("");
+
+    const supabase = createSupabaseBrowserClient();
+    const { error: updateError } = await supabase
+      .from("v2_profile_emergency_contacts")
+      .update({ show_publicly: !link.show_publicly })
+      .eq("profile_id", link.profile_id)
+      .eq("contact_id", link.contact_id);
+
+    setWorkingLink("");
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    await load();
+  }
+
+  function linksFor(contactId: string) {
+    return links.filter((link) => link.contact_id === contactId);
+  }
+
+  function profileFor(profileId: string) {
+    return profiles.find((profile) => profile.id === profileId);
+  }
+
   return (
     <main className="main">
       <div className="eyebrow">Mi cuenta</div>
@@ -152,7 +210,7 @@ export default function ContactosPage() {
       </div>
 
       {error ? (
-        <section className="card" style={{ marginBottom: 18 }}>
+        <section className="card dangerCard" style={{ marginBottom: 18 }}>
           <strong>No se pudieron guardar los cambios</strong>
           <p className="errorText">{error}</p>
         </section>
@@ -171,8 +229,12 @@ export default function ContactosPage() {
               <input name="relationship" placeholder="Mama, hermano, medico..." />
             </label>
             <label>
-              Telefono
+              Telefono principal
               <input name="phone" required />
+            </label>
+            <label>
+              Telefono alterno
+              <input name="secondary_phone" />
             </label>
             <label>
               Email
@@ -189,7 +251,7 @@ export default function ContactosPage() {
                 ))}
               </select>
             </label>
-            <label style={{ alignSelf: "end" }}>
+            <label className="inlineCheck" style={{ alignSelf: "end" }}>
               <input name="show_publicly" type="checkbox" defaultChecked /> Visible en emergencia
             </label>
           </div>
@@ -197,6 +259,9 @@ export default function ContactosPage() {
             <button className="button" type="submit" disabled={saving || loading}>
               {saving ? "Guardando..." : "Agregar contacto"}
             </button>
+            <Link className="button secondary" href="/dashboard/perfiles">
+              Revisar perfiles
+            </Link>
           </div>
         </form>
       </section>
@@ -215,15 +280,44 @@ export default function ContactosPage() {
               <span>Agrega el primero arriba</span>
             </div>
           ) : (
-            contacts.map((contact) => (
-              <div className="row" key={contact.id}>
-                <div>
-                  <strong>{contact.name}</strong>
-                  <div className="muted">{contact.relationship || "Contacto"} - {contact.status}</div>
+            contacts.map((contact) => {
+              const contactLinks = linksFor(contact.id);
+
+              return (
+                <div className="row stackRow" key={contact.id}>
+                  <div>
+                    <strong>{contact.name}</strong>
+                    <div className="muted">
+                      {contact.relationship || "Contacto"} - {contact.status} - {contact.phone}
+                    </div>
+                    {contact.secondary_phone ? <div className="muted">Alterno: {contact.secondary_phone}</div> : null}
+                    {contact.email ? <div className="muted">{contact.email}</div> : null}
+                  </div>
+                  <div className="linkChips">
+                    {contactLinks.length === 0 ? (
+                      <span className="chip">Sin perfil</span>
+                    ) : (
+                      contactLinks.map((link) => {
+                        const profile = profileFor(link.profile_id);
+                        const key = `${link.profile_id}-${link.contact_id}`;
+                        return (
+                          <button
+                            className={link.show_publicly ? "chip chipButton" : "chip chipButton mutedChip"}
+                            disabled={workingLink === key}
+                            key={key}
+                            onClick={() => togglePublic(link)}
+                            type="button"
+                          >
+                            {profile ? profileName(profile) : "Perfil"} -{" "}
+                            {link.show_publicly ? "publico" : "privado"}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-                <span>{contact.phone}</span>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </section>
