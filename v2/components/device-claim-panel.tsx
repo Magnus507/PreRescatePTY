@@ -7,7 +7,7 @@ type ProfileOption = {
   id: string;
   first_name: string;
   last_name: string;
-  display_name?: string | null;
+  preferred_name?: string | null;
 };
 
 type ClaimResult = {
@@ -39,10 +39,11 @@ export function DeviceClaimPanel({ profiles }: { profiles: ProfileOption[] }) {
     const form = new FormData(event.currentTarget);
     const claimCode = String(form.get("claim_code") || "").trim();
     const profileId = String(form.get("profile_id") || "").trim();
+    const selectedProfile = sortedProfiles.find((profile) => profile.id === profileId);
 
     if (!claimCode || !profileId) {
       setBusy(false);
-      setError("Escribe el código y elige un perfil.");
+      setError("Escribe el codigo y elige un perfil.");
       return;
     }
 
@@ -68,23 +69,25 @@ export function DeviceClaimPanel({ profiles }: { profiles: ProfileOption[] }) {
     setResult({
       device_number: Number(row.device_number ?? 0),
       public_token: String(row.public_token ?? ""),
-      public_url: String(row.public_url ?? ""),
-      profile_name: String(row.profile_name ?? ""),
+      public_url: row.public_token ? `${window.location.origin}/e/${row.public_token}` : "",
+      profile_name: selectedProfile
+        ? (selectedProfile.preferred_name || `${selectedProfile.first_name} ${selectedProfile.last_name}`).trim()
+        : "Perfil seleccionado",
     });
     event.currentTarget.reset();
   }
 
   return (
     <section className="card" style={{ marginTop: 18 }}>
-      <div className="eyebrow">Activación real</div>
+      <div className="eyebrow">Activacion real</div>
       <h2>Reclamar dispositivo</h2>
       <p className="muted">
-        Ingresa el código de reclamación, elige el perfil y activa el dispositivo en la misma operación.
+        Ingresa el codigo de reclamacion, elige el perfil y activa el dispositivo en la misma operacion.
       </p>
       <form className="section" onSubmit={onSubmit}>
         <div className="formgrid">
           <label>
-            Código de reclamo
+            Codigo de reclamo
             <input name="claim_code" placeholder="PRS-123456" autoComplete="off" />
           </label>
           <label>
@@ -95,7 +98,7 @@ export function DeviceClaimPanel({ profiles }: { profiles: ProfileOption[] }) {
               </option>
               {sortedProfiles.map((profile) => (
                 <option key={profile.id} value={profile.id}>
-                  {(profile.display_name || `${profile.first_name} ${profile.last_name}`).trim()}
+                  {(profile.preferred_name || `${profile.first_name} ${profile.last_name}`).trim()}
                 </option>
               ))}
             </select>
@@ -112,10 +115,10 @@ export function DeviceClaimPanel({ profiles }: { profiles: ProfileOption[] }) {
               Perfil asignado: <strong>{result.profile_name}</strong>
             </p>
             <p className="muted" style={{ wordBreak: "break-all" }}>
-              Enlace público: {result.public_url}
+              Enlace publico: {result.public_url}
             </p>
             <p className="muted" style={{ wordBreak: "break-all" }}>
-              Token público: {result.public_token}
+              Token publico: {result.public_token}
             </p>
           </div>
         ) : null}
