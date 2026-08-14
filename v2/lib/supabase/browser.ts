@@ -1,7 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-
-const supabaseUrl = "https://fikidmfquaxhlayxctsa.supabase.co";
-const supabasePublishableKey = "sb_publishable_nIDL_KCbbJpki4Y1_3cR1g_nCmkNUe0";
+import { supabasePublishableKey, supabaseUrl } from "./config";
 
 let browserClient: SupabaseClient | undefined;
 
