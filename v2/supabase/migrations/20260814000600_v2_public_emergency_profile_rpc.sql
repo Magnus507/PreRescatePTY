@@ -110,4 +110,4 @@ $function$;
 
 revoke all on function public.v2_get_public_emergency_profile(text) from public;
 grant usage on schema public to anon, authenticated;
-grant execute on function public.v2_get_public_emergency_profile(text) to anon, authenticated;
+grant execute on function public.v2_get_public_emergency_profile(text) to anon;
