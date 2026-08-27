@@ -84,15 +84,7 @@ function PedidosContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
-  const [paymentProofDraft, setPaymentProofDraft] = useState<Record<string, string>>({});
   const [paymentRefDraft, setPaymentRefDraft] = useState<Record<string, string>>({});
-  
-  // Shipping states for updates
-  const [, setShippingAddress] = useState("");
-  const [, setShippingCity] = useState("");
-  const [, setShippingNotes] = useState("");
-  
-  // Dynamic instructions
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
 
   const formatMoney = (value: number | null | undefined) => `$${(Number(value) || 0).toFixed(2)}`;
@@ -171,62 +163,10 @@ function PedidosContent() {
     setUploadingFor(null);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, orderId: string) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("El archivo es muy pesado (máx 5MB)");
-      return;
-    }
-
-    setUploadingFor(orderId);
-    
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", "payment");
-    formData.append("bucket", "payment-proofs");
-
-    try {
-      // 1. Optimize and Upload
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!uploadRes.ok) throw new Error("Error al procesar imagen");
-      const { url } = await uploadRes.json();
-
-      // 2. Register payment proof in manual flow endpoint
-      const res = await fetch(`/api/orders/${orderId}/payment-proof`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          paymentProofUrl: url,
-          manualPaymentReference: paymentRefDraft[orderId] || undefined,
-        }),
-      });
-      
-      if (res.ok) {
-        toast.success("Comprobante enviado. Tu pago está bajo revisión.");
-        loadOrders();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Error al actualizar el pedido");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error al subir el comprobante");
-    } finally {
-      setUploadingFor(null);
-    }
-  };
-
   const handleSubmitReference = async (orderId: string) => {
-    const manualPaymentReference = paymentRefDraft[orderId];
-    const paymentProofUrl = paymentProofDraft[orderId];
-    if (!manualPaymentReference && !paymentProofUrl) {
-      toast.error("Ingresa referencia Yappy o URL de comprobante");
+    const manualPaymentReference = paymentRefDraft[orderId]?.trim();
+    if (!manualPaymentReference) {
+      toast.error("Ingresa la referencia de pago");
       return;
     }
     setUploadingFor(orderId);
@@ -234,10 +174,10 @@ function PedidosContent() {
       const res = await fetch(`/api/orders/${orderId}/payment-proof`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ manualPaymentReference, paymentProofUrl }),
+        body: JSON.stringify({ manualPaymentReference }),
       });
       if (res.ok) {
-        toast.success("Referencia/comprobante enviado. Pago bajo revisión.");
+        toast.success("Referencia enviada. Pago bajo revisión.");
         loadOrders();
       } else {
         const data = await res.json().catch(() => ({}));
@@ -377,17 +317,9 @@ function PedidosContent() {
                       }}
                       uploadingFor={uploadingFor}
                       paymentRefDraft={paymentRefDraft}
-                      paymentProofDraft={paymentProofDraft}
                       onRefChange={(oid, val) => setPaymentRefDraft((prev) => ({ ...prev, [oid]: val }))}
-                      onProofUrlChange={(oid, val) => setPaymentProofDraft((prev) => ({ ...prev, [oid]: val }))}
-                      onUpload={handleFileUpload}
                       onSubmitReference={handleSubmitReference}
                       onCancel={handleCancel}
-                      onShippingChange={{
-                        address: setShippingAddress,
-                        city: setShippingCity,
-                        notes: setShippingNotes,
-                      }}
                       paymentInstructions={<PaymentInstructions paymentConfig={paymentConfig} />}
                     />
                   )}
@@ -429,7 +361,7 @@ function PedidosContent() {
                       <div className="rounded-2xl border border-emerald-200 bg-white/80 p-4">
                         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700 mb-1">Comprobante</p>
                         <p className="text-sm font-medium text-slate-600">
-                          Puedes volver a subir tu comprobante desde esta tarjeta o desde el mismo pedido si necesitas actualizarlo.
+                          Si necesitas actualizarlo antes de que sea revisado, utiliza el flujo del pedido cuando vuelva a estar pendiente.
                         </p>
                       </div>
                     </div>
