@@ -108,7 +108,10 @@ describe("POST /api/orders", () => {
       orderNumber: "ORD-001",
       customerName: "Ana Perez",
       customerEmail: "cliente@example.com",
-      customerPhone: null,
+      customerPhone: "6000-0000",
+      shippingAddress: "Calle 50, edificio de prueba",
+      shippingCity: "Panamá",
+      shippingNotes: "Recepción",
       providerReference: null,
       manualPaymentReference: null,
       paymentProofUrl: null,
@@ -126,6 +129,10 @@ describe("POST /api/orders", () => {
       body: JSON.stringify({
         customerName: "Ana Perez",
         customerEmail: "cliente@example.com",
+        customerPhone: "6000-0000",
+        shippingAddress: "Calle 50, edificio de prueba",
+        shippingCity: "Panamá",
+        shippingNotes: "Recepción",
         paymentMethod: "manual",
         items: [
           {
@@ -146,6 +153,11 @@ describe("POST /api/orders", () => {
     expect(mockPrisma.order.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          customerName: "Ana Perez",
+          customerPhone: "6000-0000",
+          shippingAddress: "Calle 50, edificio de prueba",
+          shippingCity: "Panamá",
+          shippingNotes: "Recepción",
           items: expect.objectContaining({
             create: expect.arrayContaining([
               expect.objectContaining({
