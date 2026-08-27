@@ -93,6 +93,24 @@ function unitSubject(unit: {
   };
 }
 
+function relatedForMovement(
+  movement: OperationMovement,
+  entityType: HistoryEntityType,
+  entityId: string | null
+): OperationHistoryTimelineItem["related"] {
+  return {
+    commercialOrderId: movement.commercialOrderId,
+    dispatchId: movement.dispatchId,
+    unitId: entityType === "unit" ? entityId : null,
+    digitalBatchId: entityType === "digital_batch" ? entityId : null,
+    printOrderId: entityType === "print_order" ? entityId : null,
+    productionOrderId: entityType === "production_order" ? entityId : null,
+    warrantyId: entityType === "warranty" ? entityId : null,
+    replacementId: entityType === "replacement" ? entityId : null,
+    returnId: entityType === "return" ? entityId : null,
+  };
+}
+
 async function buildUnitHistoryByLabel(internalLabel: string, limit: number) {
   const unit = await prisma.operationFinishedGoodUnit.findUnique({
     where: { internalLabel },
@@ -100,10 +118,10 @@ async function buildUnitHistoryByLabel(internalLabel: string, limit: number) {
   });
   if (!unit) return null;
 
-  const movements = await getOperationMovements({ internalLabel, limit });
+  const movements = await getOperationMovements({ internalLabel, limit: Math.max(limit, 250) });
   return {
     subject: unitSubject(unit),
-    timeline: movements.map((movement) =>
+    timeline: movements.slice(0, limit).map((movement) =>
       toTimelineItem(movement, {
         commercialOrderId: movement.commercialOrderId,
         dispatchId: movement.dispatchId,
@@ -117,8 +135,8 @@ async function buildUnitHistoryByLabel(internalLabel: string, limit: number) {
       })
     ),
     summary: {
-      totalEvents: movements.length,
-      firstEventAt: movements.at(-1)?.occurredAt || null,
+      totalEvents: Math.min(movements.length, limit),
+      firstEventAt: movements.slice(0, limit).at(-1)?.occurredAt || null,
       lastEventAt: movements[0]?.occurredAt || null,
       currentStatus: unit.status,
       activationStatus: unit.activationStatus,
@@ -141,7 +159,12 @@ async function buildCommercialOrderHistoryById(id: string, limit: number) {
   });
   if (!order) return null;
 
-  const movements = await getOperationMovements({ commercialOrderId: id, limit });
+  const movements = await getOperationMovements({
+    commercialOrderId: id,
+    limit: Math.max(limit, 250),
+  });
+  const exactMovements = movements.slice(0, limit);
+
   return {
     subject: {
       entityType: "commercial_order" as const,
@@ -153,7 +176,7 @@ async function buildCommercialOrderHistoryById(id: string, limit: number) {
       currentStatus: `${order.status} / ${order.paymentStatus} / ${order.fulfillmentStatus}`,
       activationStatus: null,
     },
-    timeline: movements.map((movement) =>
+    timeline: exactMovements.map((movement) =>
       toTimelineItem(movement, {
         commercialOrderId: order.id,
         dispatchId: movement.dispatchId,
@@ -167,9 +190,9 @@ async function buildCommercialOrderHistoryById(id: string, limit: number) {
       })
     ),
     summary: {
-      totalEvents: movements.length,
-      firstEventAt: movements.at(-1)?.occurredAt || null,
-      lastEventAt: movements[0]?.occurredAt || null,
+      totalEvents: exactMovements.length,
+      firstEventAt: exactMovements.at(-1)?.occurredAt || null,
+      lastEventAt: exactMovements[0]?.occurredAt || null,
       currentStatus: order.status,
       activationStatus: null,
       deliveredPendingActivation: null,
@@ -187,6 +210,160 @@ function sourceForEntityType(entityType: HistoryEntityType) {
   if (entityType === "replacement") return "replacement";
   if (entityType === "return") return "return";
   return null;
+}
+
+async function resolveEntitySubjectById(
+  entityType: Exclude<HistoryEntityType, "unit" | "commercial_order">,
+  entityId: string
+): Promise<OperationHistorySubject | null> {
+  if (entityType === "digital_batch") {
+    const row = await prisma.operationDigitalBatch.findUnique({
+      where: { id: entityId },
+      select: { id: true, code: true, name: true, status: true },
+    });
+    return row
+      ? {
+          entityType,
+          entityId: row.id,
+          entityCode: row.code,
+          internalLabel: null,
+          title: row.code,
+          subtitle: row.name || "Lote digital",
+          currentStatus: row.status,
+          activationStatus: null,
+        }
+      : null;
+  }
+
+  if (entityType === "print_order") {
+    const row = await prisma.operationPrintOrder.findUnique({
+      where: { id: entityId },
+      select: { id: true, code: true, supplierName: true, status: true },
+    });
+    return row
+      ? {
+          entityType,
+          entityId: row.id,
+          entityCode: row.code,
+          internalLabel: null,
+          title: row.code,
+          subtitle: row.supplierName || "Imprenta",
+          currentStatus: row.status,
+          activationStatus: null,
+        }
+      : null;
+  }
+
+  if (entityType === "production_order") {
+    const row = await prisma.operationProductionOrder.findUnique({
+      where: { id: entityId },
+      select: { id: true, code: true, status: true },
+    });
+    return row
+      ? {
+          entityType,
+          entityId: row.id,
+          entityCode: row.code,
+          internalLabel: null,
+          title: row.code,
+          subtitle: "Producción",
+          currentStatus: row.status,
+          activationStatus: null,
+        }
+      : null;
+  }
+
+  if (entityType === "dispatch") {
+    const row = await prisma.operationDispatch.findUnique({
+      where: { id: entityId },
+      select: { id: true, code: true, destinationName: true, status: true },
+    });
+    return row
+      ? {
+          entityType,
+          entityId: row.id,
+          entityCode: row.code,
+          internalLabel: null,
+          title: row.code,
+          subtitle: row.destinationName || "Despacho",
+          currentStatus: row.status,
+          activationStatus: null,
+        }
+      : null;
+  }
+
+  if (entityType === "warranty") {
+    const row = await prisma.operationWarranty.findUnique({
+      where: { id: entityId },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        coverageStatus: true,
+        internalLabel: true,
+      },
+    });
+    return row
+      ? {
+          entityType,
+          entityId: row.id,
+          entityCode: row.code,
+          internalLabel: row.internalLabel,
+          title: row.code,
+          subtitle: row.internalLabel || "Garantía",
+          currentStatus: `${row.status} / ${row.coverageStatus}`,
+          activationStatus: null,
+        }
+      : null;
+  }
+
+  if (entityType === "replacement") {
+    const row = await prisma.operationReplacement.findUnique({
+      where: { id: entityId },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        originalInternalLabel: true,
+        replacementInternalLabel: true,
+      },
+    });
+    return row
+      ? {
+          entityType,
+          entityId: row.id,
+          entityCode: row.code,
+          internalLabel: row.originalInternalLabel || row.replacementInternalLabel,
+          title: row.code,
+          subtitle: row.originalInternalLabel || "Reemplazo",
+          currentStatus: row.status,
+          activationStatus: null,
+        }
+      : null;
+  }
+
+  const row = await prisma.operationReturn.findUnique({
+    where: { id: entityId },
+    select: {
+      id: true,
+      code: true,
+      status: true,
+      returnType: true,
+      internalLabel: true,
+    },
+  });
+  return row
+    ? {
+        entityType: "return",
+        entityId: row.id,
+        entityCode: row.code,
+        internalLabel: row.internalLabel,
+        title: row.code,
+        subtitle: row.internalLabel || row.returnType || "Devolución",
+        currentStatus: row.status,
+        activationStatus: null,
+      }
+    : null;
 }
 
 async function searchSuggestions(search: string, limit: number) {
@@ -304,7 +481,7 @@ export async function getOperationHistory(params: {
   const internalLabel = params.internalLabel?.trim() || null;
   const identifier = params.identifier?.trim() || null;
   const entityType = params.entityType || null;
-  const entityId = params.entityId || null;
+  const entityId = params.entityId?.trim() || null;
 
   if (
     (entityType === "unit" || (!entityType && internalLabel)) &&
@@ -321,7 +498,42 @@ export async function getOperationHistory(params: {
   }
 
   const source = entityType ? sourceForEntityType(entityType) : null;
-  if (entityType && source && (entityId || identifier || search)) {
+
+  if (
+    entityType &&
+    entityType !== "unit" &&
+    entityType !== "commercial_order" &&
+    source &&
+    entityId
+  ) {
+    const subject = await resolveEntitySubjectById(entityType, entityId);
+    if (!subject) return emptyResult();
+
+    const candidates = await getOperationMovements({
+      source,
+      limit: 500,
+    });
+    const movements = candidates
+      .filter((movement) => movement.entityId === entityId)
+      .slice(0, limit);
+
+    return {
+      subject,
+      timeline: movements.map((movement) =>
+        toTimelineItem(movement, relatedForMovement(movement, entityType, entityId))
+      ),
+      summary: {
+        totalEvents: movements.length,
+        firstEventAt: movements.at(-1)?.occurredAt || null,
+        lastEventAt: movements[0]?.occurredAt || null,
+        currentStatus: subject.currentStatus,
+        activationStatus: subject.activationStatus,
+        deliveredPendingActivation: null,
+      },
+    };
+  }
+
+  if (entityType && source && (identifier || search)) {
     const movements = await getOperationMovements({
       source,
       search: search || identifier || null,
@@ -332,28 +544,19 @@ export async function getOperationHistory(params: {
     return {
       subject: {
         entityType,
-        entityId: entityId || identifier || "",
-        entityCode: identifier || null,
+        entityId: identifier || search || "",
+        entityCode: identifier || search || null,
         internalLabel: entityType === "unit" ? internalLabel || identifier || null : null,
-        title: identifier || entityType,
+        title: identifier || search || entityType,
         subtitle: entityType.replaceAll("_", " "),
         currentStatus: null,
         activationStatus: null,
       },
       timeline: movements.map((movement) =>
-        toTimelineItem(movement, {
-          commercialOrderId: movement.commercialOrderId,
-          dispatchId: movement.dispatchId,
-          unitId: entityType === "unit" ? entityId || identifier || null : null,
-          digitalBatchId: entityType === "digital_batch" ? entityId || identifier || null : null,
-          printOrderId: entityType === "print_order" ? entityId || identifier || null : null,
-          productionOrderId:
-            entityType === "production_order" ? entityId || identifier || null : null,
-          warrantyId: entityType === "warranty" ? entityId || identifier || null : null,
-          replacementId:
-            entityType === "replacement" ? entityId || identifier || null : null,
-          returnId: entityType === "return" ? entityId || identifier || null : null,
-        })
+        toTimelineItem(
+          movement,
+          relatedForMovement(movement, entityType, movement.entityId)
+        )
       ),
       summary: {
         totalEvents: movements.length,
