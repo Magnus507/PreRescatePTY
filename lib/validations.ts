@@ -159,16 +159,22 @@ export const adminUpdateSchema = z.object({
 // ORDER SCHEMAS
 // ──────────────────────────────────────────────
 
+/**
+ * Store checkout contract.
+ *
+ * The customer/delivery fields are an immutable snapshot of the person and
+ * destination selected at checkout. They must not be silently inferred to a
+ * generic value such as "Cliente", because fulfillment needs an identifiable
+ * recipient even when the account profile is incomplete or the order is sent
+ * to a different person/address.
+ */
 export const orderCreateSchema = z.object({
-  customerName: z.preprocess(
-    (v) => typeof v === "string" && v.trim().length >= 2 ? v.trim() : "Cliente",
-    z.string().min(2, "Nombre requerido").max(200)
-  ),
-  customerEmail: z.string().email("Email inválido"),
-  customerPhone: z.string().optional(),
-  shippingAddress: z.string().max(500).optional().nullable(),
-  shippingCity: z.string().max(100).optional().nullable(),
-  shippingNotes: z.string().optional(),
+  customerName: z.string().trim().min(2, "Nombre de quien recibe requerido").max(200),
+  customerEmail: z.string().trim().email("Email inválido"),
+  customerPhone: z.string().trim().min(7, "Teléfono de contacto requerido").max(30),
+  shippingAddress: z.string().trim().min(5, "Dirección de entrega requerida").max(500),
+  shippingCity: z.string().trim().min(2, "Ciudad o área de entrega requerida").max(100),
+  shippingNotes: z.string().trim().max(500, "Las notas no pueden superar 500 caracteres").optional().default(""),
   providerReference: z.string().optional().nullable(),
   paymentMethod: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase() : v), z.enum(["manual", "yappy", "bank_transfer"])).optional().default("manual"),
   customerDocument: z.string().optional().nullable(),
