@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getFirstValidationMessage } from "../../production-orders.helpers";
-import { getProductMetadata } from "@/app/api/admin/operations/finished-good-units/finished-good-units.helpers";
-import { ensureTraceableDigitalIdentity } from "@/lib/operations/traceable-digital-identity";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -38,24 +35,21 @@ export async function POST(
         select: { id: true, outputType: true, status: true },
       });
 
-      if (!productionOrder) {
-        return null;
-      }
-
+      if (!productionOrder) return null;
       if (["completed", "cancelled"].includes(productionOrder.status)) {
         throw new Error("TERMINAL_PRODUCTION_ORDER");
       }
 
       const batchItems = await tx.operationDigitalBatchItem.findMany({
-        where: { id: { in: digitalBatchItemIds } },
+        where: {
+          id: { in: digitalBatchItemIds },
+          productionOrderId,
+        },
         include: {
           batch: true,
           printOrderItems: {
-            include: {
-              printOrder: true,
-            },
+            include: { printOrder: true },
           },
-          finishedGoodUnits: true,
         },
       });
 
@@ -67,9 +61,6 @@ export async function POST(
         if (item.status !== "printed") {
           throw new Error("DIGITAL_BATCH_ITEM_NOT_PRINTED");
         }
-        if (item.finishedGoodUnits.length > 0) {
-          throw new Error("DIGITAL_BATCH_ITEM_ALREADY_LINKED");
-        }
         if (item.batch.productType !== productionOrder.outputType) {
           throw new Error("INCOMPATIBLE_PRODUCTION_ORDER");
         }
@@ -79,76 +70,40 @@ export async function POST(
         }
       }
 
-      const createdUnits = [];
+      await tx.operationDigitalBatchItem.updateMany({
+        where: {
+          id: { in: digitalBatchItemIds },
+          productionOrderId,
+          status: "printed",
+        },
+        data: { status: "assembled" },
+      });
 
-      for (const item of batchItems) {
-        const printOrder = item.printOrderItems[0]?.printOrder || null;
-        const productMetadata = getProductMetadata(item.batch.productType);
-        const identity = await ensureTraceableDigitalIdentity(tx, {
-          item,
-          productType: productionOrder.outputType,
-          requestOrigin: req.headers.get("origin"),
-        });
-        const unit = await tx.operationFinishedGoodUnit.create({
-          data: {
-            internalLabel: item.internalLabel,
-            productCode: productMetadata.productCode,
-            productName: productMetadata.productName,
-            productType: productionOrder.outputType,
-            digitalBatchId: item.batchId,
-            digitalBatchItemId: item.id,
-            chipId: identity.chip.id,
-            printOrderId: printOrder?.id || null,
-            status: "qa_pending",
-            qaStatus: "pending",
-            activationStatus: "not_activated",
-            notes: parsed.data.notes || null,
-            events: {
-              create: {
-                eventType: "ASSEMBLED",
-                reason: "Unidad ensamblada desde item impreso",
-                referenceType: "production_order",
-                referenceId: productionOrder.id,
-                metadataJson: {
-                  source: "production_order_assemble_units",
-                  digitalBatchItemId: item.id,
-                  chipId: identity.chip.id,
-                  productionOrderId: productionOrder.id,
-                  printOrderId: printOrder?.id || null,
-                  previousStatus: item.status,
-                },
-              },
-            },
-          },
-        });
-
-        await tx.operationDigitalBatchItem.update({
-          where: { id: item.id },
-          data: { status: "assembled" },
-        });
-
-        createdUnits.push(unit);
-      }
-
-      const event = await tx.operationProductionEvent.create({
+      await tx.operationProductionEvent.create({
         data: {
-          productionOrderId: productionOrder.id,
-          eventType: "ASSEMBLED_UNITS",
-          quantity: createdUnits.length,
-          reason: parsed.data.notes || "Unidades ensambladas desde items impresos",
+          productionOrderId,
+          eventType: "UNIT_ASSEMBLED",
+          quantity: batchItems.length,
+          reason: parsed.data.notes || "Chip + sticker ensamblados",
           metadataJson: JSON.stringify({
             digitalBatchItemIds,
-            createdUnitIds: createdUnits.map((unit) => unit.id),
+            nextRequiredStep: "packaging",
           }),
           createdById,
         },
       });
 
-      return {
-        productionOrder,
-        createdUnits,
-        event,
-      };
+      await tx.operationProductionOrder.update({
+        where: { id: productionOrderId },
+        data: { status: "started" },
+      });
+
+      const assembledItems = await tx.operationDigitalBatchItem.findMany({
+        where: { id: { in: digitalBatchItemIds } },
+        orderBy: [{ sequenceNumber: "asc" }, { internalLabel: "asc" }],
+      });
+
+      return { productionOrder, assembledItems };
     });
 
     if (!result) {
@@ -158,35 +113,26 @@ export async function POST(
     return NextResponse.json(
       {
         productionOrder: result.productionOrder,
-        createdUnits: result.createdUnits,
-        event: result.event,
+        assembledItems: result.assembledItems,
+        message: "Ensamblaje registrado. Falta empaque antes de crear la unidad para QC.",
       },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (error) {
     if (error instanceof Error && error.message === "TERMINAL_PRODUCTION_ORDER") {
-      return NextResponse.json({ error: "No se puede ensamblar sobre una orden completed o cancelled" }, { status: 400 });
+      return NextResponse.json({ error: "No se puede ensamblar sobre una orden finalizada" }, { status: 400 });
     }
     if (error instanceof Error && error.message === "DIGITAL_BATCH_ITEM_NOT_FOUND") {
-      return NextResponse.json({ error: "Uno o mas digitalBatchItemIds no existen" }, { status: 400 });
+      return NextResponse.json({ error: "Uno o más items no pertenecen a esta orden de producción" }, { status: 400 });
     }
     if (error instanceof Error && error.message === "DIGITAL_BATCH_ITEM_NOT_PRINTED") {
-      return NextResponse.json({ error: "Todos los items deben estar printed" }, { status: 400 });
-    }
-    if (error instanceof Error && error.message === "DIGITAL_BATCH_ITEM_ALREADY_LINKED") {
-      return NextResponse.json({ error: "Uno o mas items ya estan vinculados a una unidad terminada" }, { status: 409 });
+      return NextResponse.json({ error: "Todos los items deben estar impresos antes del ensamblaje" }, { status: 400 });
     }
     if (error instanceof Error && error.message === "INCOMPATIBLE_PRODUCTION_ORDER") {
-      return NextResponse.json({ error: "La orden de produccion no coincide con el tipo del item" }, { status: 400 });
+      return NextResponse.json({ error: "La orden de producción no coincide con el tipo del item" }, { status: 400 });
     }
     if (error instanceof Error && error.message === "PRINT_ORDER_NOT_RECEIVED") {
-      return NextResponse.json({ error: "El item debe pertenecer a una orden a imprenta recibida" }, { status: 400 });
-    }
-    if (error instanceof Error && error.message.startsWith("TRACEABLE_")) {
-      return NextResponse.json({ error: "No se pudo asegurar la identidad QR/NFC de la unidad" }, { status: 409 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ error: "Ya existe una unidad con esa etiqueta interna" }, { status: 409 });
+      return NextResponse.json({ error: "La impresión debe estar recibida antes del ensamblaje" }, { status: 400 });
     }
 
     console.error("[operations/production-orders/:id/assemble-units] POST error:", error);
