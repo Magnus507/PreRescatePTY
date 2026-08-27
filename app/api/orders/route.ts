@@ -11,7 +11,7 @@ import {
   parseCustomerFulfillmentSummaryFromInternalNote,
   resolveStoreProductForOrder,
 } from "@/lib/orders/store-order-fulfillment";
-import { addMoney, multiplyMoney, parseMoney, serializeMoney } from "@/lib/money";
+import { addMoney, multiplyMoney, parseMoney, moneyToNumber } from "@/lib/money";
 import { orderCreateSchema, validateOrThrow } from "@/lib/validations";
 import { BUSINESS_RULES } from "@/domains/shared/constants";
 
@@ -256,11 +256,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       order: {
         ...order,
-        amount: serializeMoney(order.amount),
+        amount: moneyToNumber(order.amount),
         items: (order.items ?? []).map((item) => ({
           ...item,
-          unitPrice: serializeMoney(item.unitPrice),
-          totalPrice: serializeMoney(item.totalPrice),
+          unitPrice: moneyToNumber(item.unitPrice),
+          totalPrice: moneyToNumber(item.totalPrice),
         })),
       },
       fulfillmentSummary,
@@ -334,11 +334,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       orders: orders.map((order) => ({
         ...order,
-        amount: serializeMoney(order.amount),
+        amount: moneyToNumber(order.amount),
         items: order.items.map((item) => ({
           ...item,
-          unitPrice: serializeMoney(item.unitPrice),
-          totalPrice: serializeMoney(item.totalPrice),
+          unitPrice: moneyToNumber(item.unitPrice),
+          totalPrice: moneyToNumber(item.totalPrice),
         })),
         customerFulfillmentSummary: parseCustomerFulfillmentSummaryFromInternalNote(order.adminReviewNotes),
       })),
