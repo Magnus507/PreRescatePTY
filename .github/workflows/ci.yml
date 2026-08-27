@@ -30,6 +30,9 @@ jobs:
       DIRECT_URL: postgresql://ci:ci@localhost:5432/prerescate_ci
       DATABASE_URL_TEST: postgresql://ci:ci@localhost:5432/prerescate_ci
       NEXTAUTH_SECRET: ci-only-not-a-production-secret
+      NEXT_PUBLIC_SUPABASE_URL: https://ci-test.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-only-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-only-service-role-key
 
     steps:
       - name: Checkout
