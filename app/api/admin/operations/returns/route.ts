@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { assertPostSaleUnitOrigin } from "@/lib/operations/assert-postsale-unit-origin";
 import { recordFinishedGoodUnitPostSaleEvent } from "@/lib/operations/record-finished-good-unit-postsale-event";
 import { CreateReturnSchema, getFirstValidationMessage } from "./returns.helpers";
 import { returnInclude } from "./returns.include";
 
 export const dynamic = "force-dynamic";
+
+type RelationContext = {
+  warrantyUnitId: string | null;
+  replacementUnitIds: string[];
+  finishedGoodCode: string | null;
+};
 
 async function assertRelationsExist(
   tx: Prisma.TransactionClient,
@@ -16,26 +23,33 @@ async function assertRelationsExist(
     commercialOrderId?: string | null;
     finishedGoodId?: string | null;
     originalDispatchId?: string | null;
-    unitId?: string | null;
-    internalLabel?: string | null;
-    productCode?: string | null;
-    productName?: string | null;
   }
-) {
+): Promise<RelationContext> {
+  let warrantyUnitId: string | null = null;
+  const replacementUnitIds: string[] = [];
+  let finishedGoodCode: string | null = null;
+
   if (data.warrantyId) {
     const warranty = await tx.operationWarranty.findUnique({
       where: { id: data.warrantyId },
-      select: { id: true },
+      select: { id: true, unitId: true },
     });
     if (!warranty) throw new Error("INVALID_WARRANTY");
+    warrantyUnitId = warranty.unitId || null;
   }
 
   if (data.replacementId) {
     const replacement = await tx.operationReplacement.findUnique({
       where: { id: data.replacementId },
-      select: { id: true },
+      select: {
+        id: true,
+        originalUnitId: true,
+        replacementUnitId: true,
+      },
     });
     if (!replacement) throw new Error("INVALID_REPLACEMENT");
+    if (replacement.originalUnitId) replacementUnitIds.push(replacement.originalUnitId);
+    if (replacement.replacementUnitId) replacementUnitIds.push(replacement.replacementUnitId);
   }
 
   if (data.commercialOrderId) {
@@ -49,9 +63,10 @@ async function assertRelationsExist(
   if (data.finishedGoodId) {
     const finishedGood = await tx.operationFinishedGood.findUnique({
       where: { id: data.finishedGoodId },
-      select: { id: true },
+      select: { id: true, code: true },
     });
     if (!finishedGood) throw new Error("INVALID_FINISHED_GOOD");
+    finishedGoodCode = finishedGood.code;
   }
 
   if (data.originalDispatchId) {
@@ -62,13 +77,7 @@ async function assertRelationsExist(
     if (!dispatch) throw new Error("INVALID_DISPATCH");
   }
 
-  if (data.unitId) {
-    const unit = await tx.operationFinishedGoodUnit.findUnique({
-      where: { id: data.unitId },
-      select: { id: true },
-    });
-    if (!unit) throw new Error("INVALID_UNIT");
-  }
+  return { warrantyUnitId, replacementUnitIds, finishedGoodCode };
 }
 
 function relationErrorResponse(error: Error) {
@@ -93,7 +102,63 @@ function relationErrorResponse(error: Error) {
   }
 
   if (error.message === "INVALID_UNIT") {
-    return NextResponse.json({ error: "unitId no existe" }, { status: 400 });
+    return NextResponse.json({ error: "unitId/internalLabel no existe" }, { status: 400 });
+  }
+
+  if (error.message === "RETURN_UNIT_REQUIRED") {
+    return NextResponse.json(
+      { error: "La devolucion de cliente requiere una unidad fisica identificada" },
+      { status: 400 }
+    );
+  }
+
+  if (error.message === "UNIT_NOT_DELIVERED") {
+    return NextResponse.json(
+      { error: "Solo se puede registrar devolucion de una unidad ya entregada" },
+      { status: 409 }
+    );
+  }
+
+  if (error.message === "UNIT_DISPATCH_MISMATCH") {
+    return NextResponse.json(
+      { error: "La unidad no pertenece al despacho original indicado" },
+      { status: 409 }
+    );
+  }
+
+  if (error.message === "UNIT_ORDER_MISMATCH") {
+    return NextResponse.json(
+      { error: "La unidad no pertenece al pedido indicado" },
+      { status: 409 }
+    );
+  }
+
+  if (error.message === "ORDER_DISPATCH_MISMATCH") {
+    return NextResponse.json(
+      { error: "El despacho original no pertenece al pedido indicado" },
+      { status: 409 }
+    );
+  }
+
+  if (error.message === "WARRANTY_UNIT_MISMATCH") {
+    return NextResponse.json(
+      { error: "La garantia indicada pertenece a otra unidad" },
+      { status: 409 }
+    );
+  }
+
+  if (error.message === "REPLACEMENT_UNIT_MISMATCH") {
+    return NextResponse.json(
+      { error: "El reemplazo indicado no corresponde a esta unidad" },
+      { status: 409 }
+    );
+  }
+
+  if (error.message === "UNIT_FINISHED_GOOD_MISMATCH") {
+    return NextResponse.json(
+      { error: "La unidad no coincide con el producto terminado indicado" },
+      { status: 409 }
+    );
   }
 
   return null;
@@ -134,19 +199,80 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data;
   const createdById = auth.session.user.id || null;
+  const returnType = data.returnType || "customer_return";
 
   try {
     const operationReturn = await prisma.$transaction(async (tx) => {
-      await assertRelationsExist(tx, data);
-      const unit = data.unitId
-        ? await tx.operationFinishedGoodUnit.findUnique({ where: { id: data.unitId }, select: { id: true } })
-        : null;
+      const relationContext = await assertRelationsExist(tx, data);
+
+      let unit: null | {
+        id: string;
+        internalLabel: string;
+        productCode: string;
+        productName: string;
+      } = null;
+
+      if (data.unitId || data.internalLabel) {
+        const resolved = data.unitId
+          ? await tx.operationFinishedGoodUnit.findUnique({
+              where: { id: data.unitId },
+              select: {
+                id: true,
+                internalLabel: true,
+                productCode: true,
+                productName: true,
+              },
+            })
+          : await tx.operationFinishedGoodUnit.findUnique({
+              where: { internalLabel: data.internalLabel as string },
+              select: {
+                id: true,
+                internalLabel: true,
+                productCode: true,
+                productName: true,
+              },
+            });
+
+        if (!resolved) throw new Error("INVALID_UNIT");
+
+        await assertPostSaleUnitOrigin({
+          tx,
+          unitId: resolved.id,
+          dispatchId: data.originalDispatchId || null,
+          commercialOrderId: data.commercialOrderId || null,
+        });
+
+        if (
+          relationContext.warrantyUnitId &&
+          relationContext.warrantyUnitId !== resolved.id
+        ) {
+          throw new Error("WARRANTY_UNIT_MISMATCH");
+        }
+
+        if (
+          relationContext.replacementUnitIds.length > 0 &&
+          !relationContext.replacementUnitIds.includes(resolved.id)
+        ) {
+          throw new Error("REPLACEMENT_UNIT_MISMATCH");
+        }
+
+        if (
+          relationContext.finishedGoodCode &&
+          relationContext.finishedGoodCode !== resolved.productCode
+        ) {
+          throw new Error("UNIT_FINISHED_GOOD_MISMATCH");
+        }
+
+        unit = resolved;
+      } else if (returnType === "customer_return") {
+        throw new Error("RETURN_UNIT_REQUIRED");
+      }
 
       const created = await tx.operationReturn.create({
         data: {
           code: data.code,
           status: data.status || "draft",
-          returnType: data.returnType || "customer_return",
+          returnType,
           reason: data.reason || null,
           resolution: data.resolution || null,
           customerName: data.customerName || null,
@@ -157,22 +283,24 @@ export async function POST(req: NextRequest) {
           commercialOrderId: data.commercialOrderId || null,
           finishedGoodId: data.finishedGoodId || null,
           originalDispatchId: data.originalDispatchId || null,
-          unitId: data.unitId || null,
-          internalLabel: data.internalLabel || null,
-          productCode: data.productCode || null,
-          productName: data.productName || null,
+          unitId: unit?.id || null,
+          internalLabel: unit?.internalLabel || data.internalLabel || null,
+          productCode: unit?.productCode || data.productCode || null,
+          productName: unit?.productName || data.productName || null,
           notes: data.notes || null,
           events: {
             create: {
               eventType: "CREATED",
               reason: data.reason || "Devolucion creada",
               metadataJson: JSON.stringify({
-                returnType: data.returnType || "customer_return",
+                returnType,
                 warrantyId: data.warrantyId || null,
                 replacementId: data.replacementId || null,
                 commercialOrderId: data.commercialOrderId || null,
                 finishedGoodId: data.finishedGoodId || null,
-                unitId: data.unitId || null,
+                unitId: unit?.id || null,
+                internalLabel: unit?.internalLabel || null,
+                originalDispatchId: data.originalDispatchId || null,
               }),
               createdById,
             },
@@ -190,7 +318,9 @@ export async function POST(req: NextRequest) {
           referenceId: created.id,
           reason: data.reason || "Devolucion solicitada",
           metadataJson: {
-            returnType: data.returnType || "customer_return",
+            returnType,
+            originalDispatchId: data.originalDispatchId || null,
+            commercialOrderId: data.commercialOrderId || null,
           },
         });
       }
