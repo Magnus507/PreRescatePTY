@@ -214,7 +214,6 @@ export async function POST(
               dispatchCode,
               customerOrderId,
             },
-            createdById,
           },
         });
 
