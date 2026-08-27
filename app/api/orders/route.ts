@@ -41,9 +41,11 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
+    // The checkout must send an explicit delivery recipient snapshot. We only
+    // source the authenticated email on the server, so the account identity
+    // cannot be spoofed while recipient details remain intentionally editable.
     const validatedData = validateOrThrow(orderCreateSchema, {
       ...body,
-      customerName: body.customerName || (user.profile ? `${user.profile.firstName} ${user.profile.lastName}` : "Usuario"),
       customerEmail: user.email,
     });
 
@@ -167,16 +169,9 @@ export async function POST(req: NextRequest) {
     const { resolvedItems, summary: fulfillmentSummary } = await calculateStoreOrderFulfillment(fulfillmentInput);
 
     const order = await prisma.$transaction(async (tx) => {
-      if (user.profile && (validatedData.shippingAddress || validatedData.shippingCity)) {
-        await tx.profile.update({
-          where: { id: user.profile.id },
-          data: {
-            address: validatedData.shippingAddress || user.profile.address,
-            city: validatedData.shippingCity || user.profile.city,
-          }
-        });
-      }
-
+      // Delivery data is an immutable order snapshot. Do not mutate the medical
+      // profile here: a recipient may be different from the account owner and a
+      // one-off delivery address must never silently become profile data.
       const totalPrice = pricedItems.reduce(
         (sum, item) => addMoney(sum, multiplyMoney(item.unitPrice, item.quantity)),
         parseMoney(0)
@@ -191,12 +186,12 @@ export async function POST(req: NextRequest) {
           orderStatus: "pending",
           paymentStatus: "pending",
           paymentMethod: (validatedData.paymentMethod as "manual" | "yappy" | "bank_transfer" | undefined) || "manual",
-          shippingAddress: validatedData.shippingAddress || null,
-          shippingCity: validatedData.shippingCity || null,
+          shippingAddress: validatedData.shippingAddress,
+          shippingCity: validatedData.shippingCity,
           shippingNotes: validatedData.shippingNotes || null,
           customerName: validatedData.customerName,
           customerEmail: validatedData.customerEmail,
-          customerPhone: validatedData.customerPhone || null,
+          customerPhone: validatedData.customerPhone,
           customerDocument: validatedData.customerDocument || null,
           providerReference: validatedData.providerReference || null,
           adminReviewNotes: buildStoreOrderInternalNote(fulfillmentSummary),
@@ -232,7 +227,7 @@ export async function POST(req: NextRequest) {
         sourceId: createdOrder.id,
         sourceCode: createdOrder.orderNumber,
         orderType: "customer",
-        customerName: createdOrder.customerName || `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim(),
+        customerName: createdOrder.customerName || validatedData.customerName,
         contactEmail: createdOrder.customerEmail,
         contactPhone: createdOrder.customerPhone,
         customerReference: createdOrder.providerReference,
