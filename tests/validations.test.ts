@@ -75,10 +75,14 @@ describe('validations: orderCreateSchema', () => {
   })
 
   it('requires an explicit delivery snapshot', () => {
-    const { customerPhone: _phone, ...withoutPhone } = baseOrder
-    expect(() => validateOrThrow(orderCreateSchema, withoutPhone)).toThrow()
+    expect(() => validateOrThrow(orderCreateSchema, {
+      ...baseOrder,
+      customerPhone: undefined,
+    })).toThrow()
 
-    const { shippingAddress: _address, ...withoutAddress } = baseOrder
-    expect(() => validateOrThrow(orderCreateSchema, withoutAddress)).toThrow()
+    expect(() => validateOrThrow(orderCreateSchema, {
+      ...baseOrder,
+      shippingAddress: undefined,
+    })).toThrow()
   })
 })
