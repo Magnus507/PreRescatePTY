@@ -1,0 +1,122 @@
+name: Repair admin approval test fixtures
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-admin-approve-test.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch stale auth fixtures
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('tests/routes/admin-orders-approve.test.ts')
+          text = path.read_text()
+
+          old_lookup = """  mockPrisma.user.findUnique.mockResolvedValue({
+    id: TEST_USER_ID,
+    accountId: TEST_ACCOUNT_ID,
+  } as never)
+"""
+          new_lookup = """  mockPrisma.user.findUnique.mockImplementation(async (args: { where: { id: string } }) => {
+    if (args.where.id === TEST_ADMIN_ID) {
+      return {
+        id: TEST_ADMIN_ID,
+        status: 'active',
+        role: 'admin',
+        adminRole: 'admin',
+        isAdmin: true,
+        accountId: null,
+        sessionVersion: 0,
+        deletedAt: null,
+      } as never
+    }
+    if (args.where.id === TEST_USER_ID) {
+      return {
+        id: TEST_USER_ID,
+        status: 'active',
+        role: 'owner',
+        adminRole: null,
+        isAdmin: false,
+        accountId: TEST_ACCOUNT_ID,
+        sessionVersion: 0,
+        deletedAt: null,
+      } as never
+    }
+    return null as never
+  })
+"""
+          if old_lookup not in text:
+            raise SystemExit('default user lookup block not found')
+          text = text.replace(old_lookup, new_lookup, 1)
+
+          reset_anchor = """    mockPrisma.user.findUnique.mockReset()
+    mockPrisma.package.findUnique.mockReset()
+"""
+          reset_replacement = """    mockPrisma.user.findUnique.mockReset()
+    mockPrisma.user.findUnique.mockImplementation(async (args: { where: { id: string } }) => {
+      if (args.where.id === TEST_ADMIN_ID) {
+        return {
+          id: TEST_ADMIN_ID,
+          status: 'active',
+          role: 'admin',
+          adminRole: 'admin',
+          isAdmin: true,
+          accountId: null,
+          sessionVersion: 0,
+          deletedAt: null,
+        } as never
+      }
+      if (args.where.id === 'user-1') {
+        return {
+          id: 'user-1',
+          status: 'active',
+          role: 'owner',
+          adminRole: null,
+          isAdmin: false,
+          accountId: 'owner-account',
+          sessionVersion: 0,
+          deletedAt: null,
+        } as never
+      }
+      return null as never
+    })
+    mockPrisma.package.findUnique.mockReset()
+"""
+          if reset_anchor not in text:
+            raise SystemExit('beforeEach reset anchor not found')
+          text = text.replace(reset_anchor, reset_replacement, 1)
+
+          old_auth_expectation = """    expect(res.status).toBe(401)
+    expect(json.error).toMatch(/autorizado/i)
+"""
+          new_auth_expectation = """    expect(res.status).toBe(403)
+    expect(json.error).toMatch(/acceso|denegado|autorizado/i)
+"""
+          if old_auth_expectation not in text:
+            raise SystemExit('auth expectation block not found')
+          text = text.replace(old_auth_expectation, new_auth_expectation, 1)
+
+          path.write_text(text)
+      - name: Verify patch
+        run: |
+          grep -q "args.where.id === TEST_ADMIN_ID" tests/routes/admin-orders-approve.test.ts
+          grep -q "expect(res.status).toBe(403)" tests/routes/admin-orders-approve.test.ts
+      - name: Commit patch and remove workflow
+        run: |
+          git config user.name "PreRescatePTY Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/fix-admin-approve-test.yml
+          git add tests/routes/admin-orders-approve.test.ts
+          git commit -m "test(orders): align approval fixtures with fresh RBAC"
+          git push origin HEAD:master
