@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ACCOUNT_TYPES } from "@/domains/shared/constants";
 import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
+import { revealActivationCode } from "@/domains/chips/activation-code.service";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,23 @@ export async function GET(
     return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
   }
 
-  return NextResponse.json({ organization: org });
+  return NextResponse.json({
+    organization: {
+      ...org,
+      account: org.account
+        ? {
+            ...org.account,
+            chips: org.account.chips.map((chip) => ({
+              ...chip,
+              claimTokens: chip.claimTokens.map((token) => ({
+                ...token,
+                activationCode: revealActivationCode(token.activationCode),
+              })),
+            })),
+          }
+        : null,
+    },
+  });
 }
 
 // PATCH - update organization fields

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { sendEmergencyNotification } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
+import { CONSENT_TYPE } from "@/domains/consents/consent.constants";
 
 export type EmergencyAlertChannel = "email" | "sms" | "whatsapp";
 export type EmergencyNotificationStatus =
@@ -22,6 +23,7 @@ export type EmergencyNotificationPayload = {
   accountId?: string | null;
   publicUrl: string;
   location?: { lat: number; lng: number } | null;
+  trigger?: "automatic" | "manual";
 };
 
 type ContactCandidate = {
@@ -207,6 +209,7 @@ function classifyFailure(message?: string, code?: string) {
 async function hasEmergencyConsent(db: DbClient, input: ConsentCheck) {
   const consent = await db.consent.findFirst({
     where: {
+      consentType: CONSENT_TYPE.AUTOMATIC_EMERGENCY_ALERTS,
       revokedAt: null,
       OR: [
         input.profileId ? { profileId: input.profileId } : undefined,
@@ -262,10 +265,11 @@ export async function queueEmergencyNotificationsFromScan(
   }
 
   const profile = scan.chip.assignedProfile;
-  const consentGranted = await hasEmergencyConsent(db, {
-    profileId: profile.id,
-    accountId: scan.accountId,
-  });
+  const trigger = payload.trigger || "automatic";
+  const consentGranted = trigger === "manual" || await hasEmergencyConsent(db, {
+      profileId: profile.id,
+      accountId: scan.accountId,
+    });
 
   if (!consentGranted) {
     await db.scanEvent.update({
@@ -324,6 +328,7 @@ export async function queueEmergencyNotificationsFromScan(
       attempts: 0,
       createdAt: new Date().toISOString(),
       reason: providerAvailable ? "queued" : "provider_missing",
+      trigger,
     });
 
     const existing = await db.notification.findFirst({

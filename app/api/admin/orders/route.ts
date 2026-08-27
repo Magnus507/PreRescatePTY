@@ -7,6 +7,11 @@ import { AccountStateService } from "@/domains/accounts/services/account-state.s
 import { OrderNotificationService } from "@/domains/notifications/services/order-notification.service";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 import { buildOperationsOrderViewModel } from "@/lib/operations/operations-order-view-model";
+import { getUniqueActivationCode } from "@/lib/identifiers";
+import {
+  protectActivationCode,
+  revealActivationCode,
+} from "@/domains/chips/activation-code.service";
 
 async function isAdmin() {
   const session = await getServerSession(authOptions);
@@ -192,9 +197,16 @@ export async function GET() {
       orders: ordersWithExistingChips.map((order) => {
         const reservedUnits = reservedUnitsByOrderId[order.id] || [];
         const dispatch = dispatchByOrderId.get(order.id) || null;
+        const orderWithRevealedCodes = {
+          ...order,
+          chipClaimTokens: order.chipClaimTokens.map((token) => ({
+            ...token,
+            activationCode: revealActivationCode(token.activationCode),
+          })),
+        };
         return {
           ...buildOperationsOrderViewModel({
-            ...(order as Parameters<typeof buildOperationsOrderViewModel>[0]),
+            ...(orderWithRevealedCodes as Parameters<typeof buildOperationsOrderViewModel>[0]),
             customerName:
               order.customerName ||
               `${order.user?.profile?.firstName || ""} ${order.user?.profile?.lastName || ""}`.trim() ||
@@ -373,11 +385,12 @@ export async function PATCH(req: NextRequest) {
                   }
                });
 
+               const activationCode = await getUniqueActivationCode();
                await prisma.chipClaimToken.create({
                   data: {
                      chipId: chip.id,
                      orderId: id,
-                     activationCode: `ACT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+                     ...protectActivationCode(activationCode),
                      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
                   }
                });

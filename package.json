@@ -6,6 +6,7 @@
     "dev": "next dev",
     "prisma:generate": "prisma generate",
     "db:seed": "prisma db seed",
+    "db:backfill-activation-codes": "tsx scripts/backfill-activation-codes.ts",
     "typecheck": "tsc --noEmit",
     "test:run": "vitest run",
     "build": "npm run prisma:generate && npm run typecheck && next build",
@@ -15,11 +16,11 @@
     "test:coverage": "vitest --coverage"
   },
   "engines": {
-    "node": ">=20 <23"
+    "node": "22.x"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
-    "@prisma/client": "^6.2.1",
+    "@prisma/client": "6.19.3",
     "@sentry/nextjs": "^10.65.0",
     "@supabase/supabase-js": "^2.110.5",
     "@upstash/redis": "^1.37.0",
@@ -57,7 +58,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.1.0",
     "postcss": "^8.5.19",
-    "prisma": "6.2.1",
+    "prisma": "6.19.3",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.21.0",
     "typescript": "^5",

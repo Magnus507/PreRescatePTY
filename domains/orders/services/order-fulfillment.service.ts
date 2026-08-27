@@ -1,4 +1,6 @@
 import type { Prisma } from "@prisma/client";
+import { generateActivationCode } from "@/lib/constants";
+import { protectActivationCode } from "@/domains/chips/activation-code.service";
 
 type OrderItemLike = {
   quantity?: number | null;
@@ -193,11 +195,12 @@ export class OrderFulfillmentService {
             },
           });
         } else {
+          const activationCode = generateActivationCode();
           await tx.chipClaimToken.create({
             data: {
               chipId: chip.id,
               orderId,
-              activationCode: `ACT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+              ...protectActivationCode(activationCode),
               expiresAt: tokenExpiresAt,
             },
           });
@@ -264,7 +267,7 @@ export class OrderFulfillmentService {
       data: {
         chipId,
         orderId,
-        activationCode,
+        ...protectActivationCode(activationCode),
         usedAt: null,
         expiresAt,
       },

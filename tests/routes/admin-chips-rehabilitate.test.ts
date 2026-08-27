@@ -5,6 +5,7 @@ import { resetAllMocks } from '../helpers/reset-mocks'
 import { createMockChip, createMockChipClaimToken } from '../factories/chip.factory'
 import { createMockSession } from '../helpers/mock-auth'
 import { CHIP_STATUS } from '@/domains/chips/chip-lifecycle.constants'
+import { hashActivationCode } from '@/domains/chips/activation-code.service'
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -253,7 +254,8 @@ describe('POST /api/admin/chips/[chipId]/rehabilitate', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           chipId: 'chip-1',
-          activationCode: 'REHAB0001',
+          activationCodeHash: hashActivationCode('REHAB0001'),
+          activationCodeLast4: '0001',
         }),
       })
     )

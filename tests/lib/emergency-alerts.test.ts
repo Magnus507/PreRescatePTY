@@ -97,6 +97,11 @@ describe("emergency alerts helpers", () => {
 
     expect(result.status).toBe("pending");
     expect(result.queued).toBe(1);
+    expect(mockPrisma.consent.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ consentType: "automatic_emergency_alerts", revokedAt: null }),
+      })
+    );
     expect(mockPrisma.notification.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -138,6 +143,29 @@ describe("emergency alerts helpers", () => {
         data: { notificationStatus: "skipped" },
       })
     );
+  });
+
+  it("queues a manual alert without requiring automatic-alert consent", async () => {
+    process.env.RESEND_API_KEY = "resend-test";
+    mockPrisma.scanEvent.findUnique.mockResolvedValue(baseScan() as never);
+    mockPrisma.notification.findFirst.mockResolvedValue(null as never);
+    mockPrisma.notification.create.mockResolvedValue({ id: "notification-1" } as never);
+    mockPrisma.scanEvent.update.mockResolvedValue({ id: "scan-1", notificationStatus: "pending" } as never);
+
+    const result = await queueEmergencyNotificationsFromScan(mockPrisma, {
+      scanEventId: "scan-1",
+      chipId: "chip-1",
+      shortCode: "SC-123",
+      profileId: "profile-1",
+      profileName: "Ana López",
+      publicUrl: "/e/SC-123",
+      accountId: "account-1",
+      trigger: "manual",
+    });
+
+    expect(result.status).toBe("pending");
+    expect(mockPrisma.consent.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.notification.create).toHaveBeenCalled();
   });
 
   it("processes pending notifications and marks them sent", async () => {

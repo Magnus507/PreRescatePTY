@@ -101,10 +101,56 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.accountId = user.accountId;
         token.sessionVersion = user.sessionVersion;
+        token.revoked = false;
+        return token;
       }
+
+      if (!token.id) return token;
+
+      try {
+        const currentUser = await prisma.user.findUnique({
+          where: { id: token.id },
+          select: {
+            status: true,
+            deletedAt: true,
+            sessionVersion: true,
+            role: true,
+            isAdmin: true,
+            adminRole: true,
+            accountId: true,
+          },
+        });
+
+        const sessionIsValid =
+          currentUser !== null &&
+          currentUser.status === "active" &&
+          currentUser.deletedAt === null &&
+          currentUser.sessionVersion === token.sessionVersion;
+
+        if (!sessionIsValid) {
+          token.revoked = true;
+          return token;
+        }
+
+        token.revoked = false;
+        token.role = currentUser.isAdmin
+          ? (currentUser.adminRole || "admin")
+          : (currentUser.role || "owner");
+        token.accountId = currentUser.accountId;
+        token.sessionVersion = currentUser.sessionVersion;
+      } catch {
+        // Fail closed when the current account state cannot be verified.
+        token.revoked = true;
+      }
+
       return token;
     },
     async session({ session, token }) {
+      if (token.revoked || !token.id) {
+        delete (session as { user?: unknown }).user;
+        return session;
+      }
+
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;

@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
-import { markFinishedGoodUnitActivated } from "@/lib/operations/activate-finished-good-unit";
 import {
   ACTIVATABLE_CHIP_STATUSES,
   CHIP_SERVICE_STATUS,
@@ -12,6 +11,7 @@ import {
   USED_CAPACITY_CHIP_STATUSES,
 } from "@/domains/chips/chip-lifecycle.constants";
 import { chipActivationSchema } from "@/lib/validations";
+import { activationCodeLookupWhere } from "@/domains/chips/activation-code.service";
 
 type CorporateItemWithMember = {
   organizationMember: {
@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
   const { activationCode, profileId } = parsedBody.data;
 
   // Find the claim token
-  const claimToken = await prisma.chipClaimToken.findUnique({
-    where: { activationCode },
+  const claimToken = await prisma.chipClaimToken.findFirst({
+    where: activationCodeLookupWhere(activationCode),
     include: { chip: true },
   });
 
@@ -83,21 +83,22 @@ export async function POST(req: NextRequest) {
 
   const chip = claimToken.chip;
 
-  const finishedGoodUnit = chip.internalLabel
-    ? await prisma.operationFinishedGoodUnit.findFirst({
-        where: {
-          internalLabel: chip.internalLabel,
-          activationStatus: "not_activated",
-          status: { in: ["dispatched", "delivered"] },
-        },
-        select: {
-          id: true,
-          status: true,
-          activationStatus: true,
-          reservedOrderId: true,
-        },
-      })
-    : null;
+  const finishedGoodUnit = await prisma.operationFinishedGoodUnit.findFirst({
+    where: {
+      activationStatus: "not_activated",
+      status: { in: ["dispatched", "delivered"] },
+      OR: [
+        { chipId: chip.id },
+        ...(chip.internalLabel ? [{ internalLabel: chip.internalLabel }] : []),
+      ],
+    },
+    select: {
+      id: true,
+      status: true,
+      activationStatus: true,
+      reservedOrderId: true,
+    },
+  });
 
   if (!finishedGoodUnit) {
     return NextResponse.json(
@@ -319,16 +320,41 @@ export async function POST(req: NextRequest) {
         throw new Error("CHIP_ALREADY_ACTIVE_OR_INVALID");
       }
 
-      // Auto-confirm delivery if token is linked to an order
-      if (claimToken.orderId) {
-        await tx.order.update({
-          where: { id: claimToken.orderId },
-          data: {
-            orderStatus: "completed",
-            paymentStatus: "paid"
-          }
-        });
+      // Keep the physical unit and the public chip in the same atomic activation.
+      // Activating a delivered product must never confirm or collect its payment.
+      const unitActivate = await tx.operationFinishedGoodUnit.updateMany({
+        where: {
+          id: finishedGoodUnit.id,
+          activationStatus: "not_activated",
+          status: { in: ["dispatched", "delivered"] },
+        },
+        data: {
+          status: "activated",
+          activationStatus: "activated",
+          activatedAt: now,
+          activationReferenceType: "chip_activation",
+          activationReferenceId: chip.id,
+        },
+      });
+
+      if (unitActivate.count !== 1) {
+        throw new Error("FINISHED_GOOD_UNIT_NOT_ELIGIBLE");
       }
+
+      await tx.operationFinishedGoodUnitEvent.create({
+        data: {
+          unitId: finishedGoodUnit.id,
+          eventType: "ACTIVATED",
+          referenceType: "chip_activation",
+          referenceId: chip.id,
+          metadataJson: {
+            chipId: chip.id,
+            chipShortCode: chip.shortCode,
+            activationCodeSuffix: activationCode.slice(-4),
+            flow: "chip_activation",
+          },
+        },
+      });
 
       // [Fase5-Corporate] Mark corporate order items as activated if this chip was assigned to them
       if (corporateItem) {
@@ -355,27 +381,6 @@ export async function POST(req: NextRequest) {
 
     // Invalidate cache after successful activation (outside transaction)
     await AccountStateService.invalidateCache(userId);
-
-    void (async () => {
-      const activationResult = await markFinishedGoodUnitActivated({
-        internalLabel: chip.internalLabel || null,
-        shortCode: chip.shortCode,
-        activationReferenceType: "chip_activation",
-        activationReferenceId: chip.id,
-        metadataJson: {
-          chipId: chip.id,
-          chipShortCode: chip.shortCode,
-          activationCodeSuffix: activationCode.slice(-4),
-          flow: "legacy_chip_activation",
-        },
-      });
-
-      if (!activationResult.ok) {
-        console.warn("[chips/activate] Finished good unit sync skipped:", activationResult.reason);
-      }
-    })().catch((error) => {
-      console.warn("[chips/activate] Finished good unit sync failed:", error);
-    });
   } catch (error: unknown) {
     console.error("[chips/activate] Error:", error);
     if (error instanceof Error && error.message === "TOKEN_ALREADY_USED_OR_EXPIRED") {
@@ -383,6 +388,12 @@ export async function POST(req: NextRequest) {
     }
     if (error instanceof Error && error.message === "CHIP_ALREADY_ACTIVE_OR_INVALID") {
       return NextResponse.json({ error: "Este chip ya no puede activarse." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "FINISHED_GOOD_UNIT_NOT_ELIGIBLE") {
+      return NextResponse.json(
+        { error: "La unidad física ya no está disponible para activación." },
+        { status: 409 }
+      );
     }
     const message = error instanceof Error ? error.message : "Error al activar el chip";
     const status = typeof error === "object" && error !== null && "status" in error

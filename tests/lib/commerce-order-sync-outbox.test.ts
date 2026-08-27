@@ -10,6 +10,7 @@ vi.mock("@/lib/operations/sync-real-order-to-operations", () => ({
 
 import {
   enqueueCommerceOrderSyncOutbox,
+  enqueueStoredCommerceOrderSyncOutbox,
   processCommerceOrderSyncOutboxBatch,
 } from "@/lib/operations/commerce-order-sync-outbox";
 
@@ -67,6 +68,53 @@ describe("commerce-order-sync-outbox", () => {
       })
     );
     expect(row.id).toBe("outbox-1");
+  });
+
+  it("allows legacy package items to be resynced as customer requests", async () => {
+    mockPrisma.order.findUnique.mockResolvedValue({
+      id: "order-package",
+      orderNumber: "PR-2026-000101",
+      orderType: "manual",
+      customerName: "Cliente",
+      customerEmail: "cliente@example.com",
+      customerPhone: "61234567",
+      customerDocument: null,
+      providerReference: null,
+      paymentStatus: "paid",
+      manualPaymentReference: null,
+      paymentProofUrl: null,
+      currency: "USD",
+      amount: 49.99,
+      organizationId: null,
+      items: [{
+        productId: null,
+        productType: "Plan Basico",
+        productName: null,
+        productCode: null,
+        quantity: 1,
+        unitPrice: 49.99,
+        operationalMappingId: null,
+        operationalMappingStatus: null,
+        operationalFinishedGoodId: null,
+        operationalProductCode: null,
+        operationalProductName: null,
+      }],
+    } as never);
+    mockPrisma.commerceOrderSyncOutbox.create.mockResolvedValue({ id: "outbox-package" } as never);
+
+    await enqueueStoredCommerceOrderSyncOutbox(mockPrisma as never, {
+      orderId: "order-package",
+      sourceType: "customer_request",
+      deduplicationSuffix: "payment-event-1",
+    });
+
+    expect(mockPrisma.commerceOrderSyncOutbox.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        sourceType: "customer_request",
+        deduplicationKey: "commerce.order.sync_requested:customer_request:order-package:v1:payment-event-1",
+        payloadJson: expect.stringContaining('"productName":"Plan Basico"'),
+      }),
+    }));
   });
 
   it("processes a claimed event and marks it processed", async () => {

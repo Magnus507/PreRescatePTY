@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { revealActivationCode } from "@/domains/chips/activation-code.service";
 import { rateLimit } from "@/lib/rateLimit";
 import { generateOrderNumber } from "@/lib/order-number";
 import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-sync-outbox";
@@ -333,6 +334,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     orders: orders.map((order) => ({
       ...order,
+      chipClaimTokens: order.chipClaimTokens.map((token) => ({
+        ...token,
+        activationCode: revealActivationCode(token.activationCode),
+      })),
       amount: serializeMoney(order.amount),
       items: order.items.map((item) => ({
         ...item,

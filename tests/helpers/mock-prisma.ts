@@ -33,10 +33,20 @@ export interface MockPrismaClient {
   chipClaimToken: MockDelegate
   order: MockDelegate
   orderItem: MockDelegate
+  paymentAttempt: MockDelegate
+  paymentEvent: MockDelegate
+  invoice: MockDelegate
+  invoiceLine: MockDelegate
   operationCommercialOrder: MockDelegate
   operationCommercialOrderItem: MockDelegate
   operationFinishedGoodUnit: MockDelegate
   operationFinishedGoodUnitEvent: MockDelegate
+  operationDigitalBatch: MockDelegate
+  operationDigitalBatchItem: MockDelegate
+  operationProductionOrder: MockDelegate
+  operationProductionEvent: MockDelegate
+  operationPrintOrder: MockDelegate
+  operationPrintOrderItem: MockDelegate
   auditLog: MockDelegate
   notification: MockDelegate
   scanEvent: MockDelegate
@@ -70,10 +80,20 @@ export const mockPrisma: MockPrismaClient = {
   chipClaimToken: createMockDelegate(),
   order: createMockDelegate(),
   orderItem: createMockDelegate(),
+  paymentAttempt: createMockDelegate(),
+  paymentEvent: createMockDelegate(),
+  invoice: createMockDelegate(),
+  invoiceLine: createMockDelegate(),
   operationCommercialOrder: createMockDelegate(),
   operationCommercialOrderItem: createMockDelegate(),
   operationFinishedGoodUnit: createMockDelegate(),
   operationFinishedGoodUnitEvent: createMockDelegate(),
+  operationDigitalBatch: createMockDelegate(),
+  operationDigitalBatchItem: createMockDelegate(),
+  operationProductionOrder: createMockDelegate(),
+  operationProductionEvent: createMockDelegate(),
+  operationPrintOrder: createMockDelegate(),
+  operationPrintOrderItem: createMockDelegate(),
   auditLog: createMockDelegate(),
   notification: createMockDelegate(),
   scanEvent: createMockDelegate(),

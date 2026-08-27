@@ -4,8 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { generateOrderNumber } from "@/lib/order-number";
+import { InvoiceService } from "@/domains/invoices/services/invoice.service";
 import { TOKEN_AVAILABLE_WHERE } from "@/domains/chips/token-lifecycle.helpers";
 import { z } from "zod";
+import { getUniqueActivationCode } from "@/lib/identifiers";
+import { protectActivationCode } from "@/domains/chips/activation-code.service";
 
 const RetailSellSchema = z.object({
   chipIds: z.array(z.string().min(1)).min(1, "chipIds debe contener al menos un chip"),
@@ -15,24 +18,6 @@ const RetailSellSchema = z.object({
   customerEmail: z.string().email("customerEmail inválido").optional(),
   customerPhone: z.string().optional(),
 });
-
-/**
- * Genera un activationCode único y seguro.
- * Formato: ACT-XXXXXX donde X es alfanumérico mayúscula.
- * Valida contra la base de datos para evitar duplicados.
- */
-async function generateUniqueActivationCode(): Promise<string> {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const code = `ACT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const exists = await prisma.chipClaimToken.findUnique({
-      where: { activationCode: code },
-      select: { id: true },
-    });
-    if (!exists) return code;
-  }
-  // Fallback extremadamente improbable: timestamp-based
-  return `ACT-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 4).toUpperCase()}`;
-}
 
 export async function POST(req: NextRequest) {
   // ── Auth: solo admin y superadmin (excluye imprenta) ──
@@ -160,6 +145,7 @@ export async function POST(req: NextRequest) {
           },
         },
       });
+      await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: order.id });
 
       // 2. Marcar chips como sold
       await tx.chip.updateMany({
@@ -171,14 +157,14 @@ export async function POST(req: NextRequest) {
       const activationCodes: { chipId: string; shortCode: string; serialPublic: string; activationCode: string }[] = [];
 
       for (const chip of chips) {
-        const activationCode = await generateUniqueActivationCode();
+        const activationCode = await getUniqueActivationCode();
         const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000 * 10); // 10 años para chips físicos
 
         await tx.chipClaimToken.create({
           data: {
             chipId: chip.id,
             orderId: order.id,
-            activationCode,
+            ...protectActivationCode(activationCode),
             expiresAt,
             usedAt: null,
           },

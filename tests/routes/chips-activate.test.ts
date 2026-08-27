@@ -98,7 +98,7 @@ function preTransactionDefaults() {
 
   const chip = createMockChip({ status: CHIP_STATUS.INVENTORY, internalLabel: 'FG-001' })
   const token = createMockChipClaimToken({ chipId: chip.id })
-  mockPrisma.chipClaimToken.findUnique.mockResolvedValue({
+  mockPrisma.chipClaimToken.findFirst.mockResolvedValue({
     ...token,
     chip,
   } as never)
@@ -143,6 +143,8 @@ function transactionHappyPathDefaults(overrides: {
     activationStatus: 'not_activated',
     reservedOrderId: null,
   } as never)
+  mockPrisma.operationFinishedGoodUnit.updateMany.mockResolvedValue({ count: 1 } as never)
+  mockPrisma.operationFinishedGoodUnitEvent.create.mockResolvedValue({ id: 'fgu-event-1' } as never)
   mockPrisma.chip.updateMany.mockResolvedValue({ count: 1 } as never)
   mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' } as never)
 }
@@ -197,7 +199,7 @@ describe('POST /api/chips/activate — pre-transaction', () => {
   })
 
   it('returns 404 when activation token is not found', async () => {
-    mockPrisma.chipClaimToken.findUnique.mockResolvedValue(null)
+    mockPrisma.chipClaimToken.findFirst.mockResolvedValue(null)
     const req = createActivateRequest({ activationCode: 'NONEXISTENT' })
     const res = await POST(req)
     const json = await res.json()
@@ -208,7 +210,7 @@ describe('POST /api/chips/activate — pre-transaction', () => {
   it('returns 409 when activation token is already used', async () => {
     const chip = createMockChip({ status: CHIP_STATUS.INVENTORY })
     const token = createMockChipClaimToken({ chipId: chip.id, usedAt: new Date('2026-01-15') })
-    mockPrisma.chipClaimToken.findUnique.mockResolvedValue({ ...token, chip } as never)
+    mockPrisma.chipClaimToken.findFirst.mockResolvedValue({ ...token, chip } as never)
     const req = createActivateRequest({ activationCode: token.activationCode })
     const res = await POST(req)
     const json = await res.json()
@@ -219,7 +221,7 @@ describe('POST /api/chips/activate — pre-transaction', () => {
   it('returns 410 when activation token is expired', async () => {
     const chip = createMockChip({ status: CHIP_STATUS.INVENTORY })
     const token = createMockChipClaimToken({ chipId: chip.id, expiresAt: new Date('2020-01-01') })
-    mockPrisma.chipClaimToken.findUnique.mockResolvedValue({ ...token, chip } as never)
+    mockPrisma.chipClaimToken.findFirst.mockResolvedValue({ ...token, chip } as never)
     const req = createActivateRequest({ activationCode: token.activationCode })
     const res = await POST(req)
     const json = await res.json()
@@ -230,7 +232,7 @@ describe('POST /api/chips/activate — pre-transaction', () => {
   it('returns 409 when chip status is not activatable', async () => {
     const chip = createMockChip({ status: CHIP_STATUS.ACTIVATED, internalLabel: 'FG-001' })
     const token = createMockChipClaimToken({ chipId: chip.id })
-    mockPrisma.chipClaimToken.findUnique.mockResolvedValue({ ...token, chip } as never)
+    mockPrisma.chipClaimToken.findFirst.mockResolvedValue({ ...token, chip } as never)
     mockPrisma.operationFinishedGoodUnit.findFirst.mockResolvedValue({
       id: 'fgu-1',
       status: 'delivered',
@@ -360,7 +362,7 @@ describe('POST /api/chips/activate — happy path', () => {
       qrUrl: 'https://prerescatepty.com/qr/chip-1',
     })
     const token = createMockChipClaimToken({ chipId: chip.id })
-    mockPrisma.chipClaimToken.findUnique.mockResolvedValue({ ...token, chip } as never)
+    mockPrisma.chipClaimToken.findFirst.mockResolvedValue({ ...token, chip } as never)
     transactionHappyPathDefaults({})
 
     const req = createActivateRequest({ activationCode: token.activationCode })
@@ -394,6 +396,25 @@ describe('POST /api/chips/activate — happy path', () => {
         }),
       })
     )
+  })
+
+  it('activates the physical unit atomically without changing payment state', async () => {
+    const req = createActivateRequest({ activationCode: 'ACT000001' })
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.operationFinishedGoodUnit.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'fgu-1', activationStatus: 'not_activated' }),
+        data: expect.objectContaining({
+          status: 'activated',
+          activationStatus: 'activated',
+          activationReferenceType: 'chip_activation',
+        }),
+      })
+    )
+    expect(mockPrisma.operationFinishedGoodUnitEvent.create).toHaveBeenCalled()
+    expect(mockPrisma.order.update).not.toHaveBeenCalled()
   })
 })
 
@@ -448,6 +469,8 @@ describe('POST /api/chips/activate — corporate flow', () => {
     // Call 3: in-transaction user profile accountId check
     mockPrisma.profile.findUnique.mockResolvedValueOnce({ id: 'user-profile-1', accountId: 'test-account-id' } as never)
     mockPrisma.chip.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.operationFinishedGoodUnit.updateMany.mockResolvedValue({ count: 1 } as never)
+    mockPrisma.operationFinishedGoodUnitEvent.create.mockResolvedValue({ id: 'fgu-event-1' } as never)
     mockPrisma.corporateOrderEmployeeItem.updateMany.mockResolvedValue({ count: 1 } as never)
     mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' } as never)
 

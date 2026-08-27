@@ -3,8 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { buildInternalLabel } from "../../../digital-batches/digital-batches.helpers";
-import { buildProductionDigitalIdentity } from "@/lib/operations/digital-identity";
-import { generateUniqueDigitalShortCode } from "@/lib/operations/generate-digital-short-code";
+import { ensureTraceableDigitalIdentity } from "@/lib/operations/traceable-digital-identity";
 
 export const dynamic = "force-dynamic";
 
@@ -42,13 +41,14 @@ export async function POST(
       const existingCount = productionOrder.digitalItems.length;
       const missingCount = Math.max(targetQuantity - existingCount, 0);
 
-      if (missingCount === 0) {
+      if (targetQuantity === 0 && existingCount === 0) {
         return {
           productionOrder,
           createdItems: [],
+          identities: [],
           existingCount,
           targetQuantity,
-          inconsistent: existingCount > targetQuantity,
+          inconsistent: false,
         };
       }
 
@@ -80,50 +80,39 @@ export async function POST(
       const preparedAt = new Date();
       const createdById = auth.session.user.id || null;
       const createdItems = [];
+      const createdIdentities = [];
       const requestOrigin = req.headers.get("origin");
 
       for (const item of productionOrder.digitalItems) {
-        if (item.shortCode || item.status === "printed" || item.status === "assembled" || item.status === "packaged") {
-          continue;
-        }
-
-        const shortCode = await generateUniqueDigitalShortCode();
-        const identity = buildProductionDigitalIdentity({
-          internalLabel: item.internalLabel,
-          shortCode,
+        const identity = await ensureTraceableDigitalIdentity(tx, {
+          item,
+          productType: productionOrder.outputType,
           requestOrigin,
+          createdAt: preparedAt,
         });
-
-        await tx.operationDigitalBatchItem.update({
-          where: { id: item.id },
-          data: {
-            shortCode,
-            activationUrl: item.activationUrl || identity.activationFallbackUrl,
-            qrUrl: identity.qrImageUrl || item.qrUrl || "",
-            nfcUrl: identity.nfcUrl || item.nfcUrl,
-          },
+        createdIdentities.push({
+          digitalBatchItemId: item.id,
+          chipId: identity.chip.id,
+          shortCode: identity.chip.shortCode,
+          activationCode: identity.activationCode,
+          chipCreated: identity.chipCreated,
+          activationCodeCreated: identity.activationCodeCreated,
         });
       }
 
       for (let index = 0; index < missingCount; index += 1) {
         const sequenceNumber = nextSequenceNumber + index + 1;
         const internalLabel = buildInternalLabel(batch.prefix, sequenceNumber);
-        const shortCode = await generateUniqueDigitalShortCode();
-        const identity = buildProductionDigitalIdentity({
-          internalLabel,
-          shortCode,
-          requestOrigin,
-        });
         const created = await tx.operationDigitalBatchItem.create({
           data: {
             batchId: batch.id,
             productionOrderId,
             internalLabel,
             sequenceNumber,
-            qrUrl: identity.qrImageUrl || "",
-            nfcUrl: identity.nfcUrl,
-            activationUrl: identity.activationFallbackUrl,
-            shortCode,
+            qrUrl: "",
+            nfcUrl: null,
+            activationUrl: null,
+            shortCode: null,
             nfcProgrammed: false,
             qrPrepared: false,
             preparedAt,
@@ -131,7 +120,21 @@ export async function POST(
             status: "generated",
           },
         });
-        createdItems.push(created);
+        const identity = await ensureTraceableDigitalIdentity(tx, {
+          item: created,
+          productType: productionOrder.outputType,
+          requestOrigin,
+          createdAt: preparedAt,
+        });
+        createdItems.push(identity.item);
+        createdIdentities.push({
+          digitalBatchItemId: created.id,
+          chipId: identity.chip.id,
+          shortCode: identity.chip.shortCode,
+          activationCode: identity.activationCode,
+          chipCreated: identity.chipCreated,
+          activationCodeCreated: identity.activationCodeCreated,
+        });
       }
 
       if (existingBatch) {
@@ -154,6 +157,9 @@ export async function POST(
           metadataJson: JSON.stringify({
             productionOrderId,
             createdItemIds: createdItems.map((item) => item.id),
+            createdChipIds: createdIdentities
+              .filter((identity) => identity.chipCreated)
+              .map((identity) => identity.chipId),
             batchId: batch.id,
           }),
           createdById,
@@ -179,9 +185,10 @@ export async function POST(
       return {
         productionOrder: refreshed,
         createdItems,
+        identities: createdIdentities,
         existingCount,
         targetQuantity,
-        inconsistent: false,
+        inconsistent: existingCount > targetQuantity,
       };
     });
 

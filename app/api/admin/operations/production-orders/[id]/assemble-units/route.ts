@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getFirstValidationMessage } from "../../production-orders.helpers";
 import { getProductMetadata } from "@/app/api/admin/operations/finished-good-units/finished-good-units.helpers";
+import { ensureTraceableDigitalIdentity } from "@/lib/operations/traceable-digital-identity";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +84,11 @@ export async function POST(
       for (const item of batchItems) {
         const printOrder = item.printOrderItems[0]?.printOrder || null;
         const productMetadata = getProductMetadata(item.batch.productType);
+        const identity = await ensureTraceableDigitalIdentity(tx, {
+          item,
+          productType: productionOrder.outputType,
+          requestOrigin: req.headers.get("origin"),
+        });
         const unit = await tx.operationFinishedGoodUnit.create({
           data: {
             internalLabel: item.internalLabel,
@@ -91,6 +97,7 @@ export async function POST(
             productType: productionOrder.outputType,
             digitalBatchId: item.batchId,
             digitalBatchItemId: item.id,
+            chipId: identity.chip.id,
             printOrderId: printOrder?.id || null,
             status: "qa_pending",
             qaStatus: "pending",
@@ -105,6 +112,7 @@ export async function POST(
                 metadataJson: {
                   source: "production_order_assemble_units",
                   digitalBatchItemId: item.id,
+                  chipId: identity.chip.id,
                   productionOrderId: productionOrder.id,
                   printOrderId: printOrder?.id || null,
                   previousStatus: item.status,
@@ -173,6 +181,9 @@ export async function POST(
     }
     if (error instanceof Error && error.message === "PRINT_ORDER_NOT_RECEIVED") {
       return NextResponse.json({ error: "El item debe pertenecer a una orden a imprenta recibida" }, { status: 400 });
+    }
+    if (error instanceof Error && error.message.startsWith("TRACEABLE_")) {
+      return NextResponse.json({ error: "No se pudo asegurar la identidad QR/NFC de la unidad" }, { status: 409 });
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "Ya existe una unidad con esa etiqueta interna" }, { status: 409 });

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 // USER_ROLES not used here
 import { TOKEN_RESERVED_WHERE } from "@/domains/chips/token-lifecycle.helpers";
+import { revealActivationCode } from "@/domains/chips/activation-code.service";
 
 async function isAdmin() {
   const session = await getServerSession(authOptions);
@@ -41,7 +42,15 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ chips });
+    return NextResponse.json({
+      chips: chips.map((chip) => ({
+        ...chip,
+        claimTokens: chip.claimTokens.map((token) => ({
+          ...token,
+          activationCode: revealActivationCode(token.activationCode),
+        })),
+      })),
+    });
   } catch (error) {
     console.error("Fetch inventory error:", error);
     return NextResponse.json({ error: "Error al cargar inventario" }, { status: 500 });

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+import { revealActivationCode } from "@/domains/chips/activation-code.service";
 
 type AppNotificationCreateArgs = {
   data: {
@@ -108,7 +109,15 @@ export async function GET(
     });
   }
 
-  return NextResponse.json({ chip });
+  return NextResponse.json({
+    chip: {
+      ...chip,
+      claimTokens: chip.claimTokens.map((token) => ({
+        ...token,
+        activationCode: revealActivationCode(token.activationCode),
+      })),
+    },
+  });
 }
 
 export async function PATCH(

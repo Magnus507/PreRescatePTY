@@ -14,6 +14,11 @@ import { SITE_URL } from "@/lib/constants";
 import { 
   getBatchUniqueShortCodes, getBatchUniqueSerialPublics, getBatchUniqueActivationCodes 
 } from "@/lib/identifiers";
+import {
+  hashActivationCode,
+  protectActivationCode,
+  revealActivationCode,
+} from "@/domains/chips/activation-code.service";
 
 async function isAdmin() {
   const session = await getServerSession(authOptions);
@@ -111,7 +116,10 @@ export async function GET(req: NextRequest) {
         { serialPublic: { contains: search } },
         { shortCode: { contains: search } },
         { internalLabel: { contains: search } },
-        { claimTokens: { some: { activationCode: { contains: search } } } },
+        { claimTokens: { some: { activationCodeHash: hashActivationCode(search) } } },
+        { claimTokens: { some: { activationCodeLast4: { contains: search.slice(-4).toUpperCase() } } } },
+        // Temporary compatibility for rows awaiting the production backfill.
+        { claimTokens: { some: { activationCode: { contains: search.toUpperCase() } } } },
         { owner: { email: { contains: search } } },
       ];
     }
@@ -147,6 +155,8 @@ export async function GET(req: NextRequest) {
             select: {
               id: true,
               activationCode: true,
+              activationCodeHash: true,
+              activationCodeLast4: true,
               usedAt: true,
               expiresAt: true,
               createdAt: true,
@@ -192,7 +202,11 @@ export async function GET(req: NextRequest) {
 
       return {
         ...chip,
-        activationCode: latestToken?.activationCode || null,
+        claimTokens: chip.claimTokens.map((token) => ({
+          ...token,
+          activationCode: revealActivationCode(token.activationCode),
+        })),
+        activationCode: latestToken ? revealActivationCode(latestToken.activationCode) : null,
         pointOfSaleId: chip.pointOfSaleId,
         consignedAt: chip.consignedAt,
         pointOfSale: chip.pointOfSale
@@ -296,7 +310,7 @@ export async function POST(req: NextRequest) {
         await tx.chipClaimToken.create({
             data: {
                 chipId: chip.id,
-                activationCode,
+                ...protectActivationCode(activationCode),
                 expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 10), // 10 años para chips físicos
             },
         });

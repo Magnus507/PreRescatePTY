@@ -66,7 +66,7 @@ describe("POST /api/auth/register", () => {
         data: expect.objectContaining({
           userId: "user-1",
           accountId: "account-1",
-          consentType: "privacy_policy_and_emergency_alerts",
+          consentType: "terms_and_privacy",
         }),
       })
     );

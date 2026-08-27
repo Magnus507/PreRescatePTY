@@ -19,9 +19,9 @@ async function setupStorageBuckets() {
   console.log("🔧 Configurando Supabase Storage...\n");
 
   const buckets = [
-    { name: "general", description: "Almacenamiento general" },
-    { name: "profile-photos", description: "Fotos de perfil de usuarios" },
-    { name: "payment-proofs", description: "Comprobantes de pago" },
+    { name: "general", description: "Almacenamiento general", public: true },
+    { name: "profile-photos", description: "Fotos de perfil de usuarios", public: true },
+    { name: "payment-proofs", description: "Comprobantes de pago", public: false },
   ];
 
   for (const bucket of buckets) {
@@ -34,7 +34,7 @@ async function setupStorageBuckets() {
       if (!bucketExists) {
         console.log(`   ✅ Creando bucket: ${bucket.name}`);
         const { data, error } = await supabase.storage.createBucket(bucket.name, {
-          public: true,
+          public: bucket.public,
           allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
           fileSizeLimit: 5242880, // 5MB
         });
@@ -48,20 +48,22 @@ async function setupStorageBuckets() {
         console.log(`   ✅ Bucket ya existe`);
       }
 
-      // 2. Hacer bucket público (actualizar configuración)
-      console.log(`   📢 Haciendo bucket público...`);
+      // 2. Enforce the intended privacy mode.
+      console.log(`   🔐 Configurando privacidad...`);
       const { error: updateError } = await supabase.storage.updateBucket(bucket.name, {
-        public: true,
+        public: bucket.public,
+        allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+        fileSizeLimit: 5242880,
       });
 
       if (updateError) {
         console.error(`   ⚠️  Advertencia: ${updateError.message}`);
       } else {
-        console.log(`   ✅ Bucket configurado como público`);
+        console.log(`   ✅ Bucket ${bucket.public ? "público" : "privado"}`);
       }
 
-      // 3. Verificar acceso público con un archivo de prueba
-      console.log(`   🧪 Probando acceso público...`);
+      // 3. Verify service-role upload. Private files are read through the app proxy.
+      console.log(`   🧪 Probando carga...`);
       const testFile = Buffer.from("test");
       const fileName = `.test-${Date.now()}`;
 
@@ -72,8 +74,7 @@ async function setupStorageBuckets() {
       if (uploadError) {
         console.error(`   ⚠️  Error al subir archivo de prueba: ${uploadError.message}`);
       } else {
-        const { data: urlData } = supabase.storage.from(bucket.name).getPublicUrl(fileName);
-        console.log(`   ✅ URL Pública: ${urlData.publicUrl}`);
+        console.log(`   ✅ Carga verificada`);
 
         // Limpiar archivo de prueba
         await supabase.storage.from(bucket.name).remove([fileName]);
@@ -86,10 +87,10 @@ async function setupStorageBuckets() {
 
   console.log("\n✨ Configuración de Storage completada");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("✅ Buckets públicos configurados:");
+  console.log("✅ Buckets configurados:");
   console.log("   • general");
   console.log("   • profile-photos");
-  console.log("   • payment-proofs");
+  console.log("   • payment-proofs (privado)");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }
 

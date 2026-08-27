@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 // Image optimization is intentionally not used here to preserve markup control
 // and avoid layout shifts; using native <img> is acceptable for public QR view.
@@ -9,7 +9,7 @@ import {
   Heart, Phone, AlertTriangle, Droplets, Pill, 
   Activity, User, MessageCircle, Loader2, Calendar,
   ShieldCheck, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick,
-  Brain, Footprints, Baby, Eye
+  Brain, Footprints, Baby, Eye, BellRing
 } from "lucide-react";
 import { IndustrialProfileView } from "./_components/IndustrialProfileView";
 import { formatEmergencyLocation } from "@/domains/shared/services/emergency-location";
@@ -660,6 +660,10 @@ export default function EmergencyPage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'unknown' | 'paramedic' | 'citizen' | 'special'>('unknown');
   const [scanLocation, setScanLocation] = useState("");
+  const [scanId, setScanId] = useState<string | null>(null);
+  const [manualAlertStatus, setManualAlertStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [manualAlertMessage, setManualAlertMessage] = useState("");
+  const scanEffectKeyRef = useRef<string | null>(null);
   const [whatsappUrls, setWhatsappUrls] = useState<Record<number, string>>({});
   const [scanTime] = useState(new Date().toLocaleString("es-PA", { 
     timeZone: "America/Panama",
@@ -671,41 +675,46 @@ export default function EmergencyPage() {
   const isCanonicalDemo = shortCode === "DEMO-ADMIN-VIP" && searchParams.get("demo") === "true";
 
   useEffect(() => {
+    const effectKey = `${shortCode}:${normalizedSource}`;
+    if (scanEffectKeyRef.current === effectKey) return;
+    scanEffectKeyRef.current = effectKey;
+
     async function load() {
       try {
         const scanBody: Record<string, unknown> = { sourceType: normalizedSource };
+        const registerScan = async (payload: Record<string, unknown>) => {
+          try {
+            const response = await fetch(`/api/public/${shortCode}/scan`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const result = await response.json().catch(() => null);
+            if (response.ok && result?.scanId) setScanId(result.scanId);
+          } catch {
+            // The emergency profile remains usable even if scan telemetry is unavailable.
+          }
+        };
 
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               const locationLabel = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
               setScanLocation(locationLabel);
-              fetch(`/api/public/${shortCode}/scan`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  ...scanBody,
-                  geoLat: pos.coords.latitude,
-                  geoLng: pos.coords.longitude,
-                  geoAccuracy: pos.coords.accuracy,
-                }),
+              void registerScan({
+                ...scanBody,
+                geoLat: pos.coords.latitude,
+                geoLng: pos.coords.longitude,
+                geoAccuracy: pos.coords.accuracy,
               });
             },
             () => {
-              fetch(`/api/public/${shortCode}/scan`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(scanBody),
-              });
+              void registerScan(scanBody);
             },
             { timeout: 3000 }
           );
         } else {
-          fetch(`/api/public/${shortCode}/scan`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(scanBody),
-          });
+          void registerScan(scanBody);
         }
 
         const res = await fetch(`/api/public/${shortCode}?t=${Date.now()}`);
@@ -727,6 +736,22 @@ export default function EmergencyPage() {
 
     load();
   }, [shortCode, normalizedSource]);
+
+  async function notifyEmergencyContacts() {
+    if (!scanId || manualAlertStatus === "sending" || manualAlertStatus === "sent") return;
+    setManualAlertStatus("sending");
+    setManualAlertMessage("");
+    try {
+      const response = await fetch(`/api/public/${shortCode}/scan/${scanId}/notify`, { method: "POST" });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "No se pudo enviar el aviso");
+      setManualAlertStatus("sent");
+      setManualAlertMessage(result?.message || "Aviso registrado.");
+    } catch (notifyError) {
+      setManualAlertStatus("error");
+      setManualAlertMessage(notifyError instanceof Error ? notifyError.message : "No se pudo enviar el aviso");
+    }
+  }
 
   // Recompute WhatsApp URLs when scanLocation or profile updates
   useEffect(() => {
@@ -896,6 +921,13 @@ export default function EmergencyPage() {
               <ShieldCheck className="h-6 w-6" />
             </button>
           </div>
+          <ManualAlertButton
+            ready={!!scanId}
+            status={manualAlertStatus}
+            message={manualAlertMessage}
+            onClick={notifyEmergencyContacts}
+            dark
+          />
           <div className="space-y-3">
             <PublicContextBadges profile={profile} />
             {hasSpecialAssistance && (
@@ -1005,6 +1037,13 @@ export default function EmergencyPage() {
           </div>
           <Share2 className="h-6 w-6 text-white/30" />
         </a>
+
+        <ManualAlertButton
+          ready={!!scanId}
+          status={manualAlertStatus}
+          message={manualAlertMessage}
+          onClick={notifyEmergencyContacts}
+        />
 
         {/* Citizen View — basic safe info + protocol */}
         {view === 'citizen' && (
@@ -1179,6 +1218,40 @@ const InstructionItem = ({ number, title, desc }: { number: string; title: strin
     <div><h3 className="font-black text-slate-900 uppercase tracking-tighter text-lg leading-tight">{title}</h3><p className="text-xs text-slate-500 leading-relaxed mt-2 font-medium">{desc}</p></div>
   </div>
 );
+
+function ManualAlertButton({
+  ready,
+  status,
+  message,
+  onClick,
+  dark = false,
+}: {
+  ready: boolean;
+  status: "idle" | "sending" | "sent" | "error";
+  message: string;
+  onClick: () => void;
+  dark?: boolean;
+}) {
+  const disabled = !ready || status === "sending" || status === "sent";
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        className={`flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-wider transition-all disabled:cursor-not-allowed disabled:opacity-60 ${dark ? "border border-white/30 bg-white/15 text-white hover:bg-white/25" : "border border-slate-200 bg-white text-slate-950 shadow-sm hover:border-red-200 hover:bg-red-50"}`}
+      >
+        {status === "sending" ? <Loader2 className="h-5 w-5 animate-spin" /> : <BellRing className="h-5 w-5" />}
+        {status === "sent" ? "Contactos avisados" : ready ? "Avisar a contactos" : "Preparando aviso"}
+      </button>
+      {message && (
+        <p className={`text-center text-xs font-bold ${status === "error" ? (dark ? "text-red-200" : "text-red-700") : dark ? "text-white/80" : "text-slate-600"}`}>
+          {message}
+        </p>
+      )}
+    </div>
+  );
+}
 
 const PublicExtraItem = ({ label, value, tone = "slate" }: { label: string; value: string; tone?: "slate" | "emerald" | "blue" }) => {
   const palette = {

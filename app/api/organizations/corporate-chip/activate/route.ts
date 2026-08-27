@@ -10,6 +10,10 @@ import {
   CHIP_STATUS,
   USED_CAPACITY_CHIP_STATUSES,
 } from "@/domains/chips/chip-lifecycle.constants";
+import {
+  activationCodeLookupWhere,
+  normalizeActivationCode,
+} from "@/domains/chips/activation-code.service";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +35,9 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const activationCode = typeof body.activationCode === "string" ? body.activationCode.trim() : "";
+  const activationCode = typeof body.activationCode === "string"
+    ? normalizeActivationCode(body.activationCode)
+    : "";
 
   if (!activationCode) {
     return NextResponse.json(
@@ -55,8 +61,8 @@ export async function POST(req: NextRequest) {
       const now = new Date();
 
       // 1. Find the claim token
-      const claimToken = await tx.chipClaimToken.findUnique({
-        where: { activationCode },
+      const claimToken = await tx.chipClaimToken.findFirst({
+        where: activationCodeLookupWhere(activationCode),
         include: { chip: true },
       });
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+import { revealActivationCode } from "@/domains/chips/activation-code.service";
 
 export const dynamic = "force-dynamic";
 
@@ -33,5 +34,16 @@ export async function GET(req: NextRequest) {
     prisma.chip.count({ where }),
   ]);
 
-  return NextResponse.json({ chips, total, page, limit });
+  return NextResponse.json({
+    chips: chips.map((chip) => ({
+      ...chip,
+      claimTokens: chip.claimTokens.map((token) => ({
+        ...token,
+        activationCode: revealActivationCode(token.activationCode),
+      })),
+    })),
+    total,
+    page,
+    limit,
+  });
 }
