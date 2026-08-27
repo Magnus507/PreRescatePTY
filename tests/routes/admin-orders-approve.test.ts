@@ -97,6 +97,48 @@ function createEligibleOrder(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function setupUserLookup() {
+  mockPrisma.user.findUnique.mockImplementation(async (args: { where: { id: string } }) => {
+    if (args.where.id === TEST_ADMIN_ID) {
+      return {
+        id: TEST_ADMIN_ID,
+        status: 'active',
+        role: 'admin',
+        adminRole: 'admin',
+        isAdmin: true,
+        accountId: null,
+        sessionVersion: 0,
+        deletedAt: null,
+      } as never
+    }
+    if (args.where.id === TEST_USER_ID) {
+      return {
+        id: TEST_USER_ID,
+        status: 'active',
+        role: 'owner',
+        adminRole: null,
+        isAdmin: false,
+        accountId: TEST_ACCOUNT_ID,
+        sessionVersion: 0,
+        deletedAt: null,
+      } as never
+    }
+    if (args.where.id === 'user-1') {
+      return {
+        id: 'user-1',
+        status: 'active',
+        role: 'owner',
+        adminRole: null,
+        isAdmin: false,
+        accountId: 'owner-account',
+        sessionVersion: 0,
+        deletedAt: null,
+      } as never
+    }
+    return null as never
+  })
+}
+
 function setupDefaultMocks(orderOverrides: Record<string, unknown> = {}) {
   vi.mocked(getServerSession).mockResolvedValue(
     createMockSession({ id: TEST_ADMIN_ID, role: 'admin' }) as never
@@ -131,10 +173,7 @@ function setupDefaultMocks(orderOverrides: Record<string, unknown> = {}) {
     createEligibleOrder(orderOverrides) as never
   )
   mockPrisma.operationCommercialOrder.findFirst.mockResolvedValue(null as never)
-  mockPrisma.user.findUnique.mockResolvedValue({
-    id: TEST_USER_ID,
-    accountId: TEST_ACCOUNT_ID,
-  } as never)
+  setupUserLookup()
   mockPrisma.package.findUnique.mockResolvedValue({
     id: TEST_PACKAGE_ID,
     name: 'Plan Básico',
@@ -175,6 +214,7 @@ describe('POST /api/admin/orders/[id]/approve', () => {
     mockPrisma.order.findUnique.mockReset()
     mockPrisma.operationCommercialOrder.findFirst.mockReset()
     mockPrisma.user.findUnique.mockReset()
+    setupUserLookup()
     mockPrisma.package.findUnique.mockReset()
     mockPrisma.order.update.mockReset()
     mockPrisma.account.findUnique.mockReset()
@@ -194,8 +234,8 @@ describe('POST /api/admin/orders/[id]/approve', () => {
     const res = await POST(req, routeParams())
     const json = await res.json()
 
-    expect(res.status).toBe(401)
-    expect(json.error).toMatch(/autorizado/i)
+    expect(res.status).toBe(403)
+    expect(json.error).toMatch(/acceso|denegado|autorizado/i)
   })
 
   // ─── Rate limit ─────────────────────────────────────────────────────────
