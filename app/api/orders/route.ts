@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { revealActivationCode } from "@/domains/chips/activation-code.service";
 import { rateLimit } from "@/lib/rateLimit";
 import { generateOrderNumber } from "@/lib/order-number";
 import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-sync-outbox";
@@ -279,67 +278,76 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const userId = session.user.id;
-  const providerFilter = new URL(req.url).searchParams.get("provider");
-  const safeProvider = ["manual", "admin", "legacy"].includes(String(providerFilter))
-    ? String(providerFilter)
-    : null;
+  try {
+    const userId = session.user.id;
+    const providerFilter = new URL(req.url).searchParams.get("provider");
+    const safeProvider = ["manual", "admin", "legacy"].includes(String(providerFilter))
+      ? String(providerFilter)
+      : null;
 
-  const orders = await prisma.order.findMany({
-    where: {
-      userId,
-      ...(safeProvider ? { provider: safeProvider } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    include: { 
-      items: {
-        include: {
-          profile: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              displayNamePublic: true,
-              profileType: true,
+    const orders = await prisma.order.findMany({
+      where: {
+        userId,
+        ...(safeProvider ? { provider: safeProvider } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          include: {
+            profile: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                displayNamePublic: true,
+                profileType: true,
+              },
             },
-          },
-          chip: {
-            select: {
-              id: true,
-              shortCode: true,
-              serialPublic: true,
-              status: true,
+            chip: {
+              select: {
+                id: true,
+                shortCode: true,
+                serialPublic: true,
+                status: true,
+              },
             },
           },
         },
-      },
-      chipClaimTokens: {
-        include: {
-          chip: {
-            select: {
-              serialPublic: true,
-              shortCode: true,
+        // The order list never needs the secret activation code. Returning only
+        // token metadata prevents one legacy/corrupt encrypted value from
+        // breaking the entire order history and avoids exposing secrets in a
+        // broad list response.
+        chipClaimTokens: {
+          select: {
+            id: true,
+            chip: {
+              select: {
+                serialPublic: true,
+                shortCode: true,
+              },
             },
           },
         },
-      },
-    }
-  });
+      }
+    });
 
-  return NextResponse.json({
-    orders: orders.map((order) => ({
-      ...order,
-      chipClaimTokens: order.chipClaimTokens.map((token) => ({
-        ...token,
-        activationCode: revealActivationCode(token.activationCode),
+    return NextResponse.json({
+      orders: orders.map((order) => ({
+        ...order,
+        amount: serializeMoney(order.amount),
+        items: order.items.map((item) => ({
+          ...item,
+          unitPrice: serializeMoney(item.unitPrice),
+          totalPrice: serializeMoney(item.totalPrice),
+        })),
+        customerFulfillmentSummary: parseCustomerFulfillmentSummaryFromInternalNote(order.adminReviewNotes),
       })),
-      amount: serializeMoney(order.amount),
-      items: order.items.map((item) => ({
-        ...item,
-        unitPrice: serializeMoney(item.unitPrice),
-        totalPrice: serializeMoney(item.totalPrice),
-      })),
-      customerFulfillmentSummary: parseCustomerFulfillmentSummaryFromInternalNote(order.adminReviewNotes),
-    })),
-  });
+    });
+  } catch (error) {
+    console.error("ORDER_LIST_ERROR", error);
+    return NextResponse.json(
+      { error: "No se pudieron cargar los pedidos" },
+      { status: 500 }
+    );
+  }
 }
