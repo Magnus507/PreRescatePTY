@@ -7,8 +7,10 @@ import { ensureTraceableDigitalIdentity } from "@/lib/operations/traceable-digit
 
 export const dynamic = "force-dynamic";
 
-function getProductionProductCode(events: Array<{ eventType: string; metadataJson: string | null }>) {
-  for (const event of events) {
+function getProductionProductCode(
+  events: Array<{ eventType: string; metadataJson: string | null }> | null | undefined
+) {
+  for (const event of events ?? []) {
     if (event.eventType !== "CREATED" || !event.metadataJson) continue;
     try {
       const metadata = JSON.parse(event.metadataJson) as Record<string, unknown>;
