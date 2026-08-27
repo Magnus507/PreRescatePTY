@@ -16,6 +16,7 @@ export async function ensureCustomerBackorderProduction(
     backorderQty: number;
     outputType: string;
     productName: string;
+    productCode?: string | null;
     createdById?: string | null;
   }
 ) {
@@ -49,6 +50,8 @@ export async function ensureCustomerBackorderProduction(
             orderNumber: input.orderNumber,
             backorderQty,
             outputType: input.outputType,
+            productCode: input.productCode || null,
+            productName: input.productName,
           }),
           createdById: input.createdById || null,
         },
