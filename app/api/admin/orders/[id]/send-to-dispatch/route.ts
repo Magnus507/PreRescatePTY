@@ -53,6 +53,62 @@ export async function POST(
         },
       });
 
+      if (operationalOrder?.dispatchId) {
+        const existing = await tx.operationDispatch.findUnique({
+          where: { id: operationalOrder.dispatchId },
+          select: { id: true, code: true, status: true },
+        });
+        if (existing) {
+          return {
+            order,
+            operationalOrder,
+            dispatch: existing,
+            reservedUnits: [] as Array<{ id: string }>,
+            operationalQuantity: operationalOrder.items.reduce(
+              (sum, item) => sum + item.quantity,
+              0
+            ),
+            existing: true,
+          };
+        }
+      }
+
+      const existingDispatch = await tx.operationDispatch.findFirst({
+        where: {
+          events: {
+            some: {
+              referenceType: "order",
+              referenceId: order.id,
+            },
+          },
+        },
+        select: { id: true, code: true, status: true },
+      });
+
+      if (existingDispatch) {
+        if (operationalOrder && !operationalOrder.dispatchId) {
+          await tx.operationCommercialOrder.update({
+            where: { id: operationalOrder.id },
+            data: {
+              dispatchId: existingDispatch.id,
+              fulfillmentStatus: "dispatch_pending",
+              status: "processing",
+            },
+          });
+        }
+
+        return {
+          order,
+          operationalOrder,
+          dispatch: existingDispatch,
+          reservedUnits: [] as Array<{ id: string }>,
+          operationalQuantity: operationalOrder
+            ? operationalOrder.items.reduce((sum, item) => sum + item.quantity, 0)
+            : order.items.reduce((sum, item) => sum + item.quantity, 0),
+          existing: true,
+        };
+      }
+
       const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
         where: {
           reservedOrderId: order.id,
@@ -65,8 +121,8 @@ export async function POST(
       });
 
       // Reservation is performed from the operational commercial order, so the
-      // dispatch gate must validate against the same operational quantity. The
-      // legacy Order item quantity is only a fallback for pre-operations orders.
+      // dispatch gate validates against that same physical quantity. Legacy
+      // Order items remain only as a compatibility fallback.
       const operationalQuantity = operationalOrder
         ? operationalOrder.items.reduce((sum, item) => sum + item.quantity, 0)
         : order.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -77,24 +133,6 @@ export async function POST(
       if (reservedUnits.some((unit) => unit.reservedOrderId !== order.id)) {
         throw new Error("UNIT_ORDER_MISMATCH");
       }
-
-      if (operationalOrder?.dispatchId) {
-        throw new Error("ORDER_ALREADY_HAS_DISPATCH");
-      }
-
-      const existingDispatch = await tx.operationDispatch.findFirst({
-        where: {
-          events: {
-            some: {
-              referenceType: "order",
-              referenceId: order.id,
-            },
-          },
-        },
-        select: { id: true },
-      });
-
-      if (existingDispatch) throw new Error("ORDER_ALREADY_HAS_DISPATCH");
 
       const dispatchCode = `DSP-${parseOrderCode(order.orderNumber)}`;
       const fullDestinationAddress = [order.shippingAddress, order.shippingCity]
@@ -167,7 +205,14 @@ export async function POST(
         data: { orderStatus: "processing" },
       });
 
-      return { order, operationalOrder, dispatch, reservedUnits, operationalQuantity };
+      return {
+        order,
+        operationalOrder,
+        dispatch,
+        reservedUnits,
+        operationalQuantity,
+        existing: false,
+      };
     });
 
     return NextResponse.json({
@@ -177,7 +222,10 @@ export async function POST(
       status: result.dispatch.status,
       operationalOrderId: result.operationalOrder?.id || null,
       operationalQuantity: result.operationalQuantity,
-      message: "Despacho creado desde unidades reservadas",
+      alreadyExisted: result.existing,
+      message: result.existing
+        ? "El pedido ya estaba transferido a Despachos"
+        : "Pedido transferido a Despachos",
       reservedUnitIds: result.reservedUnits.map((unit) => unit.id),
     });
   } catch (error) {
@@ -191,7 +239,6 @@ export async function POST(
         INVALID_OPERATIONAL_QUANTITY: "El pedido no tiene cantidad operativa válida",
         RESERVATION_MISMATCH: "Las unidades reservadas no coinciden con la cantidad operativa",
         UNIT_ORDER_MISMATCH: "Hay unidades reservadas que no pertenecen al pedido",
-        ORDER_ALREADY_HAS_DISPATCH: "El pedido ya tiene un despacho asociado",
       };
       if (messageMap[error.message]) {
         return NextResponse.json({ error: messageMap[error.message] }, { status: 400 });
