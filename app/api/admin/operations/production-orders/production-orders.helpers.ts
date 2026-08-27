@@ -3,8 +3,11 @@ import { z } from "zod";
 export const PRODUCTION_ORDER_STATUSES = [
   "draft",
   "planned",
+  "sent_to_print",
+  "print_received",
   "started",
   "paused",
+  "qa_pending",
   "completed",
   "cancelled",
 ] as const;
@@ -14,19 +17,37 @@ export const PRODUCTION_EVENT_TYPES = [
   "PLANNED",
   "STARTED",
   "MATERIAL_ISSUED",
-  "PRODUCED",
   "PAUSED",
-  "COMPLETED",
   "CANCELLED",
   "DIGITAL_PREPARATION_CREATED",
   "DIGITAL_ITEM_ASSIGNED",
   "NFC_PROGRAMMED",
   "QR_PREPARED",
   "DIGITAL_PREPARATION_COMPLETED",
+  "PRINT_ORDER_SENT",
+  "PRINT_RECEIVED",
+  "UNIT_ASSEMBLED",
+  "PACKAGING_COMPLETED",
+  "UNIT_READY_FOR_QC",
+  "QA_PASSED",
+  "QA_FAILED",
+  "PRODUCTION_COMPLETED",
+] as const;
+
+// Quantity produced and completion are derived from accepted physical units.
+// They are intentionally absent here so a generic admin event cannot bypass
+// printing, assembly, packaging or QA.
+export const MANUAL_PRODUCTION_EVENT_TYPES = [
+  "PLANNED",
+  "STARTED",
+  "MATERIAL_ISSUED",
+  "PAUSED",
+  "CANCELLED",
 ] as const;
 
 export type ProductionOrderStatus = (typeof PRODUCTION_ORDER_STATUSES)[number];
 export type ProductionEventType = (typeof PRODUCTION_EVENT_TYPES)[number];
+export type ManualProductionEventType = (typeof MANUAL_PRODUCTION_EVENT_TYPES)[number];
 
 export function isValidProductionOrderStatus(
   value: string
@@ -38,6 +59,12 @@ export function isValidProductionEventType(
   value: string
 ): value is ProductionEventType {
   return PRODUCTION_EVENT_TYPES.includes(value as ProductionEventType);
+}
+
+export function isValidManualProductionEventType(
+  value: string
+): value is ManualProductionEventType {
+  return MANUAL_PRODUCTION_EVENT_TYPES.includes(value as ManualProductionEventType);
 }
 
 const CreateProductionOrderItemSchema = z.object({
@@ -86,8 +113,8 @@ export const CreateProductionOrderSchema = z.object({
 });
 
 export const CreateProductionEventSchema = z.object({
-  eventType: z.string().trim().refine(isValidProductionEventType, {
-    message: "eventType invalido",
+  eventType: z.string().trim().refine(isValidManualProductionEventType, {
+    message: "eventType no permitido como transición manual",
   }),
   quantity: z.coerce
     .number()
