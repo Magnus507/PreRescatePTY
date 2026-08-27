@@ -7,15 +7,46 @@ import { normalizePaymentProofUrl } from "@/lib/payment-proof";
 import { z } from "zod";
 
 const PaymentProofSchema = z.object({
-  paymentProofUrl: z.string().min(1).optional(),
-  manualPaymentReference: z.string().min(2).max(100).optional(),
+  paymentProofPath: z.string().trim().min(1).max(300).optional(),
+  // Transitional compatibility for browser bundles loaded before the signed-path flow.
+  paymentProofUrl: z.string().trim().min(1).max(500).optional(),
+  manualPaymentReference: z.string().trim().min(2).max(100).optional(),
 }).refine(
-  (data) => data.paymentProofUrl || data.manualPaymentReference,
+  (data) => data.paymentProofPath || data.paymentProofUrl || data.manualPaymentReference,
   {
-    message: "Debes enviar al menos paymentProofUrl o manualPaymentReference",
-    path: ["paymentProofUrl", "manualPaymentReference"]
+    message: "Debes enviar al menos un comprobante o una referencia de pago",
+    path: ["paymentProofPath", "manualPaymentReference"],
   }
 );
+
+const SAFE_PATH_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9/_.,=-]{0,280}\.(?:jpg|jpeg|png|webp)$/i;
+const LOCAL_BASE = "https://local.prerescue";
+
+function isSafeOwnedPath(path: string, userId: string, orderId: string) {
+  const prefix = `payments/${userId}/${orderId}/`;
+  return (
+    path.startsWith(prefix) &&
+    !path.includes("..") &&
+    !path.includes("\\") &&
+    SAFE_PATH_PATTERN.test(path)
+  );
+}
+
+function extractProxyPath(value: string): string | null {
+  try {
+    const url = new URL(value, LOCAL_BASE);
+    if (url.pathname !== "/api/image-proxy") return null;
+    if (url.searchParams.get("bucket") !== "payment-proofs") return null;
+    return url.searchParams.get("path");
+  } catch {
+    return null;
+  }
+}
+
+function buildProofProxyUrl(path: string) {
+  const params = new URLSearchParams({ bucket: "payment-proofs", path });
+  return `/api/image-proxy?${params.toString()}`;
+}
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -34,43 +65,53 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "La orden no está pendiente de comprobante" }, { status: 400 });
   }
 
-  const body = await req.json();
-  if (process.env.NODE_ENV !== "production") {
-    console.error("[PAYMENT_PROOF] incoming", {
-      orderId: id,
-      userId,
-      provider: order.provider,
-      orderStatus: order.orderStatus,
-      paymentStatus: order.paymentStatus,
-      adminReviewStatus: order.adminReviewStatus,
-      hasPaymentProofUrl: !!body?.paymentProofUrl,
-      hasManualPaymentReference: !!body?.manualPaymentReference,
-    });
-  }
+  const body = await req.json().catch(() => null);
   const parsed = PaymentProofSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Datos inválidos", details: parsed.error.flatten() }, { status: 400 });
   }
   const data = parsed.data;
 
-  const normalizedProofUrl = data.paymentProofUrl
-    ? normalizePaymentProofUrl(data.paymentProofUrl)
-    : null;
+  let normalizedProofUrl: string | null = null;
 
-  if (data.paymentProofUrl && !normalizedProofUrl) {
-    const safeUrlPreview = data.paymentProofUrl.length > 80
-      ? data.paymentProofUrl.substring(0, 80) + "..."
-      : data.paymentProofUrl;
-    const normalizeError = `[PAYMENT_PROOF] normalize failed for order ${id}: url=${safeUrlPreview}`;
-    if (process.env.NODE_ENV !== "production") {
-      console.error(normalizeError);
+  if (data.paymentProofPath) {
+    if (!isSafeOwnedPath(data.paymentProofPath, userId, id)) {
+      return NextResponse.json(
+        { error: "El comprobante no pertenece a este pedido." },
+        { status: 400 }
+      );
     }
-    return NextResponse.json(
-      { error: "paymentProofUrl inválida. Solo se permiten comprobantes del bucket payment-proofs." },
-      { status: 400 }
-    );
-  }
+    normalizedProofUrl = buildProofProxyUrl(data.paymentProofPath);
+  } else if (data.paymentProofUrl) {
+    // Compatibility path for clients loaded before paymentProofPath was introduced.
+    const normalizedLegacyUrl = normalizePaymentProofUrl(data.paymentProofUrl);
+    if (!normalizedLegacyUrl) {
+      return NextResponse.json(
+        { error: "paymentProofUrl inválida. Solo se permiten comprobantes del bucket payment-proofs." },
+        { status: 400 }
+      );
+    }
 
+    const legacyPath = extractProxyPath(normalizedLegacyUrl);
+    if (legacyPath) {
+      const exactOwnedPath = isSafeOwnedPath(legacyPath, userId, id);
+      const oldClientOwnedPath =
+        legacyPath.startsWith(`payments/${userId}/`) &&
+        !legacyPath.includes("..") &&
+        SAFE_PATH_PATTERN.test(legacyPath);
+
+      if (!exactOwnedPath && !oldClientOwnedPath) {
+        return NextResponse.json(
+          { error: "El comprobante no pertenece al usuario autenticado." },
+          { status: 400 }
+        );
+      }
+      normalizedProofUrl = buildProofProxyUrl(legacyPath);
+    } else {
+      // Absolute legacy Supabase URLs remain accepted only during the transition.
+      normalizedProofUrl = normalizedLegacyUrl;
+    }
+  }
 
   const updateData: {
     paymentStatus: "under_review";
@@ -88,7 +129,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
   const updated = await prisma.order.update({
     where: { id },
-    data: updateData
+    data: updateData,
   });
 
   return NextResponse.json({ order: updated });
