@@ -39,42 +39,36 @@ export async function POST(
         },
       });
 
-      if (!order) {
-        return null;
+      if (!order) return null;
+      if (order.dispatch) throw new Error("ORDER_ALREADY_HAS_DISPATCH");
+      if (order.status === "cancelled") throw new Error("ORDER_CANCELLED");
+      if (order.customerType === "internal") throw new Error("INTERNAL_ORDER_NO_DISPATCH");
+
+      const requiredByProductCode = new Map<string, number>();
+      for (const item of order.items) {
+        const productCode = item.productCode?.trim();
+        if (!productCode) throw new Error("MISSING_PRODUCT_CODE");
+        requiredByProductCode.set(
+          productCode,
+          (requiredByProductCode.get(productCode) || 0) + item.quantity
+        );
       }
 
-      if (order.dispatch) {
-        throw new Error("ORDER_ALREADY_HAS_DISPATCH");
+      if (requiredByProductCode.size === 0) {
+        throw new Error("MISSING_PRODUCT_CODE");
       }
 
-      if (order.status === "cancelled") {
-        throw new Error("ORDER_CANCELLED");
-      }
-
-      if (order.customerType === "internal") {
-        throw new Error("INTERNAL_ORDER_NO_DISPATCH");
-      }
-
-      const orderProductCodes = Array.from(
-        new Set(
-          order.items
-            .map((item) => item.productCode?.trim())
-            .filter((value): value is string => Boolean(value))
-        )
-      );
-
-      if (orderProductCodes.length !== 1) {
-        throw new Error("MIXED_OR_MISSING_PRODUCT_CODE");
-      }
-
-      const orderProductCode = orderProductCodes[0];
-
+      // Physical inventory is reserved against the real customer Order id when
+      // this operational order is a projection of checkout. Fall back to the
+      // operational id only for native/internal operational orders.
+      const reservationOrderId = order.sourceId || commercialOrderId;
       const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
         where: {
-          reservedOrderId: commercialOrderId,
+          reservedOrderId: reservationOrderId,
           status: "reserved",
           qaStatus: "passed",
           activationStatus: "not_activated",
+          dispatchItems: { none: {} },
         },
         orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
       });
@@ -83,13 +77,31 @@ export async function POST(
         throw new Error("NO_RESERVED_UNITS");
       }
 
-      const requiredQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+      const reservedByProductCode = new Map<string, number>();
+      for (const unit of reservedUnits) {
+        reservedByProductCode.set(
+          unit.productCode,
+          (reservedByProductCode.get(unit.productCode) || 0) + 1
+        );
+      }
+
+      const requiredQuantity = Array.from(requiredByProductCode.values()).reduce((sum, qty) => sum + qty, 0);
       if (reservedUnits.length < requiredQuantity) {
         throw new Error("INSUFFICIENT_RESERVED_UNITS");
       }
+      if (reservedUnits.length > requiredQuantity) {
+        throw new Error("EXCESS_RESERVED_UNITS");
+      }
 
-      if (reservedUnits.some((unit) => unit.productCode !== orderProductCode)) {
-        throw new Error("PRODUCT_CODE_MISMATCH");
+      for (const [productCode, requiredQty] of requiredByProductCode.entries()) {
+        if ((reservedByProductCode.get(productCode) || 0) !== requiredQty) {
+          throw new Error("PRODUCT_RESERVATION_MISMATCH");
+        }
+      }
+      for (const productCode of reservedByProductCode.keys()) {
+        if (!requiredByProductCode.has(productCode)) {
+          throw new Error("PRODUCT_RESERVATION_MISMATCH");
+        }
       }
 
       const dispatch = await tx.operationDispatch.create({
@@ -112,7 +124,7 @@ export async function POST(
               quantity: 1,
               unit: "unit",
               status: "pending_pick",
-              notes: `Despechado desde pedido ${order.code}`,
+              notes: `Despachado desde pedido ${order.code}`,
             })),
           },
           events: {
@@ -121,6 +133,8 @@ export async function POST(
               reason: "Despacho creado desde pedido reservado",
               metadataJson: JSON.stringify({
                 commercialOrderId,
+                customerOrderId: order.sourceId || null,
+                reservationOrderId,
                 reservedUnitIds: reservedUnits.map((unit) => unit.id),
               }),
               createdById: auth.session.user.id || null,
@@ -142,15 +156,6 @@ export async function POST(
         },
       });
 
-      await tx.operationFinishedGoodUnit.updateMany({
-        where: {
-          id: { in: reservedUnits.map((unit) => unit.id) },
-        },
-        data: {
-          status: "reserved",
-        },
-      });
-
       await tx.operationFinishedGoodUnitEvent.createMany({
         data: reservedUnits.map((unit) => ({
           unitId: unit.id,
@@ -160,6 +165,8 @@ export async function POST(
           referenceId: dispatch.id,
           metadataJson: JSON.stringify({
             commercialOrderId,
+            customerOrderId: order.sourceId || null,
+            reservationOrderId,
             dispatchId: dispatch.id,
             dispatchCode: dispatch.code,
           }),
@@ -167,7 +174,6 @@ export async function POST(
       });
 
       return {
-        order,
         dispatch,
         reservedUnitIds: reservedUnits.map((unit) => unit.id),
       };
@@ -191,16 +197,10 @@ export async function POST(
         { status: 400 }
       );
     }
-    if (error instanceof Error && error.message === "MIXED_OR_MISSING_PRODUCT_CODE") {
+    if (error instanceof Error && error.message === "MISSING_PRODUCT_CODE") {
       return NextResponse.json(
-        { error: "La ruta comercial simple solo admite un único productCode canónico en el pedido." },
+        { error: "Todos los artículos del pedido deben tener un productCode canónico antes del despacho." },
         { status: 400 }
-      );
-    }
-    if (error instanceof Error && error.message === "PRODUCT_CODE_MISMATCH") {
-      return NextResponse.json(
-        { error: "Las unidades reservadas no coinciden con el productCode del pedido." },
-        { status: 409 }
       );
     }
     if (error instanceof Error && error.message === "NO_RESERVED_UNITS") {
@@ -208,6 +208,18 @@ export async function POST(
     }
     if (error instanceof Error && error.message === "INSUFFICIENT_RESERVED_UNITS") {
       return NextResponse.json({ error: "No hay unidades QC aprobadas suficientes para crear el despacho" }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "EXCESS_RESERVED_UNITS") {
+      return NextResponse.json(
+        { error: "Hay más unidades reservadas que las solicitadas. Revisa la reserva antes de despachar." },
+        { status: 409 }
+      );
+    }
+    if (error instanceof Error && error.message === "PRODUCT_RESERVATION_MISMATCH") {
+      return NextResponse.json(
+        { error: "Las unidades reservadas no coinciden exactamente con los productos y cantidades del pedido." },
+        { status: 409 }
+      );
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "Ya existe un despacho con ese code" }, { status: 409 });
