@@ -19,20 +19,9 @@ interface PaymentProofFormProps {
   order: Order;
   uploadingFor: string | null;
   paymentRefDraft: Record<string, string>;
-  // Transitional props kept only while the parent page is simplified. They are
-  // intentionally unused here: proof images use signed storage uploads and the
-  // delivery snapshot is immutable after checkout.
-  paymentProofDraft?: Record<string, string>;
   onRefChange: (orderId: string, value: string) => void;
-  onProofUrlChange?: (orderId: string, value: string) => void;
-  onUpload?: (e: React.ChangeEvent<HTMLInputElement>, orderId: string) => void;
   onSubmitReference: (orderId: string) => void;
   onCancel: (orderId: string) => void;
-  onShippingChange?: {
-    address: (val: string) => void;
-    city: (val: string) => void;
-    notes: (val: string) => void;
-  };
   paymentInstructions: React.ReactNode;
 }
 
