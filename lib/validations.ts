@@ -161,6 +161,26 @@ export const adminUpdateSchema = z.object({
 // ORDER SCHEMAS
 // ──────────────────────────────────────────────
 
+const serializedPositiveNumber = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+
+  const normalized = value.trim();
+  if (!normalized) return value;
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : value;
+}, z.number().finite().positive());
+
+const serializedPositiveInteger = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+
+  const normalized = value.trim();
+  if (!normalized) return value;
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : value;
+}, z.number().finite().int().positive());
+
 export const orderCreateSchema = z.object({
   customerName: z.string().min(2, "Nombre requerido").max(200),
   customerEmail: z.string().email("Email inválido"),
@@ -173,8 +193,8 @@ export const orderCreateSchema = z.object({
   customerDocument: z.string().optional().nullable(),
   items: z.array(z.object({
     productType: z.string(),
-    quantity: z.number().int().positive(),
-    unitPrice: z.number().positive(),
+    quantity: serializedPositiveInteger,
+    unitPrice: serializedPositiveNumber,
     profileId: z.string().optional(),
   })).min(1, "Debe incluir al menos un producto"),
 });
