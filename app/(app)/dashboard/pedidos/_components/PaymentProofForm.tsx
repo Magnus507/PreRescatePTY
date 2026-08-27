@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { Upload, Loader2, Truck } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,27 +41,18 @@ export function PaymentProofForm({
   const isUploading = uploadingFor === order.id || directUploading;
 
   const handleDirectUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
       toast.error("Solo se permiten comprobantes JPG, PNG o WebP.");
-      event.target.value = "";
+      input.value = "";
       return;
     }
     if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
       toast.error("El comprobante debe pesar como máximo 5MB.");
-      event.target.value = "";
-      return;
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabasePublicKey =
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabasePublicKey) {
-      toast.error("El almacenamiento de comprobantes no está disponible.");
-      event.target.value = "";
+      input.value = "";
       return;
     }
 
@@ -74,21 +64,40 @@ export function PaymentProofForm({
         body: JSON.stringify({ mimeType: file.type, size: file.size }),
       });
       const signedData = await signedRes.json().catch(() => ({}));
-      if (!signedRes.ok || !signedData?.path || !signedData?.token) {
+      if (!signedRes.ok || !signedData?.path || !signedData?.signedUrl) {
         throw new Error(signedData?.error || "No se pudo preparar la carga del comprobante");
       }
 
-      const supabase = createClient(supabaseUrl, supabasePublicKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
-      const { error: uploadError } = await supabase.storage
-        .from("payment-proofs")
-        .uploadToSignedUrl(signedData.path, signedData.token, file, {
-          contentType: file.type,
-        });
+      // Upload raw bytes instead of multipart/FormData. This is more reliable
+      // across Safari and avoids Storage receiving an empty multipart body.
+      const bytes = await file.arrayBuffer();
+      if (bytes.byteLength !== file.size || bytes.byteLength <= 0) {
+        throw new Error("No pudimos leer el contenido de la imagen. Selecciónala nuevamente.");
+      }
 
-      if (uploadError) {
-        throw new Error(uploadError.message || "No se pudo subir el comprobante");
+      const uploadRes = await fetch(signedData.signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: bytes,
+      });
+
+      if (!uploadRes.ok) {
+        const uploadBody = await uploadRes.text().catch(() => "");
+        let uploadMessage = "No se pudo subir el comprobante";
+        if (uploadBody) {
+          try {
+            const parsed = JSON.parse(uploadBody) as { message?: string; error?: string };
+            uploadMessage = parsed.message || parsed.error || uploadMessage;
+          } catch {
+            uploadMessage = uploadBody.slice(0, 180) || uploadMessage;
+          }
+        }
+        if (/no content provided/i.test(uploadMessage)) {
+          uploadMessage = "El almacenamiento no recibió los bytes de la imagen. Vuelve a seleccionarla e intenta nuevamente.";
+        }
+        throw new Error(uploadMessage);
       }
 
       const registerRes = await fetch(`/api/orders/${order.id}/payment-proof`, {
@@ -112,7 +121,7 @@ export function PaymentProofForm({
       toast.error(message);
     } finally {
       setDirectUploading(false);
-      event.target.value = "";
+      input.value = "";
     }
   };
 
@@ -210,19 +219,8 @@ export function PaymentProofForm({
           </button>
         </div>
         <p className="text-[10px] font-semibold text-slate-500">
-          Formatos permitidos: JPG, PNG o WEBP · máximo 5MB. El archivo se carga directamente al almacenamiento privado del pedido.
+          Formatos permitidos: JPG, PNG o WEBP · máximo 5MB. El archivo se envía directamente al almacenamiento privado y se valida antes de asociarlo al pedido.
         </p>
-        <div className="w-full max-w-md text-left space-y-2">
-          <p className="text-[10px] font-semibold text-slate-500">Si el botón no abre, selecciona el archivo aquí</p>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleDirectUpload}
-            disabled={isUploading}
-            className="block w-full text-xs font-semibold text-slate-600 file:mr-3 file:rounded-full file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-bold file:text-slate-700 hover:file:bg-slate-200 disabled:opacity-50"
-            aria-label="Seleccionar archivo de comprobante (fallback)"
-          />
-        </div>
       </div>
     </div>
   );
