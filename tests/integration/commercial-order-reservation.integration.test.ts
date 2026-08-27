@@ -28,11 +28,14 @@ describe("PostgreSQL integration: commercial order reservation", () => {
       },
     });
 
+    const sourceOrderAId = `source-a-${RUN_ID}`;
+    const sourceOrderBId = `source-b-${RUN_ID}`;
+
     const orderA = await db.operationCommercialOrder.create({
       data: {
         code: `OP-A-${RUN_ID}`,
         sourceType: "checkout",
-        sourceId: `source-a-${RUN_ID}`,
+        sourceId: sourceOrderAId,
         status: "draft",
         customerType: "customer",
         salesChannel: "web",
@@ -58,7 +61,7 @@ describe("PostgreSQL integration: commercial order reservation", () => {
       data: {
         code: `OP-B-${RUN_ID}`,
         sourceType: "checkout",
-        sourceId: `source-b-${RUN_ID}`,
+        sourceId: sourceOrderBId,
         status: "draft",
         customerType: "customer",
         salesChannel: "web",
@@ -87,13 +90,13 @@ describe("PostgreSQL integration: commercial order reservation", () => {
 
     const reservedUnit = await db.operationFinishedGoodUnit.findUnique({ where: { id: unit.id } });
     const reservedUnits = await db.operationFinishedGoodUnit.findMany({
-      where: { reservedOrderId: { in: [orderA.id, orderB.id] } },
+      where: { reservedOrderId: { in: [sourceOrderAId, sourceOrderBId] } },
       select: { id: true, reservedOrderId: true },
     });
 
     expect([first, second].filter(Boolean)).toHaveLength(2);
     expect(reservedUnits).toHaveLength(1);
-    expect(reservedUnit?.reservedOrderId).toMatch(new RegExp(`^(${orderA.id}|${orderB.id})$`));
+    expect(reservedUnit?.reservedOrderId).toMatch(new RegExp(`^(${sourceOrderAId}|${sourceOrderBId})$`));
     expect([first?.summary.missingQty, second?.summary.missingQty].some((value) => value === 1)).toBe(true);
 
     const refreshedOrders = await db.operationCommercialOrder.findMany({
