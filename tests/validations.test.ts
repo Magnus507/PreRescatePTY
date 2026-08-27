@@ -32,6 +32,10 @@ describe('validations: orderCreateSchema', () => {
   const baseOrder = {
     customerName: 'Juan Perez',
     customerEmail: 'juan@example.com',
+    customerPhone: '6000-0000',
+    shippingAddress: 'Calle 50, edificio de prueba',
+    shippingCity: 'Panamá',
+    shippingNotes: '',
     paymentMethod: 'yappy',
     items: [
       {
@@ -68,5 +72,13 @@ describe('validations: orderCreateSchema', () => {
       ...baseOrder,
       items: [{ productType: 'product-1', quantity: '2', unitPrice: 'abc' }],
     })).toThrow()
+  })
+
+  it('requires an explicit delivery snapshot', () => {
+    const { customerPhone: _phone, ...withoutPhone } = baseOrder
+    expect(() => validateOrThrow(orderCreateSchema, withoutPhone)).toThrow()
+
+    const { shippingAddress: _address, ...withoutAddress } = baseOrder
+    expect(() => validateOrThrow(orderCreateSchema, withoutAddress)).toThrow()
   })
 })
