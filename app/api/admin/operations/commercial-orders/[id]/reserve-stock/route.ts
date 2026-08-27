@@ -14,7 +14,6 @@ export async function POST(
 
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
-  const requestedQtyInput = Number(body?.quantity);
   const confirmPendingPayment = Boolean(body?.confirmPendingPayment);
 
   try {
@@ -30,21 +29,21 @@ export async function POST(
         throw new Error("PAYMENT_PENDING_CONFIRMATION_REQUIRED");
       }
 
-      const result = await reserveCommercialOrderStock(tx, {
+      // Inventory is always reserved against the immutable quantities recorded
+      // on the commercial order. The API intentionally does not accept an
+      // arbitrary quantity that could diverge from the customer order.
+      const reservation = await reserveCommercialOrderStock(tx, {
         orderId: id,
         allowPartial: true,
-        requestedQty: Number.isFinite(requestedQtyInput) && requestedQtyInput > 0
-          ? Math.floor(requestedQtyInput)
-          : undefined,
       });
 
-      if (!result) return null;
+      if (!reservation) return null;
 
       return {
-        ...result,
+        ...reservation,
         message:
-          result.summary.reservedQty > 0
-            ? result.summary.missingQty > 0
+          reservation.summary.reservedQty > 0
+            ? reservation.summary.missingQty > 0
               ? "Reserva parcial aplicada"
               : "Stock reservado correctamente"
             : "No había stock disponible para reservar",
