@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 import ComprarContent from "./ComprarContent";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: {
@@ -32,6 +36,26 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ComprarPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ComprarPage() {
+  const session = await getServerSession(authOptions);
+
+  if (session?.user?.id) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        account: {
+          select: { packageId: true },
+        },
+      },
+    });
+
+    const packageId = user?.account?.packageId;
+    redirect(packageId
+      ? `/dashboard/upgrade?packageId=${encodeURIComponent(packageId)}`
+      : "/dashboard/upgrade");
+  }
+
   return <ComprarContent />;
 }
