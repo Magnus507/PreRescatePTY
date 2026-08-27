@@ -43,6 +43,24 @@ export async function POST(
       if (order.dispatch) throw new Error("ORDER_ALREADY_HAS_DISPATCH");
       if (order.status === "cancelled") throw new Error("ORDER_CANCELLED");
       if (order.customerType === "internal") throw new Error("INTERNAL_ORDER_NO_DISPATCH");
+      if (order.paymentStatus !== "paid") throw new Error("ORDER_NOT_PAID");
+
+      const customerOrder = order.sourceId
+        ? await tx.order.findUnique({
+            where: { id: order.sourceId },
+            select: {
+              id: true,
+              orderNumber: true,
+              providerReference: true,
+              customerName: true,
+              customerEmail: true,
+              customerPhone: true,
+              shippingAddress: true,
+              shippingCity: true,
+              shippingNotes: true,
+            },
+          })
+        : null;
 
       const requiredByProductCode = new Map<string, number>();
       for (const item of order.items) {
@@ -58,9 +76,6 @@ export async function POST(
         throw new Error("MISSING_PRODUCT_CODE");
       }
 
-      // Physical inventory is reserved against the real customer Order id when
-      // this operational order is a projection of checkout. Fall back to the
-      // operational id only for native/internal operational orders.
       const reservationOrderId = order.sourceId || commercialOrderId;
       const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
         where: {
@@ -73,9 +88,7 @@ export async function POST(
         orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
       });
 
-      if (reservedUnits.length === 0) {
-        throw new Error("NO_RESERVED_UNITS");
-      }
+      if (reservedUnits.length === 0) throw new Error("NO_RESERVED_UNITS");
 
       const reservedByProductCode = new Map<string, number>();
       for (const unit of reservedUnits) {
@@ -85,13 +98,12 @@ export async function POST(
         );
       }
 
-      const requiredQuantity = Array.from(requiredByProductCode.values()).reduce((sum, qty) => sum + qty, 0);
-      if (reservedUnits.length < requiredQuantity) {
-        throw new Error("INSUFFICIENT_RESERVED_UNITS");
-      }
-      if (reservedUnits.length > requiredQuantity) {
-        throw new Error("EXCESS_RESERVED_UNITS");
-      }
+      const requiredQuantity = Array.from(requiredByProductCode.values()).reduce(
+        (sum, qty) => sum + qty,
+        0
+      );
+      if (reservedUnits.length < requiredQuantity) throw new Error("INSUFFICIENT_RESERVED_UNITS");
+      if (reservedUnits.length > requiredQuantity) throw new Error("EXCESS_RESERVED_UNITS");
 
       for (const [productCode, requiredQty] of requiredByProductCode.entries()) {
         if ((reservedByProductCode.get(productCode) || 0) !== requiredQty) {
@@ -104,14 +116,23 @@ export async function POST(
         }
       }
 
+      const primaryOrderCode =
+        customerOrder?.providerReference?.trim()?.startsWith("PR-")
+          ? customerOrder.providerReference.trim()
+          : customerOrder?.orderNumber || order.code;
+      const destinationName = customerOrder?.customerName || order.customerName || null;
+      const destinationAddress = customerOrder?.shippingAddress || null;
+      const dispatchNotes = parsed.data.notes || customerOrder?.shippingNotes || order.notes || null;
+
       const dispatch = await tx.operationDispatch.create({
         data: {
           code: parsed.data.code,
           status: "pending_pick",
-          destinationType: order.customerType || "customer",
-          destinationName: order.customerName || null,
-          destinationReference: order.customerReference || null,
-          notes: parsed.data.notes || order.notes || null,
+          destinationType: "customer",
+          destinationName,
+          destinationReference: primaryOrderCode,
+          destinationAddress,
+          notes: dispatchNotes,
           carrierName: parsed.data.carrierName || null,
           trackingReference: parsed.data.trackingReference || null,
           scheduledAt: parsed.data.scheduledAt || null,
@@ -124,18 +145,27 @@ export async function POST(
               quantity: 1,
               unit: "unit",
               status: "pending_pick",
-              notes: `Despachado desde pedido ${order.code}`,
+              notes: `Pedido ${primaryOrderCode}`,
             })),
           },
           events: {
             create: {
               eventType: "DISPATCH_CREATED",
               reason: "Despacho creado desde pedido reservado",
+              referenceType: customerOrder ? "order" : "commercial_order",
+              referenceId: customerOrder?.id || commercialOrderId,
               metadataJson: JSON.stringify({
                 commercialOrderId,
-                customerOrderId: order.sourceId || null,
+                customerOrderId: customerOrder?.id || null,
+                orderCode: primaryOrderCode,
                 reservationOrderId,
                 reservedUnitIds: reservedUnits.map((unit) => unit.id),
+                customerName: destinationName,
+                customerEmail: customerOrder?.customerEmail || null,
+                customerPhone: customerOrder?.customerPhone || null,
+                shippingAddress: customerOrder?.shippingAddress || null,
+                shippingCity: customerOrder?.shippingCity || null,
+                shippingNotes: customerOrder?.shippingNotes || null,
               }),
               createdById: auth.session.user.id || null,
             },
@@ -165,7 +195,7 @@ export async function POST(
           referenceId: dispatch.id,
           metadataJson: JSON.stringify({
             commercialOrderId,
-            customerOrderId: order.sourceId || null,
+            customerOrderId: customerOrder?.id || null,
             reservationOrderId,
             dispatchId: dispatch.id,
             dispatchCode: dispatch.code,
@@ -183,7 +213,10 @@ export async function POST(
       return NextResponse.json({ error: "Pedido comercial no encontrado" }, { status: 404 });
     }
 
-    return NextResponse.json({ dispatch: result.dispatch, reservedUnitIds: result.reservedUnitIds }, { status: 201 });
+    return NextResponse.json(
+      { dispatch: result.dispatch, reservedUnitIds: result.reservedUnitIds },
+      { status: 201 }
+    );
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_ALREADY_HAS_DISPATCH") {
       return NextResponse.json({ error: "El pedido ya tiene un despacho asociado" }, { status: 409 });
@@ -193,13 +226,19 @@ export async function POST(
     }
     if (error instanceof Error && error.message === "INTERNAL_ORDER_NO_DISPATCH") {
       return NextResponse.json(
-        { error: "Los pedidos internos no crean despacho. Terminan en inventario disponible después de QC." },
+        { error: "Los pedidos internos terminan en inventario después de QA." },
         { status: 400 }
+      );
+    }
+    if (error instanceof Error && error.message === "ORDER_NOT_PAID") {
+      return NextResponse.json(
+        { error: "El pedido debe tener el pago aprobado antes de crear despacho." },
+        { status: 409 }
       );
     }
     if (error instanceof Error && error.message === "MISSING_PRODUCT_CODE") {
       return NextResponse.json(
-        { error: "Todos los artículos del pedido deben tener un productCode canónico antes del despacho." },
+        { error: "Todos los artículos deben tener un productCode canónico antes del despacho." },
         { status: 400 }
       );
     }
@@ -207,22 +246,22 @@ export async function POST(
       return NextResponse.json({ error: "El pedido no tiene unidades reservadas" }, { status: 400 });
     }
     if (error instanceof Error && error.message === "INSUFFICIENT_RESERVED_UNITS") {
-      return NextResponse.json({ error: "No hay unidades QC aprobadas suficientes para crear el despacho" }, { status: 400 });
+      return NextResponse.json({ error: "No hay unidades QA aprobadas suficientes para crear el despacho" }, { status: 400 });
     }
     if (error instanceof Error && error.message === "EXCESS_RESERVED_UNITS") {
       return NextResponse.json(
-        { error: "Hay más unidades reservadas que las solicitadas. Revisa la reserva antes de despachar." },
+        { error: "Hay más unidades reservadas que las solicitadas. Revisa la reserva." },
         { status: 409 }
       );
     }
     if (error instanceof Error && error.message === "PRODUCT_RESERVATION_MISMATCH") {
       return NextResponse.json(
-        { error: "Las unidades reservadas no coinciden exactamente con los productos y cantidades del pedido." },
+        { error: "Las unidades reservadas no coinciden con los productos y cantidades del pedido." },
         { status: 409 }
       );
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ error: "Ya existe un despacho con ese code" }, { status: 409 });
+      return NextResponse.json({ error: "Ya existe un despacho con ese código" }, { status: 409 });
     }
 
     console.error("[operations/commercial-orders/:id/create-dispatch] POST error:", error);
