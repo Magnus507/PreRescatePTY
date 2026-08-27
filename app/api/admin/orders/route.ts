@@ -7,11 +7,9 @@ import { AccountStateService } from "@/domains/accounts/services/account-state.s
 import { OrderNotificationService } from "@/domains/notifications/services/order-notification.service";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 import { buildOperationsOrderViewModel } from "@/lib/operations/operations-order-view-model";
+import { buildCustomerProductionCode } from "@/lib/operations/customer-order-production";
 import { getUniqueActivationCode } from "@/lib/identifiers";
-import {
-  protectActivationCode,
-  revealActivationCode,
-} from "@/domains/chips/activation-code.service";
+import { protectActivationCode } from "@/domains/chips/activation-code.service";
 
 async function isAdmin() {
   const session = await getServerSession(authOptions);
@@ -37,9 +35,9 @@ export async function GET() {
             email: true,
             phone: true,
             profile: {
-              select: { firstName: true, lastName: true }
-            }
-          }
+              select: { firstName: true, lastName: true },
+            },
+          },
         },
         items: {
           include: {
@@ -66,14 +64,26 @@ export async function GET() {
             },
           },
         },
+        // The operations list only needs token/chip identity. Never decrypt activation
+        // secrets in a broad list endpoint.
         chipClaimTokens: {
-          include: {
-            chip: true
-          }
-        }
+          select: {
+            id: true,
+            chipId: true,
+            chip: {
+              select: {
+                id: true,
+                serialPublic: true,
+                shortCode: true,
+                internalLabel: true,
+                status: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
-      take: 200
+      take: 200,
     });
 
     const allMemberIds = new Set<string>();
@@ -89,7 +99,10 @@ export async function GET() {
       }
     }
 
-    const existingChipsByMember = new Map<string, { id: string; shortCode: string; serialPublic: string; status: string }>();
+    const existingChipsByMember = new Map<
+      string,
+      { id: string; shortCode: string; serialPublic: string; status: string }
+    >();
     if (allCorporateProfileIds.size > 0) {
       const existingChips = await prisma.corporateOrderEmployeeItem.findMany({
         where: {
@@ -161,10 +174,7 @@ export async function GET() {
       },
     });
 
-    const dispatchByOrderId = new Map<
-      string,
-      { id: string; code: string; status: string }
-    >();
+    const dispatchByOrderId = new Map<string, { id: string; code: string; status: string }>();
     for (const dispatch of dispatches) {
       for (const event of dispatch.events) {
         const payload = (() => {
@@ -186,6 +196,17 @@ export async function GET() {
       }
     }
 
+    const productionCodes = orders.map((order) => buildCustomerProductionCode(order.orderNumber));
+    const productionOrders = productionCodes.length > 0
+      ? await prisma.operationProductionOrder.findMany({
+          where: { code: { in: productionCodes } },
+          select: { id: true, code: true, status: true },
+        })
+      : [];
+    const productionByCode = new Map(
+      productionOrders.map((productionOrder) => [productionOrder.code, productionOrder])
+    );
+
     const reservedUnitsByOrderId = reservedUnits.reduce<Record<string, typeof reservedUnits>>((acc, unit) => {
       if (!unit.reservedOrderId) return acc;
       acc[unit.reservedOrderId] = acc[unit.reservedOrderId] || [];
@@ -197,16 +218,12 @@ export async function GET() {
       orders: ordersWithExistingChips.map((order) => {
         const reservedUnits = reservedUnitsByOrderId[order.id] || [];
         const dispatch = dispatchByOrderId.get(order.id) || null;
-        const orderWithRevealedCodes = {
-          ...order,
-          chipClaimTokens: order.chipClaimTokens.map((token) => ({
-            ...token,
-            activationCode: revealActivationCode(token.activationCode),
-          })),
-        };
+        const productionOrder =
+          productionByCode.get(buildCustomerProductionCode(order.orderNumber)) || null;
+
         return {
           ...buildOperationsOrderViewModel({
-            ...(orderWithRevealedCodes as Parameters<typeof buildOperationsOrderViewModel>[0]),
+            ...(order as unknown as Parameters<typeof buildOperationsOrderViewModel>[0]),
             customerName:
               order.customerName ||
               `${order.user?.profile?.firstName || ""} ${order.user?.profile?.lastName || ""}`.trim() ||
@@ -232,6 +249,11 @@ export async function GET() {
           }),
           reservedUnits,
           dispatch,
+          productionOrder,
+          chipClaimTokens: order.chipClaimTokens.map((token) => ({
+            id: token.id,
+            chip: token.chip,
+          })),
         };
       }),
     });
@@ -251,10 +273,10 @@ export async function PATCH(req: NextRequest) {
   try {
     const order = await prisma.order.findUnique({
       where: { id },
-      include: { 
-        items: true, 
-        user: { include: { account: true, profile: true } } 
-      }
+      include: {
+        items: true,
+        user: { include: { account: true, profile: true } },
+      },
     });
 
     if (!order) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
@@ -276,7 +298,9 @@ export async function PATCH(req: NextRequest) {
 
     const requestedChipCount = normalizedAssignedChipIds.length > 0
       ? normalizedAssignedChipIds.length
-      : (generateTokens ? purchasedChipLimit : 0);
+      : generateTokens
+        ? purchasedChipLimit
+        : 0;
 
     if (requestedChipCount > purchasedChipLimit) {
       return NextResponse.json(
@@ -285,7 +309,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // ── Fulfillment gating: validate state transitions ──────────────────────
+    // Fulfillment gating: validate state transitions.
     const isPaymentApproved = order.paymentStatus === "paid" || order.adminReviewStatus === "approved";
     const requestedOrderStatus = orderStatus || order.orderStatus;
     const isShippedTransition = requestedOrderStatus === "shipped" && order.orderStatus !== "shipped";
@@ -325,8 +349,8 @@ export async function PATCH(req: NextRequest) {
       where: { id },
       data: {
         orderStatus: orderStatus || order.orderStatus,
-        paymentStatus: paymentStatus || order.paymentStatus
-      }
+        paymentStatus: paymentStatus || order.paymentStatus,
+      },
     });
 
     const isFulfilling = ["shipped", "completed"].includes(updatedOrder.orderStatus);
@@ -334,24 +358,24 @@ export async function PATCH(req: NextRequest) {
     if ((generateTokens || isFulfilling) && order.items.length > 0) {
       let totalChips = 0;
       let totalProfiles = 0;
-      
+
       for (const item of order.items) {
         if (item.productType === "CHIP_EXTRA") {
-           totalChips += item.quantity;
-           totalProfiles += item.quantity;
+          totalChips += item.quantity;
+          totalProfiles += item.quantity;
         } else if (item.productType.startsWith("COMBO_") && order.providerReference) {
-           const pkg = await prisma.package.findUnique({ where: { id: order.providerReference } });
-           if (pkg) {
-              totalChips += pkg.maxChips * item.quantity;
-              totalProfiles += pkg.maxProfiles * item.quantity;
-           }
+          const pkg = await prisma.package.findUnique({ where: { id: order.providerReference } });
+          if (pkg) {
+            totalChips += pkg.maxChips * item.quantity;
+            totalProfiles += pkg.maxProfiles * item.quantity;
+          }
         }
       }
-      
+
       if (totalChips > 0 || totalProfiles > 0) {
         const existingTokens = await prisma.chipClaimToken.count({ where: { orderId: id } });
         const neededChips = totalChips - existingTokens;
-        
+
         if (neededChips > 0) {
           if (normalizedAssignedChipIds.length > 0) {
             if (normalizedAssignedChipIds.length > purchasedChipLimit) {
@@ -366,7 +390,7 @@ export async function PATCH(req: NextRequest) {
                   orderId: id,
                   assignedChipIds: normalizedAssignedChipIds,
                   purchasedChips: purchasedChipLimit,
-                  tokenExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 10), // 10 años para chips físicos
+                  tokenExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 10),
                 });
               });
             } catch (error: unknown) {
@@ -375,25 +399,25 @@ export async function PATCH(req: NextRequest) {
             }
           } else {
             for (let i = 0; i < neededChips; i++) {
-               const chip = await prisma.chip.create({
-                  data: {
-                     serialPublic: `PR-${Math.floor(Date.now() / 1000).toString(16).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
-                     shortCode: Math.random().toString(36).substring(2, 7).toUpperCase(),
-                     nfcUrl: "https://www.prerescatepty.com/e/NEW",
-                     qrUrl: "https://www.prerescatepty.com/e/NEW",
-                     status: "inventory"
-                  }
-               });
+              const chip = await prisma.chip.create({
+                data: {
+                  serialPublic: `PR-${Math.floor(Date.now() / 1000).toString(16).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
+                  shortCode: Math.random().toString(36).substring(2, 7).toUpperCase(),
+                  nfcUrl: "https://www.prerescatepty.com/e/NEW",
+                  qrUrl: "https://www.prerescatepty.com/e/NEW",
+                  status: "inventory",
+                },
+              });
 
-               const activationCode = await getUniqueActivationCode();
-               await prisma.chipClaimToken.create({
-                  data: {
-                     chipId: chip.id,
-                     orderId: id,
-                     ...protectActivationCode(activationCode),
-                     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-                  }
-               });
+              const activationCode = await getUniqueActivationCode();
+              await prisma.chipClaimToken.create({
+                data: {
+                  chipId: chip.id,
+                  orderId: id,
+                  ...protectActivationCode(activationCode),
+                  expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                },
+              });
             }
           }
         }
@@ -416,17 +440,17 @@ export async function PATCH(req: NextRequest) {
     if (isFulfilling) {
       const orderTokens = await prisma.chipClaimToken.findMany({
         where: { orderId: id },
-        select: { chipId: true }
+        select: { chipId: true },
       });
       const chipIdsToUpdate = orderTokens.map((t: { chipId: string }) => t.chipId);
-      
+
       if (chipIdsToUpdate.length > 0) {
         await prisma.chip.updateMany({
-          where: { 
+          where: {
             id: { in: chipIdsToUpdate },
-            status: "inventory" 
+            status: "inventory",
           },
-          data: { status: "sold" }
+          data: { status: "sold" },
         });
       }
     }
@@ -435,18 +459,24 @@ export async function PATCH(req: NextRequest) {
     const oldStatus = order.orderStatus;
 
     if (newStatus === "completed" && oldStatus !== "completed") {
-       await OrderNotificationService.notifyPaymentValidated({
-         ...updatedOrder,
-         customerEmail: updatedOrder.customerEmail || order.customerEmail || order.user?.email,
-         customerName: updatedOrder.customerName || order.customerName || `${order.user?.profile?.firstName || ""} ${order.user?.profile?.lastName || ""}`.trim(),
-         items: order.items
-       });
+      await OrderNotificationService.notifyPaymentValidated({
+        ...updatedOrder,
+        customerEmail: updatedOrder.customerEmail || order.customerEmail || order.user?.email,
+        customerName:
+          updatedOrder.customerName ||
+          order.customerName ||
+          `${order.user?.profile?.firstName || ""} ${order.user?.profile?.lastName || ""}`.trim(),
+        items: order.items,
+      });
     } else if (newStatus === "shipped" && oldStatus !== "shipped") {
-       await OrderNotificationService.notifyOrderShipped({
-         ...updatedOrder,
-         customerEmail: updatedOrder.customerEmail || order.customerEmail || order.user?.email,
-         customerName: updatedOrder.customerName || order.customerName || `${order.user?.profile?.firstName || ""} ${order.user?.profile?.lastName || ""}`.trim()
-       });
+      await OrderNotificationService.notifyOrderShipped({
+        ...updatedOrder,
+        customerEmail: updatedOrder.customerEmail || order.customerEmail || order.user?.email,
+        customerName:
+          updatedOrder.customerName ||
+          order.customerName ||
+          `${order.user?.profile?.firstName || ""} ${order.user?.profile?.lastName || ""}`.trim(),
+      });
     }
 
     return NextResponse.json({ order: updatedOrder, message: "Estado de orden actualizado" });
@@ -462,10 +492,10 @@ export async function DELETE(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  const bulk = searchParams.get('bulk');
+  const id = searchParams.get("id");
+  const bulk = searchParams.get("bulk");
 
-  if (bulk === 'cancelled') {
+  if (bulk === "cancelled") {
     return NextResponse.json(
       {
         error:
