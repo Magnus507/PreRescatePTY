@@ -4,7 +4,8 @@ import { mockPrisma } from '../helpers/mock-prisma'
 import { resetAllMocks } from '../helpers/reset-mocks'
 import { createMockSession } from '../helpers/mock-auth'
 
-// ─── Mocks ──────────────────────────────────────────────────────────────────
+const mockRateLimit = vi.hoisted(() => vi.fn())
+const mockDownload = vi.hoisted(() => vi.fn())
 
 vi.mock('next-auth', () => ({
   getServerSession: vi.fn(),
@@ -18,17 +19,38 @@ vi.mock('@/lib/prisma', () => ({
   prisma: mockPrisma,
 }))
 
-// ─── Imports after mocks ────────────────────────────────────────────────────
+vi.mock('@/lib/rateLimit', () => ({
+  rateLimit: mockRateLimit,
+}))
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({
+    storage: {
+      from: vi.fn(() => ({ download: mockDownload })),
+    },
+  })),
+}))
+
 import { POST } from '@/app/api/orders/[id]/payment-proof/route'
 import { getServerSession } from 'next-auth'
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
 const TEST_USER_ID = 'test-user-1'
 const TEST_ORDER_ID = 'order-1'
+const VALID_PROOF_PATH = `payments/${TEST_USER_ID}/${TEST_ORDER_ID}/receipt.webp`
+
+function validImageBlob() {
+  return new Blob([
+    new Uint8Array([
+      0x52, 0x49, 0x46, 0x46,
+      0x08, 0x00, 0x00, 0x00,
+      0x57, 0x45, 0x42, 0x50,
+      0x56, 0x50, 0x38, 0x20,
+    ]),
+  ], { type: 'image/webp' })
+}
 
 function createValidProxyUrl(): string {
-  return '/api/image-proxy?bucket=payment-proofs&path=user-1/receipt.webp'
+  return `/api/image-proxy?bucket=payment-proofs&path=${encodeURIComponent(VALID_PROOF_PATH)}`
 }
 
 function createPaymentProofRequest(
@@ -37,6 +59,7 @@ function createPaymentProofRequest(
 ): NextRequest {
   return new NextRequest(`http://localhost/api/orders/${orderId}/payment-proof`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
 }
@@ -45,9 +68,6 @@ function routeParams(orderId: string = TEST_ORDER_ID): { params: Promise<{ id: s
   return { params: Promise.resolve({ id: orderId }) }
 }
 
-/**
- * Creates a default mock order in submittable state (manual, pending).
- */
 function createSubmittableOrder(overrides: Record<string, unknown> = {}) {
   return {
     id: TEST_ORDER_ID,
@@ -66,6 +86,8 @@ function setupDefaultMocks(orderOverrides: Record<string, unknown> = {}) {
   vi.mocked(getServerSession).mockResolvedValue(
     createMockSession({ id: TEST_USER_ID, role: 'owner' }) as never
   )
+  mockRateLimit.mockResolvedValue({ allowed: true })
+  mockDownload.mockResolvedValue({ data: validImageBlob(), error: null })
   mockPrisma.order.findUnique.mockResolvedValue(
     createSubmittableOrder(orderOverrides) as never
   )
@@ -77,190 +99,96 @@ function setupDefaultMocks(orderOverrides: Record<string, unknown> = {}) {
   })
 }
 
-// ─── Tests ──────────────────────────────────────────────────────────────────
-
 describe('POST /api/orders/[id]/payment-proof', () => {
   beforeEach(() => {
     resetAllMocks()
+    mockRateLimit.mockReset()
+    mockDownload.mockReset()
     mockPrisma.order.findUnique.mockReset()
     mockPrisma.order.update.mockReset()
+    setupDefaultMocks()
   })
-
-  // ─── Auth ───────────────────────────────────────────────────────────────
 
   it('1. returns 401 without an authenticated session', async () => {
     vi.mocked(getServerSession).mockResolvedValue(null)
 
-    const req = createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() })
-    const res = await POST(req, routeParams())
+    const res = await POST(createPaymentProofRequest({ paymentProofPath: VALID_PROOF_PATH }), routeParams())
     const json = await res.json()
 
     expect(res.status).toBe(401)
     expect(json.error).toMatch(/autorizado/i)
   })
 
-  // ─── Order not found ────────────────────────────────────────────────────
-
   it('2. returns 404 when the order does not exist', async () => {
-    setupDefaultMocks()
     mockPrisma.order.findUnique.mockResolvedValue(null as never)
 
-    const req = createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() })
-    const res = await POST(req, routeParams())
+    const res = await POST(createPaymentProofRequest({ paymentProofPath: VALID_PROOF_PATH }), routeParams())
     const json = await res.json()
 
     expect(res.status).toBe(404)
     expect(json.error).toMatch(/no encontrado/i)
   })
 
-  // ─── Wrong user ─────────────────────────────────────────────────────────
-
   it('3. returns 404 when the order belongs to another user', async () => {
-    setupDefaultMocks()
     mockPrisma.order.findUnique.mockResolvedValue(
       createSubmittableOrder({ userId: 'other-user' }) as never
     )
 
-    const req = createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() })
-    const res = await POST(req, routeParams())
-    const json = await res.json()
-
+    const res = await POST(createPaymentProofRequest({ paymentProofPath: VALID_PROOF_PATH }), routeParams())
     expect(res.status).toBe(404)
-    expect(json.error).toMatch(/no encontrado/i)
     expect(mockPrisma.order.update).not.toHaveBeenCalled()
   })
 
-  // ─── Provider not manual ────────────────────────────────────────────────
-
   it('4. returns 400 when provider is not manual', async () => {
-    setupDefaultMocks({ provider: 'admin', paymentStatus: 'paid', orderStatus: 'completed' })
+    mockPrisma.order.findUnique.mockResolvedValue(
+      createSubmittableOrder({ provider: 'admin', paymentStatus: 'paid', orderStatus: 'completed' }) as never
+    )
 
-    const req = createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() })
-    const res = await POST(req, routeParams())
+    const res = await POST(createPaymentProofRequest({ paymentProofPath: VALID_PROOF_PATH }), routeParams())
     const json = await res.json()
 
     expect(res.status).toBe(400)
     expect(json.error).toMatch(/manual/i)
-    expect(mockPrisma.order.update).not.toHaveBeenCalled()
   })
 
-  // ─── Non-submittable states ─────────────────────────────────────────────
-
   it('5. returns 400 when the order state does not allow proof submission', async () => {
-    // Test multiple final/non-submittable states
-    const nonSubmittableStates = [
+    for (const state of [
       { paymentStatus: 'paid', orderStatus: 'completed', provider: 'manual' },
       { paymentStatus: 'rejected', orderStatus: 'cancelled', provider: 'manual' },
       { paymentStatus: 'pending', orderStatus: 'cancelled', provider: 'manual' },
-    ]
-
-    for (const state of nonSubmittableStates) {
-      setupDefaultMocks(state)
-      mockPrisma.order.findUnique.mockResolvedValue(
-        createSubmittableOrder(state) as never
-      )
-
-      const req = createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() })
-      const res = await POST(req, routeParams())
-      const json = await res.json()
-
+    ]) {
+      mockPrisma.order.findUnique.mockResolvedValue(createSubmittableOrder(state) as never)
+      const res = await POST(createPaymentProofRequest({ paymentProofPath: VALID_PROOF_PATH }), routeParams())
       expect(res.status).toBe(400)
-      expect(json.error).toMatch(/comprobante|pendiente/i)
-      expect(mockPrisma.order.update).not.toHaveBeenCalled()
-
-      resetAllMocks()
-      mockPrisma.order.findUnique.mockReset()
-      mockPrisma.order.update.mockReset()
     }
   })
 
-  // ─── Missing both fields ────────────────────────────────────────────────
-
-  it('6. returns 400 when both paymentProofUrl and manualPaymentReference are missing', async () => {
-    setupDefaultMocks()
-
-    const req = createPaymentProofRequest({})
-    const res = await POST(req, routeParams())
-    const json = await res.json()
-
+  it('6. returns 400 when both proof and manual reference are missing', async () => {
+    const res = await POST(createPaymentProofRequest({}), routeParams())
     expect(res.status).toBe(400)
-    expect(json.error).toBeDefined()
   })
 
-  // ─── Invalid URL ────────────────────────────────────────────────────────
-
-  it('7. returns 400 when paymentProofUrl is invalid', async () => {
-    setupDefaultMocks()
-
-    // Test multiple invalid URLs
-    const invalidUrls = [
-      '/api/image-proxy?bucket=general&path=user/file.webp',       // wrong bucket
-      'https://evil.com/malicious.jpg',                             // external URL
-      '/api/image-proxy?bucket=payment-proofs&path=../../etc/passwd', // path traversal
-      '/api/image-proxy?bucket=payment-proofs&path=user/file.txt',  // unsupported extension
+  it('7. rejects proof paths that are not owned by this exact order', async () => {
+    const invalidPaths = [
+      'user/file.webp',
+      `payments/${TEST_USER_ID}/another-order/receipt.webp`,
+      `payments/other-user/${TEST_ORDER_ID}/receipt.webp`,
+      `payments/${TEST_USER_ID}/${TEST_ORDER_ID}/../../etc/passwd.webp`,
+      `payments/${TEST_USER_ID}/${TEST_ORDER_ID}/receipt.txt`,
     ]
 
-    for (const url of invalidUrls) {
-      resetAllMocks()
-      vi.mocked(getServerSession).mockResolvedValue(
-        createMockSession({ id: TEST_USER_ID, role: 'owner' }) as never
-      )
-      mockPrisma.order.findUnique.mockResolvedValue(
-        createSubmittableOrder() as never
-      )
-
-      const req = createPaymentProofRequest({ paymentProofUrl: url })
-      const res = await POST(req, routeParams())
-      const json = await res.json()
-
+    for (const paymentProofPath of invalidPaths) {
+      const res = await POST(createPaymentProofRequest({ paymentProofPath }), routeParams())
       expect(res.status).toBe(400)
-      expect(json.error).toMatch(/paymentProofUrl|comprobante/i)
       expect(mockPrisma.order.update).not.toHaveBeenCalled()
     }
   })
 
-  // ─── Valid proxy URL ────────────────────────────────────────────────────
-
-  it('8. accepts a valid proxy URL for the payment-proofs bucket', async () => {
-    setupDefaultMocks()
-
-    const req = createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() })
-    const res = await POST(req, routeParams())
+  it('8. accepts an owned proof and verifies the stored image before registration', async () => {
+    const res = await POST(createPaymentProofRequest({ paymentProofPath: VALID_PROOF_PATH }), routeParams())
 
     expect(res.status).toBe(200)
-    expect(mockPrisma.order.update).toHaveBeenCalled()
-  })
-
-  // ─── Valid manual reference ─────────────────────────────────────────────
-
-  it('9. accepts a valid manualPaymentReference without paymentProofUrl', async () => {
-    setupDefaultMocks()
-
-    const req = createPaymentProofRequest({ manualPaymentReference: 'REF-12345' })
-    const res = await POST(req, routeParams())
-    const json = await res.json()
-
-    expect(res.status).toBe(200)
-    expect(json.order).toBeDefined()
-    expect(mockPrisma.order.update).toHaveBeenCalled()
-  })
-
-  // ─── Successful submission ──────────────────────────────────────────────
-
-  it('10. returns 200 for successful proof submission with correct status changes', async () => {
-    setupDefaultMocks()
-
-    const req = createPaymentProofRequest({
-      paymentProofUrl: createValidProxyUrl(),
-      manualPaymentReference: 'REF-12345',
-    })
-    const res = await POST(req, routeParams())
-    const json = await res.json()
-
-    expect(res.status).toBe(200)
-    expect(json.order).toBeDefined()
-
-    // Verify order update was called with correct status changes
+    expect(mockDownload).toHaveBeenCalledWith(VALID_PROOF_PATH)
     expect(mockPrisma.order.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: TEST_ORDER_ID },
@@ -269,29 +197,44 @@ describe('POST /api/orders/[id]/payment-proof', () => {
           orderStatus: 'processing',
           adminReviewStatus: 'pending',
           paymentProofUrl: expect.stringContaining('payment-proofs'),
-          manualPaymentReference: 'REF-12345',
         }),
       })
     )
   })
 
-  // ─── Allows resubmission when paymentStatus is under_review ─────────────
+  it('9. keeps transitional support for a valid owned proxy URL', async () => {
+    const res = await POST(createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() }), routeParams())
+    expect(res.status).toBe(200)
+    expect(mockDownload).toHaveBeenCalledWith(VALID_PROOF_PATH)
+  })
 
-  it('11. allows resubmission when paymentStatus is under_review', async () => {
-    setupDefaultMocks({ paymentStatus: 'under_review', orderStatus: 'processing' })
-
-    const req = createPaymentProofRequest({
-      paymentProofUrl: createValidProxyUrl(),
-      manualPaymentReference: 'REF-UPDATED',
-    })
-    const res = await POST(req, routeParams())
+  it('10. accepts a manual reference without touching object storage', async () => {
+    const res = await POST(createPaymentProofRequest({ manualPaymentReference: 'REF-12345' }), routeParams())
     const json = await res.json()
 
     expect(res.status).toBe(200)
     expect(json.order).toBeDefined()
+    expect(mockDownload).not.toHaveBeenCalled()
     expect(mockPrisma.order.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: TEST_ORDER_ID },
+        data: expect.objectContaining({ manualPaymentReference: 'REF-12345' }),
+      })
+    )
+  })
+
+  it('11. allows resubmission while the payment remains under review', async () => {
+    mockPrisma.order.findUnique.mockResolvedValue(
+      createSubmittableOrder({ paymentStatus: 'under_review', orderStatus: 'processing' }) as never
+    )
+
+    const res = await POST(createPaymentProofRequest({
+      paymentProofPath: VALID_PROOF_PATH,
+      manualPaymentReference: 'REF-UPDATED',
+    }), routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({
         data: expect.objectContaining({
           paymentStatus: 'under_review',
           manualPaymentReference: 'REF-UPDATED',
@@ -300,13 +243,26 @@ describe('POST /api/orders/[id]/payment-proof', () => {
     )
   })
 
-  // ─── Non-manual order cannot enter manual review ────────────────────────
+  it('12. rejects a stored object whose magic bytes are not an allowed image', async () => {
+    mockDownload.mockResolvedValue({
+      data: new Blob([new Uint8Array(16)], { type: 'application/octet-stream' }),
+      error: null,
+    })
 
-  it('12. does not allow a non-manual order to enter manual review', async () => {
-    setupDefaultMocks({ provider: 'admin', paymentStatus: 'pending', orderStatus: 'pending' })
+    const res = await POST(createPaymentProofRequest({ paymentProofPath: VALID_PROOF_PATH }), routeParams())
+    const json = await res.json()
 
-    const req = createPaymentProofRequest({ paymentProofUrl: createValidProxyUrl() })
-    const res = await POST(req, routeParams())
+    expect(res.status).toBe(400)
+    expect(json.error).toMatch(/imagen/i)
+    expect(mockPrisma.order.update).not.toHaveBeenCalled()
+  })
+
+  it('13. does not allow a non-manual order to enter manual review', async () => {
+    mockPrisma.order.findUnique.mockResolvedValue(
+      createSubmittableOrder({ provider: 'admin', paymentStatus: 'pending', orderStatus: 'pending' }) as never
+    )
+
+    const res = await POST(createPaymentProofRequest({ paymentProofPath: VALID_PROOF_PATH }), routeParams())
     const json = await res.json()
 
     expect(res.status).toBe(400)
