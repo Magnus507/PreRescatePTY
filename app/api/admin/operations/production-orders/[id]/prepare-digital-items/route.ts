@@ -7,6 +7,21 @@ import { ensureTraceableDigitalIdentity } from "@/lib/operations/traceable-digit
 
 export const dynamic = "force-dynamic";
 
+function getProductionProductCode(events: Array<{ eventType: string; metadataJson: string | null }>) {
+  for (const event of events) {
+    if (event.eventType !== "CREATED" || !event.metadataJson) continue;
+    try {
+      const metadata = JSON.parse(event.metadataJson) as Record<string, unknown>;
+      if (typeof metadata.productCode === "string" && metadata.productCode.trim()) {
+        return metadata.productCode.trim();
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -23,6 +38,11 @@ export async function POST(
       const productionOrder = await tx.operationProductionOrder.findUnique({
         where: { id: productionOrderId },
         include: {
+          events: {
+            where: { eventType: "CREATED" },
+            orderBy: { createdAt: "asc" },
+            select: { eventType: true, metadataJson: true },
+          },
           digitalItems: {
             orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
             include: {
@@ -40,6 +60,7 @@ export async function POST(
 
       const existingCount = productionOrder.digitalItems.length;
       const missingCount = Math.max(targetQuantity - existingCount, 0);
+      const finishedGoodCode = getProductionProductCode(productionOrder.events);
 
       if (targetQuantity === 0 && existingCount === 0) {
         return {
@@ -60,7 +81,7 @@ export async function POST(
             code: `PROD-${productionOrder.code}-${productionOrder.id.slice(0, 8)}`,
             name: `Lote digital ${productionOrder.code}`,
             productType: productionOrder.outputType,
-            finishedGoodCode: null,
+            finishedGoodCode,
             prefix: productionOrder.code.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "PROD",
             startNumber: 1,
             endNumber: Math.max(targetQuantity, 1),
@@ -69,6 +90,7 @@ export async function POST(
             notes: JSON.stringify({
               productionOrderId,
               source: "production-order-prepare-digital-items",
+              finishedGoodCode,
             }),
           },
         }));
@@ -144,6 +166,7 @@ export async function POST(
             quantity: existingCount + missingCount,
             endNumber: Math.max(existingBatch.endNumber, existingBatch.startNumber + existingCount + missingCount - 1),
             status: existingBatch.status === "draft" ? "generated" : existingBatch.status,
+            finishedGoodCode: existingBatch.finishedGoodCode || finishedGoodCode,
           },
         });
       }
@@ -161,6 +184,7 @@ export async function POST(
               .filter((identity) => identity.chipCreated)
               .map((identity) => identity.chipId),
             batchId: batch.id,
+            finishedGoodCode,
           }),
           createdById,
         },
