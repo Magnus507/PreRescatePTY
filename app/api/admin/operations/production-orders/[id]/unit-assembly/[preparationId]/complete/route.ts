@@ -36,6 +36,24 @@ export async function POST(
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const exactFinishedGood = item.batch.finishedGoodCode
+      ? await tx.operationFinishedGood.findUnique({
+          where: { code: item.batch.finishedGoodCode },
+          select: { code: true, name: true, productType: true },
+        })
+      : null;
+    const finishedGoodByType = exactFinishedGood || await tx.operationFinishedGood.findFirst({
+      where: { productType: item.batch.productType, status: "active" },
+      orderBy: { createdAt: "asc" },
+      select: { code: true, name: true, productType: true },
+    });
+    const legacyMetadata = getProductMetadata(item.batch.productType);
+    const productMetadata = {
+      productCode: finishedGoodByType?.code || legacyMetadata.productCode,
+      productName: finishedGoodByType?.name || legacyMetadata.productName,
+      productType: finishedGoodByType?.productType || item.batch.productType,
+    };
+
     const existingByBatchItem = await tx.operationFinishedGoodUnit.findUnique({
       where: { digitalBatchItemId: item.id },
     });
@@ -49,10 +67,11 @@ export async function POST(
           data: {
             digitalBatchId: existingByLabel.digitalBatchId || item.batchId,
             digitalBatchItemId: existingByLabel.digitalBatchItemId || item.id,
+            chipId: existingByLabel.chipId || item.chipId || null,
             printOrderId: existingByLabel.printOrderId || printOrder?.id || null,
-            productCode: getProductMetadata(item.batch.productType).productCode,
-            productName: getProductMetadata(item.batch.productType).productName,
-            productType: item.batch.productType,
+            productCode: productMetadata.productCode,
+            productName: productMetadata.productName,
+            productType: productMetadata.productType,
             qaStatus: existingByLabel.qaStatus && ["passed", "failed"].includes(existingByLabel.qaStatus) ? existingByLabel.qaStatus : "pending",
             status: existingByLabel.qaStatus === "passed" || existingByLabel.qaStatus === "failed" ? existingByLabel.status : "qa_pending",
             activationStatus: existingByLabel.activationStatus || "not_activated",
@@ -61,22 +80,41 @@ export async function POST(
       : await tx.operationFinishedGoodUnit.create({
           data: {
             internalLabel: item.internalLabel,
-            productCode: getProductMetadata(item.batch.productType).productCode,
-            productName: getProductMetadata(item.batch.productType).productName,
-            productType: item.batch.productType,
+            productCode: productMetadata.productCode,
+            productName: productMetadata.productName,
+            productType: productMetadata.productType,
             digitalBatchId: item.batchId,
             digitalBatchItemId: item.id,
+            chipId: item.chipId || null,
             status: "qa_pending",
             qaStatus: "pending",
             activationStatus: "not_activated",
             printOrderId: printOrder?.id || null,
-            events: { create: { eventType: "UNIT_COMPLETED", metadataJson: { preparationId } } },
+            events: {
+              create: {
+                eventType: "UNIT_READY_FOR_QC",
+                reason: "Unidad física completada y lista para QC",
+                referenceType: "production_order",
+                referenceId: productionOrderId,
+                metadataJson: {
+                  preparationId,
+                  productCode: productMetadata.productCode,
+                  productType: productMetadata.productType,
+                  chipId: item.chipId || null,
+                },
+              },
+            },
           },
         });
 
     await tx.operationDigitalBatchItem.update({
       where: { id: item.id },
       data: { status: "completed" },
+    });
+
+    await tx.operationProductionOrder.update({
+      where: { id: productionOrderId },
+      data: { status: "qa_pending" },
     });
 
     await tx.operationProductionEvent.create({
@@ -98,6 +136,9 @@ export async function POST(
       id: result.id,
       internalLabel: result.internalLabel,
       shortCode: item.shortCode,
+      chipId: result.chipId,
+      productCode: result.productCode,
+      productType: result.productType,
       qaStatus: result.qaStatus,
       inventoryStatus: result.status,
       activationStatus: result.activationStatus,
