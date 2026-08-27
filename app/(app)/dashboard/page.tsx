@@ -124,7 +124,7 @@ export default function DashboardPage() {
             Reintentar ahora
           </button>
           <Link 
-            href="/soporte"
+            href="/contacto"
             className="w-full py-4 bg-muted text-muted-foreground font-bold rounded-2xl hover:bg-muted/80 transition-all text-sm"
           >
             Contactar Soporte
@@ -144,7 +144,7 @@ export default function DashboardPage() {
     ? "/dashboard/chips?activate=true"
     : hasActiveChip
       ? "/dashboard/perfiles-medicos"
-      : "/dashboard/compras";
+      : "/dashboard/tienda";
   const primaryCtaLabel = unprotectedProfiles.length > 0
     ? "Activar chip"
     : hasActiveChip
@@ -285,7 +285,7 @@ export default function DashboardPage() {
           title="Tienda"
           description="Compra stickers, chips y accesorios."
           ctaLabel="Ir a tienda"
-          href="/dashboard/compras"
+          href="/dashboard/tienda"
           badge="Comercial"
           variant="shop"
           className="lg:col-span-4 xl:col-span-3"
