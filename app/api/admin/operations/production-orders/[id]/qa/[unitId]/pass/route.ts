@@ -2,42 +2,74 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
-import { hasCompleteQaChecklist, normalizeQaChecklist } from "@/app/api/admin/operations/finished-good-units/finished-good-units.helpers";
+import {
+  hasCompleteQaChecklist,
+  normalizeQaChecklist,
+} from "@/app/api/admin/operations/finished-good-units/finished-good-units.helpers";
+import { buildProductionAssemblyState } from "@/lib/operations/production-assembly-state";
+import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-reservation";
 
 export const dynamic = "force-dynamic";
 
-function getCommercialOrderIdFromNotes(notes: string | null) {
-  const match = notes?.match(/\[commercialOrderId:([^\]]+)\]/);
-  return match?.[1] || null;
-}
+type ProductionSource = {
+  customerOrderId: string | null;
+  commercialOrderId: string | null;
+  internal: boolean;
+};
 
 function toJson(value: Record<string, unknown>) {
   return value as Prisma.InputJsonValue;
 }
 
-function isInternalProductionOrder(notes: string | null, code: string | null) {
-  const normalizedNotes = notes || "";
-  const normalizedCode = code || "";
-  return normalizedNotes.includes("Pedido interno para fabricar inventario") || normalizedCode.startsWith("PROD-INT-");
+function parseMetadata(value: string | null | undefined): Record<string, unknown> | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
 }
 
-async function refreshCommercialOrder(tx: Prisma.TransactionClient, commercialOrderId: string) {
-  const totalRequired = await tx.operationCommercialOrderItem.aggregate({
-    where: { commercialOrderId },
-    _sum: { quantity: true },
-  });
-  const requiredQty = totalRequired._sum.quantity || 0;
-  const reservedQty = await tx.operationFinishedGoodUnit.count({
-    where: { reservedOrderId: commercialOrderId, status: "reserved", qaStatus: "passed" },
-  });
+function resolveProductionSource(input: {
+  code: string;
+  notes: string | null;
+  events: Array<{ eventType: string; metadataJson: string | null }>;
+}): ProductionSource {
+  for (const event of input.events) {
+    if (event.eventType !== "CREATED") continue;
+    const metadata = parseMetadata(event.metadataJson);
+    if (!metadata) continue;
 
-  await tx.operationCommercialOrder.update({
-    where: { id: commercialOrderId },
-    data: {
-      status: reservedQty >= requiredQty && requiredQty > 0 ? "stock_reserved" : "pending_stock",
-      fulfillmentStatus: reservedQty > 0 ? "reserved" : "pending",
-    },
-  });
+    const sourceType = typeof metadata.sourceType === "string" ? metadata.sourceType : null;
+    const orderSource = typeof metadata.orderSource === "string" ? metadata.orderSource : null;
+    const orderId = typeof metadata.orderId === "string" ? metadata.orderId : null;
+    const commercialOrderId = typeof metadata.commercialOrderId === "string" ? metadata.commercialOrderId : null;
+
+    if (sourceType === "customer_order" && orderId) {
+      return { customerOrderId: orderId, commercialOrderId, internal: false };
+    }
+    if (orderSource === "internal") {
+      return { customerOrderId: null, commercialOrderId, internal: true };
+    }
+    if (commercialOrderId) {
+      return { customerOrderId: null, commercialOrderId, internal: false };
+    }
+  }
+
+  const legacyCommercialOrderId = input.notes?.match(/\[commercialOrderId:([^\]]+)\]/)?.[1]
+    || input.notes?.match(/W605H-B-BACKORDER-PRODUCTION:([^\s]+)/)?.[1]
+    || null;
+
+  return {
+    customerOrderId: null,
+    commercialOrderId: legacyCommercialOrderId,
+    internal:
+      input.code.startsWith("PROD-INT-") ||
+      Boolean(input.notes?.includes("Pedido interno para fabricar inventario")),
+  };
 }
 
 export async function POST(
@@ -52,40 +84,90 @@ export async function POST(
   const notes = typeof body?.notes === "string" ? body.notes.trim() : null;
 
   if (!hasCompleteQaChecklist(checklist)) {
-    return NextResponse.json({ error: "No se puede aprobar QA si todos los controles obligatorios no están completos." }, { status: 400 });
+    return NextResponse.json(
+      { error: "No se puede aprobar QA si todos los controles obligatorios no están completos." },
+      { status: 400 }
+    );
   }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
       const productionOrder = await tx.operationProductionOrder.findUnique({
         where: { id: productionOrderId },
-        select: { id: true, code: true, notes: true, status: true },
+        select: {
+          id: true,
+          code: true,
+          notes: true,
+          status: true,
+          plannedQuantity: true,
+          events: {
+            where: { eventType: "CREATED" },
+            orderBy: { createdAt: "asc" },
+            select: { eventType: true, metadataJson: true },
+          },
+        },
       });
       if (!productionOrder) return null;
 
       const unit = await tx.operationFinishedGoodUnit.findUnique({
         where: { id: unitId },
+        include: {
+          digitalBatchItem: {
+            select: {
+              id: true,
+              productionOrderId: true,
+              status: true,
+              nfcProgrammed: true,
+              qrPrepared: true,
+              internalLabel: true,
+              shortCode: true,
+            },
+          },
+          printOrder: {
+            select: { status: true },
+          },
+        },
       });
       if (!unit) throw new Error("UNIT_NOT_FOUND");
-      if (unit.qaStatus === "passed") return { unit };
-      if (unit.status !== "qa_pending" && unit.status !== "assembled") {
-        throw new Error("UNIT_NOT_READY");
-      }
-      if (unit.digitalBatchItemId == null || unit.digitalBatchId == null) {
-        throw new Error("UNIT_NOT_LINKED");
+      if (unit.qaStatus === "passed") return { unit, reservation: null };
+      if (!unit.digitalBatchItem || unit.digitalBatchItem.productionOrderId !== productionOrderId) {
+        throw new Error("UNIT_NOT_LINKED_TO_PRODUCTION");
       }
 
-      const commercialOrderId = getCommercialOrderIdFromNotes(productionOrder.notes);
-      const internalProduction = isInternalProductionOrder(productionOrder.notes, productionOrder.code);
-      const now = new Date();
-      const updated = await tx.operationFinishedGoodUnit.update({
+      const assemblyState = buildProductionAssemblyState(unit.digitalBatchItem, {
+        printOrder: unit.printOrder,
+      });
+      if (!assemblyState.readyForQc || unit.status !== "qa_pending" || unit.qaStatus !== "pending") {
+        throw new Error("UNIT_NOT_READY");
+      }
+
+      const source = resolveProductionSource(productionOrder);
+      let commercialOrder = source.commercialOrderId
+        ? await tx.operationCommercialOrder.findUnique({
+            where: { id: source.commercialOrderId },
+            select: { id: true, sourceId: true, customerType: true },
+          })
+        : null;
+
+      if (!commercialOrder && source.customerOrderId) {
+        commercialOrder = await tx.operationCommercialOrder.findFirst({
+          where: { sourceId: source.customerOrderId },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, sourceId: true, customerType: true },
+        });
+      }
+
+      const customerOrderId = source.customerOrderId || commercialOrder?.sourceId || null;
+      const internalProduction = source.internal || commercialOrder?.customerType === "internal";
+
+      await tx.operationFinishedGoodUnit.update({
         where: { id: unitId },
         data: {
           qaStatus: "passed",
           activationStatus: "not_activated",
-          status: commercialOrderId && !internalProduction ? "reserved" : "available",
-          reservedOrderId: commercialOrderId && !internalProduction ? commercialOrderId : null,
-          reservedAt: commercialOrderId && !internalProduction ? now : null,
+          status: "available",
+          reservedOrderId: null,
+          reservedAt: null,
           events: {
             create: [
               {
@@ -94,73 +176,86 @@ export async function POST(
                 metadataJson: toJson({ productionOrderId, checklist }),
               },
               {
-                eventType: commercialOrderId && !internalProduction ? "UNIT_RESERVED_FOR_ORDER" : "INVENTORY_AVAILABLE",
-                reason: commercialOrderId && !internalProduction ? "Unidad reservada para pedido origen" : "Unidad disponible en inventario",
-                referenceType: commercialOrderId && !internalProduction ? "commercial_order" : "production_order",
-                referenceId: commercialOrderId && !internalProduction ? commercialOrderId : productionOrderId,
-                metadataJson: toJson({ productionOrderId, commercialOrderId: internalProduction ? null : commercialOrderId, checklist }),
+                eventType: "INVENTORY_AVAILABLE",
+                reason: "Unidad aprobada y disponible para inventario",
+                referenceType: "production_order",
+                referenceId: productionOrderId,
+                metadataJson: toJson({
+                  productionOrderId,
+                  customerOrderId,
+                  commercialOrderId: commercialOrder?.id || null,
+                }),
               },
             ],
           },
         },
       });
 
-      if (commercialOrderId) {
-        await refreshCommercialOrder(tx, commercialOrderId);
+      let reservation = null;
+      if (!internalProduction && commercialOrder) {
+        reservation = await reserveCommercialOrderStock(tx, {
+          orderId: commercialOrder.id,
+          allowPartial: true,
+        });
       }
 
-      const totalUnits = await tx.operationDigitalBatchItem.count({
-        where: { batchId: unit.digitalBatchId, productionOrderId },
-      });
-      const resolvedUnits = await tx.operationFinishedGoodUnit.count({
+      const acceptedUnits = await tx.operationFinishedGoodUnit.count({
         where: {
-          digitalBatchId: unit.digitalBatchId,
+          digitalBatchItem: { productionOrderId },
           qaStatus: "passed",
-          status: { in: ["available", "reserved"] },
+          status: { in: ["available", "reserved", "dispatched", "delivered", "activated"] },
         },
       });
+
+      const plannedQuantity = Math.max(0, Math.floor(productionOrder.plannedQuantity));
+      const completed = plannedQuantity > 0 && acceptedUnits >= plannedQuantity;
 
       await tx.operationProductionOrder.update({
         where: { id: productionOrderId },
         data: {
-          producedQuantity: { increment: 1 },
+          producedQuantity: acceptedUnits,
+          status: completed ? "completed" : "qa_pending",
         },
       });
 
-      if (totalUnits > 0 && resolvedUnits >= totalUnits) {
-        await tx.operationProductionOrder.update({
-          where: { id: productionOrderId },
-          data: { status: "completed" },
-        });
+      if (completed && productionOrder.status !== "completed") {
         await tx.operationProductionEvent.create({
           data: {
             productionOrderId,
             eventType: "PRODUCTION_COMPLETED",
-            quantity: resolvedUnits,
+            quantity: acceptedUnits,
             reason: "Producción completada tras QC",
-            metadataJson: JSON.stringify({ productionOrderId, resolvedUnits, totalUnits }),
+            metadataJson: JSON.stringify({
+              productionOrderId,
+              acceptedUnits,
+              plannedQuantity,
+            }),
             createdById: auth.session.user.id || null,
           },
         });
       }
 
-      return { unit: updated };
+      const refreshedUnit = await tx.operationFinishedGoodUnit.findUnique({
+        where: { id: unitId },
+      });
+
+      return { unit: refreshedUnit, reservation };
     });
 
     if (!result) {
       return NextResponse.json({ error: "Orden de produccion no encontrada" }, { status: 404 });
     }
 
-    return NextResponse.json({ unit: result.unit });
+    return NextResponse.json({ unit: result.unit, reservation: result.reservation });
   } catch (error) {
     if (error instanceof Error && error.message === "UNIT_NOT_FOUND") {
       return NextResponse.json({ error: "Unidad no encontrada" }, { status: 404 });
     }
-    if (error instanceof Error && error.message === "UNIT_NOT_READY") {
-      return NextResponse.json({ error: "La unidad no está lista para QC" }, { status: 400 });
+    if (error instanceof Error && error.message === "UNIT_NOT_LINKED_TO_PRODUCTION") {
+      return NextResponse.json({ error: "La unidad no pertenece a esta orden de producción" }, { status: 409 });
     }
-    if (error instanceof Error && error.message === "UNIT_NOT_LINKED") {
-      return NextResponse.json({ error: "La unidad no está vinculada correctamente" }, { status: 400 });
+    if (error instanceof Error && error.message === "UNIT_NOT_READY") {
+      return NextResponse.json({ error: "La unidad debe completar identidad, impresión, ensamblaje y empaque antes de QC" }, { status: 400 });
     }
     console.error("[operations/production-orders/:id/qa/:unitId/pass] POST error:", error);
     return NextResponse.json({ error: "Error al aprobar QC" }, { status: 500 });
