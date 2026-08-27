@@ -139,7 +139,7 @@ describe("production traceable identities", () => {
     expect(mockPrisma.operationProductionEvent.create).not.toHaveBeenCalled();
   });
 
-  it("links the assembled physical unit to the exact Chip used by its QR", async () => {
+  it("keeps the exact Chip identity attached to the printed preparation through assembly", async () => {
     const printedItem = {
       id: "digital-1",
       batchId: "batch-1",
@@ -158,14 +158,12 @@ describe("production traceable identities", () => {
       status: "print_received",
     } as never);
     mockPrisma.operationDigitalBatchItem.findMany.mockResolvedValue([printedItem] as never);
-    mockEnsureTraceableIdentity.mockResolvedValue(identityResult(printedItem));
-    mockPrisma.operationFinishedGoodUnit.create.mockResolvedValue({
-      id: "unit-1",
-      internalLabel: "PROD-00001",
-      chipId: "chip-1",
-    } as never);
-    mockPrisma.operationDigitalBatchItem.update.mockResolvedValue({ id: "digital-1", status: "assembled" } as never);
+    mockPrisma.operationDigitalBatchItem.updateMany.mockResolvedValue({ count: 1 } as never);
+    mockPrisma.operationDigitalBatchItem.findMany
+      .mockResolvedValueOnce([printedItem] as never)
+      .mockResolvedValueOnce([{ ...printedItem, status: "assembled" }] as never);
     mockPrisma.operationProductionEvent.create.mockResolvedValue({ id: "event-1" } as never);
+    mockPrisma.operationProductionOrder.update.mockResolvedValue({ id: "production-1" } as never);
 
     const response = await assembleUnits(
       new NextRequest("https://prerescatepty.com/api/admin/operations/production-orders/production-1/assemble-units", {
@@ -174,15 +172,19 @@ describe("production traceable identities", () => {
       }),
       routeParams
     );
+    const json = await response.json();
 
-    expect(response.status).toBe(201);
-    expect(mockPrisma.operationFinishedGoodUnit.create).toHaveBeenCalledWith(
+    expect(response.status).toBe(200);
+    expect(mockPrisma.operationFinishedGoodUnit.create).not.toHaveBeenCalled();
+    expect(mockPrisma.operationDigitalBatchItem.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          digitalBatchItemId: "digital-1",
-          chipId: "chip-1",
-        }),
+        where: expect.objectContaining({ id: { in: ["digital-1"] }, status: "printed" }),
+        data: { status: "assembled" },
       })
     );
+    expect(json.assembledItems[0]).toEqual(
+      expect.objectContaining({ chipId: "chip-1", shortCode: "PUBLIC7NM42", status: "assembled" })
+    );
+    expect(json.message).toMatch(/empaque/i);
   });
 });
