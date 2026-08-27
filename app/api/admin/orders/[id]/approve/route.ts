@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-reservation";
+import { ensureCustomerBackorderProduction } from "@/lib/operations/customer-order-production";
+import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
 import { canAdminApproveManual } from "@/lib/order-status";
 import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
@@ -15,10 +17,6 @@ const ApproveSchema = z.object({
   adminReviewNotes: z.string().optional(),
   assignedChipIds: z.array(z.string()).optional(),
 });
-
-function buildSourceMarker(sourceType: string, sourceId: string) {
-  return `[sourceType:${sourceType}][sourceId:${sourceId}]`;
-}
 
 function buildFulfillmentReviewNotes(
   baseNotes: string | null,
@@ -77,7 +75,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const notes = parsed.data.adminReviewNotes || null;
   const assignedChipIds = OrderFulfillmentService.normalizeAssignedChipIds(parsed.data.assignedChipIds);
 
-  // Buscar orden pendiente de revisión
   const order = await prisma.order.findUnique({
     where: { id },
     include: { items: true, corporateEmployeeItems: { select: { organizationMemberId: true } } },
@@ -107,7 +104,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const memberIds = Array.from(new Set(order.corporateEmployeeItems.map((item) => item.organizationMemberId)));
 
     await prisma.$transaction(async (tx) => {
-      // Revalidate corporate order employees within transaction
       const corporateEmployeeItems = await tx.corporateOrderEmployeeItem.findMany({
         where: { orderId: id },
         include: {
@@ -152,7 +148,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         });
       }
 
-      // Mark linked product requests as paid_approved
       await tx.corporateProductRequest.updateMany({
         where: { orderId: id },
         data: { status: "paid_approved" },
@@ -191,29 +186,72 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     });
   }
 
-  // Buscar usuario y accountId
   const user = await prisma.user.findUnique({ where: { id: order.userId ?? undefined } });
   if (!user?.accountId) {
     return NextResponse.json({ error: "Usuario sin cuenta asociada" }, { status: 400 });
   }
 
-  const linkedCommercialOrder = await prisma.operationCommercialOrder.findFirst({
-    where: {
-      notes: {
-        contains: buildSourceMarker("legacy_order", order.id),
-      },
-    },
-    select: { id: true },
-  });
-
-  // Detectar órdenes de accesorios personalizados (sin packageId, con profileId/chipId en items)
   const isPersonalizedAccessoryOrder =
     !order.packageId &&
     order.items.length > 0 &&
     order.items.every((item) => item.profileId || item.chipId);
 
+  let linkedCommercialOrder = await prisma.operationCommercialOrder.findFirst({
+    where: {
+      sourceId: order.id,
+      sourceType: { in: ["checkout", "legacy_order"] },
+    },
+    select: { id: true },
+  });
+
+  // Checkout and Operations are eventually synchronized through the outbox, but
+  // payment approval must not race that worker. If the operational order is not
+  // present yet, create/update it idempotently from the immutable order snapshot.
+  if (!linkedCommercialOrder && !isPersonalizedAccessoryOrder) {
+    try {
+      const sync = await syncRealOrderToOperations(prisma, {
+        sourceType: "checkout",
+        sourceId: order.id,
+        sourceCode: order.orderNumber,
+        orderType: "customer",
+        customerName: order.customerName,
+        contactEmail: order.customerEmail,
+        contactPhone: order.customerPhone,
+        customerReference: order.providerReference,
+        paymentStatus: order.paymentStatus,
+        paymentReference: order.manualPaymentReference || order.paymentProofUrl || null,
+        currency: order.currency,
+        totalAmount: order.amount,
+        salesChannel: "checkout",
+        notes: `orderId:${order.id}`,
+        items: order.items.map((item) => ({
+          productId: item.productId,
+          productCode: item.productCode || item.operationalProductCode || item.productType,
+          productName: item.productName || item.operationalProductName || item.productType,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          unit: "unit",
+          finishedGoodId: item.operationalFinishedGoodId,
+          operationalMappingId: item.operationalMappingId,
+          operationalProductCode: item.operationalProductCode,
+          operationalProductName: item.operationalProductName,
+          operationalFinishedGoodId: item.operationalFinishedGoodId,
+        })),
+      });
+      linkedCommercialOrder = { id: sync.order.id };
+    } catch (error) {
+      logger.error(
+        "[Admin Approve] Could not ensure operational order:",
+        error instanceof Error ? error.message : "unknown"
+      );
+      return NextResponse.json(
+        { error: "No se pudo preparar el pedido para inventario/producción" },
+        { status: 500 }
+      );
+    }
+  }
+
   if (isPersonalizedAccessoryOrder) {
-    // Validar que todos los items tengan chipId
     const itemsWithoutChip = order.items.filter(item => !item.chipId);
     if (itemsWithoutChip.length > 0) {
       return NextResponse.json(
@@ -222,7 +260,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       );
     }
 
-    // Aprobar orden de accesorio personalizado sin picking ni capacity
     try {
       await prisma.$transaction(async (tx) => {
         await tx.order.update({
@@ -282,13 +319,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
   if (!order.packageId && linkedCommercialOrder) {
     try {
-      await prisma.$transaction(async (tx) => {
+      const transactionResult = await prisma.$transaction(async (tx) => {
         const reservation = await reserveCommercialOrderStock(tx, {
-          orderId: linkedCommercialOrder.id,
+          orderId: linkedCommercialOrder!.id,
           allowPartial: true,
         });
+        const reviewNotes = buildFulfillmentReviewNotes(notes, reservation);
 
-        await tx.order.update({
+        const updatedOrder = await tx.order.update({
           where: { id },
           data: {
             paymentStatus: "paid",
@@ -296,10 +334,24 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             adminReviewStatus: "approved",
             adminReviewedAt: new Date(),
             adminReviewedById: adminId,
-            adminReviewNotes: buildFulfillmentReviewNotes(notes, reservation),
+            adminReviewNotes: reviewNotes,
           },
         });
         await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
+
+        if (reservation && reservation.summary.missingQty > 0) {
+          const firstMissing = reservation.missingItems[0];
+          const firstItem = order.items[0];
+          await ensureCustomerBackorderProduction(tx, {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            customerName: order.customerName,
+            backorderQty: reservation.summary.missingQty,
+            outputType: firstMissing?.productCode || firstItem?.operationalProductCode || firstItem?.productCode || firstItem?.productType || "PRODUCT",
+            productName: firstItem?.operationalProductName || firstItem?.productName || firstItem?.productType || "Producto",
+            createdById: adminId,
+          });
+        }
 
         await tx.auditLog.create({
           data: {
@@ -312,6 +364,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             oldValuesJson: null,
           },
         });
+
+        return { updatedOrder, reservation };
+      });
+
+      if (order.userId) {
+        await AccountStateService.invalidateCache(order.userId);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: "approve",
+        orderId: transactionResult.updatedOrder.id,
+        orderNumber: transactionResult.updatedOrder.orderNumber,
+        status: transactionResult.updatedOrder.orderStatus,
+        paymentStatus: transactionResult.updatedOrder.paymentStatus,
+        fulfillmentStatus: transactionResult.reservation?.summary.status || null,
+        productionRequired: Boolean(transactionResult.reservation?.summary.missingQty),
+        message: transactionResult.reservation?.summary.missingQty
+          ? "Pago aprobado. Stock disponible reservado y faltante enviado a producción."
+          : "Pago aprobado. Stock físico reservado correctamente.",
+        order: transactionResult.updatedOrder,
       });
     } catch (error: unknown) {
       const status = typeof error === "object" && error !== null && "status" in error
@@ -321,34 +394,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       logger.error("[Admin Approve] Store order approval error:", message);
       return NextResponse.json({ error: "No se pudo aprobar la orden" }, { status });
     }
-
-    if (order.userId) {
-      await AccountStateService.invalidateCache(order.userId);
-    }
-
-    return NextResponse.json({
-      success: true,
-      action: "approve",
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      status: "processing",
-      paymentStatus: "paid",
-      message: "Pago aprobado correctamente.",
-      order: {
-        id: order.id,
-        orderNumber: order.orderNumber,
-        orderStatus: "processing",
-        paymentStatus: "paid",
-        adminReviewStatus: "approved",
-        adminReviewedAt: new Date().toISOString(),
-        adminReviewNotes: notes,
-      },
-    });
   }
 
-  // Validar paquete por order.packageId (solo para órdenes de paquete/chips)
   if (!order.packageId) {
-    return NextResponse.json({ error: "Orden sin packageId" }, { status: 400 });
+    return NextResponse.json({ error: "Orden sin configuración operativa" }, { status: 400 });
   }
   const pkg = await prisma.package.findUnique({ where: { id: order.packageId } });
   if (!pkg || !pkg.isActive) {
@@ -363,8 +412,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "No puedes asignar más chips que los incluidos en la orden." }, { status: 400 });
   }
 
-  // Actualizar orden y cuenta en transacción
-  let result: { updatedOrder: AdminReviewedOrder; account: { id: string } };
+  let result: {
+    updatedOrder: AdminReviewedOrder;
+    account: { id: string };
+    reservation: Awaited<ReturnType<typeof reserveCommercialOrderStock>> | null;
+  };
   try {
     result = await prisma.$transaction(async (tx) => {
       const reservation = linkedCommercialOrder
@@ -374,7 +426,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           })
         : null;
 
-      // Actualizar orden
       const updatedOrder = await tx.order.update({
         where: { id },
         data: {
@@ -388,7 +439,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       });
       await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
 
-      // Actualizar cuenta
+      if (reservation && reservation.summary.missingQty > 0) {
+        const firstMissing = reservation.missingItems[0];
+        const firstItem = order.items[0];
+        await ensureCustomerBackorderProduction(tx, {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          backorderQty: reservation.summary.missingQty,
+          outputType: firstMissing?.productCode || firstItem?.operationalProductCode || firstItem?.productCode || firstItem?.productType || "PRODUCT",
+          productName: firstItem?.operationalProductName || firstItem?.productName || firstItem?.productType || "Producto",
+          createdById: adminId,
+        });
+      }
+
       const currentAccount = await tx.account.findUnique({
         where: { id: user.accountId! },
         select: { id: true, maxChipsAllocated: true, maxProfilesAllocated: true }
@@ -431,7 +495,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         tokenExpiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
       });
 
-      // Crear AuditLog SOLO con campos válidos
       await tx.auditLog.create({
         data: {
           accountId: account.id,
@@ -443,7 +506,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           oldValuesJson: null,
         }
       });
-      return { updatedOrder, account: { id: account.id } };
+      return { updatedOrder, account: { id: account.id }, reservation };
     });
   } catch (error: unknown) {
     const status = typeof error === "object" && error !== null && "status" in error
@@ -454,7 +517,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "No se pudo aprobar la orden" }, { status });
   }
 
-  // Invalidar caché de AccountStateService para el usuario afectado
   if (order.userId) {
     await AccountStateService.invalidateCache(order.userId);
   }
@@ -466,7 +528,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     orderNumber: result.updatedOrder.orderNumber,
     status: result.updatedOrder.orderStatus,
     paymentStatus: result.updatedOrder.paymentStatus,
-    message: "Pago aprobado correctamente.",
+    fulfillmentStatus: result.reservation?.summary.status || null,
+    productionRequired: Boolean(result.reservation?.summary.missingQty),
+    message: result.reservation?.summary.missingQty
+      ? "Pago aprobado. Stock disponible reservado y faltante enviado a producción."
+      : "Pago aprobado correctamente.",
     order: result.updatedOrder,
   });
 }
