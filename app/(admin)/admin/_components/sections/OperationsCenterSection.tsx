@@ -81,13 +81,15 @@ const TABS: Array<{
   label: string;
   icon: React.ElementType;
   shortLabel: string;
+  accent: string;
+  iconClass: string;
 }> = [
-  { id: "commercial", label: "Pedidos", icon: ShoppingCart, shortLabel: "01 · Entrada" },
-  { id: "production", label: "Producción", icon: Factory, shortLabel: "02 · Fabricación" },
-  { id: "inventory", label: "Inventario", icon: Boxes, shortLabel: "03 · Stock físico" },
-  { id: "dispatch", label: "Despachos", icon: Truck, shortLabel: "04 · Salida" },
-  { id: "postsales", label: "Postventa", icon: RotateCcw, shortLabel: "05 · Soporte" },
-  { id: "history", label: "Historial", icon: History, shortLabel: "06 · Auditoría" },
+  { id: "commercial", label: "Pedidos", icon: ShoppingCart, shortLabel: "01 · Entrada", accent: "bg-blue-50 text-blue-700 border-blue-100", iconClass: "bg-blue-100 text-blue-700" },
+  { id: "production", label: "Producción", icon: Factory, shortLabel: "02 · Fabricación", accent: "bg-violet-50 text-violet-700 border-violet-100", iconClass: "bg-violet-100 text-violet-700" },
+  { id: "inventory", label: "Inventario", icon: Boxes, shortLabel: "03 · Stock físico", accent: "bg-emerald-50 text-emerald-700 border-emerald-100", iconClass: "bg-emerald-100 text-emerald-700" },
+  { id: "dispatch", label: "Despachos", icon: Truck, shortLabel: "04 · Salida", accent: "bg-cyan-50 text-cyan-700 border-cyan-100", iconClass: "bg-cyan-100 text-cyan-700" },
+  { id: "postsales", label: "Postventa", icon: RotateCcw, shortLabel: "05 · Soporte", accent: "bg-amber-50 text-amber-800 border-amber-100", iconClass: "bg-amber-100 text-amber-800" },
+  { id: "history", label: "Historial", icon: History, shortLabel: "06 · Auditoría", accent: "bg-slate-50 text-slate-700 border-slate-200", iconClass: "bg-slate-200 text-slate-700" },
 ];
 
 const POSTSALES_TABS: Array<{ id: PostsalesTab; label: string }> = [
@@ -151,16 +153,16 @@ export function OperationsCenterSection({ role, initialTab = "commercial" }: Ope
     return {
       commercial: {
         value: dashboard?.commercial.totalCommercialOrders || 0,
-        detail: `${compactNumber(dashboard?.commercial.commercialPaid)} con pago aprobado`,
+        detail: `${compactNumber(dashboard?.commercial.commercialPaid)} pagos aprobados`,
       },
       production: {
         value: dashboard?.production.productionStarted || 0,
-        detail: `${compactNumber(dashboard?.production.productionDraft)} por iniciar · ${compactNumber(dashboard?.production.productionCompleted)} terminadas`,
+        detail: `${compactNumber(dashboard?.production.productionDraft)} pendientes · ${compactNumber(dashboard?.production.productionCompleted)} listas`,
         alert: dashboard?.production.productionStarted || 0,
       },
       inventory: {
         value: dashboard?.physicalUnits.available || 0,
-        detail: `${compactNumber(dashboard?.physicalUnits.reserved)} reservadas · ${compactNumber(dashboard?.physicalUnits.qaPending)} en QC`,
+        detail: `${compactNumber(dashboard?.physicalUnits.reserved)} reservadas · ${compactNumber(dashboard?.physicalUnits.qaPending)} QC`,
         alert: dashboard?.physicalUnits.qaFailed || 0,
       },
       dispatch: {
@@ -175,7 +177,7 @@ export function OperationsCenterSection({ role, initialTab = "commercial" }: Ope
       },
       history: {
         value: dashboard?.physicalUnits.delivered || 0,
-        detail: `${compactNumber(dashboard?.physicalUnits.activated)} unidades activadas`,
+        detail: `${compactNumber(dashboard?.physicalUnits.activated)} activadas`,
       },
     };
   }, [dashboard, postSalesOpen]);
@@ -220,37 +222,30 @@ export function OperationsCenterSection({ role, initialTab = "commercial" }: Ope
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_30px_90px_-55px_rgba(15,23,42,0.65)]">
-        <div className="border-b border-white/10 px-5 py-5 sm:px-7 sm:py-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-7 animate-in fade-in duration-500">
+      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_80px_-58px_rgba(15,23,42,0.28)]">
+        <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+          <div className="flex items-center gap-3">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_14px_rgba(16,185,129,0.45)]" />
             <div>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.9)]" />
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
-                  Flujo operativo en vivo
-                </span>
-              </div>
-              <h2 className="text-2xl font-black tracking-tight sm:text-3xl">De pedido a entrega, sin perder la unidad física</h2>
-              <p className="mt-2 max-w-3xl text-xs font-semibold leading-relaxed text-slate-400 sm:text-sm">
-                Pedido → pago → stock o producción → QA → reserva por etiqueta interna → despacho → entrega → activación.
-              </p>
+              <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-400">Operación en vivo</p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Centro de Operaciones</h2>
             </div>
-
-            <button
-              type="button"
-              onClick={() => loadDashboard({ silent: true })}
-              disabled={dashboardRefreshing}
-              className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-60 lg:self-auto"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${dashboardRefreshing ? "animate-spin" : ""}`} />
-              Actualizar
-            </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => loadDashboard({ silent: true })}
+            disabled={dashboardRefreshing}
+            className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition hover:bg-white hover:text-slate-950 disabled:opacity-60 sm:self-auto"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${dashboardRefreshing ? "animate-spin" : ""}`} />
+            Actualizar
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6">
-          {TABS.map((tab, index) => {
+        <div className="grid grid-cols-1 gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-6">
+          {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
             const metric = stageMetrics[tab.id];
@@ -259,77 +254,51 @@ export function OperationsCenterSection({ role, initialTab = "commercial" }: Ope
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative min-h-[142px] border-b border-white/10 p-5 text-left transition-all sm:border-r xl:border-b-0 ${
-                  index === TABS.length - 1 ? "sm:border-r-0" : ""
-                } ${active ? "bg-white text-slate-950" : "bg-slate-950 hover:bg-slate-900"}`}
+                className={`relative min-h-[132px] p-5 text-left transition-all ${
+                  active
+                    ? "z-10 bg-white shadow-[inset_0_-4px_0_#DA1A21]"
+                    : "bg-slate-50 hover:bg-white"
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${active ? "bg-slate-950 text-white" : "bg-white/10 text-white"}`}>
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${tab.iconClass}`}>
                     <Icon className="h-4 w-4" />
                   </div>
                   {metric.alert && metric.alert > 0 ? (
-                    <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-wider ${active ? "bg-amber-100 text-amber-800" : "bg-amber-400/15 text-amber-300"}`}>
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-amber-700">
                       {compactNumber(metric.alert)} atención
                     </span>
                   ) : (
-                    <CheckCircle2 className={`h-4 w-4 ${active ? "text-emerald-600" : "text-emerald-400/70"}`} />
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                   )}
                 </div>
 
-                <p className={`mt-4 text-[8px] font-black uppercase tracking-[0.22em] ${active ? "text-slate-500" : "text-slate-500"}`}>
+                <p className="mt-4 text-[8px] font-black uppercase tracking-[0.22em] text-slate-400">
                   {tab.shortLabel}
                 </p>
                 <div className="mt-1 flex items-end gap-2">
-                  <span className="text-2xl font-black tracking-tight">{dashboardLoading ? "—" : compactNumber(metric.value)}</span>
-                  <span className={`pb-1 text-[10px] font-black uppercase tracking-wider ${active ? "text-slate-700" : "text-slate-300"}`}>
+                  <span className="text-2xl font-black tracking-tight text-slate-950">
+                    {dashboardLoading ? "—" : compactNumber(metric.value)}
+                  </span>
+                  <span className={`mb-1 rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${tab.accent}`}>
                     {tab.label}
                   </span>
                 </div>
-                <p className={`mt-1 line-clamp-2 text-[9px] font-semibold leading-relaxed ${active ? "text-slate-500" : "text-slate-500"}`}>
-                  {metric.detail}
-                </p>
-
-                {active && <span className="absolute inset-x-5 bottom-0 h-1 rounded-t-full bg-[#DA1A21]" />}
+                <p className="mt-1 line-clamp-1 text-[9px] font-semibold text-slate-500">{metric.detail}</p>
               </button>
             );
           })}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-5 py-3 text-[9px] font-semibold text-slate-500 sm:px-7">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-white px-5 py-3 text-[9px] font-semibold text-slate-500 sm:px-7">
           <span>
-            Unidades físicas: {compactNumber(dashboard?.physicalUnits.total)} · disponibles {compactNumber(dashboard?.physicalUnits.available)} · reservadas {compactNumber(dashboard?.physicalUnits.reserved)}
+            Físicas {compactNumber(dashboard?.physicalUnits.total)} · disponibles {compactNumber(dashboard?.physicalUnits.available)} · reservadas {compactNumber(dashboard?.physicalUnits.reserved)}
           </span>
           <span>
-            {generatedAt ? `Actualizado ${new Date(generatedAt).toLocaleTimeString("es-PA", { hour: "2-digit", minute: "2-digit" })}` : "Sincronizando estado operativo"}
+            {generatedAt ? new Date(generatedAt).toLocaleTimeString("es-PA", { hour: "2-digit", minute: "2-digit" }) : "Sincronizando"}
           </span>
         </div>
       </section>
-
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex min-w-max gap-1" role="tablist" aria-label="Secciones del Centro de Operaciones">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
-                  active
-                    ? "bg-white text-primary shadow-sm dark:bg-slate-800"
-                    : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       <div role="tabpanel">{renderContent()}</div>
 
