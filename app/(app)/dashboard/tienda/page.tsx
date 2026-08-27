@@ -6,7 +6,7 @@ import {
   ShoppingCart, Package, Loader2,
   MapPin, CheckCircle2, Clock, AlertTriangle,
   Upload, ArrowRight, UserRound, Plus, ShieldCheck, Cpu,
-  Info
+  Info, Phone
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -49,10 +49,19 @@ interface CreateOrderItem {
 
 interface CreateOrderBody {
   items: CreateOrderItem[];
+  customerName: string;
+  customerPhone: string;
   shippingAddress: string;
   shippingCity: string;
   shippingNotes: string;
   paymentMethod: "yappy" | "bank_transfer";
+}
+
+interface CheckoutContext {
+  recipientName?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
 }
 
 interface PaymentConfig {
@@ -128,6 +137,8 @@ export default function TiendaPage() {
   const formRef = useRef<HTMLDivElement>(null);
 
   const [shippingData, setShippingData] = useState({
+    recipientName: "",
+    phone: "",
     address: "",
     city: "",
     notes: ""
@@ -149,6 +160,24 @@ export default function TiendaPage() {
       .then(res => res.json())
       .then(data => {
         if (data.configs) setPaymentConfig(data.configs);
+      });
+
+    // Convenience only: these defaults never become authoritative until the
+    // customer reviews/submits them. The order stores its own delivery snapshot.
+    fetch("/api/orders/checkout-context", { cache: "no-store" })
+      .then(res => res.ok ? res.json() : null)
+      .then((data: CheckoutContext | null) => {
+        if (!data) return;
+        setShippingData(prev => ({
+          recipientName: prev.recipientName || data.recipientName || "",
+          phone: prev.phone || data.phone || "",
+          address: prev.address || data.address || "",
+          city: prev.city || data.city || "",
+          notes: prev.notes,
+        }));
+      })
+      .catch(() => {
+        // Checkout remains fully usable when the profile has no saved defaults.
       });
   }, []);
 
@@ -199,9 +228,11 @@ export default function TiendaPage() {
           quantity,
           unitPrice: selectedProduct.price,
         }],
-        shippingAddress: shippingData.address,
-        shippingCity: shippingData.city,
-        shippingNotes: shippingData.notes,
+        customerName: shippingData.recipientName.trim(),
+        customerPhone: shippingData.phone.trim(),
+        shippingAddress: shippingData.address.trim(),
+        shippingCity: shippingData.city.trim(),
+        shippingNotes: shippingData.notes.trim(),
         paymentMethod,
       };
 
@@ -308,7 +339,7 @@ export default function TiendaPage() {
     setSelectedProduct(null);
     setQuantity(1);
     setShowCheckout(false);
-    setShippingData({ address: "", city: "", notes: "" });
+    // Keep reviewed delivery details if the customer only changes product.
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -693,7 +724,50 @@ export default function TiendaPage() {
               <div className="space-y-5">
                 <div className="flex items-center gap-3">
                   <div className="h-1 w-6 bg-[#DA1A21] rounded-full" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Información de envío</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Información de entrega</span>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-[11px] font-medium leading-relaxed text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+                  Estos datos identifican a quien recibirá este pedido. Los precargamos desde tu cuenta cuando existen, pero puedes cambiarlos sin modificar tu perfil médico.
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Nombre de quien recibe</label>
+                    <div className="relative">
+                      <UserRound className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <input
+                        required
+                        minLength={2}
+                        maxLength={200}
+                        autoComplete="name"
+                        type="text"
+                        value={shippingData.recipientName}
+                        onChange={e => setShippingData({...shippingData, recipientName: e.target.value})}
+                        placeholder="Nombre y apellido"
+                        className="w-full bg-slate-50 dark:bg-slate-900 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 pl-14 pr-6 py-5 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-4 focus:ring-[#DA1A21]/10 focus:border-[#DA1A21]/30 transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Teléfono de contacto</label>
+                    <div className="relative">
+                      <Phone className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <input
+                        required
+                        minLength={7}
+                        maxLength={30}
+                        autoComplete="tel"
+                        inputMode="tel"
+                        type="tel"
+                        value={shippingData.phone}
+                        onChange={e => setShippingData({...shippingData, phone: e.target.value})}
+                        placeholder="Ej. 6000-0000"
+                        className="w-full bg-slate-50 dark:bg-slate-900 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 pl-14 pr-6 py-5 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-4 focus:ring-[#DA1A21]/10 focus:border-[#DA1A21]/30 transition-all outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -702,6 +776,9 @@ export default function TiendaPage() {
                     <MapPin className="absolute left-5 top-5 h-5 w-5 text-slate-400" />
                     <textarea
                       required
+                      minLength={5}
+                      maxLength={500}
+                      autoComplete="street-address"
                       rows={2}
                       value={shippingData.address}
                       onChange={e => setShippingData({...shippingData, address: e.target.value})}
@@ -716,6 +793,9 @@ export default function TiendaPage() {
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Ciudad / Área</label>
                     <input
                       required
+                      minLength={2}
+                      maxLength={100}
+                      autoComplete="address-level2"
                       type="text"
                       value={shippingData.city}
                       onChange={e => setShippingData({...shippingData, city: e.target.value})}
@@ -748,6 +828,7 @@ export default function TiendaPage() {
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Notas adicionales</label>
                   <input
                     type="text"
+                    maxLength={500}
                     value={shippingData.notes}
                     onChange={e => setShippingData({...shippingData, notes: e.target.value})}
                     placeholder="Referencia de entrega, color de casa..."
@@ -778,7 +859,7 @@ export default function TiendaPage() {
                 </button>
 
                 <p className="text-[9px] text-center text-slate-400 font-bold uppercase opacity-60">
-                  El monto se calcula y valida en el servidor.
+                  El monto y los datos de entrega se validan en el servidor.
                 </p>
               </div>
             </form>
