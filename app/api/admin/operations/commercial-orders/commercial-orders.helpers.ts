@@ -112,5 +112,8 @@ export function getCommercialOrderItemProductType(item: {
   finishedGood?: { code: string; productType: string } | null;
   productCode: string | null;
 }) {
-  return item.finishedGood?.code || item.productCode || "";
+  // A finished-good unit stores productCode and productType separately.
+  // Prefer the actual FinishedGood.productType; only fall back to productCode
+  // for legacy operational items that were created without a finishedGood link.
+  return item.finishedGood?.productType || item.productCode || "";
 }
