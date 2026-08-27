@@ -19,15 +19,16 @@ interface PaymentProofFormProps {
   order: Order;
   uploadingFor: string | null;
   paymentRefDraft: Record<string, string>;
-  // Legacy props kept temporarily so already-refactored parent code can compile;
-  // this component no longer uses the generic /api/upload payment flow.
+  // Transitional props kept only while the parent page is simplified. They are
+  // intentionally unused here: proof images use signed storage uploads and the
+  // delivery snapshot is immutable after checkout.
   paymentProofDraft?: Record<string, string>;
   onRefChange: (orderId: string, value: string) => void;
   onProofUrlChange?: (orderId: string, value: string) => void;
   onUpload?: (e: React.ChangeEvent<HTMLInputElement>, orderId: string) => void;
   onSubmitReference: (orderId: string) => void;
   onCancel: (orderId: string) => void;
-  onShippingChange: {
+  onShippingChange?: {
     address: (val: string) => void;
     city: (val: string) => void;
     notes: (val: string) => void;
@@ -45,7 +46,6 @@ export function PaymentProofForm({
   onRefChange,
   onSubmitReference,
   onCancel,
-  onShippingChange,
   paymentInstructions,
 }: PaymentProofFormProps) {
   const fileInputId = `payment-proof-file-${order.id}`;
@@ -88,9 +88,6 @@ export function PaymentProofForm({
       if (!signedRes.ok || !signedData?.path || !signedData?.token) {
         throw new Error(signedData?.error || "No se pudo preparar la carga del comprobante");
       }
-
-      const expectedPrefix = `payments/${order.id ? "" : ""}`;
-      void expectedPrefix;
 
       const supabase = createClient(supabaseUrl, supabasePublicKey, {
         auth: { persistSession: false, autoRefreshToken: false },
@@ -135,40 +132,33 @@ export function PaymentProofForm({
       {paymentInstructions}
 
       <div className="w-full space-y-4 px-0 py-2 border-y border-slate-200/80 pt-6 text-left">
-        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4 flex items-center gap-2">
-          <Truck className="h-3.5 w-3.5" /> Información de Envío
-        </h4>
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
+            <Truck className="h-3.5 w-3.5" /> Destino registrado
+          </h4>
+          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1">
+            Guardado con el pedido
+          </span>
+        </div>
+        <p className="text-[10px] font-semibold text-slate-500">
+          Estos datos son la dirección de entrega confirmada al crear el pedido. Subir un comprobante no modifica tu perfil ni cambia el destino.
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Ciudad / Área</p>
-            <input
-              type="text"
-              placeholder="Ej: David, Chiriquí"
-              className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#DA1A21]/15 focus:border-[#DA1A21]/30 transition-all outline-none"
-              defaultValue={order.shippingCity || ""}
-              onChange={(e) => onShippingChange.city(e.target.value)}
-            />
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Ciudad / Área</p>
+            <p className="mt-2 text-xs font-bold text-slate-900">{order.shippingCity || "Sin ciudad registrada"}</p>
           </div>
-          <div className="space-y-1">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Dirección Detallada</p>
-            <input
-              type="text"
-              placeholder="Calle, Edificio/Piso, # de Casa"
-              className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#DA1A21]/15 focus:border-[#DA1A21]/30 transition-all outline-none"
-              defaultValue={order.shippingAddress || ""}
-              onChange={(e) => onShippingChange.address(e.target.value)}
-            />
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Dirección exacta</p>
+            <p className="mt-2 text-xs font-bold text-slate-900">{order.shippingAddress || "Sin dirección registrada"}</p>
           </div>
         </div>
-        <div className="mt-4 space-y-1">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Referencias de entrega (Opcional)</p>
-          <textarea
-            placeholder="Ej: Portón blanco, frente al parque..."
-            className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#DA1A21]/15 focus:border-[#DA1A21]/30 transition-all outline-none min-h-[90px] resize-none"
-            defaultValue={order.shippingNotes || ""}
-            onChange={(e) => onShippingChange.notes(e.target.value)}
-          />
-        </div>
+        {order.shippingNotes && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Referencias de entrega</p>
+            <p className="mt-2 text-xs font-bold text-slate-900">{order.shippingNotes}</p>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col items-center gap-4 w-full">
