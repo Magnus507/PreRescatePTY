@@ -26,13 +26,7 @@ export async function POST(
         where: { id },
         include: {
           items: {
-            include: {
-              unitRecord: true,
-            },
-          },
-          events: {
-            orderBy: { createdAt: "asc" },
-            select: { metadataJson: true, eventType: true, createdAt: true },
+            include: { unitRecord: true },
           },
         },
       });
@@ -49,65 +43,47 @@ export async function POST(
       if (!unit.internalLabel?.trim()) throw new Error("NO_INTERNAL_LABEL");
       if (unit.activationStatus !== "not_activated") throw new Error("UNIT_ACTIVATED");
       if (["dispatched", "delivered"].includes(unit.status)) throw new Error("UNIT_ALREADY_SHIPPED");
-      if (unit.reservedOrderId && dispatch.events.some((event) => event.metadataJson?.includes(unit.reservedOrderId || ""))) {
-        // keep compatibility without extra enforcement
-      }
 
-      const pickedUnits: Array<{ unitId: string; pickedAt: string }> = [];
-      for (const event of dispatch.events) {
-        if (!event.metadataJson) continue;
-        try {
-          const meta = JSON.parse(event.metadataJson) as { unitId?: string; picked?: boolean; pickedAt?: string };
-          if (meta.unitId && meta.picked) {
-            pickedUnits.push({ unitId: meta.unitId, pickedAt: meta.pickedAt || event.createdAt.toISOString() });
-          }
-        } catch {
-          continue;
-        }
-      }
-
-      const existingIndex = pickedUnits.findIndex((entry) => entry.unitId === unitId);
-      if (picked) {
-        const pickedAt = new Date().toISOString();
-        if (existingIndex >= 0) {
-          pickedUnits[existingIndex] = { unitId, pickedAt };
-        } else {
-          pickedUnits.push({ unitId, pickedAt });
-        }
-      } else if (existingIndex >= 0) {
-        pickedUnits.splice(existingIndex, 1);
-      }
+      const pickedAt = picked ? new Date() : null;
+      const updatedItem = await tx.operationDispatchItem.update({
+        where: { id: item.id },
+        data: {
+          pickedAt,
+          status: picked ? "picked" : "pending_pick",
+        },
+        select: {
+          id: true,
+          unitId: true,
+          status: true,
+          pickedAt: true,
+        },
+      });
 
       await tx.operationDispatchEvent.create({
         data: {
           dispatchId: dispatch.id,
-          eventType: "PICKED",
-          reason: picked ? "Unidad separada físicamente" : "Unidad desmarcada",
-          referenceType: "dispatch",
-          referenceId: dispatch.id,
+          eventType: picked ? "UNIT_PICKED" : "UNIT_UNPICKED",
+          reason: picked ? "Unidad separada físicamente" : "Unidad devuelta a preparación",
+          referenceType: "unit",
+          referenceId: unitId,
           metadataJson: JSON.stringify({
             unitId,
+            internalLabel: unit.internalLabel,
             picked,
-            pickedAt: picked ? new Date().toISOString() : null,
-            pickedUnitIds: pickedUnits.map((entry) => entry.unitId),
-            pickedUnits,
-            orderId: dispatch.events
-              .map((event) => {
-                if (!event.metadataJson) return null;
-                try {
-                  const meta = JSON.parse(event.metadataJson) as { orderId?: string; referenceId?: string };
-                  return meta.orderId || meta.referenceId || null;
-                } catch {
-                  return null;
-                }
-              })
-              .find(Boolean) || null,
+            pickedAt: pickedAt?.toISOString() || null,
           }),
           createdById: auth.session.user.id || null,
         },
       });
 
-      return { unitId, picked };
+      return {
+        unitId,
+        picked,
+        item: {
+          ...updatedItem,
+          pickedAt: updatedItem.pickedAt?.toISOString() || null,
+        },
+      };
     });
 
     return NextResponse.json({ success: true, ...result });
