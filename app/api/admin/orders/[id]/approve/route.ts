@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
@@ -9,6 +7,7 @@ import { ensureCustomerBackorderProduction } from "@/lib/operations/customer-ord
 import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
 import { canAdminApproveManual } from "@/lib/order-status";
 import { rateLimit } from "@/lib/rateLimit";
+import { ORDER_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { InvoiceService } from "@/domains/invoices/services/invoice.service";
@@ -51,14 +50,11 @@ type AdminReviewedOrder = {
 };
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (
-    !session?.user ||
-    !["admin", "superadmin", "imprenta"].includes(session.user.role)
-  ) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
+  const session = auth.session;
   const adminId = session.user.id;
+
   const limitResult = await rateLimit("admin-approve", adminId, { limit: 20, windowMs: 60_000 });
   if (!limitResult.allowed) {
     return NextResponse.json(
