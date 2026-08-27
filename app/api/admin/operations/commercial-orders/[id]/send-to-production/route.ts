@@ -17,7 +17,7 @@ function getProductInfo(item: {
   return {
     productCode: item.finishedGood?.code || item.productCode || "UNKNOWN",
     productName: item.finishedGood?.name || item.productName,
-    productType: item.finishedGood?.productType || item.productCode || "general",
+    productType: item.finishedGood?.productType || "general",
   };
 }
 
@@ -185,7 +185,7 @@ export async function POST(
           status: "draft",
           plannedQuantity,
           producedQuantity: 0,
-          outputType: productInfo.productCode,
+          outputType: productInfo.productType,
           notes: productionNotes,
           events: {
             create: {
