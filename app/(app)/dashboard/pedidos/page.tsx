@@ -8,6 +8,7 @@ import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { RejectionReasonBox } from "./_components/RejectionReasonBox";
 import { PaymentInstructions } from "./_components/PaymentInstructions";
 import { PaymentProofForm } from "./_components/PaymentProofForm";
+import { CustomerOrderJourney } from "./_components/CustomerOrderJourney";
 import { YappyPaymentButton } from "@/components/payments/YappyPaymentButton";
 import { toast } from "sonner";
 import { canCustomerCancelManual, canSubmitManualProof, isManualOrderFinal } from "@/lib/order-status";
@@ -271,6 +272,8 @@ function PedidosContent() {
                       />
                     </div>
                   </div>
+
+                  <CustomerOrderJourney orderId={order.id} />
 
                   {order.customerFulfillmentSummary && (
                     <div className="rounded-[2rem] border border-sky-200 bg-sky-50/70 p-5 sm:p-6 space-y-3">
