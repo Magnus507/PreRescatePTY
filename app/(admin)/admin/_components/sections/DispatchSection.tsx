@@ -362,7 +362,7 @@ export function DispatchSection() {
       <div>
         <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
           <Truck className="h-8 w-8 text-primary" />
-          Despacho
+          Despachos
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
           Salidas registradas y seguimiento de entrega.
@@ -455,10 +455,6 @@ export function DispatchSection() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs font-semibold text-cyan-900">
-          La entrega física no activa chips. El código público/activación/acceso se mantiene separado del inventario interno.
-        </div>
-
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -467,9 +463,6 @@ export function DispatchSection() {
           <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
             <Truck className="mx-auto mb-4 h-10 w-10 text-slate-300" />
             <p className="text-sm font-black uppercase tracking-widest text-slate-400">Todavía no existen despachos registrados</p>
-            <p className="mt-2 text-xs font-semibold text-slate-500">
-              Los despachos creados desde esta sección aparecerán aquí con items y eventos reales.
-            </p>
           </div>
         ) : (
           <div className="mt-5 grid gap-4">

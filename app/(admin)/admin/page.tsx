@@ -1,6 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
 import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { Search, Loader2, Activity } from "lucide-react";
@@ -25,10 +24,6 @@ import { OrgDetailView } from "./_components/details/OrgDetail";
 // Modals
 import { OrgCreateModal } from "./_components/modals/OrgCreateModal";
 import { ComboSelectorModal } from "./_components/modals/ComboSelectorModal";
-
-// Types & Utils
-import { ChipAdmin } from "./_types/admin";
-import { exportToCSV } from "./_utils/export";
 
 // ─── Utility Helpers ─────────────────────────────────────────────────────────
 
@@ -116,8 +111,8 @@ function AdminDashboard() {
     },
     inventory: { 
       title: "Centro de Operaciones",
-      subtitle: "Inventario, producción, postventa y trazabilidad operacional",
-      placeholder: "Buscar operación..."
+      subtitle: "Pedidos, producción, inventario y despachos",
+      placeholder: "Buscar pedido, unidad o despacho..."
     },
     admins: { 
       title: "Administradores", 
@@ -160,7 +155,7 @@ function AdminDashboard() {
     ? "commercial"
     : admin.tab === "tienda" || admin.tab === "chips"
       ? "inventory"
-      : "overview";
+      : "commercial";
 
   const headerWrapperClassName = isOperationsTab
     ? "w-full px-6 py-10 relative z-10"
@@ -174,10 +169,6 @@ function AdminDashboard() {
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [showComboModal, setShowComboModal] = useState(false);
   
-  // -- Factory States --
-  const [createCount, setCreateCount] = useState(5);
-  const [createdBatch, setCreatedBatch] = useState<ChipAdmin[] | null>(null);
-
   // -- Master Detail Selection --
   if (admin.chips.selectedChip) {
     return (
@@ -244,18 +235,6 @@ function AdminDashboard() {
 
   // ─── Actions ───────────────────────────────────────────────────────────────
   
-  const handleExportCSV = () => {
-    if (admin.tab === "chips" || admin.tab === "inventory") {
-        exportToCSV(admin.chips.chips, `chips_export_${admin.tab}`, ["id", "serialPublic", "shortCode", "status", "productType", "createdAt"]);
-        toast.success(`Lote de chips (${admin.tab}) exportado con éxito`);
-    } else if (admin.tab === "users") {
-        exportToCSV(admin.users.users, "users_export", ["id", "email", "role", "status", "createdAt"]);
-        toast.success("Listado de usuarios exportado con éxito");
-    } else {
-        toast.error("Exportación no disponible para este módulo");
-    }
-  };
-
   const handleDeleteUser = async (userId: string, email: string) => {
     const ok = confirm(`¿Estás seguro de eliminar permanentemente a ${email}? Esta acción no se puede deshacer.`);
     if (!ok) return;
@@ -370,18 +349,6 @@ function AdminDashboard() {
 
           {["inventory", "pedidos", "tienda", "chips"].includes(admin.tab) && (
             <OperationsCenterSection
-              loadChipDetail={admin.chips.loadChipDetail}
-              createCount={createCount}
-              setCreateCount={setCreateCount}
-              createBatch={(labelBase, labelStart) => {
-                 admin.chips.createBatch(createCount, labelBase, labelStart).then(res => {
-                    setCreatedBatch(res);
-                    admin.chips.loadChips({ status: "inventory" });
-                 });
-              }}
-              creating={admin.chips.creating}
-              createdBatch={createdBatch}
-              exportCSV={handleExportCSV}
               role={role}
               initialTab={operationsInitialTab}
             />

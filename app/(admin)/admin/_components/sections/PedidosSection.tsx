@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -52,14 +51,6 @@ interface CorporateEmployeeItem {
     serialPublic: string;
     status: string;
   } | null;
-}
-
-interface FinishedGoodOption {
-  id: string;
-  code: string;
-  name: string;
-  unit: string;
-  balance: number;
 }
 
 interface Order {
@@ -223,14 +214,12 @@ interface InternalCommercialOrder {
   productionOrder?: { id: string; code: string; status: string } | null;
 }
 
-type PedidoFilter = "active" | "clients" | "internal" | "pending" | "completed" | "cancelled";
+type PedidoFilter = "active" | "pending" | "completed" | "cancelled";
 
 const PEDIDO_FILTERS: Array<{ id: PedidoFilter; label: string }> = [
-  { id: "active", label: "Activos" },
-  { id: "clients", label: "Pedidos de clientes" },
-  { id: "internal", label: "Pedidos internos" },
-  { id: "pending", label: "Pendientes" },
-  { id: "completed", label: "Completados" },
+  { id: "active", label: "En curso" },
+  { id: "pending", label: "Requieren acción" },
+  { id: "completed", label: "Enviados y completados" },
   { id: "cancelled", label: "Cancelados" },
 ];
 
@@ -268,10 +257,6 @@ function isActiveOrder(order: Order) {
 
 function isClientActiveOrder(order: Order) {
   return isActiveOrder(order) && !order.isInternalOrder;
-}
-
-function isInternalActiveOrder(order: Order) {
-  return isActiveOrder(order) && Boolean(order.isInternalOrder);
 }
 
 function isPendingOrder(order: Order) {
@@ -329,16 +314,7 @@ export function PedidosSection() {
   const [selectedReserveUnitIds, setSelectedReserveUnitIds] = useState<string[]>([]);
   const [loadingReserveUnits, setLoadingReserveUnits] = useState(false);
   const [savingReserveUnits, setSavingReserveUnits] = useState(false);
-  const [showInternalOrderModal, setShowInternalOrderModal] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-  const [creatingInternalOrder, setCreatingInternalOrder] = useState(false);
-  const [finishedGoods, setFinishedGoods] = useState<FinishedGoodOption[]>([]);
   const [activeFilter, setActiveFilter] = useState<PedidoFilter>("active");
-  const [internalOrderForm, setInternalOrderForm] = useState({
-    finishedGoodId: "",
-    quantity: "1",
-    reason: "Reposición de inventario",
-  });
 
   const loadOrders = useCallback(async (options?: { silent?: boolean; showErrorToast?: boolean }) => {
     const isSilent = options?.silent ?? false;
@@ -377,26 +353,9 @@ export function PedidosSection() {
     }
   }, []);
 
-  const loadFinishedGoods = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/operations/finished-goods", { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok) {
-        setFinishedGoods(Array.isArray(data.finishedGoods) ? data.finishedGoods : []);
-      }
-    } catch {
-      toast.error("No se pudo cargar Inventario PT");
-    }
-  }, []);
-
   useEffect(() => {
     loadOrders();
-    loadFinishedGoods();
-  }, [loadFinishedGoods, loadOrders]);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  }, [loadOrders]);
 
   useEffect(() => {
     loadOrdersRef.current = loadOrders;
@@ -1024,74 +983,22 @@ export function PedidosSection() {
     }
   }, [loadOrders, paymentRejectionReason, rejectingPaymentOrder]);
 
-  const handleCreateInternalOrder = async () => {
-    if (!internalOrderForm.finishedGoodId.trim()) {
-      toast.error("Selecciona el producto a fabricar");
-      return;
-    }
-
-    const quantity = Number(internalOrderForm.quantity);
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      toast.error("La cantidad debe ser mayor a 0");
-      return;
-    }
-
-    setCreatingInternalOrder(true);
-    try {
-      const selectedFinishedGood = finishedGoods.find((item) => item.id === internalOrderForm.finishedGoodId);
-      const res = await fetch("/api/admin/operations/commercial-orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerType: "internal",
-          sourceType: "internal",
-          customerReference: "Inventario PT",
-          internalReason: internalOrderForm.reason.trim() || "Reposición de inventario",
-          items: [
-            {
-              finishedGoodId: internalOrderForm.finishedGoodId,
-              productCode: selectedFinishedGood?.code || undefined,
-              productName: selectedFinishedGood?.name || "Producto interno",
-              quantity,
-              unitPrice: 0,
-              unit: selectedFinishedGood?.unit || "unit",
-            },
-          ],
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "No se pudo crear el pedido interno");
-      }
-      toast.success(`Pedido interno ${data.commercialOrder?.code || "creado"} enviado a producción`);
-      setShowInternalOrderModal(false);
-      setInternalOrderForm({ finishedGoodId: "", quantity: "1", reason: "Reposición de inventario" });
-      await loadOrders({ silent: true });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al crear el pedido interno");
-    } finally {
-      setCreatingInternalOrder(false);
-    }
-  };
-
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
+      if (order.isInternalOrder) return false;
       if (activeFilter === "cancelled") return isCancelledOrder(order);
       if (activeFilter === "completed") return isCompletedOrder(order);
       if (activeFilter === "pending") return isPendingOrder(order);
-      if (activeFilter === "clients") return isClientActiveOrder(order);
-      if (activeFilter === "internal") return isInternalActiveOrder(order);
-      return isActiveOrder(order);
+      return isClientActiveOrder(order);
     });
   }, [activeFilter, orders]);
 
   const filterCounts = useMemo(() => {
     return orders.reduce(
       (acc, order) => {
+        if (order.isInternalOrder) return acc;
         if (isActiveOrder(order)) {
           acc.active += 1;
-          if (order.isInternalOrder) acc.internal += 1;
-          else acc.clients += 1;
           if (isPendingOrder(order)) acc.pending += 1;
         } else if (isCompletedOrder(order)) {
           acc.completed += 1;
@@ -1100,7 +1007,7 @@ export function PedidosSection() {
         }
         return acc;
       },
-      { active: 0, clients: 0, internal: 0, pending: 0, completed: 0, cancelled: 0 }
+      { active: 0, pending: 0, completed: 0, cancelled: 0 }
     );
   }, [orders]);
 
@@ -1108,10 +1015,6 @@ export function PedidosSection() {
     switch (filterId) {
       case "active":
         return filterCounts.active;
-      case "clients":
-        return filterCounts.clients;
-      case "internal":
-        return filterCounts.internal;
       case "pending":
         return filterCounts.pending;
       case "completed":
@@ -1126,15 +1029,11 @@ export function PedidosSection() {
   const emptyStateMessage = useMemo(() => {
     switch (activeFilter) {
       case "active":
-        return "No hay pedidos activos.";
-      case "clients":
-        return "No hay pedidos de clientes activos.";
-      case "internal":
-        return "No hay pedidos internos activos.";
+        return "No hay pedidos en curso.";
       case "pending":
-        return "No hay pedidos pendientes.";
+        return "No hay pedidos que requieran acción.";
       case "completed":
-        return "No hay pedidos completados.";
+        return "No hay pedidos enviados o completados.";
       case "cancelled":
         return "No hay pedidos cancelados.";
       default:
@@ -2201,21 +2100,8 @@ export function PedidosSection() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tighter">Pedidos</h1>
-          <p className="text-muted-foreground text-sm font-medium">
-            Pedidos existentes y pedidos internos de reposición.
-          </p>
-          <div className="mt-3 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs font-semibold text-cyan-900">
-            Pedidos gestiona compra, pago, reserva y entrega. La activación del dispositivo es un flujo separado.
-          </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowInternalOrderModal(true)}
-            className="rounded-xl bg-primary px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950"
-          >
-            Crear pedido interno
-          </button>
           <button onClick={() => loadOrders({ silent: true })} disabled={refreshing} className="p-3 border border-border rounded-xl hover:bg-accent transition-all">
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
@@ -2244,89 +2130,6 @@ export function PedidosSection() {
         </div>
       </div>
 
-      {showInternalOrderModal && isClient ? createPortal(
-        <div className="fixed inset-0 z-[999] flex min-h-full items-start justify-center overflow-y-auto bg-slate-950/70 px-4 py-8 backdrop-blur-sm">
-          <div className="my-8 w-full max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Pedido interno</p>
-                <h3 className="mt-2 text-2xl font-black tracking-tight">Reposición de inventario</h3>
-                <p className="mt-1 text-sm text-slate-500">La creación de pedidos se gestiona desde los flujos de origen; Pedidos solo opera pedidos existentes.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowInternalOrderModal(false)}
-                className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <label className="block">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Producto</span>
-                <select
-                  value={internalOrderForm.finishedGoodId}
-                  onChange={(event) => setInternalOrderForm((current) => ({ ...current, finishedGoodId: event.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium"
-                >
-                  <option value="">Selecciona un producto</option>
-                  {finishedGoods.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} · {item.code} · stock {item.balance}
-                    </option>
-                  ))}
-                </select>
-                {finishedGoods.length === 0 && (
-                  <p className="mt-2 text-xs font-bold text-amber-700">No hay productos base activos en Inventario.</p>
-                )}
-              </label>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Cantidad</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={internalOrderForm.quantity}
-                    onChange={(event) => setInternalOrderForm((current) => ({ ...current, quantity: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Motivo</span>
-                  <input
-                    type="text"
-                    value={internalOrderForm.reason}
-                    onChange={(event) => setInternalOrderForm((current) => ({ ...current, reason: event.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setShowInternalOrderModal(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleCreateInternalOrder()}
-                disabled={creatingInternalOrder || !internalOrderForm.finishedGoodId.trim() || finishedGoods.length === 0}
-                className="rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
-              >
-                {creatingInternalOrder ? "Creando..." : "Crear pedido interno"}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      ) : null}
-
       <div className="space-y-3">
         {filteredOrders.map((order: Order) => {
           if (order.isInternalOrder) {
@@ -2334,8 +2137,7 @@ export function PedidosSection() {
           }
           const isCorporateOrder = order.orderType === "corporate_employee_purchase";
           const isExpanded = expandedOrderIds.has(order.id);
-          const collapsedByDefault = ["paid", "rejected", "cancelled", "completed"].includes(order.orderStatus);
-          const expanded = isExpanded || !collapsedByDefault;
+          const expanded = isExpanded;
           const hasReceipt = Boolean(order.paymentProofUrl || order.paymentProofAvailable);
           const isTerminalOrder = ["cancelled", "completed"].includes(order.orderStatus);
           const commercialQty = order.commercialQuantity || order.items[0]?.quantity || 1;
@@ -2391,25 +2193,25 @@ export function PedidosSection() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="px-2 py-1">
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Cliente</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{order.customerName || "—"}</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">{order.customerName || "—"}</p>
                       <p className="text-xs text-slate-500 break-all">{order.customerEmail || "Sin email"}</p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="px-2 py-1">
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Monto</p>
-                      <p className="mt-2 text-2xl font-black text-primary">{formatMoney(getPositiveMoneyValue(order.total, order.commercialTotal, order.amount))}</p>
+                      <p className="mt-1 text-lg font-black text-primary">{formatMoney(getPositiveMoneyValue(order.total, order.commercialTotal, order.amount))}</p>
                       <p className="text-xs text-slate-500">{order.currency || "USD"}</p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Resumen</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{order.commercialItemName || order.items[0]?.productType || "Combo no especificado"} x{commercialQty}</p>
+                    <div className="px-2 py-1">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Producto</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">{order.commercialItemName || order.items[0]?.productType || "Combo no especificado"} x{commercialQty}</p>
                       <p className="text-xs text-slate-500">{operationalQty} unidades físicas</p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="px-2 py-1">
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Actualizado</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{formatDateTimeSafe(order.createdAt)}</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">{formatDateTimeSafe(order.createdAt)}</p>
                       <p className="text-xs text-slate-500">{order.dispatch ? `Despacho ${order.dispatch.code}` : "Sin despacho"}</p>
                     </div>
                   </div>
@@ -2498,7 +2300,6 @@ export function PedidosSection() {
                               {order.reservedUnits.map((unit: NonNullable<Order["reservedUnits"]>[number]) => (
                                 <div key={unit.id} className="rounded-xl border border-slate-200 bg-white p-3">
                                   <p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel || "Sin etiqueta"}</p>
-                                  <p className="text-[10px] font-semibold text-slate-500">Etiqueta interna operacional, no es código público.</p>
                                   <p className="text-[10px] font-semibold text-slate-600">{getReservedUnitSummary(unit)}</p>
                                 </div>
                               ))}
@@ -2566,7 +2367,7 @@ export function PedidosSection() {
                       }}
                       className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-violet-700 transition-all hover:bg-violet-100"
                     >
-                      Reservar etiqueta interna
+                      Asignar unidad
                     </button>
                   )}
                   {order.dispatch ? (
@@ -2772,7 +2573,7 @@ export function PedidosSection() {
           <div className="w-full max-w-2xl max-h-[calc(100vh-48px)] overflow-y-auto rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-500">Reservar etiqueta interna</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-500">Asignar unidad física</p>
                 <h3 className="mt-2 text-xl font-black text-slate-900">{getVisibleCustomerCode(reserveOrder)}</h3>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
                   Producto requerido: {reserveOrder.operationalProductName || "Sticker PreRescatePTY"} · Cantidad requerida: {reserveOrder.operationalQuantity || 1}

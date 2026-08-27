@@ -1260,32 +1260,6 @@ export default function ProductionQueueSection() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="mb-3 flex items-center gap-2">
-              <div className="h-1.5 w-8 rounded-full bg-primary" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Producción</span>
-            </div>
-            <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white">Producción</h2>
-            <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-500">
-              Gestiona las órdenes de producción creadas desde pedidos internos o pedidos sin stock.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => loadProductionOrders({ silent: true })}
-              disabled={refreshingOrders}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-white disabled:opacity-50"
-            >
-              {refreshingOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Actualizar
-            </button>
-          </div>
-        </div>
-      </section>
-
       {productionOrders.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
           {productionSummaryCards.map(({ label, value, icon: Icon, tone }) => (
@@ -1317,7 +1291,7 @@ export default function ProductionQueueSection() {
               className="inline-flex w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950"
             >
               <Plus className="h-4 w-4" />
-              Crear orden
+              Nueva producción interna
             </button>
             <button
               type="button"
@@ -1340,7 +1314,7 @@ export default function ProductionQueueSection() {
             <Factory className="mx-auto mb-4 h-10 w-10 text-slate-300" />
             <p className="text-sm font-black uppercase tracking-widest text-slate-400">No hay órdenes de producción.</p>
             <p className="mt-2 text-xs font-semibold text-slate-500">
-              Las órdenes nacen desde Pedidos cuando falta stock o cuando se crea un pedido interno.
+              Crea producción para mantener stock o abre la generada por un pedido sin existencias.
             </p>
           </div>
         ) : (
@@ -1355,6 +1329,8 @@ export default function ProductionQueueSection() {
                   <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Cantidad</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Etapa</th>
                   <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Progreso</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Creada</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Actualizada</th>
                   <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Acciones</th>
                 </tr>
               </thead>
@@ -1605,11 +1581,8 @@ export default function ProductionQueueSection() {
             <form onSubmit={handleCreateProductionOrder} className="space-y-6 p-6 md:p-8">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Produccion</p>
-                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear orden</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Registra una orden operativa base. Los avances y consumos se registraran por eventos.
-                  </p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Producción interna</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Nueva producción para stock</h3>
                 </div>
                 <button
                   type="button"

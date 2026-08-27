@@ -1,25 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Activity,
-  AlertTriangle,
-  Boxes,
-  ClipboardCheck,
-  DollarSign,
-  Factory,
-  History,
-  Loader2,
-  PackageCheck,
-  RotateCcw,
-  ShieldCheck,
-  ShoppingCart,
-  Truck,
-  Warehouse,
-} from "lucide-react";
-import { toast } from "sonner";
-import { ChipAdmin } from "../../_types/admin";
-import { CreateBatchSection } from "./CreateBatchSection";
+import { useEffect, useState } from "react";
+import { Boxes, Factory, History, RotateCcw, ShoppingCart, Truck } from "lucide-react";
 import ProductionQueueSection from "./ProductionQueueSection";
 import { PhysicalInventorySection } from "./PhysicalInventorySection";
 import { DispatchSection } from "./DispatchSection";
@@ -29,509 +11,78 @@ import { WarrantySection } from "./WarrantySection";
 import { ReplacementSection } from "./ReplacementSection";
 import { ReturnSection } from "./ReturnSection";
 
-type OperationsTab =
-  | "overview"
-  | "commercial"
-  | "inventory"
-  | "production"
-  | "dispatch"
-  | "postsales"
-  | "history";
-type ProductionTab = "orders" | "assembly" | "packing";
+type OperationsTab = "commercial" | "production" | "inventory" | "dispatch" | "postsales" | "history";
 type PostsalesTab = "warranties" | "replacements" | "returns";
 
 interface OperationsCenterSectionProps {
-  createCount: number;
-  setCreateCount: (val: number) => void;
-  createBatch: (labelBase?: string, labelStart?: number) => void;
-  creating: boolean;
-  createdBatch: ChipAdmin[] | null;
-  exportCSV: () => void;
-  loadChipDetail: (id: string) => void;
   role?: string;
   initialTab?: OperationsTab;
 }
 
-interface OperationsDashboardSummary {
-  materials: {
-    totalMaterials: number;
-    activeMaterials: number;
-    materialEventsCount: number;
-  };
-  production: {
-    totalProductionOrders: number;
-    productionDraft: number;
-    productionStarted: number;
-    productionCompleted: number;
-    totalProducedQuantity: number;
-  };
-  qc: {
-    totalQcInspections: number;
-    qcPending: number;
-    qcInProgress: number;
-    qcCompleted: number;
-    totalPassedQuantity: number;
-    totalFailedQuantity: number;
-  };
-  packing: {
-    totalPackingBatches: number;
-    packingInProgress: number;
-    packingCompleted: number;
-    totalPackedQuantity: number;
-  };
-  finishedGoods: {
-    totalFinishedGoods: number;
-    totalFinishedGoodEvents: number;
-    totalAvailableBalance: number;
-  };
-  dispatch: {
-    totalDispatches: number;
-    dispatchDraft: number;
-    dispatchReserved: number;
-    dispatchDispatched: number;
-    dispatchDelivered: number;
-    deliveredPendingActivation: number;
-  };
-  commercial: {
-    totalCommercialOrders: number;
-    commercialConfirmed: number;
-    commercialPaid: number;
-    commercialTotalAmount: number;
-  };
-  warranties: {
-    totalWarranties: number;
-    warrantiesActive: number;
-    warrantiesClaimOpen: number;
-    warrantiesExpired: number;
-  };
-  replacements: {
-    totalReplacements: number;
-    replacementsApproved: number;
-    replacementsCompleted: number;
-  };
-  returns: {
-    totalReturns: number;
-    returnsReceived: number;
-    returnsCompleted: number;
-    totalReturnedToInventoryQuantity: number;
-  };
-}
-
-interface OperationsDashboardResponse {
-  dashboard: OperationsDashboardSummary;
-  generatedAt: string;
-}
-
 const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType }> = [
-  { id: "overview", label: "Panel operativo", icon: Activity },
   { id: "commercial", label: "Pedidos", icon: ShoppingCart },
+  { id: "production", label: "Producción", icon: Factory },
   { id: "inventory", label: "Inventario", icon: Boxes },
-  { id: "production", label: "Produccion", icon: Factory },
-  { id: "dispatch", label: "Despacho", icon: Truck },
-  { id: "postsales", label: "Postventa", icon: RotateCcw },
+  { id: "dispatch", label: "Despachos", icon: Truck },
+  { id: "postsales", label: "Garantías y devoluciones", icon: RotateCcw },
   { id: "history", label: "Historial", icon: History },
 ];
 
-const PRODUCTION_TABS: Array<{ id: ProductionTab; label: string }> = [{ id: "orders", label: "Flujo madre" }];
-
 const POSTSALES_TABS: Array<{ id: PostsalesTab; label: string }> = [
-  { id: "warranties", label: "Garantias" },
+  { id: "warranties", label: "Garantías" },
   { id: "replacements", label: "Reemplazos" },
   { id: "returns", label: "Devoluciones" },
 ];
 
-function MetricCard({
-  label,
-  value,
-  icon: Icon,
-  tone,
-  hint,
-}: {
-  label: string;
-  value: number | string;
-  icon: React.ElementType;
-  tone: string;
-  hint: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-          <p className="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-white">{value}</p>
-        </div>
-        <div className={`rounded-xl p-2 ${tone}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-      <p className="mt-3 text-[11px] font-semibold text-slate-500">{hint}</p>
-    </div>
-  );
-}
-
-function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat("es-PA", {
-    maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
-  }).format(value);
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("es-PA", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-export function OperationsCenterSection({
-  createCount,
-  setCreateCount,
-  createBatch,
-  creating,
-  createdBatch,
-  exportCSV,
-  loadChipDetail,
-  role,
-  initialTab = "overview",
-}: OperationsCenterSectionProps) {
+export function OperationsCenterSection({ role, initialTab = "commercial" }: OperationsCenterSectionProps) {
   const [activeTab, setActiveTab] = useState<OperationsTab>(initialTab);
-  const [productionTab, setProductionTab] = useState<ProductionTab>("orders");
   const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
-  const [dashboard, setDashboard] = useState<OperationsDashboardSummary | null>(null);
-  const [loadingDashboard, setLoadingDashboard] = useState(false);
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
 
-  const loadDashboard = useCallback(async () => {
-    setLoadingDashboard(true);
-    try {
-      const res = await fetch("/api/admin/operations/dashboard", { cache: "no-store" });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "No se pudo cargar dashboard de operaciones");
-      }
-
-      setDashboard((data as OperationsDashboardResponse).dashboard);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo cargar el resumen operativo");
-    } finally {
-      setLoadingDashboard(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
-
-  const health = useMemo(() => {
-    const productionActive = dashboard?.production.productionStarted || 0;
-    const qcPending = dashboard?.qc.qcPending || 0;
-    const packingActive = dashboard?.packing.packingInProgress || 0;
-    const dispatchPending =
-      (dashboard?.dispatch.dispatchDraft || 0) +
-      (dashboard?.dispatch.dispatchReserved || 0) +
-      (dashboard?.dispatch.dispatchDispatched || 0);
-    const deliveredPendingActivation = dashboard?.dispatch.deliveredPendingActivation || 0;
-    const claimsOpen = dashboard?.warranties.warrantiesClaimOpen || 0;
-
-    if (productionActive > 0 || qcPending > 0 || packingActive > 0 || dispatchPending > 0 || deliveredPendingActivation > 0 || claimsOpen > 0) {
-      return {
-        label: "Atencion operativa",
-        tone: "bg-amber-50 text-amber-700 border-amber-200",
-        icon: AlertTriangle,
-      };
-    }
-    return {
-      label: "Operacion al dia",
-      tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        icon: ShieldCheck,
-      };
-  }, [dashboard]);
-
-  const HealthIcon = health.icon;
-
   const renderContent = () => {
-    if (activeTab === "dispatch") {
-      return <DispatchSection />;
-    }
-
-    if (activeTab === "commercial") {
-      return <PedidosSection />;
-    }
-
-    if (activeTab === "inventory") {
-      return (
-        <div className="space-y-6">
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Inventario físico</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">
-              Stock operativo y materiales de fabricación en una sola vista trazable. Los recursos digitales y productos base quedan fuera de la superficie principal.
-            </p>
-            <p className="mt-2 text-xs font-semibold text-slate-400">
-              QR, shortCode y enlaces de activación siguen su flujo propio; esta vista no asigna usuario final.
-            </p>
-          </section>
-          <PhysicalInventorySection />
-        </div>
-      );
-    }
-
-    if (activeTab === "production") {
-      return (
-        <div className="space-y-6">
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Produccion</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Ordenes de produccion, ensamblaje de unidades y empaque/lotes fisicos dentro del mismo flujo.
-                </p>
-              </div>
-              <div className="overflow-x-auto">
-                <div className="flex min-w-max gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950" role="tablist" aria-label="Subsecciones de produccion">
-                  {PRODUCTION_TABS.map((tab) => {
-                    const active = productionTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={active}
-                        onClick={() => setProductionTab(tab.id)}
-                        className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                          active
-                            ? "bg-white text-primary shadow-sm dark:bg-slate-800"
-                            : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-          </div>
-        </section>
-          {productionTab === "orders" && <ProductionQueueSection />}
-          {productionTab !== "orders" && (
-            <CreateBatchSection
-              createCount={createCount}
-              setCreateCount={setCreateCount}
-              createBatch={createBatch}
-              creating={creating}
-              createdBatch={createdBatch}
-              exportCSV={exportCSV}
-              loadChipDetail={loadChipDetail}
-            />
-          )}
-        </div>
-      );
-    }
-
-    if (activeTab === "postsales") {
-      return (
-        <div className="space-y-6">
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-xl font-black tracking-tight text-slate-950 dark:text-white">Postventa</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Garantias, reemplazos y devoluciones agrupados como continuidad del flujo operativo.
-                </p>
-              </div>
-              <div className="overflow-x-auto">
-                <div className="flex min-w-max gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950" role="tablist" aria-label="Subsecciones de postventa">
-                  {POSTSALES_TABS.map((tab) => {
-                    const active = postsalesTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={active}
-                        onClick={() => setPostsalesTab(tab.id)}
-                        className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                          active
-                            ? "bg-white text-primary shadow-sm dark:bg-slate-800"
-                            : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </section>
-          {postsalesTab === "warranties" && <WarrantySection />}
-          {postsalesTab === "replacements" && <ReplacementSection />}
-          {postsalesTab === "returns" && <ReturnSection />}
-        </div>
-      );
-    }
-
-    if (activeTab === "history") {
-      return <HistorySection />;
-    }
-
-    const dispatchPending = dashboard
-      ? dashboard.dispatch.dispatchDraft + dashboard.dispatch.dispatchReserved + dashboard.dispatch.dispatchDispatched
-      : 0;
-    const afterSalesPending = dashboard
-      ? dashboard.warranties.warrantiesClaimOpen +
-        dashboard.replacements.replacementsApproved +
-        dashboard.returns.returnsReceived
-      : 0;
+    if (activeTab === "commercial") return <PedidosSection />;
+    if (activeTab === "production") return <ProductionQueueSection />;
+    if (activeTab === "inventory") return <PhysicalInventorySection />;
+    if (activeTab === "dispatch") return <DispatchSection />;
+    if (activeTab === "history") return <HistorySection />;
 
     return (
-      <div className="space-y-6">
-        {loadingDashboard && !dashboard ? (
-          <div className="flex min-h-[260px] items-center justify-center rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-3 text-sm font-black uppercase tracking-widest text-slate-400">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Cargando dashboard
-            </div>
+      <div className="space-y-4">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex min-w-max gap-1" role="tablist" aria-label="Garantías y devoluciones">
+            {POSTSALES_TABS.map((tab) => {
+              const active = postsalesTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setPostsalesTab(tab.id)}
+                  className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
+                    active
+                      ? "bg-white text-primary shadow-sm dark:bg-slate-800"
+                      : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
-        ) : !dashboard ? (
-          <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm font-bold text-red-700">
-            No se pudo cargar el dashboard de operaciones.
-          </div>
-        ) : (
-          <>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <MetricCard
-            label="Estado general"
-            value={health.label}
-            icon={HealthIcon}
-            tone={health.tone}
-            hint="Basado en produccion, QC, empaque, despacho y reclamos."
-          />
-          <MetricCard
-            label="Produccion activa"
-            value={dashboard.production.productionStarted}
-            icon={Factory}
-            tone="bg-violet-50 text-violet-700 border-violet-200"
-            hint={`${formatCompactNumber(dashboard.production.totalProducedQuantity)} unidades producidas acumuladas.`}
-          />
-          <MetricCard
-            label="QC pendiente"
-            value={dashboard.qc.qcPending}
-            icon={ClipboardCheck}
-            tone="bg-purple-50 text-purple-700 border-purple-200"
-            hint={`${formatCompactNumber(dashboard.qc.totalPassedQuantity)} aprobadas / ${formatCompactNumber(dashboard.qc.totalFailedQuantity)} rechazadas.`}
-          />
-          <MetricCard
-            label="Empaque en progreso"
-            value={dashboard.packing.packingInProgress}
-            icon={PackageCheck}
-            tone="bg-blue-50 text-blue-700 border-blue-200"
-            hint={`${formatCompactNumber(dashboard.packing.totalPackedQuantity)} unidades empacadas.`}
-          />
-          <MetricCard
-            label="Inventario"
-            value={formatCompactNumber(dashboard.finishedGoods.totalAvailableBalance)}
-            icon={Warehouse}
-            tone="bg-emerald-50 text-emerald-700 border-emerald-200"
-            hint="Balance disponible del inventario terminado."
-          />
         </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label="Despachos pendientes"
-            value={dispatchPending}
-            icon={Truck}
-            tone="bg-cyan-50 text-cyan-700 border-cyan-200"
-            hint={`${dashboard.dispatch.dispatchDelivered} entregados, ${dashboard.dispatch.dispatchReserved} reservados.`}
-          />
-          <MetricCard
-            label="Entregado sin activar"
-            value={dashboard.dispatch.deliveredPendingActivation}
-            icon={AlertTriangle}
-            tone="bg-amber-50 text-amber-700 border-amber-200"
-            hint="Entrega física confirmada, pendiente de activación del codigo."
-          />
-          <MetricCard
-            label="Pedidos"
-            value={`${dashboard.commercial.commercialConfirmed}/${dashboard.commercial.commercialPaid}`}
-            icon={DollarSign}
-            tone="bg-lime-50 text-lime-700 border-lime-200"
-            hint={`${formatCurrency(dashboard.commercial.commercialTotalAmount)} en pedidos operativos.`}
-          />
-          <MetricCard
-            label="Reclamos abiertos"
-            value={dashboard.warranties.warrantiesClaimOpen}
-            icon={ShieldCheck}
-            tone="bg-amber-50 text-amber-700 border-amber-200"
-            hint={`${dashboard.warranties.warrantiesActive} garantias activas.`}
-          />
-          <MetricCard
-            label="Postventa pendiente"
-            value={afterSalesPending}
-            icon={RotateCcw}
-            tone="bg-rose-50 text-rose-700 border-rose-200"
-            hint={`${formatCompactNumber(dashboard.returns.totalReturnedToInventoryQuantity)} unidades retornadas a Inventario.`}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <button
-            type="button"
-            onClick={() => setActiveTab("production")}
-            className="rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
-          >
-            <Factory className="mb-5 h-8 w-8 text-primary" />
-            <h3 className="text-lg font-black tracking-tight">Abrir produccion</h3>
-            <p className="mt-2 text-sm font-medium text-slate-500">
-              Ordenes reales, eventos y cantidades producidas.
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("inventory")}
-            className="rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
-          >
-            <Warehouse className="mb-5 h-8 w-8 text-emerald-600" />
-            <h3 className="text-lg font-black tracking-tight">Abrir inventario</h3>
-            <p className="mt-2 text-sm font-medium text-slate-500">
-              Balance disponible de productos terminados.
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("postsales")}
-            className="rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
-          >
-            <RotateCcw className="mb-5 h-8 w-8 text-rose-600" />
-            <h3 className="text-lg font-black tracking-tight">Abrir postventa</h3>
-            <p className="mt-2 text-sm font-medium text-slate-500">
-              Garantias, reemplazos y devoluciones agrupadas por continuidad operativa.
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("dispatch")}
-            className="rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
-          >
-            <Truck className="mb-5 h-8 w-8 text-cyan-600" />
-            <h3 className="text-lg font-black tracking-tight">Abrir despacho</h3>
-            <p className="mt-2 text-sm font-medium text-slate-500">
-              Salidas y entregas en curso.
-            </p>
-          </button>
-        </div>
-          </>
-        )}
+        {postsalesTab === "warranties" && <WarrantySection />}
+        {postsalesTab === "replacements" && <ReplacementSection />}
+        {postsalesTab === "returns" && <ReturnSection />}
       </div>
     );
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-5 animate-in fade-in duration-500">
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex min-w-max gap-1" role="tablist" aria-label="Secciones del Centro de Operaciones">
           {TABS.map((tab) => {

@@ -1,61 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Archive, Boxes, PackageCheck } from "lucide-react";
+import { Boxes } from "lucide-react";
 import { FinishedGoodsSection } from "./FinishedGoodsSection";
-import { MaterialsWorkflowSection } from "./MaterialsWorkflowSection";
-
-type PhysicalInventoryTab = "materials" | "finished";
-
-const TABS: Array<{ id: PhysicalInventoryTab; label: string; icon: React.ElementType }> = [
-  { id: "materials", label: "Materiales", icon: Archive },
-  { id: "finished", label: "Productos terminados", icon: PackageCheck },
-];
 
 export function PhysicalInventorySection() {
-  const [activeTab, setActiveTab] = useState<PhysicalInventoryTab>("materials");
-
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div>
-        <h2 className="flex items-center gap-3 text-3xl font-black tracking-tight">
-          <Boxes className="h-8 w-8 text-primary" />
-          Inventario
-        </h2>
-        <p className="mt-1 text-sm font-medium text-muted-foreground">
-          Materiales y productos terminados en una sola vista operativa.
-        </p>
+    <div className="space-y-4 animate-in fade-in duration-500">
+      <div className="flex items-center gap-3">
+        <Boxes className="h-7 w-7 text-primary" />
+        <h2 className="text-2xl font-black tracking-tight">Productos terminados</h2>
       </div>
-
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex min-w-max gap-1" role="tablist" aria-label="Inventario fisico">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
-                  active
-                    ? "bg-white text-primary shadow-sm dark:bg-slate-800"
-                    : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div role="tabpanel">
-        {activeTab === "materials" ? <MaterialsWorkflowSection /> : <FinishedGoodsSection />}
-      </div>
+      <FinishedGoodsSection />
     </div>
   );
 }
