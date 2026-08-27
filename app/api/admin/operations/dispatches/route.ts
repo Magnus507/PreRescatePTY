@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { buildDispatchViewModel } from "@/lib/operations/dispatch-view-model";
+import { getDispatchCustomerOrderId } from "@/lib/operations/dispatch-source";
 import {
   CreateDispatchSchema,
   getFirstValidationMessage,
@@ -43,20 +44,6 @@ const dispatchInclude = {
   },
 } as const;
 
-function extractOrderIdFromDispatch(dispatch: { destinationReference?: string | null; events: Array<{ metadataJson?: string | null; referenceType?: string | null; referenceId?: string | null }> }) {
-  for (const event of dispatch.events) {
-    if (event.referenceType === "order" && event.referenceId) return event.referenceId;
-    if (!event.metadataJson) continue;
-    try {
-      const parsed = JSON.parse(event.metadataJson) as { orderId?: string; orderCode?: string };
-      if (parsed.orderId) return parsed.orderId;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
 export async function GET() {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
@@ -70,7 +57,7 @@ export async function GET() {
     const orderIds = Array.from(
       new Set(
         dispatches
-          .map((dispatch) => extractOrderIdFromDispatch(dispatch))
+          .map((dispatch) => getDispatchCustomerOrderId(dispatch.events))
           .filter((value): value is string => Boolean(value))
       )
     );
@@ -95,7 +82,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       dispatches: dispatches.map((dispatch) => {
-        const orderId = extractOrderIdFromDispatch(dispatch);
+        const orderId = getDispatchCustomerOrderId(dispatch.events);
         return buildDispatchViewModel({
           ...dispatch,
           sourceOrder: orderId ? sourceOrderById.get(orderId) || null : null,
@@ -127,15 +114,10 @@ export async function POST(req: NextRequest) {
   const data = parsed.data;
   const destinationType = data.destinationType || "customer";
 
-  // Customer shipments must always originate from a paid Order with explicitly
-  // reserved OperationFinishedGoodUnit records. The order-specific dispatch
-  // route carries immutable delivery data and the exact physical unit labels.
-  // This generic endpoint remains available for stock transfers / POS / external
-  // warehouse / exceptional non-customer logistics only.
   if (destinationType === "customer") {
     return NextResponse.json(
       {
-        error: "Los despachos a clientes se crean desde Pedidos después de reservar las unidades físicas. Usa este formulario solo para traslados, POS o logística no vinculada a un pedido cliente.",
+        error: "Los despachos a clientes se crean desde Pedidos después de reservar las unidades físicas.",
         code: "CUSTOMER_DISPATCH_REQUIRES_ORDER",
       },
       { status: 409 }
@@ -176,7 +158,8 @@ export async function POST(req: NextRequest) {
           events: {
             create: {
               eventType: "CREATED",
-              reason: "Despacho logístico manual creado",
+              reason: "Traslado logístico creado",
+              referenceType: "dispatch",
               metadataJson: JSON.stringify({
                 destinationType,
                 itemCount: data.items.length,
@@ -194,7 +177,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof Error && error.message === "INVALID_FINISHED_GOOD") {
       return NextResponse.json(
-        { error: "Uno o mas finishedGoodId no existen" },
+        { error: "Uno o más productos terminados no existen" },
         { status: 400 }
       );
     }
@@ -204,7 +187,7 @@ export async function POST(req: NextRequest) {
       error.code === "P2002"
     ) {
       return NextResponse.json(
-        { error: "Ya existe un despacho con ese code" },
+        { error: "Ya existe un despacho con ese código" },
         { status: 409 }
       );
     }
