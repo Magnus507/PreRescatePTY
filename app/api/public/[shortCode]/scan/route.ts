@@ -5,7 +5,7 @@ import { getReverseGeocoding } from "@/lib/geocoding";
 import { getClientIp } from "@/lib/request-ip";
 import { publicScanSchema } from "@/lib/validations";
 import { resolvePublicProfileByChipShortCode } from "@/lib/public-access/resolve-public-profile-by-chip";
-import { queueEmergencyNotificationsFromScan } from "@/lib/emergency-alerts";
+import { processPendingEmergencyNotifications, queueEmergencyNotificationsFromScan } from "@/lib/emergency-alerts";
 
 export const dynamic = "force-dynamic";
 
@@ -94,11 +94,18 @@ export async function POST(
         location: scanInput.geoLat != null && scanInput.geoLng != null
           ? { lat: scanInput.geoLat, lng: scanInput.geoLng }
           : null,
+        trigger: "automatic",
       });
 
       return { scanEvent, notificationPlan };
     });
     const { scanEvent, notificationPlan } = queueResult;
+
+    if (notificationPlan.queued > 0) {
+      after(async () => {
+        await processPendingEmergencyNotifications(prisma, { limit: 25 });
+      });
+    }
 
     // 0. Background Reverse Geocoding & Profile/Chip Sync
     after(async () => {

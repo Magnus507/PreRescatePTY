@@ -297,7 +297,7 @@ describe('GET /api/image-proxy', () => {
 
     expect(res.status).toBe(200)
     expect(res.headers.get('Content-Type')).toBe('image/webp')
-    expect(res.headers.get('Cache-Control')).toContain('immutable')
+    expect(res.headers.get('Cache-Control')).toBe('private, no-store, max-age=0')
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff')
     expect(res.headers.get('Access-Control-Allow-Origin')).not.toBe('*')
     expect(res.headers.get('Vary')).toBe('Origin')

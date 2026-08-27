@@ -38,11 +38,16 @@ export default function ConfiguracionPage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [accountState, setAccountState] = useState<AccountState | null>(null);
+  const [automaticAlertsEnabled, setAutomaticAlertsEnabled] = useState(false);
+  const [savingAlertPreference, setSavingAlertPreference] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await fetch(`/api/users/profile?_t=${Date.now()}`);
+        const [res, alertPreferencesRes] = await Promise.all([
+          fetch(`/api/users/profile?_t=${Date.now()}`),
+          fetch(`/api/users/alert-preferences?_t=${Date.now()}`),
+        ]);
         const data = await res.json();
         if (data.user) {
           setPhone(data.user.phone || "");
@@ -55,6 +60,10 @@ export default function ConfiguracionPage() {
           setPhotoUrl(data.profile?.photoUrl || null);
           setUniversalId(`USR-${data.user.id?.substring(0, 8) || "PENDIENTE"}`);
           if (data.accountState) setAccountState(data.accountState);
+        }
+        if (alertPreferencesRes.ok) {
+          const preferences = await alertPreferencesRes.json();
+          setAutomaticAlertsEnabled(!!preferences.automaticAlertsEnabled);
         }
       } catch (err) {
         console.error("Error loading profile", err);
@@ -91,6 +100,26 @@ export default function ConfiguracionPage() {
       toast.error(err instanceof Error ? err.message : "Error al guardar");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleAutomaticAlertsChange() {
+    const nextValue = !automaticAlertsEnabled;
+    setSavingAlertPreference(true);
+    try {
+      const res = await fetch("/api/users/alert-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ automaticAlertsEnabled: nextValue }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "No se pudo guardar la preferencia");
+      setAutomaticAlertsEnabled(nextValue);
+      toast.success(nextValue ? "Alertas automáticas activadas" : "Alertas automáticas desactivadas");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar la preferencia");
+    } finally {
+      setSavingAlertPreference(false);
     }
   }
 
@@ -389,19 +418,26 @@ export default function ConfiguracionPage() {
           {/* Notificaciones Section */}
           {activeTab === "notificaciones" && (
             <Section title="Preferencias de alertamiento" icon={Smartphone} color="bg-indigo-600">
-               <div className="space-y-4">
-                  <div className="flex flex-col gap-3 rounded-[2rem] border border-slate-200 bg-slate-50 p-6 md:flex-row md:items-center">
-                     <div className="inline-flex w-fit items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-emerald-700">
-                        Activo
-                     </div>
-                     <p className="text-sm leading-6 text-slate-600">
-                        Las alertas de emergencia usan los contactos y permisos configurados en cada perfil. Esta pantalla no gestiona el envío por canal.
-                     </p>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={automaticAlertsEnabled}
+                disabled={savingAlertPreference}
+                onClick={handleAutomaticAlertsChange}
+                className="flex w-full items-center justify-between rounded-[2rem] border border-slate-200 bg-slate-50 p-6 text-left transition-all hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <div className="max-w-md pr-6">
+                  <p className="font-black text-slate-950">Avisar automáticamente al escanear</p>
+                  <p className="mt-1 text-xs leading-6 text-slate-500">Envía un aviso a tus contactos configurados cuando se registra un escaneo. El botón manual del perfil público siempre permanece disponible.</p>
+                </div>
+                {savingAlertPreference ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                ) : (
+                  <div className={`h-8 w-14 rounded-full p-1 transition-all ${automaticAlertsEnabled ? "bg-primary" : "bg-slate-300"}`}>
+                    <div className={`h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${automaticAlertsEnabled ? "translate-x-6" : ""}`} />
                   </div>
-                  <Toggle label="Notificaciones por SMS" description="Se resuelven desde los contactos elegibles del perfil." defaultChecked disabled />
-                  <Toggle label="Notificaciones por Email" description="Se resuelven desde los contactos elegibles del perfil." defaultChecked disabled />
-                  <Toggle label="Sonido de Alerta Crítica" description="La alerta operativa se registra en el historial del escaneo." defaultChecked disabled />
-               </div>
+                )}
+              </button>
             </Section>
           )}
 
@@ -510,35 +546,6 @@ function SettingsTab({
         <span className={`mt-1 block text-xs leading-5 ${active ? "text-slate-500" : "text-slate-400"}`}>{description}</span>
       </div>
       {active && <div className="ml-auto h-2 w-2 rounded-full bg-primary" />}
-    </button>
-  );
-}
-
-function Toggle({
-  label,
-  description,
-  defaultChecked,
-  disabled,
-}: {
-  label: string;
-  description: string;
-  defaultChecked?: boolean;
-  disabled?: boolean;
-}) {
-  const [checked, setChecked] = useState(defaultChecked);
-  return (
-    <button
-      onClick={() => { if (!disabled) setChecked(!checked); }}
-      type="button"
-      className={`flex w-full items-center justify-between rounded-[2rem] border p-5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:p-6 ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'}`}
-    >
-       <div className="max-w-md pr-6">
-          <p className={`font-black ${disabled ? 'text-slate-600' : 'text-slate-950'}`}>{label}</p>
-          <p className="mt-1 text-xs leading-6 text-slate-500">{description}</p>
-       </div>
-       <div className={`h-8 w-14 rounded-full p-1 transition-all ${checked ? "bg-primary" : "bg-slate-300"}`}>
-          <div className={`h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-6" : ""}`} />
-       </div>
     </button>
   );
 }

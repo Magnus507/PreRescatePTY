@@ -44,7 +44,7 @@ export async function optimizeAndUploadImage(
     if (!bucketExists) {
       logger.info(`Creating missing bucket: ${bucket}`);
       const { error: createError } = await supabase.storage.createBucket(bucket, {
-        public: true,
+        public: bucket !== "payment-proofs",
         allowedMimeTypes: ['image/webp', 'image/jpeg', 'image/png'],
         fileSizeLimit: 5242880 // 5MB
       });

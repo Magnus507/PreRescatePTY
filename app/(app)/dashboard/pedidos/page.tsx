@@ -8,6 +8,7 @@ import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { RejectionReasonBox } from "./_components/RejectionReasonBox";
 import { PaymentInstructions } from "./_components/PaymentInstructions";
 import { PaymentProofForm } from "./_components/PaymentProofForm";
+import { YappyPaymentButton } from "@/components/payments/YappyPaymentButton";
 import { toast } from "sonner";
 import { canCustomerCancelManual, canSubmitManualProof, isManualOrderFinal } from "@/lib/order-status";
 
@@ -67,6 +68,7 @@ interface Order {
   shippingAddress: string | null;
   shippingCity: string | null;
   shippingNotes: string | null;
+  customerPhone: string | null;
 }
 
 interface PaymentConfig {
@@ -295,7 +297,8 @@ function PedidosContent() {
             {orders.map(order => {
               const items = order.items ?? [];
               const isFinalCompactState = isManualOrderFinal(order) || order.orderStatus === "cancelled";
-              const showManualPaymentBlock = canSubmitManualProof(order);
+              const isYappyOrder = order.paymentMethod === "yappy";
+              const showManualPaymentBlock = !isYappyOrder && canSubmitManualProof(order);
               
               return (
                 <div key={order.id} className={`group border border-slate-200 bg-white shadow-[0_24px_80px_-55px_rgba(15,23,42,0.22)] flex flex-col transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_30px_90px_-55px_rgba(15,23,42,0.28)] ${isFinalCompactState ? "p-6 sm:p-7 rounded-[2rem] gap-4" : "p-7 sm:p-8 rounded-[2.25rem] gap-7"}`}>
@@ -350,6 +353,14 @@ function PedidosContent() {
 
                   {(order.paymentStatus === "rejected" || order.adminReviewStatus === "rejected") && (
                     <RejectionReasonBox adminReviewNotes={order.adminReviewNotes} />
+                  )}
+
+                  {isYappyOrder && order.paymentStatus === "pending" && order.orderStatus !== "cancelled" && (
+                    <YappyPaymentButton
+                      orderId={order.id}
+                      initialPhone={order.customerPhone}
+                      onPaymentUpdate={loadOrders}
+                    />
                   )}
                   
                   {/* MANUAL FLOW — pending: full form, under_review: compact summary */}

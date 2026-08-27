@@ -9,6 +9,7 @@ import { canAdminApproveManual } from "@/lib/order-status";
 import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { InvoiceService } from "@/domains/invoices/services/invoice.service";
 
 const ApproveSchema = z.object({
   adminReviewNotes: z.string().optional(),
@@ -142,6 +143,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           adminReviewNotes: notes,
         },
       });
+      await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
 
       if (memberIds.length > 0) {
         await tx.organizationMember.updateMany({
@@ -234,6 +236,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             adminReviewNotes: notes,
           },
         });
+        await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
 
         await tx.auditLog.create({
           data: {
@@ -296,6 +299,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             adminReviewNotes: buildFulfillmentReviewNotes(notes, reservation),
           },
         });
+        await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
 
         await tx.auditLog.create({
           data: {
@@ -382,6 +386,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           adminReviewNotes: buildFulfillmentReviewNotes(notes, reservation),
         }
       });
+      await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
 
       // Actualizar cuenta
       const currentAccount = await tx.account.findUnique({

@@ -7,6 +7,7 @@ import {
 } from "@/lib/operations/sync-real-order-to-operations";
 
 type OutboxDbClient = Pick<PrismaClient, "commerceOrderSyncOutbox">;
+type StoredOrderOutboxDbClient = Pick<PrismaClient, "order" | "commerceOrderSyncOutbox">;
 type DbClient = PrismaClient;
 
 export const COMMERCE_ORDER_SYNC_EVENT_TYPE = "commerce.order.sync_requested";
@@ -86,13 +87,15 @@ export function buildCommerceOrderSyncPayload(
   };
 }
 
-function buildDeduplicationKey(syncInput: SyncRealOrderToOperationsInput) {
-  return [
+function buildDeduplicationKey(syncInput: SyncRealOrderToOperationsInput, suffix?: string) {
+  const parts = [
     COMMERCE_ORDER_SYNC_EVENT_TYPE,
     syncInput.sourceType,
     syncInput.sourceId,
     `v${COMMERCE_ORDER_SYNC_PAYLOAD_VERSION}`,
-  ].join(":");
+  ];
+  if (suffix) parts.push(suffix);
+  return parts.join(":");
 }
 
 function sanitizeErrorMessage(error: unknown) {
@@ -140,22 +143,23 @@ function buildSyncInputFromStoredOrder(
   order: StoredCommerceOrderSnapshot
 ): SyncRealOrderToOperationsInput {
   const items = order.items.map((item) => {
-    if (!isMappedSnapshot(item)) {
+    const mapped = isMappedSnapshot(item);
+    if (!mapped && sourceType === "checkout") {
       throw new Error("ORDER_ITEM_UNMAPPED");
     }
 
     return {
       productId: item.productId,
-      productCode: item.productCode || item.operationalProductCode,
+      productCode: item.productCode || item.operationalProductCode || item.productType,
       productName: item.productName || item.operationalProductName || item.productType,
       quantity: item.quantity,
       unitPrice: parseMoney(item.unitPrice),
       unit: "unit",
-      finishedGoodId: item.operationalFinishedGoodId,
-      operationalMappingId: item.operationalMappingId,
-      operationalProductCode: item.operationalProductCode,
-      operationalProductName: item.operationalProductName,
-      operationalFinishedGoodId: item.operationalFinishedGoodId,
+      finishedGoodId: mapped ? item.operationalFinishedGoodId : null,
+      operationalMappingId: mapped ? item.operationalMappingId : null,
+      operationalProductCode: mapped ? item.operationalProductCode : null,
+      operationalProductName: mapped ? item.operationalProductName : null,
+      operationalFinishedGoodId: mapped ? item.operationalFinishedGoodId : null,
     };
   });
 
@@ -180,10 +184,11 @@ function buildSyncInputFromStoredOrder(
 
 export async function enqueueCommerceOrderSyncOutbox(
   db: OutboxDbClient,
-  syncInput: SyncRealOrderToOperationsInput
+  syncInput: SyncRealOrderToOperationsInput,
+  options: { deduplicationSuffix?: string } = {}
 ) {
   const payload = buildCommerceOrderSyncPayload(syncInput);
-  const deduplicationKey = buildDeduplicationKey(syncInput);
+  const deduplicationKey = buildDeduplicationKey(syncInput, options.deduplicationSuffix);
 
   return db.commerceOrderSyncOutbox.create({
     data: {
@@ -198,6 +203,57 @@ export async function enqueueCommerceOrderSyncOutbox(
       availableAt: new Date(),
     },
   });
+}
+
+export async function enqueueStoredCommerceOrderSyncOutbox(
+  db: StoredOrderOutboxDbClient,
+  options: {
+    orderId: string;
+    sourceType: SyncRealOrderToOperationsInput["sourceType"];
+    deduplicationSuffix: string;
+  }
+) {
+  const order = (await db.order.findUnique({
+    where: { id: options.orderId },
+    select: {
+      id: true,
+      orderNumber: true,
+      orderType: true,
+      customerName: true,
+      customerEmail: true,
+      customerPhone: true,
+      customerDocument: true,
+      providerReference: true,
+      paymentStatus: true,
+      manualPaymentReference: true,
+      paymentProofUrl: true,
+      currency: true,
+      amount: true,
+      organizationId: true,
+      items: {
+        select: {
+          productId: true,
+          productType: true,
+          productName: true,
+          productCode: true,
+          quantity: true,
+          unitPrice: true,
+          operationalMappingId: true,
+          operationalMappingStatus: true,
+          operationalFinishedGoodId: true,
+          operationalProductCode: true,
+          operationalProductName: true,
+        },
+      },
+    },
+  })) as StoredCommerceOrderSnapshot | null;
+
+  if (!order) throw new Error("ORDER_NOT_FOUND");
+  return enqueueCommerceOrderSyncOutbox(
+    db,
+    buildSyncInputFromStoredOrder(options.sourceType, order),
+    { deduplicationSuffix: options.deduplicationSuffix }
+  );
 }
 
 export async function claimCommerceOrderSyncOutboxBatch(

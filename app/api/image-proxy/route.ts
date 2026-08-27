@@ -127,7 +127,9 @@ export async function GET(req: NextRequest) {
     if (path.endsWith(".webp")) contentType = "image/webp";
     const headers: Record<string, string> = {
       "Content-Type": contentType,
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": AUTHENTICATED_BUCKETS.has(bucket)
+        ? "private, no-store, max-age=0"
+        : "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
     };
 

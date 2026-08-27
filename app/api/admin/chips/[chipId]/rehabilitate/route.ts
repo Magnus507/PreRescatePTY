@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUniqueActivationCode } from "@/lib/identifiers";
+import { protectActivationCode } from "@/domains/chips/activation-code.service";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export async function POST(
       const newToken = await tx.chipClaimToken.create({
         data: {
           chipId,
-          activationCode: newActivationCode,
+          ...protectActivationCode(newActivationCode),
           expiresAt: newExpiresAt,
           orderId: null,
           usedAt: null,
@@ -152,7 +153,7 @@ export async function POST(
       message: "Chip rehabilitado para stock",
       chip: result.chip,
       token: {
-        activationCode: result.newToken.activationCode,
+        activationCode: newActivationCode,
         expiresAt: result.newToken.expiresAt,
       },
     });

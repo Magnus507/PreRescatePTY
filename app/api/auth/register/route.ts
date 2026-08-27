@@ -5,6 +5,7 @@ import { registerSchema } from "@/lib/validations";
 import { ACCOUNT_TYPES, USER_ROLES } from "@/domains/shared/constants";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
+import { CONSENT_TEXT_VERSION, CONSENT_TYPE } from "@/domains/consents/consent.constants";
 
 export const dynamic = "force-dynamic";
 
@@ -116,8 +117,8 @@ export async function POST(req: NextRequest) {
         data: {
           accountId: account.id,
           userId: newUser.id,
-          consentType: "privacy_policy_and_emergency_alerts",
-          textVersion: "registration-terms-2026-07-14",
+          consentType: CONSENT_TYPE.TERMS_AND_PRIVACY,
+          textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
           ipAddress: ip,
           userAgent,
           evidenceJson: JSON.stringify({

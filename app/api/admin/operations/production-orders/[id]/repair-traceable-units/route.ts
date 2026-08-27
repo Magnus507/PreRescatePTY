@@ -3,11 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { buildProductionAssemblyState } from "@/lib/operations/production-assembly-state";
 import { getProductMetadata } from "@/app/api/admin/operations/finished-good-units/finished-good-units.helpers";
+import { ensureTraceableDigitalIdentity } from "@/lib/operations/traceable-digital-identity";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
@@ -26,6 +27,7 @@ export async function POST(
     internalLabel: string;
     shortCode: string | null;
     finishedGoodUnitId: string;
+    chipId: string;
     action: "created" | "found" | "linked";
   }> = [];
   const errors: Array<{ preparationId: string; message: string }> = [];
@@ -42,15 +44,24 @@ export async function POST(
     try {
       const unit = await prisma.$transaction(async (tx) => {
         const productMetadata = getProductMetadata(item.batch.productType);
+        const identity = await ensureTraceableDigitalIdentity(tx, {
+          item,
+          productType: item.batch.productType,
+          requestOrigin: req.headers.get("origin"),
+        });
         const existingByBatchItem = await tx.operationFinishedGoodUnit.findUnique({
           where: { digitalBatchItemId: item.id },
         });
         if (existingByBatchItem) {
+          if (existingByBatchItem.chipId && existingByBatchItem.chipId !== identity.chip.id) {
+            throw new Error("TRACEABLE_UNIT_CHIP_MISMATCH");
+          }
           const linked = await tx.operationFinishedGoodUnit.update({
             where: { id: existingByBatchItem.id },
             data: {
               digitalBatchId: existingByBatchItem.digitalBatchId || item.batchId,
               digitalBatchItemId: existingByBatchItem.digitalBatchItemId || item.id,
+              chipId: identity.chip.id,
               printOrderId: existingByBatchItem.printOrderId || printOrder?.id || null,
               productCode: productMetadata.productCode,
               productName: productMetadata.productName,
@@ -68,11 +79,15 @@ export async function POST(
         });
 
         if (existingByLabel) {
+          if (existingByLabel.chipId && existingByLabel.chipId !== identity.chip.id) {
+            throw new Error("TRACEABLE_UNIT_CHIP_MISMATCH");
+          }
           const linked = await tx.operationFinishedGoodUnit.update({
             where: { id: existingByLabel.id },
             data: {
               digitalBatchId: existingByLabel.digitalBatchId || item.batchId,
               digitalBatchItemId: existingByLabel.digitalBatchItemId || item.id,
+              chipId: identity.chip.id,
               printOrderId: existingByLabel.printOrderId || printOrder?.id || null,
               productCode: productMetadata.productCode,
               productName: productMetadata.productName,
@@ -93,6 +108,7 @@ export async function POST(
             productType: item.batch.productType,
             digitalBatchId: item.batchId,
             digitalBatchItemId: item.id,
+            chipId: identity.chip.id,
             status: "qa_pending",
             qaStatus: "pending",
             activationStatus: "not_activated",
@@ -111,6 +127,7 @@ export async function POST(
           digitalBatchItemId: true,
           internalLabel: true,
           digitalBatchId: true,
+          chipId: true,
           qaStatus: true,
           status: true,
           activationStatus: true,
@@ -118,7 +135,7 @@ export async function POST(
         },
       });
 
-      if (!fresh?.id || fresh.digitalBatchItemId !== item.id) {
+      if (!fresh?.id || fresh.digitalBatchItemId !== item.id || !fresh.chipId) {
         errors.push({ preparationId: item.id, message: "No se pudo vincular la unidad trazable." });
         continue;
       }
@@ -139,6 +156,7 @@ export async function POST(
         internalLabel: fresh.internalLabel,
         shortCode: item.shortCode,
         finishedGoodUnitId: fresh.id,
+        chipId: fresh.chipId,
         action: unit.action,
       });
     } catch (error) {

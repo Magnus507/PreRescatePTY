@@ -11,6 +11,25 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: prerescate_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/prerescate_ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/prerescate_ci
+      DATABASE_URL_TEST: postgresql://ci:ci@localhost:5432/prerescate_ci
+      NEXTAUTH_SECRET: ci-only-not-a-production-secret
 
     steps:
       - name: Checkout
@@ -19,7 +38,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
 
       - name: Install dependencies
@@ -30,6 +49,9 @@ jobs:
 
       - name: Validate Prisma
         run: npx prisma validate
+
+      - name: Prepare integration database
+        run: npx prisma db push --skip-generate
 
       - name: Lint
         run: npm run lint

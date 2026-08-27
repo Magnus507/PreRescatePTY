@@ -40,6 +40,7 @@ vi.mock("@/lib/public-access/resolve-public-profile-by-chip", () => ({
 
 vi.mock("@/lib/emergency-alerts", () => ({
   queueEmergencyNotificationsFromScan: mockQueueEmergencyNotificationsFromScan,
+  processPendingEmergencyNotifications: vi.fn(),
 }));
 
 import { POST } from "@/app/api/public/[shortCode]/scan/route";
@@ -120,6 +121,7 @@ describe("POST /api/public/[shortCode]/scan", () => {
         scanEventId: "scan-1",
         chipId: "chip-1",
         profileId: "profile-1",
+        trigger: "automatic",
       })
     );
   });

@@ -1,11 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   ShoppingCart, Package, Loader2,
-  MapPin, CreditCard, CheckCircle2, QrCode, Clock, AlertTriangle,
+  MapPin, CheckCircle2, Clock, AlertTriangle,
   Upload, ArrowRight, UserRound, Plus, ShieldCheck, Cpu,
   Info
 } from "lucide-react";
@@ -53,11 +52,10 @@ interface CreateOrderBody {
   shippingAddress: string;
   shippingCity: string;
   shippingNotes: string;
+  paymentMethod: "yappy" | "bank_transfer";
 }
 
 interface PaymentConfig {
-  yappy_qr_url?: string;
-  yappy_handle?: string;
   bank_name?: string;
   bank_account_type?: string;
   bank_account_number?: string;
@@ -122,6 +120,7 @@ export default function TiendaPage() {
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUploaded, setProofUploaded] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"yappy" | "bank_transfer">("yappy");
   const [profileOptions, setProfileOptions] = useState<ProfileOption[]>([]);
   const [profileLoading, setProfileLoading] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
@@ -202,7 +201,8 @@ export default function TiendaPage() {
         }],
         shippingAddress: shippingData.address,
         shippingCity: shippingData.city,
-        shippingNotes: shippingData.notes
+        shippingNotes: shippingData.notes,
+        paymentMethod,
       };
 
       if (selectedProduct.requiresPersonalization) {
@@ -231,9 +231,14 @@ export default function TiendaPage() {
       const data = await res.json();
       if (res.ok) {
         setShowCheckout(false);
-        setShowSuccessModal(true);
         setLastOrderId(data.order?.id || null);
         setProofUploaded(false);
+        if (paymentMethod === "yappy") {
+          toast.success("Pedido creado. Continua con el pago Yappy.");
+          router.push("/dashboard/pedidos");
+          return;
+        }
+        setShowSuccessModal(true);
       } else {
         toast.error(data?.error || "Error al procesar el pedido");
       }
@@ -400,14 +405,14 @@ export default function TiendaPage() {
 
           {/* Subtitle */}
           <p className="text-sm sm:text-base text-white/60 font-medium max-w-lg leading-relaxed mb-4">
-            Compra productos oficiales con un flujo claro, pago manual y seguimiento directo desde Mis pedidos.
+            Compra productos oficiales con Yappy o transferencia y sigue todo desde Mis pedidos.
           </p>
 
           {/* Microcopy + CTA */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
             <div className="flex items-center gap-2 text-[10px] font-bold text-amber-300/90">
               <Clock className="h-3.5 w-3.5" />
-              Pago manual y revisión humana
+              Pago Yappy automático o transferencia
             </div>
             <Link
               href="/dashboard/pedidos"
@@ -720,11 +725,21 @@ export default function TiendaPage() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Método de pago</label>
-                    <div className="w-full bg-slate-900 text-white rounded-[1.5rem] px-6 py-5 flex items-center gap-3 ring-1 ring-white/5 shadow-[0_20px_50px_-32px_rgba(15,23,42,0.6)]">
-                      <CreditCard className="h-4 w-4 text-[#DA1A21]" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.22em] leading-tight">
-                        Pago manual. Verás Yappy QR y datos bancarios al finalizar o desde Mis pedidos.
-                      </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("yappy")}
+                        className={`rounded-2xl border px-4 py-4 text-left text-[10px] font-black uppercase tracking-wider transition ${paymentMethod === "yappy" ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-500"}`}
+                      >
+                        Yappy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("bank_transfer")}
+                        className={`rounded-2xl border px-4 py-4 text-left text-[10px] font-black uppercase tracking-wider transition ${paymentMethod === "bank_transfer" ? "border-emerald-400 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-500"}`}
+                      >
+                        Transferencia
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -763,7 +778,7 @@ export default function TiendaPage() {
                 </button>
 
                 <p className="text-[9px] text-center text-slate-400 font-bold uppercase opacity-60">
-                  Al crear tu pedido, quedará en revisión. Recibirás instrucciones de pago.
+                  El monto se calcula y valida en el servidor.
                 </p>
               </div>
             </form>
@@ -788,25 +803,7 @@ export default function TiendaPage() {
 
           <div className="space-y-5">
             {/* Payment info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-5 bg-slate-50 dark:bg-slate-900 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 text-center shadow-[0_16px_40px_-30px_rgba(15,23,42,0.25)]">
-                  <p className="text-[10px] font-black uppercase text-indigo-500 mb-2">Yappy</p>
-                  <div className="h-24 w-24 bg-white dark:bg-slate-800 rounded-2xl mx-auto mb-3 flex items-center justify-center border border-indigo-100 dark:border-indigo-900 overflow-hidden shadow-inner">
-                  {paymentConfig?.yappy_qr_url ? (
-                    <Image
-                      src={paymentConfig.yappy_qr_url}
-                      alt="QR"
-                      width={96}
-                      height={96}
-                      unoptimized
-                      className="h-full w-full object-contain p-2"
-                    />
-                  ) : (
-                    <QrCode className="h-8 w-8 text-indigo-400 opacity-20" />
-                  )}
-                </div>
-                  <p className="text-md font-black text-indigo-700">{paymentConfig?.yappy_handle || '@...'}</p>
-                </div>
+            <div className="grid grid-cols-1 gap-4">
                 <div className="p-5 bg-slate-50 dark:bg-slate-900 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 text-center flex flex-col justify-center shadow-[0_16px_40px_-30px_rgba(15,23,42,0.25)]">
                   <p className="text-[10px] font-black uppercase text-emerald-500 mb-3">ACH / Banco</p>
                   <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 leading-tight">
@@ -895,25 +892,7 @@ export default function TiendaPage() {
               Tu pedido fue creado. Si no hay stock suficiente, la producción estimada es de 2 semanas. Revisa el pago y sube tu comprobante desde Mis pedidos.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-              <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center shadow-[0_16px_40px_-30px_rgba(15,23,42,0.25)]">
-                <p className="text-[10px] font-black uppercase text-indigo-500 mb-2">Yappy</p>
-                <div className="h-24 w-24 bg-white dark:bg-slate-800 rounded-2xl mx-auto mb-3 flex items-center justify-center border border-indigo-100 dark:border-indigo-900 overflow-hidden shadow-inner">
-                  {paymentConfig?.yappy_qr_url ? (
-                    <Image
-                      src={paymentConfig.yappy_qr_url}
-                      alt="QR"
-                      width={96}
-                      height={96}
-                      unoptimized
-                      className="h-full w-full object-contain p-2"
-                    />
-                  ) : (
-                    <QrCode className="h-8 w-8 text-indigo-400 opacity-20" />
-                  )}
-                </div>
-                <p className="text-md font-black text-indigo-700">{paymentConfig?.yappy_handle || '@...'}</p>
-              </div>
+            <div className="grid grid-cols-1 gap-4 mb-8">
               <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center flex flex-col justify-center shadow-[0_16px_40px_-30px_rgba(15,23,42,0.25)]">
                 <p className="text-[10px] font-black uppercase text-emerald-500 mb-3">ACH / Banco</p>
                 <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 leading-tight">

@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { logger } from "./logger";
+import { hashActivationCode } from "@/domains/chips/activation-code.service";
 import { 
   generateShortCode as genShort, 
   generateActivationCode as genActivation, 
@@ -72,8 +73,13 @@ export async function getUniqueActivationCode(): Promise<string> {
   return generateUnique(
     genActivation,
     async (code) => {
-      const existing = await prisma.chipClaimToken.findUnique({
-        where: { activationCode: code },
+      const existing = await prisma.chipClaimToken.findFirst({
+        where: {
+          OR: [
+            { activationCodeHash: hashActivationCode(code) },
+            { activationCode: code },
+          ],
+        },
         select: { id: true }
       });
       return !!existing;
@@ -152,10 +158,20 @@ export async function getBatchUniqueSerialPublics(count: number): Promise<string
  */
 export async function getBatchUniqueActivationCodes(count: number): Promise<string[]> {
   return getUniqueBatch(count, genActivation, async (codes) => {
+    const codesByHash = new Map(codes.map((code) => [hashActivationCode(code), code]));
     const existing = await prisma.chipClaimToken.findMany({
-      where: { activationCode: { in: codes } },
-      select: { activationCode: true }
+      where: {
+        OR: [
+          { activationCodeHash: { in: Array.from(codesByHash.keys()) } },
+          { activationCode: { in: codes } },
+        ],
+      },
+      select: { activationCode: true, activationCodeHash: true }
     });
-    return existing.map(e => e.activationCode);
+    return existing
+      .map((entry) => entry.activationCodeHash
+        ? codesByHash.get(entry.activationCodeHash)
+        : codes.includes(entry.activationCode) ? entry.activationCode : undefined)
+      .filter((code): code is string => Boolean(code));
   });
 }

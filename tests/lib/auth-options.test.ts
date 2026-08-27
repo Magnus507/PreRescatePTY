@@ -151,6 +151,7 @@ describe("authOptions credentials flow", () => {
       role: "superadmin",
       accountId: null,
       sessionVersion: 0,
+      revoked: false,
     });
 
     const sessionResult = await authOptions.callbacks?.session?.({
@@ -172,5 +173,85 @@ describe("authOptions credentials flow", () => {
       accountId: null,
       sessionVersion: 0,
     });
+  });
+
+  it("refreshes current authorization claims for an existing session", async () => {
+    mocks.userFindUnique.mockResolvedValue({
+      status: "active",
+      deletedAt: null,
+      sessionVersion: 3,
+      role: "member",
+      isAdmin: false,
+      adminRole: null,
+      accountId: "account-5",
+    });
+
+    const result = await authOptions.callbacks?.jwt?.({
+      token: {
+        id: "user-5",
+        role: "owner",
+        accountId: "old-account",
+        sessionVersion: 3,
+      } as never,
+      user: undefined as never,
+    } as never);
+
+    expect(mocks.userFindUnique).toHaveBeenCalledWith({
+      where: { id: "user-5" },
+      select: expect.objectContaining({
+        status: true,
+        deletedAt: true,
+        sessionVersion: true,
+      }),
+    });
+    expect(result).toMatchObject({
+      id: "user-5",
+      role: "member",
+      accountId: "account-5",
+      sessionVersion: 3,
+      revoked: false,
+    });
+  });
+
+  it.each([
+    ["deleted", null],
+    ["suspended", { status: "suspended", deletedAt: null, sessionVersion: 1 }],
+    ["deleted user", { status: "inactive", deletedAt: new Date(), sessionVersion: 1 }],
+    ["outdated session", { status: "active", deletedAt: null, sessionVersion: 2 }],
+  ])("revokes an existing session for a %s", async (_case, currentUser) => {
+    mocks.userFindUnique.mockResolvedValue(currentUser);
+
+    const token = await authOptions.callbacks?.jwt?.({
+      token: {
+        id: "user-6",
+        role: "owner",
+        accountId: "account-6",
+        sessionVersion: 1,
+      } as never,
+      user: undefined as never,
+    } as never);
+    const session = await authOptions.callbacks?.session?.({
+      session: { user: { email: "old@example.com" } } as never,
+      token: token as never,
+    } as never);
+
+    expect(token).toMatchObject({ revoked: true });
+    expect(session).not.toHaveProperty("user");
+  });
+
+  it("fails closed when the current account state cannot be checked", async () => {
+    mocks.userFindUnique.mockRejectedValue(new Error("database unavailable"));
+
+    const token = await authOptions.callbacks?.jwt?.({
+      token: {
+        id: "user-7",
+        role: "owner",
+        accountId: "account-7",
+        sessionVersion: 0,
+      } as never,
+      user: undefined as never,
+    } as never);
+
+    expect(token).toMatchObject({ revoked: true });
   });
 });

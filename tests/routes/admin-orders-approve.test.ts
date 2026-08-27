@@ -37,6 +37,7 @@ const mockWasOrderAlreadyApproved = vi.hoisted(() => vi.fn())
 const mockApplyCapacityIfFirstApproval = vi.hoisted(() => vi.fn())
 const mockReserveAssignedChipsForOrder = vi.hoisted(() => vi.fn())
 const mockReserveCommercialOrderStock = vi.hoisted(() => vi.fn())
+const mockEnsurePendingInvoice = vi.hoisted(() => vi.fn())
 
 vi.mock('@/domains/orders/services/order-fulfillment.service', () => ({
   OrderFulfillmentService: {
@@ -51,6 +52,10 @@ vi.mock('@/domains/orders/services/order-fulfillment.service', () => ({
 
 vi.mock('@/lib/operations/commercial-order-reservation', () => ({
   reserveCommercialOrderStock: mockReserveCommercialOrderStock,
+}))
+
+vi.mock('@/domains/invoices/services/invoice.service', () => ({
+  InvoiceService: { ensurePendingForPaidOrder: mockEnsurePendingInvoice },
 }))
 
 // ─── Imports after mocks ────────────────────────────────────────────────────
@@ -119,6 +124,7 @@ function setupDefaultMocks(orderOverrides: Record<string, unknown> = {}) {
       status: 'stock_reserved',
     },
   })
+  mockEnsurePendingInvoice.mockResolvedValue({ id: 'invoice-1' })
   mockInvalidateCache.mockResolvedValue(undefined)
 
   mockPrisma.order.findUnique.mockResolvedValue(
@@ -164,6 +170,7 @@ describe('POST /api/admin/orders/[id]/approve', () => {
     mockApplyCapacityIfFirstApproval.mockReset()
     mockReserveAssignedChipsForOrder.mockReset()
     mockReserveCommercialOrderStock.mockReset()
+    mockEnsurePendingInvoice.mockReset()
     mockInvalidateCache.mockReset()
     mockPrisma.order.findUnique.mockReset()
     mockPrisma.operationCommercialOrder.findFirst.mockReset()
@@ -296,6 +303,9 @@ describe('POST /api/admin/orders/[id]/approve', () => {
         }),
       })
     )
+    expect(mockEnsurePendingInvoice).toHaveBeenCalledWith(expect.anything(), {
+      orderId: TEST_ORDER_ID,
+    })
   })
 
   // ─── Account update ─────────────────────────────────────────────────────

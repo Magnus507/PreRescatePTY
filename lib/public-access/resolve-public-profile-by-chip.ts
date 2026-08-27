@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { CHIP_SERVICE_STATUS, PUBLIC_ACTIVE_CHIP_STATUSES } from "@/domains/chips/chip-lifecycle.constants";
+import { PUBLIC_ACTIVE_CHIP_STATUSES } from "@/domains/chips/chip-lifecycle.constants";
 
 export type PublicProfileResolutionReason =
   | "chip_not_found"
@@ -92,7 +92,9 @@ export async function resolvePublicProfileByChipShortCode(shortCode: string): Pr
     return { ok: false, reason: "chip_not_found", chip: null, profile: null, publicContext: null };
   }
 
-  if (!CHIP_ACTIVE_STATUSES.has(chip.status as (typeof PUBLIC_ACTIVE_CHIP_STATUSES)[number]) || chip.serviceStatus !== CHIP_SERVICE_STATUS.ACTIVE) {
+  // The rescue profile remains available after the commercial service expires.
+  // Only the physical chip lifecycle can disable public emergency access.
+  if (!CHIP_ACTIVE_STATUSES.has(chip.status as (typeof PUBLIC_ACTIVE_CHIP_STATUSES)[number])) {
     return { ok: false, reason: "chip_not_active", chip, profile: chip.assignedProfile || null, publicContext: null };
   }
 

@@ -30,6 +30,23 @@ enum OrderAdminReviewStatus {
   rejected
 }
 
+enum PaymentAttemptStatus {
+  created
+  pending
+  succeeded
+  rejected
+  cancelled
+  expired
+  failed
+}
+
+enum InvoiceStatus {
+  pending_configuration
+  pending_issue
+  issued
+  cancelled
+}
+
 enum CommerceOrderSyncOutboxStatus {
   pending
   processing
@@ -342,6 +359,8 @@ model Chip {
   notifications       Notification[]
   orderItems          OrderItem[]                  @relation("OrderItemChip")
   scanEvents          ScanEvent[]
+  digitalBatchItem    OperationDigitalBatchItem?
+  finishedGoodUnit    OperationFinishedGoodUnit?
 
   @@index([accountId])
   @@index([ownerUserId])
@@ -536,16 +555,20 @@ model OrganizationMember {
 }
 
 model ChipClaimToken {
-  id             String    @id @default(cuid())
-  chipId         String
-  activationCode String    @unique
-  expiresAt      DateTime?
-  usedAt         DateTime?
-  createdAt      DateTime  @default(now())
-  orderId        String?
-  status         String    @default("active")
-  chip           Chip      @relation(fields: [chipId], references: [id], onDelete: Cascade)
-  order          Order?    @relation(fields: [orderId], references: [id])
+  id                  String    @id @default(cuid())
+  chipId              String
+  activationCode      String    @unique
+  activationCodeHash  String?   @unique
+  activationCodeLast4 String?
+  expiresAt           DateTime?
+  usedAt              DateTime?
+  createdAt           DateTime  @default(now())
+  orderId             String?
+  status              String    @default("active")
+  chip                Chip      @relation(fields: [chipId], references: [id], onDelete: Cascade)
+  order               Order?    @relation(fields: [orderId], references: [id])
+
+  @@index([activationCodeLast4])
 }
 
 model ScanEvent {
@@ -662,6 +685,8 @@ model Order {
   package                 Package?                     @relation(fields: [packageId], references: [id])
   user                    User?                        @relation(fields: [userId], references: [id])
   items                   OrderItem[]
+  paymentAttempts         PaymentAttempt[]
+  invoice                 Invoice?
 
   @@index([userId])
   @@index([orderStatus])
@@ -669,6 +694,89 @@ model Order {
   @@index([packageId])
   @@index([organizationId])
   @@index([orderType])
+}
+
+model PaymentAttempt {
+  id                       String               @id @default(cuid())
+  orderId                  String
+  provider                 String               @default("yappy")
+  providerOrderId          String               @unique
+  providerTransactionId    String?
+  status                   PaymentAttemptStatus @default(created)
+  amount                   Decimal              @db.Decimal(18, 2)
+  currency                 String               @default("USD")
+  idempotencyKey           String               @unique
+  checkoutSessionJson      String?
+  failureCode              String?
+  confirmedAt              DateTime?
+  expiresAt                DateTime
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  order                    Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  events                   PaymentEvent[]
+  invoice                  Invoice?
+
+  @@index([orderId, status])
+  @@index([provider, status])
+  @@index([expiresAt])
+}
+
+model PaymentEvent {
+  id                String         @id @default(cuid())
+  paymentAttemptId  String
+  providerEventId   String         @unique
+  eventType         String
+  payloadJson       String
+  createdAt         DateTime       @default(now())
+  paymentAttempt    PaymentAttempt @relation(fields: [paymentAttemptId], references: [id], onDelete: Cascade)
+
+  @@index([paymentAttemptId, createdAt])
+  @@index([eventType])
+}
+
+model Invoice {
+  id                     String          @id @default(cuid())
+  orderId                String          @unique
+  sourcePaymentAttemptId String?         @unique
+  internalNumber         String          @unique
+  status                 InvoiceStatus   @default(pending_configuration)
+  currency               String          @default("USD")
+  subtotal               Decimal         @db.Decimal(18, 2)
+  discountTotal          Decimal         @default(0) @db.Decimal(18, 2)
+  taxRate                Decimal         @default(0) @db.Decimal(8, 6)
+  taxTotal               Decimal         @default(0) @db.Decimal(18, 2)
+  total                  Decimal         @db.Decimal(18, 2)
+  priceIncludesTax       Boolean         @default(true)
+  buyerName              String?
+  buyerEmail             String?
+  buyerDocument          String?
+  buyerPhone             String?
+  buyerAddress           String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  order                  Order           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  sourcePaymentAttempt   PaymentAttempt? @relation(fields: [sourcePaymentAttemptId], references: [id], onDelete: SetNull)
+  lines                  InvoiceLine[]
+
+  @@index([status, createdAt])
+}
+
+model InvoiceLine {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  productCode String?
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(18, 2)
+  subtotal    Decimal  @db.Decimal(18, 2)
+  discount    Decimal  @default(0) @db.Decimal(18, 2)
+  taxRate     Decimal  @default(0) @db.Decimal(8, 6)
+  taxAmount   Decimal  @default(0) @db.Decimal(18, 2)
+  total       Decimal  @db.Decimal(18, 2)
+  createdAt   DateTime @default(now())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
 }
 
 model OrderItem {
@@ -1110,6 +1218,7 @@ model OperationDigitalBatchItem {
   nfcUrl               String?
   activationUrl        String?
   shortCode            String?               @unique
+  chipId               String?               @unique
   status               String                @default("available")
   nfcProgrammed        Boolean               @default(false)
   qrPrepared           Boolean               @default(false)
@@ -1125,6 +1234,7 @@ model OperationDigitalBatchItem {
   productionOrder      OperationProductionOrder? @relation(fields: [productionOrderId], references: [id], onDelete: SetNull)
   printOrderItems      OperationPrintOrderItem[]
   finishedGoodUnits    OperationFinishedGoodUnit[]
+  chip                 Chip?                 @relation(fields: [chipId], references: [id], onDelete: SetNull)
 
   @@unique([batchId, sequenceNumber])
   @@index([batchId])
@@ -1193,6 +1303,7 @@ model OperationFinishedGoodUnit {
   productType          String
   digitalBatchId       String?
   digitalBatchItemId   String?                    @unique
+  chipId               String?                    @unique
   printOrderId         String?
   status               OperationFinishedGoodUnitStatus @default(qa_pending)
   qaStatus             OperationFinishedGoodUnitQaStatus? @default(pending)
@@ -1210,6 +1321,7 @@ model OperationFinishedGoodUnit {
   digitalBatch         OperationDigitalBatch?     @relation(fields: [digitalBatchId], references: [id], onDelete: SetNull)
   digitalBatchItem     OperationDigitalBatchItem? @relation(fields: [digitalBatchItemId], references: [id], onDelete: SetNull)
   printOrder           OperationPrintOrder?       @relation(fields: [printOrderId], references: [id], onDelete: SetNull)
+  chip                 Chip?                      @relation(fields: [chipId], references: [id], onDelete: SetNull)
   dispatchItems        OperationDispatchItem[]
   events               OperationFinishedGoodUnitEvent[]
   warranties           OperationWarranty[]            @relation("OperationWarrantyUnit")

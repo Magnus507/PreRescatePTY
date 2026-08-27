@@ -34,5 +34,6 @@ declare module "next-auth/jwt" {
     role: string;
     accountId?: string | null;
     sessionVersion: number;
+    revoked?: boolean;
   }
 }
