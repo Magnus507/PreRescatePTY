@@ -48,15 +48,36 @@ export async function POST(
           replacementDispatch: {
             select: {
               id: true,
+              status: true,
+            },
+          },
+          originalDispatch: {
+            select: {
+              id: true,
+              destinationName: true,
+              destinationReference: true,
+              destinationAddress: true,
+              notes: true,
+            },
+          },
+          commercialOrder: {
+            select: {
+              id: true,
+              code: true,
+              sourceId: true,
+            },
+          },
+          replacementUnit: {
+            include: {
+              dispatchItems: {
+                select: { id: true, dispatchId: true },
+              },
             },
           },
         },
       });
 
-      if (!replacement) {
-        return null;
-      }
-
+      if (!replacement) return null;
       if (terminalStatuses.has(replacement.status)) {
         throw new Error("TERMINAL_REPLACEMENT");
       }
@@ -65,9 +86,28 @@ export async function POST(
         if (!replacement.replacementFinishedGoodId || !replacement.replacementFinishedGood) {
           throw new Error("MISSING_REPLACEMENT_FINISHED_GOOD");
         }
-
+        if (!replacement.replacementUnitId || !replacement.replacementUnit) {
+          throw new Error("MISSING_REPLACEMENT_UNIT");
+        }
         if (replacement.replacementDispatchId || replacement.replacementDispatch) {
           throw new Error("REPLACEMENT_DISPATCH_EXISTS");
+        }
+
+        const unit = replacement.replacementUnit;
+        if (unit.qaStatus !== "passed") throw new Error("REPLACEMENT_UNIT_QA_REQUIRED");
+        if (unit.activationStatus !== "not_activated") throw new Error("REPLACEMENT_UNIT_ACTIVATED");
+        if (!["available", "reserved"].includes(unit.status)) {
+          throw new Error("REPLACEMENT_UNIT_NOT_AVAILABLE");
+        }
+        if (unit.dispatchItems.length > 0) throw new Error("REPLACEMENT_UNIT_ALREADY_DISPATCHED");
+        if (unit.productCode !== replacement.replacementFinishedGood.code) {
+          throw new Error("REPLACEMENT_PRODUCT_MISMATCH");
+        }
+      }
+
+      if (data.eventType === "COMPLETED") {
+        if (!replacement.replacementDispatch || replacement.replacementDispatch.status !== "delivered") {
+          throw new Error("REPLACEMENT_NOT_DELIVERED");
         }
       }
 
@@ -101,39 +141,80 @@ export async function POST(
       } else if (data.eventType === "REPLACEMENT_PREPARED") {
         updateData.status = "prepared";
       } else if (data.eventType === "DISPATCH_CREATED") {
+        const unit = replacement.replacementUnit!;
+        const customerOrderId = replacement.commercialOrder?.sourceId || null;
+        const reservedAt = new Date();
+        const dispatchCode = `${replacement.code}-DISPATCH`;
+
         const dispatch = await tx.operationDispatch.create({
           data: {
-            code: `${replacement.code}-DISPATCH`,
+            code: dispatchCode,
+            status: "pending_pick",
             destinationType: "customer",
-            destinationName: replacement.customerName || null,
-            destinationReference: replacement.code,
-            notes: data.reason || `Despacho draft para reemplazo ${replacement.code}`,
+            destinationName:
+              replacement.customerName || replacement.originalDispatch?.destinationName || null,
+            destinationReference:
+              replacement.originalDispatch?.destinationReference || replacement.code,
+            destinationAddress: replacement.originalDispatch?.destinationAddress || null,
+            notes: data.reason || replacement.originalDispatch?.notes || `Reemplazo ${replacement.code}`,
             items: {
               create: {
-                finishedGoodId: replacement.replacementFinishedGoodId as string,
+                unitId: unit.id,
+                internalLabel: unit.internalLabel,
+                productCode: unit.productCode,
+                productName: unit.productName,
                 quantity: 1,
-                unit: replacement.replacementFinishedGood?.unit || "unit",
-                notes: `Item de reemplazo ${replacement.code}`,
+                unit: "unit",
+                status: "pending_pick",
+                notes: `Reemplazo ${replacement.code}`,
               },
             },
             events: {
               create: {
-                eventType: "CREATED",
+                eventType: "DISPATCH_CREATED",
                 quantity: 1,
-                reason: data.reason || `Despacho creado desde reemplazo ${replacement.code}`,
+                reason: data.reason || `Despacho creado para reemplazo ${replacement.code}`,
                 referenceType: "replacement",
                 referenceId: replacement.id,
                 metadataJson: JSON.stringify({
+                  replacementId: replacement.id,
                   replacementCode: replacement.code,
                   replacementEventId: event.id,
-                  replacementFinishedGoodCode: replacement.replacementFinishedGood?.code || null,
+                  replacementUnitId: unit.id,
+                  internalLabel: unit.internalLabel,
+                  customerOrderId,
+                  commercialOrderId: replacement.commercialOrderId || null,
                 }),
                 createdById,
               },
             },
           },
-          select: {
-            id: true,
+          select: { id: true },
+        });
+
+        await tx.operationFinishedGoodUnit.update({
+          where: { id: unit.id },
+          data: {
+            status: "reserved",
+            reservedOrderId: customerOrderId,
+            reservedAt,
+          },
+        });
+
+        await tx.operationFinishedGoodUnitEvent.create({
+          data: {
+            unitId: unit.id,
+            eventType: "UNIT_ASSIGNED_TO_REPLACEMENT_DISPATCH",
+            reason: `Asignada a despacho ${dispatchCode}`,
+            referenceType: "replacement",
+            referenceId: replacement.id,
+            metadataJson: {
+              replacementId: replacement.id,
+              dispatchId: dispatch.id,
+              dispatchCode,
+              customerOrderId,
+            },
+            createdById,
           },
         });
 
@@ -168,33 +249,26 @@ export async function POST(
     });
 
     if (!result) {
-      return NextResponse.json(
-        { error: "Reemplazo no encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Reemplazo no encontrado" }, { status: 404 });
     }
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "TERMINAL_REPLACEMENT") {
-      return NextResponse.json(
-        { error: "No se pueden registrar eventos sobre reemplazos completed, cancelled o rejected" },
-        { status: 400 }
-      );
-    }
-
-    if (error instanceof Error && error.message === "MISSING_REPLACEMENT_FINISHED_GOOD") {
-      return NextResponse.json(
-        { error: "replacementFinishedGoodId es requerido para crear despacho de reemplazo" },
-        { status: 400 }
-      );
-    }
-
-    if (error instanceof Error && error.message === "REPLACEMENT_DISPATCH_EXISTS") {
-      return NextResponse.json(
-        { error: "El reemplazo ya tiene replacementDispatchId" },
-        { status: 400 }
-      );
+    const message = error instanceof Error ? error.message : "";
+    const errors: Record<string, string> = {
+      TERMINAL_REPLACEMENT: "El reemplazo ya está finalizado",
+      MISSING_REPLACEMENT_FINISHED_GOOD: "Falta definir el producto de reemplazo",
+      MISSING_REPLACEMENT_UNIT: "Selecciona una unidad física de reemplazo antes de crear el despacho",
+      REPLACEMENT_DISPATCH_EXISTS: "El reemplazo ya tiene un despacho",
+      REPLACEMENT_UNIT_QA_REQUIRED: "La unidad de reemplazo debe tener QA aprobado",
+      REPLACEMENT_UNIT_ACTIVATED: "La unidad de reemplazo ya fue activada",
+      REPLACEMENT_UNIT_NOT_AVAILABLE: "La unidad de reemplazo no está disponible",
+      REPLACEMENT_UNIT_ALREADY_DISPATCHED: "La unidad de reemplazo ya pertenece a otro despacho",
+      REPLACEMENT_PRODUCT_MISMATCH: "La unidad física no coincide con el producto de reemplazo",
+      REPLACEMENT_NOT_DELIVERED: "El reemplazo solo puede completarse después de la entrega",
+    };
+    if (errors[message]) {
+      return NextResponse.json({ error: errors[message] }, { status: 409 });
     }
 
     if (
@@ -202,14 +276,14 @@ export async function POST(
       error.code === "P2002"
     ) {
       return NextResponse.json(
-        { error: "No se pudo crear despacho de reemplazo porque el code ya existe" },
+        { error: "No se pudo crear el despacho de reemplazo porque el código ya existe" },
         { status: 409 }
       );
     }
 
     console.error("[operations/replacements/:id/events] POST error:", error);
     return NextResponse.json(
-      { error: "Error al crear evento de reemplazo" },
+      { error: "Error al actualizar reemplazo" },
       { status: 500 }
     );
   }
