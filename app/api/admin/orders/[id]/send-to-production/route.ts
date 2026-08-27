@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { parseCustomerFulfillmentSummaryFromInternalNote } from "@/lib/orders/store-order-fulfillment";
+import { ensureCustomerBackorderProduction } from "@/lib/operations/customer-order-production";
 
 export const dynamic = "force-dynamic";
-
-function buildProductionCode(orderNumber: string) {
-  const safe = orderNumber.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 68);
-  return `PROD-${safe}`;
-}
 
 export async function POST(
   _req: NextRequest,
@@ -32,7 +28,6 @@ export async function POST(
         customerName: true,
         items: {
           select: {
-            quantity: true,
             productType: true,
             productName: true,
             productCode: true,
@@ -85,59 +80,34 @@ export async function POST(
       firstItem.productType;
     const productName =
       firstItem.operationalProductName || firstItem.productName || firstItem.productType;
-    const code = buildProductionCode(order.orderNumber);
 
     const result = await prisma.$transaction(async (tx) => {
-      const existing = await tx.operationProductionOrder.findUnique({
-        where: { code },
-        select: { id: true, code: true, status: true, plannedQuantity: true },
+      const production = await ensureCustomerBackorderProduction(tx, {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        backorderQty,
+        outputType,
+        productName,
+        createdById: auth.session.user.id || null,
       });
 
-      if (existing) {
-        if (order.orderStatus === "pending") {
-          await tx.order.update({
-            where: { id: order.id },
-            data: { orderStatus: "processing" },
-          });
-        }
-        return { productionOrder: existing, created: false };
+      if (order.orderStatus === "pending") {
+        await tx.order.update({
+          where: { id: order.id },
+          data: { orderStatus: "processing" },
+        });
       }
 
-      const productionOrder = await tx.operationProductionOrder.create({
-        data: {
-          code,
-          title: `Pedido ${order.orderNumber} · ${productName}`.slice(0, 180),
-          status: "planned",
-          plannedQuantity: backorderQty,
-          producedQuantity: 0,
-          outputType: String(outputType).slice(0, 120),
-          notes: `Producción por falta de stock para pedido cliente ${order.orderNumber}. Cliente: ${order.customerName || "Sin nombre"}.`,
-          events: {
-            create: {
-              eventType: "CREATED",
-              quantity: backorderQty,
-              reason: "Backorder de pedido cliente enviado a producción",
-              metadataJson: JSON.stringify({
-                sourceType: "customer_order",
-                orderId: order.id,
-                orderNumber: order.orderNumber,
-                backorderQty,
-                outputType,
-              }),
-              createdById: auth.session.user.id || null,
-            },
-          },
-        },
-        select: { id: true, code: true, status: true, plannedQuantity: true },
-      });
-
-      await tx.order.update({
-        where: { id: order.id },
-        data: { orderStatus: "processing" },
-      });
-
-      return { productionOrder, created: true };
+      return production;
     });
+
+    if (!result) {
+      return NextResponse.json(
+        { error: "No hay cantidad pendiente para producción." },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json({
       ...result,
