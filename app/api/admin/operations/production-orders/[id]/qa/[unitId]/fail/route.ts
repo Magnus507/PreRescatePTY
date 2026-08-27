@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { buildProductionAssemblyState } from "@/lib/operations/production-assembly-state";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +21,44 @@ export async function POST(
   }
 
   try {
+    const productionOrder = await prisma.operationProductionOrder.findUnique({
+      where: { id: productionOrderId },
+      select: { id: true },
+    });
+    if (!productionOrder) {
+      return NextResponse.json({ error: "Orden de producción no encontrada" }, { status: 404 });
+    }
+
     const unit = await prisma.operationFinishedGoodUnit.findUnique({
       where: { id: unitId },
+      include: {
+        digitalBatchItem: {
+          select: {
+            productionOrderId: true,
+            status: true,
+            nfcProgrammed: true,
+            qrPrepared: true,
+            internalLabel: true,
+            shortCode: true,
+          },
+        },
+        printOrder: { select: { status: true } },
+      },
     });
     if (!unit) return NextResponse.json({ error: "Unidad no encontrada" }, { status: 404 });
+    if (unit.digitalBatchItem?.productionOrderId !== productionOrderId) {
+      return NextResponse.json({ error: "La unidad no pertenece a esta orden de producción" }, { status: 409 });
+    }
     if (unit.qaStatus === "failed") return NextResponse.json({ unit });
-    if (unit.status !== "qa_pending" && unit.status !== "assembled") {
-      return NextResponse.json({ error: "La unidad no está lista para QC" }, { status: 400 });
+
+    const assemblyState = unit.digitalBatchItem
+      ? buildProductionAssemblyState(unit.digitalBatchItem, { printOrder: unit.printOrder })
+      : null;
+    if (!assemblyState?.readyForQc || unit.status !== "qa_pending" || unit.qaStatus !== "pending") {
+      return NextResponse.json(
+        { error: "La unidad debe completar identidad, impresión, ensamblaje y empaque antes de QC" },
+        { status: 400 }
+      );
     }
 
     const updated = await prisma.operationFinishedGoodUnit.update({
@@ -44,6 +76,11 @@ export async function POST(
           },
         },
       },
+    });
+
+    await prisma.operationProductionOrder.update({
+      where: { id: productionOrderId },
+      data: { status: "qa_pending" },
     });
 
     return NextResponse.json({ unit: updated });
