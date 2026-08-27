@@ -80,10 +80,12 @@ export async function POST(
         })
       : null;
 
-    // Production outputType is the physical product type, never the SKU/code.
-    // Codes remain useful as references, but using them as productType breaks
-    // matching when the finished unit reaches inventory/reservation.
     const outputType = finishedGood?.productType || firstItem.productType;
+    const productCode =
+      finishedGood?.code ||
+      firstItem.operationalProductCode ||
+      firstItem.productCode ||
+      null;
     const productName =
       finishedGood?.name ||
       firstItem.operationalProductName ||
@@ -97,6 +99,7 @@ export async function POST(
         customerName: order.customerName,
         backorderQty,
         outputType,
+        productCode,
         productName,
         createdById: auth.session.user.id || null,
       });
