@@ -83,6 +83,8 @@ export const profileUpdateSchema = z.object({
   showPrimaryDoctorPublic: z.boolean().optional(),
   showPrimaryDoctorPhonePublic: z.boolean().optional(),
   showAdditionalNotesPublic: z.boolean().optional(),
+
+  // v2 — Asistencia especial
   hasCognitiveImpairment: z.boolean().optional(),
   hasWanderingRisk: z.boolean().optional(),
   isNonVerbal: z.boolean().optional(),
@@ -93,11 +95,22 @@ export const profileUpdateSchema = z.object({
   showSafeReturnPublic: z.boolean().optional(),
   safeReturnLocationName: z.string().max(150).optional().nullable(),
   safeReturnAddress: z.string().max(500).optional().nullable(),
-  safeReturnLat: z.coerce.number().finite().min(-90, "Latitud debe estar entre -90 y 90").max(90).optional().nullable(),
-  safeReturnLng: z.coerce.number().finite().min(-180, "Longitud debe estar entre -180 y 180").max(180).optional().nullable(),
+  safeReturnLat: z.coerce.number()
+    .finite()
+    .min(-90, "Latitud debe estar entre -90 y 90")
+    .max(90)
+    .optional()
+    .nullable(),
+  safeReturnLng: z.coerce.number()
+    .finite()
+    .min(-180, "Longitud debe estar entre -180 y 180")
+    .max(180)
+    .optional()
+    .nullable(),
   safeReturnContactName: z.string().max(120).optional().nullable(),
   safeReturnContactPhone: z.string().max(30).optional().nullable(),
   showSafeReturnLocationPublic: z.boolean().optional(),
+
   phone: z.string().max(20).optional().nullable(),
   nationalId: z.string().max(50).optional().nullable(),
   address: z.string().max(500).optional().nullable(),
