@@ -13,8 +13,7 @@ type HistoryEntityType =
   | "dispatch"
   | "warranty"
   | "replacement"
-  | "return"
-  | "material";
+  | "return";
 
 type HistoryResponse = {
   subject: null | {
@@ -66,7 +65,6 @@ const ENTITY_OPTIONS: Array<{ value: HistoryEntityType; label: string }> = [
   { value: "warranty", label: "Garantía" },
   { value: "replacement", label: "Reemplazo" },
   { value: "return", label: "Devolución" },
-  { value: "material", label: "Material" },
 ];
 
 function formatDateTime(value: string) {
@@ -108,18 +106,18 @@ export function HistorySection() {
     run();
   }, [submitted]);
 
-  const empty = useMemo(() => !loading && !data?.subject && !data?.suggestions?.length && !submitted.search, [loading, data, submitted.search]);
+  const empty = useMemo(
+    () => !loading && !data?.subject && !data?.suggestions?.length && !submitted.search,
+    [loading, data, submitted.search]
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-3">
+      <div>
         <h2 className="flex items-center gap-3 text-3xl font-black tracking-tight">
           <History className="h-8 w-8 text-primary" />
-          Historial general
+          Historial
         </h2>
-        <p className="max-w-3xl text-sm font-medium text-muted-foreground">
-          Busca una entidad y revisa su vida operativa real, sin crear ni editar eventos.
-        </p>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -131,19 +129,19 @@ export function HistorySection() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por etiqueta, pedido, despacho, lote..."
+                placeholder="Etiqueta, pedido, despacho, lote..."
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
               />
             </div>
           </label>
           <label className="lg:w-56">
-            <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Entidad</span>
+            <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo</span>
             <select
               value={entityType}
               onChange={(e) => setEntityType(e.target.value as HistoryEntityType | "")}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-950"
             >
-              <option value="">Todas</option>
+              <option value="">Todos</option>
               {ENTITY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -167,7 +165,7 @@ export function HistorySection() {
         </div>
       ) : data?.suggestions?.length ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-400">Sugerencias</p>
+          <p className="text-xs font-black uppercase tracking-widest text-slate-400">Resultados</p>
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {data.suggestions.map((item) => (
               <button
@@ -187,13 +185,13 @@ export function HistorySection() {
       {data?.subject ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Entidad</p>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Registro</p>
             <h3 className="text-2xl font-black text-slate-950 dark:text-white">{data.subject.title}</h3>
             <p className="text-sm text-slate-500">{data.subject.subtitle}</p>
             <div className="flex flex-wrap gap-2 pt-2 text-xs">
               {data.summary.currentStatus ? <span className="rounded-full border px-2.5 py-1">{data.summary.currentStatus}</span> : null}
               {data.summary.activationStatus ? <span className="rounded-full border px-2.5 py-1">{data.summary.activationStatus}</span> : null}
-              {data.summary.deliveredPendingActivation ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">Entregado pero no activado</span> : null}
+              {data.summary.deliveredPendingActivation ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">Entregado · pendiente de activar</span> : null}
             </div>
           </div>
         </div>
@@ -202,7 +200,7 @@ export function HistorySection() {
       {data?.timeline?.length ? (
         <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Timeline</h3>
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Actividad</h3>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {data.timeline.map((item) => (
@@ -220,7 +218,6 @@ export function HistorySection() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className={`rounded-full border px-2.5 py-1 ${severityStyles[item.severity]}`}>{item.severity}</span>
-                  <span className="text-slate-500">{item.source}</span>
                   <span className="text-slate-500">{formatDateTime(item.occurredAt)}</span>
                 </div>
               </div>
@@ -232,7 +229,7 @@ export function HistorySection() {
       {!loading && !data?.subject && !data?.timeline?.length && submitted.search ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
           <AlertTriangle className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-700" />
-          <p className="mt-3 text-sm font-black uppercase tracking-widest text-slate-400">No se encontraron resultados</p>
+          <p className="mt-3 text-sm font-black uppercase tracking-widest text-slate-400">Sin resultados</p>
         </div>
       ) : null}
 
@@ -240,7 +237,7 @@ export function HistorySection() {
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
           <ShieldCheck className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-700" />
           <p className="mt-3 text-sm font-black uppercase tracking-widest text-slate-400">
-            Busca una etiqueta interna, pedido, lote o despacho para ver su historial.
+            Busca un pedido, despacho o etiqueta interna.
           </p>
         </div>
       ) : null}
