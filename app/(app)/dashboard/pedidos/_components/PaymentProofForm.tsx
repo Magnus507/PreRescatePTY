@@ -19,10 +19,12 @@ interface PaymentProofFormProps {
   order: Order;
   uploadingFor: string | null;
   paymentRefDraft: Record<string, string>;
-  paymentProofDraft: Record<string, string>;
+  // Legacy props kept temporarily so already-refactored parent code can compile;
+  // this component no longer uses the generic /api/upload payment flow.
+  paymentProofDraft?: Record<string, string>;
   onRefChange: (orderId: string, value: string) => void;
-  onProofUrlChange: (orderId: string, value: string) => void;
-  onUpload: (e: React.ChangeEvent<HTMLInputElement>, orderId: string) => void;
+  onProofUrlChange?: (orderId: string, value: string) => void;
+  onUpload?: (e: React.ChangeEvent<HTMLInputElement>, orderId: string) => void;
   onSubmitReference: (orderId: string) => void;
   onCancel: (orderId: string) => void;
   onShippingChange: {
@@ -40,9 +42,7 @@ export function PaymentProofForm({
   order,
   uploadingFor,
   paymentRefDraft,
-  paymentProofDraft,
   onRefChange,
-  onProofUrlChange,
   onSubmitReference,
   onCancel,
   onShippingChange,
@@ -61,16 +61,19 @@ export function PaymentProofForm({
       event.target.value = "";
       return;
     }
-    if (file.size > MAX_UPLOAD_BYTES) {
+    if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
       toast.error("El comprobante debe pesar como máximo 5MB.");
       event.target.value = "";
       return;
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnonKey) {
+    const supabasePublicKey =
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabasePublicKey) {
       toast.error("El almacenamiento de comprobantes no está disponible.");
+      event.target.value = "";
       return;
     }
 
@@ -86,7 +89,10 @@ export function PaymentProofForm({
         throw new Error(signedData?.error || "No se pudo preparar la carga del comprobante");
       }
 
-      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      const expectedPrefix = `payments/${order.id ? "" : ""}`;
+      void expectedPrefix;
+
+      const supabase = createClient(supabaseUrl, supabasePublicKey, {
         auth: { persistSession: false, autoRefreshToken: false },
       });
       const { error: uploadError } = await supabase.storage
@@ -95,15 +101,16 @@ export function PaymentProofForm({
           contentType: file.type,
         });
 
-      if (uploadError) throw new Error(uploadError.message || "No se pudo subir el comprobante");
+      if (uploadError) {
+        throw new Error(uploadError.message || "No se pudo subir el comprobante");
+      }
 
-      const paymentProofUrl = `/api/image-proxy?bucket=payment-proofs&path=${encodeURIComponent(signedData.path)}`;
       const registerRes = await fetch(`/api/orders/${order.id}/payment-proof`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentProofUrl,
-          manualPaymentReference: paymentRefDraft[order.id] || undefined,
+          paymentProofPath: signedData.path,
+          manualPaymentReference: paymentRefDraft[order.id]?.trim() || undefined,
         }),
       });
       const registerData = await registerRes.json().catch(() => ({}));
@@ -168,24 +175,14 @@ export function PaymentProofForm({
         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.25em]">
           Referencia / comprobante de pago
         </p>
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input
-            type="text"
-            placeholder="Referencia Yappy / transferencia"
-            className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#DA1A21]/15 focus:border-[#DA1A21]/30 outline-none"
-            value={paymentRefDraft[order.id] ?? order.manualPaymentReference ?? ""}
-            onChange={(e) => onRefChange(order.id, e.target.value)}
-            aria-label="Referencia de pago Yappy o transferencia"
-          />
-          <input
-            type="text"
-            placeholder="URL comprobante (opcional)"
-            className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#DA1A21]/15 focus:border-[#DA1A21]/30 outline-none"
-            value={paymentProofDraft[order.id] ?? order.paymentProofUrl ?? ""}
-            onChange={(e) => onProofUrlChange(order.id, e.target.value)}
-            aria-label="URL del comprobante de pago"
-          />
-        </div>
+        <input
+          type="text"
+          placeholder="Referencia Yappy / transferencia (opcional si subes imagen)"
+          className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#DA1A21]/15 focus:border-[#DA1A21]/30 outline-none"
+          value={paymentRefDraft[order.id] ?? order.manualPaymentReference ?? ""}
+          onChange={(e) => onRefChange(order.id, e.target.value)}
+          aria-label="Referencia de pago Yappy o transferencia"
+        />
         <div className="flex flex-wrap items-center justify-center gap-3 w-full">
           <input
             id={fileInputId}
@@ -207,7 +204,7 @@ export function PaymentProofForm({
                 input?.click();
               }
             }}
-            className="bg-[#DA1A21] text-white px-8 py-4 rounded-full font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-[#DA1A21]/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex-1 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
+            className="bg-[#DA1A21] text-white px-8 py-4 rounded-full font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-[#DA1A21]/20 hover:-translate-y-0.5 active:translate-y-0 transition-all flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
             aria-label="Seleccionar archivo de comprobante"
             aria-disabled={isUploading}
           >
@@ -215,6 +212,7 @@ export function PaymentProofForm({
             {isUploading ? "Subiendo..." : "Subir Comprobante"}
           </label>
           <button
+            type="button"
             onClick={() => onSubmitReference(order.id)}
             disabled={isUploading}
             className="px-8 py-4 bg-emerald-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all min-w-[170px] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
@@ -223,6 +221,7 @@ export function PaymentProofForm({
             Enviar Referencia
           </button>
           <button
+            type="button"
             onClick={() => onCancel(order.id)}
             disabled={!order.canCancel || isUploading}
             className="px-8 py-4 bg-red-50 text-red-700 rounded-full font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all min-w-[150px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 disabled:opacity-50"
@@ -232,7 +231,7 @@ export function PaymentProofForm({
           </button>
         </div>
         <p className="text-[10px] font-semibold text-slate-500">
-          Formatos permitidos: JPG, PNG o WEBP · máximo 5MB
+          Formatos permitidos: JPG, PNG o WEBP · máximo 5MB. El archivo se carga directamente al almacenamiento privado del pedido.
         </p>
         <div className="w-full max-w-md text-left space-y-2">
           <p className="text-[10px] font-semibold text-slate-500">Si el botón no abre, selecciona el archivo aquí</p>
