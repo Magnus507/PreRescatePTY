@@ -18,6 +18,7 @@ vi.mock("@/lib/prisma", () => ({
 
 const mockGenerateOrderNumber = vi.hoisted(() => vi.fn());
 const mockSyncRealOrderToOperations = vi.hoisted(() => vi.fn());
+const mockRateLimit = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/order-number", () => ({
   generateOrderNumber: mockGenerateOrderNumber,
@@ -27,10 +28,15 @@ vi.mock("@/lib/operations/sync-real-order-to-operations", () => ({
   syncRealOrderToOperations: mockSyncRealOrderToOperations,
 }));
 
+vi.mock("@/lib/rateLimit", () => ({
+  rateLimit: mockRateLimit,
+}));
+
 import { POST } from "@/app/api/orders/manual/route";
 import { getServerSession } from "next-auth";
 
 const TEST_USER_ID = "test-user-1";
+const TEST_ACCOUNT_ID = "account-1";
 const TEST_PACKAGE_ID = "pkg_123";
 
 function createManualOrderRequest(body: Record<string, unknown> = {}) {
@@ -40,16 +46,42 @@ function createManualOrderRequest(body: Record<string, unknown> = {}) {
   });
 }
 
+function validManualOrderBody(overrides: Record<string, unknown> = {}) {
+  return {
+    packageId: TEST_PACKAGE_ID,
+    customerName: "Cliente Prueba",
+    customerPhone: "6000-0000",
+    shippingAddress: "Calle 50, edificio de prueba",
+    shippingCity: "Panamá",
+    shippingNotes: "Recepción principal",
+    paymentMethod: "yappy",
+    ...overrides,
+  };
+}
+
 function setupDefaultMocks() {
   vi.mocked(getServerSession).mockResolvedValue(
-    createMockSession({ id: TEST_USER_ID, role: "owner" }) as never
+    createMockSession({ id: TEST_USER_ID, role: "owner", accountId: TEST_ACCOUNT_ID }) as never
   );
+  mockRateLimit.mockResolvedValue({ allowed: true });
+  mockPrisma.user.findUnique.mockResolvedValue({
+    id: TEST_USER_ID,
+    email: "cliente@example.com",
+    accountId: TEST_ACCOUNT_ID,
+    status: "active",
+    deletedAt: null,
+  } as never);
+  mockPrisma.account.findUnique.mockResolvedValue({
+    id: TEST_ACCOUNT_ID,
+    accountType: "personal",
+  } as never);
   mockPrisma.package.findUnique.mockResolvedValue({
     id: TEST_PACKAGE_ID,
     name: "Plan Básico",
     price: 49.99,
     maxChips: 5,
     isActive: true,
+    accountType: "personal",
   } as never);
   mockPrisma.$transaction.mockImplementation(async (callback: (tx: typeof mockPrisma) => Promise<unknown>) => {
     return callback(mockPrisma);
@@ -63,12 +95,16 @@ function setupDefaultMocks() {
     paymentMethod: "yappy",
     customerName: "Cliente Prueba",
     customerEmail: "cliente@example.com",
-    customerPhone: null,
+    customerPhone: "6000-0000",
+    shippingAddress: "Calle 50, edificio de prueba",
+    shippingCity: "Panamá",
+    shippingNotes: "Recepción principal",
     provider: "manual",
     providerReference: null,
     manualPaymentReference: null,
     paymentProofUrl: null,
     currency: "usd",
+    items: [],
   } as never);
   mockGenerateOrderNumber.mockResolvedValue("PR-2026-000101");
   mockSyncRealOrderToOperations.mockResolvedValue(undefined);
@@ -79,6 +115,9 @@ describe("POST /api/orders/manual", () => {
     resetAllMocks();
     mockGenerateOrderNumber.mockReset();
     mockSyncRealOrderToOperations.mockReset();
+    mockRateLimit.mockReset();
+    mockPrisma.user.findUnique.mockReset();
+    mockPrisma.account.findUnique.mockReset();
     mockPrisma.package.findUnique.mockReset();
     mockPrisma.order.create.mockReset();
     mockPrisma.$transaction.mockReset();
@@ -97,21 +136,24 @@ describe("POST /api/orders/manual", () => {
   it("creates a manual order and syncs operations with customer_request", async () => {
     setupDefaultMocks();
 
-    const res = await POST(
-      createManualOrderRequest({
-        packageId: TEST_PACKAGE_ID,
-        customerName: "Cliente Prueba",
-        customerEmail: "cliente@example.com",
-        paymentMethod: "yappy",
-      })
-    );
+    const res = await POST(createManualOrderRequest(validManualOrderBody()));
     const json = await res.json();
 
     expect(res.status).toBe(200);
     expect(json.order.provider).toBe("manual");
     expect(json.order.paymentStatus).toBe("pending");
     expect(mockGenerateOrderNumber).toHaveBeenCalled();
-    expect(mockPrisma.order.create).toHaveBeenCalled();
+    expect(mockPrisma.order.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          customerName: "Cliente Prueba",
+          customerEmail: "cliente@example.com",
+          customerPhone: "6000-0000",
+          shippingAddress: "Calle 50, edificio de prueba",
+          shippingCity: "Panamá",
+        }),
+      })
+    );
     expect(mockSyncRealOrderToOperations).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -131,12 +173,7 @@ describe("POST /api/orders/manual", () => {
     } as never);
 
     const res = await POST(
-      createManualOrderRequest({
-        packageId: TEST_PACKAGE_ID,
-        customerName: "Cliente Prueba",
-        customerEmail: "cliente@example.com",
-        paymentMethod: "bank_transfer",
-      })
+      createManualOrderRequest(validManualOrderBody({ paymentMethod: "bank_transfer" }))
     );
     const json = await res.json();
 
