@@ -14,7 +14,6 @@ const VALID_ENTITY_TYPES = new Set<HistoryEntityType>([
   "warranty",
   "replacement",
   "return",
-  "material",
 ]);
 
 export async function GET(req: NextRequest) {
@@ -24,7 +23,10 @@ export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
     const entityTypeRaw = searchParams.get("entityType");
-    const entityType = entityTypeRaw && VALID_ENTITY_TYPES.has(entityTypeRaw as HistoryEntityType) ? (entityTypeRaw as HistoryEntityType) : null;
+    const entityType =
+      entityTypeRaw && VALID_ENTITY_TYPES.has(entityTypeRaw as HistoryEntityType)
+        ? (entityTypeRaw as HistoryEntityType)
+        : null;
     const payload = await getOperationHistory({
       entityType,
       entityId: searchParams.get("entityId"),
