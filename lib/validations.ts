@@ -162,7 +162,7 @@ export const adminUpdateSchema = z.object({
 // ──────────────────────────────────────────────
 
 export const orderCreateSchema = z.object({
-  customerName: z.string().min(2, "Nombre requerido").max(200),
+  customerName: z.string().trim().min(2, "Nombre requerido").max(200),
   customerEmail: z.string().email("Email inválido"),
   customerPhone: z.string().optional(),
   shippingAddress: z.string().max(500).optional().nullable(),
