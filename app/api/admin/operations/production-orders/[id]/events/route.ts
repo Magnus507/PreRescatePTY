@@ -37,7 +37,6 @@ export async function POST(
         select: {
           id: true,
           status: true,
-          producedQuantity: true,
         },
       });
 
@@ -69,10 +68,7 @@ export async function POST(
         },
       });
 
-      const orderUpdate: {
-        status?: string;
-        producedQuantity?: number;
-      } = {};
+      const orderUpdate: { status?: string } = {};
 
       if (data.eventType === "PLANNED") {
         orderUpdate.status = "planned";
@@ -80,12 +76,8 @@ export async function POST(
         orderUpdate.status = "started";
       } else if (data.eventType === "PAUSED") {
         orderUpdate.status = "paused";
-      } else if (data.eventType === "COMPLETED") {
-        orderUpdate.status = "completed";
       } else if (data.eventType === "CANCELLED") {
         orderUpdate.status = "cancelled";
-      } else if (data.eventType === "PRODUCED" && data.quantity) {
-        orderUpdate.producedQuantity = productionOrder.producedQuantity + data.quantity;
       }
 
       if (Object.keys(orderUpdate).length > 0) {
