@@ -13,6 +13,17 @@ type Unit = {
   dispatchItems: Array<unknown>;
 };
 
+type UnitWhere = {
+  id?: { in: string[] };
+  reservedOrderId?: string | null;
+  productCode: string;
+  productType?: string;
+  status: string;
+  qaStatus?: string;
+  activationStatus?: string;
+  dispatchItems: { none: Record<string, never> };
+};
+
 function createTx(order: {
   id: string;
   customerType?: string;
@@ -31,6 +42,18 @@ function createTx(order: {
     units,
   };
 
+  const matchesWhere = (unit: Unit, where: UnitWhere) => {
+    if (where.id && !where.id.in.includes(unit.id)) return false;
+    if (unit.productCode !== where.productCode) return false;
+    if (where.productType && unit.productType !== where.productType) return false;
+    if (unit.status !== where.status) return false;
+    if (where.qaStatus && unit.qaStatus !== where.qaStatus) return false;
+    if (where.activationStatus && unit.activationStatus !== where.activationStatus) return false;
+    if (where.reservedOrderId !== undefined && unit.reservedOrderId !== where.reservedOrderId) return false;
+    if (unit.dispatchItems.length !== 0) return false;
+    return true;
+  };
+
   return {
     operationCommercialOrder: {
       findUnique: vi.fn(async () => state.order),
@@ -42,33 +65,17 @@ function createTx(order: {
       })),
     },
     operationFinishedGoodUnit: {
-      findMany: vi.fn(async ({ where, take }: { where: { id?: { in: string[] }; reservedOrderId?: string | null; productCode: string; productType: string; status: string; qaStatus?: string; activationStatus?: string; dispatchItems: { none: Record<string, never> } }, take?: number }) => {
-        const matched = state.units.filter((unit) => {
-          if (where.id && !where.id.in.includes(unit.id)) return false;
-          if (unit.productCode !== where.productCode) return false;
-          if (unit.productType !== where.productType) return false;
-          if (unit.status !== where.status) return false;
-          if (where.qaStatus && unit.qaStatus !== where.qaStatus) return false;
-          if (where.activationStatus && unit.activationStatus !== where.activationStatus) return false;
-          if (where.reservedOrderId !== undefined && unit.reservedOrderId !== where.reservedOrderId) return false;
-          if (unit.dispatchItems.length !== 0) return false;
-          return true;
-        });
+      findMany: vi.fn(async ({ where, take }: { where: UnitWhere; take?: number }) => {
+        const matched = state.units.filter((unit) => matchesWhere(unit, where));
         return typeof take === "number" ? matched.slice(0, take) : matched;
       }),
-      updateMany: vi.fn(async ({ where, data }: { where: { id: { in: string[] }; productCode: string; productType: string; status: string; qaStatus: string; activationStatus: string; reservedOrderId: string | null; dispatchItems: { none: Record<string, never> } }, data: { status: string; reservedOrderId: string; reservedAt: Date } }) => {
+      updateMany: vi.fn(async ({ where, data }: {
+        where: UnitWhere;
+        data: { status: string; reservedOrderId: string; reservedAt: Date };
+      }) => {
         let count = 0;
         for (const unit of state.units) {
-          if (
-            where.id.in.includes(unit.id) &&
-            unit.productCode === where.productCode &&
-            unit.productType === where.productType &&
-            unit.status === where.status &&
-            unit.qaStatus === where.qaStatus &&
-            unit.activationStatus === where.activationStatus &&
-            unit.reservedOrderId === where.reservedOrderId &&
-            unit.dispatchItems.length === 0
-          ) {
+          if (matchesWhere(unit, where)) {
             unit.status = data.status;
             unit.reservedOrderId = data.reservedOrderId;
             count += 1;
@@ -96,7 +103,7 @@ describe("reserveCommercialOrderStock", () => {
             quantity: 1,
             productCode: "PRP-FG-STICKER",
             finishedGoodId: "fg-1",
-            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+            finishedGood: { code: "PRP-FG-STICKER", productType: "sticker_prerescatepty" },
           },
         ],
       },
@@ -105,7 +112,7 @@ describe("reserveCommercialOrderStock", () => {
           id: "unit-1",
           internalLabel: "U-001",
           productCode: "PRP-FG-STICKER",
-          productType: "PRP-FG-STICKER",
+          productType: "sticker_prerescatepty",
           status: "available",
           qaStatus: "passed",
           activationStatus: "not_activated",
@@ -145,7 +152,7 @@ describe("reserveCommercialOrderStock", () => {
             quantity: 1,
             productCode: "PRP-FG-STICKER",
             finishedGoodId: "fg-1",
-            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+            finishedGood: { code: "PRP-FG-STICKER", productType: "sticker_prerescatepty" },
           },
         ],
       },
@@ -172,7 +179,7 @@ describe("reserveCommercialOrderStock", () => {
             quantity: 1,
             productCode: "PRP-FG-STICKER",
             finishedGoodId: "fg-1",
-            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+            finishedGood: { code: "PRP-FG-STICKER", productType: "sticker_prerescatepty" },
           },
         ],
       },
@@ -181,7 +188,7 @@ describe("reserveCommercialOrderStock", () => {
           id: "unit-1",
           internalLabel: "U-001",
           productCode: "PRP-FG-STICKER",
-          productType: "PRP-FG-STICKER",
+          productType: "sticker_prerescatepty",
           status: "available",
           qaStatus: "passed",
           activationStatus: "not_activated",
@@ -205,7 +212,7 @@ describe("reserveCommercialOrderStock", () => {
         id: "unit-1",
         internalLabel: "U-001",
         productCode: "PRP-FG-STICKER",
-        productType: "PRP-FG-STICKER",
+        productType: "sticker_prerescatepty",
         status: "available",
         qaStatus: "passed",
         activationStatus: "not_activated",
@@ -225,7 +232,7 @@ describe("reserveCommercialOrderStock", () => {
             quantity: 1,
             productCode: "PRP-FG-STICKER",
             finishedGoodId: "fg-1",
-            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+            finishedGood: { code: "PRP-FG-STICKER", productType: "sticker_prerescatepty" },
           },
         ],
       },
@@ -243,7 +250,7 @@ describe("reserveCommercialOrderStock", () => {
             quantity: 1,
             productCode: "PRP-FG-STICKER",
             finishedGoodId: "fg-1",
-            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+            finishedGood: { code: "PRP-FG-STICKER", productType: "sticker_prerescatepty" },
           },
         ],
       },
@@ -270,7 +277,7 @@ describe("reserveCommercialOrderStock", () => {
             quantity: 1,
             productCode: "PRP-FG-STICKER",
             finishedGoodId: "fg-1",
-            finishedGood: { code: "PRP-FG-STICKER", productType: "PRP-FG-STICKER" },
+            finishedGood: { code: "PRP-FG-STICKER", productType: "sticker_prerescatepty" },
           },
         ],
       },
@@ -306,7 +313,7 @@ describe("reserveCommercialOrderStock", () => {
     expect(result?.summary.missingQty).toBe(1);
   });
 
-  it("matches inventory by finishedGood code even when finishedGood productType is a slug", async () => {
+  it("matches current and legacy inventory by finishedGood code even when productType differs", async () => {
     const tx = createTx(
       {
         id: "order-slug",
@@ -315,7 +322,7 @@ describe("reserveCommercialOrderStock", () => {
         items: [
           {
             id: "item-1",
-            quantity: 1,
+            quantity: 2,
             productCode: "PRP-FG-STICKER",
             finishedGoodId: "fg-1",
             finishedGood: { code: "PRP-FG-STICKER", productType: "sticker_prerescatepty" },
@@ -324,8 +331,19 @@ describe("reserveCommercialOrderStock", () => {
       },
       [
         {
-          id: "unit-1",
+          id: "unit-current",
           internalLabel: "U-001",
+          productCode: "PRP-FG-STICKER",
+          productType: "sticker_prerescatepty",
+          status: "available",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: null,
+          dispatchItems: [],
+        },
+        {
+          id: "unit-legacy",
+          internalLabel: "U-002",
           productCode: "PRP-FG-STICKER",
           productType: "PRP-FG-STICKER",
           status: "available",
@@ -339,7 +357,7 @@ describe("reserveCommercialOrderStock", () => {
 
     const result = await reserveCommercialOrderStock(tx as never, { orderId: "order-slug", allowPartial: true });
 
-    expect(result?.summary.reservedQty).toBe(1);
+    expect(result?.summary.reservedQty).toBe(2);
     expect(result?.summary.missingQty).toBe(0);
   });
 });
