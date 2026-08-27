@@ -125,6 +125,23 @@ export async function POST(req: NextRequest) {
   }
 
   const data = parsed.data;
+  const destinationType = data.destinationType || "customer";
+
+  // Customer shipments must always originate from a paid Order with explicitly
+  // reserved OperationFinishedGoodUnit records. The order-specific dispatch
+  // route carries immutable delivery data and the exact physical unit labels.
+  // This generic endpoint remains available for stock transfers / POS / external
+  // warehouse / exceptional non-customer logistics only.
+  if (destinationType === "customer") {
+    return NextResponse.json(
+      {
+        error: "Los despachos a clientes se crean desde Pedidos después de reservar las unidades físicas. Usa este formulario solo para traslados, POS o logística no vinculada a un pedido cliente.",
+        code: "CUSTOMER_DISPATCH_REQUIRES_ORDER",
+      },
+      { status: 409 }
+    );
+  }
+
   const createdById = auth.session.user.id || null;
   const finishedGoodIds = [...new Set(data.items.map((item) => item.finishedGoodId))];
 
@@ -142,7 +159,7 @@ export async function POST(req: NextRequest) {
       return tx.operationDispatch.create({
         data: {
           code: data.code,
-          destinationType: data.destinationType || "customer",
+          destinationType,
           destinationName: data.destinationName || null,
           destinationReference: data.destinationReference || null,
           destinationAddress: data.destinationAddress || null,
@@ -159,10 +176,11 @@ export async function POST(req: NextRequest) {
           events: {
             create: {
               eventType: "CREATED",
-              reason: "Despacho creado",
+              reason: "Despacho logístico manual creado",
               metadataJson: JSON.stringify({
-                destinationType: data.destinationType || "customer",
+                destinationType,
                 itemCount: data.items.length,
+                traceabilityMode: "manual_non_customer",
               }),
               createdById,
             },
