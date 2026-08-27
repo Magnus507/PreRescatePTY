@@ -33,6 +33,7 @@ export async function POST(
             productCode: true,
             operationalProductName: true,
             operationalProductCode: true,
+            operationalFinishedGoodId: true,
           },
         },
       },
@@ -72,14 +73,22 @@ export async function POST(
       return NextResponse.json({ error: "El pedido no contiene productos." }, { status: 409 });
     }
 
-    const outputType =
-      firstItem.operationalProductCode ||
-      firstItem.productCode ||
+    const finishedGood = firstItem.operationalFinishedGoodId
+      ? await prisma.operationFinishedGood.findUnique({
+          where: { id: firstItem.operationalFinishedGoodId },
+          select: { code: true, name: true, productType: true },
+        })
+      : null;
+
+    // Production outputType is the physical product type, never the SKU/code.
+    // Codes remain useful as references, but using them as productType breaks
+    // matching when the finished unit reaches inventory/reservation.
+    const outputType = finishedGood?.productType || firstItem.productType;
+    const productName =
+      finishedGood?.name ||
       firstItem.operationalProductName ||
       firstItem.productName ||
       firstItem.productType;
-    const productName =
-      firstItem.operationalProductName || firstItem.productName || firstItem.productType;
 
     const result = await prisma.$transaction(async (tx) => {
       const production = await ensureCustomerBackorderProduction(tx, {
