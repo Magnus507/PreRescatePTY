@@ -16,7 +16,7 @@
     "test:coverage": "vitest --coverage"
   },
   "engines": {
-    "node": "22.x"
+    "node": "24.x"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
@@ -63,9 +63,6 @@
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^1.6.1"
-  },
-  "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
   },
   "overrides": {
     "axios": "^1.18.1",
