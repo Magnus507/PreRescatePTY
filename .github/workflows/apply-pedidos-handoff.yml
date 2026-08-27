@@ -1,0 +1,252 @@
+name: Apply Pedidos handoff refactor
+
+on:
+  push:
+    paths:
+      - .github/workflows/apply-pedidos-handoff.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-pedidos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply guarded Pedidos workflow patch
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path("app/(admin)/admin/_components/sections/PedidosSection.tsx")
+          text = path.read_text()
+
+          old_logic_pattern = re.compile(
+              r'type PedidoFilter = "active" \| "pending" \| "completed" \| "cancelled";.*?function isPendingOrder\(order: Order\) \{\n  return isActiveOrder\(order\) && Boolean\(order\.requiresAction \|\| order\.canApprovePayment \|\| order\.canRejectPayment \|\| order\.canReserveInternalLabel \|\| order\.canCreateDispatch \|\| order\.pendingReasonLabel\);\n\}',
+              re.S,
+          )
+          new_logic = '''type PedidoFilter = "active" | "pending" | "completed" | "cancelled";
+
+          const PEDIDO_FILTERS: Array<{ id: PedidoFilter; label: string }> = [
+            { id: "active", label: "En curso" },
+            { id: "pending", label: "Requieren acción" },
+            { id: "completed", label: "En despacho / completados" },
+            { id: "cancelled", label: "Cancelados" },
+          ];
+
+          const TERMINAL_ORDER_STATUSES = new Set(["completed", "delivered"]);
+          const TERMINAL_CORPORATE_DELIVERY_STATUSES = new Set(["completed", "delivered"]);
+          const TERMINAL_CORPORATE_ITEM_STATUSES = new Set(["delivered", "activated"]);
+
+          function normalizeStatus(value: string | null | undefined) {
+            return (value || "").toLowerCase();
+          }
+
+          function isCancelledOrder(order: Order) {
+            return normalizeStatus(order.orderStatus) === "cancelled" || normalizeStatus(order.paymentStatus) === "rejected";
+          }
+
+          function hasDispatchHandoff(order: Order) {
+            if (order.isInternalOrder || !order.dispatch?.id) return false;
+            return normalizeStatus(order.dispatch.status) !== "cancelled";
+          }
+
+          function isCompletedOrder(order: Order) {
+            if (isCancelledOrder(order)) return false;
+            const legacyStatus = normalizeStatus(order.orderStatus);
+            const sourceStatus = normalizeStatus((order as Order & { status?: string | null }).status);
+            if (TERMINAL_ORDER_STATUSES.has(legacyStatus)) return true;
+            if (TERMINAL_ORDER_STATUSES.has(sourceStatus)) return true;
+            if (TERMINAL_CORPORATE_DELIVERY_STATUSES.has(normalizeStatus(order.corporateDeliveryStatus))) return true;
+            if (Array.isArray(order.corporateEmployeeItems) && order.corporateEmployeeItems.length > 0) {
+              return order.corporateEmployeeItems.every((item) =>
+                TERMINAL_CORPORATE_ITEM_STATUSES.has(normalizeStatus(item.fulfillmentStatus))
+              );
+            }
+            return false;
+          }
+
+          function isTransferredOrCompletedOrder(order: Order) {
+            return !isCancelledOrder(order) && (hasDispatchHandoff(order) || isCompletedOrder(order));
+          }
+
+          function isActiveOrder(order: Order) {
+            return !isCancelledOrder(order) && !isCompletedOrder(order) && !hasDispatchHandoff(order);
+          }
+
+          function isClientActiveOrder(order: Order) {
+            return isActiveOrder(order) && !order.isInternalOrder;
+          }
+
+          function isPendingOrder(order: Order) {
+            return isClientActiveOrder(order) && Boolean(order.requiresAction || order.canApprovePayment || order.canRejectPayment || order.canReserveInternalLabel || order.canCreateDispatch || order.pendingReasonLabel);
+          }'''
+          new_logic = "\n".join(line[10:] if line.startswith("          ") else line for line in new_logic.splitlines())
+          text, count = old_logic_pattern.subn(new_logic, text, count=1)
+          if count != 1:
+              raise SystemExit(f"Expected to replace workflow classifier once, got {count}")
+
+          old_filter = '''  const filteredOrders = useMemo(() => {
+            return orders.filter((order) => {
+              if (order.isInternalOrder) return false;
+              if (activeFilter === "cancelled") return isCancelledOrder(order);
+              if (activeFilter === "completed") return isCompletedOrder(order);
+              if (activeFilter === "pending") return isPendingOrder(order);
+              return isClientActiveOrder(order);
+            });
+          }, [activeFilter, orders]);'''
+          old_filter = "\n".join(line[10:] if line.startswith("          ") else line for line in old_filter.splitlines())
+          new_filter = old_filter.replace(
+              'if (activeFilter === "completed") return isCompletedOrder(order);',
+              'if (activeFilter === "completed") return isTransferredOrCompletedOrder(order);',
+          )
+          if old_filter not in text:
+              raise SystemExit("Could not locate filteredOrders block")
+          text = text.replace(old_filter, new_filter, 1)
+
+          old_counts = '''  const filterCounts = useMemo(() => {
+            return orders.reduce(
+              (acc, order) => {
+                if (order.isInternalOrder) return acc;
+                if (isActiveOrder(order)) {
+                  acc.active += 1;
+                  if (isPendingOrder(order)) acc.pending += 1;
+                } else if (isCompletedOrder(order)) {
+                  acc.completed += 1;
+                } else if (isCancelledOrder(order)) {
+                  acc.cancelled += 1;
+                }
+                return acc;
+              },
+              { active: 0, pending: 0, completed: 0, cancelled: 0 }
+            );
+          }, [orders]);'''
+          old_counts = "\n".join(line[10:] if line.startswith("          ") else line for line in old_counts.splitlines())
+          new_counts = '''  const filterCounts = useMemo(() => {
+            return orders.reduce(
+              (acc, order) => {
+                if (order.isInternalOrder) return acc;
+                if (isCancelledOrder(order)) {
+                  acc.cancelled += 1;
+                } else if (isTransferredOrCompletedOrder(order)) {
+                  acc.completed += 1;
+                } else if (isClientActiveOrder(order)) {
+                  acc.active += 1;
+                  if (isPendingOrder(order)) acc.pending += 1;
+                }
+                return acc;
+              },
+              { active: 0, pending: 0, completed: 0, cancelled: 0 }
+            );
+          }, [orders]);'''
+          new_counts = "\n".join(line[10:] if line.startswith("          ") else line for line in new_counts.splitlines())
+          if old_counts not in text:
+              raise SystemExit("Could not locate filterCounts block")
+          text = text.replace(old_counts, new_counts, 1)
+
+          text = text.replace(
+              'return "No hay pedidos enviados o completados.";',
+              'return "No hay pedidos transferidos a Despachos o completados.";',
+              1,
+          )
+
+          status_handler = re.compile(
+              r'\n  const handleStatusChange = async \(id: string, newStatus: string, actionText: string\) => \{.*?\n  \};\n\n  const handleBackToOrders = useCallback',
+              re.S,
+          )
+          text, count = status_handler.subn('\n  const handleBackToOrders = useCallback', text, count=1)
+          if count != 1:
+              raise SystemExit(f"Expected to remove direct status handler once, got {count}")
+
+          action_bar = re.compile(
+              r'            \{/\* Action Bar \*/\}\n            \{!isCorporateOrder && \(\(\) => \{.*?\n            \}\)\(\)\}',
+              re.S,
+          )
+          new_action_bar = '''            {/* Action Bar */}
+            {!isCorporateOrder && (() => {
+              const isPaymentApproved = selectedOrder.paymentStatus === "paid" || selectedOrder.adminReviewStatus === "approved";
+              const hasDispatch = hasDispatchHandoff(selectedOrder);
+              const canTransferToDispatch =
+                isPaymentApproved &&
+                !hasDispatch &&
+                Boolean(selectedOrder.canCreateDispatch) &&
+                Boolean(selectedOrder.reservedUnits?.length);
+              const canCancel =
+                !hasDispatch &&
+                !isPaymentApproved &&
+                !["cancelled", "completed", "delivered"].includes(normalizeStatus(selectedOrder.orderStatus));
+
+              return (
+                <div className="px-6 py-5 border-t border-border bg-muted/30 flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
+                  <div className="flex flex-wrap gap-3">
+                    {canCancel && selectedOrder.canSoftDeleteOrder ? (
+                      <button
+                        onClick={() => handleSoftDeleteOrder(undefined, selectedOrder)}
+                        disabled={updating}
+                        className="px-6 py-3 border border-red-500/20 text-red-500 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                      >
+                        {selectedOrder.softDeleteLabel || "Cancelar / ocultar"}
+                      </button>
+                    ) : null}
+                    {!isPaymentApproved && !hasDispatch ? (
+                      <span className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 rounded-xl">
+                        Requiere pago aprobado antes de reservar y despachar
+                      </span>
+                    ) : null}
+                    {isPaymentApproved && !hasDispatch && !selectedOrder.reservedUnits?.length ? (
+                      <span className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-violet-700 bg-violet-50 border border-violet-200 rounded-xl">
+                        Reserva la unidad física antes de transferir a Despachos
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    {hasDispatch && selectedOrder.dispatch ? (
+                      <Link
+                        href="/admin?tab=dispatches"
+                        className="px-6 py-3 bg-cyan-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-cyan-700 transition-all"
+                      >
+                        Continuar en Despachos · {selectedOrder.dispatch.code}
+                      </Link>
+                    ) : canTransferToDispatch ? (
+                      <button
+                        type="button"
+                        onClick={(event) => void sendToDispatch(event, selectedOrder)}
+                        disabled={sendingToDispatchOrderId === selectedOrder.id}
+                        className="px-6 py-3 bg-cyan-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-cyan-700 transition-all disabled:opacity-50"
+                      >
+                        {sendingToDispatchOrderId === selectedOrder.id ? "Transfiriendo..." : "Transferir a Despachos"}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })()}'''
+          text, count = action_bar.subn(new_action_bar, text, count=1)
+          if count != 1:
+              raise SystemExit(f"Expected to replace Action Bar once, got {count}")
+
+          path.write_text(text)
+
+      - name: Verify patch shape
+        run: |
+          grep -q 'function hasDispatchHandoff' 'app/(admin)/admin/_components/sections/PedidosSection.tsx'
+          grep -q 'En despacho / completados' 'app/(admin)/admin/_components/sections/PedidosSection.tsx'
+          grep -q 'Continuar en Despachos' 'app/(admin)/admin/_components/sections/PedidosSection.tsx'
+          if grep -q 'Marcar pedido enviado' 'app/(admin)/admin/_components/sections/PedidosSection.tsx'; then
+            echo 'Legacy direct shipping action still present' >&2
+            exit 1
+          fi
+
+      - name: Commit guarded refactor and remove one-time workflow
+        run: |
+          git config user.name "PreRescatePTY Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/apply-pedidos-handoff.yml
+          git add 'app/(admin)/admin/_components/sections/PedidosSection.tsx'
+          git commit -m 'refactor(orders): hand off dispatched orders to logistics'
+          git push origin HEAD:master
