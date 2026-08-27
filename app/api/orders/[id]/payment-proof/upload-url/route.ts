@@ -68,15 +68,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const path = `payments/${userId}/${id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
   const { data, error } = await bucket.createSignedUploadUrl(path);
-  if (error || !data?.token) {
+  if (error || !data?.token || !data?.signedUrl) {
     console.error("PAYMENT_PROOF_SIGNED_UPLOAD_ERROR", error);
     return NextResponse.json({ error: "No se pudo preparar la carga del comprobante" }, { status: 500 });
   }
 
+  // The signed URL is valid for a short period and can receive the raw image
+  // bytes directly. Returning it lets the browser avoid multipart/FormData
+  // entirely; after the upload, the registration endpoint still downloads and
+  // validates the stored object before the order can enter payment review.
   return NextResponse.json({
     bucket: "payment-proofs",
     path,
     token: data.token,
+    signedUrl: data.signedUrl,
     maxBytes: MAX_UPLOAD_BYTES,
   });
 }
