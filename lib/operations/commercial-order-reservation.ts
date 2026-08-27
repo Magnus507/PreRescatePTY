@@ -1,8 +1,5 @@
 import { Prisma } from "@prisma/client";
-import {
-  getCommercialOrderItemProductType,
-  resolveCommercialOrderItemKey,
-} from "@/app/api/admin/operations/commercial-orders/commercial-orders.helpers";
+import { resolveCommercialOrderItemKey } from "@/app/api/admin/operations/commercial-orders/commercial-orders.helpers";
 
 export type CommercialOrderReservationInput = {
   orderId: string;
@@ -50,15 +47,32 @@ async function reserveUnitsForOrderItem(
     finishedGood: { code: string; productType: string } | null;
   }
 ) {
+  // productCode is the canonical SKU that identifies the sellable finished good.
+  // productType is descriptive metadata and has changed over time (legacy rows may
+  // contain the SKU while current rows contain a slug), so it must never become a
+  // second stock key that can make physically correct inventory invisible.
   const productCode = resolveCommercialOrderItemKey(item);
-  const productType = getCommercialOrderItemProductType(item);
+
+  if (!productCode) {
+    return {
+      productCode: "",
+      requestedQty: item.quantity,
+      reservedQty: 0,
+      missingQty: item.quantity,
+      units: [] as Array<{
+        id: string;
+        internalLabel: string;
+        productCode: string;
+        productType: string;
+      }>,
+    };
+  }
 
   const existingReservedUnits = await tx.operationFinishedGoodUnit.findMany({
     where: {
       reservedOrderId: reservationOrderId,
       status: "reserved",
       productCode,
-      productType,
       dispatchItems: { none: {} },
     },
     orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
@@ -86,7 +100,6 @@ async function reserveUnitsForOrderItem(
   const units = await tx.operationFinishedGoodUnit.findMany({
     where: {
       productCode,
-      productType,
       status: "available",
       qaStatus: "passed",
       activationStatus: "not_activated",
@@ -110,7 +123,6 @@ async function reserveUnitsForOrderItem(
       where: {
         id: { in: candidateIds },
         productCode,
-        productType,
         status: "available",
         qaStatus: "passed",
         activationStatus: "not_activated",
@@ -124,13 +136,14 @@ async function reserveUnitsForOrderItem(
       },
     });
 
+    // Re-read after the conditional claim. If another order won a concurrent
+    // race, only rows actually reserved by this order are returned and audited.
     const claimedUnits = await tx.operationFinishedGoodUnit.findMany({
       where: {
         id: { in: candidateIds },
         reservedOrderId: reservationOrderId,
         status: "reserved",
         productCode,
-        productType,
         dispatchItems: { none: {} },
       },
       orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
@@ -142,21 +155,23 @@ async function reserveUnitsForOrderItem(
       },
     });
 
-    await tx.operationFinishedGoodUnitEvent.createMany({
-      data: claimedUnits.map((unit) => ({
-        unitId: unit.id,
-        eventType: "RESERVED",
-        reason: `Reservado para pedido cliente ${reservationOrderId}`,
-        referenceType: "commercial_order",
-        referenceId: commercialOrderId,
-        metadataJson: {
-          commercialOrderId,
-          customerOrderId: reservationOrderId,
-          productCode,
-          productType,
-        },
-      })),
-    });
+    if (claimedUnits.length > 0) {
+      await tx.operationFinishedGoodUnitEvent.createMany({
+        data: claimedUnits.map((unit) => ({
+          unitId: unit.id,
+          eventType: "RESERVED",
+          reason: `Reservado para pedido cliente ${reservationOrderId}`,
+          referenceType: "commercial_order",
+          referenceId: commercialOrderId,
+          metadataJson: {
+            commercialOrderId,
+            customerOrderId: reservationOrderId,
+            productCode,
+            productType: unit.productType,
+          },
+        })),
+      });
+    }
   }
 
   const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
@@ -164,7 +179,6 @@ async function reserveUnitsForOrderItem(
       reservedOrderId: reservationOrderId,
       status: "reserved",
       productCode,
-      productType,
       dispatchItems: { none: {} },
     },
     orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
