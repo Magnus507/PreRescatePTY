@@ -10,8 +10,7 @@ export type HistoryEntityType =
   | "dispatch"
   | "warranty"
   | "replacement"
-  | "return"
-  | "material";
+  | "return";
 
 export interface OperationHistorySubject {
   entityType: HistoryEntityType;
@@ -54,18 +53,41 @@ export interface OperationHistoryResult {
   suggestions?: Array<{ type: HistoryEntityType; id: string; label: string; subtitle: string | null }>;
 }
 
-function toTimelineItem(movement: OperationMovement, related: OperationHistoryTimelineItem["related"]): OperationHistoryTimelineItem {
+function toTimelineItem(
+  movement: OperationMovement,
+  related: OperationHistoryTimelineItem["related"]
+): OperationHistoryTimelineItem {
   return { ...movement, related };
 }
 
-function unitSubject(unit: { id: string; internalLabel: string; status: string; activationStatus: string }) {
+function emptyResult(): OperationHistoryResult {
+  return {
+    subject: null,
+    timeline: [],
+    summary: {
+      totalEvents: 0,
+      firstEventAt: null,
+      lastEventAt: null,
+      currentStatus: null,
+      activationStatus: null,
+      deliveredPendingActivation: null,
+    },
+  };
+}
+
+function unitSubject(unit: {
+  id: string;
+  internalLabel: string;
+  status: string;
+  activationStatus: string;
+}) {
   return {
     entityType: "unit" as const,
     entityId: unit.id,
     entityCode: unit.internalLabel,
     internalLabel: unit.internalLabel,
     title: unit.internalLabel,
-    subtitle: "Unidad terminada",
+    subtitle: "Unidad física",
     currentStatus: unit.status,
     activationStatus: unit.activationStatus,
   };
@@ -100,7 +122,8 @@ async function buildUnitHistoryByLabel(internalLabel: string, limit: number) {
       lastEventAt: movements[0]?.occurredAt || null,
       currentStatus: unit.status,
       activationStatus: unit.activationStatus,
-      deliveredPendingActivation: unit.status === "delivered" && unit.activationStatus === "not_activated",
+      deliveredPendingActivation:
+        unit.status === "delivered" && unit.activationStatus === "not_activated",
     },
   } satisfies OperationHistoryResult;
 }
@@ -108,7 +131,13 @@ async function buildUnitHistoryByLabel(internalLabel: string, limit: number) {
 async function buildCommercialOrderHistoryById(id: string, limit: number) {
   const order = await prisma.operationCommercialOrder.findUnique({
     where: { id },
-    select: { id: true, code: true, status: true, fulfillmentStatus: true, paymentStatus: true },
+    select: {
+      id: true,
+      code: true,
+      status: true,
+      fulfillmentStatus: true,
+      paymentStatus: true,
+    },
   });
   if (!order) return null;
 
@@ -120,7 +149,7 @@ async function buildCommercialOrderHistoryById(id: string, limit: number) {
       entityCode: order.code,
       internalLabel: null,
       title: order.code,
-      subtitle: "Pedido comercial",
+      subtitle: "Pedido",
       currentStatus: `${order.status} / ${order.paymentStatus} / ${order.fulfillmentStatus}`,
       activationStatus: null,
     },
@@ -157,33 +186,108 @@ function sourceForEntityType(entityType: HistoryEntityType) {
   if (entityType === "warranty") return "warranty";
   if (entityType === "replacement") return "replacement";
   if (entityType === "return") return "return";
-  if (entityType === "material") return "material";
   return null;
 }
 
 async function searchSuggestions(search: string, limit: number) {
-  const [units, batches, prints, orders, dispatches, warranties, replacements, returns_, materials] = await Promise.all([
-    prisma.operationFinishedGoodUnit.findMany({ where: { internalLabel: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, internalLabel: true, productName: true } }),
-    prisma.operationDigitalBatch.findMany({ where: { OR: [{ code: { contains: search, mode: "insensitive" } }, { finishedGoodCode: { contains: search, mode: "insensitive" } }] }, take: 5, select: { id: true, code: true, name: true } }),
-    prisma.operationPrintOrder.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, supplierName: true } }),
-    prisma.operationCommercialOrder.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, customerName: true } }),
-    prisma.operationDispatch.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, destinationName: true } }),
-    prisma.operationWarranty.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, customerName: true } }),
-    prisma.operationReplacement.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, customerName: true } }),
-    prisma.operationReturn.findMany({ where: { code: { contains: search, mode: "insensitive" } }, take: 5, select: { id: true, code: true, customerName: true } }),
-    prisma.operationMaterial.findMany({ where: { OR: [{ code: { contains: search, mode: "insensitive" } }, { name: { contains: search, mode: "insensitive" } }] }, take: 5, select: { id: true, code: true, name: true } }),
-  ]);
+  const [units, batches, prints, orders, dispatches, warranties, replacements, returns_] =
+    await Promise.all([
+      prisma.operationFinishedGoodUnit.findMany({
+        where: { internalLabel: { contains: search, mode: "insensitive" } },
+        take: 5,
+        select: { id: true, internalLabel: true, productName: true },
+      }),
+      prisma.operationDigitalBatch.findMany({
+        where: {
+          OR: [
+            { code: { contains: search, mode: "insensitive" } },
+            { finishedGoodCode: { contains: search, mode: "insensitive" } },
+          ],
+        },
+        take: 5,
+        select: { id: true, code: true, name: true },
+      }),
+      prisma.operationPrintOrder.findMany({
+        where: { code: { contains: search, mode: "insensitive" } },
+        take: 5,
+        select: { id: true, code: true, supplierName: true },
+      }),
+      prisma.operationCommercialOrder.findMany({
+        where: { code: { contains: search, mode: "insensitive" } },
+        take: 5,
+        select: { id: true, code: true, customerName: true },
+      }),
+      prisma.operationDispatch.findMany({
+        where: { code: { contains: search, mode: "insensitive" } },
+        take: 5,
+        select: { id: true, code: true, destinationName: true },
+      }),
+      prisma.operationWarranty.findMany({
+        where: { code: { contains: search, mode: "insensitive" } },
+        take: 5,
+        select: { id: true, code: true, customerName: true },
+      }),
+      prisma.operationReplacement.findMany({
+        where: { code: { contains: search, mode: "insensitive" } },
+        take: 5,
+        select: { id: true, code: true, customerName: true },
+      }),
+      prisma.operationReturn.findMany({
+        where: { code: { contains: search, mode: "insensitive" } },
+        take: 5,
+        select: { id: true, code: true, customerName: true },
+      }),
+    ]);
 
   return [
-    ...units.map((item) => ({ type: "unit" as const, id: item.id, label: item.internalLabel, subtitle: item.productName })),
-    ...batches.map((item) => ({ type: "digital_batch" as const, id: item.id, label: item.code, subtitle: item.name })),
-    ...prints.map((item) => ({ type: "print_order" as const, id: item.id, label: item.code, subtitle: item.supplierName })),
-    ...orders.map((item) => ({ type: "commercial_order" as const, id: item.id, label: item.code, subtitle: item.customerName })),
-    ...dispatches.map((item) => ({ type: "dispatch" as const, id: item.id, label: item.code, subtitle: item.destinationName })),
-    ...warranties.map((item) => ({ type: "warranty" as const, id: item.id, label: item.code, subtitle: item.customerName })),
-    ...replacements.map((item) => ({ type: "replacement" as const, id: item.id, label: item.code, subtitle: item.customerName })),
-    ...returns_.map((item) => ({ type: "return" as const, id: item.id, label: item.code, subtitle: item.customerName })),
-    ...materials.map((item) => ({ type: "material" as const, id: item.id, label: item.code, subtitle: item.name })),
+    ...units.map((item) => ({
+      type: "unit" as const,
+      id: item.id,
+      label: item.internalLabel,
+      subtitle: item.productName,
+    })),
+    ...batches.map((item) => ({
+      type: "digital_batch" as const,
+      id: item.id,
+      label: item.code,
+      subtitle: item.name,
+    })),
+    ...prints.map((item) => ({
+      type: "print_order" as const,
+      id: item.id,
+      label: item.code,
+      subtitle: item.supplierName,
+    })),
+    ...orders.map((item) => ({
+      type: "commercial_order" as const,
+      id: item.id,
+      label: item.code,
+      subtitle: item.customerName,
+    })),
+    ...dispatches.map((item) => ({
+      type: "dispatch" as const,
+      id: item.id,
+      label: item.code,
+      subtitle: item.destinationName,
+    })),
+    ...warranties.map((item) => ({
+      type: "warranty" as const,
+      id: item.id,
+      label: item.code,
+      subtitle: item.customerName,
+    })),
+    ...replacements.map((item) => ({
+      type: "replacement" as const,
+      id: item.id,
+      label: item.code,
+      subtitle: item.customerName,
+    })),
+    ...returns_.map((item) => ({
+      type: "return" as const,
+      id: item.id,
+      label: item.code,
+      subtitle: item.customerName,
+    })),
   ].slice(0, limit);
 }
 
@@ -202,11 +306,19 @@ export async function getOperationHistory(params: {
   const entityType = params.entityType || null;
   const entityId = params.entityId || null;
 
-  if ((entityType === "unit" || (!entityType && internalLabel)) && (internalLabel || identifier || search)) {
-    return (await buildUnitHistoryByLabel(internalLabel || identifier || search!, limit)) || { subject: null, timeline: [], summary: { totalEvents: 0, firstEventAt: null, lastEventAt: null, currentStatus: null, activationStatus: null, deliveredPendingActivation: null } };
+  if (
+    (entityType === "unit" || (!entityType && internalLabel)) &&
+    (internalLabel || identifier || search)
+  ) {
+    return (
+      (await buildUnitHistoryByLabel(internalLabel || identifier || search!, limit)) ||
+      emptyResult()
+    );
   }
 
-  if (entityType === "commercial_order" && entityId) return (await buildCommercialOrderHistoryById(entityId, limit)) || { subject: null, timeline: [], summary: { totalEvents: 0, firstEventAt: null, lastEventAt: null, currentStatus: null, activationStatus: null, deliveredPendingActivation: null } };
+  if (entityType === "commercial_order" && entityId) {
+    return (await buildCommercialOrderHistoryById(entityId, limit)) || emptyResult();
+  }
 
   const source = entityType ? sourceForEntityType(entityType) : null;
   if (entityType && source && (entityId || identifier || search)) {
@@ -224,7 +336,7 @@ export async function getOperationHistory(params: {
         entityCode: identifier || null,
         internalLabel: entityType === "unit" ? internalLabel || identifier || null : null,
         title: identifier || entityType,
-        subtitle: `${entityType.replaceAll("_", " ")}`,
+        subtitle: entityType.replaceAll("_", " "),
         currentStatus: null,
         activationStatus: null,
       },
@@ -235,9 +347,11 @@ export async function getOperationHistory(params: {
           unitId: entityType === "unit" ? entityId || identifier || null : null,
           digitalBatchId: entityType === "digital_batch" ? entityId || identifier || null : null,
           printOrderId: entityType === "print_order" ? entityId || identifier || null : null,
-          productionOrderId: entityType === "production_order" ? entityId || identifier || null : null,
+          productionOrderId:
+            entityType === "production_order" ? entityId || identifier || null : null,
           warrantyId: entityType === "warranty" ? entityId || identifier || null : null,
-          replacementId: entityType === "replacement" ? entityId || identifier || null : null,
+          replacementId:
+            entityType === "replacement" ? entityId || identifier || null : null,
           returnId: entityType === "return" ? entityId || identifier || null : null,
         })
       ),
@@ -255,16 +369,10 @@ export async function getOperationHistory(params: {
   if (!entityType && search) {
     const suggestions = await searchSuggestions(search, limit);
     return {
-      subject: null,
-      timeline: [],
-      summary: { totalEvents: 0, firstEventAt: null, lastEventAt: null, currentStatus: null, activationStatus: null, deliveredPendingActivation: null },
+      ...emptyResult(),
       suggestions,
     };
   }
 
-  return {
-    subject: null,
-    timeline: [],
-    summary: { totalEvents: 0, firstEventAt: null, lastEventAt: null, currentStatus: null, activationStatus: null, deliveredPendingActivation: null },
-  };
+  return emptyResult();
 }
