@@ -161,7 +161,7 @@ export const adminUpdateSchema = z.object({
 // ORDER SCHEMAS
 // ──────────────────────────────────────────────
 
-const serializedPositiveNumber = z.preprocess((value) => {
+const serializedPositiveNumber: z.ZodType<number, z.ZodTypeDef, unknown> = z.preprocess((value) => {
   if (typeof value !== "string") return value;
 
   const normalized = value.trim();
@@ -171,7 +171,7 @@ const serializedPositiveNumber = z.preprocess((value) => {
   return Number.isFinite(parsed) ? parsed : value;
 }, z.number().finite().positive());
 
-const serializedPositiveInteger = z.preprocess((value) => {
+const serializedPositiveInteger: z.ZodType<number, z.ZodTypeDef, unknown> = z.preprocess((value) => {
   if (typeof value !== "string") return value;
 
   const normalized = value.trim();
