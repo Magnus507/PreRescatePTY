@@ -40,7 +40,8 @@ export type CommercialOrderReservationResult = {
 
 async function reserveUnitsForOrderItem(
   tx: Prisma.TransactionClient,
-  orderId: string,
+  reservationOrderId: string,
+  commercialOrderId: string,
   item: {
     id: string;
     quantity: number;
@@ -54,7 +55,7 @@ async function reserveUnitsForOrderItem(
 
   const existingReservedUnits = await tx.operationFinishedGoodUnit.findMany({
     where: {
-      reservedOrderId: orderId,
+      reservedOrderId: reservationOrderId,
       status: "reserved",
       productCode,
       productType,
@@ -118,7 +119,7 @@ async function reserveUnitsForOrderItem(
       },
       data: {
         status: "reserved",
-        reservedOrderId: orderId,
+        reservedOrderId: reservationOrderId,
         reservedAt: new Date(),
       },
     });
@@ -126,7 +127,7 @@ async function reserveUnitsForOrderItem(
     const claimedUnits = await tx.operationFinishedGoodUnit.findMany({
       where: {
         id: { in: candidateIds },
-        reservedOrderId: orderId,
+        reservedOrderId: reservationOrderId,
         status: "reserved",
         productCode,
         productType,
@@ -145,17 +146,22 @@ async function reserveUnitsForOrderItem(
       data: claimedUnits.map((unit) => ({
         unitId: unit.id,
         eventType: "RESERVED",
-        reason: `Reservado para pedido comercial ${orderId}`,
+        reason: `Reservado para pedido cliente ${reservationOrderId}`,
         referenceType: "commercial_order",
-        referenceId: orderId,
-        metadataJson: { orderId, productCode, productType },
+        referenceId: commercialOrderId,
+        metadataJson: {
+          commercialOrderId,
+          customerOrderId: reservationOrderId,
+          productCode,
+          productType,
+        },
       })),
     });
   }
 
   const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
     where: {
-      reservedOrderId: orderId,
+      reservedOrderId: reservationOrderId,
       status: "reserved",
       productCode,
       productType,
@@ -206,11 +212,21 @@ export async function reserveCommercialOrderStock(
     throw new Error("ORDER_NOT_READY_FOR_RESERVATION");
   }
 
+  // Physical units belong to the real customer Order throughout picking and
+  // dispatch. OperationCommercialOrder is the operational projection and stays
+  // in the audit event as the reference, but must not become a second order id
+  // for physical inventory.
+  const reservationOrderId = order.sourceId || order.id;
   const reservationResults = [];
   const missingItems = [];
 
   for (const item of order.items) {
-    const reservation = await reserveUnitsForOrderItem(tx, order.id, item);
+    const reservation = await reserveUnitsForOrderItem(
+      tx,
+      reservationOrderId,
+      order.id,
+      item
+    );
     reservationResults.push({
       itemId: item.id,
       ...reservation,
