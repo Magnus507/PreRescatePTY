@@ -127,6 +127,8 @@ describe("PostgreSQL integration: admin approval concurrency", () => {
       select: { id: true },
     });
 
+    expect(commercialOrder.id).toBeTruthy();
+
     const reserveUnit = await db.operationFinishedGoodUnit.create({
       data: {
         internalLabel: `FG-${RUN_ID}`,
@@ -147,7 +149,7 @@ describe("PostgreSQL integration: admin approval concurrency", () => {
 
     const [firstJson, secondJson] = await Promise.all([first.json(), second.json()]);
     const reservedUnits = await db.operationFinishedGoodUnit.findMany({
-      where: { id: reserveUnit.id, reservedOrderId: commercialOrder.id, status: "reserved" },
+      where: { id: reserveUnit.id, reservedOrderId: manualOrder.id, status: "reserved" },
       select: { id: true, reservedOrderId: true },
     });
     const refreshedOrder = await db.order.findUnique({
