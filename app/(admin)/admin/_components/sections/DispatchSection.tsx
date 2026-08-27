@@ -49,7 +49,7 @@ const DISPATCH_STATUS_CONFIG: Record<string, { label: string; color: string }> =
 
 const EMPTY_DISPATCH_FORM: DispatchFormState = {
   code: "",
-  destinationType: "customer",
+  destinationType: "point_of_sale",
   destinationName: "",
   destinationReference: "",
   destinationAddress: "",
@@ -248,7 +248,7 @@ export function DispatchSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code,
-          destinationType: form.destinationType || "customer",
+          destinationType: form.destinationType || "point_of_sale",
           destinationName: form.destinationName.trim() || null,
           destinationReference: form.destinationReference.trim() || null,
           destinationAddress: form.destinationAddress.trim() || null,
@@ -267,17 +267,17 @@ export function DispatchSection() {
 
       if (!res.ok) {
         if (res.status === 409) {
-          throw new Error(data.error || "Ya existe un despacho con ese code");
+          throw new Error(data.error || "No se pudo crear el traslado");
         }
-        throw new Error(data.error || "No se pudo crear despacho");
+        throw new Error(data.error || "No se pudo crear el traslado logístico");
       }
 
-      toast.success("Despacho creado");
+      toast.success("Traslado logístico creado");
       setShowCreateModal(false);
       setForm(EMPTY_DISPATCH_FORM);
       await loadDispatches({ silent: true });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Error al crear despacho";
+      const message = error instanceof Error ? error.message : "Error al crear traslado logístico";
       toast.error(message);
     } finally {
       setSaving(false);
@@ -365,8 +365,12 @@ export function DispatchSection() {
           Despachos
         </h2>
         <p className="text-sm text-muted-foreground font-medium mt-1">
-          Salidas registradas y seguimiento de entrega.
+          Pedidos de clientes con picking por unidad física y traslados logísticos separados.
         </p>
+      </div>
+
+      <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 text-xs font-semibold leading-relaxed text-blue-900">
+        <span className="font-black">Despacho a cliente:</span> créalo desde <span className="font-black">Pedidos</span> después de reservar las unidades físicas. Aquí el formulario manual queda reservado para punto de venta, almacenes, entregas internas u otra logística excepcional.
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
@@ -441,7 +445,7 @@ export function DispatchSection() {
               className="inline-flex w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950"
             >
               <Plus className="h-4 w-4" />
-              Crear despacho
+              Crear traslado logístico
             </button>
             <button
               type="button"
@@ -581,10 +585,10 @@ export function DispatchSection() {
             <form onSubmit={handleCreateDispatch} className="space-y-6 p-6 md:p-8">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Despacho</p>
-                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear despacho</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Logística no cliente</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Crear traslado logístico</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Selecciona producto terminado disponible. La entrega física no activa el chip.
+                    Para POS, almacenes y movimientos internos. Los pedidos de clientes se crean desde Pedidos para conservar la unidad física trazable.
                   </p>
                 </div>
                 <button
@@ -608,6 +612,21 @@ export function DispatchSection() {
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
                     placeholder="DSP-PT-001"
                   />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo de destino</span>
+                  <select
+                    required
+                    value={form.destinationType}
+                    onChange={(event) => updateForm("destinationType", event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  >
+                    <option value="point_of_sale">Punto de venta</option>
+                    <option value="external_warehouse">Almacén externo</option>
+                    <option value="internal_delivery">Entrega interna</option>
+                    <option value="other">Otro traslado</option>
+                  </select>
                 </label>
 
                 <label className="space-y-2">
@@ -656,7 +675,7 @@ export function DispatchSection() {
                     value={form.notes}
                     onChange={(event) => updateForm("notes", event.target.value)}
                     className="min-h-20 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
-                    placeholder="Notas internas de despacho"
+                    placeholder="Notas internas del traslado"
                   />
                 </label>
               </div>
@@ -765,7 +784,7 @@ export function DispatchSection() {
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-950 disabled:opacity-50"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  Guardar despacho
+                  Guardar traslado
                 </button>
               </div>
             </form>
