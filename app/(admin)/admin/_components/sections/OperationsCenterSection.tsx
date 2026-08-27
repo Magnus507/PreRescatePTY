@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Factory,
   History,
-  Loader2,
   RefreshCw,
   RotateCcw,
   ShoppingCart,
