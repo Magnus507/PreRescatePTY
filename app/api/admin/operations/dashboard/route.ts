@@ -57,6 +57,14 @@ export async function GET() {
       returnsReceived,
       returnsCompleted,
       returnedToInventory,
+      physicalUnitsTotal,
+      physicalUnitsAvailable,
+      physicalUnitsReserved,
+      physicalUnitsQaPending,
+      physicalUnitsQaFailed,
+      physicalUnitsDispatched,
+      physicalUnitsDelivered,
+      physicalUnitsActivated,
     ] = await Promise.all([
       prisma.operationMaterial.count(),
       prisma.operationMaterial.count({ where: { status: "active" } }),
@@ -112,6 +120,16 @@ export async function GET() {
         where: { eventType: "RETURNED_TO_INVENTORY" },
         _sum: { quantity: true },
       }),
+      prisma.operationFinishedGoodUnit.count(),
+      prisma.operationFinishedGoodUnit.count({
+        where: { status: "available", qaStatus: "passed", activationStatus: "not_activated" },
+      }),
+      prisma.operationFinishedGoodUnit.count({ where: { status: "reserved" } }),
+      prisma.operationFinishedGoodUnit.count({ where: { qaStatus: "pending" } }),
+      prisma.operationFinishedGoodUnit.count({ where: { qaStatus: "failed" } }),
+      prisma.operationFinishedGoodUnit.count({ where: { status: "dispatched" } }),
+      prisma.operationFinishedGoodUnit.count({ where: { status: "delivered" } }),
+      prisma.operationFinishedGoodUnit.count({ where: { activationStatus: "activated" } }),
     ]);
 
     const totalAvailableBalance = calculateFinishedGoodBalance(
@@ -153,6 +171,16 @@ export async function GET() {
           totalFinishedGoods,
           totalFinishedGoodEvents,
           totalAvailableBalance,
+        },
+        physicalUnits: {
+          total: physicalUnitsTotal,
+          available: physicalUnitsAvailable,
+          reserved: physicalUnitsReserved,
+          qaPending: physicalUnitsQaPending,
+          qaFailed: physicalUnitsQaFailed,
+          dispatched: physicalUnitsDispatched,
+          delivered: physicalUnitsDelivered,
+          activated: physicalUnitsActivated,
         },
         dispatch: {
           totalDispatches,
