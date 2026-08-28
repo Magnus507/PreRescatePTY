@@ -2,23 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Boxes,
-  CheckCircle2,
-  Factory,
-  History,
-  RefreshCw,
-  RotateCcw,
-  ShoppingCart,
-  Truck,
-} from "lucide-react";
-import {
-  buildAdminOperationsUrl,
-  parseOperationsTab,
-  type OperationsTab,
-} from "@/lib/admin/operations-routing";
-import ProductionQueueSection from "./ProductionQueueSection";
-import { PhysicalInventorySection } from "./PhysicalInventorySection";
+import { Boxes, Factory, History, RefreshCw, RotateCcw, ShoppingCart, Truck } from "lucide-react";
+import { buildAdminOperationsUrl, parseOperationsTab, type OperationsTab } from "@/lib/admin/operations-routing";
+import DirectProductionSection from "./DirectProductionSection";
+import DirectInventorySection from "./DirectInventorySection";
 import { DispatchSection } from "./DispatchSection";
 import { HistorySection } from "./HistorySection";
 import { PedidosSection } from "./PedidosSection";
@@ -35,29 +22,22 @@ interface OperationsCenterSectionProps {
 }
 
 interface OperationsDashboard {
-  commercial: { totalCommercialOrders: number; commercialConfirmed: number; commercialPaid: number; commercialTotalAmount: number };
-  production: { totalProductionOrders: number; productionDraft: number; productionStarted: number; productionCompleted: number };
+  commercial: { totalCommercialOrders: number; commercialPaid: number };
+  production: { totalProductionOrders: number; productionDraft: number; productionStarted: number; productionActive: number; productionCompleted: number };
   physicalUnits: { total: number; available: number; reserved: number; qaPending: number; qaFailed: number; dispatched: number; delivered: number; activated: number };
-  dispatch: { totalDispatches: number; dispatchDraft: number; dispatchReserved: number; dispatchDispatched: number; dispatchDelivered: number; deliveredPendingActivation: number };
-  warranties: { totalWarranties: number; warrantiesActive: number; warrantiesClaimOpen: number };
-  replacements: { totalReplacements: number; replacementsApproved: number; replacementsCompleted: number };
-  returns: { totalReturns: number; returnsReceived: number; returnsCompleted: number };
+  dispatch: { totalDispatches: number; dispatchReserved: number; dispatchDispatched: number; dispatchDelivered: number; deliveredPendingActivation: number };
+  warranties: { warrantiesClaimOpen: number };
+  replacements: { replacementsApproved: number };
+  returns: { returnsReceived: number };
 }
 
-const TABS: Array<{
-  id: OperationsTab;
-  label: string;
-  icon: React.ElementType;
-  shortLabel: string;
-  accent: string;
-  iconClass: string;
-}> = [
-  { id: "commercial", label: "Pedidos", icon: ShoppingCart, shortLabel: "01 · Entrada", accent: "bg-blue-50 text-blue-700 border-blue-100", iconClass: "bg-blue-100 text-blue-700" },
-  { id: "production", label: "Producción", icon: Factory, shortLabel: "02 · Fabricación", accent: "bg-violet-50 text-violet-700 border-violet-100", iconClass: "bg-violet-100 text-violet-700" },
-  { id: "inventory", label: "Inventario", icon: Boxes, shortLabel: "03 · Stock físico", accent: "bg-emerald-50 text-emerald-700 border-emerald-100", iconClass: "bg-emerald-100 text-emerald-700" },
-  { id: "dispatch", label: "Despachos", icon: Truck, shortLabel: "04 · Salida", accent: "bg-cyan-50 text-cyan-700 border-cyan-100", iconClass: "bg-cyan-100 text-cyan-700" },
-  { id: "postsales", label: "Postventa", icon: RotateCcw, shortLabel: "05 · Soporte", accent: "bg-amber-50 text-amber-800 border-amber-100", iconClass: "bg-amber-100 text-amber-800" },
-  { id: "history", label: "Historial", icon: History, shortLabel: "06 · Auditoría", accent: "bg-slate-50 text-slate-700 border-slate-200", iconClass: "bg-slate-200 text-slate-700" },
+const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType; iconClass: string }> = [
+  { id: "commercial", label: "Pedidos", icon: ShoppingCart, iconClass: "bg-blue-100 text-blue-700" },
+  { id: "production", label: "Producción", icon: Factory, iconClass: "bg-violet-100 text-violet-700" },
+  { id: "inventory", label: "Inventario", icon: Boxes, iconClass: "bg-emerald-100 text-emerald-700" },
+  { id: "dispatch", label: "Despachos", icon: Truck, iconClass: "bg-cyan-100 text-cyan-700" },
+  { id: "postsales", label: "Postventa", icon: RotateCcw, iconClass: "bg-amber-100 text-amber-800" },
+  { id: "history", label: "Historial", icon: History, iconClass: "bg-slate-200 text-slate-700" },
 ];
 
 const POSTSALES_TABS: Array<{ id: PostsalesTab; label: string }> = [
@@ -74,38 +54,31 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
   const router = useRouter();
   const searchParams = useSearchParams();
   const adminTab = searchParams.get("tab") || "dashboard";
-  const urlOperationsTab = parseOperationsTab(searchParams.get("op"));
-  const activeTab = adminTab === "inventory" ? urlOperationsTab : initialTab;
+  const activeTab = adminTab === "inventory" ? parseOperationsTab(searchParams.get("op")) : initialTab;
   const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
   const [dashboard, setDashboard] = useState<OperationsDashboard | null>(null);
-  const [dashboardLoading, setDashboardLoading] = useState(true);
-  const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
-  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
-
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const shouldRender = adminTab === "inventory" || adminTab === "pedidos" || adminTab === "tienda";
 
   const loadDashboard = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
-    if (silent) setDashboardRefreshing(true);
-    else setDashboardLoading(true);
-
+    if (silent) setRefreshing(true); else setLoading(true);
     try {
       const res = await fetch(`/api/admin/operations/dashboard?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "No se pudo cargar el estado operativo");
+      if (!res.ok) throw new Error(data.error || "No se pudo cargar operaciones");
       setDashboard(data.dashboard || null);
-      setGeneratedAt(data.generatedAt || null);
     } catch (error) {
       console.error("OPERATIONS_DASHBOARD_LOAD_ERROR", error);
     } finally {
-      setDashboardLoading(false);
-      setDashboardRefreshing(false);
+      setLoading(false); setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
     if (!shouldRender) return;
-    loadDashboard();
-    const interval = window.setInterval(() => loadDashboard({ silent: true }), 30_000);
+    void loadDashboard();
+    const interval = window.setInterval(() => void loadDashboard({ silent: true }), 15_000);
     return () => window.clearInterval(interval);
   }, [loadDashboard, shouldRender]);
 
@@ -114,124 +87,36 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
     router.push(buildAdminOperationsUrl(tab, searchParams.get("q")));
   }, [onTabChange, router, searchParams]);
 
-  const postSalesOpen = useMemo(() => {
-    if (!dashboard) return 0;
-    return dashboard.warranties.warrantiesClaimOpen + dashboard.replacements.replacementsApproved + dashboard.returns.returnsReceived;
-  }, [dashboard]);
+  const postSalesOpen = useMemo(() => (dashboard?.warranties.warrantiesClaimOpen || 0) + (dashboard?.replacements.replacementsApproved || 0) + (dashboard?.returns.returnsReceived || 0), [dashboard]);
 
-  const stageMetrics = useMemo<Record<OperationsTab, { value: number; detail: string; alert?: number }>>(() => ({
-    commercial: {
-      value: dashboard?.commercial.totalCommercialOrders || 0,
-      detail: `${compactNumber(dashboard?.commercial.commercialPaid)} pagos aprobados`,
-    },
-    production: {
-      value: dashboard?.production.productionStarted || 0,
-      detail: `${compactNumber(dashboard?.production.productionDraft)} pendientes · ${compactNumber(dashboard?.production.productionCompleted)} listas`,
-      alert: dashboard?.production.productionStarted || 0,
-    },
-    inventory: {
-      value: dashboard?.physicalUnits.available || 0,
-      detail: `${compactNumber(dashboard?.physicalUnits.reserved)} reservadas · ${compactNumber(dashboard?.physicalUnits.qaPending)} QC`,
-      alert: dashboard?.physicalUnits.qaFailed || 0,
-    },
-    dispatch: {
-      value: dashboard?.dispatch.dispatchDispatched || 0,
-      detail: `${compactNumber(dashboard?.dispatch.dispatchReserved)} preparadas · ${compactNumber(dashboard?.dispatch.dispatchDelivered)} entregadas`,
-      alert: dashboard?.dispatch.deliveredPendingActivation || 0,
-    },
-    postsales: {
-      value: postSalesOpen,
-      detail: `${compactNumber(dashboard?.warranties.warrantiesClaimOpen)} garantías · ${compactNumber(dashboard?.returns.returnsReceived)} devoluciones`,
-      alert: postSalesOpen,
-    },
-    history: {
-      value: dashboard?.physicalUnits.delivered || 0,
-      detail: `${compactNumber(dashboard?.physicalUnits.activated)} activadas`,
-    },
+  const metrics = useMemo<Record<OperationsTab, { value: number; attention: number }>>(() => ({
+    commercial: { value: dashboard?.commercial.totalCommercialOrders || 0, attention: 0 },
+    production: { value: dashboard?.production.productionActive || 0, attention: dashboard?.production.productionActive || 0 },
+    inventory: { value: dashboard?.physicalUnits.available || 0, attention: (dashboard?.physicalUnits.qaPending || 0) + (dashboard?.physicalUnits.qaFailed || 0) },
+    dispatch: { value: dashboard?.dispatch.dispatchDispatched || 0, attention: dashboard?.dispatch.deliveredPendingActivation || 0 },
+    postsales: { value: postSalesOpen, attention: postSalesOpen },
+    history: { value: dashboard?.physicalUnits.delivered || 0, attention: 0 },
   }), [dashboard, postSalesOpen]);
 
   if (!shouldRender) return null;
 
   const renderContent = () => {
     if (activeTab === "commercial") return <PedidosSection />;
-    if (activeTab === "production") return <ProductionQueueSection />;
-    if (activeTab === "inventory") return <PhysicalInventorySection />;
+    if (activeTab === "production") return <DirectProductionSection />;
+    if (activeTab === "inventory") return <DirectInventorySection />;
     if (activeTab === "dispatch") return <DispatchSection />;
     if (activeTab === "history") return <HistorySection />;
-
-    return (
-      <div className="space-y-4">
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex min-w-max gap-1" role="tablist" aria-label="Garantías y devoluciones">
-            {POSTSALES_TABS.map((tab) => {
-              const active = postsalesTab === tab.id;
-              return (
-                <button key={tab.id} type="button" role="tab" aria-selected={active} onClick={() => setPostsalesTab(tab.id)} className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${active ? "bg-white text-primary shadow-sm dark:bg-slate-800" : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"}`}>
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        {postsalesTab === "warranties" && <WarrantySection />}
-        {postsalesTab === "replacements" && <ReplacementSection />}
-        {postsalesTab === "returns" && <ReturnSection />}
-      </div>
-    );
+    return <div className="space-y-4"><div className="flex w-fit gap-1 rounded-xl bg-slate-100 p-1">{POSTSALES_TABS.map((tab) => <button key={tab.id} type="button" onClick={() => setPostsalesTab(tab.id)} className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest ${postsalesTab === tab.id ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}>{tab.label}</button>)}</div>{postsalesTab === "warranties" && <WarrantySection />}{postsalesTab === "replacements" && <ReplacementSection />}{postsalesTab === "returns" && <ReturnSection />}</div>;
   };
 
   return (
-    <div className="space-y-7 animate-in fade-in duration-500">
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_80px_-58px_rgba(15,23,42,0.28)]">
-        <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-          <div className="flex items-center gap-3">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_14px_rgba(16,185,129,0.45)]" />
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-400">Operación en vivo</p>
-              <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Centro de Operaciones</h2>
-            </div>
-          </div>
-          <button type="button" onClick={() => loadDashboard({ silent: true })} disabled={dashboardRefreshing} className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition hover:bg-white hover:text-slate-950 disabled:opacity-60 sm:self-auto">
-            <RefreshCw className={`h-3.5 w-3.5 ${dashboardRefreshing ? "animate-spin" : ""}`} />
-            Actualizar
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-6">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            const metric = stageMetrics[tab.id];
-            return (
-              <button key={tab.id} type="button" onClick={() => changeTab(tab.id)} className={`relative min-h-[132px] p-5 text-left transition-all ${active ? "z-10 bg-white shadow-[inset_0_-4px_0_#DA1A21]" : "bg-slate-50 hover:bg-white"}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${tab.iconClass}`}><Icon className="h-4 w-4" /></div>
-                  {metric.alert && metric.alert > 0 ? (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-amber-700">{compactNumber(metric.alert)} atención</span>
-                  ) : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-                </div>
-                <p className="mt-4 text-[8px] font-black uppercase tracking-[0.22em] text-slate-400">{tab.shortLabel}</p>
-                <div className="mt-1 flex items-end gap-2">
-                  <span className="text-2xl font-black tracking-tight text-slate-950">{dashboardLoading ? "—" : compactNumber(metric.value)}</span>
-                  <span className={`mb-1 rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${tab.accent}`}>{tab.label}</span>
-                </div>
-                <p className="mt-1 line-clamp-1 text-[9px] font-semibold text-slate-500">{metric.detail}</p>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-white px-5 py-3 text-[9px] font-semibold text-slate-500 sm:px-7">
-          <span>Físicas {compactNumber(dashboard?.physicalUnits.total)} · disponibles {compactNumber(dashboard?.physicalUnits.available)} · reservadas {compactNumber(dashboard?.physicalUnits.reserved)}</span>
-          <span>{generatedAt ? new Date(generatedAt).toLocaleTimeString("es-PA", { hour: "2-digit", minute: "2-digit" }) : "Sincronizando"}</span>
-        </div>
+    <div className="space-y-5 animate-in fade-in duration-300">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h2 className="text-base font-black text-slate-950">Centro de Operaciones</h2><button type="button" onClick={() => loadDashboard({ silent: true })} disabled={refreshing} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 disabled:opacity-50" aria-label="Actualizar"><RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /></button></div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 lg:grid-cols-6 lg:divide-y-0">{TABS.map((tab) => { const Icon = tab.icon; const active = activeTab === tab.id; const metric = metrics[tab.id]; return <button key={tab.id} type="button" onClick={() => changeTab(tab.id)} className={`min-h-[96px] p-4 text-left transition ${active ? "bg-white shadow-[inset_0_-3px_0_#DA1A21]" : "bg-slate-50 hover:bg-white"}`}><div className="flex items-center justify-between"><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tab.iconClass}`}><Icon className="h-4 w-4" /></span>{metric.attention > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[8px] font-black text-amber-700 ring-1 ring-amber-200">{metric.attention}</span>}</div><div className="mt-3 flex items-end justify-between gap-2"><span className="text-xl font-black text-slate-950">{loading ? "—" : compactNumber(metric.value)}</span><span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{tab.label}</span></div></button>; })}</div>
       </section>
-
       <div role="tabpanel">{renderContent()}</div>
-
-      {role === "imprenta" && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-[11px] font-bold text-indigo-700">Vista de imprenta limitada al Centro de Operaciones.</div>
-      )}
+      {role === "imprenta" && <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-[11px] font-bold text-indigo-700">Vista de imprenta</div>}
     </div>
   );
 }
