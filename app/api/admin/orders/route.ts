@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { USER_ROLES } from "@/domains/shared/constants";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
-import { OrderNotificationService } from "@/domains/notifications/services/order-notification.service";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 import { buildOperationsOrderViewModel } from "@/lib/operations/operations-order-view-model";
 import { buildCustomerProductionCode } from "@/lib/operations/customer-order-production";
@@ -291,6 +290,22 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    const requestedOrderStatus = orderStatus || order.orderStatus;
+    const requestsDispatchOwnedTransition =
+      requestedOrderStatus !== order.orderStatus &&
+      ["shipped", "completed"].includes(requestedOrderStatus);
+
+    if (requestsDispatchOwnedTransition) {
+      return NextResponse.json(
+        {
+          error: "DISPATCH_WORKFLOW_REQUIRED",
+          message:
+            "Los estados enviado y entregado se actualizan únicamente desde Centro de Operaciones > Despachos.",
+        },
+        { status: 409 }
+      );
+    }
+
     const purchasedChipLimit = OrderFulfillmentService.calculatePurchasedChips(order.items);
     const normalizedAssignedChipIds = OrderFulfillmentService.normalizeAssignedChipIds(
       Array.isArray(assignedChipIds) ? assignedChipIds : undefined
@@ -309,42 +324,6 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Fulfillment gating: validate state transitions.
-    const isPaymentApproved = order.paymentStatus === "paid" || order.adminReviewStatus === "approved";
-    const requestedOrderStatus = orderStatus || order.orderStatus;
-    const isShippedTransition = requestedOrderStatus === "shipped" && order.orderStatus !== "shipped";
-    const isCompletedTransition = requestedOrderStatus === "completed" && order.orderStatus !== "completed";
-
-    if ((isShippedTransition || isCompletedTransition) && !isPaymentApproved) {
-      return NextResponse.json(
-        {
-          error: "INVALID_ORDER_TRANSITION",
-          message: "El pedido no puede cambiar a ese estado con el pago o estado actual.",
-        },
-        { status: 409 }
-      );
-    }
-
-    if (isShippedTransition && order.orderStatus !== "processing") {
-      return NextResponse.json(
-        {
-          error: "INVALID_ORDER_TRANSITION",
-          message: "El pedido no puede cambiar a ese estado con el pago o estado actual.",
-        },
-        { status: 409 }
-      );
-    }
-
-    if (isCompletedTransition && order.orderStatus !== "shipped") {
-      return NextResponse.json(
-        {
-          error: "INVALID_ORDER_TRANSITION",
-          message: "El pedido no puede cambiar a ese estado con el pago o estado actual.",
-        },
-        { status: 409 }
-      );
-    }
-
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: {
@@ -353,9 +332,9 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
-    const isFulfilling = ["shipped", "completed"].includes(updatedOrder.orderStatus);
-
-    if ((generateTokens || isFulfilling) && order.items.length > 0) {
+    // Legacy token generation remains supported for historical non-manual orders,
+    // but physical shipping/delivery is owned exclusively by OperationDispatch.
+    if (generateTokens && order.items.length > 0) {
       let totalChips = 0;
       let totalProfiles = 0;
 
@@ -435,48 +414,6 @@ export async function PATCH(req: NextRequest) {
           }
         }
       }
-    }
-
-    if (isFulfilling) {
-      const orderTokens = await prisma.chipClaimToken.findMany({
-        where: { orderId: id },
-        select: { chipId: true },
-      });
-      const chipIdsToUpdate = orderTokens.map((t: { chipId: string }) => t.chipId);
-
-      if (chipIdsToUpdate.length > 0) {
-        await prisma.chip.updateMany({
-          where: {
-            id: { in: chipIdsToUpdate },
-            status: "inventory",
-          },
-          data: { status: "sold" },
-        });
-      }
-    }
-
-    const newStatus = orderStatus || updatedOrder.orderStatus;
-    const oldStatus = order.orderStatus;
-
-    if (newStatus === "completed" && oldStatus !== "completed") {
-      await OrderNotificationService.notifyPaymentValidated({
-        ...updatedOrder,
-        customerEmail: updatedOrder.customerEmail || order.customerEmail || order.user?.email,
-        customerName:
-          updatedOrder.customerName ||
-          order.customerName ||
-          `${order.user?.profile?.firstName || ""} ${order.user?.profile?.lastName || ""}`.trim(),
-        items: order.items,
-      });
-    } else if (newStatus === "shipped" && oldStatus !== "shipped") {
-      await OrderNotificationService.notifyOrderShipped({
-        ...updatedOrder,
-        customerEmail: updatedOrder.customerEmail || order.customerEmail || order.user?.email,
-        customerName:
-          updatedOrder.customerName ||
-          order.customerName ||
-          `${order.user?.profile?.firstName || ""} ${order.user?.profile?.lastName || ""}`.trim(),
-      });
     }
 
     return NextResponse.json({ order: updatedOrder, message: "Estado de orden actualizado" });
