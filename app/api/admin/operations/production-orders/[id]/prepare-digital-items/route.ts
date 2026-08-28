@@ -24,6 +24,10 @@ function getProductionProductCode(
   return null;
 }
 
+function buildProductionBatchPrefix(productionCode: string) {
+  return productionCode.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64) || "PROD";
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -84,7 +88,7 @@ export async function POST(
             name: `Lote digital ${productionOrder.code}`,
             productType: productionOrder.outputType,
             finishedGoodCode,
-            prefix: productionOrder.code.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "PROD",
+            prefix: buildProductionBatchPrefix(productionOrder.code),
             startNumber: 1,
             endNumber: Math.max(targetQuantity, 1),
             quantity: Math.max(targetQuantity, 1),

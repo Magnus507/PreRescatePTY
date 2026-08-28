@@ -58,6 +58,8 @@ type ProductionOrder = {
   digitalItems?: DigitalItem[];
 };
 
+type ProductionFilter = "active" | "completed" | "all";
+
 const STATUS_LABELS: Record<string, string> = {
   draft: "Pendiente",
   planned: "Preparando",
@@ -89,6 +91,7 @@ export default function DirectProductionSection() {
   const [finishedGoodId, setFinishedGoodId] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [creating, setCreating] = useState(false);
+  const [productionFilter, setProductionFilter] = useState<ProductionFilter>("active");
 
   const loadDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
@@ -104,7 +107,7 @@ export default function DirectProductionSection() {
     }
   }, []);
 
-  const loadData = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+  const loadData = useCallback(async ({ silent = false, refreshDetail = true }: { silent?: boolean; refreshDetail?: boolean } = {}) => {
     if (silent) setRefreshing(true);
     else setLoading(true);
     try {
@@ -121,7 +124,7 @@ export default function DirectProductionSection() {
         : [];
       setProducts(activeProducts);
       if (!finishedGoodId && activeProducts[0]?.id) setFinishedGoodId(activeProducts[0].id);
-      if (selectedOrderId) await loadDetail(selectedOrderId);
+      if (refreshDetail && selectedOrderId) await loadDetail(selectedOrderId);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al actualizar producción");
     } finally {
@@ -160,7 +163,7 @@ export default function DirectProductionSection() {
       setShowCreate(false);
       setQuantity("1");
       setSelectedOrderId(data.productionOrder?.id || null);
-      await loadData({ silent: true });
+      await loadData({ silent: true, refreshDetail: false });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al crear producción");
     } finally {
@@ -179,8 +182,10 @@ export default function DirectProductionSection() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo completar la acción");
       toast.success(success);
-      if (selectedOrderId) await loadDetail(selectedOrderId);
-      await loadData({ silent: true });
+      await Promise.all([
+        selectedOrderId ? loadDetail(selectedOrderId) : Promise.resolve(),
+        loadData({ silent: true, refreshDetail: false }),
+      ]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al actualizar producción");
     } finally {
@@ -198,6 +203,12 @@ export default function DirectProductionSection() {
 
   const allDigitalReady = Boolean(detail?.digitalItems?.length) && (detail?.digitalItems || []).every((item) => item.nfcProgrammed && item.qrPrepared && item.shortCode);
   const activeCount = orders.filter((order) => !["completed", "cancelled"].includes(order.status)).length;
+  const completedCount = orders.filter((order) => order.status === "completed").length;
+  const visibleOrders = useMemo(() => {
+    if (productionFilter === "completed") return orders.filter((order) => order.status === "completed");
+    if (productionFilter === "all") return orders;
+    return orders.filter((order) => !["completed", "cancelled"].includes(order.status));
+  }, [orders, productionFilter]);
 
   return (
     <div className="space-y-4">
@@ -225,8 +236,23 @@ export default function DirectProductionSection() {
         ) : orders.length === 0 ? (
           <div className="py-12 text-center text-sm font-bold text-slate-400">Sin producción</div>
         ) : (
+          <div>
+            <div className="flex flex-wrap gap-1 border-b border-slate-100 bg-slate-50 p-2">
+              {[
+                { id: "active" as const, label: `Activas (${activeCount})` },
+                { id: "completed" as const, label: `Completadas (${completedCount})` },
+                { id: "all" as const, label: `Todas (${orders.length})` },
+              ].map((filter) => (
+                <button key={filter.id} type="button" onClick={() => setProductionFilter(filter.id)} className={`rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-wider ${productionFilter === filter.id ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:bg-white"}`}>
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            {visibleOrders.length === 0 ? (
+              <div className="py-10 text-center text-sm font-bold text-slate-400">Sin producción en esta vista</div>
+            ) : (
           <div className="divide-y divide-slate-100">
-            {orders.map((order) => {
+            {visibleOrders.map((order) => {
               const selected = selectedOrderId === order.id;
               return (
                 <button key={order.id} type="button" onClick={() => setSelectedOrderId(selected ? null : order.id)} className={`grid w-full gap-3 px-4 py-4 text-left md:grid-cols-[1.2fr_1fr_110px_110px_120px] md:items-center ${selected ? "bg-violet-50/60" : "hover:bg-slate-50"}`}>
@@ -238,6 +264,8 @@ export default function DirectProductionSection() {
                 </button>
               );
             })}
+          </div>
+            )}
           </div>
         )}
       </div>

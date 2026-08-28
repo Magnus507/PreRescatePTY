@@ -30,46 +30,44 @@ export async function POST(req: NextRequest) {
   const createdById = auth.session.user.id || null;
 
   try {
-    const productionOrder = await prisma.$transaction(async (tx) => {
-      const finishedGood = await tx.operationFinishedGood.findUnique({
-        where: { id: parsed.data.finishedGoodId },
-        select: { id: true, code: true, name: true, productType: true, status: true },
-      });
+    const finishedGood = await prisma.operationFinishedGood.findUnique({
+      where: { id: parsed.data.finishedGoodId },
+      select: { id: true, code: true, name: true, productType: true, status: true },
+    });
 
-      if (!finishedGood) throw new Error("PRODUCT_NOT_FOUND");
-      if (finishedGood.status !== "active") throw new Error("PRODUCT_INACTIVE");
+    if (!finishedGood) throw new Error("PRODUCT_NOT_FOUND");
+    if (finishedGood.status !== "active") throw new Error("PRODUCT_INACTIVE");
 
-      const code = buildProductionCode(finishedGood.code);
-      return tx.operationProductionOrder.create({
-        data: {
-          code,
-          title: `Producción para stock · ${finishedGood.name}`,
-          status: "draft",
-          plannedQuantity: parsed.data.plannedQuantity,
-          producedQuantity: 0,
-          outputType: finishedGood.productType,
-          notes: null,
-          events: {
-            create: {
-              eventType: "CREATED",
-              quantity: parsed.data.plannedQuantity,
-              reason: "Producción interna para stock",
-              metadataJson: JSON.stringify({
-                source: "internal_stock",
-                finishedGoodId: finishedGood.id,
-                productCode: finishedGood.code,
-                productName: finishedGood.name,
-                productType: finishedGood.productType,
-              }),
-              createdById,
-            },
+    const code = buildProductionCode(finishedGood.code);
+    const productionOrder = await prisma.operationProductionOrder.create({
+      data: {
+        code,
+        title: `Producción para stock · ${finishedGood.name}`,
+        status: "draft",
+        plannedQuantity: parsed.data.plannedQuantity,
+        producedQuantity: 0,
+        outputType: finishedGood.productType,
+        notes: null,
+        events: {
+          create: {
+            eventType: "CREATED",
+            quantity: parsed.data.plannedQuantity,
+            reason: "Producción interna para stock",
+            metadataJson: JSON.stringify({
+              source: "internal_stock",
+              finishedGoodId: finishedGood.id,
+              productCode: finishedGood.code,
+              productName: finishedGood.name,
+              productType: finishedGood.productType,
+            }),
+            createdById,
           },
         },
-        include: {
-          digitalItems: true,
-          events: { orderBy: { createdAt: "desc" } },
-        },
-      });
+      },
+      include: {
+        digitalItems: true,
+        events: { orderBy: { createdAt: "desc" } },
+      },
     });
 
     return NextResponse.json({ productionOrder }, { status: 201 });

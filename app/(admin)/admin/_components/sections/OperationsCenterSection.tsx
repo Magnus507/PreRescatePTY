@@ -22,7 +22,7 @@ interface OperationsCenterSectionProps {
 }
 
 interface OperationsDashboard {
-  commercial: { totalCommercialOrders: number; commercialPaid: number };
+  commercial: { totalCommercialOrders: number; activePedidosOrders: number; commercialPaid: number };
   production: { totalProductionOrders: number; productionDraft: number; productionStarted: number; productionActive: number; productionCompleted: number };
   physicalUnits: { total: number; available: number; reserved: number; qaPending: number; qaFailed: number; dispatched: number; delivered: number; activated: number };
   dispatch: { totalDispatches: number; dispatchReserved: number; dispatchDispatched: number; dispatchDelivered: number; deliveredPendingActivation: number };
@@ -90,7 +90,7 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
   const postSalesOpen = useMemo(() => (dashboard?.warranties.warrantiesClaimOpen || 0) + (dashboard?.replacements.replacementsApproved || 0) + (dashboard?.returns.returnsReceived || 0), [dashboard]);
 
   const metrics = useMemo<Record<OperationsTab, { value: number; attention: number }>>(() => ({
-    commercial: { value: dashboard?.commercial.totalCommercialOrders || 0, attention: 0 },
+    commercial: { value: dashboard?.commercial.activePedidosOrders || 0, attention: dashboard?.commercial.activePedidosOrders || 0 },
     production: { value: dashboard?.production.productionActive || 0, attention: dashboard?.production.productionActive || 0 },
     inventory: { value: dashboard?.physicalUnits.available || 0, attention: (dashboard?.physicalUnits.qaPending || 0) + (dashboard?.physicalUnits.qaFailed || 0) },
     dispatch: { value: dashboard?.dispatch.dispatchDispatched || 0, attention: dashboard?.dispatch.deliveredPendingActivation || 0 },
