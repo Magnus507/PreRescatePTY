@@ -5,10 +5,8 @@ import { useSession } from "next-auth/react";
 import { Search, Loader2, Activity } from "lucide-react";
 import { getLegacyAdminTabTarget } from "@/lib/admin/operations-routing";
 
-// Domain & Hooks
 import { useAdminManager } from "./_hooks/useAdminManager";
 
-// Sections
 import { DashboardSection } from "./_components/sections/DashboardSection";
 import { ChipsSection } from "./_components/sections/ChipsSection";
 import { UsersSection } from "./_components/sections/UsersSection";
@@ -17,12 +15,10 @@ import { OperationsCenterSection } from "./_components/sections/OperationsCenter
 import { AdminsSection } from "./_components/sections/AdminsSection";
 import { SettingsSection } from "./_components/sections/SettingsSection";
 
-// Details
 import { ChipDetailView } from "./_components/details/ChipDetail";
 import { UserDetailView } from "./_components/details/UserDetail";
 import { OrgDetailView } from "./_components/details/OrgDetail";
 
-// Modals
 import { OrgCreateModal } from "./_components/modals/OrgCreateModal";
 import { ComboSelectorModal } from "./_components/modals/ComboSelectorModal";
 
@@ -86,42 +82,14 @@ function AdminDashboard() {
     ? admin.operations.tab
     : legacyOperationsTarget || "commercial";
 
-  const dynamicLabels: Record<string, { title: string; subtitle: string; placeholder: string }> = {
-    dashboard: {
-      title: "Dashboard de Control",
-      subtitle: "Métricas críticas y monitoreo de salud del ecosistema",
-      placeholder: "Analizar métricas...",
-    },
-    users: {
-      title: "Usuarios & Perfiles",
-      subtitle: "Gestión de perfiles vitales y cuentas de usuario",
-      placeholder: "Buscar por nombre o correo...",
-    },
-    chips: {
-      title: "Identificadores (Chips)",
-      subtitle: "Control maestro de chips digitales y estado de servicio",
-      placeholder: "Buscar por código serial...",
-    },
-    empresas: {
-      title: "Cuentas Corporativas",
-      subtitle: "Administración de entidades, colegios y flotas",
-      placeholder: "Buscar organización...",
-    },
-    inventory: {
-      title: "Centro de Operaciones",
-      subtitle: "Pedidos, producción, inventario y despachos",
-      placeholder: "Buscar pedido, unidad o despacho...",
-    },
-    admins: {
-      title: "Administradores",
-      subtitle: "Control de acceso y auditoría administrativa",
-      placeholder: "Buscar administradores...",
-    },
-    settings: {
-      title: "Ajustes del Sistema",
-      subtitle: "Configuración global de la plataforma, pagos y comunicaciones",
-      placeholder: "Buscar ajuste...",
-    },
+  const dynamicLabels: Record<string, { title: string; placeholder: string }> = {
+    dashboard: { title: "Dashboard", placeholder: "Buscar..." },
+    users: { title: "Usuarios", placeholder: "Buscar por nombre o correo..." },
+    chips: { title: "Identificadores", placeholder: "Buscar por código serial..." },
+    empresas: { title: "Cuentas Corporativas", placeholder: "Buscar organización..." },
+    inventory: { title: "Centro de Operaciones", placeholder: "Buscar pedido, unidad o despacho..." },
+    admins: { title: "Administradores", placeholder: "Buscar administradores..." },
+    settings: { title: "Ajustes", placeholder: "Buscar ajuste..." },
   };
 
   useEffect(() => {
@@ -131,18 +99,17 @@ function AdminDashboard() {
   }, [isPrintRole, admin.tab, admin.setTab]);
 
   const currentTabInfo = dynamicLabels[isOperationsTab ? "inventory" : admin.tab] || {
-    title: "Módulo en Gestión",
-    subtitle: "Infraestructura PreRescatePTY v3.1",
+    title: "Administración",
     placeholder: "Buscar...",
   };
 
   const headerWrapperClassName = isOperationsTab
-    ? "w-full px-6 py-10 relative z-10"
-    : "max-w-7xl mx-auto px-8 py-10 relative z-10";
+    ? "w-full px-6 py-5 relative z-10"
+    : "max-w-7xl mx-auto px-8 py-5 relative z-10";
 
   const mainWrapperClassName = isOperationsTab
-    ? "w-full px-6 py-10"
-    : "max-w-7xl mx-auto px-6 py-10";
+    ? "w-full px-6 py-8"
+    : "max-w-7xl mx-auto px-6 py-8";
 
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [showComboModal, setShowComboModal] = useState(false);
@@ -218,41 +185,27 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-card border-b border-border shadow-sm overflow-hidden relative">
-        <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-          <Activity className="h-64 w-64 animate-pulse" />
-        </div>
-
-        <div className={headerWrapperClassName}>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-1.5 w-8 bg-primary rounded-full" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary antialiased">Módulo Activo</span>
-              </div>
-              <h1 className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white">
+      {!isOperationsTab && (
+        <div className="bg-card border-b border-border shadow-sm">
+          <div className={headerWrapperClassName}>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 {currentTabInfo.title}
               </h1>
-              <p className="text-sm font-bold text-muted-foreground mt-2 max-w-xl leading-relaxed">
-                {currentTabInfo.subtitle}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="relative group flex-1 md:flex-none">
-                <Search className="h-4 w-4 absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <div className="relative w-full md:w-72">
+                <Search className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder={currentTabInfo.placeholder}
                   value={admin.search.query}
-                  className="bg-muted/30 border-2 border-transparent focus:border-primary/10 rounded-3xl pl-12 pr-8 py-4 text-xs focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all w-full md:w-72 font-black uppercase tracking-widest placeholder:opacity-50"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-xs font-bold outline-none transition focus:border-primary/30 focus:ring-4 focus:ring-primary/5 dark:border-slate-700 dark:bg-slate-900"
                   onChange={(e) => admin.search.setQuery(e.target.value)}
                 />
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className={mainWrapperClassName}>
         <div className="min-h-[60vh]">
