@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { Search, Loader2, Activity } from "lucide-react";
+import { getLegacyAdminTabTarget } from "@/lib/admin/operations-routing";
 
 // Domain & Hooks
 import { useAdminManager } from "./_hooks/useAdminManager";
@@ -24,8 +25,6 @@ import { OrgDetailView } from "./_components/details/OrgDetail";
 // Modals
 import { OrgCreateModal } from "./_components/modals/OrgCreateModal";
 import { ComboSelectorModal } from "./_components/modals/ComboSelectorModal";
-
-// ─── Utility Helpers ─────────────────────────────────────────────────────────
 
 function formatDate(d: string) {
   if (!d) return "—";
@@ -53,12 +52,8 @@ function serviceColor(s: string) {
   }
 }
 
-// ─── Main Page Entry ─────────────────────────────────────────────────────────
-
 export default function AdminPage() {
   const { data: session, status: authStatus } = useSession();
-
-  // Redirection is handled by middleware and AdminLayout
 
   if (authStatus === "loading") {
     return (
@@ -80,82 +75,66 @@ export default function AdminPage() {
   );
 }
 
-
 function AdminDashboard() {
   const admin = useAdminManager();
   const { data: session } = useSession();
   const role = session?.user?.role;
-  const isPrintRole = role === 'imprenta';
-  const isOperationsTab = admin.tab === 'inventory';
+  const isPrintRole = role === "imprenta";
+  const legacyOperationsTarget = getLegacyAdminTabTarget(admin.tab);
+  const isOperationsTab = admin.tab === "inventory" || legacyOperationsTarget !== null;
+  const operationsInitialTab = admin.tab === "inventory"
+    ? admin.operations.tab
+    : legacyOperationsTarget || "commercial";
 
   const dynamicLabels: Record<string, { title: string; subtitle: string; placeholder: string }> = {
-    dashboard: { 
-      title: "Dashboard de Control", 
+    dashboard: {
+      title: "Dashboard de Control",
       subtitle: "Métricas críticas y monitoreo de salud del ecosistema",
-      placeholder: "Analizar métricas..." 
+      placeholder: "Analizar métricas...",
     },
-    users: { 
-      title: "Usuarios & Perfiles", 
+    users: {
+      title: "Usuarios & Perfiles",
       subtitle: "Gestión de perfiles vitales y cuentas de usuario",
-      placeholder: "Buscar por nombre o correo..." 
+      placeholder: "Buscar por nombre o correo...",
     },
-    chips: { 
-      title: "Identificadores (Chips)", 
+    chips: {
+      title: "Identificadores (Chips)",
       subtitle: "Control maestro de chips digitales y estado de servicio",
-      placeholder: "Buscar por código serial..." 
+      placeholder: "Buscar por código serial...",
     },
-    empresas: { 
-      title: "Cuentas Corporativas", 
+    empresas: {
+      title: "Cuentas Corporativas",
       subtitle: "Administración de entidades, colegios y flotas",
-      placeholder: "Buscar organización..." 
+      placeholder: "Buscar organización...",
     },
-    inventory: { 
+    inventory: {
       title: "Centro de Operaciones",
       subtitle: "Pedidos, producción, inventario y despachos",
-      placeholder: "Buscar pedido, unidad o despacho..."
+      placeholder: "Buscar pedido, unidad o despacho...",
     },
-    admins: { 
-      title: "Administradores", 
+    admins: {
+      title: "Administradores",
       subtitle: "Control de acceso y auditoría administrativa",
-      placeholder: "Buscar administradores..." 
-    },
-    pedidos: {
-      title: "Ventas & Pedidos",
-      subtitle: "Gestión de compras, chips+ y validaciones de pago",
-      placeholder: "Buscar pedidos..."
-    },
-    tienda: {
-      title: "Tienda PTY Management",
-      subtitle: "Gestión de productos adicionales, stock y ventas de la tienda",
-      placeholder: "Buscar productos..."
+      placeholder: "Buscar administradores...",
     },
     settings: {
       title: "Ajustes del Sistema",
       subtitle: "Configuración global de la plataforma, pagos y comunicaciones",
-      placeholder: "Buscar ajuste..."
-    }
+      placeholder: "Buscar ajuste...",
+    },
   };
 
   useEffect(() => {
-    if (isPrintRole && admin.tab !== 'inventory') {
-      admin.setTab('inventory');
+    if (isPrintRole && admin.tab !== "inventory") {
+      admin.setTab("inventory");
     }
-  }, [isPrintRole, admin.tab, admin]);
+  }, [isPrintRole, admin.tab, admin.setTab]);
 
-  const currentTabInfo = dynamicLabels[admin.tab] || { 
-    title: "Módulo en Gestión", 
+  const currentTabInfo = dynamicLabels[isOperationsTab ? "inventory" : admin.tab] || {
+    title: "Módulo en Gestión",
     subtitle: "Infraestructura PreRescatePTY v3.1",
-    placeholder: "Buscar..." 
+    placeholder: "Buscar...",
   };
-
-  const redirectTab = admin.tab === "pedidos" || admin.tab === "tienda" || admin.tab === "chips"
-    ? "inventory"
-    : null;
-  const operationsInitialTab = admin.tab === "pedidos"
-    ? "commercial"
-    : admin.tab === "tienda" || admin.tab === "chips"
-      ? "inventory"
-      : "commercial";
 
   const headerWrapperClassName = isOperationsTab
     ? "w-full px-6 py-10 relative z-10"
@@ -165,14 +144,12 @@ function AdminDashboard() {
     ? "w-full px-6 py-10"
     : "max-w-7xl mx-auto px-6 py-10";
 
-  // -- UI States --
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [showComboModal, setShowComboModal] = useState(false);
-  
-  // -- Master Detail Selection --
+
   if (admin.chips.selectedChip) {
     return (
-      <ChipDetailView 
+      <ChipDetailView
         chip={admin.chips.selectedChip}
         loading={admin.chips.loading}
         reactivating={admin.chips.creating}
@@ -188,20 +165,20 @@ function AdminDashboard() {
   if (admin.users.selectedUser) {
     return (
       <>
-        <UserDetailView 
+        <UserDetailView
           user={admin.users.selectedUser}
           onBack={() => admin.users.setSelectedUser(null)}
           onAction={admin.users.handleAdminAction}
           onRefresh={() => admin.users.reloadSelectedUser()}
           formatDate={formatDate}
           onViewInventory={(accId) => {
-              admin.filters.setAccount(accId);
-              admin.setTab("chips");
-              admin.users.setSelectedUser(null);
+            admin.filters.setAccount(accId);
+            admin.setTab("chips");
+            admin.users.setSelectedUser(null);
           }}
           onOpenComboSelector={() => setShowComboModal(true)}
         />
-        <ComboSelectorModal 
+        <ComboSelectorModal
           isOpen={showComboModal}
           onClose={() => setShowComboModal(false)}
           loading={admin.users.loading}
@@ -218,11 +195,11 @@ function AdminDashboard() {
   if (admin.orgs.selectedOrg) {
     const org = admin.orgs.selectedOrg;
     return (
-      <OrgDetailView 
+      <OrgDetailView
         org={org}
         onBack={() => admin.orgs.setSelectedOrg(null)}
         onAction={admin.users.handleAdminAction}
-        onAddUser={() => {}} // Placeholder for future refined modal
+        onAddUser={() => {}}
         onDeleteOrg={admin.orgs.deleteOrg}
         onDeleteMember={(userId: string) => admin.users.handleAdminAction(userId, "delete-user", {})}
         onLoadChip={admin.chips.loadChipDetail}
@@ -233,60 +210,54 @@ function AdminDashboard() {
     );
   }
 
-  // ─── Actions ───────────────────────────────────────────────────────────────
-  
   const handleDeleteUser = async (userId: string, email: string) => {
     const ok = confirm(`¿Estás seguro de eliminar permanentemente a ${email}? Esta acción no se puede deshacer.`);
     if (!ok) return;
     return admin.users.handleAdminAction(userId, "delete-user", { email });
   };
 
-  // ─── Main Tabs View ────────────────────────────────────────────────────────
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Info */}
       <div className="bg-card border-b border-border shadow-sm overflow-hidden relative">
         <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-           <Activity className="h-64 w-64 animate-pulse" />
+          <Activity className="h-64 w-64 animate-pulse" />
         </div>
 
         <div className={headerWrapperClassName}>
-           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                   <div className="h-1.5 w-8 bg-primary rounded-full" />
-                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary antialiased">Módulo Activo</span>
-                </div>
-                <h1 className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white">
-                   {currentTabInfo.title}
-                </h1>
-                <p className="text-sm font-bold text-muted-foreground mt-2 max-w-xl leading-relaxed">
-                   {currentTabInfo.subtitle}
-                </p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-1.5 w-8 bg-primary rounded-full" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary antialiased">Módulo Activo</span>
               </div>
-              
-              <div className="flex items-center gap-4 w-full md:w-auto">
-                 <div className="relative group flex-1 md:flex-none">
-                    <Search className="h-4 w-4 absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <input 
-                      type="text" 
-                      placeholder={currentTabInfo.placeholder}
-                      value={admin.search.query}
-                      className="bg-muted/30 border-2 border-transparent focus:border-primary/10 rounded-3xl pl-12 pr-8 py-4 text-xs focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all w-full md:w-72 font-black uppercase tracking-widest placeholder:opacity-50"
-                      onChange={(e) => admin.search.setQuery(e.target.value)}
-                    />
-                 </div>
+              <h1 className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white">
+                {currentTabInfo.title}
+              </h1>
+              <p className="text-sm font-bold text-muted-foreground mt-2 max-w-xl leading-relaxed">
+                {currentTabInfo.subtitle}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="relative group flex-1 md:flex-none">
+                <Search className="h-4 w-4 absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <input
+                  type="text"
+                  placeholder={currentTabInfo.placeholder}
+                  value={admin.search.query}
+                  className="bg-muted/30 border-2 border-transparent focus:border-primary/10 rounded-3xl pl-12 pr-8 py-4 text-xs focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all w-full md:w-72 font-black uppercase tracking-widest placeholder:opacity-50"
+                  onChange={(e) => admin.search.setQuery(e.target.value)}
+                />
               </div>
-           </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className={mainWrapperClassName}>
         <div className="min-h-[60vh]">
           {admin.tab === "dashboard" && (
-            <DashboardSection 
+            <DashboardSection
               stats={admin.stats.stats}
               recentScans={admin.stats.recentScans}
               recentUsers={admin.stats.recentUsers}
@@ -303,7 +274,7 @@ function AdminDashboard() {
           )}
 
           {admin.tab === "chips" && (
-            <ChipsSection 
+            <ChipsSection
               chips={admin.chips.chips}
               total={admin.chips.total}
               loading={admin.chips.loading}
@@ -322,7 +293,7 @@ function AdminDashboard() {
           )}
 
           {admin.tab === "users" && (
-            <UsersSection 
+            <UsersSection
               users={admin.users.users}
               total={admin.users.total}
               loading={admin.users.loading}
@@ -336,7 +307,7 @@ function AdminDashboard() {
           )}
 
           {admin.tab === "empresas" && (
-            <OrganizationsSection 
+            <OrganizationsSection
               organizations={admin.orgs.organizations}
               loading={admin.orgs.loading}
               setShowOrgModal={setShowOrgModal}
@@ -347,47 +318,37 @@ function AdminDashboard() {
             />
           )}
 
-          {["inventory", "pedidos", "tienda", "chips"].includes(admin.tab) && (
+          {isOperationsTab && (
             <OperationsCenterSection
               role={role}
               initialTab={operationsInitialTab}
             />
           )}
 
-          {redirectTab && admin.tab !== "inventory" && (
-            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              {admin.tab === "pedidos" && "Ventas & Pedidos ahora se gestiona desde Centro de Operaciones > Pedidos."}
-              {admin.tab === "tienda" && "Tienda Admin ahora se gestiona desde Centro de Operaciones > Inventario."}
-              {admin.tab === "chips" && "Gestión de Chips ahora se gestiona desde Centro de Operaciones > Inventario."}
-            </div>
-          )}
-
           {admin.tab === "admins" && (
-            <AdminsSection 
-               admins={admin.users.adminUsers}
-               loading={admin.users.loading}
-               creating={admin.users.creating}
-               loadAdmins={() => admin.users.loadAdminAccounts()}
-               onCreateAdmin={admin.users.createAdmin}
-               onUpdateAdmin={admin.users.updateAdmin}
-               onDeleteAdmin={admin.users.deleteAdmin}
+            <AdminsSection
+              admins={admin.users.adminUsers}
+              loading={admin.users.loading}
+              creating={admin.users.creating}
+              loadAdmins={() => admin.users.loadAdminAccounts()}
+              onCreateAdmin={admin.users.createAdmin}
+              onUpdateAdmin={admin.users.updateAdmin}
+              onDeleteAdmin={admin.users.deleteAdmin}
             />
           )}
 
-          {admin.tab === "settings" && (
-            <SettingsSection />
-          )}
+          {admin.tab === "settings" && <SettingsSection />}
 
           {!["dashboard", "chips", "users", "empresas", "inventory", "admins", "pedidos", "tienda", "settings"].includes(admin.tab) && (
             <div className="flex flex-col items-center justify-center py-20 text-slate-300">
-               <Activity className="h-10 w-10 opacity-20 mb-4" />
-               <p className="text-xs font-black uppercase tracking-widest">Módulo en mantenimiento.</p>
+              <Activity className="h-10 w-10 opacity-20 mb-4" />
+              <p className="text-xs font-black uppercase tracking-widest">Módulo en mantenimiento.</p>
             </div>
           )}
         </div>
       </div>
 
-      <OrgCreateModal 
+      <OrgCreateModal
         isOpen={showOrgModal}
         onClose={() => setShowOrgModal(false)}
         onSubmit={admin.orgs.createOrg}
