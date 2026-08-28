@@ -84,7 +84,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (data?.state?.isOrganization) {
-      router.push("/dashboard/empresas");
+      router.push("/dashboard/empresa");
     }
   }, [data, router]);
 
