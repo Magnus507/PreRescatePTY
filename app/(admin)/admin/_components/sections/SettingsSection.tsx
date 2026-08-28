@@ -273,9 +273,6 @@ export function SettingsSection() {
                     value={configs.sender_email}
                     onChange={(e) => setConfigs({ ...configs, sender_email: e.target.value })}
                   />
-                  <p className="text-[10px] font-bold text-muted-foreground italic mt-2 ml-1">
-                     Este correo se usará para enviar las confirmaciones de pago y códigos de activación. Asegúrate de tenerlo configurado en Resend.
-                  </p>
                </div>
 
                <div className="space-y-2">
@@ -287,9 +284,6 @@ export function SettingsSection() {
                     value={configs.demo_profile_shortcode}
                     onChange={(e) => setConfigs({ ...configs, demo_profile_shortcode: e.target.value })}
                   />
-                  <p className="text-[10px] font-bold text-muted-foreground italic mt-2 ml-1">
-                    Este es el ShortCode que se utiliza para el código QR de demostración en la landing page y el Admin Showcase.
-                  </p>
                </div>
             </div>
          </div>

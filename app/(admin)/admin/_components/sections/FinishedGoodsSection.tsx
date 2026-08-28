@@ -271,7 +271,10 @@ function getStoreMapping(product: StoreProduct | null): StoreProductMapping | nu
 }
 
 function getMappedStoreProduct(storeProducts: StoreProduct[], code: string) {
-  return storeProducts.find((product) => matchesOperationsMarker(product, code)) || null;
+  return storeProducts.find((product) => product.operationalMappingMeta?.productCode === code)
+    || storeProducts.find((product) => product.operationalMapping?.productCode === code)
+    || storeProducts.find((product) => matchesOperationsMarker(product, code))
+    || null;
 }
 
 export function FinishedGoodsSection() {
@@ -1607,9 +1610,6 @@ export function FinishedGoodsSection() {
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-primary">Publicar en tienda</p>
                   <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{publishTarget.name}</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Define precio, descripción, categoría, visibilidad e imagen comercial.
-                  </p>
                 </div>
                 <button
                   type="button"
@@ -1705,9 +1705,6 @@ export function FinishedGoodsSection() {
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-primary">Editar mapeo operativo</p>
                   <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{mappingTarget.name}</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Define sección, publicación y flujo. El producto base operativo debe existir para publicarse.
-                  </p>
                 </div>
                 <button
                   type="button"
@@ -1725,12 +1722,11 @@ export function FinishedGoodsSection() {
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Producto base operativo</span>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                     {(() => {
-                      const base = storeProducts.find((product) => product.id === mappingForm.finishedGoodId) || null;
+                      const base = finishedGoods.find((product) => product.id === mappingForm.finishedGoodId) || null;
                       if (!base) {
                         return (
                           <div className="space-y-1">
                             <p className="text-sm font-bold text-slate-700">Sin producto base seleccionado</p>
-                            <p className="text-[11px] font-semibold text-slate-500">Nombre o código operativo del producto base.</p>
                           </div>
                         );
                       }
@@ -1738,7 +1734,7 @@ export function FinishedGoodsSection() {
                       return (
                         <div className="space-y-1">
                           <p className="text-sm font-black text-slate-950">{base.name}</p>
-                          <p className="text-[11px] font-semibold text-slate-600">Código: {base.productCode || "Sin código operativo"}</p>
+                          <p className="text-[11px] font-semibold text-slate-600">Código: {base.code}</p>
                           <p className="text-[10px] font-semibold text-slate-500">ID técnico: {base.id}</p>
                         </div>
                       );
@@ -1851,9 +1847,6 @@ export function FinishedGoodsSection() {
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Personalizable</span>
                   </label>
                 </div>
-                <p className="text-[11px] font-semibold text-slate-500 md:col-span-2">
-                  Este mapeo define cómo el producto base aparece en tienda. No crea inventario ni activa dispositivos.
-                </p>
               </div>
 
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

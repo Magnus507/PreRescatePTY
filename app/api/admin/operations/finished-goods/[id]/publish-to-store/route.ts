@@ -32,6 +32,7 @@ export async function POST(
     }
 
     const result = await syncOperationsProductToStore({
+      finishedGoodId: finishedGood.id,
       operationsProductCode: finishedGood.code,
       operationsProductName: finishedGood.name,
       productType: finishedGood.code,
@@ -54,6 +55,13 @@ export async function POST(
         price: true,
         stock: true,
         image: true,
+        operationalMapping: {
+          include: {
+            finishedGood: {
+              select: { id: true, code: true, name: true, productType: true, status: true },
+            },
+          },
+        },
       },
     });
 

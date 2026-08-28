@@ -97,12 +97,12 @@ interface ProductionOrder {
 
 type ProductionFlowStage = "identity" | "print" | "assembly" | "qc" | "result";
 
-const FLOW_STAGES: Array<{ id: ProductionFlowStage; title: string; description: string }> = [
-  { id: "identity", title: "Identidad digital / QR / NFC", description: "Genera y valida shortCode, QR y NFC canónicos." },
-  { id: "print", title: "Imprenta", description: "Envía la identidad digital a imprenta y confirma recepción." },
-  { id: "assembly", title: "Ensamblaje físico", description: "Completa chip, sticker y empaque por unidad y deja la unidad lista para QC." },
-  { id: "qc", title: "QC de la orden", description: "Aprobación o rechazo por unidad dentro de Producción." },
-  { id: "result", title: "Salida a inventario", description: "Muestra el resultado final de cada unidad." },
+const FLOW_STAGES: Array<{ id: ProductionFlowStage; title: string }> = [
+  { id: "identity", title: "Identidad digital / QR / NFC" },
+  { id: "print", title: "Imprenta" },
+  { id: "assembly", title: "Ensamblaje físico" },
+  { id: "qc", title: "QC de la orden" },
+  { id: "result", title: "Salida a inventario" },
 ];
 
 function getOriginTypeLabel(order: ProductionOrder) {
@@ -906,7 +906,6 @@ export default function ProductionQueueSection() {
                         <h4 className="mt-1 text-base font-black tracking-tight text-slate-950">
                           {stage.title}
                         </h4>
-                        <p className="mt-1 text-sm font-semibold text-slate-500">{stage.description}</p>
                         <p className="mt-2 text-xs font-black uppercase tracking-widest text-slate-500">
                           {stageMeta[stage.id].summary}
                         </p>
@@ -1025,9 +1024,7 @@ export default function ProductionQueueSection() {
                               <div>
                                 <p className="text-xs font-black uppercase tracking-widest text-slate-500">Orden a imprenta</p>
                                 <p className="mt-1 text-sm font-semibold text-slate-600">
-                                  {hasPrintOrder
-                                    ? "La orden digital ya tiene un lote asociado para imprenta."
-                                    : "Esta acción envía los QR/link preparados a imprenta. No crea inventario ni asigna usuario final."}
+                                  {hasPrintOrder ? "Lote de imprenta asociado" : "Pendiente de envío a imprenta"}
                                 </p>
                               </div>
                               <button type="button" onClick={() => handleSendToPrint(selectedProductionOrder)} disabled={!allDigitalReady || !allCanonicalIdentities} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-800 disabled:opacity-50">

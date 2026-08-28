@@ -52,8 +52,8 @@ export async function GET() {
 
     const catalog = products
       .map((product) => {
-        const operationsProductCode = extractOperationsProductCode(product);
         const mapping = product.operationalMapping || null;
+        const operationsProductCode = mapping?.productCode || extractOperationsProductCode(product);
         if (!operationsProductCode && !mapping?.isPublished) return null;
         if (mapping && (!mapping.storeSection || !isStoreSection(mapping.storeSection))) return null;
         if (!hasValidPublicOperationalBase(mapping)) return null;

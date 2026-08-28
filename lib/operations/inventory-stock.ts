@@ -95,10 +95,19 @@ export async function loadInventoryStockRows() {
 
   const storeProducts = await prisma.product.findMany({
     orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, productType: true, description: true, isActive: true },
+    select: {
+      id: true,
+      name: true,
+      productType: true,
+      description: true,
+      isActive: true,
+      operationalMapping: {
+        select: { productCode: true, isPublished: true },
+      },
+    },
   });
 
-  const productLookup = new Map<string, { id: string; name: string; productType: string; description: string | null; isActive: boolean }>();
+  const productLookup = new Map<string, { id: string; name: string; productType: string; description: string | null; isActive: boolean; operationalMapping?: { productCode: string | null; isPublished: boolean } | null }>();
   for (const storeProduct of storeProducts) {
     const code = extractOperationsProductCode(storeProduct);
     if (code) productLookup.set(code, storeProduct);
@@ -110,13 +119,13 @@ export async function loadInventoryStockRows() {
     const matchedStoreProduct = productLookup.get(product.code) || null;
     rows.set(
       product.code,
-      emptyRow(product.code, product.name, product.productType, matchedStoreProduct?.id || null, matchedStoreProduct?.isActive ?? false)
+      emptyRow(product.code, product.name, product.productType, matchedStoreProduct?.id || null, Boolean(matchedStoreProduct?.isActive && matchedStoreProduct.operationalMapping?.isPublished))
     );
   }
 
   for (const unit of units) {
     const matchedStoreProduct = productLookup.get(unit.productCode);
-    const current = rows.get(unit.productCode) || emptyRow(unit.productCode, unit.productName, unit.productType, matchedStoreProduct?.id || null, matchedStoreProduct?.isActive ?? false);
+    const current = rows.get(unit.productCode) || emptyRow(unit.productCode, unit.productName, unit.productType, matchedStoreProduct?.id || null, Boolean(matchedStoreProduct?.isActive && matchedStoreProduct.operationalMapping?.isPublished));
     current.totalUnits += 1;
     current.lastUpdatedAt = unit.updatedAt.toISOString();
 
