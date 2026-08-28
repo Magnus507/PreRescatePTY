@@ -34,6 +34,8 @@ export type InventoryUnitDetail = {
   updatedAt: string;
 };
 
+const HIDDEN_INVENTORY_STATUSES = ["discarded", "cancelled"] as const;
+
 function emptyRow(code: string, name: string, productType: string, productId: string | null, visible: boolean): InventoryStockRow {
   return {
     productCode: code,
@@ -73,6 +75,7 @@ export async function loadInventoryStockRows() {
       select: { id: true, code: true, name: true, productType: true, status: true },
     }),
     prisma.operationFinishedGoodUnit.findMany({
+      where: { status: { notIn: [...HIDDEN_INVENTORY_STATUSES] } },
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
@@ -112,12 +115,13 @@ export async function loadInventoryStockRows() {
   }
 
   for (const unit of units) {
-    const current = rows.get(unit.productCode) || emptyRow(unit.productCode, unit.productName, unit.productType, productLookup.get(unit.productCode)?.id || null, productLookup.get(unit.productCode)?.isActive ?? false);
+    const matchedStoreProduct = productLookup.get(unit.productCode);
+    const current = rows.get(unit.productCode) || emptyRow(unit.productCode, unit.productName, unit.productType, matchedStoreProduct?.id || null, matchedStoreProduct?.isActive ?? false);
     current.totalUnits += 1;
     current.lastUpdatedAt = unit.updatedAt.toISOString();
 
     if (unit.status === "available" && unit.qaStatus === "passed" && unit.activationStatus === "not_activated" && !unit.reservedOrderId) current.availableCount += 1;
-    if (unit.status === "reserved") current.reservedCount += 1;
+    if (unit.status === "reserved" || unit.reservedOrderId) current.reservedCount += 1;
     if (unit.status === "qa_pending" || unit.qaStatus === "pending") current.qaPendingCount += 1;
     if (unit.status === "qa_failed" || unit.qaStatus === "failed") current.qaFailedCount += 1;
     if (unit.status === "dispatched") current.dispatchedCount += 1;
@@ -134,7 +138,10 @@ export async function loadInventoryStockDetail(productCode: string) {
   const rows = await loadInventoryStockRows();
   const row = rows.find((item) => item.productCode === productCode);
   const units = await prisma.operationFinishedGoodUnit.findMany({
-    where: { productCode },
+    where: {
+      productCode,
+      status: { notIn: [...HIDDEN_INVENTORY_STATUSES] },
+    },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -150,12 +157,7 @@ export async function loadInventoryStockDetail(productCode: string) {
       createdAt: true,
       updatedAt: true,
       dispatchItems: {
-        select: {
-          dispatchId: true,
-          dispatch: {
-            select: { id: true },
-          },
-        },
+        select: { dispatchId: true },
         take: 1,
       },
       digitalBatchItem: {
@@ -166,35 +168,18 @@ export async function loadInventoryStockDetail(productCode: string) {
 
   const summary = units.reduce((acc, unit) => {
     acc.total += 1;
-    if (unit.status === "available" && unit.qaStatus === "passed" && unit.activationStatus === "not_activated" && !unit.reservedOrderId) {
-      acc.available += 1;
-    }
-    if (unit.status === "reserved" || unit.reservedOrderId) {
-      acc.reserved += 1;
-    }
-    if (unit.status === "qa_pending" || unit.qaStatus === "pending") {
-      acc.qaPending += 1;
-    }
-    if (unit.status === "qa_failed" || unit.qaStatus === "failed") {
-      acc.qaFailed += 1;
-    }
-    if (unit.status === "dispatched" || unit.dispatchedAt) {
-      acc.dispatched += 1;
-    }
-    if (unit.status === "delivered" || unit.deliveredAt) {
-      acc.delivered += 1;
-    }
-    if (unit.activationStatus === "activated") {
-      acc.activated += 1;
-    }
+    if (unit.status === "available" && unit.qaStatus === "passed" && unit.activationStatus === "not_activated" && !unit.reservedOrderId) acc.available += 1;
+    if (unit.status === "reserved" || unit.reservedOrderId) acc.reserved += 1;
+    if (unit.status === "qa_pending" || unit.qaStatus === "pending") acc.qaPending += 1;
+    if (unit.status === "qa_failed" || unit.qaStatus === "failed") acc.qaFailed += 1;
+    if (unit.status === "dispatched" || unit.dispatchedAt) acc.dispatched += 1;
+    if (unit.status === "delivered" || unit.deliveredAt) acc.delivered += 1;
+    if (unit.activationStatus === "activated") acc.activated += 1;
     return acc;
   }, emptySummary());
 
   return {
-    summary: {
-      ...(row || null),
-      ...summary,
-    },
+    summary: { ...(row || null), ...summary },
     units: units.map((unit) => ({
       id: unit.id,
       internalLabel: unit.internalLabel,

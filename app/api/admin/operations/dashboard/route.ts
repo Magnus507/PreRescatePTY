@@ -6,6 +6,9 @@ import { MoneyInput, parseMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
+const ACTIVE_PRODUCTION_STATUSES = ["draft", "planned", "sent_to_print", "print_received", "started", "paused", "qa_pending"];
+const HIDDEN_INVENTORY_STATUSES = ["discarded", "cancelled"];
+
 function numberOrZero(value: MoneyInput) {
   return Number.parseFloat(parseMoney(value).toFixed(2));
 }
@@ -22,6 +25,7 @@ export async function GET() {
       totalProductionOrders,
       productionDraft,
       productionStarted,
+      productionActive,
       productionCompleted,
       productionProduced,
       totalQcInspections,
@@ -72,36 +76,27 @@ export async function GET() {
       prisma.operationProductionOrder.count(),
       prisma.operationProductionOrder.count({ where: { status: "draft" } }),
       prisma.operationProductionOrder.count({ where: { status: "started" } }),
+      prisma.operationProductionOrder.count({ where: { status: { in: ACTIVE_PRODUCTION_STATUSES } } }),
       prisma.operationProductionOrder.count({ where: { status: "completed" } }),
       prisma.operationProductionOrder.aggregate({ _sum: { producedQuantity: true } }),
       prisma.operationQcInspection.count(),
       prisma.operationQcInspection.count({ where: { status: "pending" } }),
       prisma.operationQcInspection.count({ where: { status: "in_progress" } }),
       prisma.operationQcInspection.count({ where: { status: "completed" } }),
-      prisma.operationQcInspection.aggregate({
-        _sum: {
-          passedQuantity: true,
-          failedQuantity: true,
-        },
-      }),
+      prisma.operationQcInspection.aggregate({ _sum: { passedQuantity: true, failedQuantity: true } }),
       prisma.operationPackingBatch.count(),
       prisma.operationPackingBatch.count({ where: { status: "in_progress" } }),
       prisma.operationPackingBatch.count({ where: { status: "completed" } }),
       prisma.operationPackingBatch.aggregate({ _sum: { packedQuantity: true } }),
       prisma.operationFinishedGood.count(),
       prisma.operationFinishedGoodEvent.count(),
-      prisma.operationFinishedGoodEvent.groupBy({
-        by: ["eventType"],
-        _sum: { quantity: true },
-      }),
+      prisma.operationFinishedGoodEvent.groupBy({ by: ["eventType"], _sum: { quantity: true } }),
       prisma.operationDispatch.count(),
       prisma.operationDispatch.count({ where: { status: "draft" } }),
       prisma.operationDispatch.count({ where: { status: "reserved" } }),
       prisma.operationDispatch.count({ where: { status: "dispatched" } }),
       prisma.operationDispatch.count({ where: { status: "delivered" } }),
-      prisma.operationFinishedGoodUnit.count({
-        where: { status: "delivered", activationStatus: "not_activated" },
-      }),
+      prisma.operationFinishedGoodUnit.count({ where: { status: "delivered", activationStatus: "not_activated" } }),
       prisma.operationCommercialOrder.count(),
       prisma.operationCommercialOrder.count({ where: { status: "confirmed" } }),
       prisma.operationCommercialOrder.count({ where: { paymentStatus: "paid" } }),
@@ -116,20 +111,15 @@ export async function GET() {
       prisma.operationReturn.count(),
       prisma.operationReturn.count({ where: { status: "received" } }),
       prisma.operationReturn.count({ where: { status: "completed" } }),
-      prisma.operationReturnEvent.aggregate({
-        where: { eventType: "RETURNED_TO_INVENTORY" },
-        _sum: { quantity: true },
-      }),
-      prisma.operationFinishedGoodUnit.count(),
-      prisma.operationFinishedGoodUnit.count({
-        where: { status: "available", qaStatus: "passed", activationStatus: "not_activated" },
-      }),
+      prisma.operationReturnEvent.aggregate({ where: { eventType: "RETURNED_TO_INVENTORY" }, _sum: { quantity: true } }),
+      prisma.operationFinishedGoodUnit.count({ where: { status: { notIn: HIDDEN_INVENTORY_STATUSES } } }),
+      prisma.operationFinishedGoodUnit.count({ where: { status: "available", qaStatus: "passed", activationStatus: "not_activated", reservedOrderId: null } }),
       prisma.operationFinishedGoodUnit.count({ where: { status: "reserved" } }),
-      prisma.operationFinishedGoodUnit.count({ where: { qaStatus: "pending" } }),
-      prisma.operationFinishedGoodUnit.count({ where: { qaStatus: "failed" } }),
+      prisma.operationFinishedGoodUnit.count({ where: { status: { notIn: HIDDEN_INVENTORY_STATUSES }, qaStatus: "pending" } }),
+      prisma.operationFinishedGoodUnit.count({ where: { status: { notIn: HIDDEN_INVENTORY_STATUSES }, qaStatus: "failed" } }),
       prisma.operationFinishedGoodUnit.count({ where: { status: "dispatched" } }),
       prisma.operationFinishedGoodUnit.count({ where: { status: "delivered" } }),
-      prisma.operationFinishedGoodUnit.count({ where: { activationStatus: "activated" } }),
+      prisma.operationFinishedGoodUnit.count({ where: { status: { notIn: HIDDEN_INVENTORY_STATUSES }, activationStatus: "activated" } }),
     ]);
 
     const totalAvailableBalance = calculateFinishedGoodBalance(
@@ -141,15 +131,12 @@ export async function GET() {
 
     return NextResponse.json({
       dashboard: {
-        materials: {
-          totalMaterials,
-          activeMaterials,
-          materialEventsCount,
-        },
+        materials: { totalMaterials, activeMaterials, materialEventsCount },
         production: {
           totalProductionOrders,
           productionDraft,
           productionStarted,
+          productionActive,
           productionCompleted,
           totalProducedQuantity: numberOrZero(productionProduced._sum.producedQuantity),
         },
@@ -161,17 +148,8 @@ export async function GET() {
           totalPassedQuantity: numberOrZero(qcQuantities._sum.passedQuantity),
           totalFailedQuantity: numberOrZero(qcQuantities._sum.failedQuantity),
         },
-        packing: {
-          totalPackingBatches,
-          packingInProgress,
-          packingCompleted,
-          totalPackedQuantity: numberOrZero(packingPacked._sum.packedQuantity),
-        },
-        finishedGoods: {
-          totalFinishedGoods,
-          totalFinishedGoodEvents,
-          totalAvailableBalance,
-        },
+        packing: { totalPackingBatches, packingInProgress, packingCompleted, totalPackedQuantity: numberOrZero(packingPacked._sum.packedQuantity) },
+        finishedGoods: { totalFinishedGoods, totalFinishedGoodEvents, totalAvailableBalance },
         physicalUnits: {
           total: physicalUnitsTotal,
           available: physicalUnitsAvailable,
@@ -182,45 +160,16 @@ export async function GET() {
           delivered: physicalUnitsDelivered,
           activated: physicalUnitsActivated,
         },
-        dispatch: {
-          totalDispatches,
-          dispatchDraft,
-          dispatchReserved,
-          dispatchDispatched,
-          dispatchDelivered,
-          deliveredPendingActivation,
-        },
-        commercial: {
-          totalCommercialOrders,
-          commercialConfirmed,
-          commercialPaid,
-          commercialTotalAmount: numberOrZero(commercialAmount._sum.totalAmount),
-        },
-        warranties: {
-          totalWarranties,
-          warrantiesActive,
-          warrantiesClaimOpen,
-          warrantiesExpired,
-        },
-        replacements: {
-          totalReplacements,
-          replacementsApproved,
-          replacementsCompleted,
-        },
-        returns: {
-          totalReturns,
-          returnsReceived,
-          returnsCompleted,
-          totalReturnedToInventoryQuantity: numberOrZero(returnedToInventory._sum.quantity),
-        },
+        dispatch: { totalDispatches, dispatchDraft, dispatchReserved, dispatchDispatched, dispatchDelivered, deliveredPendingActivation },
+        commercial: { totalCommercialOrders, commercialConfirmed, commercialPaid, commercialTotalAmount: numberOrZero(commercialAmount._sum.totalAmount) },
+        warranties: { totalWarranties, warrantiesActive, warrantiesClaimOpen, warrantiesExpired },
+        replacements: { totalReplacements, replacementsApproved, replacementsCompleted },
+        returns: { totalReturns, returnsReceived, returnsCompleted, totalReturnedToInventoryQuantity: numberOrZero(returnedToInventory._sum.quantity) },
       },
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
     console.error("[operations/dashboard] GET error:", error);
-    return NextResponse.json(
-      { error: "Error al cargar dashboard de operaciones" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error al cargar dashboard de operaciones" }, { status: 500 });
   }
 }
