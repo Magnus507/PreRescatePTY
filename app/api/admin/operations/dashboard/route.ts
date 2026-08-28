@@ -1,3 +1,4 @@
+import { OperationFinishedGoodUnitStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
@@ -7,7 +8,7 @@ import { MoneyInput, parseMoney } from "@/lib/money";
 export const dynamic = "force-dynamic";
 
 const ACTIVE_PRODUCTION_STATUSES = ["draft", "planned", "sent_to_print", "print_received", "started", "paused", "qa_pending"];
-const HIDDEN_INVENTORY_STATUSES = ["discarded", "cancelled"];
+const HIDDEN_INVENTORY_STATUSES: OperationFinishedGoodUnitStatus[] = ["discarded", "cancelled"];
 
 function numberOrZero(value: MoneyInput) {
   return Number.parseFloat(parseMoney(value).toFixed(2));
@@ -123,43 +124,17 @@ export async function GET() {
     ]);
 
     const totalAvailableBalance = calculateFinishedGoodBalance(
-      finishedGoodEventTotals.map((item) => ({
-        eventType: item.eventType,
-        quantity: numberOrZero(item._sum.quantity),
-      }))
+      finishedGoodEventTotals.map((item) => ({ eventType: item.eventType, quantity: numberOrZero(item._sum.quantity) }))
     );
 
     return NextResponse.json({
       dashboard: {
         materials: { totalMaterials, activeMaterials, materialEventsCount },
-        production: {
-          totalProductionOrders,
-          productionDraft,
-          productionStarted,
-          productionActive,
-          productionCompleted,
-          totalProducedQuantity: numberOrZero(productionProduced._sum.producedQuantity),
-        },
-        qc: {
-          totalQcInspections,
-          qcPending,
-          qcInProgress,
-          qcCompleted,
-          totalPassedQuantity: numberOrZero(qcQuantities._sum.passedQuantity),
-          totalFailedQuantity: numberOrZero(qcQuantities._sum.failedQuantity),
-        },
+        production: { totalProductionOrders, productionDraft, productionStarted, productionActive, productionCompleted, totalProducedQuantity: numberOrZero(productionProduced._sum.producedQuantity) },
+        qc: { totalQcInspections, qcPending, qcInProgress, qcCompleted, totalPassedQuantity: numberOrZero(qcQuantities._sum.passedQuantity), totalFailedQuantity: numberOrZero(qcQuantities._sum.failedQuantity) },
         packing: { totalPackingBatches, packingInProgress, packingCompleted, totalPackedQuantity: numberOrZero(packingPacked._sum.packedQuantity) },
         finishedGoods: { totalFinishedGoods, totalFinishedGoodEvents, totalAvailableBalance },
-        physicalUnits: {
-          total: physicalUnitsTotal,
-          available: physicalUnitsAvailable,
-          reserved: physicalUnitsReserved,
-          qaPending: physicalUnitsQaPending,
-          qaFailed: physicalUnitsQaFailed,
-          dispatched: physicalUnitsDispatched,
-          delivered: physicalUnitsDelivered,
-          activated: physicalUnitsActivated,
-        },
+        physicalUnits: { total: physicalUnitsTotal, available: physicalUnitsAvailable, reserved: physicalUnitsReserved, qaPending: physicalUnitsQaPending, qaFailed: physicalUnitsQaFailed, dispatched: physicalUnitsDispatched, delivered: physicalUnitsDelivered, activated: physicalUnitsActivated },
         dispatch: { totalDispatches, dispatchDraft, dispatchReserved, dispatchDispatched, dispatchDelivered, deliveredPendingActivation },
         commercial: { totalCommercialOrders, commercialConfirmed, commercialPaid, commercialTotalAmount: numberOrZero(commercialAmount._sum.totalAmount) },
         warranties: { totalWarranties, warrantiesActive, warrantiesClaimOpen, warrantiesExpired },
