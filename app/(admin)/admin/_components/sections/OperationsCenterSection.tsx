@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Boxes,
   CheckCircle2,
@@ -11,7 +12,11 @@ import {
   ShoppingCart,
   Truck,
 } from "lucide-react";
-import type { OperationsTab } from "@/lib/admin/operations-routing";
+import {
+  buildAdminOperationsUrl,
+  parseOperationsTab,
+  type OperationsTab,
+} from "@/lib/admin/operations-routing";
 import ProductionQueueSection from "./ProductionQueueSection";
 import { PhysicalInventorySection } from "./PhysicalInventorySection";
 import { DispatchSection } from "./DispatchSection";
@@ -30,51 +35,13 @@ interface OperationsCenterSectionProps {
 }
 
 interface OperationsDashboard {
-  commercial: {
-    totalCommercialOrders: number;
-    commercialConfirmed: number;
-    commercialPaid: number;
-    commercialTotalAmount: number;
-  };
-  production: {
-    totalProductionOrders: number;
-    productionDraft: number;
-    productionStarted: number;
-    productionCompleted: number;
-  };
-  physicalUnits: {
-    total: number;
-    available: number;
-    reserved: number;
-    qaPending: number;
-    qaFailed: number;
-    dispatched: number;
-    delivered: number;
-    activated: number;
-  };
-  dispatch: {
-    totalDispatches: number;
-    dispatchDraft: number;
-    dispatchReserved: number;
-    dispatchDispatched: number;
-    dispatchDelivered: number;
-    deliveredPendingActivation: number;
-  };
-  warranties: {
-    totalWarranties: number;
-    warrantiesActive: number;
-    warrantiesClaimOpen: number;
-  };
-  replacements: {
-    totalReplacements: number;
-    replacementsApproved: number;
-    replacementsCompleted: number;
-  };
-  returns: {
-    totalReturns: number;
-    returnsReceived: number;
-    returnsCompleted: number;
-  };
+  commercial: { totalCommercialOrders: number; commercialConfirmed: number; commercialPaid: number; commercialTotalAmount: number };
+  production: { totalProductionOrders: number; productionDraft: number; productionStarted: number; productionCompleted: number };
+  physicalUnits: { total: number; available: number; reserved: number; qaPending: number; qaFailed: number; dispatched: number; delivered: number; activated: number };
+  dispatch: { totalDispatches: number; dispatchDraft: number; dispatchReserved: number; dispatchDispatched: number; dispatchDelivered: number; deliveredPendingActivation: number };
+  warranties: { totalWarranties: number; warrantiesActive: number; warrantiesClaimOpen: number };
+  replacements: { totalReplacements: number; replacementsApproved: number; replacementsCompleted: number };
+  returns: { totalReturns: number; returnsReceived: number; returnsCompleted: number };
 }
 
 const TABS: Array<{
@@ -104,21 +71,25 @@ function compactNumber(value: number | null | undefined) {
 }
 
 export function OperationsCenterSection({ role, initialTab = "commercial", onTabChange }: OperationsCenterSectionProps) {
-  const [activeTab, setActiveTab] = useState<OperationsTab>(initialTab);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const adminTab = searchParams.get("tab") || "dashboard";
+  const urlOperationsTab = parseOperationsTab(searchParams.get("op"));
+  const activeTab = adminTab === "inventory" ? urlOperationsTab : initialTab;
   const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
   const [dashboard, setDashboard] = useState<OperationsDashboard | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
 
+  const shouldRender = adminTab === "inventory" || adminTab === "pedidos" || adminTab === "tienda";
+
   const loadDashboard = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) setDashboardRefreshing(true);
     else setDashboardLoading(true);
 
     try {
-      const res = await fetch(`/api/admin/operations/dashboard?_t=${Date.now()}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`/api/admin/operations/dashboard?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo cargar el estado operativo");
       setDashboard(data.dashboard || null);
@@ -132,61 +103,54 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
   }, []);
 
   useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
-
-  useEffect(() => {
+    if (!shouldRender) return;
     loadDashboard();
     const interval = window.setInterval(() => loadDashboard({ silent: true }), 30_000);
     return () => window.clearInterval(interval);
-  }, [loadDashboard]);
+  }, [loadDashboard, shouldRender]);
 
   const changeTab = useCallback((tab: OperationsTab) => {
-    setActiveTab(tab);
     onTabChange?.(tab);
-  }, [onTabChange]);
+    router.push(buildAdminOperationsUrl(tab, searchParams.get("q")));
+  }, [onTabChange, router, searchParams]);
 
   const postSalesOpen = useMemo(() => {
     if (!dashboard) return 0;
-    return (
-      dashboard.warranties.warrantiesClaimOpen +
-      dashboard.replacements.replacementsApproved +
-      dashboard.returns.returnsReceived
-    );
+    return dashboard.warranties.warrantiesClaimOpen + dashboard.replacements.replacementsApproved + dashboard.returns.returnsReceived;
   }, [dashboard]);
 
-  const stageMetrics = useMemo<Record<OperationsTab, { value: number; detail: string; alert?: number }>>(() => {
-    return {
-      commercial: {
-        value: dashboard?.commercial.totalCommercialOrders || 0,
-        detail: `${compactNumber(dashboard?.commercial.commercialPaid)} pagos aprobados`,
-      },
-      production: {
-        value: dashboard?.production.productionStarted || 0,
-        detail: `${compactNumber(dashboard?.production.productionDraft)} pendientes · ${compactNumber(dashboard?.production.productionCompleted)} listas`,
-        alert: dashboard?.production.productionStarted || 0,
-      },
-      inventory: {
-        value: dashboard?.physicalUnits.available || 0,
-        detail: `${compactNumber(dashboard?.physicalUnits.reserved)} reservadas · ${compactNumber(dashboard?.physicalUnits.qaPending)} QC`,
-        alert: dashboard?.physicalUnits.qaFailed || 0,
-      },
-      dispatch: {
-        value: dashboard?.dispatch.dispatchDispatched || 0,
-        detail: `${compactNumber(dashboard?.dispatch.dispatchReserved)} preparadas · ${compactNumber(dashboard?.dispatch.dispatchDelivered)} entregadas`,
-        alert: dashboard?.dispatch.deliveredPendingActivation || 0,
-      },
-      postsales: {
-        value: postSalesOpen,
-        detail: `${compactNumber(dashboard?.warranties.warrantiesClaimOpen)} garantías · ${compactNumber(dashboard?.returns.returnsReceived)} devoluciones`,
-        alert: postSalesOpen,
-      },
-      history: {
-        value: dashboard?.physicalUnits.delivered || 0,
-        detail: `${compactNumber(dashboard?.physicalUnits.activated)} activadas`,
-      },
-    };
-  }, [dashboard, postSalesOpen]);
+  const stageMetrics = useMemo<Record<OperationsTab, { value: number; detail: string; alert?: number }>>(() => ({
+    commercial: {
+      value: dashboard?.commercial.totalCommercialOrders || 0,
+      detail: `${compactNumber(dashboard?.commercial.commercialPaid)} pagos aprobados`,
+    },
+    production: {
+      value: dashboard?.production.productionStarted || 0,
+      detail: `${compactNumber(dashboard?.production.productionDraft)} pendientes · ${compactNumber(dashboard?.production.productionCompleted)} listas`,
+      alert: dashboard?.production.productionStarted || 0,
+    },
+    inventory: {
+      value: dashboard?.physicalUnits.available || 0,
+      detail: `${compactNumber(dashboard?.physicalUnits.reserved)} reservadas · ${compactNumber(dashboard?.physicalUnits.qaPending)} QC`,
+      alert: dashboard?.physicalUnits.qaFailed || 0,
+    },
+    dispatch: {
+      value: dashboard?.dispatch.dispatchDispatched || 0,
+      detail: `${compactNumber(dashboard?.dispatch.dispatchReserved)} preparadas · ${compactNumber(dashboard?.dispatch.dispatchDelivered)} entregadas`,
+      alert: dashboard?.dispatch.deliveredPendingActivation || 0,
+    },
+    postsales: {
+      value: postSalesOpen,
+      detail: `${compactNumber(dashboard?.warranties.warrantiesClaimOpen)} garantías · ${compactNumber(dashboard?.returns.returnsReceived)} devoluciones`,
+      alert: postSalesOpen,
+    },
+    history: {
+      value: dashboard?.physicalUnits.delivered || 0,
+      detail: `${compactNumber(dashboard?.physicalUnits.activated)} activadas`,
+    },
+  }), [dashboard, postSalesOpen]);
+
+  if (!shouldRender) return null;
 
   const renderContent = () => {
     if (activeTab === "commercial") return <PedidosSection />;
@@ -202,18 +166,7 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
             {POSTSALES_TABS.map((tab) => {
               const active = postsalesTab === tab.id;
               return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setPostsalesTab(tab.id)}
-                  className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
-                    active
-                      ? "bg-white text-primary shadow-sm dark:bg-slate-800"
-                      : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                  }`}
-                >
+                <button key={tab.id} type="button" role="tab" aria-selected={active} onClick={() => setPostsalesTab(tab.id)} className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${active ? "bg-white text-primary shadow-sm dark:bg-slate-800" : "text-slate-500 hover:bg-white/70 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"}`}>
                   {tab.label}
                 </button>
               );
@@ -238,13 +191,7 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
               <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Centro de Operaciones</h2>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => loadDashboard({ silent: true })}
-            disabled={dashboardRefreshing}
-            className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition hover:bg-white hover:text-slate-950 disabled:opacity-60 sm:self-auto"
-          >
+          <button type="button" onClick={() => loadDashboard({ silent: true })} disabled={dashboardRefreshing} className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 transition hover:bg-white hover:text-slate-950 disabled:opacity-60 sm:self-auto">
             <RefreshCw className={`h-3.5 w-3.5 ${dashboardRefreshing ? "animate-spin" : ""}`} />
             Actualizar
           </button>
@@ -256,39 +203,17 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
             const active = activeTab === tab.id;
             const metric = stageMetrics[tab.id];
             return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => changeTab(tab.id)}
-                className={`relative min-h-[132px] p-5 text-left transition-all ${
-                  active
-                    ? "z-10 bg-white shadow-[inset_0_-4px_0_#DA1A21]"
-                    : "bg-slate-50 hover:bg-white"
-                }`}
-              >
+              <button key={tab.id} type="button" onClick={() => changeTab(tab.id)} className={`relative min-h-[132px] p-5 text-left transition-all ${active ? "z-10 bg-white shadow-[inset_0_-4px_0_#DA1A21]" : "bg-slate-50 hover:bg-white"}`}>
                 <div className="flex items-start justify-between gap-3">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${tab.iconClass}`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${tab.iconClass}`}><Icon className="h-4 w-4" /></div>
                   {metric.alert && metric.alert > 0 ? (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-amber-700">
-                      {compactNumber(metric.alert)} atención
-                    </span>
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  )}
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-amber-700">{compactNumber(metric.alert)} atención</span>
+                  ) : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
                 </div>
-
-                <p className="mt-4 text-[8px] font-black uppercase tracking-[0.22em] text-slate-400">
-                  {tab.shortLabel}
-                </p>
+                <p className="mt-4 text-[8px] font-black uppercase tracking-[0.22em] text-slate-400">{tab.shortLabel}</p>
                 <div className="mt-1 flex items-end gap-2">
-                  <span className="text-2xl font-black tracking-tight text-slate-950">
-                    {dashboardLoading ? "—" : compactNumber(metric.value)}
-                  </span>
-                  <span className={`mb-1 rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${tab.accent}`}>
-                    {tab.label}
-                  </span>
+                  <span className="text-2xl font-black tracking-tight text-slate-950">{dashboardLoading ? "—" : compactNumber(metric.value)}</span>
+                  <span className={`mb-1 rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${tab.accent}`}>{tab.label}</span>
                 </div>
                 <p className="mt-1 line-clamp-1 text-[9px] font-semibold text-slate-500">{metric.detail}</p>
               </button>
@@ -297,21 +222,15 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-white px-5 py-3 text-[9px] font-semibold text-slate-500 sm:px-7">
-          <span>
-            Físicas {compactNumber(dashboard?.physicalUnits.total)} · disponibles {compactNumber(dashboard?.physicalUnits.available)} · reservadas {compactNumber(dashboard?.physicalUnits.reserved)}
-          </span>
-          <span>
-            {generatedAt ? new Date(generatedAt).toLocaleTimeString("es-PA", { hour: "2-digit", minute: "2-digit" }) : "Sincronizando"}
-          </span>
+          <span>Físicas {compactNumber(dashboard?.physicalUnits.total)} · disponibles {compactNumber(dashboard?.physicalUnits.available)} · reservadas {compactNumber(dashboard?.physicalUnits.reserved)}</span>
+          <span>{generatedAt ? new Date(generatedAt).toLocaleTimeString("es-PA", { hour: "2-digit", minute: "2-digit" }) : "Sincronizando"}</span>
         </div>
       </section>
 
       <div role="tabpanel">{renderContent()}</div>
 
       {role === "imprenta" && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-[11px] font-bold text-indigo-700">
-          Vista de imprenta limitada al Centro de Operaciones.
-        </div>
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-[11px] font-bold text-indigo-700">Vista de imprenta limitada al Centro de Operaciones.</div>
       )}
     </div>
   );
