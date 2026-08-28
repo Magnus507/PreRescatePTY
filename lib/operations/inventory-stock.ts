@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { revealActivationCode } from "@/domains/chips/activation-code.service";
 import { extractOperationsProductCode } from "./sync-operations-product-to-store";
 
 export type InventoryStockRow = {
@@ -30,6 +31,11 @@ export type InventoryUnitDetail = {
   reservedOrderId: string | null;
   dispatchId: string | null;
   productionOrderId: string | null;
+  qrUrl: string | null;
+  nfcUrl: string | null;
+  activationUrl: string | null;
+  activationCode: string | null;
+  activationCodeLast4: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -170,7 +176,29 @@ export async function loadInventoryStockDetail(productCode: string) {
         take: 1,
       },
       digitalBatchItem: {
-        select: { shortCode: true, productionOrderId: true },
+        select: {
+          shortCode: true,
+          productionOrderId: true,
+          qrUrl: true,
+          nfcUrl: true,
+          activationUrl: true,
+        },
+      },
+      chip: {
+        select: {
+          shortCode: true,
+          qrUrl: true,
+          nfcUrl: true,
+          claimTokens: {
+            where: { status: "active", usedAt: null },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              activationCode: true,
+              activationCodeLast4: true,
+            },
+          },
+        },
       },
     },
   });
@@ -192,7 +220,7 @@ export async function loadInventoryStockDetail(productCode: string) {
     units: units.map((unit) => ({
       id: unit.id,
       internalLabel: unit.internalLabel,
-      shortCode: unit.digitalBatchItem?.shortCode || null,
+      shortCode: unit.digitalBatchItem?.shortCode || unit.chip?.shortCode || null,
       productCode: unit.productCode,
       productName: unit.productName,
       qaStatus: unit.qaStatus,
@@ -201,6 +229,13 @@ export async function loadInventoryStockDetail(productCode: string) {
       reservedOrderId: unit.reservedOrderId,
       dispatchId: unit.dispatchItems[0]?.dispatchId || null,
       productionOrderId: unit.digitalBatchItem?.productionOrderId || null,
+      qrUrl: unit.digitalBatchItem?.qrUrl || unit.chip?.qrUrl || null,
+      nfcUrl: unit.digitalBatchItem?.nfcUrl || unit.chip?.nfcUrl || null,
+      activationUrl: unit.digitalBatchItem?.activationUrl || null,
+      activationCode: unit.chip?.claimTokens[0]?.activationCode
+        ? revealActivationCode(unit.chip.claimTokens[0].activationCode)
+        : null,
+      activationCodeLast4: unit.chip?.claimTokens[0]?.activationCodeLast4 || null,
       createdAt: unit.createdAt.toISOString(),
       updatedAt: unit.updatedAt.toISOString(),
     })) as InventoryUnitDetail[],

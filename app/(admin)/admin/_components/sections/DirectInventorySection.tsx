@@ -41,6 +41,11 @@ type InventoryUnit = {
   reservedOrderId: string | null;
   dispatchId: string | null;
   productionOrderId: string | null;
+  qrUrl: string | null;
+  nfcUrl: string | null;
+  activationUrl: string | null;
+  activationCode: string | null;
+  activationCodeLast4: string | null;
 };
 
 type StoreProduct = {
@@ -73,6 +78,17 @@ export default function DirectInventorySection() {
   const [unitsLoading, setUnitsLoading] = useState(false);
   const [discardingId, setDiscardingId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+
+  const copyToClipboard = useCallback(async (value: string | null | undefined, label: string) => {
+    if (!value) return toast.error(`${label} no disponible`);
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copiado`);
+    } catch {
+      toast.error(`No se pudo copiar ${label}`);
+    }
+  }, []);
 
   const loadData = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (silent) setRefreshing(true); else setLoading(true);
@@ -100,12 +116,14 @@ export default function DirectInventorySection() {
   const stockByCode = useMemo(() => new Map(stock.map((row) => [row.productCode, row])), [stock]);
 
   const loadUnits = async (product: FinishedGood) => {
-    setUnitsProduct(product); setUnitsLoading(true);
+    setUnitsProduct(product); setSelectedUnitId(null); setUnitsLoading(true);
     try {
       const res = await fetch(`/api/admin/operations/inventory/units?productCode=${encodeURIComponent(product.code)}&_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudieron cargar las unidades");
-      setUnits(Array.isArray(data.units) ? data.units : []);
+      const nextUnits = Array.isArray(data.units) ? data.units : [];
+      setUnits(nextUnits);
+      if (nextUnits[0]?.id) setSelectedUnitId(nextUnits[0].id);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al cargar unidades");
       setUnits([]);
@@ -192,7 +210,41 @@ export default function DirectInventorySection() {
 
       {showCreate && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"><form onSubmit={createProduct} className="w-full max-w-xl rounded-[2rem] bg-white p-6 shadow-2xl"><div className="flex items-center justify-between"><h3 className="text-xl font-black text-slate-950">Crear Producto base</h3><button type="button" onClick={() => setShowCreate(false)} className="rounded-xl border border-slate-200 p-2 text-slate-400"><X className="h-4 w-4" /></button></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Código</span><input required value={form.code} onChange={(e) => setForm((v) => ({ ...v, code: e.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold" placeholder="PRP-FG-..." /></label><label><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre</span><input required value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold" /></label><label className="sm:col-span-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tipo</span><input required value={form.productType} onChange={(e) => setForm((v) => ({ ...v, productType: e.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold" placeholder="sticker_prerescatepty" /></label></div><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setShowCreate(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600">Cancelar</button><button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Crear</button></div></form></div>}
 
-      {unitsProduct && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"><div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-[2rem] bg-white shadow-2xl"><div className="flex items-center justify-between border-b border-slate-100 p-5"><div><h3 className="text-lg font-black text-slate-950">{unitsProduct.name}</h3><p className="font-mono text-[10px] font-bold text-primary">{unitsProduct.code}</p></div><button type="button" onClick={() => { setUnitsProduct(null); setUnits([]); }} className="rounded-xl border border-slate-200 p-2 text-slate-400"><X className="h-4 w-4" /></button></div><div className="max-h-[70vh] overflow-y-auto p-5">{unitsLoading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : units.length === 0 ? <p className="py-10 text-center text-sm font-bold text-slate-400">Sin unidades</p> : <div className="space-y-2">{units.map((unit) => <div key={unit.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{unit.inventoryStatus} · QC {unit.qaStatus || "—"}{unit.reservedOrderId ? " · reservada" : ""}</p></div>{canDiscard(unit) && <button type="button" onClick={() => discardUnit(unit)} disabled={discardingId === unit.id} className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-red-700 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {discardingId === unit.id ? "Descartando" : "Descartar"}</button>}</div>)}</div>}</div></div></div>}
+      {unitsProduct && <section className="rounded-2xl border border-slate-200 bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
+          <div><h3 className="text-lg font-black text-slate-950">{unitsProduct.name}</h3><p className="font-mono text-[10px] font-bold text-primary">{unitsProduct.code}</p></div>
+          <button type="button" onClick={() => { setUnitsProduct(null); setUnits([]); setSelectedUnitId(null); }} className="rounded-xl border border-slate-200 p-2 text-slate-400"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="p-5">
+          {unitsLoading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : units.length === 0 ? <p className="py-10 text-center text-sm font-bold text-slate-400">Sin unidades</p> : <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
+            <div className="space-y-2">
+              {units.map((unit) => {
+                const selected = selectedUnitId === unit.id;
+                return <button type="button" key={unit.id} onClick={() => setSelectedUnitId(selected ? null : unit.id)} className={`w-full rounded-xl border p-4 text-left transition ${selected ? "border-primary bg-primary/5" : "border-slate-200 bg-slate-50 hover:bg-white"}`}><p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{unit.inventoryStatus} · QC {unit.qaStatus || "—"}{unit.reservedOrderId ? " · reservada" : ""}</p></button>;
+              })}
+            </div>
+            {(() => {
+              const unit = units.find((item) => item.id === selectedUnitId) || units[0];
+              if (!unit) return null;
+              return <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unidad</p><h4 className="mt-1 font-mono text-base font-black text-slate-950">{unit.internalLabel}</h4></div>
+                  {canDiscard(unit) && <button type="button" onClick={() => discardUnit(unit)} disabled={discardingId === unit.id} className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-red-700 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {discardingId === unit.id ? "Descartando" : "Descartar"}</button>}
+                </div>
+                <div className="mt-4 grid gap-2">
+                  {[
+                    { label: "Código de activación", value: unit.activationCode },
+                    { label: "ShortCode público", value: unit.shortCode },
+                    { label: "NFC", value: unit.nfcUrl },
+                    { label: "QR", value: unit.qrUrl },
+                    { label: "Activar", value: unit.activationUrl },
+                  ].map((row) => <button key={row.label} type="button" onClick={() => copyToClipboard(row.value, row.label)} className="rounded-xl border border-slate-200 bg-white p-3 text-left hover:bg-slate-50"><span className="block text-[9px] font-black uppercase tracking-widest text-slate-400">{row.label}</span><span className="mt-1 block break-all font-mono text-xs font-black text-slate-900">{row.value || "Pendiente"}</span></button>)}
+                </div>
+              </div>;
+            })()}
+          </div>}
+        </div>
+      </section>}
     </div>
   );
 }

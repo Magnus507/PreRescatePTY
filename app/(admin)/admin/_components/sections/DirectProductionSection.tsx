@@ -35,6 +35,9 @@ type DigitalItem = {
   nfcUrl: string | null;
   nfcProgrammed: boolean;
   qrPrepared: boolean;
+  activationUrl?: string | null;
+  activationCode?: string | null;
+  activationCodeLast4?: string | null;
   status: string;
   finishedGoodUnitId?: string | null;
   qaStatus?: string | null;
@@ -92,6 +95,16 @@ export default function DirectProductionSection() {
   const [quantity, setQuantity] = useState("1");
   const [creating, setCreating] = useState(false);
   const [productionFilter, setProductionFilter] = useState<ProductionFilter>("active");
+
+  const copyToClipboard = useCallback(async (value: string | null | undefined, label: string) => {
+    if (!value) return toast.error(`${label} no disponible`);
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copiado`);
+    } catch {
+      toast.error(`No se pudo copiar ${label}`);
+    }
+  }, []);
 
   const loadDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
@@ -304,9 +317,19 @@ export default function DirectProductionSection() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2"><p className="font-mono text-xs font-black text-slate-900">{item.internalLabel}</p><span className="rounded-full bg-white px-2 py-1 text-[9px] font-black uppercase text-slate-500 ring-1 ring-slate-200">{item.status}</span></div>
                           <p className="mt-1 text-xs font-bold text-slate-500">{item.shortCode || "Sin shortCode"}{qaStatus ? ` · QC ${qaStatus}` : ""}{inventoryStatus ? ` · ${inventoryStatus}` : ""}</p>
+                          <div className="mt-3 grid gap-2 text-[10px] font-bold text-slate-500 sm:grid-cols-2">
+                            <button type="button" onClick={() => copyToClipboard(item.activationCode, "Código de activación")} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left">
+                              <span className="block font-black uppercase tracking-wider text-amber-700">Activación</span>
+                              <span className="font-mono text-sm font-black text-slate-950">{item.activationCode || "Pendiente"}</span>
+                            </button>
+                            <button type="button" onClick={() => copyToClipboard(item.nfcUrl, "NFC")} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-left">
+                              <span className="block font-black uppercase tracking-wider text-slate-500">NFC / QR</span>
+                              <span className="block truncate font-mono text-[11px] font-black text-slate-900">{item.nfcUrl || item.qrUrl || "Pendiente"}</span>
+                            </button>
+                          </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {item.nfcUrl && <button type="button" onClick={() => navigator.clipboard.writeText(item.nfcUrl || "").then(() => toast.success("URL NFC copiada"))} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-700"><Copy className="h-3.5 w-3.5" /> NFC</button>}
+                          {item.nfcUrl && <button type="button" onClick={() => copyToClipboard(item.nfcUrl, "URL NFC")} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-700"><Copy className="h-3.5 w-3.5" /> NFC</button>}
                           {item.qrUrl && <a href={item.qrUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-700"><ExternalLink className="h-3.5 w-3.5" /> QR</a>}
                           {!item.nfcProgrammed && <button type="button" onClick={() => runAction(`nfc-${item.id}`, `/api/admin/operations/production-orders/${detail.id}/unit-preparation/${item.id}/nfc-programmed`, "NFC marcado")} disabled={Boolean(actionKey)} className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-sky-700 disabled:opacity-50">NFC listo</button>}
                           {!item.qrPrepared && <button type="button" onClick={() => runAction(`qr-${item.id}`, `/api/admin/operations/production-orders/${detail.id}/unit-preparation/${item.id}/qr-prepared`, "QR marcado")} disabled={Boolean(actionKey)} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-emerald-700 disabled:opacity-50">QR listo</button>}

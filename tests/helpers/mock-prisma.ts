@@ -39,6 +39,7 @@ export interface MockPrismaClient {
   invoiceLine: MockDelegate
   operationCommercialOrder: MockDelegate
   operationCommercialOrderItem: MockDelegate
+  operationFinishedGood: MockDelegate
   operationFinishedGoodUnit: MockDelegate
   operationFinishedGoodUnitEvent: MockDelegate
   operationDigitalBatch: MockDelegate
@@ -87,6 +88,7 @@ export const mockPrisma: MockPrismaClient = {
   invoiceLine: createMockDelegate(),
   operationCommercialOrder: createMockDelegate(),
   operationCommercialOrderItem: createMockDelegate(),
+  operationFinishedGood: createMockDelegate(),
   operationFinishedGoodUnit: createMockDelegate(),
   operationFinishedGoodUnitEvent: createMockDelegate(),
   operationDigitalBatch: createMockDelegate(),

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revealActivationCode } from "@/domains/chips/activation-code.service";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 
@@ -30,6 +31,19 @@ export async function GET(
             printOrderItems: {
               include: {
                 printOrder: true,
+              },
+            },
+            chip: {
+              select: {
+                claimTokens: {
+                  where: { status: "active", usedAt: null },
+                  orderBy: { createdAt: "desc" },
+                  take: 1,
+                  select: {
+                    activationCode: true,
+                    activationCodeLast4: true,
+                  },
+                },
               },
             },
           },
@@ -91,6 +105,10 @@ export async function GET(
             item.finishedGoodUnits.find((unit) => unit.internalLabel === item.internalLabel)?.reservedOrderId ||
             item.finishedGoodUnits[0]?.reservedOrderId ||
             null,
+          activationCode: item.chip?.claimTokens[0]?.activationCode
+            ? revealActivationCode(item.chip.claimTokens[0].activationCode)
+            : null,
+          activationCodeLast4: item.chip?.claimTokens[0]?.activationCodeLast4 || null,
         })),
       },
     });
