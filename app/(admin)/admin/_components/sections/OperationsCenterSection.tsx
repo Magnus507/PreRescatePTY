@@ -7,13 +7,9 @@ import { buildAdminOperationsUrl, parseOperationsTab, type OperationsTab } from 
 import DirectProductionSection from "./DirectProductionSection";
 import DirectInventorySection from "./DirectInventorySection";
 import { DirectDispatchSection } from "./DirectDispatchSection";
+import { DirectPostSaleSection } from "./DirectPostSaleSection";
 import { HistorySection } from "./HistorySection";
 import { PedidosSection } from "./PedidosSection";
-import { WarrantySection } from "./WarrantySection";
-import { ReplacementSection } from "./ReplacementSection";
-import { ReturnSection } from "./ReturnSection";
-
-type PostsalesTab = "warranties" | "replacements" | "returns";
 
 interface OperationsCenterSectionProps {
   role?: string;
@@ -40,12 +36,6 @@ const TABS: Array<{ id: OperationsTab; label: string; icon: React.ElementType; i
   { id: "history", label: "Historial", icon: History, iconClass: "bg-slate-200 text-slate-700" },
 ];
 
-const POSTSALES_TABS: Array<{ id: PostsalesTab; label: string }> = [
-  { id: "warranties", label: "Garantías" },
-  { id: "replacements", label: "Reemplazos" },
-  { id: "returns", label: "Devoluciones" },
-];
-
 function compactNumber(value: number | null | undefined) {
   return new Intl.NumberFormat("es-PA", { maximumFractionDigits: 0 }).format(Number(value) || 0);
 }
@@ -55,7 +45,6 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
   const searchParams = useSearchParams();
   const adminTab = searchParams.get("tab") || "dashboard";
   const activeTab = adminTab === "inventory" ? parseOperationsTab(searchParams.get("op")) : initialTab;
-  const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
   const [dashboard, setDashboard] = useState<OperationsDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -106,8 +95,8 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
     if (activeTab === "production") return <DirectProductionSection />;
     if (activeTab === "inventory") return <DirectInventorySection />;
     if (activeTab === "dispatch") return <DirectDispatchSection />;
-    if (activeTab === "history") return <HistorySection />;
-    return <div className="space-y-4"><div className="flex w-fit gap-1 rounded-xl bg-slate-100 p-1">{POSTSALES_TABS.map((tab) => <button key={tab.id} type="button" onClick={() => setPostsalesTab(tab.id)} className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest ${postsalesTab === tab.id ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}>{tab.label}</button>)}</div>{postsalesTab === "warranties" && <WarrantySection />}{postsalesTab === "replacements" && <ReplacementSection />}{postsalesTab === "returns" && <ReturnSection />}</div>;
+    if (activeTab === "postsales") return <DirectPostSaleSection />;
+    return <HistorySection />;
   };
 
   return (
