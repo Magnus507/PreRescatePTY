@@ -11,6 +11,7 @@ import {
   ShoppingCart,
   Truck,
 } from "lucide-react";
+import type { OperationsTab } from "@/lib/admin/operations-routing";
 import ProductionQueueSection from "./ProductionQueueSection";
 import { PhysicalInventorySection } from "./PhysicalInventorySection";
 import { DispatchSection } from "./DispatchSection";
@@ -20,12 +21,12 @@ import { WarrantySection } from "./WarrantySection";
 import { ReplacementSection } from "./ReplacementSection";
 import { ReturnSection } from "./ReturnSection";
 
-type OperationsTab = "commercial" | "production" | "inventory" | "dispatch" | "postsales" | "history";
 type PostsalesTab = "warranties" | "replacements" | "returns";
 
 interface OperationsCenterSectionProps {
   role?: string;
   initialTab?: OperationsTab;
+  onTabChange?: (tab: OperationsTab) => void;
 }
 
 interface OperationsDashboard {
@@ -102,7 +103,7 @@ function compactNumber(value: number | null | undefined) {
   return new Intl.NumberFormat("es-PA", { maximumFractionDigits: 0 }).format(Number(value) || 0);
 }
 
-export function OperationsCenterSection({ role, initialTab = "commercial" }: OperationsCenterSectionProps) {
+export function OperationsCenterSection({ role, initialTab = "commercial", onTabChange }: OperationsCenterSectionProps) {
   const [activeTab, setActiveTab] = useState<OperationsTab>(initialTab);
   const [postsalesTab, setPostsalesTab] = useState<PostsalesTab>("warranties");
   const [dashboard, setDashboard] = useState<OperationsDashboard | null>(null);
@@ -139,6 +140,11 @@ export function OperationsCenterSection({ role, initialTab = "commercial" }: Ope
     const interval = window.setInterval(() => loadDashboard({ silent: true }), 30_000);
     return () => window.clearInterval(interval);
   }, [loadDashboard]);
+
+  const changeTab = useCallback((tab: OperationsTab) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  }, [onTabChange]);
 
   const postSalesOpen = useMemo(() => {
     if (!dashboard) return 0;
@@ -253,7 +259,7 @@ export function OperationsCenterSection({ role, initialTab = "commercial" }: Ope
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => changeTab(tab.id)}
                 className={`relative min-h-[132px] p-5 text-left transition-all ${
                   active
                     ? "z-10 bg-white shadow-[inset_0_-4px_0_#DA1A21]"
