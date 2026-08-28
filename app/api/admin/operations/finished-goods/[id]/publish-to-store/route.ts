@@ -35,7 +35,7 @@ export async function POST(
       finishedGoodId: finishedGood.id,
       operationsProductCode: finishedGood.code,
       operationsProductName: finishedGood.name,
-      productType: finishedGood.code,
+      productType: finishedGood.productType,
       defaultPrice: typeof body.price === "number" ? body.price : typeof body.price === "string" ? Number(body.price) : null,
       description: typeof body.description === "string" ? body.description : null,
       category: typeof body.category === "string" ? body.category : null,
