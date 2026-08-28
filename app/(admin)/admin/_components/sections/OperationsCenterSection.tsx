@@ -6,7 +6,7 @@ import { Boxes, Factory, History, RefreshCw, RotateCcw, ShoppingCart, Truck } fr
 import { buildAdminOperationsUrl, parseOperationsTab, type OperationsTab } from "@/lib/admin/operations-routing";
 import DirectProductionSection from "./DirectProductionSection";
 import DirectInventorySection from "./DirectInventorySection";
-import { DispatchSection } from "./DispatchSection";
+import { DirectDispatchSection } from "./DirectDispatchSection";
 import { HistorySection } from "./HistorySection";
 import { PedidosSection } from "./PedidosSection";
 import { WarrantySection } from "./WarrantySection";
@@ -71,7 +71,8 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
     } catch (error) {
       console.error("OPERATIONS_DASHBOARD_LOAD_ERROR", error);
     } finally {
-      setLoading(false); setRefreshing(false);
+      setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -104,7 +105,7 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
     if (activeTab === "commercial") return <PedidosSection />;
     if (activeTab === "production") return <DirectProductionSection />;
     if (activeTab === "inventory") return <DirectInventorySection />;
-    if (activeTab === "dispatch") return <DispatchSection />;
+    if (activeTab === "dispatch") return <DirectDispatchSection />;
     if (activeTab === "history") return <HistorySection />;
     return <div className="space-y-4"><div className="flex w-fit gap-1 rounded-xl bg-slate-100 p-1">{POSTSALES_TABS.map((tab) => <button key={tab.id} type="button" onClick={() => setPostsalesTab(tab.id)} className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest ${postsalesTab === tab.id ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}>{tab.label}</button>)}</div>{postsalesTab === "warranties" && <WarrantySection />}{postsalesTab === "replacements" && <ReplacementSection />}{postsalesTab === "returns" && <ReturnSection />}</div>;
   };
