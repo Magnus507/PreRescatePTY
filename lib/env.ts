@@ -4,10 +4,25 @@ export type EnvScope = "build" | "runtime" | "script" | "test" | "platform";
 
 export const ENV_CONTRACT = {
   APP_URL: { scopes: ["script"], example: true, sensitive: false, requiredInProduction: false },
+  APPLY_W605G_H5: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_AFTER_SALES_SMOKE: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_CLEAN_OPERATIONS_SMOKE: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_COMMERCIAL_DISPATCH_SMOKE: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_E2E_ACTIVATION_W542B: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_E2E_OPERATIONS_W542A: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_FULL_ERP_SMOKE: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_OPERATIONS_SMOKE: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_REPAIR_INTERNAL_STOCK_W542C: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_REPAIR_ORDER_PAYMENT_PROOF: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_SEED_BASE_FINISHED_GOODS: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_SEED_BASE_MATERIALS: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_STRUCTURAL_SEED: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  CONFIRM_W539L_SMOKE: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
   CRON_SECRET: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: true },
   DATABASE_URL: { scopes: ["runtime", "script", "test"], example: true, sensitive: true, requiredInProduction: true },
   DATABASE_URL_TEST: { scopes: ["test"], example: true, sensitive: true, requiredInProduction: false },
   DIRECT_URL: { scopes: ["build", "script"], example: true, sensitive: true, requiredInProduction: false },
+  DRY_RUN: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
   ENCRYPTION_KEY: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: true },
   NEXTAUTH_SECRET: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: true },
   NEXTAUTH_URL: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: true },
@@ -20,6 +35,11 @@ export const ENV_CONTRACT = {
   NODE_ENV: { scopes: ["build", "runtime", "test", "platform"], example: false, sensitive: false, requiredInProduction: false },
   RESEND_API_KEY: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: false },
   RESEND_FROM_EMAIL: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
+  SEED_ADMIN_EMAIL: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  SEED_ADMIN_PASSWORD: { scopes: ["script"], example: false, sensitive: true, requiredInProduction: false },
+  SEED_CLIENT_PASSWORD: { scopes: ["script"], example: false, sensitive: true, requiredInProduction: false },
+  SEED_CORPORATE_PASSWORD: { scopes: ["script"], example: false, sensitive: true, requiredInProduction: false },
+  SEED_SUPERADMIN_PASSWORD: { scopes: ["script"], example: false, sensitive: true, requiredInProduction: false },
   SUPABASE_SERVICE_ROLE_KEY: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: true },
   SUPABASE_URL: { scopes: ["script"], example: true, sensitive: false, requiredInProduction: false },
   TWILIO_ACCOUNT_SID: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: false },
@@ -30,6 +50,11 @@ export const ENV_CONTRACT = {
   UPSTASH_REDIS_REST_TOKEN: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: false },
   UPSTASH_REDIS_REST_URL: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
   VERCEL_ENV: { scopes: ["runtime", "platform"], example: false, sensitive: false, requiredInProduction: false },
+  VERCEL_URL: { scopes: ["runtime", "platform"], example: false, sensitive: false, requiredInProduction: false },
+  W537V_SMOKE_CLEANUP: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  W537V_SMOKE_CONFIRM: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  W603C_MAPPING_BACKFILL_DRY_RUN: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  W603C_MAPPING_BACKFILL_TOKEN: { scopes: ["script"], example: false, sensitive: true, requiredInProduction: false },
   YAPPY_DOMAIN: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
   YAPPY_ENVIRONMENT: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
   YAPPY_MERCHANT_ID: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: false },
@@ -74,6 +99,33 @@ const optionalIntegrationShape = {
   YAPPY_SECRET_KEY: optionalString,
 } as const;
 
+const scriptOnlyShape = {
+  APPLY_W605G_H5: optionalString,
+  CONFIRM_AFTER_SALES_SMOKE: optionalString,
+  CONFIRM_CLEAN_OPERATIONS_SMOKE: optionalString,
+  CONFIRM_COMMERCIAL_DISPATCH_SMOKE: optionalString,
+  CONFIRM_E2E_ACTIVATION_W542B: optionalString,
+  CONFIRM_E2E_OPERATIONS_W542A: optionalString,
+  CONFIRM_FULL_ERP_SMOKE: optionalString,
+  CONFIRM_OPERATIONS_SMOKE: optionalString,
+  CONFIRM_REPAIR_INTERNAL_STOCK_W542C: optionalString,
+  CONFIRM_REPAIR_ORDER_PAYMENT_PROOF: optionalString,
+  CONFIRM_SEED_BASE_FINISHED_GOODS: optionalString,
+  CONFIRM_SEED_BASE_MATERIALS: optionalString,
+  CONFIRM_STRUCTURAL_SEED: optionalString,
+  CONFIRM_W539L_SMOKE: optionalString,
+  DRY_RUN: optionalString,
+  SEED_ADMIN_EMAIL: optionalString,
+  SEED_ADMIN_PASSWORD: optionalString,
+  SEED_CLIENT_PASSWORD: optionalString,
+  SEED_CORPORATE_PASSWORD: optionalString,
+  SEED_SUPERADMIN_PASSWORD: optionalString,
+  W537V_SMOKE_CLEANUP: optionalString,
+  W537V_SMOKE_CONFIRM: optionalString,
+  W603C_MAPPING_BACKFILL_DRY_RUN: optionalString,
+  W603C_MAPPING_BACKFILL_TOKEN: optionalString,
+} as const;
+
 export const buildEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: optionalUrl,
   NEXT_PUBLIC_SENTRY_DSN: optionalUrl,
@@ -91,6 +143,7 @@ export const runtimeEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: optionalUrl,
   SUPABASE_SERVICE_ROLE_KEY: optionalString,
   CRON_SECRET: optionalString,
+  VERCEL_URL: optionalString,
   ...optionalIntegrationShape,
 });
 
@@ -127,6 +180,7 @@ const productionRuntimeBaseSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: httpUrl,
   SUPABASE_SERVICE_ROLE_KEY: nonEmpty,
   CRON_SECRET: z.string().min(16),
+  VERCEL_URL: optionalString,
   ...optionalIntegrationShape,
 });
 
@@ -193,6 +247,7 @@ export const scriptEnvSchema = z.object({
   DATABASE_URL: optionalString,
   DIRECT_URL: optionalString,
   SUPABASE_URL: optionalUrl,
+  ...scriptOnlyShape,
 });
 
 export const testEnvSchema = z.object({

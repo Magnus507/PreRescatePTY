@@ -6,7 +6,7 @@ This file is the human-readable companion to `lib/env.ts`. Variable names are do
 
 - **Build:** values that may be read while Next.js/Prisma is built. Public variables prefixed with `NEXT_PUBLIC_` can be embedded in browser assets and must never contain secrets.
 - **Runtime:** server/application values available to deployed functions. Production startup validates the required core before serving traffic.
-- **Script:** maintenance/audit scripts. These values are not automatically required by the web runtime.
+- **Script:** maintenance, seed, repair and smoke scripts. These values are not automatically required by the web runtime.
 - **Test:** isolated test/integration database settings.
 - **Platform:** supplied by Next.js/Vercel rather than manually copied from `.env.example`.
 
@@ -55,9 +55,43 @@ For Twilio, account SID + auth token are required if any Twilio sender is config
 | `SUPABASE_URL` | script | no | Supabase URL alias used by maintenance/audit scripts. |
 | `DATABASE_URL_TEST` | test | yes | Dedicated integration-test database connection. Never point this at production. |
 
+### Seed credentials
+
+These variables exist only for explicit seed/development commands and are intentionally **not** included in `.env.example`. Do not persist seed passwords in Vercel or production shell profiles.
+
+- `SEED_ADMIN_EMAIL`
+- `SEED_ADMIN_PASSWORD`
+- `SEED_CLIENT_PASSWORD`
+- `SEED_CORPORATE_PASSWORD`
+- `SEED_SUPERADMIN_PASSWORD`
+
+### One-shot smoke, repair and backfill guards
+
+The following variables are confirmation switches consumed by individual scripts. They are intentionally **not** part of `.env.example`: set them only for the exact command invocation after reviewing that script. A value used by one script must not be assumed valid for another.
+
+- `APPLY_W605G_H5`
+- `CONFIRM_AFTER_SALES_SMOKE`
+- `CONFIRM_CLEAN_OPERATIONS_SMOKE`
+- `CONFIRM_COMMERCIAL_DISPATCH_SMOKE`
+- `CONFIRM_E2E_ACTIVATION_W542B`
+- `CONFIRM_E2E_OPERATIONS_W542A`
+- `CONFIRM_FULL_ERP_SMOKE`
+- `CONFIRM_OPERATIONS_SMOKE`
+- `CONFIRM_REPAIR_INTERNAL_STOCK_W542C`
+- `CONFIRM_REPAIR_ORDER_PAYMENT_PROOF`
+- `CONFIRM_SEED_BASE_FINISHED_GOODS`
+- `CONFIRM_SEED_BASE_MATERIALS`
+- `CONFIRM_STRUCTURAL_SEED`
+- `CONFIRM_W539L_SMOKE`
+- `DRY_RUN`
+- `W537V_SMOKE_CLEANUP`
+- `W537V_SMOKE_CONFIRM`
+- `W603C_MAPPING_BACKFILL_DRY_RUN`
+- `W603C_MAPPING_BACKFILL_TOKEN` — sensitive one-shot backfill token; never persist or log it.
+
 ## Platform-managed
 
-`NODE_ENV`, `NEXT_RUNTIME` and `VERCEL_ENV` are runtime/build context supplied by Node/Next.js/Vercel. They are part of the typed contract so code scanning recognizes them, but they are intentionally omitted from `.env.example`.
+`NODE_ENV`, `NEXT_RUNTIME`, `VERCEL_ENV` and `VERCEL_URL` are runtime/build context supplied by Node/Next.js/Vercel. They are part of the typed contract so code scanning recognizes them, but they are intentionally omitted from `.env.example`.
 
 ## Validation commands
 
@@ -76,6 +110,7 @@ CI runs the contract check plus the strict production schema using non-secret CI
 - [ ] `NEXTAUTH_URL` and `NEXT_PUBLIC_SITE_URL` resolve to the staging/preview origin.
 - [ ] Yappy remains UAT unless the release gate explicitly authorizes production credentials.
 - [ ] Optional integrations are either complete or absent; never leave half-configured credentials.
+- [ ] Seed credentials and one-shot confirmation flags are absent from persistent deployment environments.
 - [ ] Smoke-test `/`, authentication, storage, notification provider paths in scope and cron authorization.
 
 ## Production checklist
@@ -86,6 +121,7 @@ CI runs the contract check plus the strict production schema using non-secret CI
 - [ ] Confirm `DATABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` belong to the production project and are server-only.
 - [ ] Confirm `ENCRYPTION_KEY`, `NEXTAUTH_SECRET` and `CRON_SECRET` are present and stored only in the deployment secret store.
 - [ ] Confirm optional provider groups in launch scope are complete; providers outside launch scope are explicitly absent/disabled.
+- [ ] Confirm all seed credentials and one-shot script guards listed above are absent from Vercel production variables.
 - [ ] After deployment, require HTTP 200 smoke tests and no environment-validation error before promotion is accepted.
 
 ## Rotation rule
