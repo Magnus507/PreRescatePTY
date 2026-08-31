@@ -1,4 +1,4 @@
-import { withAuth } from "next-auth/middleware";
+import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
 import {
   type NextFetchEvent,
   type NextRequest,
@@ -79,7 +79,7 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     return continueWithCsp(req);
   }
 
-  return protectedMiddleware(req, event);
+  return protectedMiddleware(req as NextRequestWithAuth, event);
 }
 
 export const config = {
