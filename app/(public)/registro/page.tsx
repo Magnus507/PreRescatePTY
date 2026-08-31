@@ -4,11 +4,12 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { 
-  Shield, Loader2, ArrowRight, 
+import {
+  Shield, Loader2, ArrowRight,
   Lock, Mail, HeartPulse, CheckCircle2, ShieldAlert,
   User, Phone
 } from "lucide-react";
+import { CONSENT_TEXT_VERSION } from "@/domains/consents/consent.constants";
 
 type PackageSummary = {
   id: string;
@@ -28,12 +29,12 @@ function RegistroForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const packageId = searchParams.get("package");
-  
+
   const [selectedPkg, setSelectedPkg] = useState<PackageSummary | null>(null);
-  const [form, setForm] = useState({ 
-    email: "", 
-    phone: "", 
-    password: "", 
+  const [form, setForm] = useState({
+    email: "",
+    phone: "",
+    password: "",
     confirm: ""
   });
   const [error, setError] = useState("");
@@ -87,6 +88,8 @@ function RegistroForm() {
           password: form.password,
           accountType: "personal",
           packageId: packageId,
+          acceptedTerms: true,
+          consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
         }),
       });
 
@@ -124,12 +127,12 @@ function RegistroForm() {
       <div className="relative z-10">
 
       <div className="mx-auto w-full max-w-7xl rounded-[3rem] border border-white/10 bg-white/5 shadow-2xl shadow-blue-500/20 backdrop-blur-xl overflow-hidden flex flex-col md:flex-row min-h-[85vh]">
-        
+
         {/* Left Side: Branding & Account Types */}
         <div className="hidden md:flex md:w-[40%] bg-slate-950/95 p-12 text-white flex-col justify-between relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(218,26,33,0.04)_0%,_transparent_70%)] mix-blend-overlay"></div>
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-transparent to-emerald-600/10"></div>
-          
+
           <div className="relative z-10">
             <Link href="/" className="flex items-center gap-2 mb-16 group w-fit">
               <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform duration-300">
@@ -143,7 +146,7 @@ function RegistroForm() {
               <span className="text-blue-400">red de protección</span> <br />
               más avanzada.
             </h2>
-            
+
             <div className="space-y-6">
               <div className="space-y-4">
                 <div className="p-4 rounded-2xl border bg-blue-500/10 border-blue-500/30">
@@ -168,7 +171,7 @@ function RegistroForm() {
               </div>
               <div>
                 <p className="font-bold text-sm">Vital Sinc</p>
-                <p className="text-xs text-slate-500">Tecnología Ley 81 Garantizada</p>
+                <p className="text-xs text-slate-500">Privacidad y control de datos</p>
               </div>
             </div>
           </div>
@@ -285,14 +288,14 @@ function RegistroForm() {
 
               <div className="py-2">
                 <label className="flex items-start gap-3 cursor-pointer group">
-                  <input 
-                    type="checkbox" 
-                    checked={acceptTerms} 
-                    onChange={(e) => setAcceptTerms(e.target.checked)} 
-                    className="mt-1 h-5 w-5 rounded-lg border-slate-600 text-primary focus:ring-primary/20 bg-slate-800/60" 
+                  <input
+                    type="checkbox"
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    className="mt-1 h-5 w-5 rounded-lg border-slate-600 text-primary focus:ring-primary/20 bg-slate-800/60"
                   />
                   <span className="text-[11px] text-slate-400 font-medium leading-relaxed group-hover:text-slate-300 transition-colors">
-                    Acepto los <Link href="/legal/terminos" target="_blank" className="text-primary font-bold hover:underline">Términos</Link> y la <Link href="/legal/privacidad" target="_blank" className="text-primary font-bold hover:underline">Política de Privacidad</Link>. Autorizo el manejo de mis datos de salud bajo la <span className="text-indigo-600 font-bold">Ley 81 de Panamá</span>.
+                    Acepto los <Link href="/legal/terminos" target="_blank" className="text-primary font-bold hover:underline">Términos</Link> y la <Link href="/legal/privacidad" target="_blank" className="text-primary font-bold hover:underline">Política de Privacidad</Link>. Autorizo el tratamiento de mis datos de salud conforme a estos documentos y a la normativa aplicable en Panamá.
                   </span>
                 </label>
               </div>
