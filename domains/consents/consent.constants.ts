@@ -4,6 +4,6 @@ export const CONSENT_TYPE = {
 } as const;
 
 export const CONSENT_TEXT_VERSION = {
-  TERMS_AND_PRIVACY: "registration-terms-2026-07-14",
+  TERMS_AND_PRIVACY: "registration-terms-2026-08-31",
   AUTOMATIC_EMERGENCY_ALERTS: "automatic-emergency-alerts-2026-08-26",
 } as const;
