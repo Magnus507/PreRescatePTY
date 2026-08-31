@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -67,11 +68,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
@@ -82,6 +85,7 @@ export default function RootLayout({
         <Toaster />
         <CookieConsentProvider />
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
