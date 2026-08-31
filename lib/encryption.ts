@@ -8,7 +8,6 @@ const LEGACY_IV_LENGTH = 16;
 const GCM_IV_LENGTH = 12;
 const GCM_TAG_LENGTH = 16;
 const KEY_HEX_LENGTH = 64;
-const SAFE_PLAINTEXT_LEGACY_MARKERS = new Set(["Pendiente"]);
 
 type EncryptionVersion = "v2" | "legacy-cbc" | "plaintext" | "unknown";
 
@@ -142,7 +141,7 @@ function isPlaintextCandidate(text: string): boolean {
 }
 
 function normalizePlaintext(value: string, allowPlaintextLegacy: boolean): DecryptSensitiveResult {
-  if (!allowPlaintextLegacy || !SAFE_PLAINTEXT_LEGACY_MARKERS.has(value)) {
+  if (!allowPlaintextLegacy) {
     throw new Error("plaintext_not_allowed");
   }
 
