@@ -5,10 +5,10 @@ import Link from "next/link";
 import { Shield, Eye, Lock, Trash2 } from "lucide-react";
 
 const privacyPoints = [
-  { icon: Eye, title: "Visibilidad configurable", desc: "Decides qué información se muestra al escanear tu chip." },
-  { icon: Lock, title: "Datos cifrados", desc: "Información sensible protegida con cifrado." },
-  { icon: Shield, title: "Datos nunca expuestos", desc: "Tu correo y fecha de nacimiento no se muestran públicamente." },
-  { icon: Trash2, title: "Eliminación disponible", desc: "Puedes solicitar la eliminación de tu cuenta en cualquier momento." },
+  { icon: Eye, title: "Visibilidad configurable", desc: "Puedes configurar la visibilidad de determinados datos de tu perfil." },
+  { icon: Lock, title: "Controles de seguridad", desc: "Aplicamos cifrado y controles de acceso a datos sensibles." },
+  { icon: Shield, title: "Datos de cuenta no públicos", desc: "El correo de la cuenta y la fecha de nacimiento completa no forman parte del perfil público." },
+  { icon: Trash2, title: "Eliminación disponible", desc: "Puedes solicitar la eliminación de tu cuenta mediante el flujo de confirmación disponible." },
 ];
 
 export default function PrivacySection() {
@@ -34,7 +34,7 @@ export default function PrivacySection() {
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-[#6B7280]">Panel de control</p>
-                    <p className="text-sm font-bold text-[#EFF4FF]">Tu información. Tus decisiones.</p>
+                    <p className="text-sm font-bold text-[#EFF4FF]">Privacidad y configuración</p>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -63,10 +63,10 @@ export default function PrivacySection() {
             className="order-1 lg:order-2"
           >
             <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] text-[#EFF4FF] mb-6">
-              Tu información. Tus decisiones.
+              Privacidad con controles claros
             </h2>
             <p className="text-lg text-[#A0AEC0] font-medium leading-relaxed mb-6">
-              Tú controlas qué información se muestra al escanear tu chip. Cumplimos con la Ley 81 de Protección de Datos Personales de Panamá.
+              Puedes configurar la visibilidad de determinados datos de tu perfil. Aplicamos controles técnicos de privacidad y seguridad para limitar la información expuesta públicamente.
             </p>
             <ul className="space-y-3 mb-8">
               {privacyPoints.map((point) => (

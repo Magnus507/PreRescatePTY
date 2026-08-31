@@ -10,6 +10,10 @@ import { CONSENT_TEXT_VERSION, CONSENT_TYPE } from "@/domains/consents/consent.c
 export const dynamic = "force-dynamic";
 
 const ACTIVE_ACCOUNT_TYPES = new Set<string>([ACCOUNT_TYPES.PERSONAL, ACCOUNT_TYPES.COMPANY]);
+const REGISTRATION_LEGAL_DOCUMENTS = {
+  terms: "/legal/terminos",
+  privacy: "/legal/privacidad",
+} as const;
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +28,25 @@ export async function POST(req: NextRequest) {
     if (!validation.success) {
       return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
     }
-    const { email: emailLower, password, phone, accountType } = validation.data;
+    const {
+      email: emailLower,
+      password,
+      phone,
+      accountType,
+      acceptedTerms,
+      consentTextVersion,
+    } = validation.data;
+
+    // The client must attest to the exact legal text version currently served.
+    // This prevents a stale or handcrafted client from creating fabricated
+    // consent evidence for a different version of the terms/privacy notice.
+    if (consentTextVersion !== CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY) {
+      return NextResponse.json(
+        { error: "Los términos fueron actualizados. Recarga la página y vuelve a aceptarlos." },
+        { status: 400 }
+      );
+    }
+
     const packageId = typeof (body as { packageId?: unknown }).packageId === "string"
       ? (body as { packageId: string }).packageId
       : null;
@@ -118,11 +140,13 @@ export async function POST(req: NextRequest) {
           accountId: account.id,
           userId: newUser.id,
           consentType: CONSENT_TYPE.TERMS_AND_PRIVACY,
-          textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+          textVersion: consentTextVersion,
           ipAddress: ip,
           userAgent,
           evidenceJson: JSON.stringify({
-            acceptedTerms: true,
+            acceptedTerms,
+            consentTextVersion,
+            legalDocuments: REGISTRATION_LEGAL_DOCUMENTS,
             packageId: selectedPackage?.id || null,
             accountType: resolvedAccountType,
           }),

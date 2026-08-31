@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockPrisma, resetMockPrisma } from "../helpers/mock-prisma";
 
 vi.mock("@/lib/constants", async (importOriginal) => {
@@ -30,6 +30,14 @@ function digitalItem(overrides: Record<string, unknown> = {}) {
 describe("ensureTraceableDigitalIdentity", () => {
   beforeEach(() => {
     resetMockPrisma();
+    // This suite exercises the explicit requestOrigin path. Keep ambient CI or
+    // Vercel URL variables from changing the canonical URL under test.
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
+    vi.stubEnv("NEXTAUTH_URL", "");
+    vi.stubEnv("APP_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
+    vi.stubEnv("VERCEL_URL", "");
+
     mockPrisma.chip.create.mockResolvedValue({
       id: "chip-1",
       shortCode: "PUBLIC7NM42",
@@ -51,6 +59,10 @@ describe("ensureTraceableDigitalIdentity", () => {
       ...digitalItem(),
       chipId: "chip-1",
     } as never);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("creates the resolver chip, activation token and digital link as one bundle", async () => {

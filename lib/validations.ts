@@ -29,6 +29,10 @@ export const registerSchema = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   phone: z.string().optional(),
   accountType: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase() : v), z.enum(VALID_ACCOUNT_TYPES)).default("personal"),
+  acceptedTerms: z.boolean().refine((value) => value === true, {
+    message: "Debes aceptar los términos y la política de privacidad",
+  }),
+  consentTextVersion: z.string().trim().min(1, "Versión de consentimiento requerida"),
 });
 
 // ──────────────────────────────────────────────

@@ -5,30 +5,34 @@ import { decrypt, encrypt } from "@/lib/encryption";
 export class ProfileRepository {
   /**
    * Decrypts medical fields in a profile object.
+   *
+   * The only plaintext value intentionally tolerated is the historical
+   * non-sensitive blood-type placeholder "Pendiente". Every other non-empty
+   * sensitive field must be valid encrypted data (v2 GCM or legacy CBC).
    */
   private static decryptProfile(profile: Profile | null): Profile | null {
     if (!profile) return null;
     return {
       ...profile,
-      bloodType: decrypt(profile.bloodType, { allowPlaintextLegacy: true }),
-      allergies: decrypt(profile.allergies, { allowPlaintextLegacy: true }),
-      chronicConditions: decrypt(profile.chronicConditions, { allowPlaintextLegacy: true }),
-      medications: decrypt(profile.medications, { allowPlaintextLegacy: true }),
-      additionalNotes: decrypt(profile.additionalNotes, { allowPlaintextLegacy: true }),
-      nationalId: decrypt(profile.nationalId || "", { allowPlaintextLegacy: true }),
-      address: decrypt(profile.address || "", { allowPlaintextLegacy: true }),
-      insuranceProvider: decrypt(profile.insuranceProvider || "", { allowPlaintextLegacy: true }),
-      insurancePolicyNumber: decrypt(profile.insurancePolicyNumber || "", { allowPlaintextLegacy: true }),
-      preferredHospital: decrypt(profile.preferredHospital || "", { allowPlaintextLegacy: true }),
-      insuranceEmergencyPhone: decrypt(profile.insuranceEmergencyPhone || "", { allowPlaintextLegacy: true }),
-      primaryDoctorName: decrypt(profile.primaryDoctorName || "", { allowPlaintextLegacy: true }),
-      primaryDoctorPhone: decrypt(profile.primaryDoctorPhone || "", { allowPlaintextLegacy: true }),
-      communicationAssistance: decrypt(profile.communicationAssistance || "", { allowPlaintextLegacy: true }),
-      safeReturnInstructions: decrypt(profile.safeReturnInstructions || "", { allowPlaintextLegacy: true }),
-      safeReturnLocationName: decrypt(profile.safeReturnLocationName || "", { allowPlaintextLegacy: true }),
-      safeReturnAddress: decrypt(profile.safeReturnAddress || "", { allowPlaintextLegacy: true }),
-      safeReturnContactName: decrypt(profile.safeReturnContactName || "", { allowPlaintextLegacy: true }),
-      safeReturnContactPhone: decrypt(profile.safeReturnContactPhone || "", { allowPlaintextLegacy: true }),
+      bloodType: profile.bloodType === "Pendiente" ? "Pendiente" : decrypt(profile.bloodType),
+      allergies: decrypt(profile.allergies),
+      chronicConditions: decrypt(profile.chronicConditions),
+      medications: decrypt(profile.medications),
+      additionalNotes: decrypt(profile.additionalNotes),
+      nationalId: decrypt(profile.nationalId || ""),
+      address: decrypt(profile.address || ""),
+      insuranceProvider: decrypt(profile.insuranceProvider || ""),
+      insurancePolicyNumber: decrypt(profile.insurancePolicyNumber || ""),
+      preferredHospital: decrypt(profile.preferredHospital || ""),
+      insuranceEmergencyPhone: decrypt(profile.insuranceEmergencyPhone || ""),
+      primaryDoctorName: decrypt(profile.primaryDoctorName || ""),
+      primaryDoctorPhone: decrypt(profile.primaryDoctorPhone || ""),
+      communicationAssistance: decrypt(profile.communicationAssistance || ""),
+      safeReturnInstructions: decrypt(profile.safeReturnInstructions || ""),
+      safeReturnLocationName: decrypt(profile.safeReturnLocationName || ""),
+      safeReturnAddress: decrypt(profile.safeReturnAddress || ""),
+      safeReturnContactName: decrypt(profile.safeReturnContactName || ""),
+      safeReturnContactPhone: decrypt(profile.safeReturnContactPhone || ""),
     };
   }
 
