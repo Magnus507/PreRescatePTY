@@ -17,6 +17,7 @@ type YappySession = {
 };
 
 let yappyScriptPromise: Promise<void> | null = null;
+const PAYMENT_CONFIRMATION_REFRESH_DELAYS_MS = [1200, 3000, 6000, 10000, 15000, 22000] as const;
 
 function loadYappyScript(src: string) {
   if (customElements.get("btn-yappy")) return Promise.resolve();
@@ -109,9 +110,14 @@ export function YappyPaymentButton({
     };
 
     const handleSuccess = () => {
-      toast.success("Pago recibido. Confirmando con Yappy...");
-      timers.push(window.setTimeout(() => onPaymentUpdateRef.current(), 1500));
-      timers.push(window.setTimeout(() => onPaymentUpdateRef.current(), 4500));
+      // eventSuccess is useful UX feedback, but the signed IPN remains the
+      // authority that marks the order as paid. Refresh long enough to absorb
+      // normal webhook/network delay; once the parent sees "paid", this
+      // component unmounts and cleanup cancels the remaining timers.
+      toast.success("Yappy confirmo la transaccion. Verificando el pago...");
+      PAYMENT_CONFIRMATION_REFRESH_DELAYS_MS.forEach((delay) => {
+        timers.push(window.setTimeout(() => onPaymentUpdateRef.current(), delay));
+      });
     };
     const handleError = () => toast.error("El pago no fue completado. Puedes intentarlo nuevamente.");
 
