@@ -1,0 +1,45 @@
+name: Refresh Next security patch
+
+on:
+  push:
+    branches:
+      - release/final-hardening-2026-08-31
+    paths:
+      - .github/workflows/refresh-next-security.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-next:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/final-hardening-2026-08-31
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install patched Next.js
+        run: npm install next@15.5.24 --save
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Commit refreshed dependency lock
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No dependency changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "fix(security): upgrade Next.js to 15.5.24"
+          git push origin HEAD:release/final-hardening-2026-08-31
