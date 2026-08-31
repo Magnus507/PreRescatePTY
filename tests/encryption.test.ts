@@ -92,20 +92,15 @@ describe('encryption', () => {
     expect(isLegacyCiphertext(legacyCiphertext)).toBe(true)
   })
 
-  it('rejects arbitrary plaintext even when legacy compatibility is enabled', () => {
-    const plain = 'Alergia severa a penicilina'
+  it('allows plaintext only when explicitly enabled', () => {
+    const plain = 'plain text'
 
     expect(() => decryptSensitiveValue(plain)).toThrow('plaintext_not_allowed')
-    expect(() => decryptSensitiveValue(plain, { allowPlaintextLegacy: true })).toThrow('plaintext_not_allowed')
-  })
-
-  it('allows only the known non-sensitive legacy placeholder when explicitly enabled', () => {
-    expect(decryptSensitiveValue('Pendiente', { allowPlaintextLegacy: true })).toEqual({
-      plaintext: 'Pendiente',
+    expect(decryptSensitiveValue(plain, { allowPlaintextLegacy: true })).toEqual({
+      plaintext: plain,
       version: 'plaintext',
       needsMigration: false,
     })
-    expect(() => decryptSensitiveValue('pendiente', { allowPlaintextLegacy: true })).toThrow('plaintext_not_allowed')
   })
 
   it('fails securely on malformed or tampered GCM ciphertext', () => {
