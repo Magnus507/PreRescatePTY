@@ -11,7 +11,7 @@ const capabilities = [
   { icon: Users, title: "Gestión de miembros", desc: "Administra la estructura de tu organización y los miembros asociados." },
   { icon: Shield, title: "Perfiles individuales", desc: "Cada colaborador cuenta con su propio perfil médico configurable." },
   { icon: Smartphone, title: "Asignación de chips", desc: "Asigna identificaciones NFC y QR a los miembros de la organización." },
-  { icon: CheckCircle2, title: "Visibilidad controlada", desc: "Cada usuario decide qué información se muestra al escanear su identificación." },
+  { icon: CheckCircle2, title: "Visibilidad configurable", desc: "Cada perfil puede configurar la visibilidad de determinados datos al escanear su identificación." },
 ];
 
 const useCases = [
@@ -28,16 +28,16 @@ const steps = [
   { num: "01", title: "Solicita información", desc: "Cuéntanos cuántos miembros deseas gestionar y el uso previsto." },
   { num: "02", title: "Selecciona una opción", desc: "Revisa los planes disponibles o solicita información para una configuración corporativa." },
   { num: "03", title: "Gestiona miembros y perfiles", desc: "Administra miembros, perfiles y asignación de chips desde la cuenta de organización." },
-  { num: "04", title: "Cada persona configura su información", desc: "Cada perfil puede definir qué información médica será visible al escanear su identificación." },
+  { num: "04", title: "Cada persona configura su información", desc: "Cada perfil puede configurar la visibilidad de determinados datos médicos al escanear su identificación." },
 ];
 
 const faqs = [
   { q: "¿Qué puede gestionar una cuenta corporativa?", a: "Una cuenta corporativa permite administrar miembros, perfiles médicos y la asignación de identificaciones NFC y QR." },
   { q: "¿Cada colaborador tiene su propio perfil?", a: "Sí. Cada miembro puede tener su propio perfil con información médica y contactos de emergencia configurados." },
-  { q: "¿La empresa puede ver toda la información médica?", a: "No. La información médica visible depende de la configuración de cada perfil. La organización gestiona la estructura de la cuenta, no el contenido médico privado." },
+  { q: "¿La empresa puede ver toda la información médica?", a: "No por el solo hecho de administrar la organización. La información médica pública depende de la configuración y permisos aplicables a cada perfil." },
   { q: "¿Cómo se asignan los chips?", a: "Desde el panel administrativo se pueden asignar identificaciones a los miembros de la organización." },
-  { q: "¿Se necesita una aplicación?", a: "No. El perfil se consulta desde cualquier navegador al escanear el código QR o el chip NFC." },
-  { q: "¿El sticker necesita batería?", a: "No. El chip NFC se activa con la energía del celular que lo escanea." },
+  { q: "¿Se necesita una aplicación?", a: "No. El perfil se consulta desde un navegador compatible al escanear el código QR o el chip NFC." },
+  { q: "¿El sticker necesita batería?", a: "No. El chip NFC se activa con la energía del dispositivo compatible que lo escanea." },
   { q: "¿Cómo solicito información?", a: "Para consultas corporativas, utiliza el formulario de contacto en /contacto y selecciona el asunto relacionado con empresas. Te responderemos lo antes posible." },
   { q: "¿Hay precios corporativos?", a: "Los precios y opciones se informan según las necesidades de cada organización. Contáctanos para recibir información detallada." },
   { q: "¿Cuál es el tiempo de respuesta?", a: "Responderemos tan pronto como sea posible. Proporciona toda la información relevante sobre tu organización en el formulario de contacto." },
@@ -175,10 +175,10 @@ export default function EmpresasContent() {
               className="text-center mb-12"
             >
               <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] text-[#1A1D23] mb-4">
-                Administración corporativa sin exponer información innecesaria
+                Administración corporativa con separación de funciones
               </h2>
               <p className="text-lg text-[#6B7280] font-medium max-w-2xl mx-auto">
-                La organización gestiona la estructura de la cuenta y la asignación de identificaciones. La información médica visible depende de la configuración de cada perfil.
+                La organización gestiona la estructura de la cuenta y la asignación de identificaciones. El acceso y la visibilidad de datos médicos dependen de los permisos y la configuración aplicables a cada perfil.
               </p>
             </motion.div>
 
