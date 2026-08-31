@@ -30,7 +30,7 @@ export default function FinalCTA() {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="text-lg text-white/80 font-medium leading-relaxed max-w-2xl mx-auto mb-10"
         >
-          Crea tu perfil médico de emergencia y elige qué información estará disponible al escanear tu identificación.
+          Crea tu perfil médico de emergencia y configura los datos disponibles para la consulta pública según las opciones del perfil.
         </motion.p>
 
         <motion.div
