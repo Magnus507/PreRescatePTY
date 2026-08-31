@@ -1,5 +1,9 @@
 import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import {
+  type NextFetchEvent,
+  type NextRequest,
+  NextResponse,
+} from "next/server";
 import {
   buildContentSecurityPolicy,
   isProtectedAppRoute,
@@ -12,17 +16,31 @@ function applyCsp(response: NextResponse, csp: string) {
   return response;
 }
 
-export default withAuth(
-  function middleware(req) {
-    const nonce = btoa(crypto.randomUUID());
-    const csp = buildContentSecurityPolicy(
-      nonce,
-      process.env.NODE_ENV === "development",
-    );
-    const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("x-nonce", nonce);
-    requestHeaders.set("Content-Security-Policy", csp);
+function createCspContext(req: NextRequest) {
+  const nonce = btoa(crypto.randomUUID());
+  const csp = buildContentSecurityPolicy(
+    nonce,
+    process.env.NODE_ENV === "development",
+  );
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
 
+  return { csp, requestHeaders };
+}
+
+function continueWithCsp(req: NextRequest) {
+  const { csp, requestHeaders } = createCspContext(req);
+
+  return applyCsp(
+    NextResponse.next({ request: { headers: requestHeaders } }),
+    csp,
+  );
+}
+
+const protectedMiddleware = withAuth(
+  function authenticatedMiddleware(req) {
+    const { csp, requestHeaders } = createCspContext(req);
     const token = req.nextauth.token;
     const { pathname } = req.nextUrl;
 
@@ -51,11 +69,18 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ req, token }) =>
-        !isProtectedAppRoute(req.nextUrl.pathname) || !!token,
+      authorized: ({ token }) => !!token,
     },
   },
 );
+
+export default function middleware(req: NextRequest, event: NextFetchEvent) {
+  if (!isProtectedAppRoute(req.nextUrl.pathname)) {
+    return continueWithCsp(req);
+  }
+
+  return protectedMiddleware(req, event);
+}
 
 export const config = {
   matcher: [
