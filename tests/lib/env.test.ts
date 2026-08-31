@@ -64,11 +64,12 @@ describe("environment contract", () => {
   });
 
   it("keeps the test database isolated as an explicit test scope", () => {
-    expect(() => validateEnvForScope("test", {})).toThrow(
-      "Invalid environment configuration: DATABASE_URL_TEST",
-    );
+    expect(() =>
+      validateEnvForScope("test", { NODE_ENV: "test" }),
+    ).toThrow("Invalid environment configuration: DATABASE_URL_TEST");
     expect(() =>
       validateEnvForScope("test", {
+        NODE_ENV: "test",
         DATABASE_URL_TEST: "postgresql://user:password@localhost:5432/test",
       }),
     ).not.toThrow();
