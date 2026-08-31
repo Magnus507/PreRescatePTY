@@ -29,10 +29,14 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/prerescate_ci
       DIRECT_URL: postgresql://ci:ci@localhost:5432/prerescate_ci
       DATABASE_URL_TEST: postgresql://ci:ci@localhost:5432/prerescate_ci
-      NEXTAUTH_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-only-secret-placeholder-at-least-32-characters
+      ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
       NEXT_PUBLIC_SUPABASE_URL: https://ci-test.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-only-anon-key
       SUPABASE_SERVICE_ROLE_KEY: ci-only-service-role-key
+      CRON_SECRET: ci-only-cron-secret-placeholder
 
     steps:
       - name: Checkout
@@ -49,6 +53,9 @@ jobs:
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+      - name: Validate environment contract
+        run: npm run env:check && npm run env:verify:production
 
       - name: Generate Prisma client
         run: npm run prisma:generate

@@ -1,3 +1,4 @@
+import { validateStartupEnv } from "./lib/env";
 import {
   getSentryPrivacyConfig,
   redactTelemetryString,
@@ -5,6 +6,8 @@ import {
 } from "./lib/security/telemetry";
 
 export async function register() {
+  validateStartupEnv();
+
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const Sentry = await import("@sentry/nextjs");
     Sentry.init({
