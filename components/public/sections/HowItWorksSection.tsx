@@ -7,8 +7,8 @@ import { ShoppingCart, Smartphone, FileText, Scan } from "lucide-react";
 const steps = [
   { num: "01", icon: ShoppingCart, title: "Adquiere tu identificación", desc: "Recibe tu sticker con chip NFC y código QR." },
   { num: "02", icon: Smartphone, title: "Activa tu chip", desc: "Ingresa el código de activación y vincúlalo a tu cuenta." },
-  { num: "03", icon: FileText, title: "Configura tu perfil", desc: "Completa tu información médica y decide qué campos serán visibles." },
-  { num: "04", icon: Scan, title: "Escanea y consulta", desc: "Quien escanee podrá ver la información autorizada y contactar manualmente a tus familiares." },
+  { num: "03", icon: FileText, title: "Configura tu perfil", desc: "Completa tu información médica y configura la visibilidad disponible para los datos del perfil." },
+  { num: "04", icon: Scan, title: "Escanea y consulta", desc: "Quien escanee podrá consultar los datos configurados para el perfil público y utilizar las opciones de contacto disponibles." },
 ];
 
 export default function HowItWorksSection() {
