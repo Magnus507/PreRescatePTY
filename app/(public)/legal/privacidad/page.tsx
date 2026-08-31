@@ -12,8 +12,8 @@ export default function PrivacidadPage() {
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="rounded-[3rem] border border-white/10 bg-white/5 p-10 shadow-[0_40px_120px_rgba(15,23,42,0.35)] backdrop-blur-xl">
               <span className="text-sm uppercase tracking-[0.35em] text-brand font-black">Política de Privacidad</span>
-              <h1 className="mt-6 text-4xl sm:text-5xl font-black tracking-tight text-white">Cómo protegemos tus datos personales</h1>
-              <p className="mt-4 max-w-2xl text-slate-300 leading-relaxed">Entiende qué información recolectamos, cómo la usamos y qué derechos tienes sobre tu perfil en PreRescue ID.</p>
+              <h1 className="mt-6 text-4xl sm:text-5xl font-black tracking-tight text-white">Cómo tratamos y protegemos tus datos personales</h1>
+              <p className="mt-4 max-w-2xl text-slate-300 leading-relaxed">Entiende qué información recolectamos, cómo la usamos y qué opciones tienes sobre tu perfil en PreRescue ID.</p>
             </div>
           </div>
         </section>
@@ -22,10 +22,10 @@ export default function PrivacidadPage() {
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-8">
             <div className="rounded-[2rem] border border-white/10 bg-slate-900/90 p-10 shadow-xl shadow-slate-950/30">
               <div className="space-y-6 prose prose-invert prose-sm text-slate-100 max-w-none">
-                <p className="text-sm text-brand uppercase tracking-[0.35em] font-black">Versión 1.0 — Última actualización: Marzo 2026</p>
+                <p className="text-sm text-brand uppercase tracking-[0.35em] font-black">Versión 1.0 — Última actualización: Agosto 2026</p>
 
                 <h2>1. Responsable del Tratamiento</h2>
-                <p>PreRescate PTY, domiciliada en la República de Panamá, es responsable del tratamiento de los datos personales recopilados a través de este servicio, conforme a la Ley 81 de 26 de marzo de 2019, sobre Protección de Datos Personales.</p>
+                <p>PreRescate PTY, domiciliada en la República de Panamá, es responsable del tratamiento de los datos personales recopilados a través de este servicio. Esta política describe las prácticas del servicio y toma como referencia la normativa panameña aplicable en materia de protección de datos personales, incluida la Ley 81 de 26 de marzo de 2019.</p>
 
                 <h2>2. Datos que Recopilamos</h2>
                 <h3>2.1 Datos proporcionados por el usuario</h3>
@@ -38,7 +38,7 @@ export default function PrivacidadPage() {
                   <li>Medicamentos</li>
                   <li>Contactos de emergencia</li>
                 </ul>
-                <p><strong>Importante:</strong> Los datos de tipo de sangre, alergias, condiciones médicas y medicamentos son considerados <strong>datos sensibles de salud</strong> conforme a la Ley 81 y las guías de ANTAI. Su tratamiento requiere consentimiento previo, expreso e irrefutable del usuario.</p>
+                <p><strong>Importante:</strong> Por su naturaleza, tratamos los datos médicos y de salud como información sensible y aplicamos controles adicionales de acceso, visibilidad y seguridad.</p>
 
                 <h3>2.2 Datos recopilados automáticamente al escanear</h3>
                 <ul>
@@ -51,18 +51,18 @@ export default function PrivacidadPage() {
 
                 <h2>3. Finalidad del Tratamiento</h2>
                 <ul>
-                  <li>Mostrar información médica de emergencia a terceros que escaneen el chip.</li>
-                  <li>Notificar a los contactos de emergencia del usuario cuando se escanee el chip.</li>
-                  <li>Mantener un historial de escaneos para el usuario.</li>
-                  <li>Gestión de la cuenta del usuario.</li>
+                  <li>Mostrar información de emergencia configurada para el perfil a terceros que escaneen la identificación.</li>
+                  <li>Procesar notificaciones de emergencia cuando la función correspondiente esté habilitada.</li>
+                  <li>Mantener un historial de escaneos asociado al servicio.</li>
+                  <li>Gestionar la cuenta del usuario y las funciones asociadas.</li>
                 </ul>
 
-                <h2>4. Consentimiento</h2>
-                <p>Al registrarse, el usuario otorga su consentimiento expreso para el tratamiento de sus datos personales, incluyendo datos sensibles de salud. Este consentimiento queda registrado con fecha, hora, dirección IP y versión del texto aceptado, conforme exige la guía de ANTAI.</p>
-                <p>El usuario puede revocar su consentimiento en cualquier momento, lo cual implicará la desactivación de su perfil público y la suspensión de los servicios asociados.</p>
+                <h2>4. Consentimiento y Evidencia de Aceptación</h2>
+                <p>Para completar el registro, el usuario debe aceptar los términos y la política de privacidad vigentes. El sistema conserva evidencia técnica de esa aceptación, incluyendo la versión del texto y metadatos asociados al registro.</p>
+                <p>La configuración y publicación de información médica se gestiona desde las funciones del perfil. Para consultas, solicitudes de eliminación u otros asuntos relacionados con privacidad, el usuario puede utilizar los canales de contacto indicados en esta política.</p>
 
                 <h2>5. Datos Públicos vs. Privados</h2>
-                <p><strong>Datos que SÍ se muestran públicamente al escanear:</strong></p>
+                <p><strong>Datos que pueden mostrarse públicamente al escanear, según la configuración y los datos disponibles en el perfil:</strong></p>
                 <ul>
                   <li>Nombre o alias visible</li>
                   <li>Tipo de sangre</li>
@@ -71,7 +71,7 @@ export default function PrivacidadPage() {
                   <li>Medicamentos</li>
                   <li>Contactos de emergencia (nombre, parentesco, teléfono)</li>
                 </ul>
-                <p><strong>Datos que NUNCA se muestran públicamente:</strong></p>
+                <p><strong>Datos de cuenta que no forman parte del perfil público en el flujo actual:</strong></p>
                 <ul>
                   <li>Email del usuario</li>
                   <li>Fecha de nacimiento completa</li>
@@ -82,37 +82,29 @@ export default function PrivacidadPage() {
                 </ul>
 
                 <h2>6. Seguridad</h2>
-                <p>Implementamos medidas técnicas y organizativas para proteger los datos personales, incluyendo:</p>
+                <p>Aplicamos medidas técnicas y organizativas orientadas a reducir el acceso no autorizado y limitar la exposición de datos, incluyendo:</p>
                 <ul>
                   <li>Cifrado en tránsito (HTTPS)</li>
                   <li>Hash seguro de contraseñas</li>
                   <li>Control de acceso basado en roles</li>
-                  <li>Registros de auditoría</li>
-                  <li>Copias de seguridad</li>
+                  <li>Registros de auditoría para operaciones del sistema que los generan</li>
+                  <li>Cifrado y controles de acceso para campos sensibles que utilizan estas protecciones</li>
                 </ul>
 
-                <h2>7. Derechos del Titular</h2>
-                <p>Conforme a la Ley 81, el usuario tiene derecho a:</p>
-                <ul>
-                  <li>Acceder a sus datos personales</li>
-                  <li>Rectificar datos inexactos</li>
-                  <li>Cancelar/eliminar sus datos</li>
-                  <li>Oponerse al tratamiento</li>
-                  <li>Portabilidad de sus datos</li>
-                  <li>Revocar el consentimiento</li>
-                </ul>
+                <h2>7. Derechos y Solicitudes del Titular</h2>
+                <p>El usuario puede contactar a PreRescate PTY para realizar solicitudes relacionadas con sus datos personales, incluyendo acceso, rectificación, eliminación, oposición o revocación cuando corresponda. Cada solicitud se gestiona según el flujo disponible y las obligaciones aplicables.</p>
 
                 <h2>8. Retención de Datos</h2>
-                <p>Los datos personales se conservarán mientras la cuenta esté activa. Al solicitar la eliminación, los datos serán eliminados o anonimizados en un plazo de 30 días, salvo que exista obligación legal de retención.</p>
+                <p>Los datos se conservan mientras sean necesarios para prestar el servicio y gestionar la cuenta, sujetos a los procesos de eliminación, anonimización y a las obligaciones de conservación que resulten aplicables. No prometemos un plazo uniforme de eliminación cuando existan dependencias técnicas o requisitos de retención que deban atenderse.</p>
 
                 <h2>9. Contacto</h2>
-                <p>Para ejercer sus derechos o consultas sobre privacidad: <strong>privacidad@prerescatepty.com</strong></p>
+                <p>Para consultas o solicitudes relacionadas con privacidad: <strong>privacidad@prerescatepty.com</strong></p>
               </div>
             </div>
 
             <div className="rounded-[2rem] border border-emerald-500/20 bg-emerald-500/10 p-8 text-slate-100 shadow-xl shadow-emerald-500/10">
-              <p className="text-base font-semibold text-white">Protegemos tu información con los estándares más altos.</p>
-              <p className="mt-3 text-slate-300 leading-relaxed">Si tienes consultas sobre cómo manejamos tus datos sensibles, escribe a nuestro equipo de privacidad.</p>
+              <p className="text-base font-semibold text-white">Aplicamos controles técnicos para reducir la exposición de información sensible.</p>
+              <p className="mt-3 text-slate-300 leading-relaxed">Si tienes consultas sobre cómo manejamos tus datos, escribe a nuestro equipo de privacidad.</p>
               <a href="mailto:privacidad@prerescatepty.com" className="inline-flex mt-6 rounded-full bg-white/10 px-6 py-3 text-sm font-black uppercase tracking-[0.2em] text-white hover:bg-white/15 transition-all">Contactar privacidad</a>
             </div>
           </div>
