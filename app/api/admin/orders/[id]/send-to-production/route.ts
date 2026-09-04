@@ -3,17 +3,19 @@ import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { parseCustomerFulfillmentSummaryFromInternalNote } from "@/lib/orders/store-order-fulfillment";
 import { ensureCustomerBackorderProduction } from "@/lib/operations/customer-order-production";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
+  const requestId = getAuditRequestId(req);
 
   try {
     const order = await prisma.order.findUnique({
@@ -104,12 +106,24 @@ export async function POST(
         createdById: auth.session.user.id || null,
       });
 
+      if (!production) return null;
+
       if (order.orderStatus === "pending") {
         await tx.order.update({
           where: { id: order.id },
           data: { orderStatus: "processing" },
         });
       }
+
+      await writeAuditLog(tx, {
+        actorUserId: auth.session.user.id || null,
+        entityType: "order",
+        entityId: order.id,
+        action: "order.sent_to_production",
+        requestId,
+        before: { orderStatus: order.orderStatus, paymentStatus: order.paymentStatus, backorderQty },
+        after: { productionOrderId: production.productionOrder.id, productionOrderCode: production.productionOrder.code, created: production.created },
+      });
 
       return production;
     });

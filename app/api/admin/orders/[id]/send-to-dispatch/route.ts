@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,13 +10,14 @@ function parseOrderCode(orderNumber: string) {
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
+  const requestId = getAuditRequestId(req);
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -203,6 +205,16 @@ export async function POST(
       await tx.order.update({
         where: { id: order.id },
         data: { orderStatus: "processing" },
+      });
+
+      await writeAuditLog(tx, {
+        actorUserId: auth.session.user.id || null,
+        entityType: "order",
+        entityId: order.id,
+        action: "order.sent_to_dispatch",
+        requestId,
+        before: { orderStatus: order.orderStatus, paymentStatus: order.paymentStatus },
+        after: { dispatchId: dispatch.id, dispatchCode: dispatch.code, operationalOrderId: operationalOrder?.id || null, operationalQuantity },
       });
 
       return {
