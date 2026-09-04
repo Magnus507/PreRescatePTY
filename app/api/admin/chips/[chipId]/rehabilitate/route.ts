@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUniqueActivationCode } from "@/lib/identifiers";
 import { protectActivationCode } from "@/domains/chips/activation-code.service";
+import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ chipId: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["admin", "superadmin"].includes(session.user.role)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
+  const session = auth.session;
 
   const { chipId } = await context.params;
+  const requestId = getAuditRequestId(req);
 
   try {
     const current = await prisma.chip.findUnique({
@@ -121,16 +121,15 @@ export async function POST(
         newTokenId: newToken.id,
       };
 
-      await tx.auditLog.create({
-        data: {
-          accountId: current.accountId,
-          actorUserId: session.user.id,
-          entityType: "chip",
-          entityId: chipId,
-          action: "chip_rehabilitated_for_stock",
-          oldValuesJson: JSON.stringify(oldValues),
-          newValuesJson: JSON.stringify(newValues),
-        },
+      await writeAuditLog(tx, {
+        accountId: current.accountId,
+        actorUserId: session.user.id || null,
+        entityType: "chip",
+        entityId: chipId,
+        action: "chip.rehabilitated_for_stock",
+        requestId,
+        before: oldValues,
+        after: newValues,
       });
 
       const chip = await tx.chip.findUnique({
