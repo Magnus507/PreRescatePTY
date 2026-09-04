@@ -61,8 +61,8 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ pkg });
   } catch (err: unknown) {
-    const e = err instanceof Error ? err : new Error(String(err));
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error("[admin/packages] Create failed", err);
+    return NextResponse.json({ error: "No se pudo crear el paquete." }, { status: 500 });
   }
 }
 
@@ -94,7 +94,7 @@ export async function PATCH(req: Request) {
     });
     return NextResponse.json({ pkg });
   } catch (err: unknown) {
-    const e = err instanceof Error ? err : new Error(String(err));
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error("[admin/packages] Update failed", err);
+    return NextResponse.json({ error: "No se pudo actualizar el paquete." }, { status: 500 });
   }
 }

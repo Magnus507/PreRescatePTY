@@ -158,9 +158,9 @@ export async function POST(
       },
     });
   } catch (err: unknown) {
-    const e = err instanceof Error ? err : new Error(String(err));
+    console.error("[admin/chips/rehabilitate] Internal error", err);
     return NextResponse.json(
-      { error: e.message || "Error rehabilitando chip" },
+      { error: "No se pudo rehabilitar el chip." },
       { status: 500 }
     );
   }

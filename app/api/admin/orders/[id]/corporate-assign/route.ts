@@ -160,7 +160,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     const e = err instanceof Error ? err : new Error(String(err));
-    const status = (e as unknown as { status?: number }).status || 500;
-    return NextResponse.json({ error: e.message || "No se pudo asignar chip" }, { status });
+    const candidateStatus = (e as unknown as { status?: number }).status || 500;
+    const status = candidateStatus >= 400 && candidateStatus < 500 ? candidateStatus : 500;
+    if (status === 500) console.error("[corporate-assign] Internal error", e);
+    return NextResponse.json(
+      { error: status < 500 ? e.message : "No se pudo asignar el chip." },
+      { status }
+    );
   }
 }

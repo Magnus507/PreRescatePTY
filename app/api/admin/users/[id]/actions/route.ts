@@ -488,9 +488,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   } catch (err: unknown) {
     console.error("Admin Action Error:", err);
-    const e = err instanceof Error ? err : new Error(String(err));
     return NextResponse.json({ 
-      error: e.message || "Error interno al procesar la acción administrativa" 
+      error: "Error interno al procesar la acción administrativa"
     }, { status: 500 });
   }
 }

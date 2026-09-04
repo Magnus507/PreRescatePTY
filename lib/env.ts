@@ -49,6 +49,7 @@ export const ENV_CONTRACT = {
   TWILIO_WHATSAPP_NUMBER: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
   UPSTASH_REDIS_REST_TOKEN: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: true },
   UPSTASH_REDIS_REST_URL: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: true },
+  VERCEL: { scopes: ["platform"], example: false, sensitive: false, requiredInProduction: false },
   VERCEL_ENV: { scopes: ["runtime", "platform"], example: false, sensitive: false, requiredInProduction: false },
   VERCEL_URL: { scopes: ["runtime", "platform"], example: false, sensitive: false, requiredInProduction: false },
   W537V_SMOKE_CLEANUP: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },

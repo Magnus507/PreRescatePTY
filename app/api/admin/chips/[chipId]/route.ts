@@ -255,8 +255,7 @@ export async function PATCH(
 
     return NextResponse.json({ chip });
   } catch (err: unknown) {
-    console.error(err);
-    const e = err instanceof Error ? err : new Error(String(err));
-    return NextResponse.json({ error: e.message || "Error al actualizar chip" }, { status: 500 });
+    console.error("[admin/chips/:id] Update failed", err);
+    return NextResponse.json({ error: "No se pudo actualizar el chip." }, { status: 500 });
   }
 }
