@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
-import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 import { revealActivationCode } from "@/domains/chips/activation-code.service";
 
 type AppNotificationCreateArgs = {
@@ -27,7 +27,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ chipId: string }> }
 ) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
 
   const { chipId } = await params;
@@ -124,7 +124,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ chipId: string }> }
 ) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
 
   const { chipId } = await params;

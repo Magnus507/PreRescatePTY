@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ExternalLink, Download, FileText } from "lucide-react";
+import Image from "next/image";
 
 interface ReceiptModalProps {
   receiptUrl: string | null;
@@ -120,9 +121,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           {receiptUrl ? (
             <div className="flex flex-col items-center gap-4">
               {isImage && !imageError ? (
-                <img
+                <Image
                   src={receiptUrl}
                   alt={`Comprobante de pago del pedido ${orderNumber}`}
+                  width={1200}
+                  height={1600}
+                  unoptimized
                   className="max-w-full max-h-[70vh] object-contain rounded-xl border border-border"
                   onError={() => setImageError(true)}
                 />

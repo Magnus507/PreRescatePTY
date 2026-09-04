@@ -76,7 +76,12 @@ export type CommerceOrderSyncBatchSummary = {
   retrying: number;
   failed: number;
   skipped: number;
+  recoveredLeases: number;
+  deadLettered: number;
 };
+
+export const COMMERCE_ORDER_SYNC_LEASE_MS = 15 * 60_000;
+export const COMMERCE_ORDER_SYNC_MAX_ATTEMPTS = 8;
 
 export function buildCommerceOrderSyncPayload(
   syncInput: SyncRealOrderToOperationsInput
@@ -258,9 +263,9 @@ export async function enqueueStoredCommerceOrderSyncOutbox(
 
 export async function claimCommerceOrderSyncOutboxBatch(
   db: OutboxDbClient,
-  options: { limit: number; workerId: string }
+  options: { limit: number; workerId: string; now?: Date }
 ) {
-  const now = new Date();
+  const now = options.now ?? new Date();
   const candidates = (await db.commerceOrderSyncOutbox.findMany({
     where: {
       status: { in: ["pending", "retrying"] },
@@ -295,13 +300,63 @@ export async function claimCommerceOrderSyncOutboxBatch(
   return claimed;
 }
 
+export async function recoverStaleCommerceOrderSyncLeases(
+  db: OutboxDbClient,
+  options?: { limit?: number; now?: Date; leaseMs?: number }
+) {
+  const now = options?.now ?? new Date();
+  const expiredBefore = new Date(now.getTime() - (options?.leaseMs ?? COMMERCE_ORDER_SYNC_LEASE_MS));
+  const staleRows = (await db.commerceOrderSyncOutbox.findMany({
+    where: {
+      status: "processing",
+      OR: [{ lockedAt: null }, { lockedAt: { lte: expiredBefore } }],
+    },
+    orderBy: [{ lockedAt: "asc" }, { createdAt: "asc" }],
+    take: Math.min(Math.max(options?.limit ?? 100, 1), 500),
+  })) as CommerceOrderSyncOutboxRow[];
+
+  let recovered = 0;
+  let deadLettered = 0;
+  for (const row of staleRows) {
+    const exhausted = row.attempts >= COMMERCE_ORDER_SYNC_MAX_ATTEMPTS;
+    const result = await db.commerceOrderSyncOutbox.updateMany({
+      where: {
+        id: row.id,
+        status: "processing",
+        lockedAt: row.lockedAt,
+        lockedBy: row.lockedBy,
+      },
+      data: {
+        status: exhausted ? "failed" : "retrying",
+        availableAt: now,
+        lockedAt: null,
+        lockedBy: null,
+        lastErrorCode: exhausted ? "LEASE_EXPIRED_MAX_ATTEMPTS" : "LEASE_EXPIRED",
+        lastErrorMessage: exhausted
+          ? "Worker lease expired after maximum attempts; manual reconciliation required"
+          : "Worker lease expired and was returned to the retry queue",
+      },
+    });
+    if (result.count !== 1) continue;
+    if (exhausted) deadLettered += 1;
+    else recovered += 1;
+  }
+
+  return { recovered, deadLettered };
+}
+
 export async function processCommerceOrderSyncOutboxBatch(
   db: DbClient,
-  options: { limit?: number; workerId: string }
+  options: { limit?: number; workerId: string; now?: Date }
 ): Promise<CommerceOrderSyncBatchSummary> {
+  const recovery = await recoverStaleCommerceOrderSyncLeases(db as OutboxDbClient, {
+    limit: options.limit ?? 10,
+    now: options.now,
+  });
   const claimed = await claimCommerceOrderSyncOutboxBatch(db as OutboxDbClient, {
     limit: options.limit ?? 10,
     workerId: options.workerId,
+    now: options.now,
   });
 
   let processed = 0;
@@ -352,8 +407,12 @@ export async function processCommerceOrderSyncOutboxBatch(
 
         const syncInput = buildSyncInputFromStoredOrder(event.sourceType as SyncRealOrderToOperationsInput["sourceType"], order);
         const syncResult = await syncRealOrderToOperations(tx, syncInput);
-        await tx.commerceOrderSyncOutbox.update({
-          where: { id: event.id },
+        const finalized = await tx.commerceOrderSyncOutbox.updateMany({
+          where: {
+            id: event.id,
+            status: "processing",
+            lockedBy: options.workerId,
+          },
           data: {
             status: "processed",
             processedAt: new Date(),
@@ -363,6 +422,9 @@ export async function processCommerceOrderSyncOutboxBatch(
             lastErrorMessage: null,
           },
         });
+        if (finalized.count !== 1) {
+          throw new Error("OUTBOX_LEASE_LOST");
+        }
         return syncResult;
       });
 
@@ -378,30 +440,40 @@ export async function processCommerceOrderSyncOutboxBatch(
       const message = sanitizeErrorMessage(error);
       const retryable = !isPermanentCommerceSyncError(error);
       const attempts = event.attempts + 1;
-      const availableAt = retryable ? nextRetryAt(attempts) : null;
+      const exhausted = attempts >= COMMERCE_ORDER_SYNC_MAX_ATTEMPTS;
+      const willRetry = retryable && !exhausted;
+      const availableAt = willRetry ? nextRetryAt(attempts) : null;
 
-      await db.commerceOrderSyncOutbox.update({
-        where: { id: event.id },
+      await db.commerceOrderSyncOutbox.updateMany({
+        where: {
+          id: event.id,
+          status: "processing",
+          lockedBy: options.workerId,
+        },
         data: {
-          status: retryable ? "retrying" : "failed",
+          status: willRetry ? "retrying" : "failed",
           attempts,
           availableAt: availableAt ?? event.availableAt,
           lockedAt: null,
           lockedBy: null,
           processedAt: null,
-          lastErrorCode: retryable ? "RETRYABLE_SYNC_ERROR" : "PERMANENT_SYNC_ERROR",
+          lastErrorCode: exhausted
+            ? "MAX_ATTEMPTS_EXCEEDED"
+            : retryable
+              ? "RETRYABLE_SYNC_ERROR"
+              : "PERMANENT_SYNC_ERROR",
           lastErrorMessage: message,
         },
       });
 
-      if (retryable) retrying += 1;
+      if (willRetry) retrying += 1;
       else failed += 1;
 
       logger.warn("[commerce-order-sync] event failed", {
         eventId: event.id,
         sourceType: event.sourceType,
         sourceId: event.sourceId,
-        retryable,
+        retryable: willRetry,
       });
     }
   }
@@ -412,5 +484,7 @@ export async function processCommerceOrderSyncOutboxBatch(
     retrying,
     failed,
     skipped: 0,
+    recoveredLeases: recovery.recovered,
+    deadLettered: recovery.deadLettered + failed,
   };
 }

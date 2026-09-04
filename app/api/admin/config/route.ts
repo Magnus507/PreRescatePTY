@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { ConfigRepository } from "@/domains/shared/repositories/config.repository";
-import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export async function GET() {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
   const configs = await ConfigRepository.getAll();
   return NextResponse.json({ configs });
 }
 
 export async function PATCH(req: Request) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
   try {
     const body = await req.json();

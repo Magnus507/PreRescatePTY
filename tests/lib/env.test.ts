@@ -15,6 +15,8 @@ const validProductionEnv: NodeJS.ProcessEnv = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
   SUPABASE_SERVICE_ROLE_KEY: "test-only-service-role",
   CRON_SECRET: "test-only-cron-secret",
+  UPSTASH_REDIS_REST_URL: "https://test-rate-limit.upstash.io",
+  UPSTASH_REDIS_REST_TOKEN: "test-only-rate-limit-token",
 };
 
 describe("environment contract", () => {

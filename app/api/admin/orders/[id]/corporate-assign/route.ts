@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 import { rateLimit } from "@/lib/rateLimit";
+import { ORDER_FULFILLMENT_ROLES, requireRole } from "@/lib/rbac";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["admin", "superadmin", "imprenta"].includes(session.user.role)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_FULFILLMENT_ROLES);
+  if (!auth.authorized) return auth.response;
+  const session = auth.session;
 
   const adminId = session.user.id;
   const limiter = await rateLimit("admin-corporate-assign", adminId, { limit: 20, windowMs: 60_000 });

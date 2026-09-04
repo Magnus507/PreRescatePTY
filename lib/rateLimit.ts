@@ -1,12 +1,10 @@
 import { Redis } from "@upstash/redis";
 
-const isProduction = process.env.NODE_ENV === "production";
 const hasUpstashConfig = Boolean(
   process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
 );
 
-const PRODUCTION_FALLBACK_WARNING =
-  "Rate limit backend unavailable. Falling back to in-memory store (single-instance only).";
+const PRODUCTION_BACKEND_WARNING = "Distributed rate limit backend unavailable.";
 
 let redis: Redis | null = null;
 if (hasUpstashConfig) {
@@ -26,6 +24,13 @@ type RateLimitResult = {
   allowed: boolean;
   remaining: number;
   resetAt: number;
+  backend: "redis" | "memory" | "unavailable";
+};
+
+type RateLimitOptions = {
+  limit: number;
+  windowMs: number;
+  productionFailureMode?: "deny" | "memory";
 };
 
 setInterval(() => {
@@ -38,18 +43,21 @@ setInterval(() => {
 export async function rateLimit(
   namespace: string,
   identifier: string,
-  options: { limit: number; windowMs: number }
+  options: RateLimitOptions
 ): Promise<RateLimitResult> {
   const key = `${namespace}:${identifier}`;
   const now = Date.now();
   const { limit, windowMs } = options;
+  const isProduction = process.env.VERCEL_ENV
+    ? process.env.VERCEL_ENV === "production"
+    : process.env.NODE_ENV === "production";
+  const productionFailureMode = options.productionFailureMode ?? "deny";
 
   if (isProduction && !redis) {
-    console.warn(PRODUCTION_FALLBACK_WARNING);
-  }
-
-  if (isProduction && !redis) {
-    // Fall through to in-memory store
+    console.error(PRODUCTION_BACKEND_WARNING);
+    if (productionFailureMode === "deny") {
+      return { allowed: false, remaining: 0, resetAt: now + windowMs, backend: "unavailable" };
+    }
   }
 
   if (redis) {
@@ -64,11 +72,13 @@ export async function rateLimit(
         allowed: current <= limit,
         remaining: Math.max(0, limit - current),
         resetAt: now + windowMs,
+        backend: "redis",
       };
-    } catch (e) {
-      console.error("Upstash Redis error:", e);
-      console.warn(PRODUCTION_FALLBACK_WARNING);
-      // Fall through to in-memory store for resilience.
+    } catch {
+      console.error(PRODUCTION_BACKEND_WARNING);
+      if (isProduction && productionFailureMode === "deny") {
+        return { allowed: false, remaining: 0, resetAt: now + windowMs, backend: "unavailable" };
+      }
     }
   }
 
@@ -84,5 +94,6 @@ export async function rateLimit(
     allowed: win.count <= limit,
     remaining: Math.max(0, limit - win.count),
     resetAt: win.resetAt,
+    backend: "memory",
   };
 }

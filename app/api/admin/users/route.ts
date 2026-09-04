@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UserRepository } from "@/domains/users/repositories/user.repository";
 import { z } from "zod";
-import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ const updateStatusSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
   const { searchParams } = new URL(req.url);
   
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
   try {
     const body = await req.json();
@@ -65,4 +65,3 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Error al actualizar usuario" }, { status: 500 });
   }
 }
-

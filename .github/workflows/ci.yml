@@ -37,6 +37,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://ci-test.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ci-only-service-role-key
       CRON_SECRET: ci-only-cron-secret-placeholder
+      UPSTASH_REDIS_REST_URL: https://ci-rate-limit.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: ci-only-upstash-token
 
     steps:
       - name: Checkout
@@ -63,8 +65,18 @@ jobs:
       - name: Validate Prisma
         run: npx prisma validate
 
-      - name: Prepare integration database
-        run: npx prisma db push --skip-generate
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+
+      - name: Verify migration history
+        run: npx prisma migrate status
+
+      - name: Detect database/schema drift
+        run: >-
+          npx prisma migrate diff
+          --from-url "$DATABASE_URL"
+          --to-schema-datamodel prisma/schema.prisma
+          --exit-code
 
       - name: Lint
         run: npm run lint
@@ -72,8 +84,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
+      - name: Unit and route tests
         run: npm run test:run
+
+      - name: PostgreSQL integration tests
+        run: npm run test:integration
 
       - name: Coverage
         run: npm run test:coverage -- --run

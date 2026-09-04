@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { createHash, randomUUID } from "node:crypto";
 import { sendEmergencyNotification } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
 import { CONSENT_TYPE } from "@/domains/consents/consent.constants";
@@ -11,7 +12,9 @@ export type EmergencyNotificationStatus =
   | "partially_sent"
   | "retrying"
   | "failed"
+  | "dead_letter"
   | "skipped"
+  | "suppressed"
   | "disabled";
 
 export type EmergencyNotificationPayload = {
@@ -46,6 +49,13 @@ type EmergencyNotificationRow = {
   channel: string;
   recipient: string;
   status: string;
+  idempotencyKey: string;
+  attempts: number;
+  availableAt: Date;
+  lockedAt: Date | null;
+  lockedBy: string | null;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
   providerResponse: string | null;
   sentAt: Date | null;
   createdAt: Date;
@@ -54,6 +64,7 @@ type EmergencyNotificationRow = {
 type DbClient = Prisma.TransactionClient | PrismaClientLike;
 
 type PrismaClientLike = {
+  $executeRaw?: (query: Prisma.Sql) => Promise<number>;
   notification: {
     findFirst: (args: Prisma.NotificationFindFirstArgs) => Promise<{
       id: string;
@@ -131,6 +142,20 @@ const PERMANENT_ERROR_PATTERNS = [
   /forbidden/i,
   /rejected permanently/i,
 ];
+
+export const EMERGENCY_NOTIFICATION_COOLDOWN_MS = 5 * 60_000;
+export const EMERGENCY_NOTIFICATION_LEASE_MS = 5 * 60_000;
+export const EMERGENCY_NOTIFICATION_MAX_ATTEMPTS = 5;
+
+function buildNotificationIdempotencyKey(input: {
+  scanEventId: string;
+  chipId: string;
+  channel: EmergencyAlertChannel;
+  recipient: string;
+}) {
+  const recipientHash = createHash("sha256").update(input.recipient).digest("hex").slice(0, 24);
+  return ["emergency", input.scanEventId, input.chipId, input.channel, recipientHash].join(":");
+}
 
 function isValidEmail(email: string | null | undefined) {
   return !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -235,6 +260,15 @@ export async function queueEmergencyNotificationsFromScan(
   db: DbClient,
   payload: EmergencyNotificationPayload
 ) {
+  // Serialize notification planning per chip inside the caller transaction.
+  // This closes the race where two simultaneous scans both observe an empty
+  // cooldown window and enqueue separate deliveries.
+  if ("$executeRaw" in db && typeof db.$executeRaw === "function") {
+    await db.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${payload.chipId}, 0))`
+    );
+  }
+
   const scan = await db.scanEvent.findUnique({
     where: { id: payload.scanEventId },
     include: {
@@ -306,6 +340,7 @@ export async function queueEmergencyNotificationsFromScan(
   let queued = 0;
   let skipped = 0;
   let disabled = 0;
+  let suppressed = 0;
 
   for (const candidate of candidates) {
     const channel = selectChannel(candidate);
@@ -321,6 +356,12 @@ export async function queueEmergencyNotificationsFromScan(
     }
 
     const providerAvailable = isProviderAvailable(channel);
+    const idempotencyKey = buildNotificationIdempotencyKey({
+      scanEventId: payload.scanEventId,
+      chipId: payload.chipId,
+      channel,
+      recipient,
+    });
     const providerResponse = serializeMeta({
       channel,
       recipientMask: buildNotificationRecipientMask(recipient, channel),
@@ -344,12 +385,48 @@ export async function queueEmergencyNotificationsFromScan(
       continue;
     }
 
+    const recentAutomaticDelivery = trigger === "automatic"
+      ? await db.notification.findFirst({
+          where: {
+            chipId: payload.chipId,
+            channel,
+            recipient,
+            createdAt: { gte: new Date(Date.now() - EMERGENCY_NOTIFICATION_COOLDOWN_MS) },
+            status: { in: ["pending", "processing", "retrying", "sent"] },
+          },
+          select: { id: true, status: true, providerResponse: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : null;
+
+    if (recentAutomaticDelivery) {
+      await db.notification.create({
+        data: {
+          chipId: payload.chipId,
+          eventId: payload.scanEventId,
+          channel,
+          recipient,
+          idempotencyKey,
+          status: "suppressed",
+          providerResponse: serializeMeta({
+            ...parseMeta(providerResponse),
+            reason: "cooldown",
+            suppressedByNotificationId: recentAutomaticDelivery.id,
+            cooldownMs: EMERGENCY_NOTIFICATION_COOLDOWN_MS,
+          }),
+        },
+      });
+      suppressed += 1;
+      continue;
+    }
+
     await db.notification.create({
       data: {
         chipId: payload.chipId,
         eventId: payload.scanEventId,
         channel,
         recipient,
+        idempotencyKey,
         status: providerAvailable ? "pending" : "disabled",
         providerResponse,
       },
@@ -360,7 +437,13 @@ export async function queueEmergencyNotificationsFromScan(
   }
 
   const notificationStatus: EmergencyNotificationStatus =
-    queued > 0 ? "pending" : disabled > 0 ? "disabled" : "skipped";
+    queued > 0
+      ? "pending"
+      : suppressed > 0
+        ? "suppressed"
+        : disabled > 0
+          ? "disabled"
+          : "skipped";
 
   await db.scanEvent.update({
     where: { id: payload.scanEventId },
@@ -372,13 +455,45 @@ export async function queueEmergencyNotificationsFromScan(
     queued,
     skipped,
     disabled,
-    reason: queued > 0 ? "queued" : disabled > 0 ? "provider_missing" : "no_eligible_contacts",
+    suppressed,
+    reason: queued > 0
+      ? "queued"
+      : suppressed > 0
+        ? "cooldown"
+        : disabled > 0
+          ? "provider_missing"
+          : "no_eligible_contacts",
   };
 }
 
-async function sendOneNotification(db: DbClient, notification: EmergencyNotificationRow) {
+async function finalizeClaim(
+  db: DbClient,
+  notificationId: string,
+  workerId: string,
+  data: Prisma.NotificationUpdateManyMutationInput
+) {
+  const result = await db.notification.updateMany({
+    where: {
+      id: notificationId,
+      status: "processing",
+      lockedBy: workerId,
+    },
+    data: {
+      ...data,
+      lockedAt: null,
+      lockedBy: null,
+    },
+  });
+  return result.count === 1;
+}
+
+async function sendOneNotification(
+  db: DbClient,
+  notification: EmergencyNotificationRow,
+  workerId: string
+) {
   const meta = parseMeta(notification.providerResponse);
-  const attempts = Number(meta.attempts || 0) + 1;
+  const attempts = notification.attempts;
 
   const scan = await db.scanEvent.findUnique({
     where: { id: notification.eventId },
@@ -406,9 +521,11 @@ async function sendOneNotification(db: DbClient, notification: EmergencyNotifica
       lastError: "profile_missing",
       completedAt: new Date().toISOString(),
     });
-    await db.notification.update({
-      where: { id: notification.id },
-      data: { status: "skipped", providerResponse: nextMeta },
+    await finalizeClaim(db, notification.id, workerId, {
+      status: "skipped",
+      providerResponse: nextMeta,
+      lastErrorCode: "PROFILE_MISSING",
+      lastErrorMessage: "Profile unavailable while processing emergency notification",
     });
     return { status: "skipped" as const, reason: "profile_missing" };
   }
@@ -424,9 +541,11 @@ async function sendOneNotification(db: DbClient, notification: EmergencyNotifica
       lastError: "provider_missing",
       completedAt: new Date().toISOString(),
     });
-    await db.notification.update({
-      where: { id: notification.id },
-      data: { status: "disabled", providerResponse: nextMeta },
+    await finalizeClaim(db, notification.id, workerId, {
+      status: "disabled",
+      providerResponse: nextMeta,
+      lastErrorCode: "PROVIDER_MISSING",
+      lastErrorMessage: "Notification provider is not configured",
     });
     return { status: "disabled" as const, reason: "provider_missing" };
   }
@@ -437,6 +556,7 @@ async function sendOneNotification(db: DbClient, notification: EmergencyNotifica
     profileName: profile.displayNamePublic || `${profile.firstName} ${profile.lastName}`.trim(),
     shortCode: scan.chip.shortCode,
     notificationId: notification.id,
+    idempotencyKey: notification.idempotencyKey,
   });
 
   const providerResponse = serializeMeta({
@@ -448,66 +568,123 @@ async function sendOneNotification(db: DbClient, notification: EmergencyNotifica
   });
 
   if (sendResult.success) {
-    await db.notification.update({
-      where: { id: notification.id },
-      data: {
-        status: "sent",
-        providerResponse,
-        sentAt: new Date(),
-      },
+    await finalizeClaim(db, notification.id, workerId, {
+      status: "sent",
+      providerResponse,
+      sentAt: new Date(),
+      lastErrorCode: null,
+      lastErrorMessage: null,
     });
     return { status: "sent" as const, reason: "sent" };
   }
 
   const failureClass = classifyFailure(sendResult.providerResponse, undefined);
   if (failureClass === "permanent") {
-    await db.notification.update({
-      where: { id: notification.id },
-      data: {
-        status: "failed",
-        providerResponse: serializeMeta({
-          ...meta,
-          attempts,
-          providerSuccess: false,
-          providerResponse: sendResult.providerResponse || null,
-          failureClass,
-          completedAt: new Date().toISOString(),
-        }),
-      },
-    });
-    return { status: "failed" as const, reason: "permanent_failure" };
-  }
-
-  const nextRetryAt = nextRetryAtForAttempt(attempts);
-  await db.notification.update({
-    where: { id: notification.id },
-    data: {
-      status: "retrying",
+    await finalizeClaim(db, notification.id, workerId, {
+      status: "failed",
       providerResponse: serializeMeta({
         ...meta,
         attempts,
         providerSuccess: false,
         providerResponse: sendResult.providerResponse || null,
         failureClass,
-        nextRetryAt,
         completedAt: new Date().toISOString(),
       }),
-    },
+      lastErrorCode: "PERMANENT_PROVIDER_FAILURE",
+      lastErrorMessage: (sendResult.providerResponse || "Permanent provider failure").slice(0, 500),
+    });
+    return { status: "failed" as const, reason: "permanent_failure" };
+  }
+
+  const exhausted = attempts >= EMERGENCY_NOTIFICATION_MAX_ATTEMPTS;
+  const nextRetryAt = new Date(nextRetryAtForAttempt(attempts));
+  await finalizeClaim(db, notification.id, workerId, {
+    status: exhausted ? "dead_letter" : "retrying",
+    availableAt: exhausted ? notification.availableAt : nextRetryAt,
+    providerResponse: serializeMeta({
+      ...meta,
+      attempts,
+      providerSuccess: false,
+      providerResponse: sendResult.providerResponse || null,
+      failureClass,
+      nextRetryAt: exhausted ? null : nextRetryAt.toISOString(),
+      completedAt: new Date().toISOString(),
+    }),
+    lastErrorCode: exhausted ? "MAX_ATTEMPTS_EXCEEDED" : "TEMPORARY_PROVIDER_FAILURE",
+    lastErrorMessage: (sendResult.providerResponse || "Temporary provider failure").slice(0, 500),
   });
 
-  return { status: "retrying" as const, reason: "temporary_failure" };
+  return exhausted
+    ? { status: "dead_letter" as const, reason: "max_attempts" }
+    : { status: "retrying" as const, reason: "temporary_failure" };
+}
+
+export async function recoverExpiredEmergencyNotificationLeases(
+  db: DbClient,
+  options?: { limit?: number; now?: Date; leaseMs?: number }
+) {
+  const limit = Math.min(Math.max(options?.limit || 100, 1), 500);
+  const now = options?.now ?? new Date();
+  const expiredBefore = new Date(now.getTime() - (options?.leaseMs ?? EMERGENCY_NOTIFICATION_LEASE_MS));
+  const expired = await db.notification.findMany({
+    where: {
+      status: "processing",
+      OR: [{ lockedAt: null }, { lockedAt: { lte: expiredBefore } }],
+    },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+
+  let recovered = 0;
+  let deadLettered = 0;
+  for (const notification of expired) {
+    const safeProviderRetry = notification.channel === "email";
+    const result = await db.notification.updateMany({
+      where: {
+        id: notification.id,
+        status: "processing",
+        lockedBy: notification.lockedBy,
+        lockedAt: notification.lockedAt,
+      },
+      data: safeProviderRetry
+        ? {
+            status: "retrying",
+            availableAt: now,
+            lockedAt: null,
+            lockedBy: null,
+            lastErrorCode: "LEASE_EXPIRED_RETRY_SAFE",
+            lastErrorMessage: "Expired email lease recovered with provider idempotency",
+          }
+        : {
+            status: "dead_letter",
+            lockedAt: null,
+            lockedBy: null,
+            lastErrorCode: "AMBIGUOUS_PROVIDER_RESULT",
+            lastErrorMessage: "SMS/WhatsApp lease expired; automatic resend blocked to prevent duplicates",
+          },
+    });
+    if (result.count !== 1) continue;
+    if (safeProviderRetry) recovered += 1;
+    else deadLettered += 1;
+  }
+
+  return { recovered, deadLettered };
 }
 
 export async function processPendingEmergencyNotifications(
   db: DbClient,
-  options?: { limit?: number }
+  options?: { limit?: number; workerId?: string; now?: Date }
 ) {
   const limit = Math.min(Math.max(options?.limit || 25, 1), 100);
+  const now = options?.now ?? new Date();
+  const workerId = options?.workerId || `notify-${randomUUID()}`;
+  const leaseRecovery = await recoverExpiredEmergencyNotificationLeases(db, { limit, now });
   const notifications = await db.notification.findMany({
     where: {
-      status: { in: ["pending", "retrying", "processing"] },
+      status: { in: ["pending", "retrying"] },
+      availableAt: { lte: now },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ availableAt: "asc" }, { createdAt: "asc" }],
     take: limit,
   });
 
@@ -516,27 +693,21 @@ export async function processPendingEmergencyNotifications(
   let skipped = 0;
   let retrying = 0;
   let disabled = 0;
+  let deadLettered = leaseRecovery.deadLettered;
   let claimed = 0;
 
   for (const notification of notifications) {
-    const meta = parseMeta(notification.providerResponse);
-    const nextRetryAt = typeof meta.nextRetryAt === "string" ? new Date(meta.nextRetryAt) : null;
-
-    if (notification.status === "retrying" && nextRetryAt && nextRetryAt.getTime() > Date.now()) {
-      continue;
-    }
-
     const claim = await db.notification.updateMany({
       where: {
         id: notification.id,
-        status: notification.status,
+        status: { in: ["pending", "retrying"] },
+        availableAt: { lte: now },
       },
       data: {
         status: "processing",
-        providerResponse: serializeMeta({
-          ...meta,
-          processingAt: new Date().toISOString(),
-        }),
+        lockedAt: now,
+        lockedBy: workerId,
+        attempts: { increment: 1 },
       },
     });
 
@@ -545,7 +716,11 @@ export async function processPendingEmergencyNotifications(
     }
 
     claimed += 1;
-    const result = await sendOneNotification(db, notification);
+    const result = await sendOneNotification(
+      db,
+      { ...notification, attempts: notification.attempts + 1, lockedAt: now, lockedBy: workerId },
+      workerId
+    );
 
     switch (result.status) {
       case "sent":
@@ -556,6 +731,9 @@ export async function processPendingEmergencyNotifications(
         break;
       case "failed":
         failed += 1;
+        break;
+      case "dead_letter":
+        deadLettered += 1;
         break;
       case "disabled":
         disabled += 1;
@@ -573,7 +751,19 @@ export async function processPendingEmergencyNotifications(
     skipped,
     retrying,
     disabled,
+    recoveredLeases: leaseRecovery.recovered,
+    deadLettered,
+    workerId,
   });
 
-  return { claimed, sent, failed, skipped, retrying, disabled };
+  return {
+    claimed,
+    sent,
+    failed,
+    skipped,
+    retrying,
+    disabled,
+    recoveredLeases: leaseRecovery.recovered,
+    deadLettered,
+  };
 }

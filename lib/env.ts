@@ -47,8 +47,8 @@ export const ENV_CONTRACT = {
   TWILIO_PHONE_NUMBER: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
   TWILIO_WHATSAPP_FROM: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
   TWILIO_WHATSAPP_NUMBER: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
-  UPSTASH_REDIS_REST_TOKEN: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: false },
-  UPSTASH_REDIS_REST_URL: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
+  UPSTASH_REDIS_REST_TOKEN: { scopes: ["runtime"], example: true, sensitive: true, requiredInProduction: true },
+  UPSTASH_REDIS_REST_URL: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: true },
   VERCEL_ENV: { scopes: ["runtime", "platform"], example: false, sensitive: false, requiredInProduction: false },
   VERCEL_URL: { scopes: ["runtime", "platform"], example: false, sensitive: false, requiredInProduction: false },
   W537V_SMOKE_CLEANUP: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
@@ -182,6 +182,8 @@ const productionRuntimeBaseSchema = z.object({
   CRON_SECRET: z.string().min(16),
   VERCEL_URL: optionalString,
   ...optionalIntegrationShape,
+  UPSTASH_REDIS_REST_TOKEN: nonEmpty,
+  UPSTASH_REDIS_REST_URL: httpUrl,
 });
 
 export const productionRuntimeEnvSchema = productionRuntimeBaseSchema.superRefine((data, ctx) => {

@@ -168,7 +168,10 @@ export async function POST(
       return NextResponse.json({ error: "Yappy no esta disponible todavia" }, { status: 503 });
     }
     if (error instanceof YappyProviderError) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: 502 });
+      return NextResponse.json(
+        { error: "Yappy no pudo iniciar el pago en este momento", code: error.code || "provider_error" },
+        { status: 502 }
+      );
     }
     return NextResponse.json({ error: "No se pudo iniciar el pago Yappy" }, { status: 502 });
   }

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 type ActivateFinishedGoodUnitParams = {
@@ -13,12 +14,20 @@ type ActivateFinishedGoodUnitResult =
   | { ok: true; unitId: string; createdEvent: boolean }
   | { ok: false; reason: "UNIT_NOT_FOUND" | "UNIT_NOT_ELIGIBLE" };
 
-async function findUnitByActivationKey(params: Pick<ActivateFinishedGoodUnitParams, "internalLabel" | "shortCode">) {
+type FinishedGoodUnitActivationClient = Pick<
+  Prisma.TransactionClient,
+  "operationFinishedGoodUnit" | "operationFinishedGoodUnitEvent"
+>;
+
+async function findUnitByActivationKey(
+  client: FinishedGoodUnitActivationClient,
+  params: Pick<ActivateFinishedGoodUnitParams, "internalLabel" | "shortCode">
+) {
   const internalLabel = params.internalLabel?.trim() || null;
   const shortCode = params.shortCode?.trim() || null;
 
   if (internalLabel) {
-    const byLabel = await prisma.operationFinishedGoodUnit.findUnique({
+    const byLabel = await client.operationFinishedGoodUnit.findUnique({
       where: { internalLabel },
       select: {
         id: true,
@@ -33,7 +42,7 @@ async function findUnitByActivationKey(params: Pick<ActivateFinishedGoodUnitPara
   }
 
   if (shortCode) {
-    const byShortCode = await prisma.operationFinishedGoodUnit.findFirst({
+    const byShortCode = await client.operationFinishedGoodUnit.findFirst({
       where: {
         digitalBatchItem: { shortCode },
       },
@@ -52,10 +61,11 @@ async function findUnitByActivationKey(params: Pick<ActivateFinishedGoodUnitPara
   return null;
 }
 
-export async function markFinishedGoodUnitActivated(
+export async function markFinishedGoodUnitActivatedWithClient(
+  client: FinishedGoodUnitActivationClient,
   params: ActivateFinishedGoodUnitParams
 ): Promise<ActivateFinishedGoodUnitResult> {
-  const unit = await findUnitByActivationKey(params);
+  const unit = await findUnitByActivationKey(client, params);
   if (!unit) {
     return { ok: false, reason: "UNIT_NOT_FOUND" };
   }
@@ -79,29 +89,60 @@ export async function markFinishedGoodUnitActivated(
 
   const activatedAt = params.activatedAt ?? new Date();
 
-  await prisma.operationFinishedGoodUnit.update({
-    where: { id: unit.id },
+  const claimed = await client.operationFinishedGoodUnit.updateMany({
+    where: {
+      id: unit.id,
+      activationStatus: unit.activationStatus,
+      status: unit.status,
+    },
     data: {
       activationStatus: "activated",
       activatedAt,
       status: "activated",
       activationReferenceType: params.activationReferenceType,
       activationReferenceId: params.activationReferenceId,
-      events: {
-        create: {
-          eventType: "ACTIVATED",
-          referenceType: params.activationReferenceType,
-          referenceId: params.activationReferenceId,
-          metadataJson: {
-            ...(params.metadataJson || {}),
-            activatedAt: activatedAt.toISOString(),
-            previousStatus: unit.status,
-            previousActivationStatus: unit.activationStatus,
-          },
-        },
+    },
+  });
+
+  if (claimed.count !== 1) {
+    const current = await client.operationFinishedGoodUnit.findUnique({
+      where: { id: unit.id },
+      select: {
+        activationStatus: true,
+        activationReferenceType: true,
+        activationReferenceId: true,
+      },
+    });
+    if (
+      current?.activationStatus === "activated" &&
+      current.activationReferenceType === params.activationReferenceType &&
+      current.activationReferenceId === params.activationReferenceId
+    ) {
+      return { ok: true, unitId: unit.id, createdEvent: false };
+    }
+    return { ok: false, reason: "UNIT_NOT_ELIGIBLE" };
+  }
+
+  await client.operationFinishedGoodUnitEvent.create({
+    data: {
+      unitId: unit.id,
+      eventType: "ACTIVATED",
+      referenceType: params.activationReferenceType,
+      referenceId: params.activationReferenceId,
+      metadataJson: {
+        ...(params.metadataJson || {}),
+        activatedAt: activatedAt.toISOString(),
+        previousStatus: unit.status,
+        previousActivationStatus: unit.activationStatus,
       },
     },
   });
 
   return { ok: true, unitId: unit.id, createdEvent: true };
+}
+
+export async function markFinishedGoodUnitActivated(
+  params: ActivateFinishedGoodUnitParams
+): Promise<ActivateFinishedGoodUnitResult> {
+  return prisma.$transaction((tx) => markFinishedGoodUnitActivatedWithClient(tx, params));
 }

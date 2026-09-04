@@ -76,6 +76,13 @@ export async function POST(req: NextRequest) {
   const auth = await requireActiveAccountSession();
   if (!auth.authorized) return auth.response;
 
+  if (auth.current.role !== "owner") {
+    return NextResponse.json(
+      { error: "Solo el administrador de la cuenta puede crear órdenes corporativas." },
+      { status: 403 }
+    );
+  }
+
   const organization = await prisma.organization.findFirst({
     where: { accountId: auth.current.accountId },
     select: { id: true, status: true },

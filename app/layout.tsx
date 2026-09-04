@@ -5,6 +5,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
 import CookieConsentProvider from "@/components/public/CookieConsentProvider";
+import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -73,7 +74,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  // Reading request headers keeps the layout dynamic so Next can propagate the
+  // request CSP nonce to framework scripts.
+  await headers();
 
   return (
     <html lang="es" suppressHydrationWarning>
@@ -84,44 +87,7 @@ export default async function RootLayout({
         <Providers>{children}</Providers>
         <Toaster />
         <CookieConsentProvider />
-        <script
-          nonce={nonce}
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(
-                    function(registration) { 
-                      registration.onupdatefound = () => {
-                        const installingWorker = registration.installing;
-                        if (installingWorker == null) return;
-                        installingWorker.onstatechange = () => {
-                          if (installingWorker.state === 'installed') {
-                            if (navigator.serviceWorker.controller) {
-                              window.location.reload();
-                            }
-                          }
-                        };
-                      };
-                    }
-                  );
-                });
-
-                if (localStorage.getItem('app_version') !== '2.7.0') {
-                  if ('caches' in window) {
-                    caches.keys().then(names => {
-                      for (let name of names) caches.delete(name);
-                    });
-                  }
-                  localStorage.setItem('app_version', '2.7.0');
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 500);
-                }
-              }
-            `,
-          }}
-        />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

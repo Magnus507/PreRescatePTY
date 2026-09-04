@@ -39,7 +39,7 @@ describe("PostgreSQL integration: commercial order reservation", () => {
         status: "draft",
         customerType: "customer",
         salesChannel: "web",
-        paymentStatus: "pending",
+        paymentStatus: "paid",
         fulfillmentStatus: "pending",
         totalAmount: "25.00",
         currency: "USD",
@@ -65,7 +65,7 @@ describe("PostgreSQL integration: commercial order reservation", () => {
         status: "draft",
         customerType: "customer",
         salesChannel: "web",
-        paymentStatus: "pending",
+        paymentStatus: "paid",
         fulfillmentStatus: "pending",
         totalAmount: "25.00",
         currency: "USD",
@@ -106,5 +106,54 @@ describe("PostgreSQL integration: commercial order reservation", () => {
 
     expect(refreshedOrders).toHaveLength(2);
     expect(refreshedOrders.every((order) => ["stock_reserved", "pending_stock", "needs_production"].includes(order.status))).toBe(true);
+  });
+
+  it("rejects an unpaid order without reserving its available unit", async () => {
+    const unit = await db.operationFinishedGoodUnit.create({
+      data: {
+        internalLabel: `INT-UNPAID-${RUN_ID}`,
+        productCode: "PRD-UNPAID-1",
+        productName: "Producto no pagado",
+        productType: "PRD-UNPAID-1",
+        status: "available",
+        qaStatus: "passed",
+        activationStatus: "not_activated",
+      },
+    });
+
+    const order = await db.operationCommercialOrder.create({
+      data: {
+        code: `OP-UNPAID-${RUN_ID}`,
+        sourceType: "checkout",
+        sourceId: `source-unpaid-${RUN_ID}`,
+        status: "accepted",
+        customerType: "customer",
+        salesChannel: "web",
+        paymentStatus: "pending",
+        fulfillmentStatus: "pending",
+        totalAmount: "25.00",
+        currency: "USD",
+        items: {
+          create: [{
+            productName: "Producto no pagado",
+            quantity: 1,
+            unitPrice: "25.00",
+            totalPrice: "25.00",
+            productCode: "PRD-UNPAID-1",
+            unit: "unit",
+          }],
+        },
+      },
+      select: { id: true },
+    });
+
+    await expect(
+      db.$transaction((tx) =>
+        reserveCommercialOrderStock(tx, { orderId: order.id, allowPartial: true })
+      )
+    ).rejects.toThrow("ORDER_NOT_READY_FOR_RESERVATION");
+
+    const unchangedUnit = await db.operationFinishedGoodUnit.findUnique({ where: { id: unit.id } });
+    expect(unchangedUnit).toMatchObject({ status: "available", reservedOrderId: null });
   });
 });

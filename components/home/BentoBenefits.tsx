@@ -16,7 +16,7 @@ const benefits = [
   },
   {
     title: "Privacidad Total",
-    description: "Cumplimos con la Ley 81 de Panamá. Controlas quién ve qué.",
+    description: "Aplicamos controles de privacidad tomando como referencia la Ley 81 de Panamá. Tú eliges qué campos opcionales se muestran.",
     icon: <Lock className="w-6 h-6 text-emerald-400" />,
     className: "md:col-span-1 md:row-span-1 bg-slate-900 text-white",
   },

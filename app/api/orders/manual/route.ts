@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-number";
-import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
+import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-sync-outbox";
 import { parseMoney, serializeMoney } from "@/lib/money";
 import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
   }
 
   const orderNumber = await generateOrderNumber();
-  const order = await prisma.$transaction(async (tx) => {
-    return tx.order.create({
+  const orderResult = await prisma.$transaction(async (tx) => {
+    const createdOrder = await tx.order.create({
       data: {
         userId,
         orderNumber,
@@ -113,42 +113,49 @@ export async function POST(req: NextRequest) {
       },
       include: { items: true },
     });
-  });
 
-  let operationsSyncWarning: string | null = null;
-  try {
-    await syncRealOrderToOperations(prisma, {
+    await enqueueCommerceOrderSyncOutbox(tx, {
       sourceType: "customer_request",
-      sourceId: order.id,
-      sourceCode: order.orderNumber,
+      sourceId: createdOrder.id,
+      sourceCode: createdOrder.orderNumber,
       orderType: "customer",
-      customerName: order.customerName,
-      contactEmail: order.customerEmail,
-      contactPhone: order.customerPhone,
-      customerReference: order.providerReference,
-      paymentStatus: order.paymentStatus,
-      paymentReference: order.manualPaymentReference || order.paymentProofUrl || null,
-      currency: order.currency,
-      notes: `Pedido de paquete ${pkg.name}. orderId:${order.id}`,
-      totalAmount: order.amount,
+      customerName: createdOrder.customerName,
+      contactEmail: createdOrder.customerEmail,
+      contactPhone: createdOrder.customerPhone,
+      customerReference: createdOrder.providerReference,
+      paymentStatus: createdOrder.paymentStatus,
+      paymentReference: createdOrder.manualPaymentReference || createdOrder.paymentProofUrl || null,
+      currency: createdOrder.currency,
+      notes: `Pedido de paquete ${pkg.name}. orderId:${createdOrder.id}`,
+      totalAmount: createdOrder.amount,
       items: [
         {
           productCode: `PACKAGE:${pkg.id}`,
           productName: pkg.name,
           quantity: pkg.maxChips,
-          unitPrice: pkg.maxChips > 0 ? Number(order.amount) / pkg.maxChips : Number(order.amount),
+          unitPrice: pkg.maxChips > 0
+            ? Number(createdOrder.amount) / pkg.maxChips
+            : Number(createdOrder.amount),
           unit: "unit",
         },
       ],
     });
-  } catch (error) {
-    console.error("[operations-sync] Failed to sync package order", {
-      sourceType: "customer_request",
-      sourceId: order.id,
-      error,
-    });
-    operationsSyncWarning = "Pedido creado, pero no se pudo sincronizar automáticamente con Operaciones.";
+
+    return createdOrder;
+  }).then(
+    (createdOrder) => ({ ok: true as const, order: createdOrder }),
+    () => ({ ok: false as const })
+  );
+
+  if (!orderResult.ok) {
+    console.error("[orders/manual] Durable order creation failed");
+    return NextResponse.json(
+      { error: "No se pudo crear el pedido. No se realizó ningún cambio." },
+      { status: 500 }
+    );
   }
+
+  const order = orderResult.order;
 
   return NextResponse.json({
     order: {
@@ -160,6 +167,7 @@ export async function POST(req: NextRequest) {
         totalPrice: serializeMoney(item.totalPrice),
       })),
     },
-    operationsSyncWarning,
+    operationsSyncStatus: "queued",
+    operationsSyncWarning: null,
   });
 }

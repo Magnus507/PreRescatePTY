@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TOKEN_RESERVED_WHERE } from "@/domains/chips/token-lifecycle.helpers";
-
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = session.user.role;
-  return role === "admin" || role === "superadmin" || role === "imprenta";
-}
+import { ORDER_FULFILLMENT_ROLES, requireRole } from "@/lib/rbac";
 
 export async function GET() {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_FULFILLMENT_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const now = new Date();

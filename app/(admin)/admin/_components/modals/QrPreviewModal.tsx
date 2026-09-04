@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Download, X, Copy, Check, AlertCircle } from "lucide-react";
 import { getChipPublicUrl, getChipCanonicalUrl } from "../../_utils/chip-url";
+import Image from "next/image";
 
 interface QrPreviewModalProps {
   shortCode: string;
@@ -186,11 +187,12 @@ export const QrPreviewModal: React.FC<QrPreviewModalProps> = ({
               </button>
             </div>
           ) : (
-            <img
+            <Image
               src={qrApiUrl}
               alt={`QR code for chip ${shortCode}`}
               width={240}
               height={240}
+              unoptimized
               className={`max-w-full h-auto ${imageLoaded ? "opacity-100" : "opacity-0 absolute"}`}
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageError(true)}

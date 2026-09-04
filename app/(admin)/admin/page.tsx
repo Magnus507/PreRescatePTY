@@ -73,6 +73,7 @@ export default function AdminPage() {
 
 function AdminDashboard() {
   const admin = useAdminManager();
+  const { setTab } = admin;
   const { data: session } = useSession();
   const role = session?.user?.role;
   const isPrintRole = role === "imprenta";
@@ -94,9 +95,9 @@ function AdminDashboard() {
 
   useEffect(() => {
     if (isPrintRole && admin.tab !== "inventory") {
-      admin.setTab("inventory");
+      setTab("inventory");
     }
-  }, [isPrintRole, admin.tab, admin.setTab]);
+  }, [isPrintRole, admin.tab, setTab]);
 
   const currentTabInfo = dynamicLabels[isOperationsTab ? "inventory" : admin.tab] || {
     title: "Administración",

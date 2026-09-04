@@ -12,7 +12,8 @@
     "env:verify:staging": "tsx scripts/verify-env.ts staging",
     "env:verify:test": "tsx scripts/verify-env.ts test",
     "typecheck": "tsc --noEmit",
-    "test:run": "vitest run",
+    "test:run": "vitest run --exclude 'tests/integration/**'",
+    "test:integration": "vitest run tests/integration",
     "build": "npm run prisma:generate && npm run typecheck && next build",
     "start": "next start",
     "lint": "eslint .",
@@ -71,7 +72,10 @@
   "overrides": {
     "axios": "^1.18.1",
     "form-data": "^4.0.6",
-    "qs": "^6.15.3",
+    "qs": "6.16.0",
+    "browserslist": "4.28.8",
+    "esbuild": "0.28.2",
+    "postcss-selector-parser": "6.1.4",
     "deepmerge-ts": "^8.0.1",
     "next": {
       "postcss": "8.5.23"

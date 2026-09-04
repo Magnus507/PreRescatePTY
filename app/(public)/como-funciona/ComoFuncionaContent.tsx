@@ -191,7 +191,7 @@ export default function ComoFuncionaContent() {
                 Tu información. Tus decisiones.
               </h2>
               <p className="text-lg text-[#6B7280] font-medium max-w-2xl mx-auto">
-                Cumplimos con la Ley 81 de Protección de Datos Personales de Panamá.
+                Diseñamos el servicio tomando como referencia la Ley 81 de Protección de Datos Personales de Panamá.
               </p>
             </div>
 

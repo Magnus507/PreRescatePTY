@@ -29,7 +29,11 @@ export async function POST(
 
     // Rate limit: max 10 scans per IP per minute
     const ip = getClientIp(req, "public-scan");
-    const rl = await rateLimit("scan", ip, { limit: 10, windowMs: 60_000 });
+    const rl = await rateLimit("scan", `${ip}:${shortCode}`, {
+      limit: 20,
+      windowMs: 60_000,
+      productionFailureMode: "memory",
+    });
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Demasiadas solicitudes. Intenta más tarde." },

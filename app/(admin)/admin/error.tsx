@@ -28,10 +28,7 @@ export default function AdminError({
         <p className="text-slate-500 font-medium">
           Ha ocurrido una interrupción inesperada en la infraestructura administrativa. Nuestros logs han registrado el evento.
         </p>
-        <div className="mt-4 p-4 bg-slate-100 rounded-2xl text-[10px] font-mono text-slate-400 text-left overflow-auto max-h-32">
-          {error.message || "Unknown error context"}
-          {error.digest && <div className="mt-1 opacity-60">Digest: {error.digest}</div>}
-        </div>
+        {error.digest && <p className="mt-4 text-xs text-slate-400">Referencia: {error.digest}</p>}
       </div>
 
       <div className="flex gap-4 mt-10">

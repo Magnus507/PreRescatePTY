@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-reservation";
+import {
+  isCommercialOrderEligibleForReservation,
+  reserveCommercialOrderStock,
+} from "@/lib/operations/commercial-order-reservation";
 
 type Unit = {
   id: string;
@@ -91,6 +94,51 @@ function createTx(order: {
 }
 
 describe("reserveCommercialOrderStock", () => {
+  it.each([
+    ["draft", "paid", true],
+    ["accepted", "paid", true],
+    ["confirmed", "paid", true],
+    ["draft", "pending", false],
+    ["accepted", "under_review", false],
+    ["confirmed", "rejected", false],
+    ["cancelled", "paid", false],
+    ["stock_reserved", "paid", false],
+    ["needs_production", "paid", false],
+    ["cancelled", "pending", false],
+  ])(
+    "evaluates reservation eligibility for status=%s payment=%s",
+    (status, paymentStatus, expected) => {
+      expect(isCommercialOrderEligibleForReservation({ status, paymentStatus })).toBe(expected);
+    }
+  );
+
+  it.each([
+    ["draft", "pending"],
+    ["accepted", "under_review"],
+    ["confirmed", "rejected"],
+    ["cancelled", "paid"],
+    ["completed", "paid"],
+  ])("rejects status=%s payment=%s before touching stock", async (status, paymentStatus) => {
+    const tx = createTx(
+      {
+        id: `blocked-${status}-${paymentStatus}`,
+        status,
+        paymentStatus,
+        items: [],
+      },
+      []
+    );
+
+    await expect(
+      reserveCommercialOrderStock(tx as never, {
+        orderId: `blocked-${status}-${paymentStatus}`,
+        allowPartial: true,
+      })
+    ).rejects.toThrow("ORDER_NOT_READY_FOR_RESERVATION");
+    expect(tx.operationFinishedGoodUnit.findMany).not.toHaveBeenCalled();
+    expect(tx.operationCommercialOrder.update).not.toHaveBeenCalled();
+  });
+
   it("reserves exactly one unit when inventory is sufficient", async () => {
     const tx = createTx(
       {

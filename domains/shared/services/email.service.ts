@@ -10,7 +10,13 @@ export class EmailService {
   /**
    * Sends an email via Resend
    */
-  static async send(to: string, subject: string, html: string, from?: string): Promise<{
+  static async send(
+    to: string,
+    subject: string,
+    html: string,
+    from?: string,
+    options?: { idempotencyKey?: string }
+  ): Promise<{
     success: boolean;
     data?: unknown;
     error?: string;
@@ -27,12 +33,17 @@ export class EmailService {
     }
 
     try {
-      const result = await resend.emails.send({
-        from: from || process.env.RESEND_FROM_EMAIL || "PreRescate PTY <soporte@prerescatepty.com>",
-        to,
-        subject,
-        html,
-      });
+      const result = await resend.emails.send(
+        {
+          from: from || process.env.RESEND_FROM_EMAIL || "PreRescate PTY <soporte@prerescatepty.com>",
+          to,
+          subject,
+          html,
+        },
+        options?.idempotencyKey
+          ? { idempotencyKey: options.idempotencyKey.slice(0, 256) }
+          : undefined
+      );
 
       if (result.error) {
         logger.error("[EmailService] provider returned error:", result.error.message);

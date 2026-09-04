@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { registerSchema } from "@/lib/validations";
@@ -153,18 +154,18 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      return newUser;
-    });
+      await tx.auditLog.create({
+        data: {
+          accountId: account.id,
+          actorUserId: newUser.id,
+          entityType: "user",
+          entityId: newUser.id,
+          action: "create",
+          newValuesJson: JSON.stringify({ email: emailLower }),
+        },
+      });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        actorUserId: user.id,
-        entityType: "user",
-        entityId: user.id,
-        action: "create",
-        newValuesJson: JSON.stringify({ email: emailLower }),
-      },
+      return newUser;
     });
 
     return NextResponse.json(
@@ -173,6 +174,12 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("Register error:", error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { error: "Este email ya está registrado" },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }

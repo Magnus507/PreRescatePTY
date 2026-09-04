@@ -75,6 +75,16 @@ describe("POST /api/auth/register", () => {
         }),
       })
     );
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          accountId: "account-1",
+          actorUserId: "user-1",
+          entityType: "user",
+          action: "create",
+        }),
+      })
+    );
   });
 
   it("rejects direct API registration when terms were not accepted", async () => {
@@ -101,5 +111,15 @@ describe("POST /api/auth/register", () => {
     expect(res.status).toBe(400);
     expect(mockPrisma.user.create).not.toHaveBeenCalled();
     expect(mockPrisma.consent.create).not.toHaveBeenCalled();
+  });
+
+  it("fails the registration transaction when its audit record cannot be written", async () => {
+    mockPrisma.auditLog.create.mockRejectedValue(new Error("AUDIT_WRITE_FAILED"));
+
+    const res = await POST(createRegisterRequest(validRegistration));
+
+    expect(res.status).toBe(500);
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledTimes(1);
   });
 });

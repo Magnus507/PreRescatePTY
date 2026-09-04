@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Banknote, Loader2, Mail, QrCode, Save, Upload } from "lucide-react";
 import { toast } from "sonner";
+import Image from "next/image";
 
 const FIELD_CLASS = "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-primary/30 focus:ring-4 focus:ring-primary/5 dark:border-slate-700 dark:bg-slate-900";
 const LABEL_CLASS = "text-[10px] font-black uppercase tracking-widest text-slate-500";
@@ -104,7 +105,7 @@ export function SettingsSection() {
               <span className={LABEL_CLASS}>QR</span>
               <div className="mt-2 flex items-center gap-4">
                 <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-                  {configs.yappy_qr_url ? <img src={configs.yappy_qr_url} alt="QR Yappy" className="h-full w-full object-contain p-2" /> : <QrCode className="h-7 w-7 text-slate-300" />}
+                  {configs.yappy_qr_url ? <Image src={configs.yappy_qr_url} alt="QR Yappy" width={112} height={112} unoptimized className="h-full w-full object-contain p-2" /> : <QrCode className="h-7 w-7 text-slate-300" />}
                 </div>
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                   {uploadingQR ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}

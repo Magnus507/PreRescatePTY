@@ -17,15 +17,15 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 const mockGenerateOrderNumber = vi.hoisted(() => vi.fn());
-const mockSyncRealOrderToOperations = vi.hoisted(() => vi.fn());
+const mockEnqueueCommerceOrderSyncOutbox = vi.hoisted(() => vi.fn());
 const mockRateLimit = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/order-number", () => ({
   generateOrderNumber: mockGenerateOrderNumber,
 }));
 
-vi.mock("@/lib/operations/sync-real-order-to-operations", () => ({
-  syncRealOrderToOperations: mockSyncRealOrderToOperations,
+vi.mock("@/lib/operations/commerce-order-sync-outbox", () => ({
+  enqueueCommerceOrderSyncOutbox: mockEnqueueCommerceOrderSyncOutbox,
 }));
 
 vi.mock("@/lib/rateLimit", () => ({
@@ -107,14 +107,14 @@ function setupDefaultMocks() {
     items: [],
   } as never);
   mockGenerateOrderNumber.mockResolvedValue("PR-2026-000101");
-  mockSyncRealOrderToOperations.mockResolvedValue(undefined);
+  mockEnqueueCommerceOrderSyncOutbox.mockResolvedValue({ id: "outbox-1" });
 }
 
 describe("POST /api/orders/manual", () => {
   beforeEach(() => {
     resetAllMocks();
     mockGenerateOrderNumber.mockReset();
-    mockSyncRealOrderToOperations.mockReset();
+    mockEnqueueCommerceOrderSyncOutbox.mockReset();
     mockRateLimit.mockReset();
     mockPrisma.user.findUnique.mockReset();
     mockPrisma.account.findUnique.mockReset();
@@ -133,7 +133,7 @@ describe("POST /api/orders/manual", () => {
     expect(json.error).toMatch(/autorizado/i);
   });
 
-  it("creates a manual order and syncs operations with customer_request", async () => {
+  it("creates a manual order and its operations outbox atomically", async () => {
     setupDefaultMocks();
 
     const res = await POST(createManualOrderRequest(validManualOrderBody()));
@@ -154,8 +154,8 @@ describe("POST /api/orders/manual", () => {
         }),
       })
     );
-    expect(mockSyncRealOrderToOperations).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(mockEnqueueCommerceOrderSyncOutbox).toHaveBeenCalledWith(
+      mockPrisma,
       expect.objectContaining({
         sourceType: "customer_request",
         sourceId: "order-1",
@@ -163,6 +163,17 @@ describe("POST /api/orders/manual", () => {
         paymentStatus: "pending",
       })
     );
+    expect(json.operationsSyncStatus).toBe("queued");
+    expect(json.operationsSyncWarning).toBeNull();
+  });
+
+  it("returns an error and does not expose a created order when outbox insertion fails", async () => {
+    setupDefaultMocks();
+    mockEnqueueCommerceOrderSyncOutbox.mockRejectedValue(new Error("OUTBOX_UNAVAILABLE"));
+
+    const res = await POST(createManualOrderRequest(validManualOrderBody()));
+
+    expect(res.status).toBe(500);
   });
 
   it("returns 400 for inactive package", async () => {

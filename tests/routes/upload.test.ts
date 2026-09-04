@@ -21,6 +21,7 @@ vi.mock('@/lib/prisma', () => ({
 const mockOptimizeAndUploadImage = vi.hoisted(() => vi.fn())
 const mockRateLimit = vi.hoisted(() => vi.fn())
 const mockGetClientIp = vi.hoisted(() => vi.fn())
+const mockCleanupUploadedObject = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/storage-utils', () => ({
   optimizeAndUploadImage: mockOptimizeAndUploadImage,
@@ -32,6 +33,10 @@ vi.mock('@/lib/rateLimit', () => ({
 
 vi.mock('@/lib/request-ip', () => ({
   getClientIp: mockGetClientIp,
+}))
+
+vi.mock('@/lib/storage-cleanup-outbox', () => ({
+  cleanupUploadedObjectOrRecordOrphan: mockCleanupUploadedObject,
 }))
 
 // ─── Imports after mocks ────────────────────────────────────────────────────
@@ -116,6 +121,8 @@ describe('POST /api/upload', () => {
     mockOptimizeAndUploadImage.mockReset()
     mockRateLimit.mockReset()
     mockGetClientIp.mockReset()
+    mockCleanupUploadedObject.mockReset()
+    mockCleanupUploadedObject.mockResolvedValue({ cleaned: true, recorded: false })
   })
 
   // ─── Auth ───────────────────────────────────────────────────────────────
@@ -289,6 +296,21 @@ describe('POST /api/upload', () => {
         where: { id: 'target-profile-id' },
         data: expect.objectContaining({ photoUrl: expect.any(String) }),
       })
+    )
+  })
+
+  it('11. compensates the storage upload when the profile database update fails', async () => {
+    setupDefaultMocks()
+    mockOptimizeAndUploadImage.mockResolvedValue('/api/image-proxy?bucket=profile-photos&path=profile.webp')
+    mockPrisma.user.findUnique.mockResolvedValue({ accountId: 'test-account' } as never)
+    mockPrisma.profile.findUnique.mockResolvedValue({ accountId: 'test-account' } as never)
+    mockPrisma.profile.update.mockRejectedValue(new Error('DATABASE_WRITE_FAILED'))
+
+    const res = await POST(createUploadRequest({ type: 'profile', profileId: 'target-profile-id' }))
+    expect(res.status).toBe(500)
+    expect(mockCleanupUploadedObject).toHaveBeenCalledWith(
+      '/api/image-proxy?bucket=profile-photos&path=profile.webp',
+      expect.objectContaining({ actorUserId: TEST_USER_ID })
     )
   })
 })

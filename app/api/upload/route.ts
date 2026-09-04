@@ -5,6 +5,7 @@ import { optimizeAndUploadImage } from "@/lib/storage-utils";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
+import { cleanupUploadedObjectOrRecordOrphan } from "@/lib/storage-cleanup-outbox";
 
 const ALLOWED_BUCKETS = new Set(["general", "profile-photos"]);
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -91,9 +92,10 @@ export async function POST(req: NextRequest) {
             prisma.user.findUnique({ where: { id: userId }, select: { accountId: true } }),
             prisma.profile.findUnique({ where: { id: targetProfileId }, select: { accountId: true } }),
           ]);
-          if (user?.accountId && user.accountId === profile?.accountId) {
-            await prisma.profile.update({ where: { id: targetProfileId }, data: { photoUrl: publicUrl } });
+          if (!user?.accountId || user.accountId !== profile?.accountId) {
+            throw new Error("PROFILE_OWNERSHIP_MISMATCH");
           }
+          await prisma.profile.update({ where: { id: targetProfileId }, data: { photoUrl: publicUrl } });
         } else {
           await prisma.profile.upsert({
             where: { userId },
@@ -103,6 +105,9 @@ export async function POST(req: NextRequest) {
         }
       } catch (error) {
         console.error("PROFILE_PHOTO_UPDATE_ERROR", error);
+        const account = await prisma.user.findUnique({ where: { id: userId }, select: { accountId: true } }).catch(() => null);
+        await cleanupUploadedObjectOrRecordOrphan(publicUrl, { actorUserId: userId, accountId: account?.accountId });
+        throw error;
       }
     }
 
@@ -113,6 +118,9 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Error ? error.message : "";
     if (["INVALID_MULTIPART_CONTENT_TYPE", "MULTIPART_BOUNDARY_NOT_FOUND", "INVALID_MULTIPART_BOUNDARY"].includes(message)) {
       return NextResponse.json({ error: "Solicitud de archivo inválida. Recarga la página e intenta nuevamente." }, { status: 400 });
+    }
+    if (message === "PROFILE_OWNERSHIP_MISMATCH") {
+      return NextResponse.json({ error: "No autorizado para modificar este perfil" }, { status: 403 });
     }
     return NextResponse.json({ error: "No se pudo procesar la imagen" }, { status: 500 });
   }

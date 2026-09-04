@@ -22,12 +22,13 @@ export interface EmergencyNotificationData {
   profileName: string;
   shortCode: string;
   notificationId: string;
+  idempotencyKey: string;
 }
 
 export async function sendEmergencyNotification(
   data: EmergencyNotificationData
 ): Promise<{ success: boolean; providerResponse?: string }> {
-  const { recipient, type, profileName, shortCode } = data;
+  const { recipient, type, profileName, shortCode, idempotencyKey } = data;
   const profileUrl = `${SITE_URL}/e/${shortCode}`;
   const minimalMessage = `Se registró un escaneo de emergencia asociado a ${profileName}. Revisa el enlace seguro para más información: ${profileUrl}`;
 
@@ -41,7 +42,13 @@ export async function sendEmergencyNotification(
         </a>
       </div>
     `;
-    const res = await EmailService.send(recipient, `🚨 Alerta de Emergencia — ${profileName}`, html);
+    const res = await EmailService.send(
+      recipient,
+      `🚨 Alerta de Emergencia — ${profileName}`,
+      html,
+      undefined,
+      { idempotencyKey }
+    );
     // res.data is from Resend: { id: string }
     const resData = res.data as { id: string } | null;
     const providerResponse = res.success ? resData?.id : res.error;

@@ -45,7 +45,7 @@ describe("InvoiceService.ensurePendingForPaidOrder", () => {
       data: expect.objectContaining({
         orderId: "order-1",
         sourcePaymentAttemptId: "attempt-1",
-        internalNumber: "INV-ORD-001",
+        internalNumber: "REC-ORD-001",
         status: "pending_configuration",
         total: expect.objectContaining({}),
         taxTotal: expect.objectContaining({}),
