@@ -18,7 +18,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest run --coverage --exclude 'tests/integration/**'"
   },
   "engines": {
     "node": "24.x"

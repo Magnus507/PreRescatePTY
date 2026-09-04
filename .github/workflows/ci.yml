@@ -111,7 +111,7 @@ jobs:
         run: npm run test:integration
 
       - name: Coverage
-        run: npm run test:coverage -- --run
+        run: npm run test:coverage
 
       - name: Build
         run: npm run build
