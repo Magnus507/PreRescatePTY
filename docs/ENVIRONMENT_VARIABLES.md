@@ -22,6 +22,8 @@ This file is the human-readable companion to `lib/env.ts`. Variable names are do
 | `NEXT_PUBLIC_SUPABASE_URL` | build/runtime | no | Supabase project URL used by server storage helpers. |
 | `SUPABASE_SERVICE_ROLE_KEY` | runtime | yes | Server-only Supabase service role credential. Never expose to browser code. |
 | `CRON_SECRET` | runtime | yes | Authentication secret for scheduled endpoints. |
+| `UPSTASH_REDIS_REST_URL` | runtime | no | Distributed rate-limit backend; required so serverless instances share counters. |
+| `UPSTASH_REDIS_REST_TOKEN` | runtime | yes | Server-only credential for the distributed rate-limit backend. |
 
 Production startup fails closed when this core is missing or malformed. Staging uses the same strict validator so configuration drift is detected before promotion.
 
@@ -42,7 +44,6 @@ Optional does not mean partially configured. In production, once an integration 
 | --- | --- |
 | Resend | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
 | Twilio SMS/WhatsApp | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `TWILIO_WHATSAPP_NUMBER`, `TWILIO_WHATSAPP_FROM` |
-| Upstash Redis | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` |
 | Yappy | `YAPPY_ENVIRONMENT`, `YAPPY_MERCHANT_ID`, `YAPPY_SECRET_KEY`, `YAPPY_DOMAIN` |
 
 For Twilio, account SID + auth token are required if any Twilio sender is configured; at least one SMS or WhatsApp sender must be present. For Yappy, `YAPPY_ENVIRONMENT` alone does not enable payments; merchant ID, secret key and domain must be complete before the integration is considered configured.
@@ -91,7 +92,7 @@ The following variables are confirmation switches consumed by individual scripts
 
 ## Platform-managed
 
-`NODE_ENV`, `NEXT_RUNTIME`, `VERCEL_ENV` and `VERCEL_URL` are runtime/build context supplied by Node/Next.js/Vercel. They are part of the typed contract so code scanning recognizes them, but they are intentionally omitted from `.env.example`.
+`NODE_ENV`, `NEXT_RUNTIME`, `VERCEL`, `VERCEL_ENV` and `VERCEL_URL` are runtime/build context supplied by Node/Next.js/Vercel. They are part of the typed contract so code scanning recognizes them, but they are intentionally omitted from `.env.example`.
 
 ## Validation commands
 
