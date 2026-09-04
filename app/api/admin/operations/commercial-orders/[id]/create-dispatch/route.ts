@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getFirstValidationMessage } from "../../commercial-orders.helpers";
 import { z } from "zod";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { id: commercialOrderId } = await params;
+  const requestId = getAuditRequestId(req);
   const body = await req.json().catch(() => ({}));
   const parsed = CreateDispatchFromOrderSchema.safeParse(body);
   if (!parsed.success) {
@@ -201,6 +203,29 @@ export async function POST(
             dispatchCode: dispatch.code,
           }),
         })),
+      });
+
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId || null,
+        actorUserId: auth.session.user.id || null,
+        entityType: "operation_commercial_order",
+        entityId: order.id,
+        action: "commercial_order.dispatch_created",
+        requestId,
+        before: {
+          status: order.status,
+          fulfillmentStatus: order.fulfillmentStatus,
+          dispatchId: order.dispatchId,
+          paymentStatus: order.paymentStatus,
+        },
+        after: {
+          dispatchId: dispatch.id,
+          dispatchCode: dispatch.code,
+          reservedUnitIds: reservedUnits.map((unit) => unit.id),
+          scheduledAt: parsed.data.scheduledAt || null,
+          carrierName: parsed.data.carrierName || null,
+          trackingReference: parsed.data.trackingReference || null,
+        },
       });
 
       return {

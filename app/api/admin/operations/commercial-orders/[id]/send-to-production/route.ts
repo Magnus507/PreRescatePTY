@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generateSequentialCode } from "@/lib/operations/order-code";
 import { loadInventoryStockRows } from "@/lib/operations/inventory-stock";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { id: commercialOrderId } = await params;
+  const requestId = getAuditRequestId(req);
   const body = await req.json().catch(() => ({}));
   const mode = normalizeMode(body?.mode);
   const explicitPlannedQuantity = toPositiveInteger(body?.plannedQuantity);
@@ -218,6 +220,27 @@ export async function POST(
         where: { id: commercialOrder.id },
         data: {
           fulfillmentStatus: "requested",
+        },
+      });
+
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId || null,
+        actorUserId: auth.session.user.id || null,
+        entityType: "operation_commercial_order",
+        entityId: commercialOrder.id,
+        action: "commercial_order.sent_to_production",
+        requestId,
+        before: {
+          status: commercialOrder.status,
+          fulfillmentStatus: commercialOrder.fulfillmentStatus,
+          paymentStatus: commercialOrder.paymentStatus,
+        },
+        after: {
+          productionOrderId: productionOrder.id,
+          productionOrderCode: productionOrder.code,
+          mode,
+          plannedQuantity,
+          backorderQty,
         },
       });
 
