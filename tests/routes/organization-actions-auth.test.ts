@@ -4,8 +4,13 @@ const mocks = vi.hoisted(() => ({
   requireActiveAccountSession: vi.fn(),
   userFindUnique: vi.fn(),
   userUpdate: vi.fn(),
+  userCreate: vi.fn(),
   chipFindUnique: vi.fn(),
   chipUpdate: vi.fn(),
+  organizationFindFirst: vi.fn(),
+  organizationUpdate: vi.fn(),
+  organizationMemberCreate: vi.fn(),
+  accountState: vi.fn(),
   auditCreate: vi.fn(),
   transaction: vi.fn(),
   hash: vi.fn(),
@@ -19,10 +24,12 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findUnique: mocks.userFindUnique },
     chip: { findUnique: mocks.chipFindUnique },
+    organization: { findFirst: mocks.organizationFindFirst, update: mocks.organizationUpdate },
+    organizationMember: { create: mocks.organizationMemberCreate },
     $transaction: mocks.transaction,
   },
 }));
-vi.mock("@/domains/accounts/services/account-state.service", () => ({ AccountStateService: {} }));
+vi.mock("@/domains/accounts/services/account-state.service", () => ({ AccountStateService: { getAccountState: mocks.accountState } }));
 vi.mock("bcryptjs", () => ({ default: { hash: mocks.hash } }));
 
 import { POST } from "@/app/api/organizations/actions/route";
@@ -54,6 +61,19 @@ describe("POST /api/organizations/actions authorization", () => {
       status: "active",
       sessionVersion: 1,
     });
+    mocks.userCreate.mockResolvedValue({
+      id: "member-2", accountId: "account-1", role: "member", status: "active", profile: { id: "profile-2" },
+    });
+    mocks.organizationFindFirst.mockResolvedValue({
+      id: "organization-1", displayName: "Rescate", organizationType: "corporate",
+      emergencyButton1Phone: null, emergencyButton2Phone: null, emergencyButton3Phone: null,
+    });
+    mocks.organizationUpdate.mockResolvedValue({
+      id: "organization-1", displayName: "Rescate actualizado", organizationType: "corporate",
+      emergencyButton1Phone: "+50760000000", emergencyButton2Phone: null, emergencyButton3Phone: null,
+    });
+    mocks.organizationMemberCreate.mockResolvedValue({ id: "organization-member-2" });
+    mocks.accountState.mockResolvedValue({ canAddFamilyMember: true });
     mocks.chipFindUnique.mockResolvedValue({
       id: "chip-1",
       accountId: "account-1",
@@ -75,8 +95,10 @@ describe("POST /api/organizations/actions authorization", () => {
     });
     mocks.auditCreate.mockResolvedValue({ id: "audit-1" });
     mocks.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => callback({
-      user: { update: mocks.userUpdate },
       chip: { update: mocks.chipUpdate },
+      organization: { findFirst: mocks.organizationFindFirst, update: mocks.organizationUpdate },
+      organizationMember: { create: mocks.organizationMemberCreate },
+      user: { update: mocks.userUpdate, create: mocks.userCreate },
       auditLog: { create: mocks.auditCreate },
     }));
   });
@@ -164,5 +186,47 @@ describe("POST /api/organizations/actions authorization", () => {
     }));
 
     expect(response.status).toBe(500);
+  });
+
+  it("creates the member, organization link, and audit record in one transaction", async () => {
+    mocks.requireActiveAccountSession.mockResolvedValue({
+      authorized: true,
+      session: { user: { id: "owner-1", accountId: "account-1" } },
+      current: { accountId: "account-1", role: "owner" },
+    });
+    mocks.userFindUnique.mockResolvedValueOnce(null);
+
+    const response = await POST(request("add-member", {
+      email: "member-2@example.test", password: "secure-password", firstName: "Ana", lastName: "Pérez",
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.userCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.organizationMemberCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.auditCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "organization_member_added", entityId: "member-2" }),
+    });
+  });
+
+  it("records organization configuration changes without persisting contact numbers in audit snapshots", async () => {
+    mocks.requireActiveAccountSession.mockResolvedValue({
+      authorized: true,
+      session: { user: { id: "owner-1", accountId: "account-1" } },
+      current: { accountId: "account-1", role: "owner" },
+    });
+
+    const response = await POST(request("update-organization", {
+      displayName: "Rescate actualizado", organizationType: "corporate", emergencyButton1Phone: "+50760000000",
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.organizationUpdate).toHaveBeenCalledTimes(1);
+    expect(mocks.auditCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "organization_configuration_updated",
+        oldValuesJson: expect.not.stringContaining("60000000"),
+        newValuesJson: expect.not.stringContaining("60000000"),
+      }),
+    });
   });
 });
