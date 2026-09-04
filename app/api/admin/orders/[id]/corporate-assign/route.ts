@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 import { rateLimit } from "@/lib/rateLimit";
 import { ORDER_FULFILLMENT_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireRole(ORDER_FULFILLMENT_ROLES);
@@ -155,6 +156,28 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           { status: 400 }
         );
       }
+
+      await writeAuditLog(tx, {
+        accountId: session.user.accountId,
+        actorUserId: adminId,
+        entityType: "CorporateOrderEmployeeItem",
+        entityId: item.id,
+        action: "corporate_chip_assigned",
+        requestId: getAuditRequestId(req),
+        before: {
+          orderId: order.id,
+          organizationMemberId: item.organizationMemberId,
+          chipId: item.chipId,
+          fulfillmentStatus: item.fulfillmentStatus,
+        },
+        after: {
+          orderId: order.id,
+          organizationMemberId: item.organizationMemberId,
+          chipId,
+          assignedProfileId: orgMemberFull.corporateProfileId,
+          fulfillmentStatus: "assigned_reserved",
+        },
+      });
     });
 
     return NextResponse.json({ ok: true });

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { ORDER_FULFILLMENT_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export async function PATCH(
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireRole(ORDER_FULFILLMENT_ROLES);
@@ -69,20 +70,40 @@ export async function PATCH(
     );
   }
 
-  const updated = await prisma.order.update({
-    where: { id },
-    data: {
-      corporateDeliveryStatus: "delivered",
-      deliveryNote: "Lote entregado a empresa",
-      estimatedDeliveryDate: order.estimatedDeliveryDate ?? new Date(),
-    },
-    select: {
-      id: true,
-      corporateDeliveryStatus: true,
-      deliveryNote: true,
-      estimatedDeliveryDate: true,
-    },
-  });
-
-  return NextResponse.json({ ok: true, order: updated });
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      const changed = await tx.order.update({
+        where: { id },
+        data: {
+          corporateDeliveryStatus: "delivered",
+          deliveryNote: "Lote entregado a empresa",
+          estimatedDeliveryDate: order.estimatedDeliveryDate ?? new Date(),
+        },
+        select: {
+          id: true,
+          corporateDeliveryStatus: true,
+          deliveryNote: true,
+          estimatedDeliveryDate: true,
+        },
+      });
+      await writeAuditLog(tx, {
+        accountId: session.user.accountId,
+        actorUserId: adminId,
+        entityType: "Order",
+        entityId: id,
+        action: "corporate_order_delivered",
+        requestId: getAuditRequestId(req),
+        before: {
+          corporateDeliveryStatus: order.corporateDeliveryStatus,
+          estimatedDeliveryDate: order.estimatedDeliveryDate,
+        },
+        after: changed,
+      });
+      return changed;
+    });
+    return NextResponse.json({ ok: true, order: updated });
+  } catch (error) {
+    console.error("[admin/orders/:id/corporate-delivery] Update failed", error);
+    return NextResponse.json({ error: "No se pudo marcar la entrega corporativa." }, { status: 500 });
+  }
 }
