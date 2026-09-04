@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
+import { ORDER_REVIEW_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 const ReturnSchema = z.object({
   chipIds: z.array(z.string().min(1)).min(1, "chipIds debe contener al menos un chip"),
 });
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["admin", "superadmin"].includes(session.user.role)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const adminId = session.user.id;
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
+  if (!auth.authorized) return auth.response;
+  const adminId = auth.session.user.id;
+  const requestId = getAuditRequestId(req);
 
   const limiter = await rateLimit("admin-return-pos", adminId, {
     limit: 20,
@@ -88,15 +86,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         data: { status: "inventory", pointOfSaleId: null, consignedAt: null },
       });
 
-      await tx.auditLog.create({
-        data: {
-          actorUserId: adminId,
-          entityType: "PointOfSale",
-          entityId: id,
-          action: "chips_returned_from_consignment",
-          oldValuesJson: null,
-          newValuesJson: JSON.stringify({ chipIds: uniqueChipIds, pointOfSaleName: pos.name }),
-        },
+      await writeAuditLog(tx, {
+        actorUserId: adminId,
+        entityType: "point_of_sale",
+        entityId: id,
+        action: "point_of_sale.chips_returned",
+        requestId,
+        after: { chipIds: uniqueChipIds, pointOfSaleName: pos.name },
       });
     });
 

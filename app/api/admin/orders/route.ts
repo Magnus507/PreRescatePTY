@@ -1,22 +1,12 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { USER_ROLES } from "@/domains/shared/constants";
+import { ORDER_REVIEW_ROLES, requireRole } from "@/lib/rbac";
 import { buildOperationsOrderViewModel } from "@/lib/operations/operations-order-view-model";
 import { buildCustomerProductionCode } from "@/lib/operations/customer-order-production";
 
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.role) return false;
-  const role = session.user.role;
-  return role === USER_ROLES.ADMIN || role === USER_ROLES.SUPERADMIN;
-}
-
 export async function GET() {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const orders = await prisma.order.findMany({
@@ -259,9 +249,8 @@ export async function GET() {
 }
 
 export async function PATCH() {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
+  if (!auth.authorized) return auth.response;
 
   return NextResponse.json(
     {
@@ -273,9 +262,8 @@ export async function PATCH() {
 }
 
 export async function DELETE() {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
+  if (!auth.authorized) return auth.response;
 
   return NextResponse.json(
     {

@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { generateOrderNumber } from "@/lib/order-number";
@@ -9,6 +7,8 @@ import { TOKEN_AVAILABLE_WHERE } from "@/domains/chips/token-lifecycle.helpers";
 import { z } from "zod";
 import { getUniqueActivationCode } from "@/lib/identifiers";
 import { protectActivationCode } from "@/domains/chips/activation-code.service";
+import { ORDER_REVIEW_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 const RetailSellSchema = z.object({
   chipIds: z.array(z.string().min(1)).min(1, "chipIds debe contener al menos un chip"),
@@ -20,16 +20,10 @@ const RetailSellSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  // ── Auth: solo admin y superadmin (excluye imprenta) ──
-  const session = await getServerSession(authOptions);
-  if (
-    !session?.user ||
-    !["admin", "superadmin"].includes(session.user.role)
-  ) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const adminId = session.user.id;
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
+  if (!auth.authorized) return auth.response;
+  const adminId = auth.session.user.id;
+  const requestId = getAuditRequestId(req);
 
   // ── Rate limit ──
   const limiter = await rateLimit("admin-retail-sell", adminId, {
@@ -178,23 +172,13 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 4. AuditLog
-      await tx.auditLog.create({
-        data: {
-          accountId: null,
-          actorUserId: adminId,
-          entityType: "Order",
-          entityId: order.id,
-          action: "retail_sale_created",
-          oldValuesJson: null,
-          newValuesJson: JSON.stringify({
-            chipIds: uniqueChipIds,
-            amount,
-            customerName: customerName || null,
-            customerEmail: customerEmail || null,
-            customerPhone: customerPhone || null,
-          }),
-        },
+      await writeAuditLog(tx, {
+        actorUserId: adminId,
+        entityType: "order",
+        entityId: order.id,
+        action: "order.retail_sale_created",
+        requestId,
+        after: { chipIds: uniqueChipIds, amount, customerName: customerName || null, customerEmail: customerEmail || null, customerPhone: customerPhone || null },
       });
 
       return { order, activationCodes };

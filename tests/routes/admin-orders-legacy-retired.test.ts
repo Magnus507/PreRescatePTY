@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockPrisma } from "../helpers/mock-prisma";
 import { createMockSession } from "../helpers/mock-auth";
 
-vi.mock("next-auth", () => ({ getServerSession: vi.fn() }));
-vi.mock("@/lib/auth", () => ({ authOptions: {} }));
+const { mockRequireRole } = vi.hoisted(() => ({ mockRequireRole: vi.fn() }));
+vi.mock("@/lib/rbac", () => ({
+  ORDER_REVIEW_ROLES: ["admin", "superadmin"],
+  requireRole: mockRequireRole,
+}));
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
 
 import { DELETE, PATCH } from "@/app/api/admin/orders/route";
-import { getServerSession } from "next-auth";
 
 describe("legacy admin order mutations", () => {
   beforeEach(() => {
@@ -18,7 +20,10 @@ describe("legacy admin order mutations", () => {
     ["PATCH", PATCH],
     ["DELETE", DELETE],
   ])("rejects %s when the session is not an administrator", async (_method, handler) => {
-    vi.mocked(getServerSession).mockResolvedValue(null);
+    mockRequireRole.mockResolvedValue({
+      authorized: false,
+      response: new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 }),
+    });
 
     const response = await handler();
 
@@ -32,7 +37,10 @@ describe("legacy admin order mutations", () => {
     ["PATCH", PATCH],
     ["DELETE", DELETE],
   ])("retires %s so callers must use audited dedicated workflows", async (_method, handler) => {
-    vi.mocked(getServerSession).mockResolvedValue(createMockSession({ role: "admin" }) as never);
+    mockRequireRole.mockResolvedValue({
+      authorized: true,
+      session: createMockSession({ role: "admin" }),
+    });
 
     const response = await handler();
 
