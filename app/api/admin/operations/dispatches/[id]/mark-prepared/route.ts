@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
+  const requestId = getAuditRequestId(req);
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -64,6 +66,17 @@ export async function POST(
           }),
           createdById: auth.session.user.id || null,
         },
+      });
+
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId || null,
+        actorUserId: auth.session.user.id || null,
+        entityType: "operation_dispatch",
+        entityId: dispatch.id,
+        action: "dispatch.prepared",
+        requestId,
+        before: { status: dispatch.status, itemCount: dispatch.items.length },
+        after: { status: "prepared", preparedAt: preparedAt.toISOString() },
       });
 
       return { status: "prepared" as const, preparedAt: preparedAt.toISOString() };
