@@ -1,15 +1,18 @@
 import { prisma } from "../../../lib/prisma";
 import { redis, isRedisConfigured } from "../../../lib/redis";
 
-export type ConfigKey = 
-  | "yappy_handle" 
-  | "yappy_qr_url" 
-  | "bank_name" 
-  | "bank_account_type" 
-  | "bank_account_number" 
-  | "bank_account_name"
-  | "sender_email"
-  | "demo_profile_shortcode";
+export const CONFIG_KEYS = [
+  "yappy_handle",
+  "yappy_qr_url",
+  "bank_name",
+  "bank_account_type",
+  "bank_account_number",
+  "bank_account_name",
+  "sender_email",
+  "demo_profile_shortcode",
+] as const;
+
+export type ConfigKey = typeof CONFIG_KEYS[number];
 
 const CACHE_TTL = 300; // 5 minutes in SECONDS for Redis
 const REDIS_PREFIX = "sys_cfg:";
@@ -68,10 +71,24 @@ export class ConfigRepository {
   }
 
   static async setMany(configs: Record<string, string>): Promise<void> {
-    await Promise.all(
-      Object.entries(configs).map(([key, value]) => 
-        this.set(key as ConfigKey, value)
+    await prisma.$transaction(
+      Object.entries(configs).map(([key, value]) =>
+        prisma.systemConfig.upsert({
+          where: { key },
+          update: { value },
+          create: { key, value },
+        })
       )
     );
+    await this.invalidateMany(Object.keys(configs) as ConfigKey[]);
+  }
+
+  static async invalidateMany(keys: ConfigKey[]): Promise<void> {
+    if (!redis || !isRedisConfigured() || keys.length === 0) return;
+    try {
+      await redis.del(...keys.map((key) => `${REDIS_PREFIX}${key}`));
+    } catch (error) {
+      console.error("[ConfigRepository] Redis invalidation error:", error);
+    }
   }
 }

@@ -620,12 +620,15 @@ model AuditLog {
   entityType    String
   entityId      String
   action        String
+  requestId     String?
+  result        String   @default("success")
   oldValuesJson String?
   newValuesJson String?
   createdAt     DateTime @default(now())
 
   @@index([accountId])
   @@index([entityId])
+  @@index([requestId])
   @@index([createdAt])
 }
 
