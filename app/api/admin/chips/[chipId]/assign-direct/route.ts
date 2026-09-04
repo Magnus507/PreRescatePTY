@@ -6,6 +6,7 @@ import { generateOrderNumber } from "@/lib/order-number";
 import { getUniqueActivationCode } from "@/lib/identifiers";
 import { USED_CAPACITY_CHIP_STATUSES } from "@/domains/chips/chip-lifecycle.constants";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ chipId
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
   const session = auth.session;
+  const requestId = getAuditRequestId(req);
 
   const { chipId } = await context.params;
   const body = await req.json().catch(() => ({}));
@@ -192,29 +194,25 @@ export async function POST(req: NextRequest, context: { params: Promise<{ chipId
         expiresAt,
       });
 
-      await tx.auditLog.create({
-        data: {
-          accountId: account.id,
-          actorUserId: session.user.id,
-          entityType: "chip",
-          entityId: chipId,
-          action: "assign_direct",
-          oldValuesJson: JSON.stringify({
-            status: chip.status,
-            capacity: beforeCapacity,
-          }),
-          newValuesJson: JSON.stringify({
-            targetUserId,
-            targetProfileId,
-            reason,
-            notes: notes || null,
-            capacityMode,
-            orderId: order.id,
-            tokenId: tokenResult.tokenId,
-            status: "sold",
-            activationCodeSuffix: activationCode.slice(-4),
-            capacity: capacityAfter,
-          }),
+      await writeAuditLog(tx, {
+        accountId: account.id,
+        actorUserId: session.user.id,
+        entityType: "chip",
+        entityId: chipId,
+        action: "chip.assigned_directly",
+        requestId,
+        before: { status: chip.status, capacity: beforeCapacity },
+        after: {
+          targetUserId,
+          targetProfileId,
+          reason,
+          notes: notes || null,
+          capacityMode,
+          orderId: order.id,
+          tokenId: tokenResult.tokenId,
+          status: "sold",
+          activationCodeSuffix: activationCode.slice(-4),
+          capacity: capacityAfter,
         },
       });
 
