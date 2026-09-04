@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { registerSchema } from "@/lib/validations";
@@ -10,6 +11,10 @@ import { CONSENT_TEXT_VERSION, CONSENT_TYPE } from "@/domains/consents/consent.c
 export const dynamic = "force-dynamic";
 
 const ACTIVE_ACCOUNT_TYPES = new Set<string>([ACCOUNT_TYPES.PERSONAL, ACCOUNT_TYPES.COMPANY]);
+const REGISTRATION_LEGAL_DOCUMENTS = {
+  terms: "/legal/terminos",
+  privacy: "/legal/privacidad",
+} as const;
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +29,25 @@ export async function POST(req: NextRequest) {
     if (!validation.success) {
       return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
     }
-    const { email: emailLower, password, phone, accountType } = validation.data;
+    const {
+      email: emailLower,
+      password,
+      phone,
+      accountType,
+      acceptedTerms,
+      consentTextVersion,
+    } = validation.data;
+
+    // The client must attest to the exact legal text version currently served.
+    // This prevents a stale or handcrafted client from creating fabricated
+    // consent evidence for a different version of the terms/privacy notice.
+    if (consentTextVersion !== CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY) {
+      return NextResponse.json(
+        { error: "Los términos fueron actualizados. Recarga la página y vuelve a aceptarlos." },
+        { status: 400 }
+      );
+    }
+
     const packageId = typeof (body as { packageId?: unknown }).packageId === "string"
       ? (body as { packageId: string }).packageId
       : null;
@@ -118,29 +141,31 @@ export async function POST(req: NextRequest) {
           accountId: account.id,
           userId: newUser.id,
           consentType: CONSENT_TYPE.TERMS_AND_PRIVACY,
-          textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+          textVersion: consentTextVersion,
           ipAddress: ip,
           userAgent,
           evidenceJson: JSON.stringify({
-            acceptedTerms: true,
+            acceptedTerms,
+            consentTextVersion,
+            legalDocuments: REGISTRATION_LEGAL_DOCUMENTS,
             packageId: selectedPackage?.id || null,
             accountType: resolvedAccountType,
           }),
         },
       });
 
-      return newUser;
-    });
+      await tx.auditLog.create({
+        data: {
+          accountId: account.id,
+          actorUserId: newUser.id,
+          entityType: "user",
+          entityId: newUser.id,
+          action: "create",
+          newValuesJson: JSON.stringify({ email: emailLower }),
+        },
+      });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        actorUserId: user.id,
-        entityType: "user",
-        entityId: user.id,
-        action: "create",
-        newValuesJson: JSON.stringify({ email: emailLower }),
-      },
+      return newUser;
     });
 
     return NextResponse.json(
@@ -149,6 +174,12 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("Register error:", error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { error: "Este email ya está registrado" },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }

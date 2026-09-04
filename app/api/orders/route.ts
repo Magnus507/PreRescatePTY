@@ -269,8 +269,15 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     console.error("ORDER_CREATE_ERROR", error);
-    const message = error instanceof Error ? error.message : "Error al procesar el pedido";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const message = error instanceof Error ? error.message : "";
+    const isPublicValidationError =
+      message === "Producto invalido o no disponible" ||
+      message.startsWith("El producto \"") ||
+      message.startsWith("El perfil seleccionado");
+    return NextResponse.json(
+      { error: isPublicValidationError ? message : "No se pudo procesar el pedido." },
+      { status: isPublicValidationError ? 400 : 500 }
+    );
   }
 }
 

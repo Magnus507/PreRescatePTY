@@ -14,7 +14,7 @@ export class InvoiceCreationError extends Error {
 }
 
 function internalNumberForOrder(orderNumber: string) {
-  return `INV-${orderNumber}`;
+  return `REC-${orderNumber}`;
 }
 
 export class InvoiceService {
@@ -36,12 +36,12 @@ export class InvoiceService {
       throw new InvoiceCreationError("Pedido no encontrado", "ORDER_NOT_FOUND");
     }
     if (order.paymentStatus !== "paid") {
-      throw new InvoiceCreationError("Solo se registran facturas de pedidos pagados", "ORDER_NOT_PAID");
+      throw new InvoiceCreationError("Solo se generan constancias para pedidos pagados", "ORDER_NOT_PAID");
     }
 
     const total = parseMoney(order.amount);
     if (total.lte(0)) {
-      throw new InvoiceCreationError("El total facturable debe ser mayor que cero", "INVALID_TOTALS");
+      throw new InvoiceCreationError("El total de la constancia debe ser mayor que cero", "INVALID_TOTALS");
     }
 
     const sourceLines = order.items.length > 0

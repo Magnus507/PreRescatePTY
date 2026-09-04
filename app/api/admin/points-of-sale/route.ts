@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
+import { ORDER_REVIEW_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 const CreatePointOfSaleSchema = z.object({
   name: z.string().min(1, "name es requerido"),
@@ -13,10 +13,8 @@ const CreatePointOfSaleSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["admin", "superadmin"].includes(session.user.role)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
+  if (!auth.authorized) return auth.response;
 
   try {
     const { searchParams } = new URL(req.url);
@@ -43,12 +41,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["admin", "superadmin"].includes(session.user.role)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const adminId = session.user.id;
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
+  if (!auth.authorized) return auth.response;
+  const adminId = auth.session.user.id;
+  const requestId = getAuditRequestId(req);
 
   const limiter = await rateLimit("admin-create-pos", adminId, {
     limit: 10,
@@ -90,15 +86,13 @@ export async function POST(req: NextRequest) {
         data: { name, address, contactName, contactPhone },
       });
 
-      await tx.auditLog.create({
-        data: {
-          actorUserId: adminId,
-          entityType: "PointOfSale",
-          entityId: created.id,
-          action: "point_of_sale_created",
-          oldValuesJson: null,
-          newValuesJson: JSON.stringify({ name, address, contactName, contactPhone }),
-        },
+      await writeAuditLog(tx, {
+        actorUserId: adminId,
+        entityType: "point_of_sale",
+        entityId: created.id,
+        action: "point_of_sale.created",
+        requestId,
+        after: { name, address, contactName, contactPhone },
       });
 
       return created;

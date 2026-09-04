@@ -9,7 +9,7 @@ import { createMockSession } from '../helpers/mock-auth'
 const mockRequireRole = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/rbac', () => ({
   requireRole: mockRequireRole,
-  ORDER_ADMIN_ROLES: ['admin', 'superadmin', 'imprenta'],
+  ORDER_REVIEW_ROLES: ['admin', 'superadmin'],
 }))
 
 vi.mock('@/lib/prisma', () => ({

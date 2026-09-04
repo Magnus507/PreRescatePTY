@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getDispatchCustomerOrderId } from "@/lib/operations/dispatch-source";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
+  const requestId = getAuditRequestId(req);
   const body = await req.json().catch(() => ({}));
 
   try {
@@ -86,6 +88,22 @@ export async function POST(
           data: { orderStatus: "completed" },
         });
       }
+
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId || null,
+        actorUserId: auth.session.user.id || null,
+        entityType: "operation_dispatch",
+        entityId: dispatch.id,
+        action: "dispatch.delivered",
+        requestId,
+        before: { status: dispatch.status, orderId, deliveredAt: dispatch.deliveredAt?.toISOString() || null },
+        after: {
+          status: "delivered",
+          orderId,
+          deliveredAt: deliveredAt.toISOString(),
+          unitCount: unitIds.length,
+        },
+      });
 
       return {
         status: "delivered" as const,

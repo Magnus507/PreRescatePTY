@@ -147,7 +147,7 @@ function LoginContent() {
             <div className="mt-10 grid gap-4 sm:grid-cols-2">
               {[
                 { label: "Acceso rápido", detail: "Haz login y accede a tu perfil desde cualquier dispositivo." },
-                { label: "Protección Ley 81", detail: "Tus datos médicos se almacenan con el máximo cumplimiento." },
+                { label: "Privacidad y control", detail: "Aplicamos controles técnicos y organizativos para proteger tus datos." },
                 { label: "Información de emergencia", detail: "Comparte detalles críticos con un solo click." },
                 { label: "Soporte prioritario", detail: "Recibe ayuda rápida cuando lo necesites." },
               ].map((item) => (

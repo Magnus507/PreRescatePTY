@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OrderFulfillmentService } from "@/domains/orders/services/order-fulfillment.service";
 import { rateLimit } from "@/lib/rateLimit";
+import { ORDER_FULFILLMENT_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["admin", "superadmin", "imprenta"].includes(session.user.role)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_FULFILLMENT_ROLES);
+  if (!auth.authorized) return auth.response;
+  const session = auth.session;
 
   const adminId = session.user.id;
   const limiter = await rateLimit("admin-corporate-assign", adminId, { limit: 20, windowMs: 60_000 });
@@ -157,12 +156,39 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           { status: 400 }
         );
       }
+
+      await writeAuditLog(tx, {
+        accountId: session.user.accountId,
+        actorUserId: adminId,
+        entityType: "CorporateOrderEmployeeItem",
+        entityId: item.id,
+        action: "corporate_chip_assigned",
+        requestId: getAuditRequestId(req),
+        before: {
+          orderId: order.id,
+          organizationMemberId: item.organizationMemberId,
+          chipId: item.chipId,
+          fulfillmentStatus: item.fulfillmentStatus,
+        },
+        after: {
+          orderId: order.id,
+          organizationMemberId: item.organizationMemberId,
+          chipId,
+          assignedProfileId: orgMemberFull.corporateProfileId,
+          fulfillmentStatus: "assigned_reserved",
+        },
+      });
     });
 
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     const e = err instanceof Error ? err : new Error(String(err));
-    const status = (e as unknown as { status?: number }).status || 500;
-    return NextResponse.json({ error: e.message || "No se pudo asignar chip" }, { status });
+    const candidateStatus = (e as unknown as { status?: number }).status || 500;
+    const status = candidateStatus >= 400 && candidateStatus < 500 ? candidateStatus : 500;
+    if (status === 500) console.error("[corporate-assign] Internal error", e);
+    return NextResponse.json(
+      { error: status < 500 ? e.message : "No se pudo asignar el chip." },
+      { status }
+    );
   }
 }

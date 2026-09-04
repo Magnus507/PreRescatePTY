@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ORDER_FULFILLMENT_ROLES, requireRole } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -9,13 +8,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (
-    !session?.user ||
-    !["admin", "superadmin", "imprenta"].includes(session.user.role)
-  ) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(ORDER_FULFILLMENT_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const { id } = await params;
 

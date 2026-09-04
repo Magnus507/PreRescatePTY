@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-reservation";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
+  const requestId = getAuditRequestId(req);
   const body = await req.json().catch(() => ({}));
   const confirmPendingPayment = Boolean(body?.confirmPendingPayment);
 
@@ -20,7 +22,13 @@ export async function POST(
     const result = await prisma.$transaction(async (tx) => {
       const order = await tx.operationCommercialOrder.findUnique({
         where: { id },
-        select: { paymentStatus: true },
+        select: {
+          id: true,
+          sourceId: true,
+          paymentStatus: true,
+          status: true,
+          fulfillmentStatus: true,
+        },
       });
 
       if (!order) return null;
@@ -38,6 +46,25 @@ export async function POST(
       });
 
       if (!reservation) return null;
+
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId || null,
+        actorUserId: auth.session.user.id || null,
+        entityType: "operation_commercial_order",
+        entityId: order.id,
+        action: "commercial_order.stock_reserved",
+        requestId,
+        before: {
+          sourceId: order.sourceId,
+          paymentStatus: order.paymentStatus,
+          status: order.status,
+          fulfillmentStatus: order.fulfillmentStatus,
+        },
+        after: {
+          confirmPendingPayment,
+          reservation: reservation.summary,
+        },
+      });
 
       return {
         ...reservation,

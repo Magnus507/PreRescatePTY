@@ -33,7 +33,11 @@ export async function GET(req: NextRequest) {
   try {
     // Rate limit: 200 req/min per IP for image proxy (mitigates egress cost attacks)
     const ip = getClientIp(req, "image-proxy");
-    const rl = await rateLimit("image-proxy", ip, { limit: 200, windowMs: 60_000 });
+    const rl = await rateLimit("image-proxy", ip, {
+      limit: 200,
+      windowMs: 60_000,
+      productionFailureMode: "memory",
+    });
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Demasiadas solicitudes. Intenta nuevamente." },

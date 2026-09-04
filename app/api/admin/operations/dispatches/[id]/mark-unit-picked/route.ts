@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
+  const requestId = getAuditRequestId(req);
   const body = await req.json().catch(() => ({}));
   const unitId = typeof body.unitId === "string" ? body.unitId.trim() : "";
   const picked = Boolean(body.picked);
@@ -73,6 +75,27 @@ export async function POST(
             pickedAt: pickedAt?.toISOString() || null,
           }),
           createdById: auth.session.user.id || null,
+        },
+      });
+
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId || null,
+        actorUserId: auth.session.user.id || null,
+        entityType: "operation_dispatch_item",
+        entityId: item.id,
+        action: picked ? "dispatch.unit_picked" : "dispatch.unit_unpicked",
+        requestId,
+        before: {
+          dispatchId: dispatch.id,
+          unitId,
+          status: item.status,
+          pickedAt: item.pickedAt?.toISOString() || null,
+        },
+        after: {
+          dispatchId: dispatch.id,
+          unitId,
+          status: updatedItem.status,
+          pickedAt: updatedItem.pickedAt?.toISOString() || null,
         },
       });
 

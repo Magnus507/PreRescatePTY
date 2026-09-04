@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
+  const requestId = getAuditRequestId(req);
   const body = await req.json().catch(() => ({}));
   const reason = typeof body?.reason === "string" ? body.reason.trim() : "";
   const requestedQtyInput = Number(body?.quantity);
@@ -97,6 +99,28 @@ export async function POST(
         data: {
           status: nextStatus,
           fulfillmentStatus: remainingReserved > 0 ? "reserved" : "pending",
+        },
+      });
+
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId || null,
+        actorUserId: auth.session.user.id || null,
+        entityType: "operation_commercial_order",
+        entityId: order.id,
+        action: "commercial_order.reservation_released",
+        requestId,
+        before: {
+          sourceId: order.sourceId,
+          status: order.status,
+          fulfillmentStatus: order.fulfillmentStatus,
+          reservedQty: reservedUnits.length,
+        },
+        after: {
+          status: updatedOrder.status,
+          fulfillmentStatus: updatedOrder.fulfillmentStatus,
+          releasedQty: unitsToRelease.length,
+          remainingReserved,
+          reason: reason || null,
         },
       });
 

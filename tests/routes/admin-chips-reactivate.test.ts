@@ -205,7 +205,7 @@ describe('POST /api/admin/chips/[chipId]/reactivate', () => {
         data: expect.objectContaining({
           entityType: 'chip',
           entityId: 'chip-1',
-          action: 'reactivate',
+          action: 'chip.reactivated',
         }),
       })
     )

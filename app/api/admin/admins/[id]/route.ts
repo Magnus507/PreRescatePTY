@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { bumpUserSessionVersion, requireRole, SUPERADMIN_ROLES } from "@/lib/rbac";
+import { requireRole, SUPERADMIN_ROLES } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -32,11 +33,23 @@ export async function PATCH(
   }
 
   try {
-    const admin = await prisma.user.update({
-      where: { id },
-      data: updateData,
+    const admin = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: { ...updateData, sessionVersion: { increment: 1 } },
+      });
+      await writeAuditLog(tx, {
+        accountId: updated.accountId,
+        actorUserId: auth.session.user.id,
+        entityType: "User",
+        entityId: id,
+        action: "admin_access_updated",
+        requestId: getAuditRequestId(req),
+        before: { isAdmin: currentAdmin.isAdmin, adminRole: currentAdmin.adminRole, status: currentAdmin.status },
+        after: { isAdmin: updated.isAdmin, adminRole: updated.adminRole, status: updated.status },
+      });
+      return updated;
     });
-    await bumpUserSessionVersion(admin.id);
 
     return NextResponse.json({ 
       admin: { 
@@ -71,11 +84,22 @@ export async function DELETE(
 
   try {
     // Don't delete the user - just remove admin privileges
-    await prisma.user.update({
-      where: { id },
-      data: { isAdmin: false, adminRole: null },
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: { isAdmin: false, adminRole: null, sessionVersion: { increment: 1 } },
+      });
+      await writeAuditLog(tx, {
+        accountId: updated.accountId,
+        actorUserId: auth.session.user.id,
+        entityType: "User",
+        entityId: id,
+        action: "admin_access_revoked",
+        requestId: getAuditRequestId(req),
+        before: { isAdmin: currentAdmin.isAdmin, adminRole: currentAdmin.adminRole, status: currentAdmin.status },
+        after: { isAdmin: false, adminRole: null, status: updated.status },
+      });
     });
-    await bumpUserSessionVersion(id);
 
     return NextResponse.json({ message: "Administrador eliminado correctamente" });
   } catch {

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+import { requireRole, ORDER_REVIEW_ROLES } from "@/lib/rbac";
 import { releaseEligibleOrderReservations } from "@/lib/operations/release-order-reservations";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
   if (!auth.authorized) return auth.response;
 
   const { id } = await context.params;

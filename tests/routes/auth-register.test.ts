@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { mockPrisma } from "../helpers/mock-prisma";
 import { resetAllMocks } from "../helpers/reset-mocks";
+import { CONSENT_TEXT_VERSION } from "@/domains/consents/consent.constants";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: mockPrisma,
@@ -31,6 +32,16 @@ function createRegisterRequest(body: Record<string, unknown>) {
   });
 }
 
+const validRegistration = {
+  email: "user@example.com",
+  phone: "+507 6000-0000",
+  password: "Password123!",
+  confirmPassword: "Password123!",
+  accountType: "personal",
+  acceptedTerms: true,
+  consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+};
+
 describe("POST /api/auth/register", () => {
   beforeEach(() => {
     resetAllMocks();
@@ -48,15 +59,7 @@ describe("POST /api/auth/register", () => {
   });
 
   it("creates an initial consent record for the new user", async () => {
-    const res = await POST(
-      createRegisterRequest({
-        email: "user@example.com",
-        phone: "+507 6000-0000",
-        password: "Password123!",
-        confirmPassword: "Password123!",
-        accountType: "personal",
-      })
-    );
+    const res = await POST(createRegisterRequest(validRegistration));
     const json = await res.json();
 
     expect(res.status).toBe(201);
@@ -67,8 +70,56 @@ describe("POST /api/auth/register", () => {
           userId: "user-1",
           accountId: "account-1",
           consentType: "terms_and_privacy",
+          textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+          evidenceJson: expect.stringContaining('"acceptedTerms":true'),
         }),
       })
     );
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          accountId: "account-1",
+          actorUserId: "user-1",
+          entityType: "user",
+          action: "create",
+        }),
+      })
+    );
+  });
+
+  it("rejects direct API registration when terms were not accepted", async () => {
+    const res = await POST(
+      createRegisterRequest({
+        ...validRegistration,
+        acceptedTerms: false,
+      })
+    );
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+    expect(mockPrisma.consent.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale or handcrafted consent text version", async () => {
+    const res = await POST(
+      createRegisterRequest({
+        ...validRegistration,
+        consentTextVersion: "registration-terms-stale",
+      })
+    );
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+    expect(mockPrisma.consent.create).not.toHaveBeenCalled();
+  });
+
+  it("fails the registration transaction when its audit record cannot be written", async () => {
+    mockPrisma.auditLog.create.mockRejectedValue(new Error("AUDIT_WRITE_FAILED"));
+
+    const res = await POST(createRegisterRequest(validRegistration));
+
+    expect(res.status).toBe(500);
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledTimes(1);
   });
 });

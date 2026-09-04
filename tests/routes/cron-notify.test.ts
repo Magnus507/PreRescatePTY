@@ -3,9 +3,10 @@ import { NextRequest } from "next/server";
 
 const mockProcessPendingEmergencyNotifications = vi.hoisted(() => vi.fn());
 const mockLoggerInfo = vi.hoisted(() => vi.fn());
+const mockHeartbeatUpsert = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: {},
+  prisma: { systemConfig: { upsert: mockHeartbeatUpsert } },
 }));
 
 vi.mock("@/lib/emergency-alerts", () => ({
@@ -24,6 +25,8 @@ describe("cron notify route", () => {
   beforeEach(() => {
     mockProcessPendingEmergencyNotifications.mockReset();
     mockLoggerInfo.mockReset();
+    mockHeartbeatUpsert.mockReset();
+    mockHeartbeatUpsert.mockResolvedValue({});
     process.env.CRON_SECRET = "cron-secret";
   });
 

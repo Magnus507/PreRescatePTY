@@ -16,11 +16,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   if (!invoice || invoice.order.userId !== auth.session.user.id) {
-    return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 });
+    return NextResponse.json({ error: "Constancia de pago no encontrada" }, { status: 404 });
   }
 
   return NextResponse.json({
     invoice: {
+      documentType: "non_fiscal_payment_receipt",
+      fiscalInvoice: false,
       id: invoice.id,
       orderId: invoice.orderId,
       internalNumber: invoice.internalNumber,

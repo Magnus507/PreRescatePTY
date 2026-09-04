@@ -7,7 +7,7 @@ import { ensureCustomerBackorderProduction } from "@/lib/operations/customer-ord
 import { syncRealOrderToOperations } from "@/lib/operations/sync-real-order-to-operations";
 import { canAdminApproveManual } from "@/lib/order-status";
 import { rateLimit } from "@/lib/rateLimit";
-import { ORDER_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { ORDER_REVIEW_ROLES, requireRole } from "@/lib/rbac";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { InvoiceService } from "@/domains/invoices/services/invoice.service";
@@ -38,6 +38,19 @@ function buildFulfillmentReviewNotes(
   return [baseNotes?.trim() || null, ...summaryLines].filter(Boolean).join("\n");
 }
 
+function approvalErrorStatus(error: unknown): number {
+  if (typeof error === "object" && error !== null && "status" in error) {
+    return Number((error as { status?: unknown }).status) || 500;
+  }
+  if (
+    error instanceof Error &&
+    ["ORDER_NOT_READY_FOR_RESERVATION", "INSUFFICIENT_UNIT_STOCK"].includes(error.message)
+  ) {
+    return 409;
+  }
+  return 500;
+}
+
 type AdminReviewedOrder = {
   id: string;
   orderNumber: string;
@@ -50,7 +63,7 @@ type AdminReviewedOrder = {
 };
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
   if (!auth.authorized) return auth.response;
   const session = auth.session;
   const adminId = session.user.id;
@@ -316,6 +329,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (!order.packageId && linkedCommercialOrder) {
     try {
       const transactionResult = await prisma.$transaction(async (tx) => {
+        // The operational projection is what the reservation guard evaluates.
+        // Promote its payment state in the same transaction before attempting
+        // to reserve stock; updating only the checkout Order afterwards makes
+        // every legitimate manual approval fail as unpaid.
+        await tx.operationCommercialOrder.update({
+          where: { id: linkedCommercialOrder!.id },
+          data: { paymentStatus: "paid" },
+        });
         const reservation = await reserveCommercialOrderStock(tx, {
           orderId: linkedCommercialOrder!.id,
           allowPartial: true,
@@ -383,9 +404,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         order: transactionResult.updatedOrder,
       });
     } catch (error: unknown) {
-      const status = typeof error === "object" && error !== null && "status" in error
-        ? Number((error as { status?: unknown }).status) || 500
-        : 500;
+      const status = approvalErrorStatus(error);
       const message = error instanceof Error ? error.message : "Error al aprobar orden";
       logger.error("[Admin Approve] Store order approval error:", message);
       return NextResponse.json({ error: "No se pudo aprobar la orden" }, { status });
@@ -415,6 +434,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   };
   try {
     result = await prisma.$transaction(async (tx) => {
+      if (linkedCommercialOrder) {
+        await tx.operationCommercialOrder.update({
+          where: { id: linkedCommercialOrder.id },
+          data: { paymentStatus: "paid" },
+        });
+      }
       const reservation = linkedCommercialOrder
         ? await reserveCommercialOrderStock(tx, {
             orderId: linkedCommercialOrder.id,
@@ -505,9 +530,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return { updatedOrder, account: { id: account.id }, reservation };
     });
   } catch (error: unknown) {
-    const status = typeof error === "object" && error !== null && "status" in error
-      ? Number((error as { status?: unknown }).status) || 500
-      : 500;
+    const status = approvalErrorStatus(error);
     const message = error instanceof Error ? error.message : "Error al aprobar orden";
     logger.error("[Admin Approve] Order approval error:", message);
     return NextResponse.json({ error: "No se pudo aprobar la orden" }, { status });

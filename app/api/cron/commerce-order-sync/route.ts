@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processCommerceOrderSyncOutboxBatch } from "@/lib/operations/commerce-order-sync-outbox";
+import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
 
 function authorizeCronRequest(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -93,6 +94,10 @@ export async function POST(req: NextRequest) {
   });
 
   const reconciliation = await buildReconciliationSummary();
+  await recordCronSuccess(CRON_MONITOR_KEYS.commerceOrderSync, {
+    ...result,
+    ...reconciliation,
+  });
 
   return NextResponse.json({
     result,

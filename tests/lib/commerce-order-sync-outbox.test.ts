@@ -12,6 +12,7 @@ import {
   enqueueCommerceOrderSyncOutbox,
   enqueueStoredCommerceOrderSyncOutbox,
   processCommerceOrderSyncOutboxBatch,
+  recoverStaleCommerceOrderSyncLeases,
 } from "@/lib/operations/commerce-order-sync-outbox";
 
 describe("commerce-order-sync-outbox", () => {
@@ -215,9 +216,13 @@ describe("commerce-order-sync-outbox", () => {
     expect(result.retrying).toBe(0);
     expect(result.failed).toBe(0);
     expect(mockSyncRealOrderToOperations).toHaveBeenCalledTimes(1);
-    expect(mockPrisma.commerceOrderSyncOutbox.update).toHaveBeenCalledWith(
+    expect(mockPrisma.commerceOrderSyncOutbox.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "outbox-1" },
+        where: expect.objectContaining({
+          id: "outbox-1",
+          status: "processing",
+          lockedBy: "worker-1",
+        }),
         data: expect.objectContaining({
           status: "processed",
           lockedBy: null,
@@ -304,12 +309,57 @@ describe("commerce-order-sync-outbox", () => {
     expect(result.processed).toBe(0);
     expect(result.retrying).toBe(1);
     expect(result.failed).toBe(0);
-    expect(mockPrisma.commerceOrderSyncOutbox.update).toHaveBeenCalledWith(
+    expect(mockPrisma.commerceOrderSyncOutbox.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "outbox-2" },
+        where: expect.objectContaining({
+          id: "outbox-2",
+          status: "processing",
+          lockedBy: "worker-1",
+        }),
         data: expect.objectContaining({
           status: "retrying",
           lastErrorCode: "RETRYABLE_SYNC_ERROR",
+        }),
+      })
+    );
+  });
+
+  it("recovers stale processing leases and dead-letters exhausted rows", async () => {
+    const lockedAt = new Date("2026-09-04T00:00:00Z");
+    mockPrisma.commerceOrderSyncOutbox.findMany.mockResolvedValue([
+      {
+        id: "outbox-retry",
+        attempts: 2,
+        status: "processing",
+        lockedAt,
+        lockedBy: "dead-worker-a",
+        createdAt: lockedAt,
+      },
+      {
+        id: "outbox-dead",
+        attempts: 8,
+        status: "processing",
+        lockedAt,
+        lockedBy: "dead-worker-b",
+        createdAt: lockedAt,
+      },
+    ] as never);
+    mockPrisma.commerceOrderSyncOutbox.updateMany.mockResolvedValue({ count: 1 } as never);
+
+    const result = await recoverStaleCommerceOrderSyncLeases(mockPrisma as never, {
+      now: new Date("2026-09-04T00:30:00Z"),
+      leaseMs: 60_000,
+    });
+
+    expect(result).toEqual({ recovered: 1, deadLettered: 1 });
+    expect(mockPrisma.commerceOrderSyncOutbox.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "retrying" }) })
+    );
+    expect(mockPrisma.commerceOrderSyncOutbox.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "failed",
+          lastErrorCode: "LEASE_EXPIRED_MAX_ATTEMPTS",
         }),
       })
     );

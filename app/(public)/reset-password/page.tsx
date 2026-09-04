@@ -157,7 +157,7 @@ export default function ResetPasswordPage() {
               </div>
               <div className="flex items-center gap-3 text-slate-300">
                 <div className="h-2 w-2 rounded-full bg-blue-400" />
-                <span className="text-sm">Valida con Ley 81 de Panamá</span>
+                <span className="text-sm">Proceso sujeto a nuestra política de privacidad</span>
               </div>
               <div className="flex items-center gap-3 text-slate-300">
                 <div className="h-2 w-2 rounded-full bg-blue-400" />

@@ -16,14 +16,14 @@ interface FAQ {
 
 const faqs: FAQ[] = [
   // Producto
-  { q: "¿Qué es PreRescue ID?", a: "Es un sistema de identificación médica de emergencia. Un sticker con NFC y código QR que permite consultar información médica autorizada al escanearlo.", category: "Producto" },
-  { q: "¿Qué información se muestra al escanear?", a: "Nombre, tipo de sangre, alergias, condiciones médicas, medicamentos y contactos de emergencia. Tú controlas qué campos son visibles.", category: "Producto" },
-  { q: "¿El sticker necesita batería?", a: "No. El sticker no tiene batería. El chip NFC se activa con la energía del celular que lo escanea.", category: "Producto" },
+  { q: "¿Qué es PreRescue ID?", a: "Es un sistema de identificación médica de emergencia. Un sticker con NFC y código QR que permite consultar información configurada para el perfil público al escanearlo.", category: "Producto" },
+  { q: "¿Qué información se muestra al escanear?", a: "El perfil puede mostrar datos como nombre, tipo de sangre, alergias, condiciones médicas, medicamentos y contactos de emergencia, según la información disponible y la configuración de visibilidad aplicable.", category: "Producto" },
+  { q: "¿El sticker necesita batería?", a: "No. El sticker no tiene batería. El chip NFC se activa con la energía del dispositivo compatible que lo escanea.", category: "Producto" },
 
   // QR y NFC
-  { q: "¿Cómo funciona el código QR?", a: "Cualquier celular con cámara puede escanear el código QR. La cámara abre automáticamente el perfil de emergencia en el navegador.", category: "QR y NFC" },
-  { q: "¿Cómo funciona el chip NFC?", a: "Los celulares con NFC pueden leer el chip al acercarlo. El perfil se abre automáticamente, sin necesidad de abrir la cámara.", category: "QR y NFC" },
-  { q: "¿Qué celulares son compatibles?", a: "La mayoría de los smartphones actuales soportan NFC. El código QR funciona con cualquier celular con cámara.", category: "QR y NFC" },
+  { q: "¿Cómo funciona el código QR?", a: "Un dispositivo con cámara y navegador compatible puede escanear el código QR y abrir el enlace del perfil de emergencia.", category: "QR y NFC" },
+  { q: "¿Cómo funciona el chip NFC?", a: "Los dispositivos compatibles con NFC pueden leer el chip al acercarlo y abrir el enlace del perfil, según la configuración del dispositivo.", category: "QR y NFC" },
+  { q: "¿Qué celulares son compatibles?", a: "La mayoría de los smartphones actuales soportan NFC. Para el código QR se necesita una cámara o lector compatible y acceso a un navegador.", category: "QR y NFC" },
 
   // Internet y dispositivos
   { q: "¿Se necesita internet?", a: "El dispositivo que escanea necesita conexión a internet para cargar el perfil médico. El sticker no necesita batería ni conexión.", category: "Internet y dispositivos" },
@@ -31,14 +31,14 @@ const faqs: FAQ[] = [
   { q: "¿Necesito instalar una aplicación?", a: "No. El perfil se abre en el navegador del celular. No requiere instalar ninguna aplicación.", category: "Internet y dispositivos" },
 
   // Privacidad
-  { q: "¿Qué información es pública?", a: "Solo la información que tú autorizas. Tu correo electrónico y fecha de nacimiento completa no se muestran públicamente.", category: "Privacidad" },
-  { q: "¿Cómo protegen mis datos?", a: "La información sensible está cifrada. Cumplimos con la Ley 81 de Protección de Datos Personales de Panamá.", category: "Privacidad" },
+  { q: "¿Qué información es pública?", a: "El perfil público muestra los datos configurados para ser visibles según las opciones disponibles. El correo de la cuenta y la fecha de nacimiento completa no forman parte del perfil público.", category: "Privacidad" },
+  { q: "¿Cómo protegen mis datos?", a: "Aplicamos medidas técnicas como HTTPS, hash de contraseñas, controles de acceso y cifrado para campos sensibles que utilizan estas protecciones. Consulta la Política de Privacidad para conocer el tratamiento descrito por el servicio.", category: "Privacidad" },
   { q: "¿Puedo eliminar mi cuenta?", a: "Puedes solicitar la eliminación de tu cuenta desde la configuración. La cuenta se desactiva y la información personal y médica sensible se elimina o anonimiza. Determinados registros administrativos, contables y de auditoría pueden conservarse cuando exista una obligación legal o una necesidad legítima de seguridad y trazabilidad.", category: "Privacidad" },
 
   // WhatsApp y contactos
-  { q: "¿Qué pasa cuando alguien escanea mi chip?", a: "El perfil muestra botones para contactar manualmente a tus familiares por WhatsApp o llamada. El respondedor debe iniciar la acción.", category: "WhatsApp y contactos" },
-  { q: "¿Se envían notificaciones automáticas?", a: "No. No se envían notificaciones automáticas al escanear. El respondedor debe presionar el botón de WhatsApp o llamada para contactar.", category: "WhatsApp y contactos" },
-  { q: "¿Se envía mi ubicación automáticamente?", a: "No. La ubicación aproximada puede incluirse solo si el respondedor otorga permiso de ubicación en su navegador. No se envía información automáticamente.", category: "WhatsApp y contactos" },
+  { q: "¿Qué pasa cuando alguien escanea mi chip?", a: "El perfil puede ofrecer opciones de contacto por WhatsApp o llamada. Además, el sistema puede procesar alertas de emergencia asociadas al escaneo cuando esa función está habilitada y el canal correspondiente está disponible.", category: "WhatsApp y contactos" },
+  { q: "¿Se envían notificaciones automáticas?", a: "El sistema puede procesar notificaciones de emergencia asociadas al escaneo cuando la función está habilitada, existe un contacto configurado y el canal de entrega está disponible. Las opciones manuales de WhatsApp o llamada pueden seguir mostrándose en el perfil.", category: "WhatsApp y contactos" },
+  { q: "¿Se envía mi ubicación automáticamente?", a: "La ubicación aproximada solo puede obtenerse cuando el navegador o dispositivo concede el permiso correspondiente. Si se obtiene, puede formar parte del registro o de una alerta de emergencia según el flujo habilitado.", category: "WhatsApp y contactos" },
 
   // Perfiles familiares
   { q: "¿Puedo tener más de un perfil?", a: "Sí. Dependiendo del plan, puedes gestionar múltiples perfiles médicos desde tu cuenta.", category: "Perfiles familiares" },
@@ -123,7 +123,7 @@ export default function FAQContent() {
         <PageHero
           eyebrow="Preguntas frecuentes"
           title="Resolviendo dudas"
-          description="Transparencia total sobre la tecnología y el servicio."
+          description="Información clara sobre la tecnología y el servicio."
         />
 
         <section className="py-24 md:py-32 bg-[#05070D]">

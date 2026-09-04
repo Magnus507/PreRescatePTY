@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import {
@@ -19,21 +17,13 @@ import {
   protectActivationCode,
   revealActivationCode,
 } from "@/domains/chips/activation-code.service";
-
-async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return false;
-  const role = session.user.role;
-  return role === "admin" || role === "superadmin" || role === "imprenta";
-}
+import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export async function GET(req: NextRequest) {
   try {
-    const sessionAdmin = await isAdmin();
-    
-    if (!sessionAdmin) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+    const auth = await requireRole(GENERAL_ADMIN_ROLES);
+    if (!auth.authorized) return auth.response;
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
@@ -256,11 +246,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const sessionAdmin = await isAdmin();
-  
-  if (!sessionAdmin) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
 
   const body = await req.json();
   const { count = 1, batchId, productType = "sticker_nfc_qr", labelBase = "Caja", labelStart = 1 } = body;
@@ -285,10 +272,11 @@ export async function POST(req: NextRequest) {
   const nextSequence = Number(labelStart) || 1;
 
   // 3. Perform everything in a single transaction
-  const createdChips = await prisma.$transaction(async (tx) => {
-    const results = [];
-    
-    for (let i = 0; i < chipCount; i++) {
+  try {
+    const createdChips = await prisma.$transaction(async (tx) => {
+      const results = [];
+
+      for (let i = 0; i < chipCount; i++) {
         const shortCode = shortCodes[i];
         const serialPublic = serials[i];
         const activationCode = activationCodes[i];
@@ -316,19 +304,37 @@ export async function POST(req: NextRequest) {
         });
 
         results.push({
-            id: chip.id,
-            serialPublic,
-            shortCode,
-            activationCode,
-            nfcUrl: chip.nfcUrl,
-            qrUrl: chip.qrUrl,
+          id: chip.id,
+          serialPublic,
+          shortCode,
+          activationCode,
+          nfcUrl: chip.nfcUrl,
+          qrUrl: chip.qrUrl,
         });
-    }
-    return results;
-  });
+      }
 
-  return NextResponse.json(
-    { message: `${chipCount} chips creados`, batch, chips: createdChips },
-    { status: 201 }
-  );
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId,
+        actorUserId: auth.session.user.id,
+        entityType: "ChipBatch",
+        entityId: batch,
+        action: "chip_batch_created",
+        requestId: getAuditRequestId(req),
+        after: {
+          count: results.length,
+          productType,
+          chipIds: results.map((chip) => chip.id),
+        },
+      });
+      return results;
+    });
+
+    return NextResponse.json(
+      { message: `${chipCount} chips creados`, batch, chips: createdChips },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("POST /api/admin/chips error:", error);
+    return NextResponse.json({ error: "No se pudo crear el lote de chips." }, { status: 500 });
+  }
 }

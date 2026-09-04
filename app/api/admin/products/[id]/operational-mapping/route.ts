@@ -7,6 +7,7 @@ import {
   PURCHASE_FLOWS,
   STORE_SECTIONS,
 } from "@/lib/products/product-operational-mapping";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -59,39 +60,53 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
     }
 
-    const mapping = await prisma.productOperationalMapping.upsert({
-      where: { productId: id },
-      create: {
-        productId: id,
-        finishedGoodId,
-        productCode,
-        deviceType: body.deviceType || "future",
-        storeSection: body.storeSection || "future",
-        purchaseFlow: body.purchaseFlow || "coming_soon",
-        activationFlow: body.activationFlow || "none",
-        isPublished: Boolean(body.isPublished),
-        requiresCompanyContext: Boolean(body.requiresCompanyContext),
-        requiresApproval: Boolean(body.requiresApproval),
-        requiresPersonalization: Boolean(body.requiresPersonalization),
-        sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : 0,
-        badgeLabel: typeof body.badgeLabel === "string" ? body.badgeLabel : null,
-        badgeColor: typeof body.badgeColor === "string" ? body.badgeColor : null,
-      },
-      update: {
-        finishedGoodId,
-        productCode,
-        deviceType: body.deviceType,
-        storeSection: body.storeSection,
-        purchaseFlow: body.purchaseFlow,
-        activationFlow: body.activationFlow,
-        isPublished: Boolean(body.isPublished),
-        requiresCompanyContext: Boolean(body.requiresCompanyContext),
-        requiresApproval: Boolean(body.requiresApproval),
-        requiresPersonalization: Boolean(body.requiresPersonalization),
-        sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : undefined,
-        badgeLabel: typeof body.badgeLabel === "string" ? body.badgeLabel : null,
-        badgeColor: typeof body.badgeColor === "string" ? body.badgeColor : null,
-      },
+    const mapping = await prisma.$transaction(async (tx) => {
+      const current = await tx.productOperationalMapping.findUnique({ where: { productId: id } });
+      const updated = await tx.productOperationalMapping.upsert({
+        where: { productId: id },
+        create: {
+          productId: id,
+          finishedGoodId,
+          productCode,
+          deviceType: body.deviceType || "future",
+          storeSection: body.storeSection || "future",
+          purchaseFlow: body.purchaseFlow || "coming_soon",
+          activationFlow: body.activationFlow || "none",
+          isPublished: Boolean(body.isPublished),
+          requiresCompanyContext: Boolean(body.requiresCompanyContext),
+          requiresApproval: Boolean(body.requiresApproval),
+          requiresPersonalization: Boolean(body.requiresPersonalization),
+          sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : 0,
+          badgeLabel: typeof body.badgeLabel === "string" ? body.badgeLabel : null,
+          badgeColor: typeof body.badgeColor === "string" ? body.badgeColor : null,
+        },
+        update: {
+          finishedGoodId,
+          productCode,
+          deviceType: body.deviceType,
+          storeSection: body.storeSection,
+          purchaseFlow: body.purchaseFlow,
+          activationFlow: body.activationFlow,
+          isPublished: Boolean(body.isPublished),
+          requiresCompanyContext: Boolean(body.requiresCompanyContext),
+          requiresApproval: Boolean(body.requiresApproval),
+          requiresPersonalization: Boolean(body.requiresPersonalization),
+          sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : undefined,
+          badgeLabel: typeof body.badgeLabel === "string" ? body.badgeLabel : null,
+          badgeColor: typeof body.badgeColor === "string" ? body.badgeColor : null,
+        },
+      });
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId,
+        actorUserId: auth.session.user.id,
+        entityType: "ProductOperationalMapping",
+        entityId: id,
+        action: "product_operational_mapping_updated",
+        requestId: getAuditRequestId(req),
+        before: current,
+        after: updated,
+      });
+      return updated;
     });
 
     return NextResponse.json({ mapping });

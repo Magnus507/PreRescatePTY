@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -39,30 +40,42 @@ export async function POST(req: Request) {
       );
     }
 
-    const pkg = await prisma.package.create({
-      data: {
-        name: data.name,
-        slug: data.name.toLowerCase().replace(/ /g, '-'),
-        maxChips: data.maxChips,
-        maxProfiles: data.maxProfiles || 1,
-        price: data.price,
-        description: data.description,
-        isActive,
-        accountType,
-        icon: data.icon,
-        color: data.color || "standard",
-        recommended: data.recommended ?? false,
-        displayOrder: data.displayOrder ?? 0,
-        allowsFamilyProfiles: data.allowsFamilyProfiles ?? false,
-        allowsOrganizationModule: data.allowsOrganizationModule ?? false,
-        allowsSchoolModule: data.allowsSchoolModule ?? false,
-        serviceDurationMonths: data.serviceDurationMonths ?? 24,
-      }
+    const pkg = await prisma.$transaction(async (tx) => {
+      const created = await tx.package.create({
+        data: {
+          name: data.name,
+          slug: data.name.toLowerCase().replace(/ /g, '-'),
+          maxChips: data.maxChips,
+          maxProfiles: data.maxProfiles || 1,
+          price: data.price,
+          description: data.description,
+          isActive,
+          accountType,
+          icon: data.icon,
+          color: data.color || "standard",
+          recommended: data.recommended ?? false,
+          displayOrder: data.displayOrder ?? 0,
+          allowsFamilyProfiles: data.allowsFamilyProfiles ?? false,
+          allowsOrganizationModule: data.allowsOrganizationModule ?? false,
+          allowsSchoolModule: data.allowsSchoolModule ?? false,
+          serviceDurationMonths: data.serviceDurationMonths ?? 24,
+        }
+      });
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId,
+        actorUserId: auth.session.user.id,
+        entityType: "Package",
+        entityId: created.id,
+        action: "package_created",
+        requestId: getAuditRequestId(req),
+        after: created,
+      });
+      return created;
     });
     return NextResponse.json({ pkg });
   } catch (err: unknown) {
-    const e = err instanceof Error ? err : new Error(String(err));
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error("[admin/packages] Create failed", err);
+    return NextResponse.json({ error: "No se pudo crear el paquete." }, { status: 500 });
   }
 }
 
@@ -72,29 +85,42 @@ export async function PATCH(req: Request) {
 
   try {
     const { id, ...data } = await req.json();
-    const current = await prisma.package.findUnique({ where: { id } });
+    const pkg = await prisma.$transaction(async (tx) => {
+      const current = await tx.package.findUnique({ where: { id } });
+      if (!current) throw Object.assign(new Error("PACKAGE_NOT_FOUND"), { code: "P2025" });
 
-    if (!current) {
+      const nextAccountType = data.accountType ?? current.accountType;
+      const nextIsActive = data.isActive ?? current.isActive;
+      if (nextIsActive && !isValidActivePackageAccountType(nextAccountType)) {
+        throw Object.assign(new Error("INVALID_ACTIVE_ACCOUNT_TYPE"), { code: "INVALID_ACTIVE_ACCOUNT_TYPE" });
+      }
+
+      const updated = await tx.package.update({ where: { id }, data });
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId,
+        actorUserId: auth.session.user.id,
+        entityType: "Package",
+        entityId: id,
+        action: "package_updated",
+        requestId: getAuditRequestId(req),
+        before: current,
+        after: updated,
+      });
+      return updated;
+    });
+    return NextResponse.json({ pkg });
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code;
+    if (code === "P2025") {
       return NextResponse.json({ error: "Paquete no encontrado" }, { status: 404 });
     }
-
-    const nextAccountType = data.accountType ?? current.accountType;
-    const nextIsActive = data.isActive ?? current.isActive;
-
-    if (nextIsActive && !isValidActivePackageAccountType(nextAccountType)) {
+    if (code === "INVALID_ACTIVE_ACCOUNT_TYPE") {
       return NextResponse.json(
         { error: 'Los paquetes activos solo pueden usar accountType "personal" o "company".' },
         { status: 400 }
       );
     }
-
-    const pkg = await prisma.package.update({
-      where: { id },
-      data
-    });
-    return NextResponse.json({ pkg });
-  } catch (err: unknown) {
-    const e = err instanceof Error ? err : new Error(String(err));
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error("[admin/packages] Update failed", err);
+    return NextResponse.json({ error: "No se pudo actualizar el paquete." }, { status: 500 });
   }
 }

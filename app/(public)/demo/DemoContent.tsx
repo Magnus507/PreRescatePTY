@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, QrCode, MessageCircle, Eye } from "lucide-react";
+import Image from "next/image";
 
 export default function DemoPage() {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
@@ -56,7 +57,7 @@ export default function DemoPage() {
                   {loading ? (
                     <Loader2 className="h-12 w-12 animate-spin text-slate-300" />
                   ) : qrUrl ? (
-                    <img src={qrUrl} alt="Código QR de demostración" className="w-full h-full object-contain" />
+                    <Image src={qrUrl} alt="Código QR de demostración" width={288} height={288} unoptimized className="w-full h-full object-contain" />
                   ) : (
                     <QrCode className="h-24 w-24 text-slate-300" />
                   )}

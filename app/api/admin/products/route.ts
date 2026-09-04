@@ -9,6 +9,7 @@ import {
   getPurchaseFlowLabel,
   getStoreSectionLabel,
 } from "@/lib/products/product-operational-mapping";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export async function GET() {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
@@ -102,19 +103,31 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, description, price, category, stock, image, productType, estimatedProductionTime, requiresPersonalization } = body;
 
-    const product = await prisma.product.create({
-      data: {
-        name,
-        description,
-        price: parseFloat(price),
-        category: category || "general",
-        stock: parseInt(stock) || 0,
-        image,
-        productType: productType || "otro",
-        estimatedProductionTime: estimatedProductionTime || null,
-        requiresPersonalization: requiresPersonalization === true,
-        isActive: true
-      }
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          name,
+          description,
+          price: parseFloat(price),
+          category: category || "general",
+          stock: parseInt(stock) || 0,
+          image,
+          productType: productType || "otro",
+          estimatedProductionTime: estimatedProductionTime || null,
+          requiresPersonalization: requiresPersonalization === true,
+          isActive: true
+        }
+      });
+      await writeAuditLog(tx, {
+        accountId: auth.session.user.accountId,
+        actorUserId: auth.session.user.id,
+        entityType: "Product",
+        entityId: created.id,
+        action: "product_created",
+        requestId: getAuditRequestId(req),
+        after: created,
+      });
+      return created;
     });
 
     return NextResponse.json({ product, message: "Producto creado exitosamente" });

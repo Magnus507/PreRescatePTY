@@ -395,10 +395,13 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       );
     }
-    const message = error instanceof Error ? error.message : "Error al activar el chip";
-    const status = typeof error === "object" && error !== null && "status" in error
+    const candidateStatus = typeof error === "object" && error !== null && "status" in error
       ? Number((error as { status?: unknown }).status) || 500
       : 500;
+    const status = candidateStatus >= 400 && candidateStatus < 500 ? candidateStatus : 500;
+    const message = status < 500 && error instanceof Error
+      ? error.message
+      : "No se pudo activar el chip.";
     return NextResponse.json(
       { error: message },
       { status }

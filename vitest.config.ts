@@ -15,7 +15,21 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html', 'lcov'],
-      all: false,
+      all: true,
+      include: [
+        'lib/encryption.ts',
+        'lib/emergency-alerts.ts',
+        'lib/rateLimit.ts',
+        'lib/request-ip.ts',
+        'lib/rbac.ts',
+        'lib/operations/activate-finished-good-unit.ts',
+        'lib/operations/commerce-order-sync-outbox.ts',
+        'lib/operations/commercial-order-reservation.ts',
+        'domains/profiles/repositories/profile.repository.ts',
+        'app/api/auth/register/route.ts',
+        'app/api/orders/manual/route.ts',
+        'app/api/organizations/corporate-chip/activate/route.ts',
+      ],
       thresholds: {
         lines: 35,
         functions: 30,

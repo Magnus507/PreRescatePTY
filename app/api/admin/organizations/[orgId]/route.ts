@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ACCOUNT_TYPES } from "@/domains/shared/constants";
 import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 import { revealActivationCode } from "@/domains/chips/activation-code.service";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,7 @@ export async function PATCH(
   if (!auth.authorized) return auth.response;
 
   const { orgId } = await params;
+  const requestId = getAuditRequestId(req);
   const body = await req.json();
   const { legalName, displayName, contactEmail, contactPhone, taxId, address, status, packageId, maxChips, companyCode } = body;
 
@@ -118,35 +120,79 @@ export async function PATCH(
     updateData.companyCode = normalized;
   }
 
-  const org = await prisma.organization.update({
-    where: { id: orgId },
-    data: updateData,
-  });
-
-  // If plan data is provided, update the associated account
-  if (packageId !== undefined || maxChips !== undefined) {
-    const pkg = packageId
-      ? await prisma.package.findUnique({ where: { id: packageId } })
-      : null;
-
-    if (packageId && (!pkg || !pkg.isActive || pkg.accountType !== ACCOUNT_TYPES.COMPANY)) {
-      return NextResponse.json(
-        { error: 'Package inválido, inactivo o no corporativo. Debe tener accountType "company".' },
-        { status: 400 }
-      );
-    }
-
-    await prisma.account.update({
-      where: { id: org.accountId },
-      data: {
-        packageId: pkg?.id,
-        accountType: pkg?.accountType,
-        maxChipsAllocated: maxChips ? parseInt(maxChips) : undefined,
-      }
-    });
+  // Validate all cross-entity input before changing either Organization or Account.
+  const pkg = packageId
+    ? await prisma.package.findUnique({ where: { id: packageId } })
+    : null;
+  if (packageId && (!pkg || !pkg.isActive || pkg.accountType !== ACCOUNT_TYPES.COMPANY)) {
+    return NextResponse.json(
+      { error: 'Package inválido, inactivo o no corporativo. Debe tener accountType "company".' },
+      { status: 400 }
+    );
   }
 
-  return NextResponse.json({ organization: org });
+  try {
+    const org = await prisma.$transaction(async (tx) => {
+      const current = await tx.organization.findUnique({
+        where: { id: orgId },
+        select: {
+          id: true,
+          accountId: true,
+          legalName: true,
+          displayName: true,
+          status: true,
+          companyCode: true,
+          account: { select: { packageId: true, maxChipsAllocated: true } },
+        },
+      });
+      if (!current) throw new Error("ORGANIZATION_NOT_FOUND");
+
+      const updated = await tx.organization.update({ where: { id: orgId }, data: updateData });
+      if (packageId !== undefined || maxChips !== undefined) {
+        await tx.account.update({
+          where: { id: current.accountId },
+          data: {
+            packageId: pkg?.id,
+            accountType: pkg?.accountType,
+            maxChipsAllocated: maxChips !== undefined ? Number(maxChips) : undefined,
+          },
+        });
+      }
+
+      await writeAuditLog(tx, {
+        accountId: current.accountId,
+        actorUserId: auth.session.user.id || null,
+        entityType: "organization",
+        entityId: current.id,
+        action: "organization.updated",
+        requestId,
+        before: {
+          legalName: current.legalName,
+          displayName: current.displayName,
+          status: current.status,
+          companyCode: current.companyCode,
+          packageId: current.account?.packageId || null,
+          maxChipsAllocated: current.account?.maxChipsAllocated || null,
+        },
+        after: {
+          legalName: updated.legalName,
+          displayName: updated.displayName,
+          status: updated.status,
+          companyCode: updated.companyCode,
+          packageId: packageId !== undefined ? pkg?.id || null : undefined,
+          maxChipsAllocated: maxChips !== undefined ? Number(maxChips) : undefined,
+        },
+      });
+      return updated;
+    });
+
+    return NextResponse.json({ organization: org });
+  } catch (error) {
+    if (error instanceof Error && error.message === "ORGANIZATION_NOT_FOUND") {
+      return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
+    }
+    throw error;
+  }
 }
 
 // DELETE - remove organization and its account
@@ -158,6 +204,7 @@ export async function DELETE(
   if (!auth.authorized) return auth.response;
 
   const { orgId } = await params;
+  const requestId = getAuditRequestId(req);
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -169,41 +216,41 @@ export async function DELETE(
   }
 
   const accountId = org.accountId;
+  await prisma.$transaction(async (tx) => {
+    await tx.organizationMember.deleteMany({ where: { organizationId: orgId } });
+    await tx.organization.delete({ where: { id: orgId } });
+    await tx.chip.updateMany({
+      where: { accountId },
+      data: { accountId: null, ownerUserId: null, assignedProfileId: null, status: "inventory", serviceStatus: "active" },
+    });
 
-  // Remove org members links
-  await prisma.organizationMember.deleteMany({ where: { organizationId: orgId } });
-  await prisma.organization.delete({ where: { id: orgId } });
-
-  // Return chips to global inventory
-  await prisma.chip.updateMany({
-    where: { accountId },
-    data: { accountId: null, ownerUserId: null, assignedProfileId: null, status: "inventory", serviceStatus: "active" },
-  });
-
-  // Delete all users in this account
-  for (const user of org.account.users) {
-    const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-    
-    // 1. Delete relations linked to Profile
-    if (profile) {
-      await prisma.organizationMember.deleteMany({ where: { profileId: profile.id } });
-      await prisma.scanEvent.deleteMany({ where: { profileId: profile.id } });
-      await prisma.profileContact.deleteMany({ where: { profileId: profile.id } });
-      await prisma.profile.delete({ where: { id: profile.id } });
+    for (const user of org.account.users) {
+      const profile = await tx.profile.findUnique({ where: { userId: user.id } });
+      if (profile) {
+        await tx.organizationMember.deleteMany({ where: { profileId: profile.id } });
+        await tx.scanEvent.deleteMany({ where: { profileId: profile.id } });
+        await tx.profileContact.deleteMany({ where: { profileId: profile.id } });
+        await tx.profile.delete({ where: { id: profile.id } });
+      }
+      await tx.contact.deleteMany({ where: { userId: user.id } });
+      await tx.auditLog.deleteMany({ where: { actorUserId: user.id } });
+      await tx.notification.deleteMany({ where: { recipient: user.email } });
+      await tx.user.delete({ where: { id: user.id } });
     }
 
-    // 2. Delete relations linked to User
-    await prisma.contact.deleteMany({ where: { userId: user.id } });
-    await prisma.auditLog.deleteMany({ where: { actorUserId: user.id } });
-    await prisma.notification.deleteMany({ where: { recipient: user.email } });
-    
-    // 3. Delete User
-    await prisma.user.delete({ where: { id: user.id } });
-  }
-
-  // Delete any remaining family profiles on this account then the account itself
-  await prisma.profile.deleteMany({ where: { accountId } });
-  await prisma.account.delete({ where: { id: accountId } });
+    await tx.profile.deleteMany({ where: { accountId } });
+    await tx.account.delete({ where: { id: accountId } });
+    await writeAuditLog(tx, {
+      accountId,
+      actorUserId: auth.session.user.id || null,
+      entityType: "organization",
+      entityId: orgId,
+      action: "organization.deleted",
+      requestId,
+      before: { legalName: org.legalName, displayName: org.displayName, accountId, userCount: org.account.users.length },
+      after: { chipsReturnedToInventory: true },
+    });
+  });
 
   return NextResponse.json({ message: "Empresa eliminada correctamente" });
 }

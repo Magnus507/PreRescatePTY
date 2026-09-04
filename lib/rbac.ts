@@ -4,10 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import type { Session } from "next-auth";
 
-/**
- * Roles autorizados para administración de órdenes
- */
-export const ORDER_ADMIN_ROLES = ["admin", "superadmin", "imprenta"];
+/** Review/payment/destructive order actions. Print-shop users must never receive these. */
+export const ORDER_REVIEW_ROLES = ["admin", "superadmin"];
+
+/** Fulfilment actions that the print shop needs to perform. */
+export const ORDER_FULFILLMENT_ROLES = ["admin", "superadmin", "imprenta"];
 
 /**
  * Roles autorizados para administración general (sin imprenta)

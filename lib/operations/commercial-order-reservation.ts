@@ -35,6 +35,18 @@ export type CommercialOrderReservationResult = {
   };
 };
 
+const RESERVATION_ELIGIBLE_ORDER_STATUSES = new Set(["accepted", "confirmed", "draft"]);
+
+export function isCommercialOrderEligibleForReservation(order: {
+  status: string;
+  paymentStatus: string;
+}) {
+  return (
+    order.paymentStatus === "paid" &&
+    RESERVATION_ELIGIBLE_ORDER_STATUSES.has(order.status)
+  );
+}
+
 async function reserveUnitsForOrderItem(
   tx: Prisma.TransactionClient,
   reservationOrderId: string,
@@ -222,7 +234,7 @@ export async function reserveCommercialOrderStock(
     throw new Error("INTERNAL_ORDER_NO_RESERVATION");
   }
 
-  if (!["accepted", "confirmed", "draft"].includes(order.status) && order.paymentStatus !== "paid") {
+  if (!isCommercialOrderEligibleForReservation(order)) {
     throw new Error("ORDER_NOT_READY_FOR_RESERVATION");
   }
 

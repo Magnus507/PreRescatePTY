@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
+import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
 
 export const dynamic = "force-dynamic";
 
@@ -28,16 +30,17 @@ export async function POST(req: NextRequest) {
 
   const now = new Date();
 
-  const { count } = await prisma.chip.updateMany({
+  const [{ count }, storageCleanup] = await Promise.all([prisma.chip.updateMany({
     where: {
       serviceStatus: "active",
       serviceEndDate: { lt: now },
       status: { in: ["activated", "suspended"] },
     },
     data: { serviceStatus: "expired" },
-  });
+  }), processStorageCleanupOutbox()]);
 
   logger.info(`[cron/expire-chips] Marked ${count} chips as expired at ${now.toISOString()}`);
+  await recordCronSuccess(CRON_MONITOR_KEYS.expireChips, { count, storageCleanup });
 
   return NextResponse.json({
     message: `${count} chip(s) marcados como expirados`,

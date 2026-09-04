@@ -112,8 +112,6 @@ export default function DistribucionPage() {
     });
   }, []);
 
-  const pendingIds = order?.items?.filter((i) => i.deliveryStatus !== "delivered").map((i) => i.id) ?? [];
-
   const handleMarkAllDelivered = useCallback(async () => {
     if (!id) return;
     if (!window.confirm("¿Confirmas marcar como entregados todos los colaboradores pendientes?")) return;
@@ -122,6 +120,9 @@ export default function DistribucionPage() {
     setDeliveryError(null);
 
     try {
+      const pendingIds = order?.items
+        ?.filter((item) => item.deliveryStatus !== "delivered")
+        .map((item) => item.id) ?? [];
       const res = await fetch(`/api/organizations/corporate-orders/${id}/delivery/bulk`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -142,7 +143,7 @@ export default function DistribucionPage() {
     } finally {
       setBulkLoading(false);
     }
-  }, [id, load, pendingIds]);
+  }, [id, load, order?.items]);
 
   useEffect(() => { load(); }, [load]);
 

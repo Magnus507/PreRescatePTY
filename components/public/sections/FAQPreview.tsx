@@ -6,10 +6,10 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   { q: "¿Necesito instalar una aplicación?", a: "No. El perfil se abre en el navegador del celular. No requiere instalar ninguna aplicación." },
-  { q: "¿El sticker necesita batería?", a: "No. El sticker no tiene batería. El chip NFC se activa con la energía del celular que lo escanea." },
+  { q: "¿El sticker necesita batería?", a: "No. El sticker no tiene batería. El chip NFC se activa con la energía del dispositivo compatible que lo escanea." },
   { q: "¿Se necesita internet?", a: "El dispositivo que escanea necesita conexión a internet para cargar el perfil médico. El sticker no necesita batería ni conexión." },
-  { q: "¿Qué información se muestra?", a: "Nombre, tipo de sangre, alergias, condiciones médicas, medicamentos y contactos de emergencia. Tú controlas qué se muestra." },
-  { q: "¿Cómo se contacta a mi familia?", a: "El perfil muestra botones para contactar a tus familiares por WhatsApp o llamada. El respondedor debe hacer clic para enviar el mensaje." },
+  { q: "¿Qué información se muestra?", a: "El perfil puede mostrar datos médicos y contactos de emergencia según la información disponible y la configuración de visibilidad del perfil." },
+  { q: "¿Cómo se contacta a mi familia?", a: "El perfil ofrece opciones de contacto por WhatsApp o llamada y el sistema puede procesar alertas de emergencia cuando esa función está habilitada." },
 ];
 
 export default function FAQPreview() {

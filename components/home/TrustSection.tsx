@@ -34,7 +34,7 @@ export const TrustSection = () => {
                 </div>
                 <div>
                   <h4 className="font-black text-sm mb-1 uppercase tracking-tight text-foreground">Ley 81 / ANTAI</h4>
-                  <p className="text-xs text-muted-foreground font-medium">Cumplimiento total con la Protección de Datos Personales en Panamá.</p>
+                  <p className="text-xs text-muted-foreground font-medium">Controles de privacidad diseñados tomando como referencia la normativa panameña.</p>
                 </div>
               </div>
 

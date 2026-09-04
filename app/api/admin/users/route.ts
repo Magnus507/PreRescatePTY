@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UserRepository } from "@/domains/users/repositories/user.repository";
 import { z } from "zod";
-import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
+import { prisma } from "@/lib/prisma";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +14,7 @@ const updateStatusSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
   const { searchParams } = new URL(req.url);
   
@@ -39,7 +41,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
   try {
     const body = await req.json();
@@ -54,7 +56,34 @@ export async function PATCH(req: NextRequest) {
 
     const { id, status } = result.data;
 
-    const user = await UserRepository.updateStatus(id!, status);
+    const user = await prisma.$transaction(async (tx) => {
+      const current = await tx.user.findUnique({
+        where: { id },
+        select: { id: true, accountId: true, email: true, status: true, isAdmin: true },
+      });
+      if (!current || current.isAdmin) {
+        const mutationError = new Error("USER_NOT_ELIGIBLE");
+        Object.assign(mutationError, { code: "P2025" });
+        throw mutationError;
+      }
+
+      const updated = await tx.user.update({
+        where: { id },
+        data: { status, sessionVersion: { increment: 1 } },
+        select: { id: true, accountId: true, email: true, status: true },
+      });
+      await writeAuditLog(tx, {
+        accountId: updated.accountId,
+        actorUserId: auth.session.user.id,
+        entityType: "User",
+        entityId: updated.id,
+        action: "user_status_updated",
+        requestId: getAuditRequestId(req),
+        before: { status: current.status },
+        after: { status: updated.status },
+      });
+      return { id: updated.id, email: updated.email, status: updated.status };
+    });
     return NextResponse.json({ user });
   } catch (err: unknown) {
     const e = err as { code?: string };
@@ -65,4 +94,3 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Error al actualizar usuario" }, { status: 500 });
   }
 }
-

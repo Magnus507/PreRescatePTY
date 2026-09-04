@@ -181,7 +181,7 @@ export default function HeroSection() {
                     </div>
                     <div className="text-left">
                       <p className="text-[9px] font-bold uppercase tracking-widest text-[#6B7280]">Privacidad</p>
-                      <p className="text-xs font-bold text-[#EFF4FF]">Tú controlas</p>
+                      <p className="text-xs font-bold text-[#EFF4FF]">Visibilidad configurable</p>
                     </div>
                   </motion.div>
                 </div>

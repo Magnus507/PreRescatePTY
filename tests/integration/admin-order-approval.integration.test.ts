@@ -157,8 +157,8 @@ describe("PostgreSQL integration: admin approval concurrency", () => {
       select: { paymentStatus: true, orderStatus: true, adminReviewStatus: true },
     });
 
-    expect([first.status, second.status].every((status) => [200, 400].includes(status))).toBe(true);
-    expect([firstJson.success, secondJson.success].filter(Boolean).length).toBeGreaterThanOrEqual(1);
+    expect([first.status, second.status].sort()).toEqual([200, 409]);
+    expect([firstJson.success, secondJson.success].filter(Boolean)).toHaveLength(1);
     expect(refreshedOrder?.paymentStatus).toBe("paid");
     expect(refreshedOrder?.orderStatus).toBe("processing");
     expect(refreshedOrder?.adminReviewStatus).toBe("approved");

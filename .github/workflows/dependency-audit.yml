@@ -1,0 +1,43 @@
+name: Scheduled dependency audit
+
+on:
+  schedule:
+    - cron: "23 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: scheduled-dependency-audit
+  cancel-in-progress: true
+
+jobs:
+  production-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - id: audit
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
+      - name: Open or update security gate issue
+        if: steps.audit.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Security gate: high or critical production dependency"
+          body="The scheduled production dependency audit failed on $(date -u +%F). Owner SLA: triage within 1 business day; remediate or document a time-bounded exception before release. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          issue_number="$(gh issue list --state open --search \"$title in:title\" --json number --jq '.[0].number // empty')"
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body" --label security
+          fi
+          exit 1
+

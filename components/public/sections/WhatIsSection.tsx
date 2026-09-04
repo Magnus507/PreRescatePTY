@@ -7,17 +7,17 @@ const features = [
   {
     icon: QrCode,
     title: "QR y NFC integrados",
-    description: "Código QR impreso y chip NFC en un solo sticker. Cualquier celular puede leerlo.",
+    description: "Código QR impreso y chip NFC en un solo sticker, compatible con dispositivos que admiten estas tecnologías.",
   },
   {
     icon: Lock,
-    title: "Tú controlas la información",
-    description: "Decides qué datos se muestran al escanear. Alergias, condiciones, contactos y más.",
+    title: "Visibilidad configurable",
+    description: "Puedes configurar la visibilidad de determinados datos médicos y de contacto de tu perfil.",
   },
   {
     icon: Shield,
     title: "Datos protegidos",
-    description: "Información sensible cifrada. Tu correo y fecha de nacimiento nunca se exponen.",
+    description: "Aplicamos cifrado y controles de acceso. El correo de la cuenta y la fecha de nacimiento completa no forman parte del perfil público.",
   },
 ];
 
@@ -48,7 +48,7 @@ export default function WhatIsSection() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-lg text-[#A0AEC0] font-medium leading-relaxed mb-8"
             >
-              PreRescue ID es un sistema de identificación médica de emergencia. Un sticker con NFC y código QR que permite consultar la información que tú decidas mostrar: tipo de sangre, alergias, condiciones, medicamentos y contactos de emergencia.
+              PreRescue ID es un sistema de identificación médica de emergencia. Un sticker con NFC y código QR que permite consultar datos del perfil configurados para mostrarse públicamente, como información médica relevante y contactos de emergencia.
             </motion.p>
 
             <motion.div
@@ -58,7 +58,7 @@ export default function WhatIsSection() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="flex flex-wrap gap-3"
             >
-              {["No requiere aplicación", "No necesita batería", "Tú eliges qué mostrar", "Funciona en cualquier país con internet"].map((item) => (
+              {["No requiere aplicación", "No necesita batería", "Visibilidad configurable", "Funciona con conexión a internet"].map((item) => (
                 <span
                   key={item}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-[#EFF4FF]"

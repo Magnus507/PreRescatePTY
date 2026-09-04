@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { processPendingEmergencyNotifications } from "@/lib/emergency-alerts";
+import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
   if (!auth.ok) return auth.response;
 
   const result = await processPendingEmergencyNotifications(prisma, { limit: 25 });
+  await recordCronSuccess(CRON_MONITOR_KEYS.notify, result);
   logger.info("[cron/notify] processed emergency notifications", result);
 
   return NextResponse.json({

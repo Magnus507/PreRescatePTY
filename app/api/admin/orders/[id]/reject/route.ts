@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { canAdminRejectManual } from "@/lib/order-status";
 import { rateLimit } from "@/lib/rateLimit";
-import { requireRole, ORDER_ADMIN_ROLES } from "@/lib/rbac";
+import { requireRole, ORDER_REVIEW_ROLES } from "@/lib/rbac";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
@@ -24,7 +24,7 @@ type AdminReviewedOrder = {
 };
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(ORDER_ADMIN_ROLES);
+  const auth = await requireRole(ORDER_REVIEW_ROLES);
   if (!auth.authorized) return auth.response;
   const session = auth.session;
   const adminId = session.user.id;

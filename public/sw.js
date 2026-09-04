@@ -1,4 +1,4 @@
-const CACHE_NAME = 'prerescate-v2.8';
+const CACHE_NAME = 'prerescate-static-v1';
 
 const URLS_TO_CACHE = [
   '/manifest.json',
