@@ -38,6 +38,19 @@ function buildFulfillmentReviewNotes(
   return [baseNotes?.trim() || null, ...summaryLines].filter(Boolean).join("\n");
 }
 
+function approvalErrorStatus(error: unknown): number {
+  if (typeof error === "object" && error !== null && "status" in error) {
+    return Number((error as { status?: unknown }).status) || 500;
+  }
+  if (
+    error instanceof Error &&
+    ["ORDER_NOT_READY_FOR_RESERVATION", "INSUFFICIENT_UNIT_STOCK"].includes(error.message)
+  ) {
+    return 409;
+  }
+  return 500;
+}
+
 type AdminReviewedOrder = {
   id: string;
   orderNumber: string;
@@ -391,9 +404,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         order: transactionResult.updatedOrder,
       });
     } catch (error: unknown) {
-      const status = typeof error === "object" && error !== null && "status" in error
-        ? Number((error as { status?: unknown }).status) || 500
-        : 500;
+      const status = approvalErrorStatus(error);
       const message = error instanceof Error ? error.message : "Error al aprobar orden";
       logger.error("[Admin Approve] Store order approval error:", message);
       return NextResponse.json({ error: "No se pudo aprobar la orden" }, { status });
@@ -519,9 +530,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return { updatedOrder, account: { id: account.id }, reservation };
     });
   } catch (error: unknown) {
-    const status = typeof error === "object" && error !== null && "status" in error
-      ? Number((error as { status?: unknown }).status) || 500
-      : 500;
+    const status = approvalErrorStatus(error);
     const message = error instanceof Error ? error.message : "Error al aprobar orden";
     logger.error("[Admin Approve] Order approval error:", message);
     return NextResponse.json({ error: "No se pudo aprobar la orden" }, { status });
