@@ -316,6 +316,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (!order.packageId && linkedCommercialOrder) {
     try {
       const transactionResult = await prisma.$transaction(async (tx) => {
+        // The operational projection is what the reservation guard evaluates.
+        // Promote its payment state in the same transaction before attempting
+        // to reserve stock; updating only the checkout Order afterwards makes
+        // every legitimate manual approval fail as unpaid.
+        await tx.operationCommercialOrder.update({
+          where: { id: linkedCommercialOrder!.id },
+          data: { paymentStatus: "paid" },
+        });
         const reservation = await reserveCommercialOrderStock(tx, {
           orderId: linkedCommercialOrder!.id,
           allowPartial: true,
@@ -415,6 +423,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   };
   try {
     result = await prisma.$transaction(async (tx) => {
+      if (linkedCommercialOrder) {
+        await tx.operationCommercialOrder.update({
+          where: { id: linkedCommercialOrder.id },
+          data: { paymentStatus: "paid" },
+        });
+      }
       const reservation = linkedCommercialOrder
         ? await reserveCommercialOrderStock(tx, {
             orderId: linkedCommercialOrder.id,
