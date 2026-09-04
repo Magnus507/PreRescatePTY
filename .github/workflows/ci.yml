@@ -88,6 +88,25 @@ jobs:
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy
 
+      - name: Verify RLS on public application tables
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF EXISTS (
+              SELECT 1
+              FROM pg_class c
+              JOIN pg_namespace n ON n.oid = c.relnamespace
+              WHERE n.nspname = 'public'
+                AND c.relkind IN ('r', 'p')
+                AND c.relname <> '_prisma_migrations'
+                AND NOT c.relrowsecurity
+            ) THEN
+              RAISE EXCEPTION 'Every public application table must enable RLS';
+            END IF;
+          END $$;
+          SQL
+
       - name: Verify migration history
         run: npx prisma migrate status
 
