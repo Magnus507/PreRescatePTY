@@ -70,6 +70,19 @@ jobs:
       - name: Validate Prisma
         run: npx prisma validate
 
+      - name: Provision Supabase-managed migration prerequisites
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE SCHEMA IF NOT EXISTS storage;
+          CREATE TABLE storage.buckets (
+            id text PRIMARY KEY,
+            public boolean NOT NULL DEFAULT false,
+            file_size_limit bigint,
+            allowed_mime_types text[]
+          );
+          INSERT INTO storage.buckets (id) VALUES ('payment-proofs');
+          SQL
+
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy
 
