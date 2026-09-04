@@ -1,0 +1,58 @@
+name: Production workers
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: production-workers
+  cancel-in-progress: false
+
+jobs:
+  process-workers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      APP_URL: https://www.prerescatepty.com
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Verify scheduler secret
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET is not configured in GitHub Actions secrets."
+            exit 1
+          fi
+
+      - name: Process emergency notification queue
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-all-errors --connect-timeout 10 --max-time 90 \
+            -X POST "$APP_URL/api/cron/notify" \
+            -H "Authorization: Bearer $CRON_SECRET"
+
+      - name: Process commerce synchronization outbox
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-all-errors --connect-timeout 10 --max-time 90 \
+            -X POST "$APP_URL/api/cron/commerce-order-sync?limit=25" \
+            -H "Authorization: Bearer $CRON_SECRET"
+
+      - name: Open or update worker failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Operations gate: production worker failure"
+          body="The production worker scheduler failed on $(date -u +%F' '%T' UTC). Triage immediately: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          issue_number="$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
+          exit 1
