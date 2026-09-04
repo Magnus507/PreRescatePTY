@@ -18,6 +18,10 @@ WHERE "idempotencyKey" IS NULL;
 ALTER TABLE "Notification"
   ALTER COLUMN "idempotencyKey" SET NOT NULL;
 
+-- Prisma's @updatedAt is maintained by the client and has no database default.
+ALTER TABLE "Notification"
+  ALTER COLUMN "updatedAt" DROP DEFAULT;
+
 CREATE UNIQUE INDEX "Notification_idempotencyKey_key"
   ON "Notification"("idempotencyKey");
 CREATE INDEX "Notification_status_availableAt_idx"
