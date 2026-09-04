@@ -5,21 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 import { revealActivationCode } from "@/domains/chips/activation-code.service";
-
-type AppNotificationCreateArgs = {
-  data: {
-    userId: string;
-    title: string;
-    message: string;
-    type: string;
-  };
-};
-
-type PrismaWithAppNotification = {
-  appNotification: {
-    create: (args: AppNotificationCreateArgs) => Promise<unknown>;
-  };
-};
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -135,9 +121,20 @@ export async function PATCH(
     // Get chip metadata before mutation (for cache invalidation and notification)
     const originalChip = await prisma.chip.findUnique({
       where: { id: chipId },
-      select: { ownerUserId: true, shortCode: true, status: true, assignedProfileId: true }
+      select: {
+        accountId: true,
+        ownerUserId: true,
+        shortCode: true,
+        status: true,
+        serviceStatus: true,
+        assignedProfileId: true,
+        isPhysical: true,
+      }
     });
-    const { ownerUserId, shortCode, status: oldStatus } = originalChip || {};
+    if (!originalChip) {
+      return NextResponse.json({ error: "Chip no encontrado" }, { status: 404 });
+    }
+    const { ownerUserId, shortCode, status: oldStatus } = originalChip;
 
     if (shouldDelete) {
         // HARDENED DELETE: Verify chip is safe to delete before any mutation
@@ -216,7 +213,18 @@ export async function PATCH(
         }
 
         // Chip is safe to delete: truly virgin inventory record
-        await prisma.chip.delete({ where: { id: chipId } });
+        await prisma.$transaction(async (tx) => {
+          await tx.chip.delete({ where: { id: chipId } });
+          await writeAuditLog(tx, {
+            accountId: originalChip.accountId,
+            actorUserId: auth.session.user.id,
+            entityType: "Chip",
+            entityId: chipId,
+            action: "chip_deleted",
+            requestId: getAuditRequestId(req),
+            before: originalChip,
+          });
+        });
         // Invalidate owner's cache after deletion (if any)
         if (ownerUserId) await AccountStateService.invalidateCache(ownerUserId);
       return NextResponse.json({ message: "Chip eliminado permanentemente" });
@@ -228,26 +236,52 @@ export async function PATCH(
     if (accountId !== undefined) updateData.accountId = accountId;
     if (isPhysical !== undefined) updateData.isPhysical = isPhysical;
 
-    // cleanup logic: if marked as damaged/lost from an active state, liberate quota
-    if ((status === "damaged" || status === "lost") && oldStatus === "activated") {
-        updateData.assignedProfileId = null;
-        updateData.serviceStatus = "inactive";
-        
-        if (ownerUserId) {
-            await (prisma as unknown as PrismaWithAppNotification).appNotification.create({
-                data: {
-                    userId: ownerUserId,
-                    title: "Cupo Liberado",
-                    message: `Tu chip (${shortCode}) ha sido marcado como ${status === 'damaged' ? 'dañado' : 'perdido'}. El cupo ha sido liberado para que puedas activar uno nuevo.`,
-                    type: "info"
-                }
-            });
-        }
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
     }
 
-    const chip = await prisma.chip.update({
-      where: { id: chipId },
-      data: updateData,
+    const releasesQuota = (status === "damaged" || status === "lost") && oldStatus === "activated";
+    if (releasesQuota) {
+      updateData.assignedProfileId = null;
+      updateData.serviceStatus = "inactive";
+    }
+
+    const chip = await prisma.$transaction(async (tx) => {
+      const updated = await tx.chip.update({
+        where: { id: chipId },
+        data: updateData,
+      });
+
+      if (releasesQuota && ownerUserId) {
+        await tx.appNotification.create({
+          data: {
+            userId: ownerUserId,
+            title: "Cupo Liberado",
+            message: `Tu chip (${shortCode}) ha sido marcado como ${status === "damaged" ? "dañado" : "perdido"}. El cupo ha sido liberado para que puedas activar uno nuevo.`,
+            type: "info"
+          }
+        });
+      }
+
+      await writeAuditLog(tx, {
+        accountId: updated.accountId,
+        actorUserId: auth.session.user.id,
+        entityType: "Chip",
+        entityId: chipId,
+        action: "chip_updated",
+        requestId: getAuditRequestId(req),
+        before: originalChip,
+        after: {
+          accountId: updated.accountId,
+          ownerUserId: updated.ownerUserId,
+          shortCode: updated.shortCode,
+          status: updated.status,
+          serviceStatus: updated.serviceStatus,
+          assignedProfileId: updated.assignedProfileId,
+          isPhysical: updated.isPhysical,
+        },
+      });
+      return updated;
     });
 
     // Invalidate cache after update
