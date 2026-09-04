@@ -74,6 +74,8 @@ jobs:
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           CREATE SCHEMA IF NOT EXISTS storage;
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
           CREATE TABLE storage.buckets (
             id text PRIMARY KEY,
             public boolean NOT NULL DEFAULT false,
