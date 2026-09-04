@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import bcrypt from "bcryptjs";
+import { requireActiveAccountSession } from "@/lib/rbac";
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.accountId) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const auth = await requireActiveAccountSession();
+  if (!auth.authorized) return auth.response;
+  if (auth.current.role !== "owner") {
+    return NextResponse.json(
+      { error: "Solo el administrador de la cuenta puede ejecutar esta acción." },
+      { status: 403 }
+    );
   }
 
-  const userId = session.user.id;
-  const accountId = session.user.accountId;
+  const userId = auth.session.user.id;
+  const accountId = auth.current.accountId;
   const { action, data } = await req.json();
 
   try {
