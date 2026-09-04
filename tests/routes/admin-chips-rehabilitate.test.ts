@@ -9,12 +9,11 @@ import { hashActivationCode } from '@/domains/chips/activation-code.service'
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
-vi.mock('next-auth', () => ({
-  getServerSession: vi.fn(),
-}))
+const mockRequireRole = vi.hoisted(() => vi.fn())
 
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
+vi.mock('@/lib/rbac', () => ({
+  GENERAL_ADMIN_ROLES: ['admin', 'superadmin'],
+  requireRole: mockRequireRole,
 }))
 
 vi.mock('@/lib/prisma', () => ({
@@ -27,7 +26,6 @@ vi.mock('@/lib/identifiers', () => ({
 
 // ─── Imports after mocks ────────────────────────────────────────────────────
 import { POST } from '@/app/api/admin/chips/[chipId]/rehabilitate/route'
-import { getServerSession } from 'next-auth'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -39,12 +37,13 @@ function routeParams(chipId = 'chip-1'): { params: Promise<{ chipId: string }> }
 }
 
 /**
- * Configures getServerSession to authorize as an admin.
+ * Configures the fresh role guard to authorize as an admin.
  */
 function authorizeAsAdmin(): void {
-  vi.mocked(getServerSession).mockResolvedValue(
-    createMockSession({ role: 'admin' }) as never
-  )
+  mockRequireRole.mockResolvedValue({
+    authorized: true,
+    session: createMockSession({ role: 'admin' }),
+  })
 }
 
 /**
@@ -111,10 +110,14 @@ function setupTransactionHappyPathMocks() {
 describe('POST /api/admin/chips/[chipId]/rehabilitate', () => {
   beforeEach(() => {
     resetAllMocks()
+    mockRequireRole.mockReset()
   })
 
-  it('1. returns 401 when there is no session', async () => {
-    vi.mocked(getServerSession).mockResolvedValue(null)
+  it('1. forwards 401 when the fresh role guard finds no session', async () => {
+    mockRequireRole.mockResolvedValue({
+      authorized: false,
+      response: new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 }),
+    })
 
     const req = new NextRequest('http://localhost/api/admin/chips/chip-1/rehabilitate', {
       method: 'POST',
@@ -126,10 +129,11 @@ describe('POST /api/admin/chips/[chipId]/rehabilitate', () => {
     expect(json.error).toMatch(/autorizado/i)
   })
 
-  it('2. returns 401 when session role is not admin or superadmin', async () => {
-    vi.mocked(getServerSession).mockResolvedValue(
-      createMockSession({ role: 'owner' }) as never
-    )
+  it('2. forwards 403 when the fresh role guard rejects a non-admin', async () => {
+    mockRequireRole.mockResolvedValue({
+      authorized: false,
+      response: new Response(JSON.stringify({ error: 'Acceso denegado' }), { status: 403 }),
+    })
 
     const req = new NextRequest('http://localhost/api/admin/chips/chip-1/rehabilitate', {
       method: 'POST',
@@ -137,8 +141,8 @@ describe('POST /api/admin/chips/[chipId]/rehabilitate', () => {
     const res = await POST(req, routeParams())
     const json = await res.json()
 
-    expect(res.status).toBe(401)
-    expect(json.error).toMatch(/autorizado/i)
+    expect(res.status).toBe(403)
+    expect(json.error).toMatch(/denegado/i)
   })
 
   it('3. returns 404 when chip does not exist', async () => {
@@ -266,7 +270,7 @@ describe('POST /api/admin/chips/[chipId]/rehabilitate', () => {
         data: expect.objectContaining({
           entityType: 'chip',
           entityId: 'chip-1',
-          action: 'chip_rehabilitated_for_stock',
+          action: 'chip.rehabilitated_for_stock',
         }),
       })
     )
