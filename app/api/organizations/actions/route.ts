@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import bcrypt from "bcryptjs";
 import { requireActiveAccountSession } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export async function POST(req: Request) {
   const auth = await requireActiveAccountSession();
@@ -112,9 +113,22 @@ export async function POST(req: Request) {
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-        await prisma.user.update({
-          where: { id: userId },
-          data: { passwordHash: hashedPassword }
+        await prisma.$transaction(async (tx) => {
+          const updated = await tx.user.update({
+            where: { id: userId },
+            data: { passwordHash: hashedPassword, sessionVersion: { increment: 1 } },
+            select: { id: true, accountId: true, status: true, role: true, sessionVersion: true },
+          });
+          await writeAuditLog(tx, {
+            accountId,
+            actorUserId: auth.session.user.id,
+            entityType: "User",
+            entityId: updated.id,
+            action: "organization_member_password_reset",
+            requestId: getAuditRequestId(req),
+            before: { status: user.status, role: user.role, sessionVersion: user.sessionVersion },
+            after: { status: updated.status, role: updated.role, sessionVersion: updated.sessionVersion },
+          });
         });
 
         return NextResponse.json({ message: "Contraseña actualizada" });
@@ -134,20 +148,44 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: "Chip o Miembro no válido para esta cuenta" }, { status: 400 });
         }
 
-        if (!member.profile) return NextResponse.json({ error: "El miembro no tiene perfil médico" }, { status: 400 });
+        const memberProfile = member.profile;
+        if (!memberProfile) return NextResponse.json({ error: "El miembro no tiene perfil médico" }, { status: 400 });
 
         // Assign chip to profile and set ownership so emergency notifications fire
-        await prisma.chip.update({
-          where: { id: chipId },
-          data: {
-            assignedProfileId: member.profile.id,
-            ownerUserId: member.id,
-            status: "activated",
-            activatedAt: chip.activatedAt || new Date(),
-            serviceStartDate: chip.serviceStartDate || new Date(),
-            serviceEndDate: chip.serviceEndDate || new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 2), // 2 Years
-            serviceStatus: "active"
-          }
+        await prisma.$transaction(async (tx) => {
+          const updated = await tx.chip.update({
+            where: { id: chipId },
+            data: {
+              assignedProfileId: memberProfile.id,
+              ownerUserId: member.id,
+              status: "activated",
+              activatedAt: chip.activatedAt || new Date(),
+              serviceStartDate: chip.serviceStartDate || new Date(),
+              serviceEndDate: chip.serviceEndDate || new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 2), // 2 Years
+              serviceStatus: "active"
+            },
+            select: { id: true, accountId: true, ownerUserId: true, assignedProfileId: true, status: true, serviceStatus: true },
+          });
+          await writeAuditLog(tx, {
+            accountId,
+            actorUserId: auth.session.user.id,
+            entityType: "Chip",
+            entityId: updated.id,
+            action: "organization_chip_assigned",
+            requestId: getAuditRequestId(req),
+            before: {
+              ownerUserId: chip.ownerUserId,
+              assignedProfileId: chip.assignedProfileId,
+              status: chip.status,
+              serviceStatus: chip.serviceStatus,
+            },
+            after: {
+              ownerUserId: updated.ownerUserId,
+              assignedProfileId: updated.assignedProfileId,
+              status: updated.status,
+              serviceStatus: updated.serviceStatus,
+            },
+          });
         });
 
         return NextResponse.json({ message: "Chip asignado correctamente" });
@@ -189,9 +227,22 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: "Permiso denegado" }, { status: 403 });
         }
 
-        await prisma.user.update({
-          where: { id: userId },
-          data: { status }
+        await prisma.$transaction(async (tx) => {
+          const updated = await tx.user.update({
+            where: { id: userId },
+            data: { status, sessionVersion: { increment: 1 } },
+            select: { id: true, accountId: true, status: true, sessionVersion: true },
+          });
+          await writeAuditLog(tx, {
+            accountId,
+            actorUserId: auth.session.user.id,
+            entityType: "User",
+            entityId: updated.id,
+            action: "organization_member_status_updated",
+            requestId: getAuditRequestId(req),
+            before: { status: user.status, sessionVersion: user.sessionVersion },
+            after: { status: updated.status, sessionVersion: updated.sessionVersion },
+          });
         });
 
         return NextResponse.json({ message: `Estado actualizado a ${status}` });
