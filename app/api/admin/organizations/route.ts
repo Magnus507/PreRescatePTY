@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 // getUniqueShortCode/getUniqueSerialPublic/getUniqueActivationCode removed — chips are assigned post-creation
 import bcrypt from "bcryptjs";
 import { requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
+import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 const CORPORATE_PACKAGE_SLUG = "combo-corporativo";
 
@@ -62,6 +63,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
+  const requestId = getAuditRequestId(req);
 
   try {
     const data = await req.json();
@@ -170,6 +172,23 @@ export async function POST(req: Request) {
         }
       });
 
+      await writeAuditLog(tx, {
+        accountId: account.id,
+        actorUserId: auth.session.user.id || null,
+        entityType: "organization",
+        entityId: org.id,
+        action: "organization.created",
+        requestId,
+        after: {
+          accountId: account.id,
+          legalName: org.legalName,
+          displayName: org.displayName,
+          companyCode: org.companyCode,
+          packageId: pkg.id,
+          maxChipsAllocated: chipCount,
+        },
+      });
+
       // NOTE: Chips are no longer created automatically when a company is set up.
       // Chips are assigned later via inventory/assign-bulk/assign-chip endpoints.
 
@@ -181,10 +200,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ organization: newOrg, ownerEmail, maxChipsAllocated: chipCount }, { status: 201 });
   } catch (err: unknown) {
     console.error("Error creating org", err);
-    const e = err instanceof Error ? err : new Error(String(err));
-    return NextResponse.json({ 
-      error: "Error creating organization", 
-      details: e.message || String(err)
-    }, { status: 500 });
+    return NextResponse.json({ error: "Error creating organization" }, { status: 500 });
   }
 }
