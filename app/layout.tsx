@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import "./visual-performance.css";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
 import CookieConsentProvider from "@/components/public/CookieConsentProvider";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
-import VisualPerformanceLayer from "@/components/VisualPerformanceLayer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -89,7 +89,6 @@ export default async function RootLayout({
         <Toaster />
         <CookieConsentProvider />
         <ServiceWorkerRegistrar />
-        <VisualPerformanceLayer />
       </body>
     </html>
   );
