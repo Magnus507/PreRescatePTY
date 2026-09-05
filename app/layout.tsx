@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import "./visual-performance.css";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
 import CookieConsentProvider from "@/components/public/CookieConsentProvider";

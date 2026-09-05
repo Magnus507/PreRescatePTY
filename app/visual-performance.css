@@ -1,0 +1,166 @@
+/* Shared compositing hints for the three visual surfaces. */
+[data-glow-card],
+.sticky-cta,
+body:has(.client-dashboard-mobile-theme) nav[class*="fixed"][class*="bottom-0"] {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.sticky-cta,
+body:has(.client-dashboard-mobile-theme) nav[class*="fixed"][class*="bottom-0"] {
+  transform: translateZ(0);
+}
+
+/* Admin: keep the cinematic material but avoid stacking expensive blur layers. */
+body:has(.admin-control-center) header {
+  backdrop-filter: blur(16px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(130%) !important;
+}
+
+body:has(.admin-control-center) footer {
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.admin-control-center .bg-card,
+.admin-control-center main [class*="bg-white"][class*="border"],
+.admin-control-center main [class*="dark:bg-slate-900"][class*="border"],
+.admin-control-center main [class*="dark:bg-slate-800"][class*="border"] {
+  backdrop-filter: blur(9px) !important;
+  -webkit-backdrop-filter: blur(9px) !important;
+}
+
+.admin-control-center :is(input, select, textarea) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Website glass: slightly cheaper blur with practically identical visual density. */
+.glass-nav {
+  backdrop-filter: blur(16px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(135%) !important;
+}
+
+.glass-card,
+.glass-card-w2a,
+.glass-premium {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.glass-card-w2a-light {
+  backdrop-filter: blur(9px) !important;
+  -webkit-backdrop-filter: blur(9px) !important;
+}
+
+[data-glow-card] {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+@media (max-width: 1023px), (pointer: coarse) {
+  /* Mobile-first: spend GPU budget on scrolling, not persistent blur/ambient loops. */
+  .glass-nav,
+  .sticky-cta {
+    backdrop-filter: blur(10px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(120%) !important;
+  }
+
+  .glass-card,
+  .glass-card-w2a,
+  .glass-card-w2a-light,
+  .glass-premium,
+  [data-glow-card] {
+    backdrop-filter: blur(7px) !important;
+    -webkit-backdrop-filter: blur(7px) !important;
+  }
+
+  [data-glow-card] {
+    transition-duration: 220ms !important;
+  }
+
+  [data-glow-card] > [aria-hidden="true"]:last-of-type {
+    display: none !important;
+  }
+
+  .animate-float,
+  .animate-glow,
+  .animate-border-glow,
+  .animate-gradient,
+  .animate-blob {
+    animation: none !important;
+  }
+
+  .marquee-track,
+  .marquee-track-reverse {
+    animation: none !important;
+  }
+
+  body:has(.client-dashboard-mobile-theme) main::after {
+    filter: blur(4px) !important;
+  }
+
+  .client-dashboard-mobile-theme :is(input, select, textarea) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .client-dashboard-mobile-theme [role="dialog"],
+  .client-dashboard-mobile-theme [aria-modal="true"] {
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+  }
+
+  .client-dashboard-mobile-theme > div > section:first-of-type > div > div {
+    backdrop-filter: blur(10px) saturate(125%) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(125%) !important;
+  }
+
+  .client-dashboard-mobile-theme > div > section:first-of-type [class*="sm:grid-cols-3"] > div {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+  }
+
+  .client-dashboard-mobile-theme > div > section:first-of-type [class*="xl:grid-cols"] > div:last-child {
+    backdrop-filter: blur(8px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
+  }
+
+  body:has(.client-dashboard-mobile-theme) nav[class*="fixed"][class*="bottom-0"] {
+    backdrop-filter: blur(13px) saturate(128%) !important;
+    -webkit-backdrop-filter: blur(13px) saturate(128%) !important;
+  }
+
+  .client-dashboard-mobile-theme [class*="transition-all"],
+  .admin-control-center [class*="transition-all"] {
+    transition-duration: 220ms !important;
+    transition-property: transform, opacity, border-color, background-color, color !important;
+  }
+
+  body:has(.admin-control-center) header {
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+  }
+
+  .admin-control-center .bg-card,
+  .admin-control-center main [class*="bg-white"][class*="border"],
+  .admin-control-center main [class*="dark:bg-slate-900"][class*="border"],
+  .admin-control-center main [class*="dark:bg-slate-800"][class*="border"] {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-glow-card]:hover {
+    will-change: transform;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-glow-card],
+  .client-dashboard-mobile-theme *,
+  .admin-control-center * {
+    scroll-behavior: auto !important;
+  }
+}
