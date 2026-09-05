@@ -6,6 +6,7 @@ import { Providers } from "./providers";
 import { Toaster } from "sonner";
 import CookieConsentProvider from "@/components/public/CookieConsentProvider";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
+import VisualPerformanceLayer from "@/components/VisualPerformanceLayer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -88,6 +89,7 @@ export default async function RootLayout({
         <Toaster />
         <CookieConsentProvider />
         <ServiceWorkerRegistrar />
+        <VisualPerformanceLayer />
       </body>
     </html>
   );
