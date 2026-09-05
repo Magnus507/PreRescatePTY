@@ -13,8 +13,9 @@ Login y logout reales del administrador confirmados mediante browserAuth;
 panel Super Admin, Centro de Operaciones, Producción e Inventario accesibles sin
 errores de aplicación observados. Logout regresó a /login. No se crearon datos
 operativos. Esto no certifica E2E cliente/corporativo completo.
-Alternativa preparada para NEW-18 en scheduler-recovery-runbook.md: Supabase Cron +
-pg_net + Vault, todavía sin aplicar por falta del secreto en Vault y migración validada.
+Intento NEW-18 a las 22:56 UTC: tres HTTP 401. Job nunca habilitado; rollback
+versionado y aplicado por permisos net excesivos (NEW-19, P2, corregido por rollback).
+Ver scheduler-runtime-attempt.md. Corregir credencial Vault; NEW-18 permanece OPEN.
 
 ## 2. VERDICT
 

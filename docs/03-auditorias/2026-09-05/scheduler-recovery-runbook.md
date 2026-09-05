@@ -1,3 +1,5 @@
+> Actualización 22:58 UTC: intento aplicado y revertido. Tres HTTP 401; job no habilitado. Ver scheduler-runtime-attempt.md. El SQL siguiente es histórico y requiere corregir permisos efectivos de pg_net antes de reutilizarse.
+
 # Recuperación del scheduler — NEW-18
 
 Preparado, NO aplicado ni probado en runtime. No cierra el P1.
