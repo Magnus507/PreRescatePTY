@@ -1,12 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Check,
+  CreditCard,
+  Loader2,
+  PackageCheck,
+  QrCode,
+  ShieldCheck,
+  Sparkles,
+  UsersRound,
+} from "lucide-react";
 import PublicNavbar from "@/components/public/PublicNavbar";
 import PublicFooter from "@/components/public/PublicFooter";
 import PageHero from "@/components/public/PageHero";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { Check, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { GlowCard } from "@/components/ui/spotlight-card";
 
 interface Package {
   id: string;
@@ -20,6 +32,128 @@ interface Package {
   allowsFamilyProfiles: boolean;
   allowsOrganizationModule: boolean;
   serviceDurationMonths: number;
+}
+
+const purchaseFaq = [
+  {
+    q: "¿Qué métodos de pago aceptan?",
+    a: "Todos los pedidos se pagan de forma manual mediante instrucciones bancarias, comprobante y revisión administrativa.",
+  },
+  {
+    q: "¿Hay mensualidades?",
+    a: "Los planes mostrados son de pago único. La vigencia incluida se indica en cada opción disponible.",
+  },
+  {
+    q: "¿Necesito instalar una aplicación?",
+    a: "No. El perfil se abre en el navegador del teléfono compatible.",
+  },
+  {
+    q: "¿El sticker necesita batería?",
+    a: "No. El identificador físico no necesita batería propia.",
+  },
+  {
+    q: "¿Se necesita internet?",
+    a: "El dispositivo que consulta el perfil necesita conexión a internet. El sticker no necesita conexión propia.",
+  },
+];
+
+const commercialInfo = [
+  {
+    icon: PackageCheck,
+    title: "Envíos",
+    text: "Realizamos entregas dentro de Panamá, sujetas a cobertura del transportista. El costo y plazo estimado se informan antes de confirmar el pedido.",
+    href: "/legal/envios",
+    label: "Política de envíos",
+  },
+  {
+    icon: CreditCard,
+    title: "Cancelaciones y devoluciones",
+    text: "Puedes cancelar antes del despacho. Los productos elegibles para devolución deben cumplir las condiciones indicadas en nuestra política vigente.",
+    href: "/legal/reembolsos",
+    label: "Política de reembolsos",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Garantía",
+    text: "La garantía cubre los defectos de fabricación descritos en nuestras condiciones y excluye pérdida, robo y daños derivados de un uso inadecuado.",
+    href: "/legal/garantia",
+    label: "Garantía y reemplazos",
+  },
+];
+
+function PackageCard({ pkg, index }: { pkg: Package; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 22 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.5, delay: index * 0.06 }}
+      className="h-full"
+    >
+      <GlowCard
+        customSize
+        glowColor={pkg.recommended ? "red" : "blue"}
+        className={`h-full min-h-[520px] p-6 sm:p-7 ${pkg.recommended ? "border-[#DA1A21]/25 bg-[#DA1A21]/[0.035]" : ""}`}
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">Plan PreRescue ID</p>
+                {pkg.recommended && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/15 bg-rose-300/[0.07] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-rose-200">
+                    <Sparkles className="h-3 w-3" /> Recomendado
+                  </span>
+                )}
+              </div>
+              <h3 className="mt-3 text-2xl font-black tracking-[-0.035em] text-slate-50">{pkg.name}</h3>
+            </div>
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-br from-[#0c1730] to-[#040711] p-2">
+              <Image src="/sticker-official.png" alt="" aria-hidden="true" fill sizes="64px" className="object-contain p-2" />
+            </div>
+          </div>
+
+          <div className="mt-8 border-y border-white/[0.06] py-6">
+            <div className="flex items-end gap-2">
+              <span className="text-5xl font-black tracking-[-0.055em] text-white">${pkg.price}</span>
+              <span className="pb-1.5 text-xs font-semibold text-slate-600">pago único</span>
+            </div>
+            <p className="mt-2 text-xs font-medium text-slate-500">{pkg.serviceDurationMonths} meses de vigencia desde la activación.</p>
+          </div>
+
+          <div className="mt-7 space-y-3">
+            {[
+              `${pkg.maxChips} chip${pkg.maxChips !== 1 ? "s" : ""} NFC + QR`,
+              `${pkg.maxProfiles} perfil${pkg.maxProfiles !== 1 ? "es" : ""} médico${pkg.maxProfiles !== 1 ? "s" : ""}`,
+              "Consulta desde navegador compatible",
+              pkg.allowsFamilyProfiles ? "Perfiles familiares habilitados" : "Perfil personal",
+            ].map((feature) => (
+              <div key={feature} className="flex items-start gap-3 text-sm font-semibold text-slate-300">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-300/[0.08] text-emerald-300">
+                  <Check className="h-3.5 w-3.5" />
+                </span>
+                {feature}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-auto pt-8">
+            <Link
+              href={`/registro?package=${pkg.id}`}
+              className={`group flex min-h-13 w-full items-center justify-between rounded-2xl px-5 text-sm font-extrabold transition-all ${
+                pkg.recommended
+                  ? "bg-[#DA1A21] text-white shadow-[0_16px_45px_-20px_rgba(218,26,33,.9)] hover:bg-[#ef2d35]"
+                  : "border border-white/[0.09] bg-white/[0.05] text-slate-100 hover:border-sky-300/20 hover:bg-white/[0.08]"
+              }`}
+            >
+              Adquirir {pkg.name}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+        </div>
+      </GlowCard>
+    </motion.div>
+  );
 }
 
 export default function ComprarContent() {
@@ -47,287 +181,149 @@ export default function ComprarContent() {
   const companyPackages = packages.filter((p) => p.accountType === "company");
 
   return (
-    <div className="min-h-screen font-sans antialiased">
+    <div className="min-h-screen bg-[#02050a] font-sans text-white antialiased">
       <PublicNavbar />
       <main id="main-content">
         <PageHero
-          eyebrow="Planes claros. Pago único."
-          title="Encuentra el plan adecuado para ti, tu familia o tu equipo"
-          description="Compara perfiles y chips incluidos. Cada plan ofrece 2 años de vigencia desde la activación."
+          eyebrow="Planes claros · Pago único"
+          title="Elige la identificación que"
+          titleAccent="mejor encaja contigo."
+          description="Los precios, capacidades y vigencia que ves aquí se cargan directamente desde nuestro catálogo activo."
           primaryCTA={{ href: "#planes", label: "Ver planes" }}
           secondaryCTA={{ href: "/demo", label: "Ver demo" }}
         />
 
-        {/* Payment methods */}
-        <section className="py-12 bg-[#05070D]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <div className="glass-card-w2a rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4">
-              <div className="h-8 w-8 rounded-full bg-emerald-400/15 border border-emerald-400/30" />
-              <div>
-                <p className="text-sm font-bold text-[#EFF4FF]">Método de pago</p>
-                <p className="text-xs text-[#A0AEC0]">
-                  Todos los pedidos se gestionan con pago manual: instrucciones bancarias, comprobante y revisión administrativa.
-                </p>
-              </div>
-            </div>
+        <section className="border-y border-white/[0.055] bg-[#03060c] py-5">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-7 gap-y-3 px-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 sm:px-6">
+            <span className="flex items-center gap-2"><CreditCard className="h-3.5 w-3.5 text-emerald-300" /> Pago manual verificado</span>
+            <span className="flex items-center gap-2"><QrCode className="h-3.5 w-3.5 text-sky-300" /> QR + NFC</span>
+            <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-indigo-300" /> Sin mensualidad recurrente</span>
           </div>
         </section>
 
-        {/* Personal packages */}
-        <section id="planes" className="py-24 md:py-32 bg-[#F4F6F8] text-[#1A1D23]">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] mb-4">
-                Planes personales y familiares
-              </h2>
-              <p className="text-lg text-[#6B7280] font-medium max-w-2xl mx-auto">
-                Pago único. Sin mensualidades. 2 años de vigencia.
-              </p>
+        <section id="planes" className="relative scroll-mt-20 overflow-hidden bg-[#03060c] py-24 md:py-32">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={{ background: "radial-gradient(52% 56% at 50% 20%, rgba(37,99,235,.12), transparent 64%), radial-gradient(30% 42% at 86% 78%, rgba(218,26,33,.06), transparent 68%)" }}
+          />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-14 max-w-3xl text-center">
+              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-sky-300/80">Personal y familia</p>
+              <h2 className="text-[clamp(2.7rem,5vw,5rem)] font-black leading-[0.92] tracking-[-0.045em] text-slate-50">Producto físico. Perfil digital. Una sola compra.</h2>
+              <p className="mx-auto mt-6 max-w-2xl text-base font-medium leading-7 text-slate-400 sm:text-lg">Compara la capacidad incluida en cada opción antes de crear tu cuenta.</p>
             </div>
 
             {loading ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="h-10 w-10 animate-spin text-[#DA1A21]" />
+              <div className="flex min-h-[360px] items-center justify-center">
+                <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-5 py-4 text-sm font-bold text-slate-400">
+                  <Loader2 className="h-5 w-5 animate-spin text-sky-300" /> Cargando planes
+                </div>
               </div>
             ) : error ? (
-              <div className="text-center py-20">
-                <p className="text-[#6B7280] font-medium mb-4">Error al cargar los planes.</p>
-                <Link href="/contacto" className="btn-premium inline-block px-6 py-3 rounded-xl bg-slate-900 text-white font-bold">
-                  Contactar para más información
+              <div className="mx-auto max-w-xl rounded-[1.8rem] border border-rose-300/10 bg-rose-300/[0.035] p-8 text-center">
+                <p className="text-base font-extrabold text-slate-100">No pudimos cargar el catálogo.</p>
+                <p className="mt-2 text-sm text-slate-500">Puedes contactarnos para obtener información sobre las opciones disponibles.</p>
+                <Link href="/contacto" className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[#DA1A21] px-5 text-sm font-bold text-white hover:bg-[#ef2d35]">
+                  Contactar <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
+            ) : personalPackages.length === 0 ? (
+              <div className="mx-auto max-w-xl rounded-[1.8rem] border border-white/[0.07] bg-white/[0.025] p-8 text-center text-sm font-medium text-slate-500">
+                No hay planes personales disponibles en este momento.
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                {personalPackages.map((pkg, i) => (
-                  <motion.div
-                    key={pkg.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-50px" }}
-                    transition={{ duration: 0.5, delay: i * 0.1 }}
-                    className={`relative rounded-3xl p-8 border ${
-                      pkg.recommended
-                        ? "bg-slate-900 text-white border-slate-700 shadow-xl"
-                        : "bg-white border-slate-200 shadow-sm"
-                    }`}
-                  >
-                    {pkg.recommended && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-[#DA1A21] text-white text-xs font-bold">
-                        Más popular
-                      </div>
-                    )}
-                    <h3 className="text-xl font-bold mb-2">{pkg.name}</h3>
-                    <p className={`text-3xl font-black mb-1 ${pkg.recommended ? "text-white" : "text-slate-900"}`}>
-                      ${pkg.price}
-                    </p>
-                    <p className={`text-sm mb-6 ${pkg.recommended ? "text-slate-300" : "text-slate-600"}`}>
-                      pago único
-                    </p>
-                    <ul className="space-y-3 mb-8">
-                      <li className="flex items-center gap-2 text-sm">
-                        <Check className={`h-4 w-4 ${pkg.recommended ? "text-[#10B981]" : "text-[#DA1A21]"}`} />
-                        <span className={pkg.recommended ? "text-slate-200" : "text-slate-700"}>
-                          {pkg.maxChips} chip{pkg.maxChips !== 1 ? "s" : ""} NFC
-                        </span>
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <Check className={`h-4 w-4 ${pkg.recommended ? "text-[#10B981]" : "text-[#DA1A21]"}`} />
-                        <span className={pkg.recommended ? "text-slate-200" : "text-slate-700"}>
-                          {pkg.maxProfiles} perfil{pkg.maxProfiles !== 1 ? "es" : ""} médico{pkg.maxProfiles !== 1 ? "s" : ""}
-                        </span>
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <Check className={`h-4 w-4 ${pkg.recommended ? "text-[#10B981]" : "text-[#DA1A21]"}`} />
-                        <span className={pkg.recommended ? "text-slate-200" : "text-slate-700"}>QR + NFC</span>
-                      </li>
-                      <li className="flex items-center gap-2 text-sm">
-                        <Check className={`h-4 w-4 ${pkg.recommended ? "text-[#10B981]" : "text-[#DA1A21]"}`} />
-                        <span className={pkg.recommended ? "text-slate-200" : "text-slate-700"}>
-                          {pkg.serviceDurationMonths / 12} año{pkg.serviceDurationMonths / 12 !== 1 ? "s" : ""} de cobertura
-                        </span>
-                      </li>
-                    </ul>
-                    <Link
-                      href={`/registro?package=${pkg.id}`}
-                      className={`block w-full text-center py-3 rounded-xl font-bold transition-all ${
-                        pkg.recommended
-                          ? "bg-[#DA1A21] text-white hover:bg-[#B9141B]"
-                          : "bg-slate-900 text-white hover:bg-slate-800"
-                      }`}
-                    >
-                      Adquirir
-                    </Link>
-                  </motion.div>
-                ))}
+              <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {personalPackages.map((pkg, index) => <PackageCard key={pkg.id} pkg={pkg} index={index} />)}
               </div>
             )}
 
             {companyPackages.length > 0 && (
-              <>
-                <div className="text-center mt-20 mb-12">
-                  <h3 className="text-[clamp(1.5rem,3vw,2rem)] font-black tracking-tighter text-slate-900">
-                    Planes empresariales
-                  </h3>
-                  <p className="text-[#6B7280] font-medium mt-2">
-                    Para empresas, escuelas e instituciones
-                  </p>
+              <div className="mt-24">
+                <div className="mb-12 grid items-end gap-7 lg:grid-cols-[1fr_.72fr]">
+                  <div>
+                    <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300/80">Organizaciones</p>
+                    <h3 className="max-w-[11ch] text-[clamp(2.7rem,5vw,4.8rem)] font-black leading-[0.91] tracking-[-0.045em] text-slate-50">Cobertura para más de una persona.</h3>
+                  </div>
+                  <p className="text-base font-medium leading-7 text-slate-400">Opciones pensadas para organizaciones que necesitan gestionar miembros y dispositivos.</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                  {companyPackages.map((pkg, i) => (
-                    <motion.div
-                      key={pkg.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true, margin: "-50px" }}
-                      transition={{ duration: 0.5, delay: i * 0.1 }}
-                      className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm"
-                    >
-                      <h3 className="text-xl font-bold text-slate-900 mb-2">{pkg.name}</h3>
-                      <p className="text-3xl font-black text-slate-900 mb-1">${pkg.price}</p>
-                      <p className="text-sm text-slate-600 mb-6">pago único</p>
-                      <ul className="space-y-3 mb-8">
-                        <li className="flex items-center gap-2 text-sm text-slate-700">
-                          <Check className="h-4 w-4 text-[#DA1A21]" />
-                          {pkg.maxChips} chips
-                        </li>
-                        <li className="flex items-center gap-2 text-sm text-slate-700">
-                          <Check className="h-4 w-4 text-[#DA1A21]" />
-                          {pkg.maxProfiles} perfiles
-                        </li>
-                        <li className="flex items-center gap-2 text-sm text-slate-700">
-                          <Check className="h-4 w-4 text-[#DA1A21]" />
-                          Panel administrativo
-                        </li>
-                      </ul>
-                      <Link
-                        href={`/contacto?subject=${encodeURIComponent("Me interesa " + pkg.name)}`}
-                        className="block w-full text-center py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all"
-                      >
-                        Solicitar información
+
+                <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {companyPackages.map((pkg, index) => (
+                    <motion.div key={pkg.id} initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.06 }} className="rounded-[1.8rem] border border-white/[0.07] bg-white/[0.026] p-7">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-indigo-300/12 bg-indigo-300/[0.05]"><UsersRound className="h-5 w-5 text-indigo-300" /></span>
+                        {pkg.recommended && <span className="rounded-full border border-rose-300/15 bg-rose-300/[0.06] px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-rose-200">Recomendado</span>}
+                      </div>
+                      <h4 className="mt-7 text-xl font-black text-slate-50">{pkg.name}</h4>
+                      <div className="mt-4 flex items-end gap-2"><span className="text-4xl font-black tracking-[-0.05em] text-white">${pkg.price}</span><span className="pb-1 text-xs text-slate-600">pago único</span></div>
+                      <div className="mt-7 space-y-3">
+                        {[`${pkg.maxChips} chips`, `${pkg.maxProfiles} perfiles`, "Panel administrativo", `${pkg.serviceDurationMonths} meses de vigencia`].map((feature) => (
+                          <div key={feature} className="flex items-center gap-2.5 text-sm font-semibold text-slate-400"><Check className="h-4 w-4 text-emerald-300" />{feature}</div>
+                        ))}
+                      </div>
+                      <Link href={`/contacto?subject=${encodeURIComponent("Me interesa " + pkg.name)}`} className="group mt-8 flex min-h-12 w-full items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.045] px-5 text-sm font-bold text-slate-100 transition-all hover:border-indigo-300/20 hover:bg-white/[0.075]">
+                        Solicitar información <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </Link>
                     </motion.div>
                   ))}
                 </div>
-              </>
+              </div>
             )}
           </div>
         </section>
 
-        {/* Purchase FAQ */}
-        <section className="py-24 md:py-32 bg-[#05070D]">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-            <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] text-[#EFF4FF] mb-12 text-center">
-              Preguntas sobre compra
-            </h2>
-            <div className="space-y-4">
-              {[
-                { q: "¿Qué métodos de pago aceptan?", a: "Todos los pedidos se pagan de forma manual mediante instrucciones bancarias, comprobante y revisión administrativa." },
-                { q: "¿Hay mensualidades?", a: "No. Todos los planes son de pago único con 2 años de vigencia desde la activación." },
-                { q: "¿Cuánto tiempo dura el servicio?", a: "Cada plan incluye 2 años de cobertura desde la fecha de activación del chip." },
-                { q: "¿Necesito instalar una aplicación?", a: "No. El perfil se abre en el navegador del celular. No requiere instalar ninguna aplicación." },
-                { q: "¿El sticker necesita batería?", a: "No. El sticker no tiene batería. El chip NFC se activa con la energía del celular que lo escanea." },
-                { q: "¿Se necesita internet?", a: "El dispositivo que escanea necesita conexión a internet para cargar el perfil médico. El sticker no necesita batería ni conexión." },
-              ].map((faq, i) => (
-                <motion.div
-                  key={faq.q}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.5, delay: i * 0.05 }}
-                  className="glass-card-w2a rounded-2xl p-6"
-                >
-                  <h3 className="text-base font-bold text-[#EFF4FF] mb-2">{faq.q}</h3>
-                  <p className="text-sm text-[#A0AEC0] leading-relaxed">{faq.a}</p>
+        <section className="bg-[#050914] py-24 md:py-32">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-12 lg:grid-cols-[.7fr_1.3fr]">
+              <div className="lg:sticky lg:top-28 lg:self-start">
+                <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-sky-300/80">Antes de comprar</p>
+                <h2 className="max-w-[9ch] text-[clamp(2.7rem,5vw,4.8rem)] font-black leading-[0.91] tracking-[-0.045em] text-slate-50">Respuestas claras antes de elegir.</h2>
+              </div>
+              <div className="space-y-3">
+                {purchaseFaq.map((faq, index) => (
+                  <motion.details key={faq.q} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: index * 0.04 }} className="group overflow-hidden rounded-[1.45rem] border border-white/[0.065] bg-white/[0.025] open:border-sky-300/15 open:bg-sky-300/[0.03]">
+                    <summary className="cursor-pointer list-none px-5 py-5 text-sm font-extrabold text-slate-100 sm:px-6 [&::-webkit-details-marker]:hidden">{faq.q}</summary>
+                    <div className="border-t border-white/[0.05] px-5 pb-6 pt-4 sm:px-6"><p className="text-sm leading-6 text-slate-400">{faq.a}</p></div>
+                  </motion.details>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden bg-[#03060c] py-24 md:py-32">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-12 text-center">
+              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300/80">Información comercial</p>
+              <h2 className="text-[clamp(2.6rem,5vw,4.7rem)] font-black leading-[0.92] tracking-[-0.045em] text-slate-50">Compra con las condiciones a la vista.</h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {commercialInfo.map((item, index) => (
+                <motion.div key={item.title} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.45, delay: index * 0.06 }} className="rounded-[1.6rem] border border-white/[0.065] bg-white/[0.026] p-6">
+                  <item.icon className="h-5 w-5 text-emerald-300" />
+                  <h3 className="mt-7 text-lg font-extrabold text-slate-100">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-500">{item.text}</p>
+                  <Link href={item.href} className="group mt-6 inline-flex items-center gap-2 text-xs font-bold text-sky-200 transition-colors hover:text-white">{item.label}<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /></Link>
                 </motion.div>
               ))}
             </div>
+            <p className="mt-7 text-center text-[10px] font-medium text-slate-600">Redacción comercial provisional pendiente de revisión legal profesional.</p>
           </div>
         </section>
 
-        {/* Policy summary */}
-        <section className="py-16 bg-[#05070D]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-black text-[#EFF4FF] mb-8 text-center">
-              Información comercial
-            </h2>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="glass-card-w2a rounded-2xl p-6">
-                <h3 className="text-lg font-bold text-[#EFF4FF] mb-3">Envíos</h3>
-                <p className="text-sm text-[#A0AEC0] leading-relaxed">
-                  Realizamos entregas dentro de Panamá, sujetas a la cobertura del transportista. El costo y plazo estimado se informan antes de confirmar el pedido. Despacho: 1 a 3 días hábiles. Entrega: 1 a 5 días hábiles según destino.
-                </p>
-                <Link href="/legal/envios" className="inline-block mt-4 text-sm text-[#DA1A21] hover:text-white underline">
-                  Ver política de envíos
-                </Link>
-              </div>
-
-              <div className="glass-card-w2a rounded-2xl p-6">
-                <h3 className="text-lg font-bold text-[#EFF4FF] mb-3">Devoluciones</h3>
-                <p className="text-sm text-[#A0AEC0] leading-relaxed">
-                  Puedes cancelar antes del despacho. Productos sin abrir, sin usar y sin activar: 7 días calendario para devolución. Chips activados no son reembolsables por cambio de opinión.
-                </p>
-                <Link href="/legal/reembolsos" className="inline-block mt-4 text-sm text-[#DA1A21] hover:text-white underline">
-                  Ver política de reembolsos
-                </Link>
-              </div>
-
-              <div className="glass-card-w2a rounded-2xl p-6">
-                <h3 className="text-lg font-bold text-[#EFF4FF] mb-3">Garantía</h3>
-                <p className="text-sm text-[#A0AEC0] leading-relaxed">
-                  Garantía de 1 año por defectos de fabricación. Cubre NFC ilegible, QR ilegible por defecto de impresión y fallos de adhesivo en primer uso. No cubre pérdida, robo o daños por uso inadecuado.
-                </p>
-                <Link href="/legal/garantia" className="inline-block mt-4 text-sm text-[#DA1A21] hover:text-white underline">
-                  Ver garantía y reemplazos
-                </Link>
-              </div>
-
-              <div className="glass-card-w2a rounded-2xl p-6">
-                <h3 className="text-lg font-bold text-[#EFF4FF] mb-3">Vigencia del servicio</h3>
-                <p className="text-sm text-[#A0AEC0] leading-relaxed">
-                  El servicio tiene una vigencia de 2 años desde la activación. Antes de finalizar este período se informarán las opciones disponibles para continuar el servicio. Actualmente no existe renovación automática.
-                </p>
+        <section className="relative overflow-hidden bg-[#050914] px-4 py-20 sm:px-6 md:py-28 lg:px-8">
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.4rem] border border-white/[0.09] bg-[#080c14] px-6 py-14 text-center shadow-[0_50px_130px_-65px_rgba(218,26,33,.68)] sm:px-10 md:py-20">
+            <div aria-hidden="true" className="absolute inset-0" style={{ background: "radial-gradient(55% 100% at 50% 110%, rgba(218,26,33,.28), transparent 64%), radial-gradient(42% 70% at 82% 6%, rgba(37,99,235,.12), transparent 68%)" }} />
+            <div className="relative mx-auto max-w-4xl">
+              <p className="mb-5 text-[10px] font-extrabold uppercase tracking-[0.22em] text-rose-300/80">PreRescue ID</p>
+              <h2 className="text-[clamp(2.8rem,6vw,5.6rem)] font-black leading-[0.88] tracking-[-0.05em] text-slate-50">Prepárate antes de necesitarlo.</h2>
+              <p className="mx-auto mt-7 max-w-2xl text-base font-medium leading-7 text-slate-400 sm:text-lg sm:leading-8">Elige un plan del catálogo activo y crea tu perfil médico de emergencia.</p>
+              <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+                <Link href="#planes" className="group inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-7 text-sm font-extrabold text-white transition-all hover:-translate-y-0.5 hover:bg-[#ef2d35]">Ver planes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Link>
+                <Link href="/contacto" className="inline-flex min-h-14 items-center justify-center rounded-2xl border border-white/[0.1] bg-white/[0.045] px-7 text-sm font-bold text-slate-100 transition-all hover:border-sky-300/25 hover:bg-white/[0.08]">Necesito ayuda para elegir</Link>
               </div>
             </div>
-
-            <p className="text-xs text-[#6B7280] text-center mt-8">
-              Provisional commercial wording — pending legal review
-            </p>
-          </div>
-        </section>
-
-        {/* Corporate contact */}
-        <section className="py-24 md:py-32 bg-[#F4F6F8] text-[#1A1D23]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] mb-4">
-              ¿Necesitas un plan empresarial?
-            </h2>
-            <p className="text-lg text-[#6B7280] font-medium max-w-2xl mx-auto mb-8">
-              Escríbenos para conocer opciones de compra por volumen, implementación y gestión administrativa.
-            </p>
-            <Link
-              href="/contacto"
-              className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-all"
-            >
-              Contactar a ventas
-            </Link>
-          </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="py-24 md:py-32 bg-[#DA1A21]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-[clamp(2rem,5vw,3.5rem)] font-black tracking-tighter leading-[0.95] text-white mb-6">
-              Tu información puede ayudarte a comunicar lo importante.
-            </h2>
-            <p className="text-lg text-white/80 font-medium leading-relaxed max-w-2xl mx-auto mb-10">
-              Crea tu perfil médico de emergencia y elige qué información estará disponible al escanear tu identificación.
-            </p>
-            <Link
-              href="#planes"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-[#DA1A21] font-bold text-lg hover:bg-slate-100 transition-all shadow-xl"
-            >
-              Ver planes
-            </Link>
           </div>
         </section>
       </main>
