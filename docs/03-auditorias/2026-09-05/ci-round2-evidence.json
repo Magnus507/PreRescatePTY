@@ -1,0 +1,30 @@
+{
+  "commit": "d1993e7eb887671701805920268454048291a513",
+  "run": 33958855737,
+  "job": 101287020075,
+  "conclusion": "success",
+  "lines": [
+    "2026-09-05T09:47:33.7559598Z  Test Files  79 passed (79)",
+    "2026-09-05T09:47:33.7560838Z       Tests  554 passed (554)",
+    "2026-09-05T09:47:35.1452071Z {\"test\":\"inventory stock=1\",\"requests\":2,\"success\":1,\"rejected\":1,\"duplicates\":0,\"invariant\":\"PASS\"}",
+    "2026-09-05T09:47:35.2600261Z {\"test\":\"inventory stock=1\",\"requests\":10,\"success\":1,\"rejected\":9,\"duplicates\":0,\"invariant\":\"PASS\"}",
+    "2026-09-05T09:47:35.5216456Z {\"test\":\"inventory stock=1\",\"requests\":50,\"success\":1,\"rejected\":49,\"duplicates\":0,\"invariant\":\"PASS\"}",
+    "2026-09-05T09:47:36.0481178Z {\"test\":\"same chip activation\",\"requests\":20,\"success\":1,\"rejected\":19,\"duplicates\":0,\"invariant\":\"PASS\"}",
+    "2026-09-05T09:47:36.6813924Z {\"test\":\"mixed manual/automatic scan cooldown\",\"requests\":100,\"success\":1,\"rejected\":99,\"duplicates\":0,\"invariant\":\"PASS\"}",
+    "2026-09-05T09:47:36.7331669Z {\"test\":\"same notification claim\",\"requests\":20,\"success\":1,\"rejected\":19,\"duplicates\":0,\"invariant\":\"PASS\"}",
+    "2026-09-05T09:47:36.8221977Z  Test Files  7 passed (7)",
+    "2026-09-05T09:47:36.8223038Z       Tests  13 passed (13)",
+    "2026-09-05T09:47:49.6920992Z  Test Files  79 passed (79)",
+    "2026-09-05T09:47:49.6922282Z       Tests  554 passed (554)",
+    "2026-09-05T09:48:53.8668843Z  ✓ Compiled successfully in 55s"
+  ],
+  "productionChecks": {
+    "anonymousUserRead": "DENIED SQLSTATE 42501",
+    "authenticatedProfileRead": "DENIED SQLSTATE 42501",
+    "activePackages": 0,
+    "activeAdminFlags": 0,
+    "physicalUnits": 0,
+    "chips": 0
+  },
+  "scope": "CI PostgreSQL 17, synthetic data. External delivery mocked; no production writes."
+}
