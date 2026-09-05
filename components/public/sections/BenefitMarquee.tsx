@@ -1,31 +1,28 @@
 "use client";
 
-import { Scan, Battery, Wifi, Shield, Heart, Users, Globe, CreditCard } from "lucide-react";
+import { Battery, CreditCard, Globe, Heart, QrCode, ShieldCheck, Smartphone, Users } from "lucide-react";
 
 const items = [
-  { icon: Scan, label: "QR + NFC" },
-  { icon: Battery, label: "Sin batería" },
-  { icon: Wifi, label: "Sin aplicación" },
-  { icon: Shield, label: "Privacidad configurable" },
+  { icon: QrCode, label: "QR + NFC" },
+  { icon: Battery, label: "Sticker sin batería" },
+  { icon: Smartphone, label: "Sin instalar app" },
+  { icon: ShieldCheck, label: "Privacidad configurable" },
   { icon: Heart, label: "Contactos de emergencia" },
-  { icon: Users, label: "Perfiles familiares" },
-  { icon: Globe, label: "Uso internacional" },
-  { icon: CreditCard, label: "Pago único" },
+  { icon: Users, label: "Perfiles para familias" },
+  { icon: Globe, label: "Consulta desde el navegador" },
+  { icon: CreditCard, label: "Planes sin mensualidad recurrente" },
 ];
 
 export default function BenefitMarquee() {
   return (
-    <section className="relative overflow-hidden bg-[#05070D] py-8 border-t border-white/5">
-      <div className="flex marquee-track">
-        {[...items, ...items].map((item, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 shrink-0 px-5 py-2 rounded-full border border-white/10 bg-white/5"
-          >
-            <item.icon className="h-4 w-4 text-[#10B981]" />
-            <span className="text-sm font-medium text-[#A0AEC0] whitespace-nowrap">
-              {item.label}
-            </span>
+    <section aria-label="Beneficios principales" className="relative overflow-hidden border-y border-white/[0.055] bg-[#03060c] py-6">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-[#03060c] to-transparent sm:w-40" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-[#03060c] to-transparent sm:w-40" />
+      <div className="marquee-track flex w-max items-center gap-3">
+        {[...items, ...items].map((item, index) => (
+          <div key={`${item.label}-${index}`} className="flex shrink-0 items-center gap-2.5 rounded-full border border-white/[0.07] bg-white/[0.025] px-4 py-2.5">
+            <item.icon className="h-3.5 w-3.5 text-sky-300" />
+            <span className="whitespace-nowrap text-xs font-bold text-slate-400">{item.label}</span>
           </div>
         ))}
       </div>
