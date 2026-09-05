@@ -54,6 +54,8 @@ export default function HeroSection() {
   const phoneY = useTransform(progress, [0, 1], [0, 22]);
   const copyY = useTransform(progress, [0, 1], [0, -34]);
   const copyOpacity = useTransform(progress, [0, 0.72, 1], [1, 0.96, 0.56]);
+  const backgroundY = useTransform(progress, [0, 1], [0, 42]);
+  const backgroundScale = useTransform(progress, [0, 1], [1, 1.05]);
 
   return (
     <section
@@ -65,14 +67,7 @@ export default function HeroSection() {
         <motion.div
           aria-hidden="true"
           className="absolute inset-0 -z-20 opacity-90"
-          style={
-            reduceMotion
-              ? undefined
-              : {
-                  y: useTransform(progress, [0, 1], [0, 42]),
-                  scale: useTransform(progress, [0, 1], [1, 1.05]),
-                }
-          }
+          style={reduceMotion ? undefined : { y: backgroundY, scale: backgroundScale }}
         >
           <div
             className="absolute inset-0"
@@ -186,11 +181,7 @@ export default function HeroSection() {
               initial={{ opacity: 0, scale: 0.96, y: 26 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.95, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
-              style={
-                reduceMotion
-                  ? undefined
-                  : { y: stageY, scale: stageScale, rotate: stageRotate }
-              }
+              style={reduceMotion ? undefined : { y: stageY, scale: stageScale, rotate: stageRotate }}
               className="relative mx-auto w-full max-w-[760px] lg:mx-0"
             >
               <div aria-hidden="true" className="absolute left-1/2 top-1/2 h-[72%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/20 blur-[110px]" />
