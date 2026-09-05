@@ -41,7 +41,7 @@ export default function HowItWorksSection() {
   const active = steps[activeStep];
 
   return (
-    <section className="relative overflow-hidden bg-[#050914] py-24 text-white md:py-32">
+    <section className="relative overflow-hidden bg-[#050914] py-20 text-white md:py-32">
       <div
         aria-hidden="true"
         className="absolute inset-0 opacity-70"
@@ -52,51 +52,51 @@ export default function HowItWorksSection() {
       />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-90px" }}
-          transition={{ duration: 0.6 }}
-          className="mb-14 max-w-3xl lg:mb-8"
+          viewport={{ once: true, margin: "-70px" }}
+          transition={{ duration: 0.5 }}
+          className="mb-10 max-w-3xl sm:mb-14 lg:mb-8"
         >
-          <p className="mb-5 text-xs font-extrabold uppercase tracking-[0.2em] text-sky-300/80">Cómo funciona</p>
-          <h2 className="text-[clamp(2.7rem,5vw,5.2rem)] font-black leading-[0.92] tracking-[-0.045em] text-slate-50">
+          <p className="mb-4 text-[10px] font-extrabold uppercase tracking-[0.18em] text-sky-300/80 sm:mb-5 sm:text-xs sm:tracking-[0.2em]">Cómo funciona</p>
+          <h2 className="text-[clamp(2.35rem,10vw,3.1rem)] font-black leading-[0.94] tracking-[-0.045em] text-slate-50 sm:text-[clamp(2.7rem,5vw,5.2rem)] sm:leading-[0.92]">
             Cuatro pasos. Cero complicaciones.
           </h2>
-          <p className="mt-6 max-w-2xl text-base font-medium leading-7 text-slate-400 sm:text-lg">
+          <p className="mt-5 max-w-2xl text-[15px] font-medium leading-6 text-slate-400 sm:mt-6 sm:text-lg sm:leading-7">
             Diseñado para que la preparación sea sencilla y la consulta sea directa cuando realmente importa.
           </p>
         </motion.div>
 
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,.92fr)_minmax(430px,1.08fr)] lg:gap-16">
-          <div className="space-y-4 lg:py-24">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,.92fr)_minmax(430px,1.08fr)] lg:gap-16">
+          <div className="space-y-3 sm:space-y-4 lg:py-24">
             {steps.map((step, index) => {
               const isActive = activeStep === index;
               return (
                 <motion.article
                   key={step.num}
                   onViewportEnter={() => setActiveStep(index)}
-                  viewport={{ amount: 0.55, margin: "-15% 0px -35% 0px" }}
-                  initial={{ opacity: 0, y: 22 }}
+                  viewport={{ amount: 0.5, margin: "-12% 0px -30% 0px" }}
+                  initial={{ opacity: 0, y: 18 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className={`relative min-h-[250px] overflow-hidden rounded-[1.8rem] border p-6 transition-all duration-500 sm:p-8 lg:min-h-[310px] ${
+                  transition={{ duration: 0.42 }}
+                  className={`relative overflow-hidden rounded-[1.45rem] border p-5 transition-all duration-500 sm:min-h-[250px] sm:rounded-[1.8rem] sm:p-8 lg:min-h-[310px] ${
                     isActive
                       ? "border-sky-300/20 bg-sky-300/[0.055] shadow-[0_22px_80px_-45px_rgba(56,189,248,.7)]"
                       : "border-white/[0.07] bg-white/[0.025]"
                   }`}
                 >
-                  <div aria-hidden="true" className={`absolute inset-y-8 left-0 w-px bg-gradient-to-b from-transparent ${isActive ? "via-sky-300" : "via-white/10"} to-transparent`} />
-                  <div className="flex items-start gap-5 sm:gap-6">
-                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-500 ${isActive ? "border-sky-300/20 bg-sky-300/10" : "border-white/[0.08] bg-white/[0.04]"}`}>
-                      <step.icon className={`h-5 w-5 ${isActive ? "text-sky-300" : "text-slate-500"}`} />
+                  <div aria-hidden="true" className={`absolute inset-y-6 left-0 w-px bg-gradient-to-b from-transparent sm:inset-y-8 ${isActive ? "via-sky-300" : "via-white/10"} to-transparent`} />
+                  <div className="flex items-start gap-4 sm:gap-6">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors duration-500 sm:h-12 sm:w-12 sm:rounded-2xl ${isActive ? "border-sky-300/20 bg-sky-300/10" : "border-white/[0.08] bg-white/[0.04]"}`}>
+                      <step.icon className={`h-4.5 w-4.5 sm:h-5 sm:w-5 ${isActive ? "text-sky-300" : "text-slate-500"}`} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-4">
-                        <span className={`text-[10px] font-black uppercase tracking-[0.22em] ${isActive ? "text-sky-300/80" : "text-slate-600"}`}>Paso {step.num}</span>
+                        <span className={`text-[9px] font-black uppercase tracking-[0.18em] sm:text-[10px] sm:tracking-[0.22em] ${isActive ? "text-sky-300/80" : "text-slate-600"}`}>Paso {step.num}</span>
                         <span className={`h-2 w-2 rounded-full ${isActive ? "bg-sky-300 shadow-[0_0_18px_rgba(125,211,252,.9)]" : "bg-white/10"}`} />
                       </div>
-                      <h3 className="mt-6 text-2xl font-black tracking-[-0.03em] text-slate-100 sm:text-3xl">{step.title}</h3>
-                      <p className="mt-4 max-w-lg text-sm leading-6 text-slate-400 sm:text-base sm:leading-7">{step.description}</p>
+                      <h3 className="mt-4 text-xl font-black tracking-[-0.03em] text-slate-100 sm:mt-6 sm:text-3xl">{step.title}</h3>
+                      <p className="mt-3 max-w-lg text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">{step.description}</p>
                     </div>
                   </div>
                 </motion.article>
@@ -105,7 +105,7 @@ export default function HowItWorksSection() {
 
             <Link
               href="/como-funciona"
-              className="group inline-flex items-center gap-2 px-2 pt-4 text-sm font-bold text-sky-200 transition-colors hover:text-white"
+              className="group inline-flex min-h-11 touch-manipulation items-center gap-2 px-2 pt-3 text-sm font-bold text-sky-200 transition-colors active:text-white sm:pt-4 sm:hover:text-white"
             >
               Ver el proceso completo
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
