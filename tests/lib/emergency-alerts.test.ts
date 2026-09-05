@@ -438,6 +438,26 @@ describe("emergency alerts helpers", () => {
     expect(await recoverExpiredEmergencyNotificationLeases(mockPrisma)).toEqual({ recovered: 0, deadLettered: 1 });
   });
 
+  it("NEW-04: an ambiguous SMS timeout is dead-lettered, not retried", async () => {
+    process.env.TWILIO_ACCOUNT_SID = "test-sid";
+    process.env.TWILIO_AUTH_TOKEN = "test-token";
+    process.env.TWILIO_PHONE_NUMBER = "+50760000001";
+    mockPrisma.notification.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{
+      id: "sms-ambiguous", eventId: "scan-1", channel: "sms", recipient: "+50760000000", status: "pending",
+      idempotencyKey: "sms-ambiguous", attempts: 0, createdAt: new Date(), availableAt: new Date(0), providerResponse: null,
+    }]);
+    mockPrisma.notification.updateMany.mockResolvedValue({ count: 1 });
+    const profile = baseProfile();
+    profile.contacts[0].notifyEmail = false;
+    profile.contacts[0].notifySms = true;
+    mockPrisma.scanEvent.findUnique.mockResolvedValue(baseScan({ chip: { status: "activated", shortCode: "SC-123", assignedProfile: profile } }));
+    mockSendEmergencyNotification.mockResolvedValue({ success: false, providerResponse: "network timeout", retrySafe: false });
+    const result = await processPendingEmergencyNotifications(mockPrisma);
+    expect(result.deadLettered).toBe(1);
+    expect(result.retrying).toBe(0);
+    expect(mockPrisma.notification.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "dead_letter", lastErrorCode: "AMBIGUOUS_PROVIDER_RESULT" }) }));
+  });
+
   it.each(["revoked", "contact removed", "profile reassigned", "chip deactivated"])("NEW-03: does not send after %s", async (scenario) => {
     process.env.RESEND_API_KEY = "resend-test";
     mockPrisma.notification.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{

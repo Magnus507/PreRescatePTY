@@ -1,21 +1,57 @@
 "use client";
 
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Battery,
+  Check,
+  Eye,
+  FileText,
+  Globe2,
+  LockKeyhole,
+  MessageCircle,
+  QrCode,
+  ScanLine,
+  ShieldCheck,
+  ShoppingBag,
+  Smartphone,
+  Wifi,
+} from "lucide-react";
 import PublicNavbar from "@/components/public/PublicNavbar";
 import PublicFooter from "@/components/public/PublicFooter";
 import PageHero from "@/components/public/PageHero";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { ShoppingCart, Smartphone, FileText, Scan, QrCode, Wifi, MessageCircle } from "lucide-react";
+import { GlowCard } from "@/components/ui/spotlight-card";
 
 const steps = [
-  { num: "01", icon: ShoppingCart, title: "Adquiere tu identificación", desc: "Recibe tu sticker con chip NFC y código QR." },
-  { num: "02", icon: Smartphone, title: "Activa tu chip", desc: "Ingresa el código de activación y vincúlalo a tu cuenta." },
-  { num: "03", icon: FileText, title: "Configura tu perfil", desc: "Completa tu información médica y decide qué campos serán visibles." },
-  { num: "04", icon: Scan, title: "Escanea y consulta", desc: "Quien escanee podrá ver la información autorizada y contactar manualmente a tus familiares." },
+  {
+    num: "01",
+    icon: ShoppingBag,
+    title: "Obtén tu PreRescue ID",
+    desc: "Recibes una identificación física con chip NFC y código QR vinculable a tu cuenta.",
+  },
+  {
+    num: "02",
+    icon: Smartphone,
+    title: "Activa el chip",
+    desc: "Ingresas el código de activación y vinculas el dispositivo a tu cuenta de PreRescue ID.",
+  },
+  {
+    num: "03",
+    icon: FileText,
+    title: "Configura tu perfil",
+    desc: "Completa tu información médica y decides qué datos estarán disponibles en la vista pública.",
+  },
+  {
+    num: "04",
+    icon: ScanLine,
+    title: "Escanea y consulta",
+    desc: "Un teléfono compatible abre el perfil desde el navegador y muestra la información configurada.",
+  },
 ];
 
 const responderFields = [
-  "Nombre",
+  "Nombre visible",
   "Tipo de sangre",
   "Alergias",
   "Condiciones médicas",
@@ -27,228 +63,146 @@ const responderFields = [
 
 export default function ComoFuncionaContent() {
   return (
-    <div className="min-h-screen font-sans antialiased">
+    <div className="min-h-screen bg-[#02050a] font-sans text-white antialiased">
       <PublicNavbar />
       <main id="main-content">
         <PageHero
           eyebrow="Cómo funciona"
-          title="Tu identificación médica, lista en cuatro pasos"
-          description="Configura la información que deseas mostrar y permite que cualquier persona consulte tu perfil al escanear el QR o el chip NFC."
+          title="Del identificador físico al perfil digital"
+          titleAccent="en cuatro pasos."
+          description="Configura la información que deseas mostrar y permite que una persona consulte tu perfil mediante QR o NFC desde un navegador compatible."
+          primaryCTA={{ href: "/comprar", label: "Ver planes" }}
           secondaryCTA={{ href: "/demo", label: "Ver demo" }}
         />
 
-        {/* Clarification */}
-        <section className="py-6 bg-[#05070D]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <p className="text-sm text-[#6B7280] text-center">
-              El dispositivo que realiza el escaneo necesita conexión a internet para cargar el perfil. El sticker no necesita batería ni conexión.
-            </p>
+        <section className="border-y border-white/[0.055] bg-[#03060c] py-3.5 sm:py-5">
+          <div className="mx-auto flex max-w-5xl snap-x snap-mandatory items-center gap-2.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:justify-center sm:gap-x-7 sm:gap-y-3 sm:px-6">
+            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><Wifi className="h-3.5 w-3.5 text-sky-300" /> El teléfono necesita internet</span>
+            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><Battery className="h-3.5 w-3.5 text-emerald-300" /> El sticker no usa batería</span>
+            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><Globe2 className="h-3.5 w-3.5 text-indigo-300" /> Consulta desde navegador</span>
           </div>
         </section>
 
-        {/* Four Steps */}
-        <section className="py-24 md:py-32 bg-[#F4F6F8] text-[#1A1D23]">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {steps.map((step, i) => (
-                <motion.div
-                  key={step.num}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="relative bg-white rounded-3xl p-8 border border-slate-200 shadow-sm"
-                >
-                  <div className="text-5xl font-black text-slate-100 mb-4">{step.num}</div>
-                  <div className="h-12 w-12 rounded-xl bg-[#DA1A21]/10 flex items-center justify-center mb-4">
-                    <step.icon className="h-6 w-6 text-[#DA1A21]" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">{step.title}</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{step.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* QR and NFC */}
-        <section className="py-24 md:py-32 bg-[#05070D]">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.6 }}
-                className="glass-card-w2a rounded-3xl p-8 md:p-10"
-              >
-                <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
-                  <QrCode className="h-6 w-6 text-[#10B981]" />
-                </div>
-                <h3 className="text-xl font-bold text-[#EFF4FF] mb-3">Código QR</h3>
-                <p className="text-sm text-[#A0AEC0] leading-relaxed mb-4">
-                  Cualquier celular con cámara puede escanear el código QR. La cámara abre automáticamente el perfil de emergencia en el navegador.
-                </p>
-                <p className="text-xs text-[#6B7280]">
-                  No requiere instalar una aplicación.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="glass-card-w2a rounded-3xl p-8 md:p-10"
-              >
-                <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
-                  <Wifi className="h-6 w-6 text-[#10B981]" />
-                </div>
-                <h3 className="text-xl font-bold text-[#EFF4FF] mb-3">Chip NFC</h3>
-                <p className="text-sm text-[#A0AEC0] leading-relaxed mb-4">
-                  Los celulares con NFC pueden leer el chip al acercarlo. El perfil se abre automáticamente, sin necesidad de abrir la cámara.
-                </p>
-                <p className="text-xs text-[#6B7280]">
-                  El sticker no necesita batería ni conexión.
-                </p>
-              </motion.div>
-            </div>
-          </div>
-        </section>
-
-        {/* What the responder sees */}
-        <section className="py-24 md:py-32 bg-[#F4F6F8] text-[#1A1D23]">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] mb-4">
-                Lo que ve el respondedor
-              </h2>
-              <p className="text-lg text-[#6B7280] font-medium max-w-2xl mx-auto">
-                Solo se muestra la información que tú autorizas.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {responderFields.map((field, i) => (
-                <motion.div
-                  key={field}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.5, delay: i * 0.05 }}
-                  className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm"
-                >
-                  <p className="text-sm font-bold text-slate-900">{field}</p>
-                </motion.div>
-              ))}
-            </div>
-
-            <p className="text-center text-sm text-[#6B7280] mt-8">
-              Tu correo electrónico y fecha de nacimiento completa no se muestran públicamente.
-            </p>
-          </div>
-        </section>
-
-        {/* Manual contact */}
-        <section className="py-24 md:py-32 bg-[#05070D]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <div className="glass-card-w2a rounded-3xl p-8 md:p-10">
-              <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
-                <MessageCircle className="h-6 w-6 text-[#10B981]" />
+        <section className="relative overflow-hidden bg-[#03060c] py-20 md:py-32">
+          <div aria-hidden="true" className="absolute inset-0" style={{ background: "radial-gradient(48% 54% at 82% 28%, rgba(37,99,235,.10), transparent 64%)" }} />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 grid items-end gap-5 sm:mb-14 sm:gap-7 lg:grid-cols-[1fr_.7fr]">
+              <div>
+                <p className="mb-4 text-[9px] font-black uppercase tracking-[0.18em] text-sky-300/80 sm:text-[10px] sm:tracking-[0.2em]">Preparación</p>
+                <h2 className="max-w-[11ch] text-[clamp(2.35rem,10vw,3.1rem)] font-black leading-[0.94] tracking-[-0.045em] text-slate-50 sm:text-[clamp(2.7rem,5vw,5rem)] sm:leading-[0.91]">Configurarlo debe ser sencillo.</h2>
               </div>
-              <h2 className="text-[clamp(1.5rem,3vw,2rem)] font-black tracking-tighter leading-[0.95] text-[#EFF4FF] mb-4">
-                Contacto manual
-              </h2>
-              <p className="text-lg text-[#A0AEC0] font-medium leading-relaxed mb-6">
-                El perfil de emergencia permite contactar manualmente a los familiares por WhatsApp o llamada. El respondedor debe iniciar la acción.
-              </p>
-              <p className="text-sm text-[#6B7280]">
-                La ubicación aproximada puede incluirse solo si el respondedor otorga permiso de ubicación en su navegador. No se envía información automáticamente al escanear.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Service expiration */}
-        <section className="py-24 md:py-32 bg-[#05070D]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <div className="glass-card-w2a rounded-3xl p-8 md:p-10">
-              <h2 className="text-[clamp(1.5rem,3vw,2rem)] font-black tracking-tighter leading-[0.95] text-[#EFF4FF] mb-4">
-                Vigencia del servicio
-              </h2>
-              <p className="text-lg text-[#A0AEC0] font-medium leading-relaxed">
-                El servicio tiene una vigencia de 2 años desde la activación. Antes de finalizar este período se informarán las opciones disponibles para continuar el servicio. Actualmente no existe renovación automática.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Privacy */}
-        <section className="py-24 md:py-32 bg-[#F4F6F8] text-[#1A1D23]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] mb-4">
-                Tu información. Tus decisiones.
-              </h2>
-              <p className="text-lg text-[#6B7280] font-medium max-w-2xl mx-auto">
-                Diseñamos el servicio tomando como referencia la Ley 81 de Protección de Datos Personales de Panamá.
-              </p>
+              <p className="text-[15px] font-medium leading-6 text-slate-400 sm:text-lg sm:leading-7">El objetivo es reducir fricción antes de una emergencia y mantener la consulta lo más directa posible.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {[
-                { title: "Visibilidad configurable", desc: "Decides qué información se muestra al escanear tu chip." },
-                { title: "Datos cifrados", desc: "Información sensible protegida con cifrado." },
-                { title: "Datos nunca expuestos", desc: "Tu correo y fecha de nacimiento no se muestran públicamente." },
-                { title: "Eliminación disponible", desc: "Puedes solicitar la eliminación de tu cuenta en cualquier momento." },
-              ].map((item, i) => (
-                <motion.div
-                  key={item.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm"
-                >
-                  <h3 className="text-base font-bold text-slate-900 mb-2">{item.title}</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+              {steps.map((step, index) => (
+                <motion.div key={step.num} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.42, delay: index * 0.04 }}>
+                  <GlowCard customSize className="h-full p-5 sm:min-h-[290px] sm:p-6" glowColor={index === 3 ? "red" : index === 2 ? "green" : "blue"}>
+                    <div className="flex h-full flex-col">
+                      <div className="flex items-center justify-between">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] sm:h-11 sm:w-11 sm:rounded-2xl"><step.icon className="h-[18px] w-[18px] text-sky-300 sm:h-5 sm:w-5" /></span>
+                        <span className="text-[9px] font-black tracking-[0.16em] text-white/20 sm:text-[10px] sm:tracking-[0.2em]">{step.num}</span>
+                      </div>
+                      <div className="pt-5 sm:mt-auto sm:pt-12">
+                        <h3 className="text-base font-extrabold tracking-[-0.025em] text-slate-100 sm:text-lg">{step.title}</h3>
+                        <p className="mt-2.5 text-sm leading-6 text-slate-500 sm:mt-3">{step.desc}</p>
+                      </div>
+                    </div>
+                  </GlowCard>
                 </motion.div>
               ))}
             </div>
+          </div>
+        </section>
 
-            <div className="text-center mt-10">
-              <Link
-                href="/legal/privacidad"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold hover:bg-slate-50 transition-all"
-              >
-                Conocer nuestra política de privacidad
-              </Link>
+        <section className="relative overflow-hidden bg-[#050914] py-20 md:py-32">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-3 sm:gap-5 lg:grid-cols-2">
+              <motion.div initial={{ opacity: 0, x: -14 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-70px" }} className="relative overflow-hidden rounded-[1.5rem] border border-white/[0.07] bg-white/[0.028] p-5 sm:rounded-[2rem] sm:p-9">
+                <div aria-hidden="true" className="absolute right-0 top-0 h-40 w-40 rounded-full bg-sky-400/[0.08] blur-[65px] sm:h-56 sm:w-56 sm:bg-sky-400/10 sm:blur-[80px]" />
+                <div className="relative">
+                  <div className="mb-5 flex items-center justify-between sm:mb-8">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-300/15 bg-sky-300/[0.06] sm:h-12 sm:w-12 sm:rounded-2xl"><QrCode className="h-5 w-5 text-sky-300 sm:h-6 sm:w-6" /></span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600 sm:text-[9px] sm:tracking-[0.18em]">Método 01</span>
+                  </div>
+                  <h3 className="text-[1.7rem] font-black tracking-[-0.04em] text-slate-50 sm:text-3xl">Código QR</h3>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">La cámara del teléfono puede leer el QR y abrir el perfil de emergencia en el navegador. No requiere instalar una aplicación.</p>
+                  <div className="mt-5 flex items-center gap-2 text-xs font-bold text-emerald-300 sm:mt-8"><Check className="h-4 w-4" /> Cámara + navegador</div>
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, x: 14 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-70px" }} className="relative overflow-hidden rounded-[1.5rem] border border-white/[0.07] bg-white/[0.028] p-5 sm:rounded-[2rem] sm:p-9">
+                <div aria-hidden="true" className="absolute right-0 top-0 h-40 w-40 rounded-full bg-indigo-400/[0.08] blur-[65px] sm:h-56 sm:w-56 sm:bg-indigo-400/10 sm:blur-[80px]" />
+                <div className="relative">
+                  <div className="mb-5 flex items-center justify-between sm:mb-8">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-300/15 bg-indigo-300/[0.06] sm:h-12 sm:w-12 sm:rounded-2xl"><Smartphone className="h-5 w-5 text-indigo-300 sm:h-6 sm:w-6" /></span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600 sm:text-[9px] sm:tracking-[0.18em]">Método 02</span>
+                  </div>
+                  <h3 className="text-[1.7rem] font-black tracking-[-0.04em] text-slate-50 sm:text-3xl">Chip NFC</h3>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">Un teléfono compatible con NFC puede leer el chip al acercarlo. El sticker no necesita batería ni conexión propia.</p>
+                  <div className="mt-5 flex items-center gap-2 text-xs font-bold text-emerald-300 sm:mt-8"><Check className="h-4 w-4" /> NFC pasivo</div>
+                </div>
+              </motion.div>
             </div>
           </div>
         </section>
 
-        {/* Final CTA */}
-        <section className="py-24 md:py-32 bg-[#DA1A21]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-[clamp(2rem,5vw,3.5rem)] font-black tracking-tighter leading-[0.95] text-white mb-6">
-              Configura tu perfil médico de emergencia
-            </h2>
-            <p className="text-lg text-white/80 font-medium leading-relaxed max-w-2xl mx-auto mb-10">
-              Crea tu perfil y elige qué información estará disponible al escanear tu identificación.
-            </p>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4">
-              <Link
-                href="/comprar"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-[#DA1A21] font-bold text-lg hover:bg-slate-100 transition-all shadow-xl"
-              >
-                Conocer los planes
-              </Link>
-              <Link
-                href="/demo"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border-2 border-white/30 bg-white/10 text-white font-bold text-lg hover:bg-white/20 transition-all backdrop-blur-sm"
-              >
-                Ver demo
-              </Link>
+        <section className="relative overflow-hidden bg-[#03060c] py-20 md:py-32">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-9 sm:gap-12 lg:grid-cols-[.75fr_1.25fr] lg:items-start">
+              <div className="lg:sticky lg:top-28">
+                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[0.05] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-200 sm:text-[10px] sm:tracking-[0.18em]"><Eye className="h-3.5 w-3.5" /> Vista pública</div>
+                <h2 className="max-w-[9ch] text-[clamp(2.35rem,10vw,3.1rem)] font-black leading-[0.94] tracking-[-0.045em] text-slate-50 sm:text-[clamp(2.7rem,5vw,4.9rem)] sm:leading-[0.91]">Lo que puede ver quien escanea.</h2>
+                <p className="mt-5 max-w-md text-[15px] font-medium leading-6 text-slate-400 sm:mt-6 sm:text-base sm:leading-7">El perfil puede mostrar información médica y contactos según la configuración del usuario.</p>
+              </div>
+
+              <div>
+                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
+                  {responderFields.map((field, index) => (
+                    <motion.div key={field} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.38, delay: index * 0.035 }} className="flex min-h-[52px] items-center justify-between rounded-[1.05rem] border border-white/[0.065] bg-white/[0.026] px-4 py-3 sm:rounded-2xl sm:px-5 sm:py-4">
+                      <span className="text-[13px] font-bold text-slate-300 sm:text-sm">{field}</span>
+                      <Eye className="h-4 w-4 shrink-0 text-sky-300/60" />
+                    </motion.div>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-start gap-3 rounded-[1.05rem] border border-white/[0.06] bg-black/20 p-4 sm:mt-4 sm:rounded-2xl sm:p-5">
+                  <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <p className="text-xs font-medium leading-5 text-slate-500">El correo de la cuenta y la fecha completa de nacimiento no forman parte de la vista pública del perfil.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#050914] py-20 md:py-32">
+          <div className="mx-auto grid max-w-7xl gap-3 px-4 sm:gap-5 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div className="rounded-[1.5rem] border border-white/[0.07] bg-white/[0.028] p-5 sm:rounded-[2rem] sm:p-9">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] sm:h-12 sm:w-12 sm:rounded-2xl"><MessageCircle className="h-5 w-5 text-sky-300" /></div>
+              <h2 className="mt-5 text-[1.7rem] font-black tracking-[-0.04em] text-slate-50 sm:mt-8 sm:text-3xl">Contacto manual</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">El perfil permite iniciar una llamada o abrir WhatsApp cuando esos contactos están disponibles. La persona que consulta debe iniciar la acción.</p>
+              <p className="mt-4 text-xs leading-5 text-slate-600 sm:mt-5">La ubicación aproximada solo puede utilizarse cuando la persona que consulta concede el permiso correspondiente en su navegador.</p>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-white/[0.07] bg-white/[0.028] p-5 sm:rounded-[2rem] sm:p-9">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] sm:h-12 sm:w-12 sm:rounded-2xl"><ShieldCheck className="h-5 w-5 text-emerald-300" /></div>
+              <h2 className="mt-5 text-[1.7rem] font-black tracking-[-0.04em] text-slate-50 sm:mt-8 sm:text-3xl">Vigencia del servicio</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">El servicio tiene una vigencia de 2 años desde la activación. Antes de finalizar ese período se informan las opciones disponibles para continuar el servicio.</p>
+              <p className="mt-4 text-xs leading-5 text-slate-600 sm:mt-5">Actualmente no existe renovación automática.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden bg-[#03060c] px-4 py-16 sm:px-6 sm:py-20 md:py-28 lg:px-8">
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[1.7rem] border border-white/[0.09] bg-[#080c14] px-5 py-11 text-center shadow-[0_42px_110px_-65px_rgba(218,26,33,.62)] sm:rounded-[2.4rem] sm:px-10 sm:py-14 md:py-20 md:shadow-[0_50px_130px_-65px_rgba(218,26,33,.7)]">
+            <div aria-hidden="true" className="absolute inset-0" style={{ background: "radial-gradient(55% 100% at 50% 110%, rgba(218,26,33,.28), transparent 64%), radial-gradient(42% 70% at 80% 10%, rgba(37,99,235,.12), transparent 68%)" }} />
+            <div className="relative mx-auto max-w-4xl">
+              <p className="mb-4 text-[9px] font-extrabold uppercase tracking-[0.18em] text-rose-300/80 sm:mb-5 sm:text-[10px] sm:tracking-[0.22em]">PreRescue ID</p>
+              <h2 className="text-[clamp(2.4rem,11vw,3.2rem)] font-black leading-[0.92] tracking-[-0.05em] text-slate-50 sm:text-[clamp(2.8rem,6vw,5.6rem)] sm:leading-[0.88]">Configúralo antes de necesitarlo.</h2>
+              <p className="mx-auto mt-5 max-w-2xl text-[15px] font-medium leading-6 text-slate-400 sm:mt-7 sm:text-lg sm:leading-8">Crea tu perfil, decide qué información será visible y conecta tu identificación física con QR + NFC.</p>
+              <div className="mt-7 flex flex-col justify-center gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
+                <Link href="/comprar" className="group inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-6 text-sm font-extrabold text-white transition-all active:scale-[0.985] sm:min-h-14 sm:px-7 sm:hover:-translate-y-0.5 sm:hover:bg-[#ef2d35]">Ver planes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Link>
+                <Link href="/demo" className="inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl border border-white/[0.1] bg-white/[0.045] px-6 text-sm font-bold text-slate-100 transition-all active:bg-white/[0.08] sm:min-h-14 sm:px-7 sm:hover:border-sky-300/25 sm:hover:bg-white/[0.08]"><ScanLine className="h-4 w-4 text-sky-300" /> Ver demo</Link>
+              </div>
             </div>
           </div>
         </section>

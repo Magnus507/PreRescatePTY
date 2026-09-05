@@ -209,6 +209,16 @@ describe('GET /api/image-proxy', () => {
     expect(json.error).toMatch(/autorizado/i)
   })
 
+  it('NEW-09: printing staff cannot download another customer payment proof', async () => {
+    const { GET } = await importRoute()
+    setupDefaultMocks()
+    const { getServerSession } = await import('next-auth')
+    vi.mocked(getServerSession).mockResolvedValue(createMockSession({ id: TEST_USER_ID, role: 'imprenta', adminRole: 'imprenta' }) as never)
+    const res = await GET(createGetRequest({ bucket: 'payment-proofs', path: 'payments/other-user/receipt.webp' }))
+    expect(res.status).toBe(403)
+    expect(mockDownload).not.toHaveBeenCalled()
+  })
+
   // ─── Rate limit ─────────────────────────────────────────────────────────
 
   it('10. returns 429 when rate limiting denies the request', async () => {

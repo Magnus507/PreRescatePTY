@@ -1,69 +1,201 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
 import Link from "next/link";
-import { ShoppingCart, Smartphone, FileText, Scan } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, CheckCircle2, FileText, QrCode, ScanLine, ShoppingBag, Smartphone, UserRoundCheck } from "lucide-react";
 
 const steps = [
-  { num: "01", icon: ShoppingCart, title: "Adquiere tu identificación", desc: "Recibe tu sticker con chip NFC y código QR." },
-  { num: "02", icon: Smartphone, title: "Activa tu chip", desc: "Ingresa el código de activación y vincúlalo a tu cuenta." },
-  { num: "03", icon: FileText, title: "Configura tu perfil", desc: "Completa tu información médica y configura la visibilidad disponible para los datos del perfil." },
-  { num: "04", icon: Scan, title: "Escanea y consulta", desc: "Quien escanee podrá consultar los datos configurados para el perfil público y utilizar las opciones de contacto disponibles." },
+  {
+    num: "01",
+    icon: ShoppingBag,
+    title: "Obtén tu PreRescue ID",
+    description: "Recibes una identificación física con chip NFC y código QR vinculable a tu cuenta.",
+    status: "Identificación lista para activar",
+  },
+  {
+    num: "02",
+    icon: Smartphone,
+    title: "Activa el chip",
+    description: "Ingresas el código de activación y vinculas el dispositivo a tu cuenta de PreRescue ID.",
+    status: "Chip vinculado a tu cuenta",
+  },
+  {
+    num: "03",
+    icon: FileText,
+    title: "Configura tu perfil",
+    description: "Completa tu información médica y decide qué datos estarán disponibles en la vista pública.",
+    status: "Perfil médico configurado",
+  },
+  {
+    num: "04",
+    icon: ScanLine,
+    title: "Escanea y consulta",
+    description: "Un teléfono compatible abre el perfil desde el navegador para consultar la información configurada y los contactos disponibles.",
+    status: "Perfil de emergencia disponible",
+  },
 ];
 
 export default function HowItWorksSection() {
+  const [activeStep, setActiveStep] = useState(0);
+  const active = steps[activeStep];
+
   return (
-    <section className="relative py-24 md:py-32 bg-[#F4F6F8] text-[#1A1D23] overflow-hidden">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section className="relative overflow-hidden bg-[#050914] py-20 text-white md:py-32">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-70"
+        style={{
+          background:
+            "radial-gradient(55% 55% at 80% 40%, rgba(37,99,235,.11), transparent 62%), radial-gradient(40% 50% at 10% 72%, rgba(6,182,212,.07), transparent 64%)",
+        }}
+      />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          viewport={{ once: true, margin: "-70px" }}
+          transition={{ duration: 0.5 }}
+          className="mb-10 max-w-3xl sm:mb-14 lg:mb-8"
         >
-          <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] mb-4">
-            Cómo funciona
+          <p className="mb-4 text-[10px] font-extrabold uppercase tracking-[0.18em] text-sky-300/80 sm:mb-5 sm:text-xs sm:tracking-[0.2em]">Cómo funciona</p>
+          <h2 className="text-[clamp(2.35rem,10vw,3.1rem)] font-black leading-[0.94] tracking-[-0.045em] text-slate-50 sm:text-[clamp(2.7rem,5vw,5.2rem)] sm:leading-[0.92]">
+            Cuatro pasos. Cero complicaciones.
           </h2>
-          <p className="text-lg text-[#6B7280] font-medium max-w-2xl mx-auto">
-            Cuatro pasos simples para tener tu identificación médica de emergencia lista.
+          <p className="mt-5 max-w-2xl text-[15px] font-medium leading-6 text-slate-400 sm:mt-6 sm:text-lg sm:leading-7">
+            Diseñado para que la preparación sea sencilla y la consulta sea directa cuando realmente importa.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {steps.map((step, i) => (
-            <motion.div
-              key={step.num}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="relative bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-md transition-all"
-            >
-              <div className="text-5xl font-black text-slate-200 mb-4">{step.num}</div>
-              <div className="h-12 w-12 rounded-xl bg-[#DA1A21]/10 flex items-center justify-center mb-4">
-                <step.icon className="h-6 w-6 text-[#DA1A21]" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">{step.title}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{step.desc}</p>
-            </motion.div>
-          ))}
-        </div>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,.92fr)_minmax(430px,1.08fr)] lg:gap-16">
+          <div className="space-y-3 sm:space-y-4 lg:py-24">
+            {steps.map((step, index) => {
+              const isActive = activeStep === index;
+              return (
+                <motion.article
+                  key={step.num}
+                  onViewportEnter={() => setActiveStep(index)}
+                  viewport={{ amount: 0.5, margin: "-12% 0px -30% 0px" }}
+                  initial={{ opacity: 0, y: 18 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.42 }}
+                  className={`relative overflow-hidden rounded-[1.45rem] border p-5 transition-all duration-500 sm:min-h-[250px] sm:rounded-[1.8rem] sm:p-8 lg:min-h-[310px] ${
+                    isActive
+                      ? "border-sky-300/20 bg-sky-300/[0.055] shadow-[0_22px_80px_-45px_rgba(56,189,248,.7)]"
+                      : "border-white/[0.07] bg-white/[0.025]"
+                  }`}
+                >
+                  <div aria-hidden="true" className={`absolute inset-y-6 left-0 w-px bg-gradient-to-b from-transparent sm:inset-y-8 ${isActive ? "via-sky-300" : "via-white/10"} to-transparent`} />
+                  <div className="flex items-start gap-4 sm:gap-6">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors duration-500 sm:h-12 sm:w-12 sm:rounded-2xl ${isActive ? "border-sky-300/20 bg-sky-300/10" : "border-white/[0.08] bg-white/[0.04]"}`}>
+                      <step.icon className={`h-[18px] w-[18px] sm:h-5 sm:w-5 ${isActive ? "text-sky-300" : "text-slate-500"}`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className={`text-[9px] font-black uppercase tracking-[0.18em] sm:text-[10px] sm:tracking-[0.22em] ${isActive ? "text-sky-300/80" : "text-slate-600"}`}>Paso {step.num}</span>
+                        <span className={`h-2 w-2 rounded-full ${isActive ? "bg-sky-300 shadow-[0_0_18px_rgba(125,211,252,.9)]" : "bg-white/10"}`} />
+                      </div>
+                      <h3 className="mt-4 text-xl font-black tracking-[-0.03em] text-slate-100 sm:mt-6 sm:text-3xl">{step.title}</h3>
+                      <p className="mt-3 max-w-lg text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">{step.description}</p>
+                    </div>
+                  </div>
+                </motion.article>
+              );
+            })}
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.4 }}
-          className="text-center mt-12"
-        >
-          <Link
-            href="/como-funciona"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-all"
-          >
-            Ver cómo funciona
-          </Link>
-        </motion.div>
+            <Link
+              href="/como-funciona"
+              className="group inline-flex min-h-11 touch-manipulation items-center gap-2 px-2 pt-3 text-sm font-bold text-sky-200 transition-colors active:text-white sm:pt-4 sm:hover:text-white"
+            >
+              Ver el proceso completo
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+
+          <div className="relative hidden lg:block">
+            <div className="sticky top-28 flex min-h-[650px] items-center justify-center">
+              <div aria-hidden="true" className="absolute h-[70%] w-[70%] rounded-full bg-blue-600/15 blur-[110px]" />
+              <div className="relative w-full max-w-[540px] rounded-[2.4rem] border border-white/[0.08] bg-white/[0.025] p-8 shadow-[0_45px_120px_-55px_rgba(37,99,235,.55)] backdrop-blur-2xl">
+                <div className="mb-7 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-600">Experiencia de uso</p>
+                    <p className="mt-1 text-sm font-bold text-slate-300">PreRescue ID / Emergency Flow</p>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full border border-emerald-400/10 bg-emerald-400/[0.055] px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    preparado
+                  </div>
+                </div>
+
+                <div className="mx-auto w-[78%] overflow-hidden rounded-[2.3rem] border border-white/[0.1] bg-[#070b12] p-2 shadow-2xl">
+                  <div className="min-h-[510px] rounded-[1.9rem] border border-white/[0.055] bg-gradient-to-b from-[#0d1726] to-[#070a10] p-5">
+                    <div className="mx-auto mb-7 h-1.5 w-16 rounded-full bg-white/10" />
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={active.num}
+                        initial={{ opacity: 0, y: 16, filter: "blur(8px)" }}
+                        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                        exit={{ opacity: 0, y: -12, filter: "blur(6px)" }}
+                        transition={{ duration: 0.28 }}
+                      >
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-sky-300/15 bg-sky-300/[0.07]">
+                          <active.icon className="h-6 w-6 text-sky-300" />
+                        </div>
+                        <p className="mt-7 text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky-300/70">{active.num} / 04</p>
+                        <h4 className="mt-3 text-3xl font-black tracking-[-0.04em] text-white">{active.title}</h4>
+                        <p className="mt-4 text-sm leading-6 text-slate-400">{active.description}</p>
+
+                        <div className="mt-8 space-y-3">
+                          {activeStep === 0 && (
+                            <>
+                              <div className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-white/[0.035] p-4">
+                                <div className="flex items-center gap-3"><QrCode className="h-5 w-5 text-sky-300" /><span className="text-sm font-bold text-slate-200">QR impreso</span></div>
+                                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                              </div>
+                              <div className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-white/[0.035] p-4">
+                                <div className="flex items-center gap-3"><Smartphone className="h-5 w-5 text-indigo-300" /><span className="text-sm font-bold text-slate-200">Chip NFC</span></div>
+                                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                              </div>
+                            </>
+                          )}
+                          {activeStep === 1 && (
+                            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.035] p-4">
+                              <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500">Código de activación</p>
+                              <div className="mt-3 flex gap-2">
+                                {["P", "R", "8", "2", "K", "Q"].map((char, i) => <span key={`${char}-${i}`} className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-black/20 text-sm font-black text-white">{char}</span>)}
+                              </div>
+                            </div>
+                          )}
+                          {activeStep === 2 && (
+                            <>
+                              {["Datos médicos", "Contactos de emergencia", "Visibilidad pública"].map((label, i) => (
+                                <div key={label} className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-white/[0.035] p-4">
+                                  <span className="text-sm font-bold text-slate-200">{label}</span>
+                                  <span className={`h-5 w-9 rounded-full p-0.5 ${i === 2 ? "bg-sky-400/60" : "bg-emerald-400/60"}`}><span className="block h-4 w-4 translate-x-4 rounded-full bg-white" /></span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          {activeStep === 3 && (
+                            <div className="rounded-2xl border border-[#DA1A21]/15 bg-[#DA1A21]/[0.055] p-5">
+                              <div className="flex items-center gap-3"><UserRoundCheck className="h-5 w-5 text-rose-300" /><span className="text-sm font-extrabold text-slate-100">Perfil de emergencia encontrado</span></div>
+                              <p className="mt-3 text-xs leading-5 text-slate-400">La información visible depende de la configuración del perfil.</p>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+
+                    <div className="mt-8 flex items-center gap-3 border-t border-white/[0.06] pt-5 text-xs font-semibold text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {active.status}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
