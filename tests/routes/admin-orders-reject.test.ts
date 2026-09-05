@@ -200,7 +200,7 @@ describe('POST /api/admin/orders/[id]/reject', () => {
 
     expect(mockPrisma.order.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: TEST_ORDER_ID },
+        where: expect.objectContaining({ id: TEST_ORDER_ID, paymentStatus: 'under_review', adminReviewStatus: 'pending' }),
         data: expect.objectContaining({
           paymentStatus: 'rejected',
           orderStatus: 'cancelled',

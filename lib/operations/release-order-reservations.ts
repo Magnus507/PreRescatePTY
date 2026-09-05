@@ -113,7 +113,17 @@ export async function releaseEligibleOrderReservations(
   if (!dryRun && releasedUnits.length > 0) {
     for (const unit of releasedUnits) {
       await prisma.operationFinishedGoodUnit.update({
-        where: { id: unit.id },
+        // A concurrent dispatch/activation must make this write fail, rather
+        // than return a committed physical unit to saleable inventory.
+        where: {
+          id: unit.id,
+          reservedOrderId: orderId,
+          status: "reserved",
+          dispatchedAt: null,
+          deliveredAt: null,
+          activatedAt: null,
+          activationStatus: { not: "activated" },
+        },
         data: {
           status: "available",
           reservedOrderId: null,

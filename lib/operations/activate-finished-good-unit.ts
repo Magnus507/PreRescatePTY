@@ -14,10 +14,10 @@ type ActivateFinishedGoodUnitResult =
   | { ok: true; unitId: string; createdEvent: boolean }
   | { ok: false; reason: "UNIT_NOT_FOUND" | "UNIT_NOT_ELIGIBLE" };
 
-type FinishedGoodUnitActivationClient = Pick<
-  Prisma.TransactionClient,
-  "operationFinishedGoodUnit" | "operationFinishedGoodUnitEvent"
->;
+type FinishedGoodUnitActivationClient = {
+  operationFinishedGoodUnit: Pick<Prisma.TransactionClient["operationFinishedGoodUnit"], "findUnique" | "findFirst" | "updateMany">;
+  operationFinishedGoodUnitEvent: Pick<Prisma.TransactionClient["operationFinishedGoodUnitEvent"], "create">;
+};
 
 async function findUnitByActivationKey(
   client: FinishedGoodUnitActivationClient,
@@ -79,7 +79,7 @@ export async function markFinishedGoodUnitActivatedWithClient(
     }
   }
 
-  if (["cancelled", "discarded"].includes(unit.status)) {
+  if (unit.activationStatus === "activated" || !["dispatched", "delivered"].includes(unit.status)) {
     return { ok: false, reason: "UNIT_NOT_ELIGIBLE" };
   }
 

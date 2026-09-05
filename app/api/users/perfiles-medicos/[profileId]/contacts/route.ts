@@ -80,8 +80,19 @@ export async function POST(
     return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
   }
 
+  return prisma.$transaction(async (tx) => {
   const raw = await req.json();
   const { contactId } = raw;
+  if (contactId !== undefined) {
+    if (typeof contactId !== "string" || !contactId || contactId.length > 128) {
+      return NextResponse.json({ error: "Contacto inválido" }, { status: 400 });
+    }
+    const ownedContact = await tx.contact.findFirst({
+      where: { id: contactId, user: { accountId: profile.accountId } },
+      select: { id: true },
+    });
+    if (!ownedContact) return NextResponse.json({ error: "Contacto no encontrado" }, { status: 404 });
+  }
 
   // 1. Validation Logic
   let validatedData: Record<string, unknown> = {};
@@ -94,7 +105,9 @@ export async function POST(
     validatedData = validation.data as Record<string, unknown>;
   } else {
     // Linking existing: optional overrides if provided in body, else use defaults
-    validatedData = raw;
+    const validation = contactSchema.partial().safeParse(raw);
+    if (!validation.success) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+    validatedData = validation.data;
   }
 
   // 2. Destructure the "9" key fields (standardized across the app)
@@ -121,12 +134,13 @@ export async function POST(
   };
 
   // Check 3 contact limit per profile (only for new links)
-  const currentCount = await prisma.profileContact.count({ where: { profileId } });
-  const existingLink = contactId ? await prisma.profileContact.findUnique({
+  await tx.profile.update({ where: { id: profileId }, data: { updatedAt: new Date() } });
+  const currentCount = await tx.profileContact.count({ where: { profileId } });
+  const existingLink = contactId ? await tx.profileContact.findUnique({
     where: { profileId_contactId: { profileId, contactId } }
   }) : null;
 
-  if (currentCount >= 3 && !existingLink && !contactId) {
+  if (currentCount >= 3 && !existingLink) {
      return NextResponse.json({ error: "Límite de 3 contactos alcanzado para este perfil." }, { status: 400 });
   }
 
@@ -134,7 +148,7 @@ export async function POST(
 
   if (!contactId) {
     // Create new global contact record
-    const newContact = await prisma.contact.create({
+    const newContact = await tx.contact.create({
       data: {
         userId,
         fullName: fullName || "Nuevo Contacto",
@@ -150,12 +164,12 @@ export async function POST(
   }
 
   // Fetch base contact info to preserve defaults
-  const contactBase = await prisma.contact.findUnique({
+  const contactBase = await tx.contact.findUnique({
     where: { id: finalContactId }
   });
 
   // 3. UPSERT: Connect Profile to Contact without deleting the Contact itself
-  const profileContact = await prisma.profileContact.upsert({
+  const profileContact = await tx.profileContact.upsert({
     where: { 
       profileId_contactId: { 
         profileId, 
@@ -198,7 +212,7 @@ export async function POST(
     active: profileContact.active,
   };
 
-  await prisma.auditLog.create({
+  await tx.auditLog.create({
     data: {
       actorUserId: userId,
       accountId: profile?.accountId || null,
@@ -210,6 +224,7 @@ export async function POST(
   });
 
   return NextResponse.json({ contact: mapped }, { status: 201 });
+  });
 }
 
 // DELETE: De-associate a guardian from a profile (preserve Contact in pool for other profiles)
@@ -283,14 +298,21 @@ export async function PATCH(
     notifySms, notifyEmail, notifyWhatsapp 
   } = validation.data;
 
+  return prisma.$transaction(async (tx) => {
+  const ownedContact = await tx.contact.findFirst({
+    where: { id, user: { accountId: profile.accountId }, profiles: { some: { profileId } } },
+    select: { id: true },
+  });
+  if (!ownedContact) return NextResponse.json({ error: "Contacto no encontrado" }, { status: 404 });
+
   // 1. Sync shared Contact info (Name, Phone, Email)
-  await prisma.contact.update({
+  await tx.contact.update({
     where: { id },
     data: { fullName, phone, email }
   });
 
   // 2. Sync profile-specific info (Ficha)
-  const pc = await prisma.profileContact.update({
+  const pc = await tx.profileContact.update({
     where: { 
       profileId_contactId: {
         profileId,
@@ -323,7 +345,7 @@ export async function PATCH(
     active: pc.active,
   };
 
-  await prisma.auditLog.create({
+  await tx.auditLog.create({
     data: {
       actorUserId: userId,
       accountId: profile?.accountId || null,
@@ -335,4 +357,5 @@ export async function PATCH(
   });
 
   return NextResponse.json({ contact: mapped });
+  });
 }

@@ -58,11 +58,13 @@ export async function POST(req: NextRequest) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      if (!state.accountId) throw Object.assign(new Error("Cuenta no encontrada"), { status: 400 });
+      await tx.account.update({ where: { id: state.accountId }, data: { updatedAt: new Date() } });
       const now = new Date();
 
       // 1. Find the claim token
       const claimToken = await tx.chipClaimToken.findFirst({
-        where: activationCodeLookupWhere(activationCode),
+        where: { ...activationCodeLookupWhere(activationCode), status: "active" },
         include: { chip: true },
       });
 
@@ -225,7 +227,8 @@ export async function POST(req: NextRequest) {
         where: {
           id: claimToken.id,
           usedAt: null,
-          expiresAt: { gt: now },
+          status: "active",
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         },
         data: {
           usedAt: now,
@@ -269,7 +272,7 @@ export async function POST(req: NextRequest) {
 
       // 7. Link chip to corporate order item
       await tx.corporateOrderEmployeeItem.update({
-        where: { id: pendingItem.id },
+        where: { id: pendingItem.id, chipId: null, deliveryStatus: "delivered", fulfillmentStatus: { not: "activated" } },
         data: {
           chipId: claimToken.chipId,
           fulfillmentStatus: "activated",

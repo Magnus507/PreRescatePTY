@@ -6,6 +6,11 @@ if (!testDatabaseUrl) {
   throw new Error("DATABASE_URL_TEST is required for PostgreSQL integration tests");
 }
 
+const parsedTestUrl = new URL(testDatabaseUrl);
+if (!["localhost", "127.0.0.1", "[::1]"].includes(parsedTestUrl.hostname) || !/(test|_ci)(?:$|[/?])/i.test(parsedTestUrl.pathname)) {
+  throw new Error("Integration tests require a disposable localhost database named test or *_ci; remote databases are forbidden");
+}
+
 export function prepareIntegrationEnvironment() {
   process.env.DATABASE_URL = testDatabaseUrl;
   process.env.DIRECT_URL = testDatabaseUrl;

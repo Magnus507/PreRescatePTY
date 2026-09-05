@@ -102,7 +102,7 @@ export async function syncRealOrderToOperations(
     code,
     sourceType: input.sourceType,
     sourceId: input.sourceId,
-    status: "draft",
+    status: ["cancelled", "rejected"].includes(input.paymentStatus || "") ? "cancelled" : "draft",
     customerType: input.orderType === "enterprise" ? "enterprise" : "customer",
     customerName,
     customerEmail: input.contactEmail?.trim() || null,
@@ -162,10 +162,10 @@ export async function syncRealOrderToOperations(
       where: { id: existing.id },
       data: {
         ...orderData,
-        items: {
-          deleteMany: {},
-          create: mappedItems,
-        },
+        // Retries synchronize commercial facts, never rewind fulfilment or replace
+        // operational item identities after inventory/production work has started.
+        status: ["cancelled", "rejected"].includes(input.paymentStatus || "") ? "cancelled" : undefined,
+        fulfillmentStatus: undefined,
       },
     });
 

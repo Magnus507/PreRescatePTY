@@ -5,6 +5,7 @@ import { AccountStateService } from "@/domains/accounts/services/account-state.s
 import { ApiResponse } from "@/lib/api-response";
 import { ProfileRepository } from "@/domains/profiles/repositories/profile.repository";
 import { requireFreshSession } from "@/lib/rbac";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
@@ -59,12 +60,14 @@ export async function PATCH(req: NextRequest) {
   const userId = auth.session.user.id;
   try {
     const raw = await req.json();
-    const validation = profileUpdateSchema.partial().safeParse(raw);
+    const validation = profileUpdateSchema.partial().extend({
+      profileVisibilityStatus: z.enum(["active", "hidden"]).optional(),
+    }).safeParse(raw);
     if (!validation.success) {
       return ApiResponse.error(validation.error.issues[0].message, { status: 400 });
     }
     const body = validation.data;
-    const profileVisibilityStatus = (raw as Record<string, unknown>).profileVisibilityStatus as string;
+    const profileVisibilityStatus = body.profileVisibilityStatus;
 
     // Only pass fields that this endpoint is allowed to modify.
     // Never pass medical fields (bloodType, allergies, etc.) even if present.
@@ -81,7 +84,7 @@ export async function PATCH(req: NextRequest) {
     if (profileVisibilityStatus !== undefined) allowedUpdate.profileVisibilityStatus = profileVisibilityStatus;
 
     // Get old values for audit
-    const oldProfile = await prisma.profile.findUnique({ where: { userId } });
+    const oldProfile = await prisma.profile.findUnique({ where: { userId }, select: { id: true } });
 
     const profile = await ProfileRepository.upsertByUserId(userId, allowedUpdate);
 
@@ -100,8 +103,8 @@ export async function PATCH(req: NextRequest) {
           entityType: "profile",
           entityId: profile.id,
           action: oldProfile ? "update" : "create",
-          oldValuesJson: oldProfile ? JSON.stringify(oldProfile) : null,
-          newValuesJson: JSON.stringify(body),
+          oldValuesJson: null,
+          newValuesJson: JSON.stringify({ changedFields: Object.keys(allowedUpdate) }),
         },
       });
     }

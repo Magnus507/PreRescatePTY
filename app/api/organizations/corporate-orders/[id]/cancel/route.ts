@@ -41,7 +41,7 @@ export async function PATCH(
 
   // Only cancelable if pending review
   const isCancelable =
-    order.paymentStatus === "under_review" ||
+    order.paymentStatus === "under_review" &&
     order.adminReviewStatus === "pending";
 
   if (!isCancelable) {
@@ -73,7 +73,7 @@ export async function PATCH(
   // Cancel order and revert members
   await prisma.$transaction(async (tx) => {
     await tx.order.update({
-      where: { id },
+      where: { id, paymentStatus: "under_review", adminReviewStatus: "pending", orderStatus: { notIn: ["cancelled", "completed", "shipped"] } },
       data: {
         orderStatus: "cancelled",
         paymentStatus: "rejected",

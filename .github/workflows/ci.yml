@@ -12,13 +12,16 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
@@ -119,6 +122,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Record application schema fingerprint
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/audit-public-schema.sql
 
       - name: Typecheck
         run: npm run typecheck

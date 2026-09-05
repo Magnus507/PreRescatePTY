@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { deleteStorageObjects, parseStorageObjectRef } from "@/lib/storage-deletion";
+import { parseStorageObjectRef } from "@/lib/storage-deletion";
+import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
 import { randomBytes } from "node:crypto";
 
 export class SafeDeleteService {
   /**
    * Performs a comprehensive delete of a user account and its data.
-   * Ensures compliance with Ley 81 by wiping data but keeping audit trails.
+   * Anonymizes application data and durably queues storage cleanup.
    */
   static async deleteUserAccount(userId: string, actorId: string): Promise<boolean> {
     try {
@@ -21,14 +22,27 @@ export class SafeDeleteService {
 
       if (!user) throw new Error("User not found");
 
+      const dependentProfiles = user.account?.ownerUserId === userId
+        ? await prisma.profile.findMany({ where: { accountId: user.accountId, userId: null, profileType: { not: "corporate" } }, select: { id: true, photoUrl: true } })
+        : [];
+      const profiles = [...(user.profile ? [user.profile] : []), ...dependentProfiles];
+      const profileIds = profiles.map(profile => profile.id);
       const storageRefs = [
-        parseStorageObjectRef(user.profile?.photoUrl),
+        ...profiles.map(profile => parseStorageObjectRef(profile.photoUrl)),
         ...user.orders.map((order) => parseStorageObjectRef(order.paymentProofUrl)),
       ].filter((ref): ref is NonNullable<typeof ref> => ref !== null);
-      await deleteStorageObjects(storageRefs);
 
       const chipIds = user.chips.map((chip) => chip.id);
-      return await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx) => {
+        // Enqueue before removing references, in the same transaction. Storage
+        // failures after commit remain recoverable by the cleanup worker.
+        for (const ref of storageRefs) {
+          await tx.storageCleanupOutbox.upsert({
+            where: { objectKey: `${ref.bucket}:${ref.path}` },
+            update: {},
+            create: { objectKey: `${ref.bucket}:${ref.path}`, bucket: ref.bucket, path: ref.path, actorUserId: actorId, accountId: user.accountId },
+          });
+        }
         // 1. Audit Log: Entry before destruction
         await tx.auditLog.create({
           data: {
@@ -47,17 +61,17 @@ export class SafeDeleteService {
           where: {
             OR: [
               { userId },
-              ...(user.profile ? [{ profileId: user.profile.id }] : []),
+              ...(profileIds.length ? [{ profileId: { in: profileIds } }] : []),
             ],
           },
         });
         await tx.appNotification.deleteMany({ where: { userId } });
         await tx.passwordResetToken.deleteMany({ where: { email: user.email } });
-        if (user.profile || chipIds.length > 0) {
+        if (profileIds.length || chipIds.length > 0) {
           await tx.scanEvent.deleteMany({
             where: {
               OR: [
-                ...(user.profile ? [{ profileId: user.profile.id }] : []),
+                ...(profileIds.length ? [{ profileId: { in: profileIds } }] : []),
                 ...(chipIds.length > 0 ? [{ chipId: { in: chipIds } }] : []),
               ],
             },
@@ -69,9 +83,9 @@ export class SafeDeleteService {
         }
 
         // 3. Clear all sensitive medical and location fields.
-        if (user.profile) {
+        for (const profile of profiles) {
           await tx.profile.update({
-            where: { id: user.profile.id },
+            where: { id: profile.id },
             data: {
               firstName: "Cuenta",
               lastName: "Eliminada",
@@ -111,6 +125,10 @@ export class SafeDeleteService {
               profileVisibilityStatus: "deleted",
             }
           });
+        }
+
+        if (user.account?.ownerUserId === userId) {
+          await tx.account.update({ where: { id: user.account.id }, data: { accountName: "Cuenta eliminada" } });
         }
 
         // 4. Keep accounting rows, but remove customer identity, shipping and proof references.
@@ -157,6 +175,12 @@ export class SafeDeleteService {
 
         return true;
       });
+      try {
+        await processStorageCleanupOutbox();
+      } catch {
+        console.error("Account anonymized; durable storage cleanup awaits worker retry");
+      }
+      return true;
     } catch (error) {
       console.error("Safe delete failed:", error);
       return false;

@@ -138,7 +138,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }
 
       await tx.order.update({
-        where: { id },
+        where: { id, paymentStatus: "under_review", adminReviewStatus: "pending", orderStatus: { notIn: ["cancelled", "completed", "shipped"] } },
         data: {
           paymentStatus: "paid",
           orderStatus: "processing",
@@ -272,7 +272,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     try {
       await prisma.$transaction(async (tx) => {
         await tx.order.update({
-          where: { id },
+          where: { id, paymentStatus: "under_review", adminReviewStatus: "pending", orderStatus: { notIn: ["cancelled", "completed", "shipped"] } },
           data: {
             paymentStatus: "paid",
             orderStatus: "processing",
@@ -344,7 +344,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         const reviewNotes = buildFulfillmentReviewNotes(notes, reservation);
 
         const updatedOrder = await tx.order.update({
-          where: { id },
+          where: { id, paymentStatus: "under_review", adminReviewStatus: "pending", orderStatus: { notIn: ["cancelled", "completed", "shipped"] } },
           data: {
             paymentStatus: "paid",
             orderStatus: "processing",
@@ -448,7 +448,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         : null;
 
       const updatedOrder = await tx.order.update({
-        where: { id },
+        where: { id, paymentStatus: "under_review", adminReviewStatus: "pending", orderStatus: { notIn: ["cancelled", "completed", "shipped"] } },
         data: {
           paymentStatus: "paid",
           orderStatus: "processing",

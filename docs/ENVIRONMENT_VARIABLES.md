@@ -127,4 +127,11 @@ CI runs the contract check plus the strict production schema using non-secret CI
 
 ## Rotation rule
 
+`BOOTSTRAP_ADMIN_USER_ID` is an optional, one-shot script parameter for
+`scripts/bootstrap-existing-admin.ts`. It identifies an existing active user
+explicitly approved by the owner for initial administration. It is not a secret,
+not a public variable, and must not be persisted in Vercel environments. The
+script defaults to a dry run; `--apply` is required for the role change. It refuses
+to run if an active administrator already exists and never resets user data.
+
 Changing `ENCRYPTION_KEY` is a data migration/rotation operation, not a routine environment edit. Rotate authentication, cron, provider and service credentials through their owning provider and deployment secret store, record the date/owner, and never commit old or new values.

@@ -59,6 +59,7 @@ function createTx(order: {
 
   return {
     operationCommercialOrder: {
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       findUnique: vi.fn(async () => state.order),
       update: vi.fn(async ({ data }: { data: { status?: string; fulfillmentStatus?: string } }) => ({
         id: state.order.id,

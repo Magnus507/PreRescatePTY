@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
       }
 
       const role = session.user.role;
-      const isAdmin = role === "admin" || role === "superadmin" || role === "imprenta";
+      const isAdmin = role === "admin" || role === "superadmin";
       const userId = session.user.id;
       const isOwnPaymentProof =
         bucket === "payment-proofs" &&

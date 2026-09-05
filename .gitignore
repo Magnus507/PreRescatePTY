@@ -2,6 +2,7 @@
 .next/
 out/
 build/
+coverage/
 
 # Node
 node_modules/

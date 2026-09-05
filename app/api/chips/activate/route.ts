@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   // Find the claim token
   const claimToken = await prisma.chipClaimToken.findFirst({
-    where: activationCodeLookupWhere(activationCode),
+    where: { ...activationCodeLookupWhere(activationCode), status: "active" },
     include: { chip: true },
   });
 
@@ -137,6 +137,8 @@ export async function POST(req: NextRequest) {
   // Use atomic transaction to prevent race conditions on chip limit enforcement
   try {
     await prisma.$transaction(async (tx) => {
+      if (!state.accountId) throw Object.assign(new Error("Cuenta no encontrada"), { status: 400 });
+      await tx.account.update({ where: { id: state.accountId }, data: { updatedAt: new Date() } });
       const now = new Date();
 
       // Atomically consume token (single-use guard)
@@ -144,7 +146,8 @@ export async function POST(req: NextRequest) {
         where: {
           id: claimToken.id,
           usedAt: null,
-          expiresAt: { gt: now },
+          status: "active",
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         },
         data: {
           usedAt: now,
@@ -170,7 +173,7 @@ export async function POST(req: NextRequest) {
 
       // Enforce plan chip limit
       if (currentActiveCount >= account.maxChipsAllocated) {
-        throw new Error(`Has alcanzado el límite de ${account.maxChipsAllocated} chip(s) en tu plan actual. Adquiere chips adicionales para activar más.`);
+        throw Object.assign(new Error(`Has alcanzado el límite de ${account.maxChipsAllocated} chip(s) en tu plan actual. Adquiere chips adicionales para activar más.`), { status: 409 });
       }
       const targetAccountId = account.id;
 

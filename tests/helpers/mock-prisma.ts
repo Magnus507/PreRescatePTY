@@ -48,6 +48,7 @@ export interface MockPrismaClient {
   operationProductionEvent: MockDelegate
   operationPrintOrder: MockDelegate
   operationPrintOrderItem: MockDelegate
+  storageCleanupOutbox: MockDelegate
   auditLog: MockDelegate
   notification: MockDelegate
   scanEvent: MockDelegate
@@ -97,6 +98,7 @@ export const mockPrisma: MockPrismaClient = {
   operationProductionEvent: createMockDelegate(),
   operationPrintOrder: createMockDelegate(),
   operationPrintOrderItem: createMockDelegate(),
+  storageCleanupOutbox: createMockDelegate(),
   auditLog: createMockDelegate(),
   notification: createMockDelegate(),
   scanEvent: createMockDelegate(),
