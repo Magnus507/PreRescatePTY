@@ -80,20 +80,20 @@ export default function PublicNavbar() {
     <>
       <a href="#main-content" className="skip-to-content">Ir al contenido principal</a>
 
-      <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-4">
+      <header className="fixed inset-x-0 top-0 z-50 px-2 pt-[max(.5rem,env(safe-area-inset-top))] sm:px-4 sm:pt-3">
         <nav
           aria-label="Navegación principal"
-          className={`mx-auto flex h-16 max-w-7xl items-center justify-between rounded-[1.25rem] border px-3.5 transition-all duration-500 sm:px-4 lg:px-5 ${
+          className={`mx-auto flex h-14 max-w-7xl items-center justify-between rounded-[1.1rem] border px-2.5 transition-all duration-500 sm:h-16 sm:rounded-[1.25rem] sm:px-4 lg:px-5 ${
             scrolled
-              ? "border-white/[0.10] bg-[#050914]/88 shadow-[0_18px_60px_-30px_rgba(0,0,0,.95)] backdrop-blur-2xl"
-              : "border-white/[0.055] bg-[#050914]/42 backdrop-blur-xl"
+              ? "border-white/[0.10] bg-[#050914]/90 shadow-[0_18px_60px_-30px_rgba(0,0,0,.95)] backdrop-blur-2xl"
+              : "border-white/[0.055] bg-[#050914]/50 backdrop-blur-xl"
           }`}
         >
-          <Link href="/" className="group flex shrink-0 items-center gap-2.5" aria-label="PreRescue ID — Inicio">
-            <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.045] shadow-[0_8px_25px_-15px_rgba(56,189,248,.8)] transition-all group-hover:border-sky-300/20 group-hover:bg-white/[0.07]">
-              <Image src="/logo.png" alt="" width={40} height={40} className="h-8 w-8 object-contain" aria-hidden />
+          <Link href="/" className="group flex min-w-0 shrink-0 items-center gap-2" aria-label="PreRescue ID — Inicio">
+            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.045] shadow-[0_8px_25px_-15px_rgba(56,189,248,.8)] transition-all group-hover:border-sky-300/20 group-hover:bg-white/[0.07] sm:h-10 sm:w-10">
+              <Image src="/logo.png" alt="" width={40} height={40} className="h-7 w-7 object-contain sm:h-8 sm:w-8" aria-hidden />
             </span>
-            <span className="hidden text-[15px] font-black tracking-[-0.025em] text-slate-50 sm:inline-block">
+            <span className="hidden truncate text-[13px] font-black tracking-[-0.025em] text-slate-50 min-[360px]:inline-block sm:text-[15px]">
               PreRescue <span className="text-[#ff4d55]">ID</span>
             </span>
           </Link>
@@ -148,7 +148,7 @@ export default function PublicNavbar() {
             aria-expanded={mobileOpen}
             aria-controls="mobile-menu"
             aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035] text-slate-100 transition-colors hover:bg-white/[0.07] md:hidden"
+            className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035] text-slate-100 transition-colors active:bg-white/[0.09] md:hidden"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -157,33 +157,36 @@ export default function PublicNavbar() {
 
       {mobileOpen && (
         <div id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menú de navegación" className="fixed inset-0 z-40 md:hidden" onKeyDown={handleMenuKeyDown}>
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={closeMenu} aria-hidden="true" />
-          <div ref={menuPanelRef} className="absolute bottom-3 left-3 right-3 top-3 overflow-y-auto rounded-[1.7rem] border border-white/[0.09] bg-[#060a12] p-4 shadow-2xl sm:left-auto sm:w-[390px]">
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={closeMenu} aria-hidden="true" />
+          <div
+            ref={menuPanelRef}
+            className="absolute left-2 right-2 top-[max(.5rem,env(safe-area-inset-top))] bottom-[max(.5rem,env(safe-area-inset-bottom))] overscroll-contain overflow-y-auto rounded-[1.45rem] border border-white/[0.09] bg-[#060a12] p-3 shadow-2xl sm:left-auto sm:right-3 sm:top-3 sm:bottom-3 sm:w-[390px] sm:rounded-[1.7rem] sm:p-4"
+          >
             <div className="flex h-14 items-center justify-between border-b border-white/[0.06] px-1">
               <Link href="/" onClick={closeMenu} className="flex items-center gap-2.5">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.04]"><Image src="/logo.png" alt="" width={32} height={32} className="h-7 w-7 object-contain" /></span>
                 <span className="text-sm font-black text-white">PreRescue <span className="text-[#ff4d55]">ID</span></span>
               </Link>
-              <button ref={closeButtonRef} onClick={closeMenu} aria-label="Cerrar menú" className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035] text-slate-200"><X className="h-5 w-5" /></button>
+              <button ref={closeButtonRef} onClick={closeMenu} aria-label="Cerrar menú" className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035] text-slate-200"><X className="h-5 w-5" /></button>
             </div>
 
-            <div className="mt-4 space-y-1">
-              <Link href="/" onClick={closeMenu} className="flex min-h-12 items-center rounded-xl px-3 text-sm font-bold text-slate-300 transition-colors hover:bg-white/[0.05] hover:text-white">Inicio</Link>
+            <div className="mt-3 space-y-0.5">
+              <Link href="/" onClick={closeMenu} className="flex min-h-12 touch-manipulation items-center rounded-xl px-3 text-sm font-bold text-slate-300 transition-colors active:bg-white/[0.07] active:text-white">Inicio</Link>
               {NAV_LINKS.map((link) => (
-                <Link key={link.href} href={link.href} onClick={closeMenu} className="flex min-h-12 items-center rounded-xl px-3 text-sm font-bold text-slate-300 transition-colors hover:bg-white/[0.05] hover:text-white">{link.label}</Link>
+                <Link key={link.href} href={link.href} onClick={closeMenu} className="flex min-h-12 touch-manipulation items-center rounded-xl px-3 text-sm font-bold text-slate-300 transition-colors active:bg-white/[0.07] active:text-white">{link.label}</Link>
               ))}
             </div>
 
-            <div className="mt-4 border-t border-white/[0.06] pt-4">
+            <div className="sticky bottom-0 mt-4 border-t border-white/[0.06] bg-[#060a12]/95 pt-4 pb-[max(.25rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
               {session ? (
                 <>
-                  <Link href={isAdmin ? "/admin" : "/dashboard"} onClick={closeMenu} className="flex min-h-12 items-center gap-2 rounded-xl px-3 text-sm font-bold text-sky-200 transition-colors hover:bg-white/[0.05]"><LayoutDashboard className="h-4 w-4" />{isAdmin ? "Panel Admin" : "Dashboard"}</Link>
-                  <button onClick={() => { closeMenu(); signOut({ callbackUrl: "/" }); }} className="flex min-h-12 w-full items-center gap-2 rounded-xl px-3 text-sm font-bold text-rose-300 transition-colors hover:bg-rose-400/[0.05]"><LogOut className="h-4 w-4" />Cerrar sesión</button>
+                  <Link href={isAdmin ? "/admin" : "/dashboard"} onClick={closeMenu} className="flex min-h-12 touch-manipulation items-center gap-2 rounded-xl px-3 text-sm font-bold text-sky-200 transition-colors active:bg-white/[0.06]"><LayoutDashboard className="h-4 w-4" />{isAdmin ? "Panel Admin" : "Dashboard"}</Link>
+                  <button onClick={() => { closeMenu(); signOut({ callbackUrl: "/" }); }} className="flex min-h-12 w-full touch-manipulation items-center gap-2 rounded-xl px-3 text-sm font-bold text-rose-300 transition-colors active:bg-rose-400/[0.07]"><LogOut className="h-4 w-4" />Cerrar sesión</button>
                 </>
               ) : (
                 <div className="grid gap-2">
-                  <Link href="/login" onClick={closeMenu} className="flex min-h-12 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-sm font-bold text-slate-200">Iniciar sesión</Link>
-                  <Link href="/comprar" onClick={closeMenu} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#DA1A21] text-sm font-extrabold text-white">Obtener PreRescue ID <ArrowRight className="h-4 w-4" /></Link>
+                  <Link href="/login" onClick={closeMenu} className="flex min-h-12 touch-manipulation items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-sm font-bold text-slate-200">Iniciar sesión</Link>
+                  <Link href="/comprar" onClick={closeMenu} className="flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-xl bg-[#DA1A21] text-sm font-extrabold text-white">Obtener PreRescue ID <ArrowRight className="h-4 w-4" /></Link>
                 </div>
               )}
             </div>
