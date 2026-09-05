@@ -5,9 +5,16 @@ hallazgos P1 de código. El candidato pasó 558 pruebas unitarias/de rutas y 17 
 integración PostgreSQL. La producción ya corresponde al árbol probado.
 
 Permanece un P1 operativo demostrado: el scheduler configurado cada cinco minutos
-no mantiene esa cadencia. Además faltan E2E autenticados, restauración comprobada,
+no mantiene esa cadencia. Además faltan E2E completos, restauración comprobada,
 entrega externa y datos comerciales reales. NO-GO para lanzamiento comercial.
 La publicación de hardening no representa apertura de ventas ni aprobación GO.
+
+Login y logout reales del administrador confirmados mediante browserAuth;
+panel Super Admin, Centro de Operaciones, Producción e Inventario accesibles sin
+errores de aplicación observados. Logout regresó a /login. No se crearon datos
+operativos. Esto no certifica E2E cliente/corporativo completo.
+Alternativa preparada para NEW-18 en scheduler-recovery-runbook.md: Supabase Cron +
+pg_net + Vault, todavía sin aplicar por falta del secreto en Vault y migración validada.
 
 ## 2. VERDICT
 
@@ -63,7 +70,7 @@ en el árbol productivo auditado, no una garantía sobre rutas ajenas a las prue
 `git diff --name-only 825b98e 78b576d`. No se desactivó RLS, no se eliminaron tests,
 no se usó force push ni bypass de protección. El usuario administrativo solicitado
 se creó de forma independiente, con contraseña aleatoria y bcrypt cost 12; no se
-guardaron credenciales en Git. Login real aún no verificado.
+guardaron credenciales en Git. Login, lectura de paneles operativos y logout verificados.
 
 DB: prisma/baselines/20260905_verified_history.sql crea solo metadatos históricos,
 verifica huella y se niega a sobrescribir historial. Aplicado mediante
@@ -115,7 +122,7 @@ lista REG. NEW-17 y NEW-18 surgieron en la revisión final de infraestructura.
 | Cliente/owner | Identidad, estado y sessionVersion DB; ownership por recurso | lib/rbac.ts:57-155; tests de IDOR; E2E propio pendiente |
 | Corporativo | Perfil corporativo misma cuenta, vínculo pagado activo | Test PostgreSQL otro account -> 403 |
 | Imprenta | Fulfillment permitido; revisión de pagos/comprobantes ajenos denegada | lib/rbac.ts:8-11; image-proxy test |
-| Admin | Roles de fuente DB, no user_metadata | requireRole; login productivo del nuevo admin pendiente |
+| Admin | Roles de fuente DB, no user_metadata | requireRole; login/logout productivo y lectura de paneles PASS |
 | Superadmin | Gestión administrativa sensible | Rol DB verificado; matriz completa CRUD/EXECUTE aún pendiente |
 | Prisma/service role | Privilegiado solo servidor | Requiere authz en cada endpoint; RLS no limita al backend |
 
@@ -238,7 +245,7 @@ Smoke posterior: /, /login, /registro HTTP 200; /api/admin/users, /api/users/pro
 La página cliente de QR inexistente devuelve shell 200 y muestra “Vínculo Inválido”
 en navegador; API /api/public/audit-nonexistent-20260905 devuelve 404.
 Privacidad/términos HTTP 200; los tres cron POST con secreto incorrecto devuelven 401.
-Login autenticado pendiente.
+Login/logout autenticados del superadmin PASS; Centro de Operaciones, Producción e Inventario accesibles. Sin mutaciones de negocio durante el smoke.
 Consulta de logs del deployment (error/fatal) sin resultados al corte, no prueba de
 ausencia universal de errores. Errores chrome-extension no son errores de la aplicación.
 
@@ -259,8 +266,8 @@ NEW-17: no bloquea NextAuth actual; resolver antes de usar Supabase Auth.
 | Build limpio | PASS CI |
 | TypeScript | PASS |
 | Tests | PASS, 575 |
-| E2E | NOT TESTABLE completo; smoke público parcial |
-| Auth | PARTIAL, falta login real |
+| E2E | PARTIAL; smoke público y admin, sin flujos completos cliente/corporativo |
+| Auth | PARTIAL; login/logout admin PASS, resto de flujos sin verificación completa |
 | Authorization | PARTIAL, no matriz completa de 167 rutas |
 | RLS | PASS alcance tablas públicas/direct grants |
 | Inventario | PARTIAL, flujo operativo completo pendiente |
@@ -281,14 +288,15 @@ NEW-17: no bloquea NextAuth actual; resolver antes de usar Supabase Auth.
 | Privacy | PARTIAL, NEW-12 |
 | Consent | PARTIAL, captura server-side PASS |
 | Production | PASS SHA/READY, no aprobación comercial |
-| Smoke Test | PASS alcance público y rechazo anónimo; autenticado pendiente |
+| Smoke Test | PASS alcance público, rechazo anónimo y lectura autenticada admin |
 
 - [x] SHA productivo y árbol probado identificados.
 - [x] PR protegida, build, TypeScript, lint y tests.
 - [x] Baseline versionado y aplicado; paridad public acotada.
 - [x] Concurrencia stock/chip/corporativo/claim/cooldown.
 - [ ] Scheduler fiable y alertas de ejecución ausente.
-- [ ] E2E autenticados cliente/corporativo/admin, móvil y acceso administrativo real.
+- [x] Login/logout y acceso administrativo real de lectura.
+- [ ] E2E completos cliente/corporativo/admin y móvil.
 - [ ] Entrega externa autorizada, backup/restore y RPO/RTO.
 - [ ] Catálogo aprobado e inventario físico real; retención completa revisada.
 - [ ] P1 abiertos = 0; ninguna puerta crítica sin evidencia.

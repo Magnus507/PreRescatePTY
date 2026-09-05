@@ -1,6 +1,15 @@
+Actualización de cierre de sesión: logout del superadmin verificado; regreso a /login y formulario visible. Sin mutaciones operativas.
+
 # Checkpoint — auditoría todavía en curso
 
 Este documento no es el informe definitivo ni una aprobación de lanzamiento.
+
+Actualización posterior: login real exitoso por browserAuth, rol Super Admin visible,
+vistas Operaciones/Producción/Inventario cargadas, sin errores propios en consola.
+No se modificaron productos ni stock. MFA/cambio de contraseña pendientes del titular.
+Vault instalado, pg_cron y pg_net disponibles/no instalados, prerescate_cron_secret
+ausente. Preparación en scheduler-recovery-runbook.md; no ejecutada. CLI local no
+instalado porque su autorización de red fue cancelada. No se eludió ese control.
 
 ## Actualización 15:28 UTC — prevalece sobre las notas históricas inferiores
 
