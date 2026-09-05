@@ -1,12 +1,12 @@
 "use client";
 
+import { useRef, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, Mail, Send, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 import PublicNavbar from "@/components/public/PublicNavbar";
 import PublicFooter from "@/components/public/PublicFooter";
 import PageHero from "@/components/public/PageHero";
-import { Mail, ShieldAlert, CheckCircle2 } from "lucide-react";
-import { useRef, useState } from "react";
-import { toast } from "sonner";
-import Link from "next/link";
 
 export default function ContactoPage() {
   const [formData, setFormData] = useState({ name: "", email: "", message: "" });
@@ -16,9 +16,7 @@ export default function ContactoPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submittingRef.current) {
-      return;
-    }
+    if (submittingRef.current) return;
 
     submittingRef.current = true;
     setLoading(true);
@@ -46,92 +44,108 @@ export default function ContactoPage() {
   };
 
   return (
-    <div className="min-h-screen font-sans antialiased">
+    <div className="min-h-screen bg-[#02050a] font-sans text-white antialiased">
       <PublicNavbar />
       <main id="main-content">
         <PageHero
-          eyebrow="Soporte y Negocios"
-          title="¿Tienes preguntas?"
-          description="Escríbenos y te responderemos lo antes posible."
+          eyebrow="Soporte y negocios"
+          title="Cuéntanos qué"
+          titleAccent="necesitas."
+          description="Utiliza el formulario para consultas sobre producto, pedidos, soporte o soluciones para organizaciones."
         />
 
-        <section className="py-24 md:py-32 bg-[#05070D]">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] items-start">
-              <div className="space-y-10">
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
+        <section className="relative overflow-hidden bg-[#03060c] py-20 md:py-32">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={{ background: "radial-gradient(46% 54% at 80% 30%, rgba(37,99,235,.11), transparent 64%), radial-gradient(32% 44% at 12% 78%, rgba(218,26,33,.06), transparent 68%)" }}
+          />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid items-start gap-9 sm:gap-12 lg:grid-cols-[.78fr_1.22fr] lg:gap-14">
+              <div className="lg:sticky lg:top-28">
+                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-sky-300/15 bg-sky-300/[0.05] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-sky-200 sm:text-[10px] sm:tracking-[0.18em]">
+                  <Mail className="h-3.5 w-3.5" /> Canal de contacto
+                </div>
+                <h2 className="max-w-[10ch] text-[clamp(2.35rem,10vw,3.1rem)] font-black leading-[0.94] tracking-[-0.045em] text-slate-50 sm:text-[clamp(2.7rem,5vw,4.9rem)] sm:leading-[0.91]">
+                  Un solo formulario, la consulta correcta.
+                </h2>
+                <p className="mt-5 max-w-lg text-[15px] font-medium leading-6 text-slate-400 sm:mt-6 sm:text-base sm:leading-7">
+                  Describe tu caso con suficiente contexto para que podamos orientarte de forma más útil desde la primera respuesta.
+                </p>
+
+                <div className="mt-6 space-y-2.5 sm:mt-9 sm:space-y-3">
                   {[
-                    { icon: Mail, title: "Formulario de contacto", caption: "Envíanos tu consulta mediante el formulario. Responderemos tan pronto como sea posible.", accent: "from-blue-500 to-cyan-500" },
-                    { icon: ShieldAlert, title: "Soporte legal", caption: "Asesoría para compra institucional y protocolos Ley 81.", accent: "from-brand to-red-700" },
-                  ].map((item) => (
-                    <div key={item.title} className="glass-card-w2a rounded-[2.5rem] p-8 transition-all hover:border-white/20">
-                      <div className={`mb-6 inline-flex rounded-3xl bg-gradient-to-br ${item.accent} px-4 py-3 text-white shadow-glow`}>
-                        <item.icon className="h-6 w-6" />
+                    ["Producto y planes", "Dudas sobre PreRescue ID y las opciones disponibles."],
+                    ["Pedidos y soporte", "Consultas relacionadas con una compra o el uso del servicio."],
+                    ["Empresas e instituciones", "Información para equipos, organizaciones y compras por volumen."],
+                  ].map(([title, text]) => (
+                    <div key={title} className="rounded-[1.1rem] border border-white/[0.065] bg-white/[0.025] p-4 sm:rounded-2xl">
+                      <div className="flex items-start gap-3">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                        <div>
+                          <p className="text-[13px] font-extrabold text-slate-200 sm:text-sm">{title}</p>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">{text}</p>
+                        </div>
                       </div>
-                      <h2 className="text-2xl font-black mb-3 text-[#EFF4FF]">{item.title}</h2>
-                      <p className="text-[#A0AEC0] leading-relaxed">{item.caption}</p>
                     </div>
                   ))}
                 </div>
-
-                <div className="relative overflow-hidden rounded-[3rem] border border-white/10 bg-[#0c1630]/95 p-10 shadow-premium">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(218,26,33,0.18),_transparent_40%)] opacity-50 pointer-events-none" />
-                  <div className="relative z-10">
-                    <span className="text-sm uppercase tracking-[0.35em] text-[#DA1A21] font-black">Compromiso</span>
-                    <h2 className="mt-4 text-4xl font-black tracking-tight text-white">Atención confiable y segura</h2>
-                    <p className="mt-4 text-slate-300 leading-relaxed">Nuestro equipo revisa cada consulta y responde lo antes posible a través del formulario de contacto.</p>
-                  </div>
-                </div>
               </div>
 
-              <div className="glass-card-w2a rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-6 right-6 w-28 h-28 rounded-full bg-[#DA1A21]/10 blur-3xl" />
-                <div className="mb-8 relative z-10">
-                   <div className="inline-flex items-center gap-2 rounded-full bg-[#DA1A21]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#DA1A21] border border-[#DA1A21]/20">
-                      <ShieldAlert className="h-4 w-4" /> Contacto directo
+              <div className="relative overflow-hidden rounded-[1.55rem] border border-white/[0.08] bg-white/[0.03] p-4 shadow-[0_38px_100px_-65px_rgba(37,99,235,.62)] backdrop-blur-xl sm:rounded-[2.2rem] sm:p-8 sm:shadow-[0_45px_120px_-65px_rgba(37,99,235,.7)] sm:backdrop-blur-2xl lg:p-10">
+                <div aria-hidden="true" className="absolute right-0 top-0 h-40 w-40 rounded-full bg-blue-500/[0.08] blur-[65px] sm:h-52 sm:w-52 sm:bg-blue-500/10 sm:blur-[80px]" />
+                <div className="relative">
+                  <div className="mb-6 flex items-center justify-between gap-4 border-b border-white/[0.06] pb-5 sm:mb-8 sm:pb-6">
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600 sm:text-[9px] sm:tracking-[0.18em]">Mensaje</p>
+                      <h2 className="mt-1.5 text-[22px] font-black tracking-[-0.035em] text-slate-50 sm:mt-2 sm:text-3xl">Escríbenos</h2>
+                    </div>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-300/12 bg-sky-300/[0.05] sm:h-11 sm:w-11 sm:rounded-2xl">
+                      <Send className="h-[18px] w-[18px] text-sky-300 sm:h-5 sm:w-5" />
+                    </span>
                   </div>
-                  <h2 className="mt-6 text-3xl font-black text-[#EFF4FF]">Escríbenos y te contactamos</h2>
-                  <p className="mt-3 text-sm text-[#A0AEC0] leading-relaxed">Completa el formulario y te responderemos lo antes posible.</p>
-                </div>
-                {sent ? (
-                  <div className="relative z-10 p-6 rounded-2xl bg-emerald-900/40 border border-emerald-700/20">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-emerald-600/10 border border-emerald-600/20">
-                        <CheckCircle2 className="h-6 w-6 text-emerald-400" />
-                      </div>
-                      <div>
-                        <p className="font-black text-white">Mensaje enviado</p>
-                        <p className="text-sm text-slate-300">Te responderemos lo antes posible.</p>
-                      </div>
-                    </div>
-                    <div className="mt-6 flex gap-3">
-                      <Link href="/" className="inline-flex items-center gap-2 rounded-2xl bg-white/5 px-5 py-3 text-sm font-black text-white hover:bg-white/10 transition">Volver al inicio</Link>
-                      <button onClick={() => setSent(false)} className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#DA1A21] to-red-700 px-5 py-3 text-sm font-black text-white shadow-button hover:shadow-button-hover transition">Enviar otro</button>
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-5 relative z-10 w-full flex flex-col">
-                    <div className="space-y-2">
-                      <label htmlFor="contact-name" className="text-xs font-black uppercase tracking-widest text-[#6B7280] ml-2">Identidad</label>
-                      <input required value={formData.name} onChange={e => setFormData(f => ({...f, name: e.target.value}))} id="contact-name" type="text" className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#DA1A21]/50 focus:border-[#DA1A21] transition-all shadow-sm" placeholder="Sr. Admin / Representante Empresarial" />
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="contact-email" className="text-xs font-black uppercase tracking-widest text-[#6B7280] ml-2">Punto de Contacto (Email)</label>
-                      <input required value={formData.email} onChange={e => setFormData(f => ({...f, email: e.target.value}))} id="contact-email" type="email" className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#DA1A21]/50 focus:border-[#DA1A21] transition-all shadow-sm" placeholder="negocio@empresa.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="contact-msg" className="text-xs font-black uppercase tracking-widest text-[#6B7280] ml-2">Razón de la solicitud</label>
-                      <textarea required value={formData.message} onChange={e => setFormData(f => ({...f, message: e.target.value}))} id="contact-msg" rows={5} className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#DA1A21]/50 focus:border-[#DA1A21] transition-all shadow-sm resize-none" placeholder="Explícanos tu requerimiento en detalle..." />
-                    </div>
-                    <button disabled={loading} type="submit" className="w-full rounded-2xl bg-gradient-to-r from-[#DA1A21] to-red-700 text-white py-4 font-black hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center mt-4 shadow-button hover:shadow-button-hover active:scale-[0.98]">
-                      {loading ? "Despachando Ticket..." : "Enviar a Central"}
-                    </button>
-                  </form>
-                )}
 
-                <div className="mt-8 rounded-[2rem] bg-slate-950/80 border border-white/10 p-6 text-sm text-slate-300">
-                  <p className="uppercase tracking-[0.2em] text-slate-500 font-black">Tiempo de respuesta</p>
-                  <p className="mt-3 text-slate-300">Responderemos tan pronto como sea posible. Para consultas urgentes, proporciona toda la información relevante en el formulario.</p>
+                  {sent ? (
+                    <div className="rounded-[1.35rem] border border-emerald-300/12 bg-emerald-300/[0.04] p-5 sm:rounded-[1.6rem] sm:p-7">
+                      <div className="flex items-start gap-3 sm:gap-4">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-300/15 bg-emerald-300/[0.07] sm:h-11 sm:w-11 sm:rounded-2xl">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+                        </span>
+                        <div>
+                          <p className="text-base font-black text-slate-50 sm:text-lg">Mensaje enviado</p>
+                          <p className="mt-2 text-sm leading-6 text-slate-400">Tu consulta fue recibida. Responderemos tan pronto como sea posible.</p>
+                        </div>
+                      </div>
+                      <div className="mt-6 flex flex-col gap-2.5 sm:mt-7 sm:flex-row sm:gap-3">
+                        <Link href="/" className="inline-flex min-h-[52px] touch-manipulation items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] px-5 text-sm font-bold text-slate-200 transition-all active:bg-white/[0.07] sm:min-h-12 sm:hover:bg-white/[0.07]">Volver al inicio</Link>
+                        <button onClick={() => setSent(false)} className="group inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-5 text-sm font-extrabold text-white transition-all active:bg-[#ef2d35] sm:min-h-12 sm:hover:bg-[#ef2d35]">Enviar otro <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></button>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+                      <div className="space-y-2">
+                        <label htmlFor="contact-name" className="ml-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[10px] sm:tracking-[0.16em]">Nombre</label>
+                        <input required value={formData.name} onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))} id="contact-name" type="text" autoComplete="name" className="min-h-[52px] w-full rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-base font-medium text-slate-100 outline-none transition-all placeholder:text-slate-700 focus:border-sky-300/30 focus:ring-4 focus:ring-sky-300/[0.05] sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm" placeholder="Tu nombre" />
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="contact-email" className="ml-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[10px] sm:tracking-[0.16em]">Correo electrónico</label>
+                        <input required value={formData.email} onChange={(e) => setFormData((f) => ({ ...f, email: e.target.value }))} id="contact-email" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" autoComplete="email" className="min-h-[52px] w-full rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-base font-medium text-slate-100 outline-none transition-all placeholder:text-slate-700 focus:border-sky-300/30 focus:ring-4 focus:ring-sky-300/[0.05] sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm" placeholder="correo@ejemplo.com" />
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="contact-msg" className="ml-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[10px] sm:tracking-[0.16em]">Consulta</label>
+                        <textarea required value={formData.message} onChange={(e) => setFormData((f) => ({ ...f, message: e.target.value }))} id="contact-msg" rows={5} className="w-full resize-none rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-base font-medium text-slate-100 outline-none transition-all placeholder:text-slate-700 focus:border-sky-300/30 focus:ring-4 focus:ring-sky-300/[0.05] sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm" placeholder="Explícanos tu consulta con el contexto necesario..." />
+                      </div>
+                      <button disabled={loading} type="submit" className="group flex min-h-[54px] w-full touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-6 text-sm font-extrabold text-white shadow-[0_16px_45px_-20px_rgba(218,26,33,.9)] transition-all active:scale-[0.99] active:bg-[#ef2d35] disabled:pointer-events-none disabled:opacity-50 sm:min-h-14 sm:hover:bg-[#ef2d35]">
+                        {loading ? "Enviando..." : "Enviar mensaje"}
+                        {!loading && <Send className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
+                      </button>
+                    </form>
+                  )}
+
+                  <div className="mt-6 rounded-[1rem] border border-white/[0.055] bg-black/20 p-4 sm:mt-7 sm:rounded-2xl">
+                    <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[9px] sm:tracking-[0.16em]">Tiempo de respuesta</p>
+                    <p className="mt-1.5 text-xs font-medium leading-5 text-slate-500 sm:mt-2">Responderemos tan pronto como sea posible. Incluye información relevante para reducir intercambios innecesarios.</p>
+                  </div>
                 </div>
               </div>
             </div>

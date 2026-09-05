@@ -1,31 +1,31 @@
 "use client";
 
-import { Scan, Battery, Wifi, Shield, Heart, Users, Globe, CreditCard } from "lucide-react";
+import { Battery, CreditCard, Globe, Heart, QrCode, ShieldCheck, Smartphone, Users } from "lucide-react";
 
 const items = [
-  { icon: Scan, label: "QR + NFC" },
-  { icon: Battery, label: "Sin batería" },
-  { icon: Wifi, label: "Sin aplicación" },
-  { icon: Shield, label: "Privacidad configurable" },
+  { icon: QrCode, label: "QR + NFC" },
+  { icon: Battery, label: "Sticker sin batería" },
+  { icon: Smartphone, label: "Sin instalar app" },
+  { icon: ShieldCheck, label: "Privacidad configurable" },
   { icon: Heart, label: "Contactos de emergencia" },
-  { icon: Users, label: "Perfiles familiares" },
-  { icon: Globe, label: "Uso internacional" },
-  { icon: CreditCard, label: "Pago único" },
+  { icon: Users, label: "Perfiles para familias" },
+  { icon: Globe, label: "Consulta desde el navegador" },
+  { icon: CreditCard, label: "Planes sin mensualidad recurrente" },
 ];
 
 export default function BenefitMarquee() {
   return (
-    <section className="relative overflow-hidden bg-[#05070D] py-8 border-t border-white/5">
-      <div className="flex marquee-track">
-        {[...items, ...items].map((item, i) => (
+    <section aria-label="Beneficios principales" className="relative overflow-hidden border-y border-white/[0.055] bg-[#03060c] py-4 sm:py-6">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-40 bg-gradient-to-r from-[#03060c] to-transparent sm:block" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-40 bg-gradient-to-l from-[#03060c] to-transparent sm:block" />
+      <div className="flex snap-x snap-mandatory items-center gap-2.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-max sm:snap-none sm:gap-4 sm:overflow-visible sm:px-0 sm:motion-safe:animate-[marquee_30s_linear_infinite]">
+        {[...items, ...items].map((item, index) => (
           <div
-            key={i}
-            className="flex items-center gap-2 shrink-0 px-5 py-2 rounded-full border border-white/10 bg-white/5"
+            key={`${item.label}-${index}`}
+            className={`${index >= items.length ? "hidden sm:flex" : "flex"} min-h-11 shrink-0 snap-start items-center gap-2.5 rounded-full border border-white/[0.07] bg-white/[0.025] px-4 py-2.5 sm:snap-none`}
           >
-            <item.icon className="h-4 w-4 text-[#10B981]" />
-            <span className="text-sm font-medium text-[#A0AEC0] whitespace-nowrap">
-              {item.label}
-            </span>
+            <item.icon className="h-3.5 w-3.5 text-sky-300" />
+            <span className="whitespace-nowrap text-xs font-bold text-slate-400">{item.label}</span>
           </div>
         ))}
       </div>
