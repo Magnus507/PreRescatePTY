@@ -106,7 +106,7 @@ export default function PageHero({
             {primaryCTA && (
               <Link
                 href={primaryCTA.href}
-                className="group inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-7 py-3.5 text-sm font-extrabold text-white shadow-[0_18px_50px_-20px_rgba(218,26,33,.82)] transition-all hover:-translate-y-0.5 hover:bg-[#ef2d35]"
+                className="group inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-7 py-3.5 text-sm font-extrabold text-white shadow-[0_18px_50px_-20px_rgba(218,26,33,.82)] transition-all hover:-translate-y-0.5 hover:bg-[#ef2d35]"
               >
                 {primaryCTA.label}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -115,7 +115,7 @@ export default function PageHero({
             {secondaryCTA && (
               <Link
                 href={secondaryCTA.href}
-                className="group inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl border border-white/[0.09] bg-white/[0.045] px-7 py-3.5 text-sm font-bold text-slate-100 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-sky-300/25 hover:bg-white/[0.08]"
+                className="group inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/[0.09] bg-white/[0.045] px-7 py-3.5 text-sm font-bold text-slate-100 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-sky-300/25 hover:bg-white/[0.08]"
               >
                 <ScanLine className="h-4 w-4 text-sky-300" />
                 {secondaryCTA.label}
