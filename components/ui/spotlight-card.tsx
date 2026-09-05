@@ -1,6 +1,6 @@
 "use client";
 
-import React, { type CSSProperties, type PointerEvent, type ReactNode, useMemo, useState } from "react";
+import React, { type CSSProperties, type PointerEvent, type ReactNode } from "react";
 
 interface GlowCardProps {
   children?: ReactNode;
@@ -46,39 +46,43 @@ export function GlowCard({
   height,
   customSize = false,
 }: GlowCardProps) {
-  const [pointer, setPointer] = useState({ x: 50, y: 50 });
-
-  const style = useMemo<GlowStyles>(
-    () => ({
-      "--glow-x": `${pointer.x}%`,
-      "--glow-y": `${pointer.y}%`,
-      "--glow-rgb": glowColorMap[glowColor],
-      width: toCssSize(width),
-      height: toCssSize(height),
-    }),
-    [glowColor, height, pointer.x, pointer.y, width],
-  );
+  const style: GlowStyles = {
+    "--glow-x": "50%",
+    "--glow-y": "50%",
+    "--glow-rgb": glowColorMap[glowColor],
+    width: toCssSize(width),
+    height: toCssSize(height),
+  };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return;
+
     const rect = event.currentTarget.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
     const x = ((event.clientX - rect.left) / rect.width) * 100;
     const y = ((event.clientY - rect.top) / rect.height) * 100;
-    setPointer({ x, y });
+
+    event.currentTarget.style.setProperty("--glow-x", `${x}%`);
+    event.currentTarget.style.setProperty("--glow-y", `${y}%`);
+  };
+
+  const onPointerLeave = (event: PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.style.setProperty("--glow-x", "50%");
+    event.currentTarget.style.setProperty("--glow-y", "50%");
   };
 
   return (
     <div
       data-glow-card
       onPointerMove={onPointerMove}
-      onPointerLeave={() => setPointer({ x: 50, y: 50 })}
+      onPointerLeave={onPointerLeave}
       style={style}
-      className={`group relative isolate overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.035] shadow-[0_24px_80px_-40px_rgba(0,0,0,0.95)] backdrop-blur-xl transition-[border-color,transform,box-shadow] duration-500 hover:-translate-y-1 hover:border-white/[0.16] hover:shadow-[0_28px_90px_-38px_rgba(59,130,246,0.28)] ${customSize ? "" : sizeMap[size]} ${className}`}
+      className={`group relative isolate overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.035] shadow-[0_24px_80px_-40px_rgba(0,0,0,0.95)] backdrop-blur-xl transition-[border-color,transform,box-shadow] duration-500 md:hover:-translate-y-1 md:hover:border-white/[0.16] md:hover:shadow-[0_28px_90px_-38px_rgba(59,130,246,0.28)] ${customSize ? "" : sizeMap[size]} ${className}`}
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 opacity-70 transition-opacity duration-500 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-0 -z-10 opacity-55 transition-opacity duration-500 md:group-hover:opacity-100"
         style={{
           background:
             "radial-gradient(420px circle at var(--glow-x) var(--glow-y), rgb(var(--glow-rgb) / 0.22), transparent 42%)",
@@ -94,7 +98,7 @@ export function GlowCard({
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -inset-16 -z-20 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-50"
+        className="pointer-events-none absolute -inset-16 -z-20 hidden opacity-0 blur-3xl transition-opacity duration-500 md:block md:group-hover:opacity-50"
         style={{
           background:
             "radial-gradient(circle at var(--glow-x) var(--glow-y), rgb(var(--glow-rgb) / 0.25), transparent 45%)",
