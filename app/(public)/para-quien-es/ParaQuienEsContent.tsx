@@ -1,51 +1,136 @@
 "use client";
 
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Baby,
+  Bike,
+  Brain,
+  Building2,
+  Check,
+  Eye,
+  Heart,
+  Lock,
+  MessageCircle,
+  Shield,
+  Stethoscope,
+  Users,
+} from "lucide-react";
 import PublicNavbar from "@/components/public/PublicNavbar";
 import PublicFooter from "@/components/public/PublicFooter";
 import PageHero from "@/components/public/PageHero";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { Users, Baby, Heart, Brain, MessageCircle, Stethoscope, Bike, Building2, Shield, Eye, Lock } from "lucide-react";
+import { GlowCard } from "@/components/ui/spotlight-card";
 
 const audiences = [
-  { id: "familias", icon: Users, title: "Familias", desc: "Administra distintos perfiles médicos desde una sola cuenta. Cada miembro puede tener su propia identificación, información y contactos de emergencia.", cta: "Ver planes familiares", href: "/comprar" },
-  { id: "ninos", icon: Baby, title: "Niños", desc: "Una identificación en la mochila, lonchera o pertenencias puede facilitar el acceso a información autorizada y a los contactos de los padres.", cta: "Conocer cómo funciona", href: "/como-funciona", note: "Los padres o responsables deciden qué información del menor se muestra públicamente." },
-  { id: "adultos-mayores", icon: Heart, title: "Adultos mayores", desc: "Permite mostrar información médica relevante, medicamentos, contactos e instrucciones útiles cuando la persona necesita ayuda para comunicarse.", cta: "Ver planes", href: "/comprar" },
-  { id: "desorientacion", icon: Brain, title: "Desorientación", desc: "Cuando una persona tiene dificultades para identificarse o recordar información, el perfil puede mostrar instrucciones de contacto y retorno seguro configuradas por su familia.", cta: "Conocer cómo funciona", href: "/como-funciona", note: "Solo se muestra la información que el titular o responsable haya autorizado." },
-  { id: "comunicacion-asistida", icon: MessageCircle, title: "Comunicación asistida", desc: "Las instrucciones de comunicación pueden ayudar a quien brinda apoyo a comprender necesidades específicas y contactar a una persona autorizada.", cta: "Ver planes", href: "/comprar" },
-  { id: "condiciones-medicas", icon: Stethoscope, title: "Alergias y condiciones médicas", desc: "Permite mostrar información autorizada como alergias, tipo de sangre, condiciones relevantes y medicamentos actuales.", cta: "Ver planes", href: "/comprar", disclaimer: "PreRescue ID es un sistema de identificación médica de emergencia. No reemplaza la valoración ni la atención de profesionales de la salud." },
-  { id: "en-movimiento", icon: Bike, title: "Quienes están en movimiento", desc: "Tu perfil puede consultarse desde cualquier lugar con acceso a internet. El sticker no necesita batería ni una aplicación instalada.", cta: "Probar el demo", href: "/demo", note: "El dispositivo que realiza el escaneo necesita conexión a internet para cargar el perfil." },
-  { id: "empresas", icon: Building2, title: "Empresas e instituciones", desc: "Las cuentas corporativas permiten gestionar miembros, perfiles y asignación de chips desde un panel administrativo.", cta: "Solicitar información", href: "/contacto", secondaryCta: "Ver planes", secondaryHref: "/comprar" },
+  {
+    id: "familias",
+    icon: Users,
+    title: "Familias",
+    desc: "Administra distintos perfiles médicos desde una sola cuenta. Cada miembro puede tener su propia identificación, información y contactos de emergencia.",
+    cta: "Ver planes familiares",
+    href: "/comprar",
+    glow: "blue" as const,
+  },
+  {
+    id: "ninos",
+    icon: Baby,
+    title: "Niños",
+    desc: "Una identificación en la mochila, lonchera o pertenencias puede facilitar el acceso a información autorizada y a los contactos de los padres.",
+    cta: "Conocer cómo funciona",
+    href: "/como-funciona",
+    note: "Los padres o responsables deciden qué información del menor se muestra públicamente.",
+    glow: "purple" as const,
+  },
+  {
+    id: "adultos-mayores",
+    icon: Heart,
+    title: "Adultos mayores",
+    desc: "Permite mostrar información médica relevante, medicamentos, contactos e instrucciones útiles cuando la persona necesita ayuda para comunicarse.",
+    cta: "Ver planes",
+    href: "/comprar",
+    glow: "red" as const,
+  },
+  {
+    id: "desorientacion",
+    icon: Brain,
+    title: "Desorientación",
+    desc: "Cuando una persona tiene dificultades para identificarse o recordar información, el perfil puede mostrar instrucciones de contacto y retorno seguro configuradas por su familia.",
+    cta: "Conocer cómo funciona",
+    href: "/como-funciona",
+    note: "Solo se muestra la información autorizada por el titular o responsable.",
+    glow: "green" as const,
+  },
+  {
+    id: "comunicacion-asistida",
+    icon: MessageCircle,
+    title: "Comunicación asistida",
+    desc: "Las instrucciones de comunicación pueden ayudar a quien brinda apoyo a comprender necesidades específicas y contactar a una persona autorizada.",
+    cta: "Ver planes",
+    href: "/comprar",
+    glow: "blue" as const,
+  },
+  {
+    id: "condiciones-medicas",
+    icon: Stethoscope,
+    title: "Alergias y condiciones médicas",
+    desc: "Permite mostrar información autorizada como alergias, tipo de sangre, condiciones relevantes y medicamentos actuales.",
+    cta: "Ver planes",
+    href: "/comprar",
+    disclaimer: "PreRescue ID no reemplaza la valoración ni la atención de profesionales de la salud.",
+    glow: "red" as const,
+  },
+  {
+    id: "en-movimiento",
+    icon: Bike,
+    title: "Personas en movimiento",
+    desc: "Tu perfil puede consultarse desde cualquier lugar con acceso a internet. El sticker no necesita batería ni una aplicación instalada.",
+    cta: "Probar el demo",
+    href: "/demo",
+    note: "El dispositivo que realiza el escaneo necesita conexión a internet para cargar el perfil.",
+    glow: "orange" as const,
+  },
+  {
+    id: "empresas",
+    icon: Building2,
+    title: "Empresas e instituciones",
+    desc: "Las cuentas corporativas permiten gestionar miembros, perfiles y asignación de chips desde un panel administrativo.",
+    cta: "Solicitar información",
+    href: "/contacto",
+    secondaryCta: "Ver empresas",
+    secondaryHref: "/empresas",
+    glow: "purple" as const,
+  },
 ];
 
 const privacyPoints = [
-  { icon: Eye, title: "Visibilidad configurable", desc: "Decides qué información se muestra al escanear tu identificación." },
-  { icon: Lock, title: "Datos cifrados", desc: "Información sensible protegida con cifrado." },
-  { icon: Shield, title: "Datos nunca expuestos", desc: "Tu correo y fecha de nacimiento no se muestran públicamente." },
+  { icon: Eye, title: "Visibilidad configurable", desc: "Decides qué información se muestra al escanear." },
+  { icon: Lock, title: "Datos protegidos", desc: "Los datos internos de la cuenta no forman parte de la vista pública." },
+  { icon: Shield, title: "Perfil separado", desc: "La vista de emergencia está separada del acceso a tu cuenta." },
 ];
 
 export default function ParaQuienEsContent() {
   return (
-    <div className="min-h-screen font-sans antialiased">
+    <div className="min-h-screen bg-[#02050a] font-sans text-white antialiased">
       <PublicNavbar />
       <main id="main-content">
         <PageHero
           eyebrow="Una identificación. Distintas necesidades."
-          title="Diseñado para personas, familias y equipos"
-          description="PreRescue ID permite mostrar información de emergencia adaptada a cada perfil y situación. Tú decides qué datos serán visibles al escanear tu identificación."
-          primaryCTA={{ href: "/comprar", label: "Ver Planes" }}
-          secondaryCTA={{ href: "/demo", label: "Ver Demo" }}
+          title="Diseñado para personas, familias"
+          titleAccent="y equipos."
+          description="PreRescue ID permite adaptar el perfil de emergencia a distintas situaciones. Tú decides qué información estará disponible al escanear cada identificación."
+          primaryCTA={{ href: "/comprar", label: "Ver planes" }}
+          secondaryCTA={{ href: "/demo", label: "Ver demo" }}
         />
 
-        {/* Quick audience navigation */}
-        <section className="py-8 bg-[#05070D] border-b border-white/5">
+        <section className="sticky top-16 z-30 border-y border-white/[0.055] bg-[#03060c]/90 py-4 backdrop-blur-2xl md:top-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <nav aria-label="Categorías de uso" className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <nav aria-label="Categorías de uso" className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {audiences.map((aud) => (
                 <Link
                   key={aud.id}
                   href={`#${aud.id}`}
-                  className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold bg-white/5 text-[#A0AEC0] hover:bg-white/10 hover:text-[#EFF4FF] transition-all border border-white/10"
+                  className="shrink-0 rounded-xl border border-white/[0.065] bg-white/[0.025] px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 transition-all hover:border-sky-300/18 hover:bg-white/[0.05] hover:text-slate-200"
                 >
                   {aud.title}
                 </Link>
@@ -54,107 +139,135 @@ export default function ParaQuienEsContent() {
           </div>
         </section>
 
-        {/* Audience sections */}
-        {audiences.map((aud, i) => (
-          <section
-            key={aud.id}
-            id={aud.id}
-            className={`py-24 md:py-32 ${i % 2 === 0 ? "bg-[#F4F6F8] text-[#1A1D23]" : "bg-[#05070D] text-[#EFF4FF]"}`}
-            style={{ scrollMarginTop: "5rem" }}
-          >
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.6 }}
-                >
-                  <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
-                    <aud.icon className="h-6 w-6 text-[#10B981]" />
-                  </div>
-                  <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] mb-4">
-                    {aud.title}
-                  </h2>
-                  <p className="text-lg font-medium leading-relaxed mb-6 opacity-90">
-                    {aud.desc}
-                  </p>
-                  {aud.note && (
-                    <p className="text-sm opacity-70 mb-6">
-                      {aud.note}
-                    </p>
-                  )}
-                  {aud.disclaimer && (
-                    <p className="text-xs opacity-60 mb-6 italic">
-                      {aud.disclaimer}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-3">
-                    <Link
-                      href={aud.href}
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#DA1A21] text-white font-bold hover:bg-[#B9141B] transition-all"
-                    >
-                      {aud.cta}
-                    </Link>
-                    {aud.secondaryCta && (
-                      <Link
-                        href={aud.secondaryHref}
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 bg-white/5 text-[#EFF4FF] font-bold hover:bg-white/10 transition-all"
-                      >
-                        {aud.secondaryCta}
-                      </Link>
-                    )}
-                  </div>
-                </motion.div>
+        <section className="relative overflow-hidden bg-[#03060c] py-24 md:py-32">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(42% 52% at 15% 18%, rgba(37,99,235,.09), transparent 64%), radial-gradient(36% 48% at 90% 72%, rgba(139,92,246,.07), transparent 68%)",
+            }}
+          />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-14 grid items-end gap-7 lg:grid-cols-[1fr_.72fr]">
+              <div>
+                <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-sky-300/80">Casos de uso</p>
+                <h2 className="max-w-[11ch] text-[clamp(2.7rem,5vw,5rem)] font-black leading-[0.91] tracking-[-0.045em] text-slate-50">
+                  La misma tecnología, adaptada a cada contexto.
+                </h2>
+              </div>
+              <p className="text-base font-medium leading-7 text-slate-400 sm:text-lg">
+                No todos necesitan mostrar la misma información. El valor está en poder configurar cada perfil de forma independiente.
+              </p>
+            </div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+            <div className="grid gap-4 md:grid-cols-2">
+              {audiences.map((aud, index) => (
+                <motion.article
+                  key={aud.id}
+                  id={aud.id}
+                  initial={{ opacity: 0, y: 22 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.6, delay: 0.1 }}
-                  className={`rounded-3xl p-8 md:p-10 ${i % 2 === 0 ? "glass-card-w2a-light" : "glass-card-w2a"}`}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.5, delay: (index % 2) * 0.06 }}
+                  style={{ scrollMarginTop: "9rem" }}
                 >
-                  <div className="grid grid-cols-2 gap-4">
-                    {privacyPoints.map((point) => (
-                      <div key={point.title} className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                          <point.icon className="h-5 w-5 text-[#10B981]" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold mb-1">{point.title}</p>
-                          <p className="text-xs opacity-70">{point.desc}</p>
-                        </div>
+                  <GlowCard customSize glowColor={aud.glow} className="h-full min-h-[360px] p-7 sm:p-8">
+                    <div className="flex h-full flex-col">
+                      <div className="flex items-center justify-between">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04]">
+                          <aud.icon className="h-5 w-5 text-slate-200" />
+                        </span>
+                        <span className="text-[10px] font-black tracking-[0.2em] text-white/20">0{index + 1}</span>
                       </div>
-                    ))}
-                  </div>
-                </motion.div>
+
+                      <div className="mt-10">
+                        <h3 className="text-2xl font-black tracking-[-0.035em] text-slate-50 sm:text-3xl">{aud.title}</h3>
+                        <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400 sm:text-base sm:leading-7">{aud.desc}</p>
+                        {aud.note && <p className="mt-4 text-xs leading-5 text-slate-600">{aud.note}</p>}
+                        {aud.disclaimer && <p className="mt-4 text-xs italic leading-5 text-slate-600">{aud.disclaimer}</p>}
+                      </div>
+
+                      <div className="mt-auto flex flex-wrap gap-3 pt-8">
+                        <Link href={aud.href} className="group inline-flex items-center gap-2 text-sm font-bold text-sky-200 transition-colors hover:text-white">
+                          {aud.cta}
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </Link>
+                        {aud.secondaryCta && aud.secondaryHref && (
+                          <Link href={aud.secondaryHref} className="text-sm font-bold text-slate-500 transition-colors hover:text-slate-200">
+                            {aud.secondaryCta}
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </GlowCard>
+                </motion.article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden bg-[#050914] py-24 md:py-32">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid items-center gap-12 lg:grid-cols-[.8fr_1.2fr]">
+              <div>
+                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[0.05] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">
+                  <Shield className="h-3.5 w-3.5" /> Configuración por perfil
+                </div>
+                <h2 className="max-w-[10ch] text-[clamp(2.7rem,5vw,4.8rem)] font-black leading-[0.91] tracking-[-0.045em] text-slate-50">
+                  El contexto cambia. La privacidad no.
+                </h2>
+                <p className="mt-6 max-w-lg text-base font-medium leading-7 text-slate-400">
+                  Cada perfil puede configurarse pensando en la información realmente útil para esa persona y situación.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                {privacyPoints.map((point, index) => (
+                  <motion.div
+                    key={point.title}
+                    initial={{ opacity: 0, y: 18 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.45, delay: index * 0.07 }}
+                    className="rounded-[1.6rem] border border-white/[0.07] bg-white/[0.026] p-6"
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.035]">
+                      <point.icon className="h-4 w-4 text-emerald-300" />
+                    </span>
+                    <h3 className="mt-7 text-base font-extrabold text-slate-100">{point.title}</h3>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">{point.desc}</p>
+                  </motion.div>
+                ))}
               </div>
             </div>
-          </section>
-        ))}
 
-        {/* Final CTA */}
-        <section className="py-24 md:py-32 bg-[#DA1A21]">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-[clamp(2rem,5vw,3.5rem)] font-black tracking-tighter leading-[0.95] text-white mb-6">
-              Encuentra el plan adecuado para tu situación
-            </h2>
-            <p className="text-lg text-white/80 font-medium leading-relaxed max-w-2xl mx-auto mb-10">
-              Crea uno o varios perfiles y configura la información que estará disponible al escanear cada identificación.
-            </p>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4">
-              <Link
-                href="/comprar"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-[#DA1A21] font-bold text-lg hover:bg-slate-100 transition-all shadow-xl"
-              >
-                Ver Planes
-              </Link>
-              <Link
-                href="/demo"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border-2 border-white/30 bg-white/10 text-white font-bold text-lg hover:bg-white/20 transition-all backdrop-blur-sm"
-              >
-                Ver Demo
-              </Link>
+            <div className="mt-8 flex items-start gap-3 rounded-2xl border border-sky-300/10 bg-sky-300/[0.035] p-5">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
+              <p className="text-xs font-medium leading-5 text-slate-500">
+                La información visible depende de la configuración disponible para cada perfil. PreRescue ID no sustituye servicios médicos ni de emergencia.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden bg-[#03060c] px-4 py-20 sm:px-6 md:py-28 lg:px-8">
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.4rem] border border-white/[0.09] bg-[#080c14] px-6 py-14 text-center shadow-[0_50px_130px_-65px_rgba(218,26,33,.68)] sm:px-10 md:py-20">
+            <div aria-hidden="true" className="absolute inset-0" style={{ background: "radial-gradient(55% 100% at 50% 110%, rgba(218,26,33,.28), transparent 64%), radial-gradient(42% 70% at 82% 6%, rgba(37,99,235,.12), transparent 68%)" }} />
+            <div className="relative mx-auto max-w-4xl">
+              <p className="mb-5 text-[10px] font-extrabold uppercase tracking-[0.22em] text-rose-300/80">Encuentra tu configuración</p>
+              <h2 className="text-[clamp(2.8rem,6vw,5.6rem)] font-black leading-[0.88] tracking-[-0.05em] text-slate-50">Una identificación preparada para tu realidad.</h2>
+              <p className="mx-auto mt-7 max-w-2xl text-base font-medium leading-7 text-slate-400 sm:text-lg sm:leading-8">
+                Crea uno o varios perfiles y configura la información que estará disponible al escanear cada identificación.
+              </p>
+              <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+                <Link href="/comprar" className="group inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-7 text-sm font-extrabold text-white transition-all hover:-translate-y-0.5 hover:bg-[#ef2d35]">
+                  Ver planes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+                <Link href="/demo" className="inline-flex min-h-14 items-center justify-center rounded-2xl border border-white/[0.1] bg-white/[0.045] px-7 text-sm font-bold text-slate-100 transition-all hover:border-sky-300/25 hover:bg-white/[0.08]">
+                  Ver demo
+                </Link>
+              </div>
             </div>
           </div>
         </section>
