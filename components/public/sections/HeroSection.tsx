@@ -181,7 +181,7 @@ export default function HeroSection() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="mt-4 flex items-start gap-2 text-[10px] leading-4.5 text-slate-500 sm:mt-5 sm:text-[11px] sm:leading-5"
+                className="mt-4 flex items-start gap-2 text-[10px] leading-[18px] text-slate-500 sm:mt-5 sm:text-[11px] sm:leading-5"
               >
                 <Wifi className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 El teléfono que consulta el perfil necesita internet. El sticker no necesita batería ni conexión propia.
@@ -286,7 +286,7 @@ export default function HeroSection() {
                       ))}
                     </div>
 
-                    <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-sky-400/10 bg-sky-400/[0.055] p-2 text-[7px] font-semibold leading-3.5 text-sky-100/80 sm:mt-3 sm:gap-2 sm:rounded-xl sm:p-3 sm:text-[9px] sm:leading-normal">
+                    <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-sky-400/10 bg-sky-400/[0.055] p-2 text-[7px] font-semibold leading-[14px] text-sky-100/80 sm:mt-3 sm:gap-2 sm:rounded-xl sm:p-3 sm:text-[9px] sm:leading-normal">
                       <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-sky-300 sm:h-4 sm:w-4" />
                       Solo muestra la información configurada como pública.
                     </div>
