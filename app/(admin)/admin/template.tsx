@@ -178,11 +178,6 @@ const adminStyles = `
       padding-left: 1rem !important;
       padding-right: 1rem !important;
     }
-
-    .admin-cinematic-theme::before,
-    .admin-cinematic-theme::after {
-      inset-top: 5rem;
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
