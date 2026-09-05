@@ -1,6 +1,6 @@
 "use client";
 
-import React, { type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import React, { useRef, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 
 interface GlowCardProps {
   children?: ReactNode;
@@ -32,6 +32,12 @@ type GlowStyles = CSSProperties & {
   "--glow-rgb": string;
 };
 
+type PendingGlow = {
+  element: HTMLDivElement;
+  x: number;
+  y: number;
+};
+
 function toCssSize(value: string | number | undefined) {
   if (value === undefined) return undefined;
   return typeof value === "number" ? `${value}px` : value;
@@ -46,6 +52,10 @@ export function GlowCard({
   height,
   customSize = false,
 }: GlowCardProps) {
+  const rectRef = useRef<DOMRect | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const pendingGlowRef = useRef<PendingGlow | null>(null);
+
   const style: GlowStyles = {
     "--glow-x": "50%",
     "--glow-y": "50%",
@@ -54,20 +64,43 @@ export function GlowCard({
     height: toCssSize(height),
   };
 
+  const onPointerEnter = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return;
+    rectRef.current = event.currentTarget.getBoundingClientRect();
+  };
+
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "touch") return;
 
-    const rect = event.currentTarget.getBoundingClientRect();
+    const rect = rectRef.current ?? event.currentTarget.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    pendingGlowRef.current = {
+      element: event.currentTarget,
+      x: ((event.clientX - rect.left) / rect.width) * 100,
+      y: ((event.clientY - rect.top) / rect.height) * 100,
+    };
 
-    event.currentTarget.style.setProperty("--glow-x", `${x}%`);
-    event.currentTarget.style.setProperty("--glow-y", `${y}%`);
+    if (frameRef.current !== null) return;
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      const pending = pendingGlowRef.current;
+      if (pending) {
+        pending.element.style.setProperty("--glow-x", `${pending.x}%`);
+        pending.element.style.setProperty("--glow-y", `${pending.y}%`);
+      }
+      frameRef.current = null;
+    });
   };
 
   const onPointerLeave = (event: PointerEvent<HTMLDivElement>) => {
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
+    pendingGlowRef.current = null;
+    rectRef.current = null;
     event.currentTarget.style.setProperty("--glow-x", "50%");
     event.currentTarget.style.setProperty("--glow-y", "50%");
   };
@@ -75,6 +108,7 @@ export function GlowCard({
   return (
     <div
       data-glow-card
+      onPointerEnter={onPointerEnter}
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
       style={style}
