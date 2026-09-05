@@ -5,6 +5,7 @@ export type EnvScope = "build" | "runtime" | "script" | "test" | "platform";
 export const ENV_CONTRACT = {
   APP_URL: { scopes: ["script"], example: true, sensitive: false, requiredInProduction: false },
   APPLY_W605G_H5: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
+  BOOTSTRAP_ADMIN_USER_ID: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
   CONFIRM_AFTER_SALES_SMOKE: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
   CONFIRM_CLEAN_OPERATIONS_SMOKE: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
   CONFIRM_COMMERCIAL_DISPATCH_SMOKE: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
