@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
       // 1. Find the claim token
       const claimToken = await tx.chipClaimToken.findFirst({
-        where: activationCodeLookupWhere(activationCode),
+        where: { ...activationCodeLookupWhere(activationCode), status: "active" },
         include: { chip: true },
       });
 
@@ -227,6 +227,7 @@ export async function POST(req: NextRequest) {
         where: {
           id: claimToken.id,
           usedAt: null,
+          status: "active",
           OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         },
         data: {

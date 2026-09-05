@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   // Find the claim token
   const claimToken = await prisma.chipClaimToken.findFirst({
-    where: activationCodeLookupWhere(activationCode),
+    where: { ...activationCodeLookupWhere(activationCode), status: "active" },
     include: { chip: true },
   });
 
@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
         where: {
           id: claimToken.id,
           usedAt: null,
+          status: "active",
           OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         },
         data: {
@@ -172,7 +173,7 @@ export async function POST(req: NextRequest) {
 
       // Enforce plan chip limit
       if (currentActiveCount >= account.maxChipsAllocated) {
-        throw new Error(`Has alcanzado el límite de ${account.maxChipsAllocated} chip(s) en tu plan actual. Adquiere chips adicionales para activar más.`);
+        throw Object.assign(new Error(`Has alcanzado el límite de ${account.maxChipsAllocated} chip(s) en tu plan actual. Adquiere chips adicionales para activar más.`), { status: 409 });
       }
       const targetAccountId = account.id;
 

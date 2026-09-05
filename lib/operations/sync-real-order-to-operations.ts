@@ -102,7 +102,7 @@ export async function syncRealOrderToOperations(
     code,
     sourceType: input.sourceType,
     sourceId: input.sourceId,
-    status: "draft",
+    status: ["cancelled", "rejected"].includes(input.paymentStatus || "") ? "cancelled" : "draft",
     customerType: input.orderType === "enterprise" ? "enterprise" : "customer",
     customerName,
     customerEmail: input.contactEmail?.trim() || null,

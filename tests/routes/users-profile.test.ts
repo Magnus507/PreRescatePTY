@@ -535,7 +535,7 @@ describe('GET/PATCH /api/users/profile', () => {
 
   // ─── profileVisibilityStatus ────────────────────────────────────────────
 
-  it('18. PATCH applies profileVisibilityStatus from the raw body', async () => {
+  it('18. PATCH applies a validated profileVisibilityStatus', async () => {
     authorizeAsUser()
     setupPatchMocks()
 
@@ -551,5 +551,25 @@ describe('GET/PATCH /api/users/profile', () => {
     const upsertCall = mockUpsertByUserId.mock.calls[0]
     const upsertData = upsertCall[1] as Record<string, unknown>
     expect(upsertData.profileVisibilityStatus).toBe('hidden')
+  })
+
+  it('rejects privileged and invalid visibility states', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+    const res = await PATCH(createPatchRequest({ profileVisibilityStatus: 'deleted' }))
+    expect(res.status).toBe(400)
+    expect(mockUpsertByUserId).not.toHaveBeenCalled()
+  })
+
+  it('NEW-12: records changed fields without duplicating personal data', async () => {
+    authorizeAsUser()
+    setupPatchMocks()
+    const res = await PATCH(createPatchRequest({ firstName: 'PrivateName', phone: '+50760001234' }))
+    expect(res.status).toBe(200)
+    const audit = mockPrisma.auditLog.create.mock.calls[0][0].data
+    expect(audit.oldValuesJson).toBeNull()
+    expect(JSON.parse(audit.newValuesJson)).toEqual({ changedFields: ['firstName', 'phone'] })
+    expect(audit.newValuesJson).not.toContain('PrivateName')
+    expect(audit.newValuesJson).not.toContain('60001234')
   })
 })
