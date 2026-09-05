@@ -42,6 +42,13 @@ jobs:
             -X POST "$APP_URL/api/cron/commerce-order-sync?limit=25" \
             -H "Authorization: Bearer $CRON_SECRET"
 
+      - name: Expire services and process durable storage cleanup
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-all-errors --connect-timeout 10 --max-time 90 \
+            -X POST "$APP_URL/api/cron/expire-chips" \
+            -H "Authorization: Bearer $CRON_SECRET"
+
       - name: Open or update worker failure issue
         if: failure()
         env:

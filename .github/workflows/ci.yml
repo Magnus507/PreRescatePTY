@@ -123,6 +123,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Record application schema fingerprint
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/audit-public-schema.sql
+
       - name: Typecheck
         run: npm run typecheck
 

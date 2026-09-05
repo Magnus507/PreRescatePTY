@@ -3,6 +3,7 @@ import { mockPrisma } from "../helpers/mock-prisma";
 import { resetAllMocks } from "../helpers/reset-mocks";
 
 const mockDeleteStorageObjects = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/storage-cleanup-outbox", () => ({ processStorageCleanupOutbox: mockDeleteStorageObjects }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
 vi.mock("@/lib/storage-deletion", () => ({
@@ -49,12 +50,10 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it("deletes profile photos and payment proofs before anonymizing database references", async () => {
+  it("durably queues profile photos and payment proofs before anonymizing references", async () => {
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(true);
-    expect(mockDeleteStorageObjects).toHaveBeenCalledWith(expect.arrayContaining([
-      { bucket: "profile-photos", path: "user-1/profile.webp" },
-      { bucket: "payment-proofs", path: "payments/user-1/proof.webp" },
-    ]));
+    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ bucket: "profile-photos", path: "user-1/profile.webp" }) }));
     expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { userId: USER_ID },
       data: expect.objectContaining({
@@ -126,15 +125,29 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     expect(data.oldValuesJson).not.toContain(EMAIL);
   });
 
-  it("does not anonymize the database if storage deletion fails", async () => {
+  it("keeps deletion committed and cleanup durably queued when storage is unavailable", async () => {
     mockDeleteStorageObjects.mockRejectedValue(new Error("storage unavailable"));
-    expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(false);
-    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
-    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(true);
+    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.user.update).toHaveBeenCalled();
   });
 
   it("returns false when the database transaction fails", async () => {
     mockPrisma.$transaction.mockRejectedValue(new Error("transaction failed"));
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(false);
+    expect(mockDeleteStorageObjects).not.toHaveBeenCalled();
+  });
+
+  it("queues cleanup in the transaction before removing database references", async () => {
+    mockPrisma.storageCleanupOutbox.upsert.mockRejectedValueOnce(new Error("injected queue failure"));
+    expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(false);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    expect(mockDeleteStorageObjects).not.toHaveBeenCalled();
+  });
+
+  it("does not select other members' profiles when the user is not the account owner", async () => {
+    await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID);
+    expect(mockPrisma.profile.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.profile.update).toHaveBeenCalledTimes(1);
   });
 });

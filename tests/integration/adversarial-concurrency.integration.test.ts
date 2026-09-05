@@ -53,5 +53,20 @@ describe("Adversarial PostgreSQL concurrency (isolated, synthetic data)", () => 
     expect(send).toHaveBeenCalledTimes(1);
     expect(await db.notification.count({ where: { chipId: chip.id, status: "sent", attempts: 1 } })).toBe(1);
     evidence("same notification claim", 20, 1, 19, 0);
+
+    // Seed a separate synthetic job to exercise the real cron endpoint and
+    // database worker together; only external delivery remains mocked.
+    const cronScan = await db.scanEvent.create({ data: { chipId: chip.id, profileId: profile.id, accountId: account.id, sourceType: "qr" } });
+    const cronJob = await db.notification.create({ data: { chipId: chip.id, eventId: cronScan.id, channel: "email", recipient: "synthetic@example.invalid", idempotencyKey: `${run}-cron`, status: "pending" } });
+    process.env.CRON_SECRET = "isolated-cron-test-secret";
+    const { POST } = await import("@/app/api/cron/notify/route");
+    send.mockClear();
+    const responses = await Promise.all(Array.from({ length: 10 }, () => POST(new Request("http://localhost/api/cron/notify", { method: "POST", headers: { authorization: "Bearer isolated-cron-test-secret" } }))));
+    expect(responses.every(response => response.status === 200)).toBe(true);
+    const bodies = await Promise.all(responses.map(response => response.json()));
+    expect(bodies.reduce((sum, body) => sum + body.claimed, 0)).toBe(1);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect((await db.notification.findUniqueOrThrow({ where: { id: cronJob.id } })).status).toBe("sent");
+    evidence("simultaneous authenticated cron", 10, 10, 0, 0);
   }, 120_000);
 });
