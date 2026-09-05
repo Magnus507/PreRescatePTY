@@ -1,9 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
+import { GlowCard } from "@/components/ui/spotlight-card";
 
 interface Package {
   id: string;
@@ -23,6 +24,21 @@ interface Package {
   allowsFamilyProfiles: boolean;
   allowsOrganizationModule: boolean;
   serviceDurationMonths: number;
+}
+
+const priceFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+function coverageLabel(months: number) {
+  if (months > 0 && months % 12 === 0) {
+    const years = months / 12;
+    return `${years} año${years === 1 ? "" : "s"}`;
+  }
+  return `${months} meses`;
 }
 
 export default function PlansPreview() {
@@ -49,83 +65,119 @@ export default function PlansPreview() {
   const displayPackages = packages.slice(0, 3);
 
   return (
-    <section className="relative py-24 md:py-32 bg-[#F4F6F8] text-[#1A1D23] overflow-hidden">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section className="relative overflow-hidden bg-[#03060c] py-24 text-white md:py-32">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(48% 52% at 50% 24%, rgba(37,99,235,.12), transparent 62%), radial-gradient(30% 42% at 78% 78%, rgba(218,26,33,.07), transparent 66%)",
+        }}
+      />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true, margin: "-90px" }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="mx-auto mb-14 max-w-3xl text-center"
         >
-          <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tighter leading-[0.95] mb-4">
-            Un plan para cada persona, familia o equipo
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-sky-300/15 bg-sky-300/[0.055] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-sky-200">
+            <Sparkles className="h-3.5 w-3.5" />
+            Planes PreRescue ID
+          </div>
+          <h2 className="text-[clamp(2.7rem,5vw,5rem)] font-black leading-[0.92] tracking-[-0.045em] text-slate-50">
+            Elige la cobertura que necesitas.
           </h2>
-          <p className="text-lg text-[#6B7280] font-medium max-w-2xl mx-auto">
-            Pago único. Sin mensualidades. 2 años de vigencia desde la activación.
+          <p className="mx-auto mt-6 max-w-2xl text-base font-medium leading-7 text-slate-400 sm:text-lg">
+            Los planes, precios y límites se cargan directamente desde nuestro catálogo activo.
           </p>
         </motion.div>
 
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-10 w-10 animate-spin text-[#DA1A21]" />
+          <div className="flex min-h-[360px] items-center justify-center">
+            <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-5 py-4 text-sm font-bold text-slate-400">
+              <Loader2 className="h-5 w-5 animate-spin text-sky-300" />
+              Cargando planes
+            </div>
           </div>
         ) : error || displayPackages.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-[#6B7280] font-medium mb-4">
-              {error ? "Error al cargar los planes." : "No hay planes disponibles en este momento."}
+          <div className="mx-auto max-w-xl rounded-[1.7rem] border border-white/[0.08] bg-white/[0.03] p-8 text-center">
+            <p className="font-medium text-slate-400">
+              {error ? "No pudimos cargar los planes en este momento." : "No hay planes disponibles en este momento."}
             </p>
-            <Link
-              href="/comprar"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-all"
-            >
-              Ver todos los planes
+            <Link href="/comprar" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-extrabold text-slate-950">
+              Ver página de compra <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {displayPackages.map((pkg, i) => (
-              <motion.div
-                key={pkg.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className={`relative rounded-3xl p-8 border ${
-                  pkg.recommended
-                    ? "bg-slate-900 text-white border-slate-700 shadow-xl"
-                    : "bg-white border-slate-200 shadow-sm"
-                }`}
-              >
-                {pkg.recommended && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-[#DA1A21] text-white text-xs font-bold">
-                    Más popular
-                  </div>
-                )}
-                <h3 className="text-xl font-bold mb-2">{pkg.name}</h3>
-                <p className={`text-sm mb-6 ${pkg.recommended ? "text-slate-300" : "text-slate-600"}`}>
-                  {pkg.maxChips} chip{pkg.maxChips !== 1 ? "s" : ""} · {pkg.maxProfiles} perfil{pkg.maxProfiles !== 1 ? "es" : ""}
-                </p>
-                <ul className="space-y-3 mb-8">
-                  {["QR + NFC", "Perfil médico completo", "Contactos de emergencia", "2 años de cobertura"].map((feat) => (
-                    <li key={feat} className="flex items-center gap-2 text-sm">
-                      <Check className={`h-4 w-4 ${pkg.recommended ? "text-[#10B981]" : "text-[#DA1A21]"}`} />
-                      <span className={pkg.recommended ? "text-slate-200" : "text-slate-700"}>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={pkg.accountType === "company" ? `/contacto?subject=Me%20interesa%20el%20${encodeURIComponent(pkg.name)}` : `/registro?package=${pkg.id}`}
-                  className={`block w-full text-center py-3 rounded-xl font-bold transition-all ${
-                    pkg.recommended
-                      ? "bg-[#DA1A21] text-white hover:bg-[#B9141B]"
-                      : "bg-slate-900 text-white hover:bg-slate-800"
-                  }`}
+          <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-3">
+            {displayPackages.map((pkg, index) => {
+              const serviceLabel = coverageLabel(pkg.serviceDurationMonths);
+              const features = [
+                `${pkg.maxChips} chip${pkg.maxChips === 1 ? "" : "s"} QR + NFC`,
+                `${pkg.maxProfiles} perfil${pkg.maxProfiles === 1 ? "" : "es"} médico${pkg.maxProfiles === 1 ? "" : "s"}`,
+                "Contactos de emergencia",
+                `${serviceLabel} de servicio desde la activación`,
+              ];
+
+              return (
+                <motion.div
+                  key={pkg.id}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.55, delay: index * 0.07 }}
+                  className={pkg.recommended ? "md:-translate-y-3" : ""}
                 >
-                  Adquirir
-                </Link>
-              </motion.div>
-            ))}
+                  <GlowCard customSize glowColor={pkg.recommended ? "red" : "blue"} className={`h-full min-h-[500px] p-6 sm:p-7 ${pkg.recommended ? "border-[#DA1A21]/25 bg-[#DA1A21]/[0.035]" : ""}`}>
+                    <div className="flex h-full flex-col">
+                      <div className="flex min-h-7 items-center justify-between gap-3">
+                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{pkg.accountType || "PreRescue"}</span>
+                        {pkg.recommended && (
+                          <span className="rounded-full border border-[#DA1A21]/25 bg-[#DA1A21]/10 px-3 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] text-rose-200">Más popular</span>
+                        )}
+                      </div>
+
+                      <h3 className="mt-7 text-2xl font-black tracking-[-0.035em] text-white">{pkg.name}</h3>
+                      {pkg.description && <p className="mt-3 min-h-12 text-sm leading-6 text-slate-500">{pkg.description}</p>}
+
+                      <div className="mt-7 flex items-end gap-2 border-y border-white/[0.06] py-6">
+                        <span className="text-5xl font-black tracking-[-0.05em] text-slate-50">{priceFormatter.format(pkg.price)}</span>
+                        <span className="pb-1.5 text-xs font-semibold text-slate-500">pago del plan</span>
+                      </div>
+
+                      {pkg.savings && (
+                        <div className="mt-4 rounded-xl border border-emerald-300/10 bg-emerald-300/[0.04] px-3 py-2 text-xs font-bold text-emerald-300">{pkg.savings}</div>
+                      )}
+
+                      <ul className="mt-7 space-y-3.5">
+                        {features.map((feature) => (
+                          <li key={feature} className="flex items-start gap-3 text-sm leading-5 text-slate-300">
+                            <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${pkg.recommended ? "bg-[#DA1A21]/12 text-rose-300" : "bg-sky-300/[0.08] text-sky-300"}`}>
+                              <Check className="h-3 w-3" />
+                            </span>
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <Link
+                        href={pkg.accountType === "company" ? `/contacto?subject=Me%20interesa%20el%20${encodeURIComponent(pkg.name)}` : `/registro?package=${pkg.id}`}
+                        className={`mt-auto flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-extrabold transition-all duration-300 ${
+                          pkg.recommended
+                            ? "bg-[#DA1A21] text-white shadow-[0_18px_42px_-18px_rgba(218,26,33,.75)] hover:bg-[#ef2d35]"
+                            : "border border-white/[0.09] bg-white/[0.055] text-slate-100 hover:border-sky-300/20 hover:bg-white/[0.09]"
+                        }`}
+                      >
+                        {pkg.accountType === "company" ? "Solicitar información" : "Elegir este plan"}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </GlowCard>
+                </motion.div>
+              );
+            })}
           </div>
         )}
 
@@ -134,14 +186,12 @@ export default function PlansPreview() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-            className="text-center mt-12"
+            transition={{ delay: 0.2 }}
+            className="mt-11 text-center"
           >
-            <Link
-              href="/comprar"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold hover:bg-slate-50 transition-all"
-            >
-              Ver todos los planes
+            <Link href="/comprar" className="group inline-flex items-center gap-2 text-sm font-bold text-sky-200 transition-colors hover:text-white">
+              Comparar todos los planes
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </motion.div>
         )}
