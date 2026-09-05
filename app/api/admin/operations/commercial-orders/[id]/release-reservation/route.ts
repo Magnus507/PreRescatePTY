@@ -20,6 +20,7 @@ export async function POST(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      await tx.operationCommercialOrder.updateMany({ where: { id: id }, data: { updatedAt: new Date() } });
       const order = await tx.operationCommercialOrder.findUnique({
         where: { id },
         select: {

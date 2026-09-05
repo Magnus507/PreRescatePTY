@@ -81,7 +81,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     try {
       result = await prisma.$transaction(async (tx) => {
         const updatedOrder = await tx.order.update({
-          where: { id },
+          where: { id, paymentStatus: "under_review", adminReviewStatus: "pending", orderStatus: { notIn: ["cancelled", "completed", "shipped"] } },
           data: {
             paymentStatus: "rejected",
             orderStatus: "cancelled",
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     result = await prisma.$transaction(async (tx) => {
       // Actualizar orden
       const updatedOrder = await tx.order.update({
-        where: { id },
+        where: { id, paymentStatus: "under_review", adminReviewStatus: "pending", orderStatus: { notIn: ["cancelled", "completed", "shipped"] } },
         data: {
           paymentStatus: "rejected",
           orderStatus: "cancelled",

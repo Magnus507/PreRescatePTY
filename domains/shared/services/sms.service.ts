@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 export class SmsService {
   private static getClient() {
     if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-      return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN, { timeout: 15_000, autoRetry: false });
     }
     return null;
   }
@@ -39,6 +39,7 @@ export class SmsService {
       return { 
         success: false, 
         error: errorMessage,
+        retrySafe: typeof e === "object" && e !== null && "status" in e && Number(e.status) >= 400 && Number(e.status) < 500,
         code: "provider_error"
       };
     }

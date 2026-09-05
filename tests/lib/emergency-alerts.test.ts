@@ -49,6 +49,7 @@ function baseScan(overrides: Record<string, unknown> = {}) {
     scannedAt: new Date(),
     notificationStatus: "pending",
     chip: {
+      status: "activated",
       shortCode: "SC-123",
       assignedProfile: baseProfile(),
     },
@@ -60,6 +61,7 @@ describe("emergency alerts helpers", () => {
   beforeEach(() => {
     resetAllMocks();
     mockSendEmergencyNotification.mockReset();
+    mockPrisma.consent.findFirst.mockResolvedValue({ id: "consent-1" });
     delete process.env.RESEND_API_KEY;
     delete process.env.RESEND_FROM_EMAIL;
     delete process.env.TWILIO_ACCOUNT_SID;
@@ -387,8 +389,8 @@ describe("emergency alerts helpers", () => {
   it("recovers expired email leases and dead-letters ambiguous SMS leases", async () => {
     const lockedAt = new Date("2026-09-04T00:00:00Z");
     const rows = [
-      { id: "email-1", channel: "email", status: "processing", lockedAt, lockedBy: "dead-a" },
-      { id: "sms-1", channel: "sms", status: "processing", lockedAt, lockedBy: "dead-b" },
+      { id: "email-1", channel: "email", status: "processing", attempts: 1, createdAt: lockedAt, lockedAt, lockedBy: "dead-a" },
+      { id: "sms-1", channel: "sms", status: "processing", attempts: 1, createdAt: lockedAt, lockedAt, lockedBy: "dead-b" },
     ];
     mockPrisma.notification.findMany.mockResolvedValue(rows as never);
     mockPrisma.notification.updateMany.mockResolvedValue({ count: 1 } as never);
@@ -406,4 +408,51 @@ describe("emergency alerts helpers", () => {
       expect.objectContaining({ data: expect.objectContaining({ status: "dead_letter" }) })
     );
   });
+  it("NEW-02: manual requests also obey the recipient cooldown", async () => {
+    process.env.RESEND_API_KEY = "resend-test";
+    mockPrisma.scanEvent.findUnique.mockResolvedValue(baseScan());
+    mockPrisma.notification.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: "previous", status: "sent" });
+    const result = await queueEmergencyNotificationsFromScan(mockPrisma, {
+      scanEventId: "scan-1", chipId: "chip-1", shortCode: "SC-123", profileId: "profile-1",
+      profileName: "Ana", publicUrl: "/e/SC-123", trigger: "manual",
+    });
+    expect(result.queued).toBe(0);
+    expect(result.reason).toBe("cooldown");
+  });
+
+  it("NEW-05: exhausted email leases cannot retry forever", async () => {
+    mockPrisma.notification.findMany.mockResolvedValue([{
+      id: "email-exhausted", channel: "email", status: "processing", attempts: 5,
+      createdAt: new Date(), lockedAt: new Date(0), lockedBy: "dead",
+    }]);
+    mockPrisma.notification.updateMany.mockResolvedValue({ count: 1 });
+    expect(await recoverExpiredEmergencyNotificationLeases(mockPrisma)).toEqual({ recovered: 0, deadLettered: 1 });
+  });
+
+  it("NEW-05: email beyond provider idempotency window requires reconciliation", async () => {
+    mockPrisma.notification.findMany.mockResolvedValue([{
+      id: "email-old", channel: "email", status: "processing", attempts: 1,
+      createdAt: new Date(0), lockedAt: new Date(0), lockedBy: "dead",
+    }]);
+    mockPrisma.notification.updateMany.mockResolvedValue({ count: 1 });
+    expect(await recoverExpiredEmergencyNotificationLeases(mockPrisma)).toEqual({ recovered: 0, deadLettered: 1 });
+  });
+
+  it.each(["revoked", "contact removed", "profile reassigned", "chip deactivated"])("NEW-03: does not send after %s", async (scenario) => {
+    process.env.RESEND_API_KEY = "resend-test";
+    mockPrisma.notification.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{
+      id: "n", eventId: "scan-1", channel: "email", recipient: "maria@example.com", status: "pending",
+      idempotencyKey: "n", attempts: 0, createdAt: new Date(), availableAt: new Date(0), providerResponse: null,
+    }]);
+    mockPrisma.notification.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.scanEvent.findUnique.mockResolvedValue(baseScan({
+      chip: { status: scenario === "chip deactivated" ? "inactive" : "activated", shortCode: "SC-123", assignedProfile: baseProfile(scenario === "contact removed" ? { contacts: [] } : scenario === "profile reassigned" ? { id: "profile-other" } : {}) },
+    }));
+    mockPrisma.consent.findFirst.mockResolvedValue(scenario === "revoked" ? null : { id: "consent" });
+    mockSendEmergencyNotification.mockResolvedValue({ success: true });
+    const result = await processPendingEmergencyNotifications(mockPrisma);
+    expect(mockSendEmergencyNotification).not.toHaveBeenCalled();
+    expect(result.skipped).toBe(1);
+  });
+
 });

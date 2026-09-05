@@ -210,10 +210,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (proofPath) updateData.paymentProofUrl = buildProofProxyUrl(proofPath);
   if (data.manualPaymentReference) updateData.manualPaymentReference = data.manualPaymentReference;
 
-  const updated = await prisma.order.update({
-    where: { id },
+  const changed = await prisma.order.updateMany({
+    where: { id, userId, paymentStatus: order.paymentStatus, orderStatus: order.orderStatus, adminReviewStatus: order.adminReviewStatus, updatedAt: order.updatedAt },
     data: updateData,
   });
 
+  if (changed.count !== 1) return NextResponse.json({ error: "El pedido cambió. Recarga e intenta de nuevo." }, { status: 409 });
+  const updated = await prisma.order.findUnique({ where: { id } });
   return NextResponse.json({ order: updated });
 }

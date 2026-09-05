@@ -79,7 +79,7 @@ export async function markFinishedGoodUnitActivatedWithClient(
     }
   }
 
-  if (["cancelled", "discarded"].includes(unit.status)) {
+  if (unit.activationStatus === "activated" || !["dispatched", "delivered"].includes(unit.status)) {
     return { ok: false, reason: "UNIT_NOT_ELIGIBLE" };
   }
 

@@ -83,4 +83,15 @@ describe("syncRealOrderToOperations", () => {
       },
     ]);
   });
+  it("NEW-13: replay preserves operational status and item identities", async () => {
+    mocks.findFirstMock.mockResolvedValue({ id: "co-1" });
+    await syncRealOrderToOperations({ operationCommercialOrder: { findFirst: mocks.findFirstMock, update: mocks.updateMock } } as never,
+      { sourceType: "checkout", sourceId: "order-1", orderType: "customer", paymentStatus: "paid", items: [] });
+    const data = mocks.updateMock.mock.calls[0][0].data;
+    expect(data.status).toBeUndefined();
+    expect(data.fulfillmentStatus).toBeUndefined();
+    expect(data.items).toBeUndefined();
+    expect(data.paymentStatus).toBe("paid");
+  });
+
 });

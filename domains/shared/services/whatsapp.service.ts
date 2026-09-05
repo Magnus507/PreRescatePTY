@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 export class WhatsappService {
   private static getClient() {
     if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-      return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN, { timeout: 15_000, autoRetry: false });
     }
     return null;
   }
@@ -18,6 +18,7 @@ export class WhatsappService {
     message?: string;
     error?: string;
     code?: string;
+    retrySafe?: boolean;
   }> {
     const client = this.getClient();
     const from = process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_WHATSAPP_FROM;
@@ -51,6 +52,7 @@ export class WhatsappService {
       return { 
         success: false, 
         error: errorMessage,
+        retrySafe: typeof e === "object" && e !== null && "status" in e && Number(e.status) >= 400 && Number(e.status) < 500,
         code: "provider_error"
       };
     }

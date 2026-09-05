@@ -91,11 +91,9 @@ function setupDefaultMocks(orderOverrides: Record<string, unknown> = {}) {
   mockPrisma.order.findUnique.mockResolvedValue(
     createSubmittableOrder(orderOverrides) as never
   )
-  mockPrisma.order.update.mockImplementation(async (args: { where: { id: string }; data: Record<string, unknown> }) => {
-    return createSubmittableOrder({
-      ...orderOverrides,
-      ...args.data,
-    })
+  mockPrisma.order.updateMany.mockImplementation(async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+    mockPrisma.order.findUnique.mockResolvedValue(createSubmittableOrder({ ...orderOverrides, ...args.data }))
+    return { count: 1 }
   })
 }
 
@@ -105,7 +103,7 @@ describe('POST /api/orders/[id]/payment-proof', () => {
     mockRateLimit.mockReset()
     mockDownload.mockReset()
     mockPrisma.order.findUnique.mockReset()
-    mockPrisma.order.update.mockReset()
+    mockPrisma.order.updateMany.mockReset()
     setupDefaultMocks()
   })
 
@@ -136,7 +134,7 @@ describe('POST /api/orders/[id]/payment-proof', () => {
 
     const res = await POST(createPaymentProofRequest({ paymentProofPath: VALID_PROOF_PATH }), routeParams())
     expect(res.status).toBe(404)
-    expect(mockPrisma.order.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.updateMany).not.toHaveBeenCalled()
   })
 
   it('4. returns 400 when provider is not manual', async () => {
@@ -180,7 +178,7 @@ describe('POST /api/orders/[id]/payment-proof', () => {
     for (const paymentProofPath of invalidPaths) {
       const res = await POST(createPaymentProofRequest({ paymentProofPath }), routeParams())
       expect(res.status).toBe(400)
-      expect(mockPrisma.order.update).not.toHaveBeenCalled()
+      expect(mockPrisma.order.updateMany).not.toHaveBeenCalled()
     }
   })
 
@@ -189,9 +187,9 @@ describe('POST /api/orders/[id]/payment-proof', () => {
 
     expect(res.status).toBe(200)
     expect(mockDownload).toHaveBeenCalledWith(VALID_PROOF_PATH)
-    expect(mockPrisma.order.update).toHaveBeenCalledWith(
+    expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: TEST_ORDER_ID },
+        where: expect.objectContaining({ id: TEST_ORDER_ID, userId: TEST_USER_ID, paymentStatus: expect.any(String), adminReviewStatus: 'pending' }),
         data: expect.objectContaining({
           paymentStatus: 'under_review',
           orderStatus: 'processing',
@@ -215,7 +213,7 @@ describe('POST /api/orders/[id]/payment-proof', () => {
     expect(res.status).toBe(200)
     expect(json.order).toBeDefined()
     expect(mockDownload).not.toHaveBeenCalled()
-    expect(mockPrisma.order.update).toHaveBeenCalledWith(
+    expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ manualPaymentReference: 'REF-12345' }),
       })
@@ -233,7 +231,7 @@ describe('POST /api/orders/[id]/payment-proof', () => {
     }), routeParams())
 
     expect(res.status).toBe(200)
-    expect(mockPrisma.order.update).toHaveBeenCalledWith(
+    expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           paymentStatus: 'under_review',
@@ -254,7 +252,7 @@ describe('POST /api/orders/[id]/payment-proof', () => {
 
     expect(res.status).toBe(400)
     expect(json.error).toMatch(/imagen/i)
-    expect(mockPrisma.order.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.updateMany).not.toHaveBeenCalled()
   })
 
   it('13. does not allow a non-manual order to enter manual review', async () => {
@@ -267,6 +265,12 @@ describe('POST /api/orders/[id]/payment-proof', () => {
 
     expect(res.status).toBe(400)
     expect(json.error).toMatch(/manual/i)
-    expect(mockPrisma.order.update).not.toHaveBeenCalled()
+    expect(mockPrisma.order.updateMany).not.toHaveBeenCalled()
   })
+  it('NEW-06 rejects a stale proof submission after concurrent approval', async () => {
+    mockPrisma.order.updateMany.mockResolvedValue({ count: 0 });
+    const res = await POST(createPaymentProofRequest({ manualPaymentReference: 'test-ref' }), routeParams());
+    expect(res.status).toBe(409);
+  });
+
 })

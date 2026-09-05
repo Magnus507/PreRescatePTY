@@ -162,10 +162,10 @@ export async function syncRealOrderToOperations(
       where: { id: existing.id },
       data: {
         ...orderData,
-        items: {
-          deleteMany: {},
-          create: mappedItems,
-        },
+        // Retries synchronize commercial facts, never rewind fulfilment or replace
+        // operational item identities after inventory/production work has started.
+        status: ["cancelled", "rejected"].includes(input.paymentStatus || "") ? "cancelled" : undefined,
+        fulfillmentStatus: undefined,
       },
     });
 

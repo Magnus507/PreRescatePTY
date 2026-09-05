@@ -281,7 +281,7 @@ describe('POST /api/admin/orders/[id]/approve', () => {
     expect(json.orderId).toBe(TEST_ORDER_ID)
     expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1)
     expect(mockPrisma.order.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: TEST_ORDER_ID },
+      where: expect.objectContaining({ id: TEST_ORDER_ID, paymentStatus: 'under_review', adminReviewStatus: 'pending' }),
       data: expect.objectContaining({ paymentStatus: 'paid', orderStatus: 'processing', adminReviewStatus: 'approved' }),
     }))
     expect(mockPrisma.account.update).toHaveBeenCalledWith(expect.objectContaining({

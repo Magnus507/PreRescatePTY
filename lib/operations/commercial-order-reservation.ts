@@ -215,6 +215,7 @@ export async function reserveCommercialOrderStock(
   tx: Prisma.TransactionClient,
   input: CommercialOrderReservationInput
 ): Promise<CommercialOrderReservationResult | null> {
+  await tx.operationCommercialOrder.updateMany({ where: { id: input.orderId }, data: { updatedAt: new Date() } });
   const order = await tx.operationCommercialOrder.findUnique({
     where: { id: input.orderId },
     include: {

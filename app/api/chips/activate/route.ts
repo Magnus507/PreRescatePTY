@@ -137,6 +137,8 @@ export async function POST(req: NextRequest) {
   // Use atomic transaction to prevent race conditions on chip limit enforcement
   try {
     await prisma.$transaction(async (tx) => {
+      if (!state.accountId) throw Object.assign(new Error("Cuenta no encontrada"), { status: 400 });
+      await tx.account.update({ where: { id: state.accountId }, data: { updatedAt: new Date() } });
       const now = new Date();
 
       // Atomically consume token (single-use guard)
@@ -144,7 +146,7 @@ export async function POST(req: NextRequest) {
         where: {
           id: claimToken.id,
           usedAt: null,
-          expiresAt: { gt: now },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         },
         data: {
           usedAt: now,

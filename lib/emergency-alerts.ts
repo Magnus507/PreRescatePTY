@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { createHash, randomUUID } from "node:crypto";
 import { sendEmergencyNotification } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
+import { PUBLIC_ACTIVE_CHIP_STATUSES } from "@/domains/chips/chip-lifecycle.constants";
 import { CONSENT_TYPE } from "@/domains/consents/consent.constants";
 
 export type EmergencyAlertChannel = "email" | "sms" | "whatsapp";
@@ -85,6 +86,7 @@ type PrismaClientLike = {
       scannedAt: Date;
       notificationStatus: string;
       chip: {
+        status: string;
         shortCode: string;
         assignedProfile: {
           id: string;
@@ -146,6 +148,8 @@ const PERMANENT_ERROR_PATTERNS = [
 export const EMERGENCY_NOTIFICATION_COOLDOWN_MS = 5 * 60_000;
 export const EMERGENCY_NOTIFICATION_LEASE_MS = 5 * 60_000;
 export const EMERGENCY_NOTIFICATION_MAX_ATTEMPTS = 5;
+// Resend retains keys for 24h. Keep a safety margin and bound all retries.
+export const EMERGENCY_NOTIFICATION_RETRY_WINDOW_MS = 23 * 60 * 60_000;
 
 function buildNotificationIdempotencyKey(input: {
   scanEventId: string;
@@ -181,7 +185,7 @@ function selectChannel(candidate: ContactCandidate): EmergencyAlertChannel | nul
 }
 
 function getRecipient(candidate: ContactCandidate, channel: EmergencyAlertChannel): string | null {
-  if (channel === "email") return candidate.contact.email?.trim() || null;
+  if (channel === "email") return candidate.contact.email?.trim().toLowerCase() || null;
   return normalizePhone(candidate.contact.phone);
 }
 
@@ -190,7 +194,7 @@ function isProviderAvailable(channel: EmergencyAlertChannel): boolean {
     return !!process.env.RESEND_API_KEY;
   }
 
-  return !!process.env.TWILIO_ACCOUNT_SID && !!process.env.TWILIO_AUTH_TOKEN && !!(process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_WHATSAPP_FROM);
+  return !!process.env.TWILIO_ACCOUNT_SID && !!process.env.TWILIO_AUTH_TOKEN && !!(channel === "sms" ? process.env.TWILIO_PHONE_NUMBER : process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_WHATSAPP_FROM);
 }
 
 function buildNotificationRecipientMask(recipient: string, channel: EmergencyAlertChannel) {
@@ -370,6 +374,8 @@ export async function queueEmergencyNotificationsFromScan(
       createdAt: new Date().toISOString(),
       reason: providerAvailable ? "queued" : "provider_missing",
       trigger,
+      deliveryProfileName: profile.displayNamePublic || `${profile.firstName} ${profile.lastName}`.trim(),
+      deliveryShortCode: scan.chip.shortCode,
     });
 
     const existing = await db.notification.findFirst({
@@ -385,8 +391,7 @@ export async function queueEmergencyNotificationsFromScan(
       continue;
     }
 
-    const recentAutomaticDelivery = trigger === "automatic"
-      ? await db.notification.findFirst({
+    const recentAutomaticDelivery = await db.notification.findFirst({
           where: {
             chipId: payload.chipId,
             channel,
@@ -396,8 +401,7 @@ export async function queueEmergencyNotificationsFromScan(
           },
           select: { id: true, status: true, providerResponse: true },
           orderBy: { createdAt: "desc" },
-        })
-      : null;
+        });
 
     if (recentAutomaticDelivery) {
       await db.notification.create({
@@ -534,6 +538,21 @@ async function sendOneNotification(
   const channel = notification.channel as EmergencyAlertChannel;
   const recipient = notification.recipient;
 
+  const contactStillEligible = profile.contacts.some((candidate) => {
+    const enabled = channel === "email" ? candidate.notifyEmail : channel === "sms" ? candidate.notifySms : candidate.notifyWhatsapp;
+    return candidate.active && enabled && getRecipient(candidate, channel) === recipient;
+  });
+  const consentStillValid = meta.trigger === "manual" || await hasEmergencyConsent(db, {
+    profileId: profile.id, accountId: scan.accountId,
+  });
+  if (!(PUBLIC_ACTIVE_CHIP_STATUSES as readonly string[]).includes(scan.chip.status) || scan.profileId !== profile.id || profile.profileVisibilityStatus !== "active" || !contactStillEligible || !consentStillValid) {
+    await finalizeClaim(db, notification.id, workerId, {
+      status: "skipped", lastErrorCode: "DELIVERY_AUTHORIZATION_CHANGED",
+      lastErrorMessage: "Profile, recipient preferences or consent changed before delivery",
+    });
+    return { status: "skipped" as const, reason: "authorization_changed" };
+  }
+
   if (!isProviderAvailable(channel)) {
     const nextMeta = serializeMeta({
       ...meta,
@@ -550,11 +569,20 @@ async function sendOneNotification(
     return { status: "disabled" as const, reason: "provider_missing" };
   }
 
+  // Preserve the exact payload across provider retries, including legacy queued rows.
+  const deliveryProfileName = typeof meta.deliveryProfileName === "string" ? meta.deliveryProfileName : profile.displayNamePublic || `${profile.firstName} ${profile.lastName}`.trim();
+  const deliveryShortCode = typeof meta.deliveryShortCode === "string" ? meta.deliveryShortCode : scan.chip.shortCode;
+  Object.assign(meta, { deliveryProfileName, deliveryShortCode });
+  const stillClaimed = await db.notification.updateMany({
+    where: { id: notification.id, status: "processing", lockedBy: workerId },
+    data: { providerResponse: serializeMeta(meta) },
+  });
+  if (stillClaimed.count !== 1) return { status: "skipped" as const, reason: "lease_lost" };
   const sendResult = await sendEmergencyNotification({
     recipient,
     type: channel,
-    profileName: profile.displayNamePublic || `${profile.firstName} ${profile.lastName}`.trim(),
-    shortCode: scan.chip.shortCode,
+    profileName: deliveryProfileName,
+    shortCode: deliveryShortCode,
     notificationId: notification.id,
     idempotencyKey: notification.idempotencyKey,
   });
@@ -578,6 +606,16 @@ async function sendOneNotification(
     return { status: "sent" as const, reason: "sent" };
   }
 
+  // A transport failure is not evidence that the provider rejected the message.
+  // SMS/WhatsApp retries are allowed only for explicit non-acceptance (e.g. 429).
+  if (channel !== "email" && sendResult.retrySafe !== true) {
+    await finalizeClaim(db, notification.id, workerId, {
+      status: "dead_letter", providerResponse,
+      lastErrorCode: "AMBIGUOUS_PROVIDER_RESULT",
+      lastErrorMessage: "Reconcile provider result before resending SMS/WhatsApp",
+    });
+    return { status: "dead_letter" as const, reason: "ambiguous_provider_result" };
+  }
   const failureClass = classifyFailure(sendResult.providerResponse, undefined);
   if (failureClass === "permanent") {
     await finalizeClaim(db, notification.id, workerId, {
@@ -638,7 +676,9 @@ export async function recoverExpiredEmergencyNotificationLeases(
   let recovered = 0;
   let deadLettered = 0;
   for (const notification of expired) {
-    const safeProviderRetry = notification.channel === "email";
+    const safeProviderRetry = notification.channel === "email"
+      && notification.attempts < EMERGENCY_NOTIFICATION_MAX_ATTEMPTS
+      && notification.createdAt.getTime() > now.getTime() - EMERGENCY_NOTIFICATION_RETRY_WINDOW_MS;
     const result = await db.notification.updateMany({
       where: {
         id: notification.id,
@@ -660,7 +700,7 @@ export async function recoverExpiredEmergencyNotificationLeases(
             lockedAt: null,
             lockedBy: null,
             lastErrorCode: "AMBIGUOUS_PROVIDER_RESULT",
-            lastErrorMessage: "SMS/WhatsApp lease expired; automatic resend blocked to prevent duplicates",
+            lastErrorMessage: "Lease exhausted, idempotency window expired or ambiguous delivery; reconcile before resending",
           },
     });
     if (result.count !== 1) continue;
@@ -697,6 +737,14 @@ export async function processPendingEmergencyNotifications(
   let claimed = 0;
 
   for (const notification of notifications) {
+    if (notification.attempts >= EMERGENCY_NOTIFICATION_MAX_ATTEMPTS || (notification.attempts > 0 && notification.createdAt.getTime() <= now.getTime() - EMERGENCY_NOTIFICATION_RETRY_WINDOW_MS)) {
+      const stopped = await db.notification.updateMany({
+        where: { id: notification.id, status: { in: ["pending", "retrying"] }, attempts: notification.attempts },
+        data: { status: "dead_letter", lastErrorCode: "RETRY_BUDGET_EXHAUSTED" },
+      });
+      deadLettered += stopped.count;
+      continue;
+    }
     const claim = await db.notification.updateMany({
       where: {
         id: notification.id,
@@ -705,7 +753,7 @@ export async function processPendingEmergencyNotifications(
       },
       data: {
         status: "processing",
-        lockedAt: now,
+        lockedAt: new Date(),
         lockedBy: workerId,
         attempts: { increment: 1 },
       },
