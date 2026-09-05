@@ -88,7 +88,7 @@ export default function HowItWorksSection() {
                   <div aria-hidden="true" className={`absolute inset-y-6 left-0 w-px bg-gradient-to-b from-transparent sm:inset-y-8 ${isActive ? "via-sky-300" : "via-white/10"} to-transparent`} />
                   <div className="flex items-start gap-4 sm:gap-6">
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors duration-500 sm:h-12 sm:w-12 sm:rounded-2xl ${isActive ? "border-sky-300/20 bg-sky-300/10" : "border-white/[0.08] bg-white/[0.04]"}`}>
-                      <step.icon className={`h-4.5 w-4.5 sm:h-5 sm:w-5 ${isActive ? "text-sky-300" : "text-slate-500"}`} />
+                      <step.icon className={`h-[18px] w-[18px] sm:h-5 sm:w-5 ${isActive ? "text-sky-300" : "text-slate-500"}`} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-4">
