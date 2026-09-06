@@ -70,7 +70,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           title="Operations gate: production worker failure"
-          body="The production worker readiness check or backup processing failed on $(date -u +%F' '%T' UTC). Triage immediately: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          body="The production worker readiness check or backup processing failed on $(date -u '+%F %T UTC'). Triage immediately: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           issue_number="$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')"
           if [ -n "$issue_number" ]; then
             gh issue comment "$issue_number" --body "$body"
