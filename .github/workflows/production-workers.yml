@@ -3,9 +3,6 @@ name: Production workers
 on:
   schedule:
     - cron: "*/5 * * * *"
-  push:
-    branches:
-      - audit/worker-alert-drill-20260906
   workflow_dispatch:
 
 permissions:
@@ -30,10 +27,6 @@ jobs:
       - name: Observe worker health before backup processing
         id: observe
         continue-on-error: true
-        env:
-          # Controlled drill only on this isolated branch. This deliberately makes
-          # the observer fail without altering production heartbeats or pg_cron.
-          CRON_SECRET: controlled-drill-invalid-secret
         run: python3 scripts/check-worker-readiness.py
 
       - name: Verify scheduler secret
