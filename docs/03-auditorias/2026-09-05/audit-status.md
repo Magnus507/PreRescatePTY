@@ -16,6 +16,27 @@ Permanecen E2E completos, backup/restore demostrado, entrega externa y retenció
 NO-GO provisional para lanzamiento comercial; esta actualización no certifica
 las puertas que siguen sin probarse.
 
+### Actualización verificada 2026-09-06 21:45 UTC
+
+NEW-18 permanece FIXED: 64/64 ejecuciones succeeded, 192 HTTP 200 sin timeout,
+máximo intervalo 300.147895 s. Heartbeats notify 21:45:01.348,
+expire-chips 21:45:01.783 y commerce-order-sync 21:45:02.415 UTC.
+
+La alerta independiente está implementada e integrada por PR #28, merge
+`cc7e072d91b8a5c02b7ceddd8fcd841dda05cd91`; candidato
+`8a0bb0351712619091e7f7d1bf4d9ea2dfd8dc43`. CI 34061840979,
+job 101563629773: todas las puertas succeeded, incluidos cinco tests del
+observador. NEW-20 pasa de ausente a MITIGATED, no a FIXED: falta observar
+un run de este workflow y probar la entrega de la alerta. Los últimos runs
+GitHub observados seguían usando 78b576d, a las 16:14, 18:24 y 20:40 UTC;
+por ello NO se atribuye a GitHub una garantía de detección en 15 minutos.
+
+Producción observada sigue READY en 78b576d / dpl_EaDyHwSBdUQg13gW2RJcApj7QK6x.
+El merge nuevo modifica automatización/documentación/migraciones versionadas,
+no código de la aplicación. No afirmar que el alias ya sirve el SHA de merge.
+Catálogo operativo: 0 Package activos, 0 Chip, 0 OperationFinishedGoodUnit.
+Ver remaining-launch-gates.md para dependencias concretas y evidencia residual.
+
 ## 2. VERDICT
 
 **NO-GO provisional. Auditoría y remediación aún en curso.** No se han completado
@@ -83,7 +104,7 @@ reconcile_verified_prisma_history. 38 checksums; fingerprint
 | --- | --- | --- | --- | --- |
 | NEW-12 | P2 | safe-delete anonimiza Order/Profile/User, no todas las proyecciones y payloads históricos | Completar inventario y política técnica de retención; no purgar contabilidad sin definir alcance | MITIGATED |
 | NEW-17 | P3 | auth.users/v2_on_auth_user_created llama función que referencia v2_users/v2_accounts inexistentes; EXECUTE no público | Limpiar subsistema legacy antes de habilitar Supabase Auth; app actual usa NextAuth | OPEN |
-| NEW-20 | P2 | Falta alerta independiente ante heartbeat ausente; scheduler actualmente operativo | Health autenticado y revisión diaria; automatizar antes de operar sin supervisión | OPEN |
+| NEW-20 | P2 | Observador independiente integrado por PR #28; cinco tests y CI PASS | Verificar ejecución real y entrega de alerta; GitHub tiene retrasos observados | MITIGATED |
 
 NEW-18 FIXED: la cadencia deficiente de GitHub fue remediada por Supabase Cron,
 con GitHub como respaldo. 61 ciclos y 183 HTTP 200 durante cinco horas. La falta
@@ -97,7 +118,7 @@ de alerta autónoma queda explícitamente abierta como NEW-20, no certificada PA
 | REG-02 Inventory race | PASS | Stock 1, 2/10/50 solicitudes, DB PostgreSQL real |
 | REG-03 Corporate activation atomicity | PASS | 20 simultáneas y rollback después de chip/item; no E2E UI |
 | REG-04 Notification duplication | PARTIAL | Claim/lease/mocks pasan; entrega externa no verificada |
-| REG-05 Worker execution | PASS | 61 ciclos / 183 HTTP 200; máximo hueco 300.147895 s |
+| REG-05 Worker execution | PASS | 64 ciclos / 192 HTTP 200; máximo hueco 300.147895 s |
 | REG-06 Cron auth | PASS | Tests autenticados + producción rechaza anónimos; no exposición del secreto |
 | REG-07 Cooldown | PASS | 100 scans mixtos, una alerta pendiente |
 | REG-08 Order outbox | PASS | Tests PostgreSQL commit/recovery y replay; no pago externo |
