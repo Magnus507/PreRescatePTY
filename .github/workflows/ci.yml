@@ -52,6 +52,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Test independent worker observer
+        run: python3 scripts/test-worker-readiness.py
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
