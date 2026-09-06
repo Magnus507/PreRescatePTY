@@ -4,38 +4,26 @@ Informe de avance, no certificación definitiva. Se corrigieron y publicaron nue
 hallazgos P1 de código. El candidato pasó 558 pruebas unitarias/de rutas y 17 de
 integración PostgreSQL. La producción ya corresponde al árbol probado.
 
-Actualización 2026-09-06 21:32 UTC: NEW-18 corregido con pg_cron + pg_net +
-Vault. Cinco horas, 61 ciclos, 183 HTTP 200 y mayor hueco 300.147895 segundos;
-los tres heartbeats están actualizados. Ver scheduler-enabled-runtime.md.
-NEW-19 se reclasificó FALSE POSITIVE de exposición cliente en el alcance verificado:
-privilegios SQL internos reales, pero esquemas rechazados por Data API y sin puente
-público encontrado. No se desactivaron controles para concluir esto.
+Estado vigente verificado: 2026-09-06 21:50 UTC. Producción READY en
+`cc7e072d91b8a5c02b7ceddd8fcd841dda05cd91`, tras PR #28; CI push
+34062063626 SUCCESS. Deployment `dpl_C1qUby6cWnB2B3iuumVnkyoeDgJF`.
 
-Login/logout reales del superadmin y lectura de paneles operativos verificados.
-Permanecen E2E completos, backup/restore demostrado, entrega externa y retención.
-NO-GO provisional para lanzamiento comercial; esta actualización no certifica
-las puertas que siguen sin probarse.
+NEW-18 FIXED / PASS: 65/65 ejecuciones succeeded desde 16:30 hasta 21:50 UTC,
+0 fallos, 195 HTTP 200 sin timeout, máximo intervalo 300.147895 segundos.
+Heartbeats: notify 21:50:03.273, expire-chips 21:50:02.359 y commerce-order-sync
+21:50:04.247 UTC. No se reabrieron Vault, pg_net, CRON_SECRET ni cadencia.
+P1 conocidos abiertos = 0.
 
-### Actualización verificada 2026-09-06 21:45 UTC
+Monitor independiente integrado y desplegado. NEW-20 sigue MITIGATED únicamente
+porque falta demostrar recepción de alerta mediante drill controlado; cinco tests
+del observador PASS no equivalen a recepción. No hay workflow_dispatch disponible
+en este conector. No se alteraron heartbeats reales ni se detuvo el scheduler.
+NEW-19 permanece FALSE POSITIVE de exposición cliente en el alcance verificado.
 
-NEW-18 permanece FIXED: 64/64 ejecuciones succeeded, 192 HTTP 200 sin timeout,
-máximo intervalo 300.147895 s. Heartbeats notify 21:45:01.348,
-expire-chips 21:45:01.783 y commerce-order-sync 21:45:02.415 UTC.
-
-La alerta independiente está implementada e integrada por PR #28, merge
-`cc7e072d91b8a5c02b7ceddd8fcd841dda05cd91`; candidato
-`8a0bb0351712619091e7f7d1bf4d9ea2dfd8dc43`. CI 34061840979,
-job 101563629773: todas las puertas succeeded, incluidos cinco tests del
-observador. NEW-20 pasa de ausente a MITIGATED, no a FIXED: falta observar
-un run de este workflow y probar la entrega de la alerta. Los últimos runs
-GitHub observados seguían usando 78b576d, a las 16:14, 18:24 y 20:40 UTC;
-por ello NO se atribuye a GitHub una garantía de detección en 15 minutos.
-
-Producción observada sigue READY en 78b576d / dpl_EaDyHwSBdUQg13gW2RJcApj7QK6x.
-El merge nuevo modifica automatización/documentación/migraciones versionadas,
-no código de la aplicación. No afirmar que el alias ya sirve el SHA de merge.
-Catálogo operativo: 0 Package activos, 0 Chip, 0 OperationFinishedGoodUnit.
-Ver remaining-launch-gates.md para dependencias concretas y evidencia residual.
+NO-GO para apertura comercial: faltan E2E completos, entrega externa, restore con
+RPO/RTO medidos, catálogo/inventario real y cierre de retención residual.
+Las limitaciones concretas están en remaining-launch-gates.md. Los resultados
+anteriores de smoke se conservan como históricos, sin atribuirlos al nuevo SHA.
 
 ## 2. VERDICT
 
@@ -44,15 +32,16 @@ todas las 256 fases solicitadas; las áreas no verificadas no se cuentan como PA
 
 ## 3. AUDITED VERSION
 
-- Repositorio: Magnus507/PreRescatePTY; PR #23 fusionada por flujo protegido.
+- Repositorio: Magnus507/PreRescatePTY; PR #28 fusionada por flujo protegido.
 - Rama auditada: audit/adversarial-launch-2026-09-05.
-- Candidato probado: cfdd4fcb3a21f2d018d6fe1aeb4fc296d85eab0a.
-- SHA productivo de merge: 78b576df0840496d9038055a958c2d17f094263c.
-- `git diff cfdd4fc origin/master`: vacío al verificar el merge.
-- Deployment tras redeploy: dpl_EaDyHwSBdUQg13gW2RJcApj7QK6x, READY.
-- URL: https://pre-rescate-aqqs93e2y-pre-rescate-pty.vercel.app
+- SHA auditado y productivo: cc7e072d91b8a5c02b7ceddd8fcd841dda05cd91.
+- Candidato PR #28 probado: 8a0bb0351712619091e7f7d1bf4d9ea2dfd8dc43.
+- CI del SHA productivo: 34062063626, push, completed / success.
+- Evidencia anterior de PR #23 conservada únicamente como historial.
+- Deployment tras redeploy: dpl_C1qUby6cWnB2B3iuumVnkyoeDgJF, READY.
+- URL: https://pre-rescate-96vw74iyb-pre-rescate-pty.vercel.app
 - Dominio: https://www.prerescatepty.com
-- Fecha: 2026-09-05, verificaciones posteriores a 15:28 UTC.
+- Corte runtime vigente: 2026-09-06 21:50 UTC.
 - Base inicial fe965b6; trabajo visual paralelo e0665d0 y 825b98e preservado.
 - Node 24.19, npm 11.9, package-lock.json, Next.js 15.5.24 App Router,
   React 19, Prisma 6.19.3, Supabase PostgreSQL 17.
@@ -107,8 +96,7 @@ reconcile_verified_prisma_history. 38 checksums; fingerprint
 | NEW-20 | P2 | Observador independiente integrado por PR #28; cinco tests y CI PASS | Verificar ejecución real y entrega de alerta; GitHub tiene retrasos observados | MITIGATED |
 
 NEW-18 FIXED: la cadencia deficiente de GitHub fue remediada por Supabase Cron,
-con GitHub como respaldo. 61 ciclos y 183 HTTP 200 durante cinco horas. La falta
-de alerta autónoma queda explícitamente abierta como NEW-20, no certificada PASS.
+con GitHub como respaldo. 65 ciclos y 195 HTTP 200 durante cinco horas. La recepción de la alerta autónoma desplegada queda pendiente como NEW-20, no certificada PASS.
 
 ## 7. REGRESSION MATRIX
 
@@ -118,7 +106,7 @@ de alerta autónoma queda explícitamente abierta como NEW-20, no certificada PA
 | REG-02 Inventory race | PASS | Stock 1, 2/10/50 solicitudes, DB PostgreSQL real |
 | REG-03 Corporate activation atomicity | PASS | 20 simultáneas y rollback después de chip/item; no E2E UI |
 | REG-04 Notification duplication | PARTIAL | Claim/lease/mocks pasan; entrega externa no verificada |
-| REG-05 Worker execution | PASS | 64 ciclos / 192 HTTP 200; máximo hueco 300.147895 s |
+| REG-05 Worker execution | PASS | 65 ciclos / 195 HTTP 200; máximo hueco 300.147895 s |
 | REG-06 Cron auth | PASS | Tests autenticados + producción rechaza anónimos; no exposición del secreto |
 | REG-07 Cooldown | PASS | 100 scans mixtos, una alerta pendiente |
 | REG-08 Order outbox | PASS | Tests PostgreSQL commit/recovery y replay; no pago externo |
@@ -183,8 +171,8 @@ Email conserva payload/key con presupuesto acotado. No se afirma exactly-once re
 ## 15. CRON
 
 Supabase Cron prerescate-worker-recovery activo */5, pg_net y Vault; GitHub de
-respaldo. Cadencia y autenticación PASS con 61 ciclos y 183 HTTP 200. Heartbeats
-reales de los tres workers a las 21:30 UTC. Alerta autónoma pendiente (NEW-20).
+respaldo. Cadencia y autenticación PASS con 65 ciclos y 195 HTTP 200. Heartbeats
+reales de los tres workers a las 21:50 UTC. Alerta autónoma pendiente (NEW-20).
 
 ## 16. OUTBOX
 
@@ -215,6 +203,12 @@ sin ruta productiva demostrada; no se clasificaron P0 por CVSS. Lockfile actuali
 No existe garantía contra CVEs futuros; mantener auditoría programada.
 
 ## 19. CI/CD
+
+CI vigente: https://github.com/Magnus507/PreRescatePTY/actions/runs/34062063626
+SHA cc7e072d91b8a5c02b7ceddd8fcd841dda05cd91, evento push, SUCCESS.
+PR #28 CI 34061840979 también SUCCESS, incluidos cinco tests del observador.
+
+Evidencia histórica de la remediación anterior:
 
 https://github.com/Magnus507/PreRescatePTY/actions/runs/33974628390
 Job 101329052675 SUCCESS. npm ci, env:check, prisma generate/validate, migrations
@@ -257,6 +251,11 @@ E2E navegador completo, móvil, entrega real y backup/restore: no aprobados.
 Build local no confirmado no se cuenta; build reproducible está acreditado por CI.
 
 ## 25. PRODUCTION VERIFICATION
+
+Actual: alias READY y SHA cc7e072 verificados por API; 195 HTTP 200 de workers
+y heartbeats hasta 21:50 UTC. Monitor desplegado; recepción de alerta no probada.
+
+Smoke histórico del árbol de aplicación anterior (sin repetir áreas PASS):
 
 Smoke posterior: /, /login, /registro HTTP 200; /api/admin/users, /api/users/profile,
 /api/health/ready y tres cron sin secreto HTTP 401. Pantalla login visible en navegador.
@@ -313,7 +312,8 @@ NEW-17: no bloquea NextAuth actual; resolver antes de usar Supabase Auth.
 - [x] Baseline versionado y aplicado; paridad public acotada.
 - [x] Concurrencia stock/chip/corporativo/claim/cooldown.
 - [x] Scheduler con cadencia runtime verificada.
-- [ ] Alerta independiente de ejecución ausente (NEW-20).
+- [x] Monitor independiente desplegado.
+- [ ] Recepción controlada de alerta demostrada (NEW-20).
 - [x] Login/logout y acceso administrativo real de lectura.
 - [ ] E2E completos cliente/corporativo/admin y móvil.
 - [ ] Entrega externa autorizada, backup/restore y RPO/RTO.

@@ -1,4 +1,4 @@
-# Puertas pendientes — corte 2026-09-06 21:45 UTC
+# Puertas pendientes — corte 2026-09-06 21:50 UTC
 
 ## Resultado
 
@@ -8,10 +8,10 @@ que no se han ejecutado.
 
 | Puerta | Evidencia nueva | Resultado / dependencia |
 | --- | --- | --- |
-| Cadencia principal | cron.job_run_details: 64/64 succeeded, 16:30–21:45 UTC, max gap 300.147895 s | PASS |
-| HTTP workers | net._http_response: 192 respuestas 200, cero timeout | PASS |
-| Heartbeats | SystemConfig: notify 21:45:01.348, expiry 21:45:01.783, commerce 21:45:02.415 UTC | PASS |
-| Alerta independiente | PR #28 merged; scripts/check-worker-readiness.py antes de recuperación; 5 tests y CI PASS | PARTIAL: falta ejecución real y entrega; GitHub no ofrece cadencia demostrada <=15m |
+| Cadencia principal | cron.job_run_details: 65/65 succeeded, 16:30–21:50 UTC, max gap 300.147895 s | PASS |
+| HTTP workers | net._http_response: 195 respuestas 200, cero timeout | PASS |
+| Heartbeats | SystemConfig: notify 21:50:03.273, expiry 21:50:02.359, commerce 21:50:04.247 UTC | PASS |
+| Alerta independiente | PR #28 merged y producción cc7e072 READY; scripts/check-worker-readiness.py antes de recuperación; 5 tests y CI PASS | PARTIAL: falta ejecución real y entrega; GitHub no ofrece cadencia demostrada <=15m |
 | E2E cliente/corporativo/admin/móvil | Registro público renderiza campos, consentimiento y enlaces legales. No se creó cuenta ni pedido | NOT TESTABLE completo: faltan credenciales de aplicación/DB aislada y fixtures sintéticos; smoke no equivale a E2E |
 | Entrega externa | Los HTTP 200 prueban workers, no recepción Resend/Twilio | NOT TESTABLE: falta destinatario de prueba verificado y evidencia de recepción del proveedor |
 | Backup/restore | Proyecto vgaverzjcdbkdwplsekd ACTIVE_HEALTHY, PG17.6.1.166; su existencia no demuestra restauración | NOT TESTABLE: falta copia recuperable, acceso a artefacto/Storage y restore aislado medido |
@@ -26,8 +26,9 @@ CI run 34061840979 / job 101563629773: observer tests, install, audit,
 environment, Prisma, migrations, RLS, schema drift, lint, types, unit tests,
 PostgreSQL integration, coverage y build: succeeded.
 Merge protegido #28: cc7e072d91b8a5c02b7ceddd8fcd841dda05cd91.
-Alias observado: 78b576df0840496d9038055a958c2d17f094263c, READY,
-dpl_EaDyHwSBdUQg13gW2RJcApj7QK6x. No se certifica nuevo deployment por inferencia.
+Alias observado: cc7e072d91b8a5c02b7ceddd8fcd841dda05cd91, READY,
+dpl_C1qUby6cWnB2B3iuumVnkyoeDgJF. CI push 34062063626 SUCCESS.
+URL https://pre-rescate-96vw74iyb-pre-rescate-pty.vercel.app.
 
 ## Prueba pendiente de alerta (sin perjudicar producción)
 

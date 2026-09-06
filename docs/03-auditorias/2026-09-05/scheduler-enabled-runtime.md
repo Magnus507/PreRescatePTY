@@ -1,6 +1,17 @@
 # NEW-18 — scheduler verificado en runtime
 
-2026-09-06. Deployment actual dpl_EaDyHwSBdUQg13gW2RJcApj7QK6x,
+## Corte vigente: 2026-09-06 21:50 UTC
+
+NEW-18 FIXED / PASS. 65/65 succeeded, 0 fallos, 195 HTTP 200 sin timeout,
+max gap 300.147895 s. Heartbeats notify 21:50:03.273, expiry 21:50:02.359,
+commerce 21:50:04.247 UTC. Producción cc7e072d91b8a5c02b7ceddd8fcd841dda05cd91,
+READY, dpl_C1qUby6cWnB2B3iuumVnkyoeDgJF; CI push 34062063626 SUCCESS.
+Monitor independiente desplegado; NEW-20 MITIGATED pendiente solo de prueba
+de recepción real. P1 conocidos abiertos = 0.
+
+## Historial de activación y cortes anteriores
+
+2026-09-06. Deployment histórico de activación dpl_EaDyHwSBdUQg13gW2RJcApj7QK6x,
 READY, SHA 78b576df0840496d9038055a958c2d17f094263c.
 
 Prueba manual única después del redeploy: request IDs 9,10,11; tres HTTP 200,
