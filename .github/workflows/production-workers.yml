@@ -21,6 +21,14 @@ jobs:
       APP_URL: https://www.prerescatepty.com
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
+      - name: Checkout observer
+        uses: actions/checkout@v4
+
+      - name: Observe worker health before backup processing
+        id: observe
+        continue-on-error: true
+        run: python3 scripts/check-worker-readiness.py
+
       - name: Verify scheduler secret
         run: |
           if [ -z "$CRON_SECRET" ]; then
@@ -50,12 +58,12 @@ jobs:
             -H "Authorization: Bearer $CRON_SECRET"
 
       - name: Open or update worker failure issue
-        if: failure()
+        if: failure() || steps.observe.outcome == 'failure'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           title="Operations gate: production worker failure"
-          body="The production worker scheduler failed on $(date -u +%F' '%T' UTC). Triage immediately: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          body="The production worker readiness check or backup processing failed on $(date -u +%F' '%T' UTC). Triage immediately: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           issue_number="$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')"
           if [ -n "$issue_number" ]; then
             gh issue comment "$issue_number" --body "$body"
