@@ -4,18 +4,17 @@ Informe de avance, no certificación definitiva. Se corrigieron y publicaron nue
 hallazgos P1 de código. El candidato pasó 558 pruebas unitarias/de rutas y 17 de
 integración PostgreSQL. La producción ya corresponde al árbol probado.
 
-Permanece un P1 operativo demostrado: el scheduler configurado cada cinco minutos
-no mantiene esa cadencia. Además faltan E2E completos, restauración comprobada,
-entrega externa y datos comerciales reales. NO-GO para lanzamiento comercial.
-La publicación de hardening no representa apertura de ventas ni aprobación GO.
+Actualización 2026-09-06 21:32 UTC: NEW-18 corregido con pg_cron + pg_net +
+Vault. Cinco horas, 61 ciclos, 183 HTTP 200 y mayor hueco 300.147895 segundos;
+los tres heartbeats están actualizados. Ver scheduler-enabled-runtime.md.
+NEW-19 se reclasificó FALSE POSITIVE de exposición cliente en el alcance verificado:
+privilegios SQL internos reales, pero esquemas rechazados por Data API y sin puente
+público encontrado. No se desactivaron controles para concluir esto.
 
-Login y logout reales del administrador confirmados mediante browserAuth;
-panel Super Admin, Centro de Operaciones, Producción e Inventario accesibles sin
-errores de aplicación observados. Logout regresó a /login. No se crearon datos
-operativos. Esto no certifica E2E cliente/corporativo completo.
-Intento NEW-18 a las 22:56 UTC: tres HTTP 401. Job nunca habilitado; rollback
-versionado y aplicado por permisos net excesivos (NEW-19, P2, corregido por rollback).
-Ver scheduler-runtime-attempt.md. Corregir credencial Vault; NEW-18 permanece OPEN.
+Login/logout reales del superadmin y lectura de paneles operativos verificados.
+Permanecen E2E completos, backup/restore demostrado, entrega externa y retención.
+NO-GO provisional para lanzamiento comercial; esta actualización no certifica
+las puertas que siguen sin probarse.
 
 ## 2. VERDICT
 
@@ -29,8 +28,8 @@ todas las 256 fases solicitadas; las áreas no verificadas no se cuentan como PA
 - Candidato probado: cfdd4fcb3a21f2d018d6fe1aeb4fc296d85eab0a.
 - SHA productivo de merge: 78b576df0840496d9038055a958c2d17f094263c.
 - `git diff cfdd4fc origin/master`: vacío al verificar el merge.
-- Deployment: dpl_6sEDJcMLZsjFTMgY2uHFLXpUtW3x, READY.
-- URL: https://pre-rescate-py57oxtpn-pre-rescate-pty.vercel.app
+- Deployment tras redeploy: dpl_EaDyHwSBdUQg13gW2RJcApj7QK6x, READY.
+- URL: https://pre-rescate-aqqs93e2y-pre-rescate-pty.vercel.app
 - Dominio: https://www.prerescatepty.com
 - Fecha: 2026-09-05, verificaciones posteriores a 15:28 UTC.
 - Base inicial fe965b6; trabajo visual paralelo e0665d0 y 825b98e preservado.
@@ -84,13 +83,11 @@ reconcile_verified_prisma_history. 38 checksums; fingerprint
 | --- | --- | --- | --- | --- |
 | NEW-12 | P2 | safe-delete anonimiza Order/Profile/User, no todas las proyecciones y payloads históricos | Completar inventario y política técnica de retención; no purgar contabilidad sin definir alcance | MITIGATED |
 | NEW-17 | P3 | auth.users/v2_on_auth_user_created llama función que referencia v2_users/v2_accounts inexistentes; EXECUTE no público | Limpiar subsistema legacy antes de habilitar Supabase Auth; app actual usa NextAuth | OPEN |
-| NEW-18 | P1 | Schedule */5; runs 33964739664 11:58:25 y 33973659537 15:03:58 UTC; recuperación diferida >3h | Scheduler con cadencia verificada y alerta independiente de ausencia de ejecución | OPEN |
+| NEW-20 | P2 | Falta alerta independiente ante heartbeat ausente; scheduler actualmente operativo | Health autenticado y revisión diaria; automatizar antes de operar sin supervisión | OPEN |
 
-NEW-18: probabilidad observada, impacto alto en recuperación de alertas tras fallo.
-Causa: depender de un scheduler sin garantía de intervalo; workflow de alertas
-solo detecta una ejecución fallida, no una ejecución ausente. Mitigación parcial:
-after() intenta procesar alertas tras el scan y la cola es durable. No sustituye
-recovery periódico. No se rebaja severidad por tener colas vacías actualmente.
+NEW-18 FIXED: la cadencia deficiente de GitHub fue remediada por Supabase Cron,
+con GitHub como respaldo. 61 ciclos y 183 HTTP 200 durante cinco horas. La falta
+de alerta autónoma queda explícitamente abierta como NEW-20, no certificada PASS.
 
 ## 7. REGRESSION MATRIX
 
@@ -100,7 +97,7 @@ recovery periódico. No se rebaja severidad por tener colas vacías actualmente.
 | REG-02 Inventory race | PASS | Stock 1, 2/10/50 solicitudes, DB PostgreSQL real |
 | REG-03 Corporate activation atomicity | PASS | 20 simultáneas y rollback después de chip/item; no E2E UI |
 | REG-04 Notification duplication | PARTIAL | Claim/lease/mocks pasan; entrega externa no verificada |
-| REG-05 Worker execution | FAIL | NEW-18, cadencia observada no satisface recuperación 15m |
+| REG-05 Worker execution | PASS | 61 ciclos / 183 HTTP 200; máximo hueco 300.147895 s |
 | REG-06 Cron auth | PASS | Tests autenticados + producción rechaza anónimos; no exposición del secreto |
 | REG-07 Cooldown | PASS | 100 scans mixtos, una alerta pendiente |
 | REG-08 Order outbox | PASS | Tests PostgreSQL commit/recovery y replay; no pago externo |
@@ -164,10 +161,9 @@ Email conserva payload/key con presupuesto acotado. No se afirma exactly-once re
 
 ## 15. CRON
 
-GitHub Production workers, */5, secret obligatorio, concurrency group, timeout/retry.
-Código publicado incluye notify, commerce y expiry/storage cleanup. Último run
-comprobado todavía anterior al merge. NEW-18 impide declarar scheduler confiable.
-Heartbeat DB notify/commerce 15:04 UTC; expiry 06:06 UTC al corte inicial post-merge.
+Supabase Cron prerescate-worker-recovery activo */5, pg_net y Vault; GitHub de
+respaldo. Cadencia y autenticación PASS con 61 ciclos y 183 HTTP 200. Heartbeats
+reales de los tres workers a las 21:30 UTC. Alerta autónoma pendiente (NEW-20).
 
 ## 16. OUTBOX
 
@@ -252,8 +248,8 @@ ausencia universal de errores. Errores chrome-extension no son errores de la apl
 
 ## 26. RESIDUAL RISKS
 
-P0 conocidos abiertos 0; P1 abierto 1 (NEW-18); P2 abierto/mitigado 1 (NEW-12);
-P3 abierto 1 (NEW-17). P1 corregidos 9; P2 corregidos 6; P0 corregidos 0.
+P0 conocidos abiertos 0; P1 conocidos abiertos 0; P2 abiertos/mitigados 2 (NEW-12, NEW-20);
+P3 abierto 1 (NEW-17). P1 corregidos 10; P2 corregidos 6; P0 corregidos 0.
 Estos conteos no convierten áreas sin probar en seguras. Gates externos sin severidad
 inventada: backup/restore, E2E, entrega externa, catálogo/inventario, env completo.
 NEW-12: acceso restringido reduce exposición, pero retención innecesaria persiste;
@@ -277,12 +273,12 @@ NEW-17: no bloquea NextAuth actual; resolver antes de usar Supabase Auth.
 | Notificaciones | PARTIAL, transporte externo simulado |
 | Claim/Lease | PASS tests |
 | Cooldown | PASS tests concurrentes |
-| Cron | FAIL cadencia / PASS rechazo no autorizado |
+| Cron | PASS en ventana runtime de cinco horas; alerta pendiente |
 | Outbox | PASS transacción/replay probado |
 | Idempotencia | PARTIAL, entrega externa sin verificar |
 | DB integrity | PARTIAL, huella e invariantes específicas PASS |
 | Dependencias | PASS advisory observado |
-| GitHub/CI | PASS CI y protección; scheduler FAIL |
+| GitHub/CI | PASS CI y protección; GitHub conservado como respaldo |
 | Vercel | PASS deployment/alias; env completo NOT TESTABLE |
 | Secrets | PARTIAL, no exposición encontrada; alcance completo no certificado |
 | Backup/Restore | NOT TESTABLE |
@@ -295,7 +291,8 @@ NEW-17: no bloquea NextAuth actual; resolver antes de usar Supabase Auth.
 - [x] PR protegida, build, TypeScript, lint y tests.
 - [x] Baseline versionado y aplicado; paridad public acotada.
 - [x] Concurrencia stock/chip/corporativo/claim/cooldown.
-- [ ] Scheduler fiable y alertas de ejecución ausente.
+- [x] Scheduler con cadencia runtime verificada.
+- [ ] Alerta independiente de ejecución ausente (NEW-20).
 - [x] Login/logout y acceso administrativo real de lectura.
 - [ ] E2E completos cliente/corporativo/admin y móvil.
 - [ ] Entrega externa autorizada, backup/restore y RPO/RTO.
@@ -313,5 +310,5 @@ DB destructivamente. Reconciliar proveedor antes de reenviar trabajos ambiguos.
 ## 29. FINAL VERDICT DEL CORTE
 
 **NO-GO.** Hardening publicado y verificado parcialmente; misión no terminada.
-Falta resolver NEW-18 y completar las puertas anteriores. Ningún test simulado se
+NEW-18 corregido; faltan las puertas de lanzamiento anteriores. Ningún test simulado se
 presenta como entrega real ni ningún documento como prueba de restauración.
