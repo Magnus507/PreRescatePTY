@@ -43,6 +43,19 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
     expect(expireCron).not.toContain("prisma.chip.updateMany");
   });
 
+  it("keeps the legacy emergency-alert module fail-safe and unable to reach providers", () => {
+    const engine = source("lib/emergency-alerts.ts");
+
+    expect(engine).toContain('reason: "automatic_delivery_retired"');
+    expect(engine).toContain("claimed: 0");
+    expect(engine).toContain("sent: 0");
+    expect(engine).not.toContain('from "@/lib/notifications"');
+    expect(engine).not.toContain("sendEmergencyNotification(");
+    expect(engine).not.toContain("db.notification.create(");
+    expect(engine).not.toContain("db.notification.updateMany(");
+    expect(engine).not.toContain("db.notification.findMany(");
+  });
+
   it("retires the automatic-alert preference API without deleting historical consent", () => {
     const preferences = source("app/api/users/alert-preferences/route.ts");
 
