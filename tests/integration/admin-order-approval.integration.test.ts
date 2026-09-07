@@ -21,6 +21,7 @@ vi.mock("@/domains/accounts/services/account-state.service", () => ({
 
 const db = createIntegrationPrismaClient();
 const RUN_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const PRODUCT_CODE = `PRD-ADMIN-RES-${RUN_ID}`;
 
 let POST: typeof import("@/app/api/admin/orders/[id]/approve/route").POST;
 
@@ -119,7 +120,7 @@ describe("PostgreSQL integration: admin approval concurrency", () => {
             quantity: 1,
             unitPrice: "25.00",
             totalPrice: "25.00",
-            productCode: "PRD-RES-1",
+            productCode: PRODUCT_CODE,
             unit: "unit",
           }],
         },
@@ -132,9 +133,9 @@ describe("PostgreSQL integration: admin approval concurrency", () => {
     const reserveUnit = await db.operationFinishedGoodUnit.create({
       data: {
         internalLabel: `FG-${RUN_ID}`,
-        productCode: "PRD-RES-1",
+        productCode: PRODUCT_CODE,
         productName: "Producto Reserva",
-        productType: "PRD-RES-1",
+        productType: PRODUCT_CODE,
         status: "available",
         qaStatus: "passed",
         activationStatus: "not_activated",
