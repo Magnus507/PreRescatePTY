@@ -23,7 +23,6 @@ export const USER_ROLES = {
 export const BUSINESS_RULES = {
   EXTRA_CHIP_PRICE: 25.00,
   CURRENCY: 'USD',
-  DEFAULT_SERVICE_DURATION_MONTHS: 24,
 };
 
 export interface PackageStyle {
