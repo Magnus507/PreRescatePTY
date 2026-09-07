@@ -10,7 +10,6 @@ import {
   CHIP_STATUS,
   USED_CAPACITY_CHIP_STATUSES,
 } from "@/domains/chips/chip-lifecycle.constants";
-import { initialServiceEndDate } from "@/domains/chips/service-term";
 import { chipActivationSchema } from "@/lib/validations";
 import { activationCodeLookupWhere } from "@/domains/chips/activation-code.service";
 
@@ -41,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   const { activationCode, profileId } = parsedBody.data;
   // Claim-token expiry protects a single-use activation credential. It is not
-  // the commercial service term and never controls public rescue visibility.
+  // a service expiration and never controls the lifetime of the product.
   const claimToken = await prisma.chipClaimToken.findFirst({
     where: { ...activationCodeLookupWhere(activationCode), status: "active" },
     include: { chip: true },
@@ -109,7 +108,7 @@ export async function POST(req: NextRequest) {
       let assignedProfileId: string;
       if (corporateItem) {
         // Corporate purchase capacity remains an activation entitlement. It is
-        // separate from public rescue access after an ID has been activated.
+        // separate from lifetime rescue access after an ID has been activated.
         const currentActiveCount = await tx.chip.count({
           where: { accountId: account.id, status: { in: [...USED_CAPACITY_CHIP_STATUSES] } },
         });
@@ -139,8 +138,8 @@ export async function POST(req: NextRequest) {
         }
         assignedProfileId = corpProfileId;
       } else {
-        // Personal/family activation is possession-based. A valid purchased
-        // physical unit starts its own 24-month commercial service term.
+        // Personal/family activation is possession-based. Every valid purchased
+        // physical unit receives lifetime service with no time-based renewal.
         let profile;
         if (profileId) {
           profile = await tx.profile.findFirst({ where: { id: profileId, accountId: targetAccountId } });
@@ -157,7 +156,6 @@ export async function POST(req: NextRequest) {
         assignedProfileId = profile.id;
       }
 
-      const serviceEndDate = initialServiceEndDate(now, state.serviceDurationMonths);
       const chipActivate = await tx.chip.updateMany({
         where: {
           id: claimToken.chipId,
@@ -171,7 +169,7 @@ export async function POST(req: NextRequest) {
           assignedProfileId,
           activatedAt: now,
           serviceStartDate: now,
-          serviceEndDate,
+          serviceEndDate: null,
           serviceStatus: CHIP_SERVICE_STATUS.ACTIVE,
         },
       });
@@ -224,9 +222,8 @@ export async function POST(req: NextRequest) {
           newValuesJson: JSON.stringify({
             shortCode: chip.shortCode,
             activationCodeSuffix: activationCode.slice(-4),
-            serviceDurationMonths: state.serviceDurationMonths,
-            serviceEndDate: serviceEndDate.toISOString(),
-            rescueAccessIndependentOfServiceExpiry: true,
+            serviceEndDate: null,
+            lifetimeService: true,
           }),
         },
       });

@@ -66,7 +66,7 @@ export default function GarantiaPage() {
         <section>
           <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Transferencia de perfil</h2>
           <p>
-            El perfil médico puede transferirse a un chip nuevo después de verificar la identidad del titular y desactivar el chip anterior. El acceso público de rescate de un identificador válido no se oculta por el vencimiento del servicio comercial. La gestión comercial del servicio se maneja por períodos de 24 meses y puede renovarse sin reemplazar el chip.
+            El perfil médico puede transferirse a un chip nuevo después de verificar la identidad del titular y desactivar el chip anterior. El servicio digital no vence por tiempo: permanece disponible mientras el identificador correspondiente esté activo y no haya sido revocado o reemplazado. Esta continuidad del servicio no amplía la garantía física de fábrica indicada anteriormente.
           </p>
         </section>
 

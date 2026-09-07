@@ -6,8 +6,13 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const packages = await getPublicPackages();
+    const publicPackages = packages.map((pkg) => {
+      const { serviceDurationMonths, ...publicPackage } = pkg;
+      void serviceDurationMonths;
+      return publicPackage;
+    });
 
-    return NextResponse.json({ packages });
+    return NextResponse.json({ packages: publicPackages });
   } catch (error) {
     console.error('Error fetching public packages:', error);
     return NextResponse.json(
