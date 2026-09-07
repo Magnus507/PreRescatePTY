@@ -9,7 +9,7 @@ const faqs = [
   { q: "¿El sticker necesita batería?", a: "No. El sticker no tiene batería. El chip NFC se activa con la energía del dispositivo compatible que lo escanea." },
   { q: "¿Se necesita internet?", a: "El dispositivo que escanea necesita conexión a internet para cargar el perfil médico. El sticker no necesita batería ni conexión propia." },
   { q: "¿Qué información se muestra?", a: "El perfil puede mostrar datos médicos y contactos de emergencia según la información disponible y la configuración de visibilidad del perfil." },
-  { q: "¿Cómo se contacta a mi familia?", a: "El perfil ofrece opciones de contacto por WhatsApp o llamada y el sistema puede procesar alertas de emergencia cuando esa función está habilitada." },
+  { q: "¿Cómo se contacta a mi familia?", a: "El perfil ofrece WhatsApp o llamada. WhatsApp abre un mensaje preescrito y la persona que está asistiendo debe pulsar Enviar; escanear el chip por sí solo no envía alertas automáticas." },
 ];
 
 export default function FAQPreview() {
