@@ -100,10 +100,13 @@ export async function GET(
       return publicJson(req, mapped.body, { status: mapped.status });
     }
 
-    const { chip, profile } = resolution;
+    const { profile } = resolution;
 
-    // Use a local minimal type for organization member to avoid assigning
-    // wider Prisma types into narrower inferred types elsewhere.
+    // Public rescue access is governed only by the physical chip lifecycle and
+    // profile visibility in resolvePublicProfileByChipShortCode(). Commercial
+    // package duration, historical serviceEndDate values, billing state and
+    // corporate entitlement state must never suppress an already-active rescue
+    // profile. Entitlements are enforced when a chip is purchased/activated.
     type OrgMemberMinimal = {
       organization?: { legalName?: string | null; displayName?: string | null } | null;
       location?: { name?: string; address?: string | null; city?: string | null } | null;
@@ -113,9 +116,8 @@ export async function GET(
 
     let orgMember: OrgMemberMinimal = profile.organizationMembers?.[0] || null;
 
-    // Check if this is a corporate profile with inactive benefit.
-    // For corporate profiles, the organization member relationship is stored
-    // via OrganizationMember.corporateProfileId, not via profile.organizationMembers.
+    // Corporate organization metadata is best-effort enrichment only. A stale
+    // or removed organization relationship must not hide rescue information.
     if (profile.profileType === "corporate") {
       const corporateMember = await prisma.organizationMember.findFirst({
         where: { corporateProfileId: profile.id },
@@ -129,37 +131,16 @@ export async function GET(
         },
       });
 
-      if (!corporateMember) {
-        return publicJson(
-          req,
-          {
-            status: "corporate_inactive",
-            error: "Perfil empresarial no disponible",
-            message: "Este perfil corporativo no tiene vinculación empresarial.",
-          },
-          { status: 403 }
-        );
+      if (corporateMember) {
+        orgMember = {
+          organization: corporateMember.organization ?? null,
+          location: corporateMember.location ?? null,
+          departmentRel: corporateMember.departmentRel ?? null,
+          corporateStatus: corporateMember.corporateStatus ?? null,
+        };
+      } else {
+        orgMember = null;
       }
-
-      if (corporateMember.corporateStatus !== "paid_active") {
-        return publicJson(
-          req,
-          {
-            status: "corporate_inactive",
-            error: "Perfil empresarial no disponible",
-            message: "Este perfil corporativo ya no está activo.",
-          },
-          { status: 403 }
-        );
-      }
-
-      // Build organization from the corporate member record instead of profile.organizationMembers
-      orgMember = {
-        organization: corporateMember.organization ?? null,
-        location: corporateMember.location ?? null,
-        departmentRel: corporateMember.departmentRel ?? null,
-        corporateStatus: corporateMember.corporateStatus ?? null,
-      };
     }
 
     // Decrypt sensitive fields
@@ -173,21 +154,6 @@ export async function GET(
     const decryptedPrimaryDoctorName = decrypt(profile.primaryDoctorName || "");
     const decryptedPrimaryDoctorPhone = decrypt(profile.primaryDoctorPhone || "");
     const decryptedAdditionalNotes = decrypt(profile.additionalNotes || "");
-    // Humanitarian Overwrite Logic
-    const hasCriticalData = 
-      (decryptedAllergies && !decryptedAllergies.toLowerCase().includes("no report")) ||
-      (decryptedConditions && !decryptedConditions.toLowerCase().includes("no report")) ||
-      (decryptedBloodType && decryptedBloodType !== "No reportado");
-
-    const isServiceInactive = chip.serviceStatus === "expired" || chip.serviceStatus === "inactive";
-
-    if (isServiceInactive && !hasCriticalData) {
-      return publicJson(
-        req,
-        { error: "Protocolo inactivo por falta de renovación.", status: "expired" },
-        { status: 403 }
-      );
-    }
 
     // Helper to calculate age
     const calculateAge = (birthDate: Date | null) => {
@@ -231,12 +197,11 @@ export async function GET(
       chronicConditions: decryptedConditions || "No reportadas",
       medications: decrypt(profile.medications || "") || "No reportados",
       photoUrl: profile.photoUrl || null,
-      isVerifiedAdmin: isDemo, 
-      
+      isVerifiedAdmin: isDemo,
+
       // Public-safe organization context. Internal protocols, employee IDs,
       // occupational risks and corporate response buttons are intentionally
       // not exposed from the public emergency profile.
-      // Organization data is ONLY included for corporate profiles.
       organization: orgMember && profile.profileType === "corporate" ? {
         name: orgMember.organization?.legalName || null,
         location: orgMember.location
