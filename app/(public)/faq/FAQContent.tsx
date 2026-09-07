@@ -36,32 +36,33 @@ const faqs: FAQ[] = [
   { q: "¿Puedo eliminar mi cuenta?", a: "Puedes solicitar la eliminación de tu cuenta desde la configuración. La cuenta se desactiva y la información personal y médica sensible se elimina o anonimiza. Determinados registros administrativos, contables y de auditoría pueden conservarse cuando exista una obligación legal o una necesidad legítima de seguridad y trazabilidad.", category: "Privacidad" },
 
   // WhatsApp y contactos
-  { q: "¿Qué pasa cuando alguien escanea mi chip?", a: "El perfil puede ofrecer opciones de contacto por WhatsApp o llamada. Además, el sistema puede procesar alertas de emergencia asociadas al escaneo cuando esa función está habilitada y el canal correspondiente está disponible.", category: "WhatsApp y contactos" },
-  { q: "¿Se envían notificaciones automáticas?", a: "El sistema puede procesar notificaciones de emergencia asociadas al escaneo cuando la función está habilitada, existe un contacto configurado y el canal de entrega está disponible. Las opciones manuales de WhatsApp o llamada pueden seguir mostrándose en el perfil.", category: "WhatsApp y contactos" },
-  { q: "¿Se envía mi ubicación automáticamente?", a: "La ubicación aproximada solo puede obtenerse cuando el navegador o dispositivo concede el permiso correspondiente. Si se obtiene, puede formar parte del registro o de una alerta de emergencia según el flujo habilitado.", category: "WhatsApp y contactos" },
+  { q: "¿Qué pasa cuando alguien escanea mi chip?", a: "Se abre el perfil público de emergencia y la persona que te asiste puede elegir un contacto, llamar o abrir WhatsApp con un mensaje preescrito. Escanear el chip por sí solo no envía mensajes ni alertas automáticas.", category: "WhatsApp y contactos" },
+  { q: "¿Se envían notificaciones automáticas?", a: "No. PreRescue ID no envía SMS, correos ni WhatsApp de rescate automáticamente cuando se escanea el chip. En WhatsApp, la persona que asiste debe abrir el contacto y pulsar Enviar manualmente.", category: "WhatsApp y contactos" },
+  { q: "¿Se envía mi ubicación automáticamente?", a: "No se incluye ni se envía tu ubicación automáticamente a tus contactos. El sistema puede registrar telemetría de escaneo cuando corresponda, pero el mensaje manual de WhatsApp no añade ubicación ni datos médicos automáticamente.", category: "WhatsApp y contactos" },
 
   // Perfiles familiares
-  { q: "¿Puedo tener más de un perfil?", a: "Sí. Dependiendo del plan, puedes gestionar múltiples perfiles médicos desde tu cuenta.", category: "Perfiles familiares" },
-  { q: "¿Puedo comprar un chip para mi hijo?", a: "Sí. Puedes crear y gestionar perfiles médicos para niños y adultos mayores desde tu cuenta.", category: "Perfiles familiares" },
+  { q: "¿Puedo tener más de un perfil?", a: "Sí. Dependiendo de la configuración de tu cuenta, puedes gestionar múltiples perfiles médicos desde tu panel.", category: "Perfiles familiares" },
+  { q: "¿Puedo comprar un chip para mi hijo?", a: "Sí. Puedes crear y gestionar perfiles médicos para niños y adultos mayores desde tu cuenta cuando la configuración de perfiles lo permita.", category: "Perfiles familiares" },
 
   // Compra y pagos
-  { q: "¿Qué métodos de pago aceptan?", a: "Todos los pedidos se pagan de forma manual mediante instrucciones bancarias, comprobante y revisión administrativa.", category: "Compra y pagos" },
-  { q: "¿Hay mensualidades?", a: "No. Todos los planes son de pago único con 2 años de vigencia desde la activación.", category: "Compra y pagos" },
-  { q: "¿Cuánto tiempo dura el servicio?", a: "Cada plan incluye 2 años de cobertura desde la fecha de activación del chip.", category: "Compra y pagos" },
+  { q: "¿Qué métodos de pago aceptan?", a: "Todos los pedidos se pagan de forma manual mediante las instrucciones de pago disponibles, comprobante y revisión administrativa.", category: "Compra y pagos" },
+  { q: "¿Hay mensualidades?", a: "No. El servicio digital se adquiere con un único pago y no tiene mensualidades ni vencimiento por tiempo.", category: "Compra y pagos" },
+  { q: "¿Cuánto tiempo dura el servicio?", a: "El servicio digital no vence por tiempo. Permanece disponible mientras el identificador correspondiente siga activo y no haya sido revocado, reemplazado o retirado.", category: "Compra y pagos" },
 
-  // Vigencia
-  { q: "¿Qué pasa cuando se vence el servicio?", a: "El perfil deja de estar disponible para consulta pública. Puedes renovar el servicio para continuar la cobertura.", category: "Vigencia" },
-  { q: "¿Puedo actualizar mi información?", a: "Sí. Puedes editar tu perfil médico en cualquier momento desde tu panel de control.", category: "Vigencia" },
+  // Servicio
+  { q: "¿Tengo que renovar el servicio?", a: "No. No existe renovación periódica del servicio digital por tiempo. Si el chip se pierde, se daña o debe reemplazarse, puede ser necesario adquirir un nuevo identificador físico y transferir el perfil según el procedimiento aplicable.", category: "Servicio" },
+  { q: "¿Puedo actualizar mi información?", a: "Sí. Puedes editar tu perfil médico desde tu panel de control mientras tu cuenta y perfil estén disponibles.", category: "Servicio" },
 
   // Uso internacional
   { q: "¿Funciona en otros países?", a: "Sí. El perfil se carga desde internet, por lo que funciona en cualquier país con conexión a internet.", category: "Uso internacional" },
 
   // Empresas
-  { q: "¿Ofrecen planes empresariales?", a: "Sí. Disponemos de planes corporativos con panel administrativo para gestionar miembros y chips. Escríbenos para más información.", category: "Empresas" },
+  { q: "¿Ofrecen planes empresariales?", a: "Sí. Disponemos de opciones corporativas con panel administrativo para gestionar miembros y chips. Escríbenos para más información.", category: "Empresas" },
+  { q: "¿El servicio corporativo también vence por tiempo?", a: "No. Un identificador corporativo ya activado no deja de mostrar su perfil público de rescate por una fecha de vencimiento comercial. Las nuevas activaciones sí dependen de la capacidad y elegibilidad contratada por la organización.", category: "Empresas" },
 
   // Limitaciones del servicio
   { q: "¿PreRescue ID reemplaza la atención médica?", a: "No. PreRescue ID es una herramienta de identificación de emergencia. No reemplaza la atención médica profesional ni garantiza ningún resultado.", category: "Limitaciones del servicio" },
-  { q: "¿Qué pasa si el respondedor no tiene internet?", a: "Sin conexión a internet, el perfil no se puede cargar. El sticker no almacena información localmente.", category: "Limitaciones del servicio" },
+  { q: "¿Qué pasa si el respondedor no tiene internet?", a: "Sin conexión a internet, el perfil no se puede cargar. El sticker no almacena información médica localmente.", category: "Limitaciones del servicio" },
 
   // Envíos
   { q: "¿Realizan entregas en Panamá?", a: "Sí, realizamos entregas dentro de Panamá, sujetas a la cobertura del transportista. El costo y plazo estimado se informan antes de confirmar el pedido.", category: "Envíos" },
@@ -70,17 +71,13 @@ const faqs: FAQ[] = [
 
   // Devoluciones
   { q: "¿Puedo cancelar mi pedido?", a: "Sí, puedes cancelar el pedido antes de que sea entregado al transportista. Una vez entregado, no se puede cancelar.", category: "Devoluciones" },
-  { q: "¿Puedo devolver un producto?", a: "Los productos sin abrir, sin usar y sin activar podrán devolverse dentro de los 7 días calendario posteriores a su recepción, en su empaque original.", category: "Devoluciones" },
+  { q: "¿Puedo devolver un producto?", a: "Los productos sin abrir, sin usar y sin activar podrán devolverse dentro de los 7 días calendario posteriores a su recepción, en su empaque original, sujeto a la política aplicable.", category: "Devoluciones" },
 
   // Garantía y reemplazos
   { q: "¿Qué ocurre si el chip presenta un defecto?", a: "Si el chip presenta un defecto de fabricación, está cubierto por la garantía de 1 año. Contáctanos para evaluar el caso y gestionar el reemplazo o la solución correspondiente.", category: "Garantía y reemplazos" },
-  { q: "¿Qué cubre la garantía?", a: "Cubre defectos de fabricación como NFC ilegible, código QR ilegible por defecto de impresión, o fallo del adhesivo en el primer uso cuando se siguieron las instrucciones. No cubre pérdida, robo, daños por uso inadecuado o instalación incorrecta.", category: "Garantía y reemplazos" },
+  { q: "¿Qué cubre la garantía?", a: "Cubre defectos de fabricación como NFC ilegible, código QR ilegible por defecto de impresión o fallo del adhesivo en el primer uso cuando se siguieron las instrucciones. No cubre pérdida, robo, daños por uso inadecuado o instalación incorrecta.", category: "Garantía y reemplazos" },
   { q: "¿Qué pasa si pierdo el chip?", a: "Los chips perdidos deben adquirirse al precio vigente. El perfil médico puede transferirse a un chip nuevo después de verificar la identidad y desactivar el chip anterior.", category: "Garantía y reemplazos" },
   { q: "¿Puedo transferir mi perfil a otro chip?", a: "Sí, el perfil puede transferirse a un chip nuevo después de verificar la identidad del titular y desactivar el chip anterior.", category: "Garantía y reemplazos" },
-
-  // Vigencia y renovación
-  { q: "¿Qué ocurre después de los 2 años?", a: "El servicio tiene una vigencia de 2 años desde la activación. Antes de finalizar este período se informarán las opciones disponibles para continuar el servicio. Actualmente no existe renovación automática.", category: "Vigencia y renovación" },
-  { q: "¿La renovación es automática?", a: "No. Actualmente no existe renovación automática. Se informarán las opciones disponibles antes del vencimiento.", category: "Vigencia y renovación" },
 
   // Impuestos
   { q: "¿Los precios incluyen impuestos?", a: "Los impuestos aplicables, si corresponden, se mostrarán antes de completar el pago.", category: "Impuestos" },
@@ -95,8 +92,7 @@ const categories = [
   "WhatsApp y contactos",
   "Perfiles familiares",
   "Compra y pagos",
-  "Vigencia",
-  "Vigencia y renovación",
+  "Servicio",
   "Uso internacional",
   "Empresas",
   "Limitaciones del servicio",
@@ -178,7 +174,7 @@ export default function FAQContent() {
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
+                            exit={{ opacity: 0, height: 0 }}
                             transition={{ duration: 0.2 }}
                             className="overflow-hidden"
                           >

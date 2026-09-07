@@ -179,15 +179,15 @@ export default function ComoFuncionaContent() {
             <div className="rounded-[1.5rem] border border-white/[0.07] bg-white/[0.028] p-5 sm:rounded-[2rem] sm:p-9">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] sm:h-12 sm:w-12 sm:rounded-2xl"><MessageCircle className="h-5 w-5 text-sky-300" /></div>
               <h2 className="mt-5 text-[1.7rem] font-black tracking-[-0.04em] text-slate-50 sm:mt-8 sm:text-3xl">Contacto manual</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">El perfil permite iniciar una llamada o abrir WhatsApp cuando esos contactos están disponibles. La persona que consulta debe iniciar la acción.</p>
-              <p className="mt-4 text-xs leading-5 text-slate-600 sm:mt-5">La ubicación aproximada solo puede utilizarse cuando la persona que consulta concede el permiso correspondiente en su navegador.</p>
+              <p className="mt-3 text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">El perfil permite iniciar una llamada o abrir WhatsApp cuando esos contactos están disponibles. En WhatsApp, la persona que consulta debe pulsar Enviar manualmente.</p>
+              <p className="mt-4 text-xs leading-5 text-slate-600 sm:mt-5">El escaneo por sí solo no envía SMS, correos ni WhatsApp de rescate; el mensaje preescrito tampoco incluye ubicación ni datos médicos automáticamente.</p>
             </div>
 
             <div className="rounded-[1.5rem] border border-white/[0.07] bg-white/[0.028] p-5 sm:rounded-[2rem] sm:p-9">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] sm:h-12 sm:w-12 sm:rounded-2xl"><ShieldCheck className="h-5 w-5 text-emerald-300" /></div>
-              <h2 className="mt-5 text-[1.7rem] font-black tracking-[-0.04em] text-slate-50 sm:mt-8 sm:text-3xl">Vigencia del servicio</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">El servicio tiene una vigencia de 2 años desde la activación. Antes de finalizar ese período se informan las opciones disponibles para continuar el servicio.</p>
-              <p className="mt-4 text-xs leading-5 text-slate-600 sm:mt-5">Actualmente no existe renovación automática.</p>
+              <h2 className="mt-5 text-[1.7rem] font-black tracking-[-0.04em] text-slate-50 sm:mt-8 sm:text-3xl">Servicio sin vencimiento</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">El servicio digital no vence por tiempo y no requiere renovación periódica.</p>
+              <p className="mt-4 text-xs leading-5 text-slate-600 sm:mt-5">Permanece disponible mientras el identificador siga activo y no haya sido revocado, reemplazado o retirado.</p>
             </div>
           </div>
         </section>

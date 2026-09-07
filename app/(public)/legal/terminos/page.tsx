@@ -22,7 +22,7 @@ export default function TerminosPage() {
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-8">
             <div className="rounded-[2rem] border border-white/10 bg-slate-900/90 p-10 shadow-xl shadow-slate-950/30">
               <div className="space-y-6 prose prose-invert prose-sm text-slate-100 max-w-none">
-                <p className="text-sm text-brand uppercase tracking-[0.35em] font-black">Versión 1.0 — Última actualización: Marzo 2026</p>
+                <p className="text-sm text-brand uppercase tracking-[0.35em] font-black">Versión 1.1 — Última actualización: Septiembre 2026</p>
 
                 <h2>1. Aceptación de los Términos</h2>
                 <p>Al registrarte y utilizar los servicios de PreRescate PTY (&quot;el Servicio&quot;), aceptas estos Términos y Condiciones en su totalidad. Si no estás de acuerdo, no debes usar el Servicio.</p>
@@ -43,15 +43,17 @@ export default function TerminosPage() {
                   <li>Comprender que la información del perfil público será visible para cualquier persona que escanee el chip.</li>
                 </ul>
 
-                <h2>5. Propiedad del Chip</h2>
-                <p>El chip físico es propiedad del usuario una vez adquirido. Sin embargo, el sistema digital, la URL asociada, y la plataforma son propiedad de PreRescate PTY. Un chip no puede ser transferido a otro usuario sin autorización.</p>
+                <h2>5. Propiedad del Chip y duración del servicio digital</h2>
+                <p>El chip físico es propiedad del usuario una vez adquirido. Sin embargo, el sistema digital, la URL asociada y la plataforma son propiedad de PreRescate PTY. Un chip no puede ser transferido a otro usuario sin autorización.</p>
+                <p><strong>El servicio digital asociado a una identificación adquirida no vence por el paso del tiempo y no requiere una renovación periódica.</strong> El perfil permanece disponible mientras la identificación correspondiente siga activa y no haya sido revocada, reemplazada, desactivada o retirada conforme a estos términos.</p>
+                <p>Esta duración del servicio digital no convierte la garantía del producto físico en una garantía ilimitada. Tampoco elimina las expiraciones técnicas o de seguridad aplicables a códigos de activación, sesiones, recuperación de acceso u otros mecanismos temporales de protección.</p>
 
                 <h2>6. Suspensión y Cancelación</h2>
                 <p>El usuario puede suspender, desactivar o solicitar la eliminación de su chip y datos en cualquier momento desde su dashboard o contactando a soporte.</p>
                 <p>PreRescate PTY se reserva el derecho de suspender cuentas que violen estos términos o que se utilicen de forma fraudulenta.</p>
 
                 <h2>7. Pagos y Reembolsos</h2>
-                <p>Los precios están indicados en USD. Los pagos se procesan de forma segura a través de los proveedores indicados. Las políticas de reembolso se aplican según el caso.</p>
+                <p>Los precios están indicados en USD. La adquisición del servicio digital asociado al identificador se realiza mediante un pago único, sin mensualidad ni cargo periódico por renovación del plazo. Los pagos se procesan mediante los métodos indicados al realizar el pedido. Las políticas de reembolso se aplican según el caso.</p>
 
                 <h2>8. Modificaciones</h2>
                 <p>PreRescate PTY puede modificar estos términos. Los usuarios serán notificados de cambios materiales. El uso continuado del servicio después de la notificación constituye aceptación de los nuevos términos.</p>
