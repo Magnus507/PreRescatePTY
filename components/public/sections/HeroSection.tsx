@@ -27,7 +27,7 @@ const trustItems = [
   { icon: QrCode, label: "QR + NFC" },
   { icon: Battery, label: "Sticker sin batería" },
   { icon: Smartphone, label: "Sin instalar app" },
-  { icon: ShieldCheck, label: "2 años desde activación" },
+  { icon: ShieldCheck, label: "Sin vencimiento por tiempo" },
 ];
 
 const flow = ["ID físico", "Escaneo", "Perfil", "Contacto"];
