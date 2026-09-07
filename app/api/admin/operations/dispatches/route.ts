@@ -11,6 +11,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const TERMINAL_DISPATCH_STATUSES = ["delivered", "cancelled", "completed", "closed"] as const;
+
 const finishedGoodSelect = {
   id: true,
   code: true,
@@ -50,6 +52,7 @@ export async function GET() {
 
   try {
     const dispatches = await prisma.operationDispatch.findMany({
+      where: { status: { notIn: [...TERMINAL_DISPATCH_STATUSES] } },
       orderBy: { createdAt: "desc" },
       include: dispatchInclude,
     });
