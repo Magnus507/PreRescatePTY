@@ -51,7 +51,8 @@ export function buildEmergencyNotificationMessage(profileName: string, publicUrl
 }
 
 /** Automatic provider delivery is intentionally unavailable for every channel. */
-export function isEmergencyChannelConfigured(_channel: EmergencyAlertChannel) {
+export function isEmergencyChannelConfigured(channel: EmergencyAlertChannel) {
+  void channel;
   return false;
 }
 
@@ -60,9 +61,11 @@ export function isEmergencyChannelConfigured(_channel: EmergencyAlertChannel) {
  * rows or update ScanEvent.notificationStatus.
  */
 export async function queueEmergencyNotificationsFromScan(
-  _db: unknown,
-  _payload: EmergencyNotificationPayload
+  db: unknown,
+  payload: EmergencyNotificationPayload
 ) {
+  void db;
+  void payload;
   return {
     status: "disabled" as EmergencyNotificationStatus,
     queued: 0,
@@ -78,9 +81,11 @@ export async function queueEmergencyNotificationsFromScan(
  * left untouched so historical evidence is never rewritten by retired code.
  */
 export async function recoverExpiredEmergencyNotificationLeases(
-  _db: unknown,
-  _options?: { limit?: number; now?: Date; leaseMs?: number }
+  db: unknown,
+  options?: { limit?: number; now?: Date; leaseMs?: number }
 ) {
+  void db;
+  void options;
   return { recovered: 0, deadLettered: 0 };
 }
 
@@ -89,9 +94,11 @@ export async function recoverExpiredEmergencyNotificationLeases(
  * Resend, Twilio or any other notification provider.
  */
 export async function processPendingEmergencyNotifications(
-  _db: unknown,
-  _options?: { limit?: number; workerId?: string; now?: Date }
+  db: unknown,
+  options?: { limit?: number; workerId?: string; now?: Date }
 ) {
+  void db;
+  void options;
   return {
     claimed: 0,
     sent: 0,
