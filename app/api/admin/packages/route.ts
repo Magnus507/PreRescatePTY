@@ -6,11 +6,18 @@ import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 const ACTIVE_PACKAGE_ACCOUNT_TYPES = ["personal", "company"] as const;
+const LEGACY_LIFETIME_DURATION_MARKER = 0;
 
 function isValidActivePackageAccountType(accountType: string) {
   return ACTIVE_PACKAGE_ACCOUNT_TYPES.includes(
     accountType as (typeof ACTIVE_PACKAGE_ACCOUNT_TYPES)[number]
   );
+}
+
+function withoutLegacyDuration<T extends { serviceDurationMonths: number }>(pkg: T) {
+  const { serviceDurationMonths, ...rest } = pkg;
+  void serviceDurationMonths;
+  return rest;
 }
 
 export async function GET() {
@@ -21,7 +28,7 @@ export async function GET() {
     orderBy: { displayOrder: "asc" },
   });
 
-  return NextResponse.json({ packages });
+  return NextResponse.json({ packages: packages.map(withoutLegacyDuration) });
 }
 
 export async function POST(req: Request) {
@@ -58,7 +65,9 @@ export async function POST(req: Request) {
           allowsFamilyProfiles: data.allowsFamilyProfiles ?? false,
           allowsOrganizationModule: data.allowsOrganizationModule ?? false,
           allowsSchoolModule: data.allowsSchoolModule ?? false,
-          serviceDurationMonths: data.serviceDurationMonths ?? 24,
+          // Legacy non-null column retained for schema compatibility. Zero means
+          // the field has no business effect; service itself has no time expiry.
+          serviceDurationMonths: LEGACY_LIFETIME_DURATION_MARKER,
         }
       });
       await writeAuditLog(tx, {
@@ -68,11 +77,11 @@ export async function POST(req: Request) {
         entityId: created.id,
         action: "package_created",
         requestId: getAuditRequestId(req),
-        after: created,
+        after: withoutLegacyDuration(created),
       });
       return created;
     });
-    return NextResponse.json({ pkg });
+    return NextResponse.json({ pkg: withoutLegacyDuration(pkg) });
   } catch (err: unknown) {
     console.error("[admin/packages] Create failed", err);
     return NextResponse.json({ error: "No se pudo crear el paquete." }, { status: 500 });
@@ -84,7 +93,8 @@ export async function PATCH(req: Request) {
   if (!auth.authorized) return auth.response;
 
   try {
-    const { id, ...data } = await req.json();
+    const { id, serviceDurationMonths, ...data } = await req.json();
+    void serviceDurationMonths;
     const pkg = await prisma.$transaction(async (tx) => {
       const current = await tx.package.findUnique({ where: { id } });
       if (!current) throw Object.assign(new Error("PACKAGE_NOT_FOUND"), { code: "P2025" });
@@ -95,7 +105,13 @@ export async function PATCH(req: Request) {
         throw Object.assign(new Error("INVALID_ACTIVE_ACCOUNT_TYPE"), { code: "INVALID_ACTIVE_ACCOUNT_TYPE" });
       }
 
-      const updated = await tx.package.update({ where: { id }, data });
+      const updated = await tx.package.update({
+        where: { id },
+        data: {
+          ...data,
+          serviceDurationMonths: LEGACY_LIFETIME_DURATION_MARKER,
+        },
+      });
       await writeAuditLog(tx, {
         accountId: auth.session.user.accountId,
         actorUserId: auth.session.user.id,
@@ -103,12 +119,12 @@ export async function PATCH(req: Request) {
         entityId: id,
         action: "package_updated",
         requestId: getAuditRequestId(req),
-        before: current,
-        after: updated,
+        before: withoutLegacyDuration(current),
+        after: withoutLegacyDuration(updated),
       });
       return updated;
     });
-    return NextResponse.json({ pkg });
+    return NextResponse.json({ pkg: withoutLegacyDuration(pkg) });
   } catch (err: unknown) {
     const code = (err as { code?: string }).code;
     if (code === "P2025") {
