@@ -53,7 +53,7 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
     expect(preferences).not.toContain("tx.consent.updateMany");
   });
 
-  it("mounts the public UI hardener that rewrites WhatsApp and removes the legacy alert control", () => {
+  it("mounts a public UI hardener that also catches late React href changes", () => {
     const page = source("app/(public)/e/[shortCode]/page.tsx");
     const hardener = source("app/(public)/e/[shortCode]/_components/ManualContactHardening.tsx");
 
@@ -61,6 +61,8 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
     expect(hardener).toContain("buildManualRescueWhatsAppUrl");
     expect(hardener).toContain("lucide-bell-ring");
     expect(hardener).toContain('dataset.manualContact = "whatsapp"');
+    expect(hardener).toContain("attributes: true");
+    expect(hardener).toContain('attributeFilter: ["href"]');
   });
 
   it("hardens dashboard settings against obsolete automatic-alert and expiry UI", () => {
