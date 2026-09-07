@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Account, Package, Profile, User, Chip } from "@prisma/client";
 import { AccountState, SetupChecklist } from "../account.types";
-import { ACCOUNT_TYPES, USER_ROLES, BUSINESS_RULES } from "@/domains/shared/constants";
+import { ACCOUNT_TYPES, USER_ROLES } from "@/domains/shared/constants";
 import { redis, isRedisConfigured } from "@/lib/redis";
 import { parseMoney } from "@/lib/money";
 
@@ -10,7 +10,7 @@ export { type SetupChecklist };
 const CHIP_CAPACITY_STATUSES = ["activated", "suspended"];
 const CHIP_SERVICE_STATUSES = ["activated", "suspended"];
 const MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT = 50;
-const ACCOUNT_STATE_CACHE_VERSION = "v4";
+const ACCOUNT_STATE_CACHE_VERSION = "v5";
 
 export const ACCOUNT_STATE_ERRORS = {
   USER_NOT_FOUND: "USER_NOT_FOUND",
@@ -46,20 +46,22 @@ export class AccountStateService {
     };
   }
 
-  /** Commercial service state only. It must never be used to hide rescue data. */
+  /** Lifetime service state. Legacy expiry fields are intentionally ignored. */
   private static calculateServiceStatus(latestChip: Chip | null, isCorporate: boolean, maxChipsLimit: number) {
-    const serviceEndDate = latestChip?.serviceEndDate || null;
-    const isExpired = serviceEndDate ? serviceEndDate < new Date() : false;
     const isInactive = isCorporate && maxChipsLimit === 0;
-    const serviceStatus = isInactive
-      ? "inactive"
-      : (isExpired ? "expired" : (latestChip?.serviceStatus || "active"));
-    return { serviceStatus, serviceEndDate, isExpired, isInactive };
+    const serviceStatus = isInactive ? "inactive" : (latestChip ? "active" : "not_activated");
+    return {
+      serviceStatus,
+      serviceEndDate: null,
+      isExpired: false,
+      isInactive,
+    };
   }
 
   /**
-   * Resolves dashboard/commercial state. The 24-month service term remains real,
-   * while public rescue availability is resolved independently by public-access.
+   * Resolves dashboard/account state. Service has no time-based expiration;
+   * lost, replaced, revoked or otherwise inactive identifiers remain governed
+   * by their physical lifecycle instead.
    */
   static async getAccountState(userId: string): Promise<AccountState> {
     const cacheKey = `account_state_${ACCOUNT_STATE_CACHE_VERSION}:${userId}`;
@@ -102,7 +104,7 @@ export class AccountStateService {
 
     const latestChip = account?.id ? await prisma.chip.findFirst({
       where: { accountId: account.id, status: { in: CHIP_SERVICE_STATUSES } },
-      orderBy: { serviceEndDate: "desc" },
+      orderBy: { activatedAt: "desc" },
     }) : null;
 
     const { serviceStatus, serviceEndDate, isExpired, isInactive } = this.calculateServiceStatus(
@@ -121,7 +123,6 @@ export class AccountStateService {
     setupChecklist.setupComplete = setupChecklist.medicalProfileComplete && setupChecklist.chipActivated && (isCorporate || setupChecklist.emergencyContactAdded);
 
     const isOwner = user.role === USER_ROLES.OWNER || user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPERADMIN || account?.ownerUserId === userId;
-    const serviceDurationMonths = account?.package?.serviceDurationMonths || BUSINESS_RULES.DEFAULT_SERVICE_DURATION_MONTHS;
 
     const state: AccountState = {
       accountId: user.accountId || null,
@@ -133,7 +134,7 @@ export class AccountStateService {
       maxProfilesAllocated: maxProfilesLimit,
       serviceStatus,
       serviceEndDate,
-      serviceDurationMonths,
+      serviceDurationMonths: null,
       isExpired,
       isInactive,
       isPersonal,
@@ -143,8 +144,8 @@ export class AccountStateService {
       isOwner,
       canManageFamilyProfiles: isFamily && isOwner,
       canAccessOrganizationModule: isCorporate && isOwner,
-      // Personal/family activation is possession-based: a valid purchased code
-      // may start its own 24-month term even if another service term expired.
+      // Personal/family activation is possession-based: every valid purchased
+      // physical unit can be activated without a time-based service limit.
       canActivateMoreChips: isOwner && (!isCorporate || (!isInactive && activeChipsCount < maxChipsLimit)),
       canAddFamilyMember: isOwner && actualProfilesCount < MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT,
       activeChipsCount,
@@ -173,6 +174,7 @@ export class AccountStateService {
     try {
       await Promise.all([
         redis.del(`account_state_${ACCOUNT_STATE_CACHE_VERSION}:${userId}`),
+        redis.del(`account_state_v4:${userId}`),
         redis.del(`account_state_v3:${userId}`),
       ]);
     } catch (e) {
