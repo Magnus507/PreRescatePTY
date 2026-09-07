@@ -4,6 +4,8 @@ import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-r
 
 const db = createIntegrationPrismaClient();
 const RUN_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const RESERVATION_PRODUCT_CODE = `PRD-RES-${RUN_ID}`;
+const UNPAID_PRODUCT_CODE = `PRD-UNPAID-${RUN_ID}`;
 
 describe("PostgreSQL integration: commercial order reservation", () => {
   beforeAll(async () => {
@@ -19,9 +21,9 @@ describe("PostgreSQL integration: commercial order reservation", () => {
     const unit = await db.operationFinishedGoodUnit.create({
       data: {
         internalLabel: `INT-${RUN_ID}`,
-        productCode: "PRD-RES-1",
+        productCode: RESERVATION_PRODUCT_CODE,
         productName: "Producto Reserva",
-        productType: "PRD-RES-1",
+        productType: RESERVATION_PRODUCT_CODE,
         status: "available",
         qaStatus: "passed",
         activationStatus: "not_activated",
@@ -49,7 +51,7 @@ describe("PostgreSQL integration: commercial order reservation", () => {
             quantity: 1,
             unitPrice: "25.00",
             totalPrice: "25.00",
-            productCode: "PRD-RES-1",
+            productCode: RESERVATION_PRODUCT_CODE,
             unit: "unit",
           }],
         },
@@ -75,7 +77,7 @@ describe("PostgreSQL integration: commercial order reservation", () => {
             quantity: 1,
             unitPrice: "25.00",
             totalPrice: "25.00",
-            productCode: "PRD-RES-1",
+            productCode: RESERVATION_PRODUCT_CODE,
             unit: "unit",
           }],
         },
@@ -112,9 +114,9 @@ describe("PostgreSQL integration: commercial order reservation", () => {
     const unit = await db.operationFinishedGoodUnit.create({
       data: {
         internalLabel: `INT-UNPAID-${RUN_ID}`,
-        productCode: "PRD-UNPAID-1",
+        productCode: UNPAID_PRODUCT_CODE,
         productName: "Producto no pagado",
-        productType: "PRD-UNPAID-1",
+        productType: UNPAID_PRODUCT_CODE,
         status: "available",
         qaStatus: "passed",
         activationStatus: "not_activated",
@@ -139,7 +141,7 @@ describe("PostgreSQL integration: commercial order reservation", () => {
             quantity: 1,
             unitPrice: "25.00",
             totalPrice: "25.00",
-            productCode: "PRD-UNPAID-1",
+            productCode: UNPAID_PRODUCT_CODE,
             unit: "unit",
           }],
         },

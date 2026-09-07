@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import EmergencyProfileClient from "./client";
+import ManualContactHardening from "./_components/ManualContactHardening";
 
 export const metadata: Metadata = {
-  title: "PreRescatePTY — Estado del producto",
+  title: "PreRescatePTY — Perfil de emergencia",
   description:
-    "Pantalla pública segura para productos PreRescatePTY antes de la activación.",
+    "Perfil público de emergencia de PreRescatePTY para identificación y contacto manual.",
   robots: {
     index: false,
     follow: false,
@@ -18,20 +19,26 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "PreRescatePTY — Estado del producto",
+    title: "PreRescatePTY — Perfil de emergencia",
     description:
-      "Pantalla pública segura para productos PreRescatePTY antes de la activación.",
+      "Perfil público de emergencia de PreRescatePTY para identificación y contacto manual.",
     type: "website",
     locale: "es_PA",
   },
   twitter: {
     card: "summary",
-    title: "PreRescatePTY — Estado del producto",
+    title: "PreRescatePTY — Perfil de emergencia",
     description:
-      "Pantalla pública segura para productos PreRescatePTY antes de la activación.",
+      "Perfil público de emergencia de PreRescatePTY para identificación y contacto manual.",
   },
 };
 
 export default function EmergencyProfilePage() {
-  return <EmergencyProfileClient />;
+  return (
+    <div data-manual-contact-only>
+      <style>{`[data-manual-contact-only] button:has(.lucide-bell-ring){display:none!important}`}</style>
+      <ManualContactHardening />
+      <EmergencyProfileClient />
+    </div>
+  );
 }

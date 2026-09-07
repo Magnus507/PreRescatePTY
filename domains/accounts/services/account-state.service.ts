@@ -9,8 +9,8 @@ export { type SetupChecklist };
 
 const CHIP_CAPACITY_STATUSES = ["activated", "suspended"];
 const CHIP_SERVICE_STATUSES = ["activated", "suspended"];
-// Límite técnico anti-abuso para perfiles personales/familiares
 const MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT = 50;
+const ACCOUNT_STATE_CACHE_VERSION = "v4";
 
 export const ACCOUNT_STATE_ERRORS = {
   USER_NOT_FOUND: "USER_NOT_FOUND",
@@ -19,76 +19,51 @@ export const ACCOUNT_STATE_ERRORS = {
 
 type UserWithAccount = User & {
   profile: Profile | null;
-  account: (Account & {
-    package: Package | null;
-  }) | null;
+  account: (Account & { package: Package | null }) | null;
 };
 
 export class AccountStateService {
-  /**
-   * Central rule for medical profile completeness.
-   */
   static isMedicalProfileComplete(profile: Profile | null | undefined): boolean {
     if (!profile) return false;
     const { firstName, lastName, bloodType } = profile;
     return (
-      !!firstName && 
-      firstName.length > 1 && 
-      !!lastName && 
-      lastName.length > 1 && 
-      !!bloodType && 
-      bloodType !== "Pendiente" &&
-      bloodType !== ""
+      !!firstName && firstName.length > 1 &&
+      !!lastName && lastName.length > 1 &&
+      !!bloodType && bloodType !== "Pendiente" && bloodType !== ""
     );
   }
 
-  /**
-   * Determines the account category and basic permissions based on type and limits.
-   */
   private static resolveAccountCategory(account: Account | null, rawAccountType: string) {
     const maxProfilesLimit = account?.maxProfilesAllocated || 1;
-    
     const isCorporate = rawAccountType === "company" || rawAccountType === "organization" || rawAccountType === "corporate";
     const isFamily = rawAccountType === "family" || maxProfilesLimit > 1;
     const isPersonal = !isCorporate && !isFamily;
-
-    return { 
+    return {
       accountType: isCorporate ? ACCOUNT_TYPES.COMPANY : (isFamily ? ACCOUNT_TYPES.FAMILY : ACCOUNT_TYPES.PERSONAL),
-      isCorporate, 
-      isFamily, 
-      isPersonal 
+      isCorporate,
+      isFamily,
+      isPersonal,
     };
   }
 
-  /**
-   * Calculates the overall service status based on chip activity and expiration.
-   */
-  private static calculateServiceStatus(activeChipsCount: number, latestChip: Chip | null, maxChipsLimit: number) {
-    const now = new Date();
+  /** Commercial service state only. It must never be used to hide rescue data. */
+  private static calculateServiceStatus(latestChip: Chip | null, isCorporate: boolean, maxChipsLimit: number) {
     const serviceEndDate = latestChip?.serviceEndDate || null;
-    
-    // Core Logic Fix: An account is only truly INACTIVE if it has NO CAPACITY (maxChips === 0).
-    // Having 0 chips linked but >0 capacity means it's ACTIVE but empty.
-    const isInactive = maxChipsLimit === 0;
-    const isExpired = serviceEndDate ? serviceEndDate < now : false;
-
-    const serviceStatus = isInactive 
-      ? "inactive" 
+    const isExpired = serviceEndDate ? serviceEndDate < new Date() : false;
+    const isInactive = isCorporate && maxChipsLimit === 0;
+    const serviceStatus = isInactive
+      ? "inactive"
       : (isExpired ? "expired" : (latestChip?.serviceStatus || "active"));
-
     return { serviceStatus, serviceEndDate, isExpired, isInactive };
   }
 
   /**
-   * Main resolver for account state.
-   */
-  /**
-   * Main resolver for account state with Distributed Cache (Redis)
+   * Resolves dashboard/commercial state. The 24-month service term remains real,
+   * while public rescue availability is resolved independently by public-access.
    */
   static async getAccountState(userId: string): Promise<AccountState> {
-    const cacheKey = `account_state_v3:${userId}`;
+    const cacheKey = `account_state_${ACCOUNT_STATE_CACHE_VERSION}:${userId}`;
 
-    // 1. Try Distributed Cache first
     if (redis && isRedisConfigured()) {
       try {
         const cached = await redis.get<AccountState>(cacheKey);
@@ -98,76 +73,55 @@ export class AccountStateService {
       }
     }
 
-    // 2. Core data retrieval (Fallback to DB)
     const user = (await prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        profile: true,
-        account: {
-          include: {
-            package: true,
-          }
-        }
-      }
+      include: { profile: true, account: { include: { package: true } } },
     })) as UserWithAccount | null;
 
     if (!user) {
-      // Check if the userId might belong to an admin account that has no client-side data
       const adminCheck = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } });
       if (adminCheck?.isAdmin) throw new Error(ACCOUNT_STATE_ERRORS.ADMIN_ACCESS_CLIENT_DASHBOARD);
       throw new Error(ACCOUNT_STATE_ERRORS.USER_NOT_FOUND);
     }
 
     const { account, profile } = user;
-
-    // 3. Parallel state count metrics
-    const [activeChipsCount, inTransitCount, actualProfilesCount, scansCount, contactsCount] = account?.id 
+    const [activeChipsCount, inTransitCount, actualProfilesCount, scansCount, contactsCount] = account?.id
       ? await Promise.all([
           prisma.chip.count({ where: { accountId: account.id, status: { in: CHIP_CAPACITY_STATUSES } } }),
           prisma.chip.count({ where: { accountId: account.id, status: "sold", isPhysical: true } }),
-          prisma.profile.count({ 
-            where: { 
-              accountId: account.id,
-              profileType: { not: "corporate" }
-            } 
-          }),
+          prisma.profile.count({ where: { accountId: account.id, profileType: { not: "corporate" } } }),
           prisma.scanEvent.count({ where: { accountId: account.id } }),
-          prisma.profileContact.count({ 
-            where: { 
-              profileId: profile?.id || "not-exists",
-              active: true
-            } 
-          })
+          prisma.profileContact.count({ where: { profileId: profile?.id || "not-exists", active: true } }),
         ])
       : [0, 0, 1, 0, 0];
 
-    // 4. Category & Limits resolution
     const rawAccountType = account?.accountType || ACCOUNT_TYPES.PERSONAL;
     const { accountType, isCorporate, isFamily, isPersonal } = this.resolveAccountCategory(account, rawAccountType);
-    
     const maxChipsLimit = account?.maxChipsAllocated || 0;
     const maxProfilesLimit = account?.maxProfilesAllocated || 1;
 
-    // 5. Service Temporal Status
     const latestChip = account?.id ? await prisma.chip.findFirst({
       where: { accountId: account.id, status: { in: CHIP_SERVICE_STATUSES } },
-      orderBy: { serviceEndDate: 'desc' }
+      orderBy: { serviceEndDate: "desc" },
     }) : null;
 
-    const { serviceStatus, serviceEndDate, isExpired, isInactive } = this.calculateServiceStatus(activeChipsCount, latestChip, maxChipsLimit);
+    const { serviceStatus, serviceEndDate, isExpired, isInactive } = this.calculateServiceStatus(
+      latestChip,
+      isCorporate,
+      maxChipsLimit
+    );
 
-    // 6. Checklist & Permission resolution
     const isMedicalComplete = this.isMedicalProfileComplete(profile);
-
     const setupChecklist: SetupChecklist = {
       medicalProfileComplete: isMedicalComplete,
       chipActivated: activeChipsCount > 0,
       emergencyContactAdded: contactsCount > 0,
-      setupComplete: false
+      setupComplete: false,
     };
     setupChecklist.setupComplete = setupChecklist.medicalProfileComplete && setupChecklist.chipActivated && (isCorporate || setupChecklist.emergencyContactAdded);
-    
+
     const isOwner = user.role === USER_ROLES.OWNER || user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPERADMIN || account?.ownerUserId === userId;
+    const serviceDurationMonths = account?.package?.serviceDurationMonths || BUSINESS_RULES.DEFAULT_SERVICE_DURATION_MONTHS;
 
     const state: AccountState = {
       accountId: user.accountId || null,
@@ -179,35 +133,31 @@ export class AccountStateService {
       maxProfilesAllocated: maxProfilesLimit,
       serviceStatus,
       serviceEndDate,
-      serviceDurationMonths: account?.package?.serviceDurationMonths || BUSINESS_RULES.DEFAULT_SERVICE_DURATION_MONTHS,
+      serviceDurationMonths,
       isExpired,
       isInactive,
-
       isPersonal,
       isFamily,
       isCorporate,
       isOrganization: isCorporate,
       isOwner,
-
       canManageFamilyProfiles: isFamily && isOwner,
       canAccessOrganizationModule: isCorporate && isOwner,
-      canActivateMoreChips: isOwner && (!isCorporate || activeChipsCount < maxChipsLimit),
+      // Personal/family activation is possession-based: a valid purchased code
+      // may start its own 24-month term even if another service term expired.
+      canActivateMoreChips: isOwner && (!isCorporate || (!isInactive && activeChipsCount < maxChipsLimit)),
       canAddFamilyMember: isOwner && actualProfilesCount < MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT,
-
       activeChipsCount,
-      physicalChipsInTransitCount: inTransitCount, 
+      physicalChipsInTransitCount: inTransitCount,
       familyProfilesCount: Math.max(0, actualProfilesCount - 1),
       contactsCount,
-      scansCount, 
-
+      scansCount,
       hasCompletedMedicalProfile: setupChecklist.medicalProfileComplete,
       hasEmergencyContact: setupChecklist.emergencyContactAdded,
       hasActivatedChip: setupChecklist.chipActivated,
-
-      setupChecklist
+      setupChecklist,
     };
 
-    // 7. Store in Cache for 5 minutes (reduced from 1 hour to minimize stale data)
     if (redis && isRedisConfigured()) {
       try {
         await redis.set(cacheKey, state, { ex: 300 });
@@ -215,17 +165,16 @@ export class AccountStateService {
         console.error("[AccountStateService] Cache set error:", e);
       }
     }
-
     return state;
   }
 
-  /**
-   * Manual Cache Invalidation
-   */
   static async invalidateCache(userId: string): Promise<void> {
     if (!redis || !isRedisConfigured()) return;
     try {
-      await redis.del(`account_state_v3:${userId}`);
+      await Promise.all([
+        redis.del(`account_state_${ACCOUNT_STATE_CACHE_VERSION}:${userId}`),
+        redis.del(`account_state_v3:${userId}`),
+      ]);
     } catch (e) {
       console.error("[AccountStateService] Cache invalidation error:", e);
     }

@@ -15,10 +15,6 @@ export default function ReembolsosPage() {
       lastUpdated="Junio 2025"
     >
       <div className="space-y-6 text-[#A0AEC0]">
-        <p className="text-sm font-bold text-[#DA1A21]">
-          Provisional commercial wording — pending legal review
-        </p>
-
         <section>
           <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
             Cancelación antes del despacho
