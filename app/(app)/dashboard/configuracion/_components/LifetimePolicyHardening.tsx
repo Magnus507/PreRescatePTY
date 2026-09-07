@@ -3,12 +3,9 @@
 import { useEffect } from "react";
 
 const REPLACEMENTS: Array<[RegExp, string]> = [
-  [/^Suscripción y plan$/i, "Producto y plan"],
-  [/^Estado y gestión$/i, "Gestión del producto"],
-  [/^Estado de la suscripción$/i, "Estado del producto"],
-  [/^Servicio no activado$/i, "Sin vencimiento por tiempo"],
-  [/^Válido hasta:.*$/i, "Sin vencimiento por tiempo"],
-  [/^Gestionar \/ Mejorar Plan$/i, "Gestionar producto / opciones"],
+  [/^Suscripción y plan$/i, "Servicio y producto"],
+  [/^Estado de la suscripción$/i, "Estado del servicio"],
+  [/^Gestionar \/ Mejorar Plan$/i, "Gestionar / renovar servicio"],
 ];
 
 function normalizedText(element: Element) {
@@ -40,7 +37,7 @@ function hideAutomaticAlertControls(root: ParentNode) {
   });
 }
 
-function rewriteLifetimeCopy(root: ParentNode) {
+function rewriteServiceCopy(root: ParentNode) {
   root.querySelectorAll<HTMLElement>("p,span,h1,h2,h3,h4,a,button").forEach((element) => {
     if (element.children.length > 0) return;
     const current = normalizedText(element);
@@ -57,7 +54,7 @@ function rewriteLifetimeCopy(root: ParentNode) {
 
 function applyPolicy(root: ParentNode) {
   hideAutomaticAlertControls(root);
-  rewriteLifetimeCopy(root);
+  rewriteServiceCopy(root);
 }
 
 export default function LifetimePolicyHardening() {
