@@ -36,8 +36,8 @@ import { getServerSession } from 'next-auth'
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
- * A realistic AccountState object matching the shape returned by
- * AccountStateService.getAccountState.
+ * A realistic AccountState object matching the lifetime-service shape returned
+ * by AccountStateService.getAccountState.
  */
 function createMockAccountState(overrides: Record<string, unknown> = {}) {
   return {
@@ -49,8 +49,8 @@ function createMockAccountState(overrides: Record<string, unknown> = {}) {
     maxChipsAllocated: 2,
     maxProfilesAllocated: 3,
     serviceStatus: 'active',
-    serviceEndDate: new Date('2027-01-01'),
-    serviceDurationMonths: 12,
+    serviceEndDate: null,
+    serviceDurationMonths: null,
     isExpired: false,
     isInactive: false,
     isPersonal: true,
@@ -109,14 +109,12 @@ describe('GET /api/account/state', () => {
     const json = await res.json()
 
     expect(res.status).toBe(200)
-
-    // Verify the service was called with the correct userId
     expect(mockGetAccountState).toHaveBeenCalledWith('user-1')
-
-    // Verify key response fields
     expect(json.accountId).toBe('test-account-id')
     expect(json.accountType).toBe('personal')
     expect(json.serviceStatus).toBe('active')
+    expect(json.serviceEndDate).toBeNull()
+    expect(json.serviceDurationMonths).toBeNull()
     expect(json.isExpired).toBe(false)
     expect(json.isInactive).toBe(false)
     expect(json.activeChipsCount).toBe(1)
@@ -162,8 +160,6 @@ describe('GET /api/account/state', () => {
 
     expect(res.status).toBe(500)
     expect(json.error).toMatch(/error.*obtener.*estado/i)
-
-    // Ensure no internal stack trace is exposed
     expect(json.stack).toBeUndefined()
     expect(json.details).toBeUndefined()
   })
