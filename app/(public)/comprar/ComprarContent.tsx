@@ -41,7 +41,7 @@ const purchaseFaq = [
   },
   {
     q: "¿Hay mensualidades?",
-    a: "Los planes mostrados son de pago único. La vigencia incluida se indica en cada opción disponible.",
+    a: "No. El producto se adquiere con un pago único y el perfil asociado no vence por tiempo ni requiere renovación periódica.",
   },
   {
     q: "¿Necesito instalar una aplicación?",
@@ -118,7 +118,7 @@ function PackageCard({ pkg, index }: { pkg: Package; index: number }) {
               <span className="text-4xl font-black tracking-[-0.055em] text-white sm:text-5xl">${pkg.price}</span>
               <span className="pb-1 text-[11px] font-semibold text-slate-600 sm:pb-1.5 sm:text-xs">pago único</span>
             </div>
-            <p className="mt-2 text-[11px] font-medium leading-5 text-slate-500 sm:text-xs">{pkg.serviceDurationMonths} meses de vigencia desde la activación.</p>
+            <p className="mt-2 text-[11px] font-medium leading-5 text-slate-500 sm:text-xs">Perfil de rescate sin vencimiento por tiempo mientras el dispositivo permanezca activo y no sea revocado o reemplazado.</p>
           </div>
 
           <div className="mt-5 space-y-2.5 sm:mt-7 sm:space-y-3">
@@ -188,7 +188,7 @@ export default function ComprarContent() {
           eyebrow="Planes claros · Pago único"
           title="Elige la identificación que"
           titleAccent="mejor encaja contigo."
-          description="Los precios, capacidades y vigencia que ves aquí se cargan directamente desde nuestro catálogo activo."
+          description="Los precios y capacidades que ves aquí se cargan directamente desde nuestro catálogo activo."
           primaryCTA={{ href: "#planes", label: "Ver planes" }}
           secondaryCTA={{ href: "/demo", label: "Ver demo" }}
         />
@@ -197,7 +197,7 @@ export default function ComprarContent() {
           <div className="mx-auto flex max-w-5xl snap-x snap-mandatory items-center gap-2.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:justify-center sm:gap-x-7 sm:gap-y-3 sm:px-6">
             <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><CreditCard className="h-3.5 w-3.5 text-emerald-300" /> Pago manual verificado</span>
             <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><QrCode className="h-3.5 w-3.5 text-sky-300" /> QR + NFC</span>
-            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><ShieldCheck className="h-3.5 w-3.5 text-indigo-300" /> Sin mensualidad recurrente</span>
+            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><ShieldCheck className="h-3.5 w-3.5 text-indigo-300" /> Sin vencimiento por tiempo</span>
           </div>
         </section>
 
@@ -258,7 +258,7 @@ export default function ComprarContent() {
                       <h4 className="mt-5 text-xl font-black text-slate-50 sm:mt-7">{pkg.name}</h4>
                       <div className="mt-3 flex items-end gap-2 sm:mt-4"><span className="text-4xl font-black tracking-[-0.05em] text-white">${pkg.price}</span><span className="pb-1 text-xs text-slate-600">pago único</span></div>
                       <div className="mt-5 space-y-2.5 sm:mt-7 sm:space-y-3">
-                        {[`${pkg.maxChips} chips`, `${pkg.maxProfiles} perfiles`, "Panel administrativo", `${pkg.serviceDurationMonths} meses de vigencia`].map((feature) => (
+                        {[`${pkg.maxChips} chips`, `${pkg.maxProfiles} perfiles`, "Panel administrativo", "Perfil de rescate sin vencimiento por tiempo"].map((feature) => (
                           <div key={feature} className="flex items-center gap-2.5 text-[13px] font-semibold text-slate-400 sm:text-sm"><Check className="h-4 w-4 shrink-0 text-emerald-300" />{feature}</div>
                         ))}
                       </div>
@@ -308,7 +308,6 @@ export default function ComprarContent() {
                 </motion.div>
               ))}
             </div>
-            <p className="mt-6 text-center text-[9px] font-medium leading-5 text-slate-600 sm:mt-7 sm:text-[10px]">Redacción comercial provisional pendiente de revisión legal profesional.</p>
           </div>
         </section>
 
