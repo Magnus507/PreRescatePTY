@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     template: "%s | PreRescue ID",
   },
   description:
-    "Identificación médica de emergencia con QR y NFC. Consulta información autorizada sin instalar una aplicación. Pago único y 2 años de vigencia.",
+    "Identificación médica de emergencia con QR y NFC. Consulta información autorizada sin instalar una aplicación. Pago único y servicio digital sin vencimiento por tiempo.",
   keywords: [
     "identificación médica", "emergencia", "NFC", "QR", "Panamá",
     "perfil médico", "alergias", "tipo de sangre", "seguridad",
