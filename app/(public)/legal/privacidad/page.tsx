@@ -22,7 +22,7 @@ export default function PrivacidadPage() {
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-8">
             <div className="rounded-[2rem] border border-white/10 bg-slate-900/90 p-10 shadow-xl shadow-slate-950/30">
               <div className="space-y-6 prose prose-invert prose-sm text-slate-100 max-w-none">
-                <p className="text-sm text-brand uppercase tracking-[0.35em] font-black">Versión 1.0 — Última actualización: Agosto 2026</p>
+                <p className="text-sm text-brand uppercase tracking-[0.35em] font-black">Versión 1.1 — Última actualización: Septiembre 2026</p>
 
                 <h2>1. Responsable del Tratamiento</h2>
                 <p>PreRescate PTY, domiciliada en la República de Panamá, es responsable del tratamiento de los datos personales recopilados a través de este servicio. Esta política describe las prácticas del servicio y toma como referencia la normativa panameña aplicable en materia de protección de datos personales, incluida la Ley 81 de 26 de marzo de 2019.</p>
@@ -45,17 +45,19 @@ export default function PrivacidadPage() {
                   <li>Dirección IP</li>
                   <li>User Agent (tipo de dispositivo/navegador)</li>
                   <li>Fecha y hora del escaneo</li>
-                  <li>Ubicación geográfica aproximada (si el navegador lo permite)</li>
+                  <li>Ubicación geográfica aproximada (si el navegador la proporciona o la persona concede el permiso aplicable)</li>
                   <li>Tipo de acceso (NFC o QR)</li>
                 </ul>
+                <p>Estos datos pueden utilizarse como telemetría e historial del servicio. Un escaneo por sí solo no envía SMS, correo electrónico ni WhatsApp de rescate a los contactos del perfil.</p>
 
                 <h2>3. Finalidad del Tratamiento</h2>
                 <ul>
                   <li>Mostrar información de emergencia configurada para el perfil a terceros que escaneen la identificación.</li>
-                  <li>Procesar notificaciones de emergencia cuando la función correspondiente esté habilitada.</li>
-                  <li>Mantener un historial de escaneos asociado al servicio.</li>
+                  <li>Permitir que la persona que consulta el perfil inicie manualmente una llamada o abra WhatsApp hacia un contacto disponible.</li>
+                  <li>Mantener un historial y telemetría de escaneos asociados al servicio cuando corresponda.</li>
                   <li>Gestionar la cuenta del usuario y las funciones asociadas.</li>
                 </ul>
+                <p>El flujo de rescate actual no realiza entregas automáticas de SMS, correo electrónico ni WhatsApp. Cuando se utiliza WhatsApp, se abre un mensaje preescrito y la persona que brinda asistencia debe pulsar Enviar manualmente. Ese mensaje no incorpora automáticamente datos médicos ni ubicación.</p>
 
                 <h2>4. Consentimiento y Evidencia de Aceptación</h2>
                 <p>Para completar el registro, el usuario debe aceptar los términos y la política de privacidad vigentes. El sistema conserva evidencia técnica de esa aceptación, incluyendo la versión del texto y metadatos asociados al registro.</p>
