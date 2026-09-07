@@ -17,6 +17,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ActivationCodeReveal } from "./ActivationCodeReveal";
 
 type HistoryEntityType =
   | "unit"
@@ -559,9 +560,11 @@ export function HistorySection() {
                           </div>
                         ) : null}
 
-                        <p className="mt-3 text-xs text-slate-500">
-                          Por seguridad, el código secreto de activación y el enlace administrativo de activación no se muestran en Historial.
-                        </p>
+                        <ActivationCodeReveal
+                          orderId={detail.order.id}
+                          unitId={unit.id}
+                          activationStatus={unit.activationStatus}
+                        />
                       </div>
                     );
                   })}
