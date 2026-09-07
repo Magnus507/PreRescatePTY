@@ -17,13 +17,18 @@ describe("lifetime service + lifetime rescue + manual-contact policy guardrails"
     expect(resolver).not.toContain("serviceStatus");
   });
 
-  it("activates purchased identifiers with no time-based service expiry", () => {
+  it("activates purchased personal and corporate identifiers with no time-based service expiry", () => {
     const activation = source("app/api/chips/activate/route.ts");
-    expect(activation).toContain("serviceEndDate: null");
-    expect(activation).toContain("lifetimeService: true");
-    expect(activation).not.toContain("initialServiceEndDate");
-    expect(activation).not.toContain("serviceDurationMonths");
-    expect(activation).not.toContain("24-month");
+    const corporateActivation = source("app/api/organizations/corporate-chip/activate/route.ts");
+
+    for (const route of [activation, corporateActivation]) {
+      expect(route).toContain("serviceEndDate: null");
+      expect(route).toContain("lifetimeService: true");
+      expect(route).not.toContain("initialServiceEndDate");
+      expect(route).not.toContain("serviceDurationMonths");
+      expect(route).not.toContain('serviceStatus === "expired"');
+      expect(route).not.toContain("24-month");
+    }
   });
 
   it("keeps account service active regardless of legacy expiry dates and preserves personal unlimited activation", () => {
