@@ -41,7 +41,11 @@ export async function GET() {
  * Retired write endpoint kept as an explicit 410 for stale dashboard clients.
  * No consent is created, revoked or modified here.
  */
-export async function PATCH(_req: NextRequest) {
+export async function PATCH(req: NextRequest) {
+  // Keep the request in the compatibility signature without parsing its body.
+  // Stale clients may send any previous payload; no value can re-enable delivery.
+  void req;
+
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
