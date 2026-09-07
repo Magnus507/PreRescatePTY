@@ -5,7 +5,6 @@ import { getReverseGeocoding } from "@/lib/geocoding";
 import { getClientIp } from "@/lib/request-ip";
 import { publicScanSchema } from "@/lib/validations";
 import { resolvePublicProfileByChipShortCode } from "@/lib/public-access/resolve-public-profile-by-chip";
-import { processPendingEmergencyNotifications, queueEmergencyNotificationsFromScan } from "@/lib/emergency-alerts";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +26,7 @@ export async function POST(
 
     const scanInput = parsedBody.data;
 
-    // Rate limit: max 10 scans per IP per minute
+    // Rate limit: max 20 scans per IP/code per minute.
     const ip = getClientIp(req, "public-scan");
     const rl = await rateLimit("scan", `${ip}:${shortCode}`, {
       limit: 20,
@@ -57,13 +56,19 @@ export async function POST(
         profile_not_public: 403,
         unsupported_context: 400,
       };
-      return NextResponse.json({ error: "Chip no disponible para escaneo", reason: resolution.reason }, { status: statusMap[resolution.reason] });
+      return NextResponse.json(
+        { error: "Chip no disponible para escaneo", reason: resolution.reason },
+        { status: statusMap[resolution.reason] }
+      );
     }
 
     const { chip, profile } = resolution;
 
-    const queueResult = await prisma.$transaction(async (tx) => {
-      const scanEvent = await tx.scanEvent.create({
+    // Scanning records telemetry only. It must never enqueue or deliver an
+    // external rescue notification. Contact is initiated deliberately by the
+    // rescuer through the phone/WhatsApp actions shown in the public profile.
+    const scanEvent = await prisma.$transaction(async (tx) => {
+      const event = await tx.scanEvent.create({
         data: {
           chipId: chip.id,
           profileId: profile.id,
@@ -78,7 +83,7 @@ export async function POST(
           city: scanInput.city || null,
           address: null,
           emergencyMode: true,
-          notificationStatus: "pending",
+          notificationStatus: "disabled",
         },
       });
 
@@ -87,84 +92,58 @@ export async function POST(
         data: { lastScanAt: new Date() },
       });
 
-      const notificationPlan = await queueEmergencyNotificationsFromScan(tx, {
-        scanEventId: scanEvent.id,
-        chipId: chip.id,
-        shortCode: chip.shortCode,
-        profileId: profile.id,
-        profileName: profile.displayNamePublic || `${profile.firstName} ${profile.lastName}`,
-        accountId: chip.accountId,
-        publicUrl: `/e/${chip.shortCode}`,
-        location: scanInput.geoLat != null && scanInput.geoLng != null
-          ? { lat: scanInput.geoLat, lng: scanInput.geoLng }
-          : null,
-        trigger: "automatic",
-      });
-
-      return { scanEvent, notificationPlan };
+      return event;
     });
-    const { scanEvent, notificationPlan } = queueResult;
 
-    if (notificationPlan.queued > 0) {
-      after(async () => {
-        await processPendingEmergencyNotifications(prisma, { limit: 25 });
-      });
-    }
-
-    // 0. Background Reverse Geocoding & Profile/Chip Sync
+    // Background reverse geocoding is telemetry only and cannot block rescue.
     after(async () => {
       let geoAddress = null;
       if (scanInput.geoLat != null && scanInput.geoLng != null) {
         const result = await getReverseGeocoding(scanInput.geoLat, scanInput.geoLng);
         geoAddress = result.address;
-        
+
         await prisma.scanEvent.update({
           where: { id: scanEvent.id },
-          data: { 
+          data: {
             address: geoAddress || null,
             city: result.city || scanEvent.city,
-            country: result.country || scanEvent.country
-          }
+            country: result.country || scanEvent.country,
+          },
         });
       }
 
-      // Sync Bidirectionally with Chip and Profile
       const updateData = {
         lastScanAt: new Date(),
-        lastScanLocation: geoAddress || scanInput.city || scanInput.country || "Ubicación detectada"
+        lastScanLocation: geoAddress || scanInput.city || scanInput.country || "Ubicación detectada",
       };
 
       await prisma.chip.update({
         where: { id: chip.id },
-        data: updateData
+        data: updateData,
       });
 
       if (scanEvent.profileId) {
         await prisma.profile.update({
           where: { id: scanEvent.profileId },
-          data: updateData
+          data: updateData,
         });
       }
     });
 
-    const notificationMessage =
-      notificationPlan.status === "pending"
-        ? "Escaneo registrado. Alertas en cola."
-        : notificationPlan.status === "disabled"
-          ? "Escaneo registrado. Las alertas siguen deshabilitadas para este perfil."
-          : "Escaneo registrado. No hay alertas elegibles para enviar.";
-
-    return NextResponse.json({
-      message: notificationMessage,
-      notificationStatus: notificationPlan.status,
-      notificationSummary: {
-        queued: notificationPlan.queued,
-        skipped: notificationPlan.skipped,
-        disabled: notificationPlan.disabled,
-        reason: notificationPlan.reason,
+    return NextResponse.json(
+      {
+        message: "Escaneo registrado. Usa llamada o WhatsApp manual desde el perfil para contactar a la familia.",
+        notificationStatus: "disabled",
+        notificationSummary: {
+          queued: 0,
+          skipped: 0,
+          disabled: 0,
+          reason: "manual_contact_only",
+        },
+        scanId: scanEvent.id,
       },
-      scanId: scanEvent.id,
-    }, { status: 201 });
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Scan API Error:", error);
     return NextResponse.json(
