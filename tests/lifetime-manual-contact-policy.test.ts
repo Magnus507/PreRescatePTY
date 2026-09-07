@@ -128,13 +128,14 @@ describe("lifetime service + lifetime rescue + manual-contact policy guardrails"
     expect(guarantee).toContain("servicio digital no vence por tiempo");
   });
 
-  it("keeps public marketing, FAQ, how-it-works and terms aligned with lifetime + manual contact policy", () => {
+  it("keeps public marketing, FAQ, how-it-works, terms and privacy aligned with lifetime + manual contact policy", () => {
     const publicCopy = [
       source("components/public/sections/HeroSection.tsx"),
       source("components/public/sections/FAQPreview.tsx"),
       source("app/(public)/faq/FAQContent.tsx"),
       source("app/(public)/como-funciona/ComoFuncionaContent.tsx"),
       source("app/(public)/legal/terminos/page.tsx"),
+      source("app/(public)/legal/privacidad/page.tsx"),
     ].join("\n");
 
     const forbiddenLegacyClaims = [
@@ -147,6 +148,7 @@ describe("lifetime service + lifetime rescue + manual-contact policy guardrails"
       "sistema puede procesar alertas de emergencia",
       "sistema puede procesar notificaciones de emergencia",
       "alertas de emergencia asociadas al escaneo",
+      "procesar notificaciones de emergencia cuando la función correspondiente esté habilitada",
     ];
 
     for (const claim of forbiddenLegacyClaims) {
@@ -157,5 +159,6 @@ describe("lifetime service + lifetime rescue + manual-contact policy guardrails"
     expect(source("app/(public)/faq/FAQContent.tsx")).toContain("no envía SMS, correos ni WhatsApp de rescate automáticamente");
     expect(source("app/(public)/como-funciona/ComoFuncionaContent.tsx")).toContain("Servicio sin vencimiento");
     expect(source("app/(public)/legal/terminos/page.tsx")).toContain("no vence por el paso del tiempo");
+    expect(source("app/(public)/legal/privacidad/page.tsx")).toContain("no realiza entregas automáticas de SMS, correo electrónico ni WhatsApp");
   });
 });
