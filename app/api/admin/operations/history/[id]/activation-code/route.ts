@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
+import { decryptSensitiveValue } from "@/lib/encryption";
 import { prisma } from "@/lib/prisma";
 import { requireRole, SUPERADMIN_ROLES } from "@/lib/rbac";
 
@@ -104,6 +105,13 @@ export async function POST(
       );
     }
 
+    // Activation codes are encrypted at rest. Decrypt only for this explicit,
+    // superadmin-only support action. Plaintext legacy rows remain readable
+    // while older data is migrated, but the stored value is never logged.
+    const activationCode = decryptSensitiveValue(claimToken.activationCode, {
+      allowPlaintextLegacy: true,
+    }).plaintext;
+
     await writeAuditLog(prisma, {
       actorUserId: auth.session.user.id,
       entityType: "operation_finished_good_unit",
@@ -121,7 +129,7 @@ export async function POST(
 
     return NextResponse.json(
       {
-        activationCode: claimToken.activationCode,
+        activationCode,
         expiresAt: claimToken.expiresAt?.toISOString() || null,
       },
       { headers: NO_STORE_HEADERS }
