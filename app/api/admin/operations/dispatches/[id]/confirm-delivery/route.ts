@@ -49,6 +49,14 @@ export async function POST(
         },
       });
 
+      await tx.operationCommercialOrder.updateMany({
+        where: { dispatchId: id },
+        data: {
+          status: "completed",
+          fulfillmentStatus: "delivered",
+        },
+      });
+
       await tx.operationDispatchItem.updateMany({
         where: { dispatchId: id },
         data: {
