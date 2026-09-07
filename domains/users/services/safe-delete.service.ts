@@ -3,6 +3,9 @@ import { parseStorageObjectRef } from "@/lib/storage-deletion";
 import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
 import { randomBytes } from "node:crypto";
 
+const REDACTED_EVENT_PAYLOAD = JSON.stringify({ redacted: true });
+const REDACTED_COMMERCE_SYNC_PAYLOAD = JSON.stringify({ version: 1, redacted: true });
+
 export class SafeDeleteService {
   /**
    * Performs a comprehensive delete of a user account and its data.
@@ -33,6 +36,8 @@ export class SafeDeleteService {
       ].filter((ref): ref is NonNullable<typeof ref> => ref !== null);
 
       const chipIds = user.chips.map((chip) => chip.id);
+      const orderIds = user.orders.map((order) => order.id);
+
       await prisma.$transaction(async (tx) => {
         // Enqueue before removing references, in the same transaction. Storage
         // failures after commit remain recoverable by the cleanup worker.
@@ -43,6 +48,25 @@ export class SafeDeleteService {
             create: { objectKey: `${ref.bucket}:${ref.path}`, bucket: ref.bucket, path: ref.path, actorUserId: actorId, accountId: user.accountId },
           });
         }
+
+        // Resolve retained accounting/operations rows while the source order IDs
+        // are still available. These rows survive deletion for business history,
+        // but their customer identity and free-text snapshots must not.
+        const operationOrders = orderIds.length > 0
+          ? await tx.operationCommercialOrder.findMany({
+              where: { sourceId: { in: orderIds } },
+              select: { id: true },
+            })
+          : [];
+        const operationOrderIds = operationOrders.map((order) => order.id);
+        const paymentAttempts = orderIds.length > 0
+          ? await tx.paymentAttempt.findMany({
+              where: { orderId: { in: orderIds } },
+              select: { id: true },
+            })
+          : [];
+        const paymentAttemptIds = paymentAttempts.map((attempt) => attempt.id);
+
         // 1. Audit Log: Entry before destruction
         await tx.auditLog.create({
           data: {
@@ -147,20 +171,65 @@ export class SafeDeleteService {
           },
         });
 
+        if (operationOrderIds.length > 0) {
+          await tx.operationCommercialOrder.updateMany({
+            where: { id: { in: operationOrderIds } },
+            data: {
+              customerName: "Cuenta eliminada",
+              customerEmail: null,
+              customerPhone: null,
+              customerReference: null,
+              notes: null,
+            },
+          });
+          await tx.operationWarranty.updateMany({
+            where: { commercialOrderId: { in: operationOrderIds } },
+            data: { customerName: "Cuenta eliminada", customerEmail: null, customerPhone: null, notes: null },
+          });
+          await tx.operationReplacement.updateMany({
+            where: { commercialOrderId: { in: operationOrderIds } },
+            data: { customerName: "Cuenta eliminada", customerEmail: null, customerPhone: null, notes: null },
+          });
+          await tx.operationReturn.updateMany({
+            where: { commercialOrderId: { in: operationOrderIds } },
+            data: { customerName: "Cuenta eliminada", customerEmail: null, customerPhone: null, notes: null },
+          });
+        }
+
+        // The commerce worker re-fetches the source Order and never needs its
+        // stored payload. Redact queued/completed snapshots while preserving
+        // lease/audit metadata and source identifiers for reconciliation.
+        if (orderIds.length > 0) {
+          await tx.commerceOrderSyncOutbox.updateMany({
+            where: { sourceId: { in: orderIds } },
+            data: { payloadJson: REDACTED_COMMERCE_SYNC_PAYLOAD },
+          });
+          await tx.paymentAttempt.updateMany({
+            where: { orderId: { in: orderIds } },
+            data: { checkoutSessionJson: null },
+          });
+        }
+        if (paymentAttemptIds.length > 0) {
+          await tx.paymentEvent.updateMany({
+            where: { paymentAttemptId: { in: paymentAttemptIds } },
+            data: { payloadJson: REDACTED_EVENT_PAYLOAD },
+          });
+        }
+
         // 5. Disable physical identifiers without deleting inventory history.
         await tx.chip.updateMany({
           where: { ownerUserId: userId },
-          data: { 
-            ownerUserId: null, 
+          data: {
+            ownerUserId: null,
             assignedProfileId: null,
-            status: "deactivated" 
+            status: "deactivated"
           }
         });
 
         // 6. Invalidate credentials and active sessions, then anonymize the user.
         await tx.user.update({
           where: { id: userId },
-          data: { 
+          data: {
             status: "deleted",
             deletedAt: new Date(),
             email: `deleted_${userId}@prerescate.invalid`,
