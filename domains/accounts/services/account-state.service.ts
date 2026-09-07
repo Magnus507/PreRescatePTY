@@ -191,7 +191,7 @@ export class AccountStateService {
 
       canManageFamilyProfiles: isFamily && isOwner,
       canAccessOrganizationModule: isCorporate && isOwner,
-      canActivateMoreChips: isOwner && activeChipsCount < maxChipsLimit,
+      canActivateMoreChips: isOwner && (!isCorporate || activeChipsCount < maxChipsLimit),
       canAddFamilyMember: isOwner && actualProfilesCount < MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT,
 
       activeChipsCount,

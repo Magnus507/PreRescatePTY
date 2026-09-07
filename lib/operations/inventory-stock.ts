@@ -136,7 +136,7 @@ export async function loadInventoryStockRows() {
     current.lastUpdatedAt = unit.updatedAt.toISOString();
 
     if (unit.status === "available" && unit.qaStatus === "passed" && unit.activationStatus === "not_activated" && !unit.reservedOrderId) current.availableCount += 1;
-    if (unit.status === "reserved" || unit.reservedOrderId) current.reservedCount += 1;
+    if (unit.status === "reserved") current.reservedCount += 1;
     if (unit.status === "qa_pending" || unit.qaStatus === "pending") current.qaPendingCount += 1;
     if (unit.status === "qa_failed" || unit.qaStatus === "failed") current.qaFailedCount += 1;
     if (unit.status === "dispatched") current.dispatchedCount += 1;
@@ -206,11 +206,11 @@ export async function loadInventoryStockDetail(productCode: string) {
   const summary = units.reduce((acc, unit) => {
     acc.total += 1;
     if (unit.status === "available" && unit.qaStatus === "passed" && unit.activationStatus === "not_activated" && !unit.reservedOrderId) acc.available += 1;
-    if (unit.status === "reserved" || unit.reservedOrderId) acc.reserved += 1;
+    if (unit.status === "reserved") acc.reserved += 1;
     if (unit.status === "qa_pending" || unit.qaStatus === "pending") acc.qaPending += 1;
     if (unit.status === "qa_failed" || unit.qaStatus === "failed") acc.qaFailed += 1;
-    if (unit.status === "dispatched" || unit.dispatchedAt) acc.dispatched += 1;
-    if (unit.status === "delivered" || unit.deliveredAt) acc.delivered += 1;
+    if (unit.status === "dispatched") acc.dispatched += 1;
+    if (unit.status === "delivered") acc.delivered += 1;
     if (unit.activationStatus === "activated") acc.activated += 1;
     return acc;
   }, emptySummary());

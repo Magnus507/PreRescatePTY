@@ -73,15 +73,58 @@ describe("PostgreSQL: activation races and rollback", () => {
     console.log(JSON.stringify({ test: "same chip activation", requests: 20, success: 1, rejected: 19, duplicates: 0, invariant: "PASS" }));
   });
 
-  it("different chips cannot exceed capacity; rejected activation rolls back its token and unit", async () => {
+  it("individual codes activate concurrently with zero plan capacity", async () => {
     const f = await fixture("capacity", 2);
+    await db.account.update({ where: { id: f.account.id }, data: { maxChipsAllocated: 0 } });
     const results = await Promise.all(f.chips.map(c => activate(c.key)));
-    expect(results.map(r => r.status).sort()).toEqual([200, 409]);
-    expect(await db.chip.count({ where: { accountId: f.account.id, status: "activated" } })).toBe(1);
-    const loser = f.chips[results.findIndex(r => r.status === 409)];
-    expect((await db.chipClaimToken.findUniqueOrThrow({ where: { id: loser.token.id } })).usedAt).toBeNull();
-    expect((await db.operationFinishedGoodUnit.findUniqueOrThrow({ where: { id: loser.unit.id } })).status).toBe("delivered");
-    expect(await db.operationFinishedGoodUnitEvent.count({ where: { unitId: loser.unit.id } })).toBe(0);
+    expect(results.map(r => r.status)).toEqual([200, 200]);
+    expect(await db.chip.count({ where: { accountId: f.account.id, status: "activated" } })).toBe(2);
+  });
+
+  it("buyer A gifts to B; two different accounts race and only the winner owns the unit", async () => {
+    const a = await fixture("buyer", 1);
+    const b = await fixture("recipient", 0);
+    const order = await db.order.create({ data: { userId: a.user.id, amount: 25, paymentStatus: "paid", orderStatus: "completed" } });
+    await db.operationFinishedGoodUnit.update({ where: { id: a.chips[0].unit.id }, data: { reservedOrderId: order.id } });
+    await db.account.update({ where: { id: b.account.id }, data: { maxChipsAllocated: 0 } });
+    // Identity follows each invocation, not a shared mutable session.
+    session.mockResolvedValueOnce({ user: { id: b.user.id } }).mockResolvedValueOnce({ user: { id: a.user.id } });
+    state.mockImplementation(async (userId: string) => ({ accountId: userId === b.user.id ? b.account.id : a.account.id, serviceStatus: "active", serviceDurationMonths: 12 }));
+    const results = await Promise.all([activate(a.chips[0].key), activate(a.chips[0].key)]);
+    expect(results.filter(r => r.status === 200)).toHaveLength(1);
+    const winner = results[0].status === 200 ? b : a;
+    const chip = await db.chip.findUniqueOrThrow({ where: { id: a.chips[0].chip.id } });
+    expect(chip.ownerUserId).toBe(winner.user.id);
+    expect(chip.accountId).toBe(winner.account.id);
+    expect(chip.assignedProfileId).toBe(winner.profile.id);
+    expect((await activate(a.chips[0].key)).status).toBe(409);
+    expect(await db.operationFinishedGoodUnitEvent.count({ where: { unitId: a.chips[0].unit.id, eventType: "ACTIVATED" } })).toBe(1);
+  });
+
+  it("recipient B alone can activate a unit bought by A", async () => {
+    const a = await fixture("gift-buyer", 1);
+    const b = await fixture("gift-recipient", 0);
+    const order = await db.order.create({ data: { userId: a.user.id, amount: 25, paymentStatus: "paid", orderStatus: "completed" } });
+    await db.operationFinishedGoodUnit.update({ where: { id: a.chips[0].unit.id }, data: { reservedOrderId: order.id } });
+    await db.account.update({ where: { id: b.account.id }, data: { maxChipsAllocated: 0 } });
+    expect((await activate(a.chips[0].key)).status).toBe(200);
+    expect((await db.chip.findUniqueOrThrow({ where: { id: a.chips[0].chip.id } })).ownerUserId).toBe(b.user.id);
+    expect((await db.operationFinishedGoodUnit.findUniqueOrThrow({ where: { id: a.chips[0].unit.id } })).reservedOrderId).toBe(order.id);
+  });
+
+  it.each(["reserved", "available", "qa_failed", "activated"] as const)("rejects non-activable unit %s without consuming its code", async status => {
+    const f = await fixture(`invalid-${status}`, 1);
+    await db.operationFinishedGoodUnit.update({ where: { id: f.chips[0].unit.id }, data: { status } });
+    expect((await activate(f.chips[0].key)).status).toBe(409);
+    expect((await db.chipClaimToken.findUniqueOrThrow({ where: { id: f.chips[0].token.id } })).usedAt).toBeNull();
+    expect((await db.chip.findUniqueOrThrow({ where: { id: f.chips[0].chip.id } })).ownerUserId).toBeNull();
+  });
+
+  it("a previously activated chip cannot be taken over even with an inconsistent sold status", async () => {
+    const f = await fixture("no-takeover", 1);
+    await db.chip.update({ where: { id: f.chips[0].chip.id }, data: { activatedAt: new Date(), ownerUserId: f.user.id } });
+    expect((await activate(f.chips[0].key)).status).toBe(400);
+    expect((await db.chipClaimToken.findUniqueOrThrow({ where: { id: f.chips[0].token.id } })).usedAt).toBeNull();
   });
 
   it("rejects a revoked token without changing the chip", async () => {
@@ -89,6 +132,13 @@ describe("PostgreSQL: activation races and rollback", () => {
     await db.chipClaimToken.update({ where: { id: f.chips[0].token.id }, data: { status: "revoked" } });
     expect((await activate(f.chips[0].key)).status).toBe(404);
     expect((await db.chip.findUniqueOrThrow({ where: { id: f.chips[0].chip.id } })).status).toBe("sold");
+  });
+
+  it("corporate capacity remains enforced with transaction rollback", async () => {
+    const f = await corporateFixture("zero-capacity");
+    await db.account.update({ where: { id: f.account.id }, data: { maxChipsAllocated: 0 } });
+    expect((await activateCorporate(f.chips[0].key)).status).toBe(409);
+    expect((await db.chipClaimToken.findUniqueOrThrow({ where: { id: f.chips[0].token.id } })).usedAt).toBeNull();
   });
 
   it("20 corporate requests activate one chip, item and physical unit exactly once", async () => {

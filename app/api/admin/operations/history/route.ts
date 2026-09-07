@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
         : null;
     const payload = await getOperationHistory({
       entityType,
+      page: Number(searchParams.get("page") || 0),
       entityId: searchParams.get("entityId"),
       identifier: searchParams.get("identifier"),
       internalLabel: searchParams.get("internalLabel"),

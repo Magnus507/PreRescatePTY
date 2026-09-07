@@ -52,6 +52,7 @@ type HistoryResponse = {
     activationStatus: string | null;
     deliveredPendingActivation: boolean | null;
   };
+  nextPage?: number | null;
   suggestions?: Array<{ type: HistoryEntityType; id: string; label: string; subtitle: string | null }>;
 };
 
@@ -96,14 +97,15 @@ export function HistorySection() {
     entityId: "",
   });
   const [data, setData] = useState<HistoryResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     const run = async () => {
-      if (!submitted.search && !submitted.entityId) return;
       setLoading(true);
       try {
-        const params = new URLSearchParams();
+        const params = new URLSearchParams({ page: String(page), limit: "50" });
         if (submitted.search) params.set("search", submitted.search);
         if (submitted.entityType) params.set("entityType", submitted.entityType);
         if (submitted.entityId) params.set("entityId", submitted.entityId);
@@ -112,15 +114,16 @@ export function HistorySection() {
         });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload.error || "No se pudo cargar historial");
-        setData(payload as HistoryResponse);
+        if (!cancelled) setData(payload as HistoryResponse);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "No se pudo cargar historial");
+        if (!cancelled) toast.error(error instanceof Error ? error.message : "No se pudo cargar historial");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     run();
-  }, [submitted]);
+    return () => { cancelled = true; };
+  }, [submitted, page]);
 
   const empty = useMemo(
     () =>
@@ -176,9 +179,10 @@ export function HistorySection() {
           </label>
           <button
             type="button"
-            onClick={() =>
-              setSubmitted({ search: search.trim(), entityType, entityId: "" })
-            }
+            onClick={() => {
+              setPage(0);
+              setSubmitted({ search: search.trim(), entityType, entityId: "" });
+            }}
             className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
           >
             Buscar
@@ -214,6 +218,13 @@ export function HistorySection() {
               </button>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {!submitted.entityId && (page > 0 || data?.nextPage != null) ? (
+        <div className="flex gap-3">
+          <button disabled={page === 0} onClick={() => setPage(page - 1)} className="rounded-lg border px-4 py-2 disabled:opacity-40">Anterior</button>
+          <button disabled={data?.nextPage == null} onClick={() => setPage(data?.nextPage ?? page)} className="rounded-lg border px-4 py-2 disabled:opacity-40">Siguiente</button>
         </div>
       ) : null}
 
@@ -291,6 +302,7 @@ export function HistorySection() {
       {!loading &&
       !data?.subject &&
       !data?.timeline?.length &&
+      !data?.suggestions?.length &&
       (submitted.search || submitted.entityId) ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
           <AlertTriangle className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-700" />
@@ -304,7 +316,7 @@ export function HistorySection() {
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
           <ShieldCheck className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-700" />
           <p className="mt-3 text-sm font-black uppercase tracking-widest text-slate-400">
-            Busca un pedido, despacho o etiqueta interna.
+            No hay pedidos terminados. También puedes buscar un pedido, despacho o etiqueta interna.
           </p>
         </div>
       ) : null}

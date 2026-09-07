@@ -1464,7 +1464,7 @@ export function PedidosSection() {
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex-1 space-y-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className={`rounded-2xl border px-4 py-3 ${isCorporateOrder ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-slate-50"}`}><p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Código principal</p><p className="mt-1 font-mono text-lg font-black break-all">#{getVisibleCustomerCode(order)}</p></div>
+                    <div className={`rounded-2xl border px-4 py-3 ${isCorporateOrder ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-slate-50"}`}><p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Código principal</p><p className="mt-1 font-mono text-lg font-black break-all text-slate-950">#{getVisibleCustomerCode(order)}</p></div>
                     {isCorporateOrder && <span className="px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> Corporativo</span>}
                     {hasReceipt && !isTerminalOrder && <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">Comprobante enviado</span>}
                   </div>
