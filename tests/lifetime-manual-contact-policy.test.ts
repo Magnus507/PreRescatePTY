@@ -1,0 +1,55 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+function source(path: string) {
+  return readFileSync(path, "utf8");
+}
+
+describe("lifetime rescue + manual-contact policy guardrails", () => {
+  it("never gates the public rescue profile on legacy service expiry or paid corporate status", () => {
+    const route = source("app/api/public/[shortCode]/route.ts");
+    const resolver = source("lib/public-access/resolve-public-profile-by-chip.ts");
+
+    expect(route).not.toContain('serviceStatus === "expired"');
+    expect(route).not.toContain('corporateMember.corporateStatus !== "paid_active"');
+    expect(route).not.toContain("Protocolo inactivo por falta de renovación");
+    expect(resolver).not.toContain("serviceEndDate");
+    expect(resolver).not.toContain("serviceStatus");
+  });
+
+  it("creates new activations without a time-based service end date", () => {
+    const activation = source("app/api/chips/activate/route.ts");
+    expect(activation).toContain("serviceEndDate: null");
+    expect(activation).not.toContain("setMonth(serviceEndDate");
+  });
+
+  it("does not let the account-state layer resurrect historical expiry", () => {
+    const accountState = source("domains/accounts/services/account-state.service.ts");
+    expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v4"');
+    expect(accountState).toContain("const isExpired = false");
+    expect(accountState).toContain("const serviceEndDate = null");
+  });
+
+  it("keeps scans telemetry-only and retires every server delivery entrypoint", () => {
+    const scan = source("app/api/public/[shortCode]/scan/route.ts");
+    const notify = source("app/api/public/[shortCode]/scan/[scanId]/notify/route.ts");
+    const notifyCron = source("app/api/cron/notify/route.ts");
+    const expireCron = source("app/api/cron/expire-chips/route.ts");
+
+    expect(scan).not.toContain("@/lib/emergency-alerts");
+    expect(scan).not.toContain("queueEmergencyNotificationsFromScan");
+    expect(notify).toContain("{ status: 410 }");
+    expect(notifyCron).not.toContain("processPendingEmergencyNotifications");
+    expect(expireCron).not.toContain("prisma.chip.updateMany");
+  });
+
+  it("mounts the public UI hardener that rewrites WhatsApp and removes the legacy alert control", () => {
+    const page = source("app/(public)/e/[shortCode]/page.tsx");
+    const hardener = source("app/(public)/e/[shortCode]/_components/ManualContactHardening.tsx");
+
+    expect(page).toContain("ManualContactHardening");
+    expect(hardener).toContain("buildManualRescueWhatsAppUrl");
+    expect(hardener).toContain("lucide-bell-ring");
+    expect(hardener).toContain('dataset.manualContact = "whatsapp"');
+  });
+});
