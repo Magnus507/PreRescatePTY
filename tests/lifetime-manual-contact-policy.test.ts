@@ -5,8 +5,8 @@ function source(path: string) {
   return readFileSync(path, "utf8");
 }
 
-describe("lifetime rescue + manual-contact policy guardrails", () => {
-  it("never gates the public rescue profile on legacy service expiry or paid corporate status", () => {
+describe("lifetime rescue + finite service + manual-contact policy guardrails", () => {
+  it("never gates the public rescue profile on service expiry or paid corporate status", () => {
     const route = source("app/api/public/[shortCode]/route.ts");
     const resolver = source("lib/public-access/resolve-public-profile-by-chip.ts");
 
@@ -17,17 +17,27 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
     expect(resolver).not.toContain("serviceStatus");
   });
 
-  it("creates new activations without a time-based service end date", () => {
+  it("creates a finite commercial service term on activation", () => {
     const activation = source("app/api/chips/activate/route.ts");
-    expect(activation).toContain("serviceEndDate: null");
-    expect(activation).not.toContain("setMonth(serviceEndDate");
+    expect(activation).toContain("initialServiceEndDate(now, state.serviceDurationMonths)");
+    expect(activation).toContain("serviceEndDate,");
+    expect(activation).not.toContain("serviceEndDate: null");
   });
 
-  it("does not let the account-state layer resurrect historical expiry", () => {
+  it("lets account state report commercial expiry without imposing a personal chip cap", () => {
     const accountState = source("domains/accounts/services/account-state.service.ts");
     expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v4"');
-    expect(accountState).toContain("const isExpired = false");
-    expect(accountState).toContain("const serviceEndDate = null");
+    expect(accountState).toContain('const isExpired = serviceEndDate ? serviceEndDate < new Date() : false');
+    expect(accountState).toContain('isExpired ? "expired"');
+    expect(accountState).toContain("BUSINESS_RULES.DEFAULT_SERVICE_DURATION_MONTHS");
+    expect(accountState).toContain("!isCorporate || (!isInactive && activeChipsCount < maxChipsLimit)");
+  });
+
+  it("keeps medical profile correction possible after commercial service expiry", () => {
+    const detail = source("app/api/users/perfiles-medicos/[profileId]/route.ts");
+    expect(detail).toContain("Unrestricted editing of medical profiles ensures data integrity");
+    expect(detail).not.toContain("state.isExpired");
+    expect(detail).not.toContain('serviceStatus === "expired"');
   });
 
   it("keeps scans telemetry-only and retires every server delivery entrypoint", () => {
@@ -45,7 +55,6 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
 
   it("keeps the legacy emergency-alert module fail-safe and unable to reach providers", () => {
     const engine = source("lib/emergency-alerts.ts");
-
     expect(engine).toContain('reason: "automatic_delivery_retired"');
     expect(engine).toContain("claimed: 0");
     expect(engine).toContain("sent: 0");
@@ -58,7 +67,6 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
 
   it("retires the automatic-alert preference API without deleting historical consent", () => {
     const preferences = source("app/api/users/alert-preferences/route.ts");
-
     expect(preferences).toContain("automaticAlertsAvailable: false");
     expect(preferences).toContain('deliveryMode: "manual_whatsapp"');
     expect(preferences).toContain("{ status: 410 }");
@@ -69,7 +77,6 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
   it("mounts a public UI hardener that also catches late React href changes", () => {
     const page = source("app/(public)/e/[shortCode]/page.tsx");
     const hardener = source("app/(public)/e/[shortCode]/_components/ManualContactHardening.tsx");
-
     expect(page).toContain("ManualContactHardening");
     expect(hardener).toContain("buildManualRescueWhatsAppUrl");
     expect(hardener).toContain("lucide-bell-ring");
@@ -78,13 +85,13 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
     expect(hardener).toContain('attributeFilter: ["href"]');
   });
 
-  it("hardens dashboard settings against obsolete automatic-alert and expiry UI", () => {
+  it("removes obsolete automatic-alert UI without erasing finite service dates", () => {
     const layout = source("app/(app)/dashboard/configuracion/layout.tsx");
     const hardener = source("app/(app)/dashboard/configuracion/_components/LifetimePolicyHardening.tsx");
-
     expect(layout).toContain("LifetimePolicyHardening");
     expect(hardener).toContain("avisar automáticamente al escanear");
-    expect(hardener).toContain("Sin vencimiento por tiempo");
-    expect(hardener).toContain("Estado del producto");
+    expect(hardener).toContain("Estado del servicio");
+    expect(hardener).not.toContain("Sin vencimiento por tiempo");
+    expect(hardener).not.toContain("Válido hasta:.*");
   });
 });
