@@ -31,7 +31,6 @@ interface Package {
   recommended: boolean;
   allowsFamilyProfiles: boolean;
   allowsOrganizationModule: boolean;
-  serviceDurationMonths: number;
 }
 
 const purchaseFaq = [
@@ -40,8 +39,8 @@ const purchaseFaq = [
     a: "Todos los pedidos se pagan de forma manual mediante instrucciones bancarias, comprobante y revisión administrativa.",
   },
   {
-    q: "¿Hay mensualidades?",
-    a: "No hay una mensualidad automática. La compra incluye el período de servicio indicado en el plan — normalmente 24 meses desde la activación — y luego puede renovarse sin reemplazar el chip. El acceso público de rescate de un identificador válido no se oculta por el vencimiento comercial.",
+    q: "¿Hay mensualidades o vencimiento?",
+    a: "No. La compra es de pago único y el servicio digital no tiene vencimiento por tiempo. El perfil permanece disponible mientras el identificador esté activo y no haya sido revocado o reemplazado.",
   },
   {
     q: "¿Necesito instalar una aplicación?",
@@ -75,7 +74,7 @@ const commercialInfo = [
   {
     icon: ShieldCheck,
     title: "Garantía",
-    text: "La garantía cubre los defectos de fabricación descritos en nuestras condiciones y excluye pérdida, robo y daños derivados de un uso inadecuado.",
+    text: "La garantía física cubre los defectos de fabricación descritos en nuestras condiciones y excluye pérdida, robo y daños derivados de un uso inadecuado.",
     href: "/legal/garantia",
     label: "Garantía y reemplazos",
   },
@@ -119,7 +118,7 @@ function PackageCard({ pkg, index }: { pkg: Package; index: number }) {
               <span className="pb-1 text-[11px] font-semibold text-slate-600 sm:pb-1.5 sm:text-xs">pago único</span>
             </div>
             <p className="mt-2 text-[11px] font-medium leading-5 text-slate-500 sm:text-xs">
-              {pkg.serviceDurationMonths} meses de servicio desde la activación. Renovable sobre el mismo chip; el acceso público de rescate permanece disponible mientras el identificador sea válido.
+              Servicio digital sin vencimiento por tiempo mientras el identificador permanezca activo y no haya sido revocado o reemplazado.
             </p>
           </div>
 
@@ -128,6 +127,7 @@ function PackageCard({ pkg, index }: { pkg: Package; index: number }) {
               `${pkg.maxChips} chip${pkg.maxChips !== 1 ? "s" : ""} NFC + QR`,
               `${pkg.maxProfiles} perfil${pkg.maxProfiles !== 1 ? "es" : ""} médico${pkg.maxProfiles !== 1 ? "s" : ""}`,
               "Consulta desde navegador compatible",
+              "Servicio digital sin vencimiento por tiempo",
               pkg.allowsFamilyProfiles ? "Perfiles familiares habilitados" : "Perfil personal",
             ].map((feature) => (
               <div key={feature} className="flex items-start gap-3 text-[13px] font-semibold leading-5 text-slate-300 sm:text-sm">
@@ -190,16 +190,16 @@ export default function ComprarContent() {
           eyebrow="Planes claros · Pago único"
           title="Elige la identificación que"
           titleAccent="mejor encaja contigo."
-          description="Los precios, capacidades y vigencia que ves aquí se cargan directamente desde nuestro catálogo activo."
+          description="Los precios y capacidades se cargan directamente desde nuestro catálogo activo. El servicio digital no vence por tiempo."
           primaryCTA={{ href: "#planes", label: "Ver planes" }}
           secondaryCTA={{ href: "/demo", label: "Ver demo" }}
         />
 
         <section className="border-y border-white/[0.055] bg-[#03060c] py-3.5 sm:py-5">
           <div className="mx-auto flex max-w-5xl snap-x snap-mandatory items-center gap-2.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:justify-center sm:gap-x-7 sm:gap-y-3 sm:px-6">
-            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><CreditCard className="h-3.5 w-3.5 text-emerald-300" /> Pago manual verificado</span>
+            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><CreditCard className="h-3.5 w-3.5 text-emerald-300" /> Pago único</span>
             <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><QrCode className="h-3.5 w-3.5 text-sky-300" /> QR + NFC</span>
-            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><ShieldCheck className="h-3.5 w-3.5 text-indigo-300" /> Servicio renovable · rescate continuo</span>
+            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><ShieldCheck className="h-3.5 w-3.5 text-indigo-300" /> Sin vencimiento por tiempo</span>
           </div>
         </section>
 
@@ -208,8 +208,8 @@ export default function ComprarContent() {
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-14">
               <p className="mb-4 text-[9px] font-black uppercase tracking-[0.18em] text-sky-300/80 sm:text-[10px] sm:tracking-[0.2em]">Personal y familia</p>
-              <h2 className="text-[clamp(2.35rem,10vw,3.1rem)] font-black leading-[0.94] tracking-[-0.045em] text-slate-50 sm:text-[clamp(2.7rem,5vw,5rem)] sm:leading-[0.92]">Producto físico. Perfil digital. Servicio renovable.</h2>
-              <p className="mx-auto mt-5 max-w-2xl text-[15px] font-medium leading-6 text-slate-400 sm:mt-6 sm:text-lg sm:leading-7">Compara la capacidad y vigencia incluida en cada opción antes de crear tu cuenta.</p>
+              <h2 className="text-[clamp(2.35rem,10vw,3.1rem)] font-black leading-[0.94] tracking-[-0.045em] text-slate-50 sm:text-[clamp(2.7rem,5vw,5rem)] sm:leading-[0.92]">Producto físico. Perfil digital. Un solo pago.</h2>
+              <p className="mx-auto mt-5 max-w-2xl text-[15px] font-medium leading-6 text-slate-400 sm:mt-6 sm:text-lg sm:leading-7">Compara la capacidad incluida en cada opción antes de crear tu cuenta.</p>
             </div>
 
             {loading ? (
@@ -250,7 +250,7 @@ export default function ComprarContent() {
                       <h4 className="mt-5 text-xl font-black text-slate-50 sm:mt-7">{pkg.name}</h4>
                       <div className="mt-3 flex items-end gap-2 sm:mt-4"><span className="text-4xl font-black tracking-[-0.05em] text-white">${pkg.price}</span><span className="pb-1 text-xs text-slate-600">pago único</span></div>
                       <div className="mt-5 space-y-2.5 sm:mt-7 sm:space-y-3">
-                        {[`${pkg.maxChips} chips`, `${pkg.maxProfiles} perfiles`, "Panel administrativo", `${pkg.serviceDurationMonths} meses de servicio renovable`].map((feature) => (
+                        {[`${pkg.maxChips} chips`, `${pkg.maxProfiles} perfiles`, "Panel administrativo", "Servicio sin vencimiento por tiempo"].map((feature) => (
                           <div key={feature} className="flex items-center gap-2.5 text-[13px] font-semibold text-slate-400 sm:text-sm"><Check className="h-4 w-4 shrink-0 text-emerald-300" />{feature}</div>
                         ))}
                       </div>
@@ -307,7 +307,7 @@ export default function ComprarContent() {
             <div className="relative mx-auto max-w-4xl">
               <p className="mb-4 text-[9px] font-extrabold uppercase tracking-[0.18em] text-rose-300/80 sm:mb-5 sm:text-[10px] sm:tracking-[0.22em]">PreRescue ID</p>
               <h2 className="text-[clamp(2.4rem,11vw,3.2rem)] font-black leading-[0.92] tracking-[-0.05em] text-slate-50 sm:text-[clamp(2.8rem,6vw,5.6rem)] sm:leading-[0.88]">Prepárate antes de necesitarlo.</h2>
-              <p className="mx-auto mt-5 max-w-2xl text-[15px] font-medium leading-6 text-slate-400 sm:mt-7 sm:text-lg sm:leading-8">Elige un plan del catálogo activo y crea tu perfil médico de emergencia.</p>
+              <p className="mx-auto mt-5 max-w-2xl text-[15px] font-medium leading-6 text-slate-400 sm:mt-7 sm:text-lg sm:leading-8">Elige un producto del catálogo activo, realiza un único pago y crea tu perfil médico de emergencia.</p>
               <div className="mt-7 flex flex-col justify-center gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
                 <Link href="#planes" className="group inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-6 text-sm font-extrabold text-white transition-all active:scale-[0.985] sm:min-h-14 sm:px-7 sm:hover:-translate-y-0.5 sm:hover:bg-[#ef2d35]">Ver planes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Link>
                 <Link href="/contacto" className="inline-flex min-h-[52px] touch-manipulation items-center justify-center rounded-2xl border border-white/[0.1] bg-white/[0.045] px-6 text-sm font-bold text-slate-100 transition-all active:bg-white/[0.08] sm:min-h-14 sm:px-7 sm:hover:border-sky-300/25 sm:hover:bg-white/[0.08]">Necesito ayuda para elegir</Link>
