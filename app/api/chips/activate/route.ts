@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
 
   const { activationCode, profileId } = parsedBody.data;
 
-  // Find the claim token
+  // Claim-token expiry is intentionally retained. It protects a single-use
+  // activation credential and is not the lifetime of the purchased product.
   const claimToken = await prisma.chipClaimToken.findFirst({
     where: { ...activationCodeLookupWhere(activationCode), status: "active" },
     include: { chip: true },
@@ -116,7 +117,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Use Centralized Account State
   const state = await AccountStateService.getAccountState(userId);
 
   const currentUserProfile = await prisma.profile.findUnique({
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       await tx.account.update({ where: { id: state.accountId }, data: { updatedAt: new Date() } });
       const now = new Date();
 
-      // Atomically consume token (single-use guard)
+      // Atomically consume token (single-use guard).
       const tokenConsume = await tx.chipClaimToken.updateMany({
         where: {
           id: claimToken.id,
@@ -151,9 +151,9 @@ export async function POST(req: NextRequest) {
         throw new Error("TOKEN_ALREADY_USED_OR_EXPIRED");
       }
 
-      // Re-read account state within transaction (not from cache) to ensure atomicity
+      // Re-read account state within transaction (not from cache) to ensure atomicity.
       const account = await tx.account.findUnique({
-        where: { id: state.accountId as string }
+        where: { id: state.accountId as string },
       });
 
       if (!account) {
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
 
       const targetAccountId = account.id;
 
-      // Detect if this is a corporate chip by checking CorporateOrderEmployeeItem
+      // Detect if this is a corporate chip by checking CorporateOrderEmployeeItem.
       const corporateItem = await tx.corporateOrderEmployeeItem.findFirst({
         where: { chipId: claimToken.chipId },
         include: {
@@ -175,19 +175,16 @@ export async function POST(req: NextRequest) {
       let assignedProfileId: string;
 
       if (corporateItem) {
-        if (state.serviceStatus === "expired") {
-          throw Object.assign(new Error("Tu cuenta ha expirado. Por favor renueva tu servicio para usar chips."), { status: 403 });
-        }
-        // Corporate entitlements remain separate from possession-based individual activation.
+        // Corporate purchase capacity remains an activation entitlement. It is
+        // intentionally separate from the lifetime of an already-activated ID.
         const currentActiveCount = await tx.chip.count({
-          where: { accountId: account.id, status: { in: [...USED_CAPACITY_CHIP_STATUSES] } }
+          where: { accountId: account.id, status: { in: [...USED_CAPACITY_CHIP_STATUSES] } },
         });
 
-        // Enforce plan chip limit
         if (currentActiveCount >= account.maxChipsAllocated) {
           throw Object.assign(new Error(`Has alcanzado el límite de ${account.maxChipsAllocated} chip(s) en tu plan actual. Adquiere chips adicionales para activar más.`), { status: 409 });
         }
-        // === CORPORATE ACTIVATION FLOW ===
+
         const member = corporateItem.organizationMember;
 
         if (!member) {
@@ -204,7 +201,6 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // Use corporateProfileId from the member
         const corpProfileId = member.corporateProfileId as string | null;
 
         if (!corpProfileId) {
@@ -214,7 +210,6 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // Fetch the corporate profile directly
         const corpProfile = await tx.profile.findUnique({
           where: { id: corpProfileId },
         });
@@ -226,7 +221,6 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // Verify the corporate profile belongs to this user's account
         const userProfile = await tx.profile.findUnique({
           where: { userId },
           select: { accountId: true },
@@ -259,7 +253,6 @@ export async function POST(req: NextRequest) {
         let profile;
 
         if (profileId) {
-          // Use the selected profile if provided
           profile = await tx.profile.findFirst({
             where: { id: profileId, accountId: targetAccountId },
           });
@@ -271,7 +264,6 @@ export async function POST(req: NextRequest) {
             );
           }
 
-          // Block activation against corporate profiles
           if (profile.profileType === "corporate") {
             throw Object.assign(
               new Error("Los perfiles empresariales se activan desde el módulo Empresa."),
@@ -279,9 +271,8 @@ export async function POST(req: NextRequest) {
             );
           }
         } else {
-          // Fallback: use own profile by userId
           profile = await tx.profile.findFirst({
-            where: { userId }
+            where: { userId },
           });
         }
 
@@ -295,10 +286,8 @@ export async function POST(req: NextRequest) {
         assignedProfileId = profile.id;
       }
 
-      // Activate the chip within transaction (conditional to prevent races)
-      const serviceEndDate = new Date(now);
-      serviceEndDate.setMonth(serviceEndDate.getMonth() + state.serviceDurationMonths);
-
+      // Product/service access has no time-based expiration. Keep the start date
+      // for audit history and leave serviceEndDate null for all new activations.
       const chipActivate = await tx.chip.updateMany({
         where: {
           id: claimToken.chipId,
@@ -312,8 +301,8 @@ export async function POST(req: NextRequest) {
           assignedProfileId,
           activatedAt: now,
           serviceStartDate: now,
-          serviceEndDate: serviceEndDate,
-          serviceStatus: CHIP_SERVICE_STATUS.ACTIVE
+          serviceEndDate: null,
+          serviceStatus: CHIP_SERVICE_STATUS.ACTIVE,
         },
       });
 
@@ -357,7 +346,6 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // [Fase5-Corporate] Mark corporate order items as activated if this chip was assigned to them
       if (corporateItem) {
         await tx.corporateOrderEmployeeItem.updateMany({
           where: { chipId: claimToken.chipId },
@@ -365,7 +353,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Audit log
       await tx.auditLog.create({
         data: {
           actorUserId: userId,
@@ -375,12 +362,12 @@ export async function POST(req: NextRequest) {
           newValuesJson: JSON.stringify({
             shortCode: chip.shortCode,
             activationCodeSuffix: activationCode.slice(-4),
+            lifetimeService: true,
           }),
         },
       });
     });
 
-    // Invalidate cache after successful activation (outside transaction)
     await AccountStateService.invalidateCache(userId);
   } catch (error: unknown) {
     console.error("[chips/activate] Error:", error);
