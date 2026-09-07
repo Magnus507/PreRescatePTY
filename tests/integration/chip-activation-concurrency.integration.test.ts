@@ -137,7 +137,9 @@ describe("PostgreSQL: activation races and rollback", () => {
   it("corporate capacity remains enforced with transaction rollback", async () => {
     const f = await corporateFixture("zero-capacity");
     await db.account.update({ where: { id: f.account.id }, data: { maxChipsAllocated: 0 } });
-    expect((await activateCorporate(f.chips[0].key)).status).toBe(409);
+    const response = await activateCorporate(f.chips[0].key);
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(/límite de 0/);
     expect((await db.chipClaimToken.findUniqueOrThrow({ where: { id: f.chips[0].token.id } })).usedAt).toBeNull();
   });
 
