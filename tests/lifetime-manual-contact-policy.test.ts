@@ -43,6 +43,16 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
     expect(expireCron).not.toContain("prisma.chip.updateMany");
   });
 
+  it("retires the automatic-alert preference API without deleting historical consent", () => {
+    const preferences = source("app/api/users/alert-preferences/route.ts");
+
+    expect(preferences).toContain("automaticAlertsAvailable: false");
+    expect(preferences).toContain('deliveryMode: "manual_whatsapp"');
+    expect(preferences).toContain("{ status: 410 }");
+    expect(preferences).not.toContain("tx.consent.create");
+    expect(preferences).not.toContain("tx.consent.updateMany");
+  });
+
   it("mounts the public UI hardener that rewrites WhatsApp and removes the legacy alert control", () => {
     const page = source("app/(public)/e/[shortCode]/page.tsx");
     const hardener = source("app/(public)/e/[shortCode]/_components/ManualContactHardening.tsx");
@@ -51,5 +61,15 @@ describe("lifetime rescue + manual-contact policy guardrails", () => {
     expect(hardener).toContain("buildManualRescueWhatsAppUrl");
     expect(hardener).toContain("lucide-bell-ring");
     expect(hardener).toContain('dataset.manualContact = "whatsapp"');
+  });
+
+  it("hardens dashboard settings against obsolete automatic-alert and expiry UI", () => {
+    const layout = source("app/(app)/dashboard/configuracion/layout.tsx");
+    const hardener = source("app/(app)/dashboard/configuracion/_components/LifetimePolicyHardening.tsx");
+
+    expect(layout).toContain("LifetimePolicyHardening");
+    expect(hardener).toContain("avisar automáticamente al escanear");
+    expect(hardener).toContain("Sin vencimiento por tiempo");
+    expect(hardener).toContain("Estado del producto");
   });
 });
