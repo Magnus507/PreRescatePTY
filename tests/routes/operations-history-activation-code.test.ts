@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockPrisma, resetMockPrisma } from "../helpers/mock-prisma";
 
 const role = vi.hoisted(() => vi.fn());
+const originalEncryptionKey = process.env.ENCRYPTION_KEY;
 
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
 vi.mock("@/lib/rbac", () => ({
@@ -10,6 +11,7 @@ vi.mock("@/lib/rbac", () => ({
 }));
 
 import { POST } from "@/app/api/admin/operations/history/[id]/activation-code/route";
+import { encryptSensitiveValue } from "@/lib/encryption";
 
 function request() {
   return new Request(
@@ -21,7 +23,7 @@ function request() {
   );
 }
 
-function mockOrderWithCode() {
+function mockOrderWithCode(activationCode = "SECRET-ACTIVATION-CODE") {
   mockPrisma.operationCommercialOrder.findUnique.mockResolvedValue({
     id: "op-order-1",
     dispatch: {
@@ -35,7 +37,7 @@ function mockOrderWithCode() {
               claimTokens: [
                 {
                   id: "claim-1",
-                  activationCode: "SECRET-ACTIVATION-CODE",
+                  activationCode,
                   expiresAt: null,
                   status: "active",
                 },
@@ -50,13 +52,25 @@ function mockOrderWithCode() {
 
 describe("operations history activation-code reveal", () => {
   beforeEach(() => {
+    process.env.ENCRYPTION_KEY = "11".repeat(32);
     resetMockPrisma();
     role.mockReset();
     role.mockResolvedValue({ authorized: true, session: { user: { id: "superadmin-1" } } });
   });
 
-  it("reveals an active code only through the explicit superadmin action and audits access", async () => {
-    mockOrderWithCode();
+  afterAll(() => {
+    if (originalEncryptionKey === undefined) {
+      delete process.env.ENCRYPTION_KEY;
+    } else {
+      process.env.ENCRYPTION_KEY = originalEncryptionKey;
+    }
+  });
+
+  it("decrypts the encrypted-at-rest code before the explicit superadmin reveal and audits without the secret", async () => {
+    const plaintext = "HUMAN-READABLE-ACTIVATION-CODE";
+    const storedCiphertext = encryptSensitiveValue(plaintext);
+    expect(storedCiphertext).toMatch(/^v2:gcm:/);
+    mockOrderWithCode(storedCiphertext);
 
     const response = await POST(request(), {
       params: Promise.resolve({ id: "op-order-1" }),
@@ -64,7 +78,8 @@ describe("operations history activation-code reveal", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.activationCode).toBe("SECRET-ACTIVATION-CODE");
+    expect(body.activationCode).toBe(plaintext);
+    expect(body.activationCode).not.toContain("v2:gcm:");
     expect(response.headers.get("cache-control")).toContain("no-store");
 
     expect(mockPrisma.auditLog.create).toHaveBeenCalledTimes(1);
@@ -72,7 +87,20 @@ describe("operations history activation-code reveal", () => {
     expect(auditArgs.data.actorUserId).toBe("superadmin-1");
     expect(auditArgs.data.entityId).toBe("unit-1");
     expect(auditArgs.data.action).toBe("activation_code_revealed");
-    expect(JSON.stringify(auditArgs)).not.toContain("SECRET-ACTIVATION-CODE");
+    expect(JSON.stringify(auditArgs)).not.toContain(plaintext);
+    expect(JSON.stringify(auditArgs)).not.toContain(storedCiphertext);
+  });
+
+  it("keeps legacy plaintext activation codes readable during migration", async () => {
+    mockOrderWithCode("LEGACY-PLAINTEXT-CODE");
+
+    const response = await POST(request(), {
+      params: Promise.resolve({ id: "op-order-1" }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.activationCode).toBe("LEGACY-PLAINTEXT-CODE");
   });
 
   it("does not reveal anything without the explicit reveal header", async () => {
