@@ -3,14 +3,14 @@ import { mockPrisma, resetMockPrisma } from "../helpers/mock-prisma";
 
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
 
-import { loadInventoryStockDetail } from "@/lib/operations/inventory-stock";
+import { loadInventoryStockDetail, loadInventoryStockRows } from "@/lib/operations/inventory-stock";
 
 describe("inventory stock detail", () => {
   beforeEach(() => {
     resetMockPrisma();
   });
 
-  it("returns QR, NFC and activation code details for printable units", async () => {
+  it("returns public identifiers without activation secrets or admin activation links", async () => {
     const createdAt = new Date("2026-08-28T02:00:00.000Z");
     const updatedAt = new Date("2026-08-28T02:05:00.000Z");
 
@@ -78,16 +78,28 @@ describe("inventory stock detail", () => {
         shortCode: "PUBLIC7NM42",
         qrUrl: "/api/public/qr?data=https%3A%2F%2Fwww.prerescatepty.com%2Fe%2FPUBLIC7NM42",
         nfcUrl: "https://www.prerescatepty.com/e/PUBLIC7NM42",
-        activationUrl: "https://www.prerescatepty.com/activar/STK-PRP-FG-STICKER-561F02D8-0001",
-        activationCode: "ABCD-EFGH-JKLM",
         activationCodeLast4: "JKLM",
       })
     );
+    expect(detail.units[0]).not.toHaveProperty("activationCode");
+    expect(detail.units[0]).not.toHaveProperty("activationUrl");
+
+    const detailQuery = mockPrisma.operationFinishedGoodUnit.findMany.mock.calls[1][0];
+    expect(detailQuery.where.status.in).toEqual([
+      "assembled",
+      "available",
+      "reserved",
+      "qa_pending",
+      "qa_failed",
+    ]);
+    expect(detailQuery.select.digitalBatchItem.select).not.toHaveProperty("activationUrl");
+    expect(detailQuery.select.chip.select.claimTokens.select).toEqual({ activationCodeLast4: true });
   });
 });
 
 describe("inventory lifecycle counts preserve order traceability", () => {
   beforeEach(() => resetMockPrisma());
+
   it.each([
     ["reserved", "not_activated", "order-1", 1, 0],
     ["dispatched", "not_activated", "order-1", 0, 0],
@@ -95,17 +107,30 @@ describe("inventory lifecycle counts preserve order traceability", () => {
     ["activated", "activated", "order-1", 0, 0],
     ["available", "not_activated", null, 0, 1],
     ["available", "not_activated", "order-1", 0, 0],
-  ])("%s with order %s has correct stock counts", async (status, activationStatus, reservedOrderId, reserved, available) => {
-    const unit = { id: "unit-1", internalLabel: "fixture", productCode: "product", productName: "Fixture", productType: "test", status, activationStatus, reservedOrderId, qaStatus: "passed", createdAt: new Date(), updatedAt: new Date(), deliveredAt: status === "activated" ? new Date() : null, dispatchItems: [] };
+  ])("%s with order linkage has correct stock counts", async (status, activationStatus, reservedOrderId, reserved, available) => {
+    const unit = {
+      id: "unit-1",
+      productCode: "product",
+      productName: "Fixture",
+      productType: "test",
+      status,
+      activationStatus,
+      reservedOrderId,
+      qaStatus: "passed",
+      dispatchedAt: status === "dispatched" ? new Date() : null,
+      deliveredAt: status === "delivered" || status === "activated" ? new Date() : null,
+      updatedAt: new Date(),
+    };
     mockPrisma.operationFinishedGood.findMany.mockResolvedValue([]);
     mockPrisma.product.findMany.mockResolvedValue([]);
     mockPrisma.operationFinishedGoodUnit.findMany.mockResolvedValue([unit] as never);
-    const result = await loadInventoryStockDetail("product");
-    expect(result.summary.reserved).toBe(reserved);
-    expect(result.summary.reservedCount).toBe(reserved);
-    expect(result.summary.available).toBe(available);
-    expect(result.summary.delivered).toBe(status === "delivered" ? 1 : 0);
-    expect(result.summary.activated).toBe(status === "activated" ? 1 : 0);
-    expect(result.units[0].reservedOrderId).toBe(reservedOrderId);
+
+    const rows = await loadInventoryStockRows();
+    const result = rows[0];
+
+    expect(result.reservedCount).toBe(reserved);
+    expect(result.availableCount).toBe(available);
+    expect(result.deliveredCount).toBe(status === "delivered" ? 1 : 0);
+    expect(result.activatedCount).toBe(activationStatus === "activated" ? 1 : 0);
   });
 });

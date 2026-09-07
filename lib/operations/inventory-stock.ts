@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { revealActivationCode } from "@/domains/chips/activation-code.service";
 import { extractOperationsProductCode } from "./sync-operations-product-to-store";
 
 export type InventoryStockRow = {
@@ -33,14 +32,19 @@ export type InventoryUnitDetail = {
   productionOrderId: string | null;
   qrUrl: string | null;
   nfcUrl: string | null;
-  activationUrl: string | null;
-  activationCode: string | null;
   activationCodeLast4: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
 const HIDDEN_INVENTORY_STATUSES = ["discarded", "cancelled"] as const;
+const ACTIVE_INVENTORY_STATUSES = [
+  "assembled",
+  "available",
+  "reserved",
+  "qa_pending",
+  "qa_failed",
+] as const;
 
 function emptyRow(code: string, name: string, productType: string, productId: string | null, visible: boolean): InventoryStockRow {
   return {
@@ -155,7 +159,7 @@ export async function loadInventoryStockDetail(productCode: string) {
   const units = await prisma.operationFinishedGoodUnit.findMany({
     where: {
       productCode,
-      status: { notIn: [...HIDDEN_INVENTORY_STATUSES] },
+      status: { in: [...ACTIVE_INVENTORY_STATUSES] },
     },
     orderBy: { updatedAt: "desc" },
     select: {
@@ -181,7 +185,6 @@ export async function loadInventoryStockDetail(productCode: string) {
           productionOrderId: true,
           qrUrl: true,
           nfcUrl: true,
-          activationUrl: true,
         },
       },
       chip: {
@@ -194,7 +197,6 @@ export async function loadInventoryStockDetail(productCode: string) {
             orderBy: { createdAt: "desc" },
             take: 1,
             select: {
-              activationCode: true,
               activationCodeLast4: true,
             },
           },
@@ -231,10 +233,6 @@ export async function loadInventoryStockDetail(productCode: string) {
       productionOrderId: unit.digitalBatchItem?.productionOrderId || null,
       qrUrl: unit.digitalBatchItem?.qrUrl || unit.chip?.qrUrl || null,
       nfcUrl: unit.digitalBatchItem?.nfcUrl || unit.chip?.nfcUrl || null,
-      activationUrl: unit.digitalBatchItem?.activationUrl || null,
-      activationCode: unit.chip?.claimTokens[0]?.activationCode
-        ? revealActivationCode(unit.chip.claimTokens[0].activationCode)
-        : null,
       activationCodeLast4: unit.chip?.claimTokens[0]?.activationCodeLast4 || null,
       createdAt: unit.createdAt.toISOString(),
       updatedAt: unit.updatedAt.toISOString(),
