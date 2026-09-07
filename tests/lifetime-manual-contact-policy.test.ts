@@ -5,7 +5,7 @@ function source(path: string) {
   return readFileSync(path, "utf8");
 }
 
-describe("lifetime rescue + finite service + manual-contact policy guardrails", () => {
+describe("lifetime service + lifetime rescue + manual-contact policy guardrails", () => {
   it("never gates the public rescue profile on service expiry or paid corporate status", () => {
     const route = source("app/api/public/[shortCode]/route.ts");
     const resolver = source("lib/public-access/resolve-public-profile-by-chip.ts");
@@ -17,23 +17,35 @@ describe("lifetime rescue + finite service + manual-contact policy guardrails", 
     expect(resolver).not.toContain("serviceStatus");
   });
 
-  it("creates a finite commercial service term on activation", () => {
+  it("activates purchased identifiers with no time-based service expiry", () => {
     const activation = source("app/api/chips/activate/route.ts");
-    expect(activation).toContain("initialServiceEndDate(now, state.serviceDurationMonths)");
-    expect(activation).toContain("serviceEndDate,");
-    expect(activation).not.toContain("serviceEndDate: null");
+    expect(activation).toContain("serviceEndDate: null");
+    expect(activation).toContain("lifetimeService: true");
+    expect(activation).not.toContain("initialServiceEndDate");
+    expect(activation).not.toContain("serviceDurationMonths");
+    expect(activation).not.toContain("24-month");
   });
 
-  it("lets account state report commercial expiry without imposing a personal chip cap", () => {
+  it("keeps account service active regardless of legacy expiry dates and preserves personal unlimited activation", () => {
     const accountState = source("domains/accounts/services/account-state.service.ts");
-    expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v4"');
-    expect(accountState).toContain('const isExpired = serviceEndDate ? serviceEndDate < new Date() : false');
-    expect(accountState).toContain('isExpired ? "expired"');
-    expect(accountState).toContain("BUSINESS_RULES.DEFAULT_SERVICE_DURATION_MONTHS");
+    expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v5"');
+    expect(accountState).toContain("serviceEndDate: null");
+    expect(accountState).toContain("serviceDurationMonths: null");
+    expect(accountState).toContain("isExpired: false");
+    expect(accountState).not.toContain("serviceEndDate < new Date()");
+    expect(accountState).not.toContain('isExpired ? "expired"');
+    expect(accountState).not.toContain("DEFAULT_SERVICE_DURATION_MONTHS");
     expect(accountState).toContain("!isCorporate || (!isInactive && activeChipsCount < maxChipsLimit)");
   });
 
-  it("keeps medical profile correction possible after commercial service expiry", () => {
+  it("does not expose legacy service-duration months through the public catalog", () => {
+    const route = source("app/api/public/packages/route.ts");
+    expect(route).toContain("serviceDurationMonths");
+    expect(route).toContain("publicPackage");
+    expect(route).toContain("void serviceDurationMonths");
+  });
+
+  it("keeps medical profile correction possible for lifetime service", () => {
     const detail = source("app/api/users/perfiles-medicos/[profileId]/route.ts");
     expect(detail).toContain("Unrestricted editing of medical profiles ensures data integrity");
     expect(detail).not.toContain("state.isExpired");
@@ -85,13 +97,25 @@ describe("lifetime rescue + finite service + manual-contact policy guardrails", 
     expect(hardener).toContain('attributeFilter: ["href"]');
   });
 
-  it("removes obsolete automatic-alert UI without erasing finite service dates", () => {
+  it("removes obsolete automatic-alert and renewal UI from settings", () => {
     const layout = source("app/(app)/dashboard/configuracion/layout.tsx");
     const hardener = source("app/(app)/dashboard/configuracion/_components/LifetimePolicyHardening.tsx");
     expect(layout).toContain("LifetimePolicyHardening");
     expect(hardener).toContain("avisar automáticamente al escanear");
-    expect(hardener).toContain("Estado del servicio");
-    expect(hardener).not.toContain("Sin vencimiento por tiempo");
-    expect(hardener).not.toContain("Válido hasta:.*");
+    expect(hardener).toContain("Servicio sin vencimiento por tiempo");
+    expect(hardener).toContain("retiredServiceRenewal");
+  });
+
+  it("never advertises a finite service term or renewal on the purchase page", () => {
+    const buy = source("app/(public)/comprar/ComprarContent.tsx");
+    const guarantee = source("app/(public)/legal/garantia/page.tsx");
+    expect(buy).not.toContain("serviceDurationMonths");
+    expect(buy).not.toContain("24 meses");
+    expect(buy.toLowerCase()).not.toContain("renovable");
+    expect(buy.toLowerCase()).not.toContain("renovación");
+    expect(buy).toContain("sin vencimiento por tiempo");
+    expect(guarantee).not.toContain("24 meses");
+    expect(guarantee.toLowerCase()).not.toContain("renovarse");
+    expect(guarantee).toContain("servicio digital no vence por tiempo");
   });
 });
