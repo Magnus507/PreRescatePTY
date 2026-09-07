@@ -16,56 +16,32 @@ export default function GarantiaPage() {
     >
       <div className="space-y-6 text-[#A0AEC0]">
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Garantía de fábrica
-          </h2>
-          <p>
-            El producto cuenta con garantía de un año por defectos de fabricación
-            desde la fecha de entrega.
-          </p>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Garantía de fábrica</h2>
+          <p>El producto cuenta con garantía de un año por defectos de fabricación desde la fecha de entrega.</p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Defectos cubiertos
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Defectos cubiertos</h2>
           <p>La garantía cubre defectos de fabricación, incluyendo:</p>
           <ul className="list-disc list-inside space-y-2 mt-2">
-            <li>
-              NFC ilegible por defecto de fabricación
-            </li>
-            <li>
-              Código QR ilegible por defecto de impresión presente desde la
-              entrega
-            </li>
-            <li>
-              Defectos de material o fabricación presentes al recibir el
-              producto
-            </li>
-            <li>
-              Fallo del adhesivo en el primer uso cuando se siguieron las
-              instrucciones de aplicación
-            </li>
+            <li>NFC ilegible por defecto de fabricación</li>
+            <li>Código QR ilegible por defecto de impresión presente desde la entrega</li>
+            <li>Defectos de material o fabricación presentes al recibir el producto</li>
+            <li>Fallo del adhesivo en el primer uso cuando se siguieron las instrucciones de aplicación</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Exclusiones
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Exclusiones</h2>
           <p>La garantía no cubre:</p>
           <ul className="list-disc list-inside space-y-2 mt-2">
             <li>Pérdida o robo</li>
             <li>Cortes, perforaciones o rasguños</li>
             <li>Daños por impacto</li>
-            <li>
-              Exposición a calor extremo, fuego o químicos
-            </li>
+            <li>Exposición a calor extremo, fuego o químicos</li>
             <li>Exposición a humedad inadecuada</li>
             <li>Instalación incorrecta</li>
-            <li>
-              Aplicación sobre superficies sucias, húmedas, porosas o no aptas
-            </li>
+            <li>Aplicación sobre superficies sucias, húmedas, porosas o no aptas</li>
             <li>Manipulación o alteración</li>
             <li>Reprogramación o reimpresión del QR</li>
             <li>Uso inadecuado</li>
@@ -74,49 +50,31 @@ export default function GarantiaPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Proceso de garantía
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Proceso de garantía</h2>
           <p>
-            En caso de una falla cubierta, evaluaremos el producto y
-            gestionaremos su reemplazo o la solución correspondiente. No
-            promovemos la reparación como única opción.
+            En caso de una falla cubierta, evaluaremos el producto y gestionaremos su reemplazo o la solución correspondiente. No promovemos la reparación como única opción.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Chips perdidos o dañados (no cubiertos por garantía)
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Chips perdidos o dañados (no cubiertos por garantía)</h2>
           <p>
-            Los chips perdidos o dañados por causas no cubiertas por la
-            garantía deben adquirirse al precio vigente del chip adicional o de
-            reemplazo.
+            Los chips perdidos o dañados por causas no cubiertas por la garantía deben adquirirse al precio vigente del chip adicional o de reemplazo.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Transferencia de perfil
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Transferencia de perfil</h2>
           <p>
-            El perfil médico puede transferirse a un chip nuevo después de
-            verificar la identidad del titular y desactivar el chip anterior.
-            El perfil digital no vence por tiempo mientras el producto permanezca activo y no haya sido revocado o reemplazado.
+            El perfil médico puede transferirse a un chip nuevo después de verificar la identidad del titular y desactivar el chip anterior. El acceso público de rescate de un identificador válido no se oculta por el vencimiento del servicio comercial. La gestión comercial del servicio se maneja por períodos de 24 meses y puede renovarse sin reemplazar el chip.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Contacto
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Contacto</h2>
           <p>
-            Para solicitar una revisión por garantía o consultar sobre
-            reemplazos, utiliza nuestro{" "}
-            <Link
-              href="/contacto"
-              className="text-[#DA1A21] hover:text-white underline"
-            >
+            Para solicitar una revisión por garantía o consultar sobre reemplazos, utiliza nuestro{" "}
+            <Link href="/contacto" className="text-[#DA1A21] hover:text-white underline">
               formulario de contacto
             </Link>
             .
