@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
   if (!auth.authorized) return auth.response;
   const userId = auth.session.user.id;
 
-  // Rate limit: 5 activation attempts per minute per user
   const limiter = await rateLimit("corporate-chip-activate", userId, {
     limit: 5,
     windowMs: 60_000,
@@ -46,15 +45,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Use Centralized Account State
+  // Account state determines ownership/capacity only. Lifetime service has no
+  // time-based commercial expiry gate.
   const state = await AccountStateService.getAccountState(userId);
-
-  if (state.serviceStatus === "expired") {
-    return NextResponse.json(
-      { error: "Tu cuenta ha expirado. Por favor renueva tu servicio para usar chips." },
-      { status: 403 }
-    );
-  }
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -62,52 +55,31 @@ export async function POST(req: NextRequest) {
       await tx.account.update({ where: { id: state.accountId }, data: { updatedAt: new Date() } });
       const now = new Date();
 
-      // 1. Find the claim token
       const claimToken = await tx.chipClaimToken.findFirst({
         where: { ...activationCodeLookupWhere(activationCode), status: "active" },
         include: { chip: true },
       });
 
       if (!claimToken) {
-        throw Object.assign(
-          new Error("Código de activación inválido."),
-          { status: 404 }
-        );
+        throw Object.assign(new Error("Código de activación inválido."), { status: 404 });
       }
-
       if (claimToken.usedAt) {
-        throw Object.assign(
-          new Error("Este código ya fue utilizado."),
-          { status: 409 }
-        );
+        throw Object.assign(new Error("Este código ya fue utilizado."), { status: 409 });
       }
-
+      // Claim-token expiry protects the one-time credential only; it is not a
+      // lifetime-service limit.
       if (claimToken.expiresAt && new Date() > claimToken.expiresAt) {
-        throw Object.assign(
-          new Error("Este código ha expirado."),
-          { status: 410 }
-        );
+        throw Object.assign(new Error("Este código ha expirado."), { status: 410 });
       }
 
       const chip = claimToken.chip;
-
       if (!ACTIVATABLE_CHIP_STATUSES.includes(chip.status as (typeof ACTIVATABLE_CHIP_STATUSES)[number])) {
-        throw Object.assign(
-          new Error("Este chip no está disponible para activación."),
-          { status: 409 }
-        );
+        throw Object.assign(new Error("Este chip no está disponible para activación."), { status: 409 });
       }
 
-      // 2. Find the corporate member for this user
-      const userProfile = await tx.profile.findUnique({
-        where: { userId },
-      });
-
+      const userProfile = await tx.profile.findUnique({ where: { userId } });
       if (!userProfile) {
-        throw Object.assign(
-          new Error("No se encontró tu perfil de usuario."),
-          { status: 400 }
-        );
+        throw Object.assign(new Error("No se encontró tu perfil de usuario."), { status: 400 });
       }
 
       const member = await tx.organizationMember.findFirst({
@@ -115,26 +87,16 @@ export async function POST(req: NextRequest) {
           profileId: userProfile.id,
           corporateStatus: "paid_active",
         },
-        include: {
-          profile: true,
-        },
+        include: { profile: true },
       });
 
       if (!member) {
-        throw Object.assign(
-          new Error("No tienes un vínculo empresarial activo."),
-          { status: 403 }
-        );
+        throw Object.assign(new Error("No tienes un vínculo empresarial activo."), { status: 403 });
       }
-
       if (!member.corporateProfileId) {
-        throw Object.assign(
-          new Error("No se encontró tu perfil empresarial."),
-          { status: 400 }
-        );
+        throw Object.assign(new Error("No se encontró tu perfil empresarial."), { status: 400 });
       }
 
-      // Validar que no tenga ya un chip empresarial activo
       const existingActivatedChip = await tx.corporateOrderEmployeeItem.findFirst({
         where: {
           organizationMemberId: member.id,
@@ -142,7 +104,6 @@ export async function POST(req: NextRequest) {
           chipId: { not: null },
         },
       });
-
       if (existingActivatedChip) {
         throw Object.assign(
           new Error("Ya tienes un chip empresarial activo. Contacta a tu empresa para gestionar un reemplazo."),
@@ -150,25 +111,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const corporateProfile = await tx.profile.findUnique({
-        where: { id: member.corporateProfileId },
-      });
-
+      const corporateProfile = await tx.profile.findUnique({ where: { id: member.corporateProfileId } });
       if (!corporateProfile || corporateProfile.profileType !== "corporate") {
-        throw Object.assign(
-          new Error("El perfil vinculado no es un perfil empresarial válido."),
-          { status: 400 }
-        );
+        throw Object.assign(new Error("El perfil vinculado no es un perfil empresarial válido."), { status: 400 });
       }
-
-      // Verify the corporate profile belongs to the same account as the user
       if (corporateProfile.accountId !== userProfile.accountId) {
-        throw Object.assign(
-          new Error("Este chip corporativo no pertenece a tu cuenta."),
-          { status: 403 }
-        );
+        throw Object.assign(new Error("Este chip corporativo no pertenece a tu cuenta."), { status: 403 });
       }
-
       if (!AccountStateService.isMedicalProfileComplete(corporateProfile)) {
         throw Object.assign(
           new Error("Completa tu perfil empresarial (nombre, apellido y tipo de sangre) antes de activar este chip."),
@@ -176,7 +125,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 3. Find pending corporate order item for this user
       const pendingItem = await tx.corporateOrderEmployeeItem.findFirst({
         where: {
           organizationMemberId: member.id,
@@ -184,11 +132,8 @@ export async function POST(req: NextRequest) {
           fulfillmentStatus: { not: "activated" },
           chipId: null,
         },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: { createdAt: "desc" },
       });
-
       if (!pendingItem) {
         throw Object.assign(
           new Error("No tienes un paquete empresarial entregado pendiente de activación."),
@@ -196,25 +141,19 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 4. Enforce plan chip limit
-      const account = await tx.account.findUnique({
-        where: { id: state.accountId as string },
-      });
-
+      const account = await tx.account.findUnique({ where: { id: state.accountId as string } });
       if (!account) {
-        throw Object.assign(
-          new Error("Cuenta no encontrada."),
-          { status: 400 }
-        );
+        throw Object.assign(new Error("Cuenta no encontrada."), { status: 400 });
       }
 
+      // Corporate purchase capacity remains contractual even though each
+      // activated identifier has no time-based service expiry.
       const currentActiveCount = await tx.chip.count({
         where: {
           accountId: account.id,
           status: { in: [...USED_CAPACITY_CHIP_STATUSES] },
         },
       });
-
       if (currentActiveCount >= account.maxChipsAllocated) {
         throw Object.assign(
           new Error(`Has alcanzado el límite de ${account.maxChipsAllocated} chip(s) en tu plan actual. Adquiere chips adicionales para activar más.`),
@@ -222,7 +161,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 5. Atomically consume token
       const tokenConsume = await tx.chipClaimToken.updateMany({
         where: {
           id: claimToken.id,
@@ -230,21 +168,11 @@ export async function POST(req: NextRequest) {
           status: "active",
           OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         },
-        data: {
-          usedAt: now,
-        },
+        data: { usedAt: now },
       });
-
       if (tokenConsume.count !== 1) {
-        throw Object.assign(
-          new Error("Código ya usado o expirado."),
-          { status: 400 }
-        );
+        throw Object.assign(new Error("Código ya usado o expirado."), { status: 400 });
       }
-
-      // 6. Activate the chip
-      const serviceEndDate = new Date(now);
-      serviceEndDate.setMonth(serviceEndDate.getMonth() + state.serviceDurationMonths);
 
       const chipActivate = await tx.chip.updateMany({
         where: {
@@ -258,19 +186,14 @@ export async function POST(req: NextRequest) {
           assignedProfileId: corporateProfile.id,
           activatedAt: now,
           serviceStartDate: now,
-          serviceEndDate: serviceEndDate,
+          serviceEndDate: null,
           serviceStatus: CHIP_SERVICE_STATUS.ACTIVE,
         },
       });
-
       if (chipActivate.count !== 1) {
-        throw Object.assign(
-          new Error("Este chip ya no puede activarse."),
-          { status: 400 }
-        );
+        throw Object.assign(new Error("Este chip ya no puede activarse."), { status: 400 });
       }
 
-      // 7. Link chip to corporate order item
       await tx.corporateOrderEmployeeItem.update({
         where: { id: pendingItem.id, chipId: null, deliveryStatus: "delivered", fulfillmentStatus: { not: "activated" } },
         data: {
@@ -280,8 +203,6 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // The public chip, corporate item and physical unit are one state change.
-      // Any missing/ineligible physical unit aborts and rolls back this transaction.
       const physicalUnitActivation = await markFinishedGoodUnitActivatedWithClient(tx, {
         internalLabel: chip.internalLabel || null,
         shortCode: chip.shortCode,
@@ -306,7 +227,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 8. Audit log
       await tx.auditLog.create({
         data: {
           actorUserId: userId,
@@ -320,13 +240,13 @@ export async function POST(req: NextRequest) {
             corporateProfileId: corporateProfile.id,
             organizationMemberId: member.id,
             corporateOrderEmployeeItemId: pendingItem.id,
+            serviceEndDate: null,
+            lifetimeService: true,
           }),
         },
       });
-
     });
 
-    // Invalidate cache after successful activation
     await AccountStateService.invalidateCache(userId);
 
     return NextResponse.json({
@@ -342,9 +262,6 @@ export async function POST(req: NextRequest) {
     const message = status < 500 && error instanceof Error
       ? error.message
       : "No se pudo activar el chip empresarial.";
-    return NextResponse.json(
-      { error: message },
-      { status }
-    );
+    return NextResponse.json({ error: message }, { status });
   }
 }
