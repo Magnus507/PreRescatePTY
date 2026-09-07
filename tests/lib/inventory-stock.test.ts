@@ -85,3 +85,27 @@ describe("inventory stock detail", () => {
     );
   });
 });
+
+describe("inventory lifecycle counts preserve order traceability", () => {
+  beforeEach(() => resetMockPrisma());
+  it.each([
+    ["reserved", "not_activated", "order-1", 1, 0],
+    ["dispatched", "not_activated", "order-1", 0, 0],
+    ["delivered", "not_activated", "order-1", 0, 0],
+    ["activated", "activated", "order-1", 0, 0],
+    ["available", "not_activated", null, 0, 1],
+    ["available", "not_activated", "order-1", 0, 0],
+  ])("%s with order %s has correct stock counts", async (status, activationStatus, reservedOrderId, reserved, available) => {
+    const unit = { id: "unit-1", internalLabel: "fixture", productCode: "product", productName: "Fixture", productType: "test", status, activationStatus, reservedOrderId, qaStatus: "passed", createdAt: new Date(), updatedAt: new Date(), deliveredAt: status === "activated" ? new Date() : null, dispatchItems: [] };
+    mockPrisma.operationFinishedGood.findMany.mockResolvedValue([]);
+    mockPrisma.product.findMany.mockResolvedValue([]);
+    mockPrisma.operationFinishedGoodUnit.findMany.mockResolvedValue([unit] as never);
+    const result = await loadInventoryStockDetail("product");
+    expect(result.summary.reserved).toBe(reserved);
+    expect(result.summary.reservedCount).toBe(reserved);
+    expect(result.summary.available).toBe(available);
+    expect(result.summary.delivered).toBe(status === "delivered" ? 1 : 0);
+    expect(result.summary.activated).toBe(status === "activated" ? 1 : 0);
+    expect(result.units[0].reservedOrderId).toBe(reservedOrderId);
+  });
+});

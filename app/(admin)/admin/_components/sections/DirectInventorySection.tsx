@@ -220,7 +220,7 @@ export default function DirectInventorySection() {
             <div className="space-y-2">
               {units.map((unit) => {
                 const selected = selectedUnitId === unit.id;
-                return <button type="button" key={unit.id} onClick={() => setSelectedUnitId(selected ? null : unit.id)} className={`w-full rounded-xl border p-4 text-left transition ${selected ? "border-primary bg-primary/5" : "border-slate-200 bg-slate-50 hover:bg-white"}`}><p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{unit.inventoryStatus} · QC {unit.qaStatus || "—"}{unit.reservedOrderId ? " · reservada" : ""}</p></button>;
+                return <button type="button" key={unit.id} onClick={() => setSelectedUnitId(selected ? null : unit.id)} className={`w-full rounded-xl border p-4 text-left transition ${selected ? "border-primary bg-primary/5" : "border-slate-200 bg-slate-50 hover:bg-white"}`}><p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{unit.inventoryStatus} · QC {unit.qaStatus || "—"}{unit.reservedOrderId ? " · vinculada a pedido" : ""}</p></button>;
               })}
             </div>
             {(() => {

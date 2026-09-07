@@ -127,14 +127,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Debes completar tu perfil médico (nombre, apellido y tipo de sangre) antes de activar un chip" }, { status: 400 });
   }
 
-  if (state.serviceStatus === "expired") {
-    return NextResponse.json(
-      { error: "Tu cuenta ha expirado. Por favor renueva tu servicio para usar chips." },
-      { status: 403 }
-    );
-  }
-
-  // Use atomic transaction to prevent race conditions on chip limit enforcement
+  // Consume the physical code and assign ownership in one atomic transaction.
   try {
     await prisma.$transaction(async (tx) => {
       if (!state.accountId) throw Object.assign(new Error("Cuenta no encontrada"), { status: 400 });
@@ -167,14 +160,6 @@ export async function POST(req: NextRequest) {
         throw new Error("Cuenta no encontrada");
       }
 
-      const currentActiveCount = await tx.chip.count({
-        where: { accountId: account.id, status: { in: [...USED_CAPACITY_CHIP_STATUSES] } }
-      });
-
-      // Enforce plan chip limit
-      if (currentActiveCount >= account.maxChipsAllocated) {
-        throw Object.assign(new Error(`Has alcanzado el límite de ${account.maxChipsAllocated} chip(s) en tu plan actual. Adquiere chips adicionales para activar más.`), { status: 409 });
-      }
       const targetAccountId = account.id;
 
       // Detect if this is a corporate chip by checking CorporateOrderEmployeeItem
@@ -190,6 +175,18 @@ export async function POST(req: NextRequest) {
       let assignedProfileId: string;
 
       if (corporateItem) {
+        if (state.serviceStatus === "expired") {
+          throw Object.assign(new Error("Tu cuenta ha expirado. Por favor renueva tu servicio para usar chips."), { status: 403 });
+        }
+        // Corporate entitlements remain separate from possession-based individual activation.
+        const currentActiveCount = await tx.chip.count({
+          where: { accountId: account.id, status: { in: [...USED_CAPACITY_CHIP_STATUSES] } }
+        });
+
+        // Enforce plan chip limit
+        if (currentActiveCount >= account.maxChipsAllocated) {
+          throw Object.assign(new Error(`Has alcanzado el límite de ${account.maxChipsAllocated} chip(s) en tu plan actual. Adquiere chips adicionales para activar más.`), { status: 409 });
+        }
         // === CORPORATE ACTIVATION FLOW ===
         const member = corporateItem.organizationMember;
 
@@ -306,6 +303,7 @@ export async function POST(req: NextRequest) {
         where: {
           id: claimToken.chipId,
           status: { in: [...ACTIVATABLE_CHIP_STATUSES] },
+          activatedAt: null,
         },
         data: {
           status: CHIP_STATUS.ACTIVATED,

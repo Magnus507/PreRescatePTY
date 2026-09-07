@@ -50,6 +50,7 @@ export interface OperationHistoryResult {
   subject: OperationHistorySubject | null;
   timeline: OperationHistoryTimelineItem[];
   summary: OperationHistorySummary;
+  nextPage?: number | null;
   suggestions?: Array<{ type: HistoryEntityType; id: string; label: string; subtitle: string | null }>;
 }
 
@@ -475,13 +476,43 @@ export async function getOperationHistory(params: {
   internalLabel?: string | null;
   search?: string | null;
   limit?: number;
+  page?: number;
 }): Promise<OperationHistoryResult> {
-  const limit = Math.min(params.limit || 100, 250);
+  const limit = Number.isFinite(params.limit) ? Math.max(1, Math.min(Math.floor(params.limit!), 250)) : 100;
   const search = params.search?.trim() || null;
   const internalLabel = params.internalLabel?.trim() || null;
   const identifier = params.identifier?.trim() || null;
   const entityType = params.entityType || null;
   const entityId = params.entityId?.trim() || null;
+
+  // Keep the initial history useful without exposing customer snapshots.
+  if (!entityId && !internalLabel && !identifier && (!entityType || entityType === "commercial_order") && (!search || entityType === "commercial_order")) {
+    const page = Number.isFinite(params.page) ? Math.max(0, Math.floor(params.page!)) : 0;
+    const orders = await prisma.operationCommercialOrder.findMany({
+      where: {
+        OR: [
+          { status: { in: ["delivered", "completed", "closed"] } },
+          { fulfillmentStatus: { in: ["delivered", "completed", "closed"] } },
+          { dispatch: { is: { status: "delivered" } } },
+        ],
+        ...(search ? { code: { contains: search, mode: "insensitive" as const } } : {}),
+      },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+      skip: page * limit,
+      select: { id: true, code: true, status: true, fulfillmentStatus: true, updatedAt: true, dispatch: { select: { status: true, deliveredAt: true } } },
+    });
+    return {
+      ...emptyResult(),
+      nextPage: orders.length > limit ? page + 1 : null,
+      suggestions: orders.slice(0, limit).map(order => ({
+        type: "commercial_order" as const,
+        id: order.id,
+        label: order.code,
+        subtitle: `${order.dispatch?.status === "delivered" ? "Entregado" : order.status} · ${(order.dispatch?.deliveredAt || order.updatedAt).toISOString()}`,
+      })),
+    };
+  }
 
   if (
     (entityType === "unit" || (!entityType && internalLabel)) &&

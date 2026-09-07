@@ -9,6 +9,7 @@ import {
   Info, Phone
 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadPaymentProof } from "@/lib/payment-proof-upload";
 import { useRouter } from "next/navigation";
 import { type StoreProductLike } from "@/lib/products/group-products-by-store-section";
 
@@ -284,39 +285,17 @@ export default function TiendaPage() {
     const file = e.target.files?.[0];
     if (!file || !lastOrderId) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("El archivo es muy pesado (máx 5MB)");
-      return;
-    }
-
+    const input = e.currentTarget;
     setUploadingProof(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("type", "payment");
-      formData.append("bucket", "payment-proofs");
-
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!uploadRes.ok) throw new Error("Error al subir archivo");
-      const { url } = await uploadRes.json();
-
-      const res = await fetch(`/api/orders/${lastOrderId}/payment-proof`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentProofUrl: url }),
-      });
-
-      if (res.ok) {
-        setProofUploaded(true);
-        toast.success("Comprobante enviado. Tu pago está en revisión.");
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Error al registrar comprobante");
-      }
-    } catch {
-      toast.error("Error al subir el comprobante");
+      await uploadPaymentProof(lastOrderId, file);
+      setProofUploaded(true);
+      toast.success("Comprobante enviado. Tu pago está en revisión.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al subir el comprobante");
     } finally {
       setUploadingProof(false);
+      input.value = "";
     }
   };
 
