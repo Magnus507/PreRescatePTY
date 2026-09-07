@@ -13,13 +13,15 @@ const STATUS_CLASS: Record<string, string> = {
   sent: "border-violet-200 bg-violet-50 text-violet-800",
   shipped: "border-violet-200 bg-violet-50 text-violet-800",
   dispatched: "border-violet-200 bg-violet-50 text-violet-800",
-  delivered: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  cancelled: "border-red-200 bg-red-50 text-red-700",
 };
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
-  return new Date(value).toLocaleDateString("es-PA", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(value).toLocaleDateString("es-PA", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export function DirectDispatchSection() {
@@ -52,11 +54,14 @@ export function DirectDispatchSection() {
   }, [loadDispatches]);
 
   const counts = useMemo(() => {
-    const active = dispatches.filter((dispatch) => !["delivered", "cancelled"].includes(dispatch.status)).length;
+    const waiting = dispatches.filter((dispatch) =>
+      ["draft", "pending_pick", "pending_preparation"].includes(dispatch.status)
+    ).length;
     const prepared = dispatches.filter((dispatch) => dispatch.status === "prepared").length;
-    const inTransit = dispatches.filter((dispatch) => ["sent", "shipped", "dispatched"].includes(dispatch.status)).length;
-    const delivered = dispatches.filter((dispatch) => dispatch.status === "delivered").length;
-    return { active, prepared, inTransit, delivered };
+    const inTransit = dispatches.filter((dispatch) =>
+      ["sent", "shipped", "dispatched"].includes(dispatch.status)
+    ).length;
+    return { active: dispatches.length, waiting, prepared, inTransit };
   }, [dispatches]);
 
   const postAction = async (key: string, url: string, body?: Record<string, unknown>) => {
@@ -84,8 +89,18 @@ export function DirectDispatchSection() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-black text-slate-950 dark:text-white">Despachos</h2>
-        <button type="button" onClick={() => loadDispatches({ silent: true })} disabled={refreshing} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+        <div>
+          <h2 className="text-xl font-black text-slate-950 dark:text-white">Despachos activos</h2>
+          <p className="mt-1 text-xs font-semibold text-slate-500">
+            Esta vista es la cola de trabajo logística. Al confirmar la entrega, el expediente sale de aquí y permanece en Historial.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => loadDispatches({ silent: true })}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+        >
           {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           Actualizar
         </button>
@@ -94,9 +109,9 @@ export function DirectDispatchSection() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           ["Activos", counts.active],
+          ["Por preparar", counts.waiting],
           ["Preparados", counts.prepared],
           ["En tránsito", counts.inTransit],
-          ["Entregados", counts.delivered],
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
@@ -108,7 +123,8 @@ export function DirectDispatchSection() {
       {dispatches.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 py-14 text-center dark:border-slate-800">
           <Truck className="mx-auto h-8 w-8 text-slate-300" />
-          <p className="mt-3 text-xs font-black uppercase tracking-widest text-slate-400">Sin despachos</p>
+          <p className="mt-3 text-xs font-black uppercase tracking-widest text-slate-400">Sin despachos activos</p>
+          <p className="mt-2 text-xs font-semibold text-slate-400">Los entregados se conservan en Historial.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -189,7 +205,6 @@ export function DirectDispatchSection() {
                   <span>Creado {formatDate(dispatch.createdAt)}</span>
                   {dispatch.preparedAt && <span>Preparado {formatDate(dispatch.preparedAt)}</span>}
                   {dispatch.sentAt && <span>Enviado {formatDate(dispatch.sentAt)}</span>}
-                  {dispatch.deliveredAt && <span>Entregado {formatDate(dispatch.deliveredAt)}</span>}
                 </div>
               </article>
             );
