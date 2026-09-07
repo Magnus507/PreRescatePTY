@@ -6,7 +6,6 @@ import { resetAllMocks } from "../helpers/reset-mocks";
 vi.mock("next-auth", () => ({ getServerSession: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
-vi.mock("@/lib/request-ip", () => ({ getClientIp: vi.fn(() => "127.0.0.1") }));
 
 import { getServerSession } from "next-auth";
 import { GET, PATCH } from "@/app/api/users/alert-preferences/route";
@@ -16,46 +15,45 @@ describe("/api/users/alert-preferences", () => {
     resetAllMocks();
     vi.mocked(getServerSession).mockResolvedValue({ user: { id: "user-1" } } as never);
     mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1", accountId: "account-1" } as never);
-    mockPrisma.$transaction.mockImplementation(async (callback: (tx: typeof mockPrisma) => Promise<unknown>) => callback(mockPrisma));
-    mockPrisma.auditLog.create.mockResolvedValue({ id: "audit-1" } as never);
   });
 
-  it("returns whether automatic alerts have explicit active consent", async () => {
-    mockPrisma.consent.findFirst.mockResolvedValue({ id: "consent-1", grantedAt: new Date() } as never);
+  it("always reports manual-only delivery without reading historical consent", async () => {
     const response = await GET();
     const json = await response.json();
+
     expect(response.status).toBe(200);
-    expect(json.automaticAlertsEnabled).toBe(true);
+    expect(json).toMatchObject({
+      automaticAlertsEnabled: false,
+      automaticAlertsAvailable: false,
+      deliveryMode: "manual_whatsapp",
+      grantedAt: null,
+    });
+    expect(mockPrisma.consent.findFirst).not.toHaveBeenCalled();
   });
 
-  it("creates explicit consent when automatic alerts are enabled", async () => {
-    mockPrisma.consent.findFirst.mockResolvedValue(null as never);
-    mockPrisma.consent.create.mockResolvedValue({ id: "consent-1" } as never);
+  it("returns 410 for stale attempts to enable automatic alerts and creates no consent", async () => {
     const response = await PATCH(new NextRequest("http://localhost/api/users/alert-preferences", {
       method: "PATCH",
       body: JSON.stringify({ automaticAlertsEnabled: true }),
     }));
+    const json = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(mockPrisma.consent.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ consentType: "automatic_emergency_alerts" }),
-      })
-    );
-    expect(mockPrisma.auditLog.create).toHaveBeenCalled();
+    expect(response.status).toBe(410);
+    expect(json).toMatchObject({
+      automaticAlertsEnabled: false,
+      automaticAlertsAvailable: false,
+      deliveryMode: "manual_whatsapp",
+      reason: "manual_contact_only",
+    });
+    expect(mockPrisma.consent.create).not.toHaveBeenCalled();
+    expect(mockPrisma.consent.updateMany).not.toHaveBeenCalled();
+    expect(mockPrisma.auditLog.create).not.toHaveBeenCalled();
   });
 
-  it("revokes active consent when automatic alerts are disabled", async () => {
-    mockPrisma.consent.findFirst.mockResolvedValue({ id: "consent-1" } as never);
-    mockPrisma.consent.updateMany.mockResolvedValue({ count: 1 } as never);
-    const response = await PATCH(new NextRequest("http://localhost/api/users/alert-preferences", {
-      method: "PATCH",
-      body: JSON.stringify({ automaticAlertsEnabled: false }),
-    }));
+  it("still requires authentication", async () => {
+    vi.mocked(getServerSession).mockResolvedValue(null);
 
-    expect(response.status).toBe(200);
-    expect(mockPrisma.consent.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { revokedAt: expect.any(Date) } })
-    );
+    const response = await GET();
+    expect(response.status).toBe(401);
   });
 });
