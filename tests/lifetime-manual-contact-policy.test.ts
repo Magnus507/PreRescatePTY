@@ -38,11 +38,15 @@ describe("lifetime service + lifetime rescue + manual-contact policy guardrails"
     expect(accountState).toContain("!isCorporate || (!isInactive && activeChipsCount < maxChipsLimit)");
   });
 
-  it("does not expose legacy service-duration months through the public catalog", () => {
-    const route = source("app/api/public/packages/route.ts");
-    expect(route).toContain("serviceDurationMonths");
-    expect(route).toContain("publicPackage");
-    expect(route).toContain("void serviceDurationMonths");
+  it("does not expose or accept a finite duration through package APIs", () => {
+    const publicRoute = source("app/api/public/packages/route.ts");
+    const adminRoute = source("app/api/admin/packages/route.ts");
+    expect(publicRoute).toContain("serviceDurationMonths");
+    expect(publicRoute).toContain("publicPackage");
+    expect(publicRoute).toContain("void serviceDurationMonths");
+    expect(adminRoute).toContain("LEGACY_LIFETIME_DURATION_MARKER = 0");
+    expect(adminRoute).toContain("void serviceDurationMonths");
+    expect(adminRoute).not.toContain("serviceDurationMonths ?? 24");
   });
 
   it("keeps medical profile correction possible for lifetime service", () => {
