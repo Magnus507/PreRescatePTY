@@ -1,7 +1,4 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { logger } from "@/lib/logger";
-import { processPendingEmergencyNotifications } from "@/lib/emergency-alerts";
 import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
 
 export const dynamic = "force-dynamic";
@@ -24,12 +21,24 @@ export async function POST(req: Request) {
   const auth = authorizeCronRequest(req);
   if (!auth.ok) return auth.response;
 
-  const result = await processPendingEmergencyNotifications(prisma, { limit: 25 });
+  // Product policy: rescue notifications are manual-only. Keep the endpoint and
+  // heartbeat healthy so existing scheduler monitoring remains valid, but never
+  // lease or send historical/pending emergency Notification rows.
+  const result = {
+    claimed: 0,
+    sent: 0,
+    retrying: 0,
+    failed: 0,
+    deadLettered: 0,
+    skipped: 0,
+    deliveryMode: "manual_whatsapp" as const,
+    disabled: true,
+  };
+
   await recordCronSuccess(CRON_MONITOR_KEYS.notify, result);
-  logger.info("[cron/notify] processed emergency notifications", result);
 
   return NextResponse.json({
-    message: "Notificaciones procesadas",
+    message: "Entrega automática de rescate deshabilitada; WhatsApp manual activo.",
     ...result,
   });
 }
