@@ -15,8 +15,6 @@ export async function POST(
 
   const { id } = await params;
   const requestId = getAuditRequestId(req);
-  const body = await req.json().catch(() => ({}));
-  const confirmPendingPayment = Boolean(body?.confirmPendingPayment);
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -32,14 +30,14 @@ export async function POST(
       });
 
       if (!order) return null;
-
-      if (order.paymentStatus === "pending" && !confirmPendingPayment) {
-        throw new Error("PAYMENT_PENDING_CONFIRMATION_REQUIRED");
+      if (order.paymentStatus !== "paid") {
+        throw new Error("ORDER_PAYMENT_NOT_PAID");
       }
 
       // Inventory is always reserved against the immutable quantities recorded
       // on the commercial order. The API intentionally does not accept an
-      // arbitrary quantity that could diverge from the customer order.
+      // arbitrary quantity or a payment override that could diverge from the
+      // checkout/payment source of truth.
       const reservation = await reserveCommercialOrderStock(tx, {
         orderId: id,
         allowPartial: true,
@@ -61,7 +59,6 @@ export async function POST(
           fulfillmentStatus: order.fulfillmentStatus,
         },
         after: {
-          confirmPendingPayment,
           reservation: reservation.summary,
         },
       });
@@ -83,9 +80,22 @@ export async function POST(
 
     return NextResponse.json(result);
   } catch (error) {
-    if (error instanceof Error && error.message === "PAYMENT_PENDING_CONFIRMATION_REQUIRED") {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "ORDER_PAYMENT_NOT_PAID" || message === "ORDER_NOT_READY_FOR_RESERVATION") {
       return NextResponse.json(
-        { error: "El pedido tiene pago pendiente. Confirma la acción para reservar stock." },
+        { error: "El pedido debe estar pagado y en un estado reservable antes de tomar inventario." },
+        { status: 409 }
+      );
+    }
+    if (message === "SOURCE_ORDER_CANCELLED") {
+      return NextResponse.json(
+        { error: "El pedido origen fue cancelado y ya no puede reservar inventario." },
+        { status: 409 }
+      );
+    }
+    if (message === "INTERNAL_ORDER_NO_RESERVATION") {
+      return NextResponse.json(
+        { error: "Los pedidos internos no reservan inventario de cliente." },
         { status: 409 }
       );
     }
