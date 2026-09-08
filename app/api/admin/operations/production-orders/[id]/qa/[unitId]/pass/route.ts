@@ -92,6 +92,15 @@ export async function POST(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // Serialize every QA decision for the same production order. Without this
+      // row lock, two different units can pass QC concurrently, each count only
+      // its own uncommitted unit, and leave producedQuantity/status stale.
+      const productionOrderLock = await tx.operationProductionOrder.updateMany({
+        where: { id: productionOrderId },
+        data: { updatedAt: new Date() },
+      });
+      if (productionOrderLock.count !== 1) return null;
+
       const productionOrder = await tx.operationProductionOrder.findUnique({
         where: { id: productionOrderId },
         select: {
