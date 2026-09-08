@@ -98,10 +98,11 @@ export async function POST(
           qaStatus: true,
           activationStatus: true,
           activatedAt: true,
+          dispatchedAt: true,
+          deliveredAt: true,
           reservedOrderId: true,
           dispatchItems: {
-            where: { dispatchId: id },
-            select: { id: true },
+            select: { id: true, dispatchId: true },
           },
         },
       });
@@ -114,7 +115,10 @@ export async function POST(
           unit.qaStatus !== "passed" ||
           unit.activationStatus !== "not_activated" ||
           unit.activatedAt ||
+          !unit.dispatchedAt ||
+          unit.deliveredAt ||
           unit.dispatchItems.length !== 1 ||
+          unit.dispatchItems[0]?.dispatchId !== id ||
           !unit.reservedOrderId
         ) {
           throw new Error("UNIT_STATE_MISMATCH");
@@ -125,6 +129,29 @@ export async function POST(
         ) {
           throw new Error("UNIT_STATE_MISMATCH");
         }
+      }
+
+      const updatedUnits = await tx.operationFinishedGoodUnit.updateMany({
+        where: {
+          id: { in: unitIds },
+          status: "dispatched",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: expectedReservationOrderId
+            ? expectedReservationOrderId
+            : { not: null },
+          dispatchedAt: { not: null },
+          deliveredAt: null,
+          activatedAt: null,
+          dispatchItems: {
+            some: { dispatchId: id },
+            every: { dispatchId: id },
+          },
+        },
+        data: { status: "delivered", deliveredAt },
+      });
+      if (updatedUnits.count !== unitIds.length) {
+        throw new Error("UNIT_STATE_MISMATCH");
       }
 
       await tx.operationDispatch.update({
@@ -166,20 +193,6 @@ export async function POST(
           createdById: auth.session.user.id || null,
         },
       });
-
-      const updatedUnits = await tx.operationFinishedGoodUnit.updateMany({
-        where: {
-          id: { in: unitIds },
-          status: "dispatched",
-          qaStatus: "passed",
-          activationStatus: "not_activated",
-          activatedAt: null,
-        },
-        data: { status: "delivered", deliveredAt },
-      });
-      if (updatedUnits.count !== unitIds.length) {
-        throw new Error("UNIT_STATE_MISMATCH");
-      }
 
       if (orderId) {
         await tx.order.update({
