@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSequentialCode } from "@/lib/operations/order-code";
+import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-reservation";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
@@ -55,6 +56,15 @@ export async function POST(
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Serialize manual production decisions for the same commercial order.
+      // This prevents two admin requests from deriving production from different
+      // reservation snapshots and creating overlapping work orders.
+      const orderLock = await tx.operationCommercialOrder.updateMany({
+        where: { id: commercialOrderId },
+        data: { updatedAt: new Date() },
+      });
+      if (orderLock.count !== 1) return null;
+
       const commercialOrder = await tx.operationCommercialOrder.findUnique({
         where: { id: commercialOrderId },
         include: {
@@ -96,7 +106,10 @@ export async function POST(
 
       const products = Array.from(groupedProducts.values());
       if (products.length === 0) throw new Error("COMMERCIAL_ORDER_ITEMS_REQUIRED");
-      if (products.length > 1 && explicitPlannedQuantity) {
+      if (mode === "backorder" && explicitPlannedQuantity) {
+        throw new Error("BACKORDER_EXPLICIT_QTY_NOT_ALLOWED");
+      }
+      if (mode === "full" && products.length > 1 && explicitPlannedQuantity) {
         throw new Error("MULTI_PRODUCT_EXPLICIT_QTY_NOT_SUPPORTED");
       }
 
@@ -104,8 +117,88 @@ export async function POST(
       if (isInternal && mode === "backorder") {
         throw new Error("INTERNAL_BACKORDER_NOT_ALLOWED");
       }
+      if (!isInternal && mode === "backorder" && commercialOrder.paymentStatus !== "paid") {
+        throw new Error("BACKORDER_REQUIRES_PAID_ORDER");
+      }
 
       const legacyMarker = `[commercialOrderId:${commercialOrder.id}]`;
+      const existingProductionByCode = new Map<
+        string,
+        { id: string; code: string; plannedQuantity: number; status: string }
+      >();
+
+      for (const product of products) {
+        const productionMarker = `${BACKORDER_MARKER_PREFIX}:${commercialOrder.id}:${product.productCode}`;
+        const existingProductionOrder = await tx.operationProductionOrder.findFirst({
+          where: {
+            OR: [
+              { notes: { contains: productionMarker } },
+              ...(products.length === 1 ? [{ notes: { contains: legacyMarker } }] : []),
+            ],
+          },
+          select: { id: true, code: true, plannedQuantity: true, status: true },
+        });
+        if (existingProductionOrder) {
+          existingProductionByCode.set(product.productCode, existingProductionOrder);
+        }
+      }
+
+      const reservationOrderId = commercialOrder.sourceId || commercialOrder.id;
+      let backorderByProductCode: Map<string, number> | null = null;
+
+      if (!isInternal && mode === "backorder") {
+        backorderByProductCode = new Map<string, number>();
+
+        if (existingProductionByCode.size === 0) {
+          // Backorder demand must be derived from the same reservation engine used
+          // by checkout fulfillment. The engine first claims every currently
+          // eligible physical unit for this order and then returns the exact
+          // remaining shortage per canonical SKU. This prevents already-reserved
+          // units from being manufactured a second time.
+          const reservation = await reserveCommercialOrderStock(tx, {
+            orderId: commercialOrder.id,
+            allowPartial: true,
+          });
+          if (!reservation) throw new Error("COMMERCIAL_ORDER_ITEMS_REQUIRED");
+          for (const missing of reservation.missingItems) {
+            backorderByProductCode.set(missing.productCode, missing.missingQty);
+          }
+        } else {
+          // Once production exists, do not silently claim newly-arrived inventory
+          // on a retry; doing so can over-cover the order because the production
+          // quantity was already committed. Only prove that each current shortage
+          // is covered by an existing production order. Anything else requires a
+          // deliberate reconciliation rather than an automatic second work order.
+          const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
+            where: {
+              reservedOrderId: reservationOrderId,
+              status: "reserved",
+              qaStatus: "passed",
+              activationStatus: "not_activated",
+              dispatchItems: { none: {} },
+            },
+            select: { productCode: true },
+          });
+          const reservedByCode = new Map<string, number>();
+          for (const unit of reservedUnits) {
+            reservedByCode.set(unit.productCode, (reservedByCode.get(unit.productCode) || 0) + 1);
+          }
+
+          for (const product of products) {
+            const missingQty = Math.max(
+              0,
+              product.requestedQty - (reservedByCode.get(product.productCode) || 0)
+            );
+            if (missingQty <= 0) continue;
+            const existingProduction = existingProductionByCode.get(product.productCode);
+            if (!existingProduction || existingProduction.plannedQuantity < missingQty) {
+              throw new Error("BACKORDER_RECONCILIATION_REQUIRED");
+            }
+            backorderByProductCode.set(product.productCode, missingQty);
+          }
+        }
+      }
+
       const productionResults: Array<{
         productionOrder: { id: string; code: string; plannedQuantity: number; status: string };
         created: boolean;
@@ -119,34 +212,14 @@ export async function POST(
         let plannedQuantity = product.requestedQty;
 
         if (!isInternal && mode === "backorder") {
-          const availableStock = await tx.operationFinishedGoodUnit.count({
-            where: {
-              productCode: product.productCode,
-              status: "available",
-              qaStatus: "passed",
-              activationStatus: "not_activated",
-              reservedOrderId: null,
-              dispatchItems: { none: {} },
-            },
-          });
-          backorderQty = Math.max(product.requestedQty - availableStock, 0);
-          plannedQuantity = explicitPlannedQuantity ?? backorderQty;
-          if (plannedQuantity <= 0) continue;
+          backorderQty = backorderByProductCode?.get(product.productCode) || 0;
+          if (backorderQty <= 0) continue;
+          plannedQuantity = backorderQty;
         } else if (explicitPlannedQuantity) {
           plannedQuantity = explicitPlannedQuantity;
         }
 
-        const productionMarker = `${BACKORDER_MARKER_PREFIX}:${commercialOrder.id}:${product.productCode}`;
-        const existingProductionOrder = await tx.operationProductionOrder.findFirst({
-          where: {
-            OR: [
-              { notes: { contains: productionMarker } },
-              ...(products.length === 1 ? [{ notes: { contains: legacyMarker } }] : []),
-            ],
-          },
-          select: { id: true, code: true, plannedQuantity: true, status: true },
-        });
-
+        const existingProductionOrder = existingProductionByCode.get(product.productCode);
         if (existingProductionOrder) {
           productionResults.push({
             productionOrder: existingProductionOrder,
@@ -158,6 +231,7 @@ export async function POST(
           continue;
         }
 
+        const productionMarker = `${BACKORDER_MARKER_PREFIX}:${commercialOrder.id}:${product.productCode}`;
         const productionCode = await generateSequentialCode({
           tx,
           model: "productionOrder",
@@ -297,8 +371,20 @@ export async function POST(
     if (message === "PENDING_PAYMENT_CONFIRMATION_REQUIRED") {
       return NextResponse.json({ error: "Confirma explícitamente que deseas enviar un pedido con pago pendiente a producción" }, { status: 400 });
     }
+    if (message === "BACKORDER_REQUIRES_PAID_ORDER") {
+      return NextResponse.json({ error: "El modo backorder requiere un pedido pagado para reservar inventario antes de producir" }, { status: 409 });
+    }
+    if (message === "BACKORDER_EXPLICIT_QTY_NOT_ALLOWED") {
+      return NextResponse.json({ error: "El modo backorder calcula el faltante automáticamente; usa mode=full para una cantidad manual" }, { status: 400 });
+    }
+    if (message === "BACKORDER_RECONCILIATION_REQUIRED") {
+      return NextResponse.json({ error: "La reserva actual ya no coincide con la producción existente; revisa el pedido antes de crear otra orden" }, { status: 409 });
+    }
     if (message === "BACKORDER_QTY_REQUIRED") {
       return NextResponse.json({ error: "No existe faltante físico que requiera producción" }, { status: 409 });
+    }
+    if (message === "ORDER_NOT_READY_FOR_RESERVATION" || message === "SOURCE_ORDER_CANCELLED") {
+      return NextResponse.json({ error: "El pedido ya no es elegible para reservar inventario y generar backorder" }, { status: 409 });
     }
     if (message === "COMMERCIAL_ORDER_ITEMS_REQUIRED") {
       return NextResponse.json({ error: "El pedido no tiene items válidos para producir" }, { status: 400 });
