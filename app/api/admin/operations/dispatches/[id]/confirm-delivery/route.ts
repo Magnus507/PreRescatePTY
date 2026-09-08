@@ -31,6 +31,19 @@ export async function POST(
       });
 
       if (!dispatch) throw new Error("NOT_FOUND");
+      const orderId = getDispatchCustomerOrderId(dispatch.events);
+
+      // Safe retry: once delivery committed, a repeated request must not create
+      // another event or mutate timestamps.
+      if (dispatch.status === "delivered") {
+        return {
+          status: "delivered" as const,
+          orderStatus: orderId ? ("completed" as const) : null,
+          deliveredAt: dispatch.deliveredAt?.toISOString() || null,
+          idempotent: true,
+        };
+      }
+
       if (!["dispatched", "sent", "shipped"].includes(dispatch.status)) {
         throw new Error("NOT_SENT");
       }
@@ -38,7 +51,22 @@ export async function POST(
       const deliveredAt = body.deliveredAt ? new Date(body.deliveredAt) : new Date();
       if (Number.isNaN(deliveredAt.getTime())) throw new Error("INVALID_DELIVERY_DATE");
       const notes = typeof body.notes === "string" ? body.notes.trim() || null : dispatch.notes;
-      const orderId = getDispatchCustomerOrderId(dispatch.events);
+
+      const unitIds = dispatch.items
+        .map((item) => item.unitId)
+        .filter((unitId): unitId is string => Boolean(unitId));
+      if (unitIds.length > 0) {
+        const dispatchedUnits = await tx.operationFinishedGoodUnit.count({
+          where: {
+            id: { in: unitIds },
+            status: "dispatched",
+            dispatchItems: { some: { dispatchId: id } },
+          },
+        });
+        if (dispatchedUnits !== unitIds.length) {
+          throw new Error("UNIT_STATE_MISMATCH");
+        }
+      }
 
       await tx.operationDispatch.update({
         where: { id },
@@ -80,12 +108,12 @@ export async function POST(
         },
       });
 
-      const unitIds = dispatch.items
-        .map((item) => item.unitId)
-        .filter((unitId): unitId is string => Boolean(unitId));
       if (unitIds.length > 0) {
         await tx.operationFinishedGoodUnit.updateMany({
-          where: { id: { in: unitIds } },
+          where: {
+            id: { in: unitIds },
+            status: "dispatched",
+          },
           data: { status: "delivered", deliveredAt },
         });
       }
@@ -117,6 +145,7 @@ export async function POST(
         status: "delivered" as const,
         orderStatus: orderId ? ("completed" as const) : null,
         deliveredAt: deliveredAt.toISOString(),
+        idempotent: false,
       };
     });
 
@@ -127,8 +156,9 @@ export async function POST(
       NOT_FOUND: "Despacho no encontrado",
       NOT_SENT: "El despacho debe estar enviado primero",
       INVALID_DELIVERY_DATE: "La fecha de entrega no es válida",
+      UNIT_STATE_MISMATCH: "Las unidades físicas no están todas en estado enviado; revisa el despacho antes de entregar",
     };
-    if (map[message]) return NextResponse.json({ error: map[message] }, { status: 400 });
+    if (map[message]) return NextResponse.json({ error: map[message] }, { status: 409 });
     console.error("[operations/dispatches/:id/confirm-delivery] POST error:", error);
     return NextResponse.json({ error: "No se pudo confirmar la entrega" }, { status: 500 });
   }
