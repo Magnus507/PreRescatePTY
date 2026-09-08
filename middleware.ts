@@ -6,7 +6,9 @@ import {
 } from "next/server";
 import {
   buildContentSecurityPolicy,
+  buildStaticPublicContentSecurityPolicy,
   isProtectedAppRoute,
+  requiresNonceCsp,
 } from "@/lib/security/csp";
 
 const ADMIN_ROLES = ["admin", "superadmin", "imprenta"];
@@ -29,12 +31,21 @@ function createCspContext(req: NextRequest) {
   return { csp, requestHeaders };
 }
 
-function continueWithCsp(req: NextRequest) {
+function continueWithNonceCsp(req: NextRequest) {
   const { csp, requestHeaders } = createCspContext(req);
 
   return applyCsp(
     NextResponse.next({ request: { headers: requestHeaders } }),
     csp,
+  );
+}
+
+function continueWithStaticPublicCsp() {
+  return applyCsp(
+    NextResponse.next(),
+    buildStaticPublicContentSecurityPolicy(
+      process.env.NODE_ENV === "development",
+    ),
   );
 }
 
@@ -75,11 +86,17 @@ const protectedMiddleware = withAuth(
 );
 
 export default function middleware(req: NextRequest, event: NextFetchEvent) {
-  if (!isProtectedAppRoute(req.nextUrl.pathname)) {
-    return continueWithCsp(req);
+  const pathname = req.nextUrl.pathname;
+
+  if (isProtectedAppRoute(pathname)) {
+    return protectedMiddleware(req as NextRequestWithAuth, event);
   }
 
-  return protectedMiddleware(req as NextRequestWithAuth, event);
+  if (requiresNonceCsp(pathname)) {
+    return continueWithNonceCsp(req);
+  }
+
+  return continueWithStaticPublicCsp();
 }
 
 export const config = {
