@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { releaseEligibleOrderReservations } from "@/lib/operations/release-order-reservations";
 import {
   CreateCommercialOrderEventSchema,
   getFirstValidationMessage,
@@ -42,14 +42,6 @@ const commercialOrderInclude = {
   },
 } as const;
 
-function getDispatchDestinationType(customerType: string) {
-  if (customerType === "enterprise") return "enterprise";
-  if (customerType === "internal") return "internal";
-  if (customerType === "point_of_sale") return "point_of_sale";
-  if (customerType === "other") return "other";
-  return "customer";
-}
-
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -76,34 +68,56 @@ export async function POST(
         where: { id },
         include: {
           items: true,
+          dispatch: {
+            select: { id: true, status: true },
+          },
         },
       });
 
-      if (!commercialOrder) {
-        return null;
-      }
+      if (!commercialOrder) return null;
 
       if (commercialOrder.status === "cancelled" && data.eventType !== "REFUNDED") {
         throw new Error("CANCELLED_COMMERCIAL_ORDER");
       }
 
-      if (commercialOrder.status === "rejected" && !["REFUNDED", "CANCELLED"].includes(data.eventType)) {
+      if (
+        commercialOrder.status === "rejected" &&
+        !["REFUNDED", "CANCELLED"].includes(data.eventType)
+      ) {
         throw new Error("REJECTED_COMMERCIAL_ORDER");
       }
 
-      if (["CANCELLED", "REJECTED"].includes(data.eventType) && commercialOrder.dispatchId) {
+      const hasLiveDispatch = Boolean(
+        commercialOrder.dispatch && commercialOrder.dispatch.status !== "cancelled"
+      );
+
+      if (["CANCELLED", "REJECTED"].includes(data.eventType) && hasLiveDispatch) {
         throw new Error("COMMERCIAL_ORDER_HAS_DISPATCH");
       }
 
+      if (
+        data.eventType === "REFUNDED" &&
+        commercialOrder.dispatch &&
+        !["cancelled", "dispatched", "sent", "shipped", "delivered"].includes(
+          commercialOrder.dispatch.status
+        )
+      ) {
+        throw new Error("ACTIVE_DISPATCH_MUST_BE_CANCELLED_FIRST");
+      }
+
       if (data.eventType === "FULFILLMENT_REQUESTED") {
-        if (!["accepted", "confirmed"].includes(commercialOrder.status) && commercialOrder.paymentStatus !== "paid") {
+        if (commercialOrder.customerType === "internal") {
+          throw new Error("INTERNAL_ORDER_NO_DISPATCH");
+        }
+        if (
+          !["accepted", "confirmed"].includes(commercialOrder.status) &&
+          commercialOrder.paymentStatus !== "paid"
+        ) {
           throw new Error("COMMERCIAL_ORDER_NOT_READY_FOR_FULFILLMENT");
         }
-
-        if (commercialOrder.dispatchId) {
+        if (hasLiveDispatch) {
           throw new Error("COMMERCIAL_ORDER_HAS_DISPATCH");
         }
-
         if (commercialOrder.items.length === 0) {
           throw new Error("COMMERCIAL_ORDER_HAS_NO_ITEMS");
         }
@@ -126,59 +140,27 @@ export async function POST(
           where: { id: { in: finishedGoodIds } },
           select: { id: true },
         });
-
         if (finishedGoods.length !== finishedGoodIds.length) {
           throw new Error("INVALID_FINISHED_GOOD");
         }
       }
 
-      let dispatchId = commercialOrder.dispatchId;
-      const reservedUnits = ["CANCELLED", "REJECTED"].includes(data.eventType)
-        ? await tx.operationFinishedGoodUnit.findMany({
-            where: { reservedOrderId: commercialOrder.id, status: "reserved" },
-            select: { id: true, internalLabel: true },
-          })
-        : [];
+      const reservationOrderId = commercialOrder.sourceId || commercialOrder.id;
+      const shouldReleaseReservations =
+        ["CANCELLED", "REJECTED"].includes(data.eventType) ||
+        (data.eventType === "REFUNDED" &&
+          (!commercialOrder.dispatch || commercialOrder.dispatch.status === "cancelled"));
 
-      if (data.eventType === "FULFILLMENT_REQUESTED") {
-        const dispatch = await tx.operationDispatch.create({
-          data: {
-            code: `DSP-${commercialOrder.code}`,
-            status: "draft",
-            destinationType: getDispatchDestinationType(commercialOrder.customerType),
-            destinationName: commercialOrder.customerName || null,
-            destinationReference: commercialOrder.code,
-            notes: `Creado desde pedido comercial ${commercialOrder.code}`,
-            items: {
-              create: commercialOrder.items.map((item) => ({
-                finishedGoodId: item.finishedGoodId as string,
-                quantity: item.quantity,
-                unit: item.unit,
-                notes: item.notes || `Item comercial ${item.productName}`,
-              })),
-            },
-            events: {
-              create: {
-                eventType: "CREATED",
-                quantity: commercialOrder.items.reduce((sum, item) => sum + item.quantity, 0),
-                reason: `Despacho creado desde pedido comercial ${commercialOrder.code}`,
-                referenceType: "commercial_order",
-                referenceId: commercialOrder.id,
-                metadataJson: JSON.stringify({
-                  commercialOrderCode: commercialOrder.code,
-                  commercialOrderId: commercialOrder.id,
-                  itemCount: commercialOrder.items.length,
-                }),
-                createdById,
-              },
-            },
-          },
-          select: {
-            id: true,
-          },
+      let releaseResult = null;
+      if (shouldReleaseReservations) {
+        releaseResult = await releaseEligibleOrderReservations(tx, {
+          orderId: reservationOrderId,
+          actorId: createdById,
+          reason: `${data.eventType} del pedido comercial ${commercialOrder.code}`,
         });
-
-        dispatchId = dispatch.id;
+        if (releaseResult.blockedCount > 0) {
+          throw new Error("RESERVATION_RELEASE_BLOCKED");
+        }
       }
 
       const event = await tx.operationCommercialOrderEvent.create({
@@ -188,11 +170,14 @@ export async function POST(
           amount: data.amount ?? null,
           reason: data.reason || null,
           referenceType: data.referenceType || null,
-          referenceId: data.referenceId || dispatchId || null,
+          referenceId: data.referenceId || null,
           metadataJson:
             data.metadataJson ||
-            (data.eventType === "FULFILLMENT_REQUESTED" && dispatchId
-              ? JSON.stringify({ dispatchId })
+            (releaseResult
+              ? JSON.stringify({
+                  reservationOrderId,
+                  releasedUnitCount: releaseResult.releasedCount,
+                })
               : null),
           createdById,
         },
@@ -202,13 +187,13 @@ export async function POST(
         status?: string;
         paymentStatus?: string;
         fulfillmentStatus?: string;
-        dispatchId?: string;
       } = {};
 
       if (data.eventType === "ACCEPTED" || data.eventType === "CONFIRMED") {
         updateData.status = "accepted";
       } else if (data.eventType === "REJECTED") {
         updateData.status = "rejected";
+        updateData.fulfillmentStatus = "pending";
       } else if (data.eventType === "PAID") {
         updateData.paymentStatus = "paid";
       } else if (data.eventType === "PAYMENT_PENDING") {
@@ -216,38 +201,16 @@ export async function POST(
       } else if (data.eventType === "RESERVED") {
         updateData.fulfillmentStatus = "reserved";
       } else if (data.eventType === "FULFILLMENT_REQUESTED") {
+        // Requesting fulfillment no longer creates a dispatch. Physical customer
+        // dispatches are created only after exact stock reservation by the
+        // create-dispatch endpoint, otherwise they become unitless/stuck.
         updateData.fulfillmentStatus = "requested";
-        updateData.dispatchId = dispatchId || undefined;
       } else if (data.eventType === "CANCELLED") {
         updateData.status = "cancelled";
+        updateData.fulfillmentStatus = "pending";
       } else if (data.eventType === "REFUNDED") {
         updateData.paymentStatus = "refunded";
-      }
-
-      if (["CANCELLED", "REJECTED"].includes(data.eventType) && reservedUnits.length > 0) {
-        await tx.operationFinishedGoodUnit.updateMany({
-          where: { id: { in: reservedUnits.map((unit) => unit.id) } },
-          data: {
-            status: "available",
-            reservedOrderId: null,
-            reservedAt: null,
-          },
-        });
-
-        await tx.operationFinishedGoodUnitEvent.createMany({
-          data: reservedUnits.map((unit) => ({
-            unitId: unit.id,
-            eventType: "RELEASED",
-            reason: `Liberada por ${data.eventType === "REJECTED" ? "rechazo" : "cancelación"} del pedido ${commercialOrder.code}`,
-            referenceType: "commercial_order",
-            referenceId: commercialOrder.id,
-            metadataJson: JSON.stringify({
-              commercialOrderId: commercialOrder.id,
-              commercialOrderCode: commercialOrder.code,
-              status: data.eventType.toLowerCase(),
-            }),
-          })),
-        });
+        if (releaseResult) updateData.fulfillmentStatus = "pending";
       }
 
       const updatedCommercialOrder =
@@ -265,6 +228,7 @@ export async function POST(
       return {
         event,
         commercialOrder: updatedCommercialOrder,
+        releasedUnitCount: releaseResult?.releasedCount || 0,
       };
     });
 
@@ -277,62 +241,66 @@ export async function POST(
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "CANCELLED_COMMERCIAL_ORDER") {
+    const message = error instanceof Error ? error.message : "";
+
+    if (message === "CANCELLED_COMMERCIAL_ORDER") {
       return NextResponse.json(
         { error: "No se pueden registrar eventos sobre pedidos comerciales cancelados salvo REFUNDED" },
         { status: 400 }
       );
     }
-
-    if (error instanceof Error && error.message === "REJECTED_COMMERCIAL_ORDER") {
+    if (message === "REJECTED_COMMERCIAL_ORDER") {
       return NextResponse.json(
         { error: "No se pueden registrar eventos sobre pedidos comerciales rechazados salvo CANCELLED o REFUNDED" },
         { status: 400 }
       );
     }
-
-    if (error instanceof Error && error.message === "COMMERCIAL_ORDER_HAS_DISPATCH") {
+    if (message === "COMMERCIAL_ORDER_HAS_DISPATCH") {
       return NextResponse.json(
-        { error: "El pedido comercial ya tiene un despacho vinculado" },
+        { error: "Cancela primero el despacho vinculado al pedido comercial" },
         { status: 409 }
       );
     }
-
-    if (error instanceof Error && error.message === "COMMERCIAL_ORDER_NOT_READY_FOR_FULFILLMENT") {
+    if (message === "ACTIVE_DISPATCH_MUST_BE_CANCELLED_FIRST") {
       return NextResponse.json(
-        { error: "El pedido comercial debe estar confirmado o pagado para solicitar despacho" },
-        { status: 400 }
-      );
-    }
-
-    if (error instanceof Error && error.message === "COMMERCIAL_ORDER_HAS_NO_ITEMS") {
-      return NextResponse.json(
-        { error: "El pedido comercial no tiene items para despachar" },
-        { status: 400 }
-      );
-    }
-
-    if (error instanceof Error && error.message === "COMMERCIAL_ORDER_ITEMS_REQUIRE_FINISHED_GOOD") {
-      return NextResponse.json(
-        { error: "Todos los items requieren finishedGoodId para solicitar despacho" },
-        { status: 400 }
-      );
-    }
-
-    if (error instanceof Error && error.message === "INVALID_FINISHED_GOOD") {
-      return NextResponse.json(
-        { error: "Uno o mas finishedGoodId no existen" },
-        { status: 400 }
-      );
-    }
-
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      return NextResponse.json(
-        { error: "Ya existe un despacho con el code generado para este pedido comercial" },
+        { error: "Cancela primero el despacho no enviado antes de registrar el reembolso" },
         { status: 409 }
+      );
+    }
+    if (message === "RESERVATION_RELEASE_BLOCKED") {
+      return NextResponse.json(
+        { error: "Hay unidades ya comprometidas o vinculadas a despacho; no se puede liberar la reserva" },
+        { status: 409 }
+      );
+    }
+    if (message === "INTERNAL_ORDER_NO_DISPATCH") {
+      return NextResponse.json(
+        { error: "Los pedidos internos terminan en inventario después de QA y no generan despacho de cliente" },
+        { status: 400 }
+      );
+    }
+    if (message === "COMMERCIAL_ORDER_NOT_READY_FOR_FULFILLMENT") {
+      return NextResponse.json(
+        { error: "El pedido comercial debe estar confirmado o pagado para solicitar fulfillment" },
+        { status: 400 }
+      );
+    }
+    if (message === "COMMERCIAL_ORDER_HAS_NO_ITEMS") {
+      return NextResponse.json(
+        { error: "El pedido comercial no tiene items para fulfillment" },
+        { status: 400 }
+      );
+    }
+    if (message === "COMMERCIAL_ORDER_ITEMS_REQUIRE_FINISHED_GOOD") {
+      return NextResponse.json(
+        { error: "Todos los items requieren finishedGoodId para solicitar fulfillment" },
+        { status: 400 }
+      );
+    }
+    if (message === "INVALID_FINISHED_GOOD") {
+      return NextResponse.json(
+        { error: "Uno o más finishedGoodId no existen" },
+        { status: 400 }
       );
     }
 
