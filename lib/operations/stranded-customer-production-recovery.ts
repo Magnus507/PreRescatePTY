@@ -9,7 +9,7 @@ type ProductionSource = {
 
 type RecoveryOutcome =
   | { kind: "reserved"; identityReconciled: boolean }
-  | { kind: "skipped"; reason: string };
+  | { kind: "skipped"; reason: string; identityReconciled?: boolean };
 
 function parseMetadata(value: string | null | undefined): Record<string, unknown> | null {
   if (!value) return null;
@@ -60,6 +60,13 @@ function resolveProductionSource(input: {
       input.code.startsWith("PROD-INT-") ||
       Boolean(input.notes?.includes("Pedido interno para fabricar inventario")),
   };
+}
+
+function isTerminalCommercialOrder(order: { status: string; paymentStatus: string }) {
+  return (
+    order.status === "cancelled" ||
+    ["cancelled", "rejected", "refunded"].includes(order.paymentStatus)
+  );
 }
 
 function safeErrorCode(error: unknown) {
@@ -148,7 +155,13 @@ export async function recoverStrandedCustomerProducedUnits(
         let commercialOrder = source.commercialOrderId
           ? await tx.operationCommercialOrder.findUnique({
               where: { id: source.commercialOrderId },
-              select: { id: true, sourceId: true, customerType: true },
+              select: {
+                id: true,
+                sourceId: true,
+                customerType: true,
+                status: true,
+                paymentStatus: true,
+              },
             })
           : null;
 
@@ -156,7 +169,13 @@ export async function recoverStrandedCustomerProducedUnits(
           commercialOrder = await tx.operationCommercialOrder.findFirst({
             where: { sourceId: source.customerOrderId },
             orderBy: { createdAt: "desc" },
-            select: { id: true, sourceId: true, customerType: true },
+            select: {
+              id: true,
+              sourceId: true,
+              customerType: true,
+              status: true,
+              paymentStatus: true,
+            },
           });
         }
 
@@ -243,11 +262,52 @@ export async function recoverStrandedCustomerProducedUnits(
           unitId: unit.id,
         });
 
-        const refreshed = await tx.operationFinishedGoodUnit.findUnique({
-          where: { id: unit.id },
-          select: { status: true, reservedOrderId: true },
-        });
-        if (!refreshed || refreshed.status !== "reserved" || refreshed.reservedOrderId !== reservationOrderId) {
+        // The reconciler serializes on the commercial order. Re-read both rows
+        // while that lock is still held so a concurrent cancellation is a valid
+        // terminal outcome rather than a false recovery failure.
+        const [refreshedOrder, refreshedUnit] = await Promise.all([
+          tx.operationCommercialOrder.findUnique({
+            where: { id: commercialOrder.id },
+            select: { status: true, paymentStatus: true },
+          }),
+          tx.operationFinishedGoodUnit.findUnique({
+            where: { id: unit.id },
+            select: {
+              status: true,
+              reservedOrderId: true,
+              qaStatus: true,
+              activationStatus: true,
+              dispatchItems: { select: { id: true }, take: 1 },
+            },
+          }),
+        ]);
+
+        if (!refreshedOrder || !refreshedUnit) {
+          throw new Error("HISTORICAL_RECOVERY_STATE_NOT_FOUND");
+        }
+
+        if (isTerminalCommercialOrder(refreshedOrder)) {
+          if (
+            refreshedUnit.status !== "available" ||
+            refreshedUnit.reservedOrderId !== null ||
+            refreshedUnit.qaStatus !== "passed" ||
+            refreshedUnit.activationStatus !== "not_activated" ||
+            refreshedUnit.dispatchItems.length > 0
+          ) {
+            throw new Error("HISTORICAL_TERMINAL_ORDER_UNIT_STATE_INVALID");
+          }
+
+          return {
+            kind: "skipped",
+            reason: "SOURCE_ORDER_TERMINAL",
+            identityReconciled: repairedIdentity,
+          };
+        }
+
+        if (
+          refreshedUnit.status !== "reserved" ||
+          refreshedUnit.reservedOrderId !== reservationOrderId
+        ) {
           throw new Error("HISTORICAL_CUSTOMER_UNIT_NOT_RESERVED");
         }
 
@@ -269,9 +329,9 @@ export async function recoverStrandedCustomerProducedUnits(
         return { kind: "reserved", identityReconciled: repairedIdentity };
       });
 
+      if (outcome.identityReconciled) identityReconciled += 1;
       if (outcome.kind === "reserved") {
         reserved += 1;
-        if (outcome.identityReconciled) identityReconciled += 1;
       } else {
         skipped += 1;
       }
