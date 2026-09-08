@@ -53,30 +53,19 @@ export function isCommercialOrderEligibleForReservation(order: {
   );
 }
 
-async function reserveUnitsForOrderItem(
+async function reserveUnitsForProduct(
   tx: Prisma.TransactionClient,
   reservationOrderId: string,
   commercialOrderId: string,
-  item: {
-    id: string;
-    quantity: number;
-    productCode: string | null;
-    finishedGoodId: string | null;
-    finishedGood: { code: string; productType: string } | null;
-  }
+  productCode: string,
+  requestedQty: number
 ) {
-  // productCode is the canonical SKU that identifies the sellable finished good.
-  // productType is descriptive metadata and has changed over time (legacy rows may
-  // contain the SKU while current rows contain a slug), so it must never become a
-  // second stock key that can make physically correct inventory invisible.
-  const productCode = resolveCommercialOrderItemKey(item);
-
   if (!productCode) {
     return {
       productCode: "",
-      requestedQty: item.quantity,
+      requestedQty,
       reservedQty: 0,
-      missingQty: item.quantity,
+      missingQty: requestedQty,
       units: [] as Array<{
         id: string;
         internalLabel: string;
@@ -103,12 +92,12 @@ async function reserveUnitsForOrderItem(
   });
 
   const alreadyReservedQty = existingReservedUnits.length;
-  const requiredQty = Math.max(0, item.quantity - alreadyReservedQty);
+  const requiredQty = Math.max(0, requestedQty - alreadyReservedQty);
 
   if (requiredQty === 0) {
     return {
       productCode,
-      requestedQty: item.quantity,
+      requestedQty,
       reservedQty: alreadyReservedQty,
       missingQty: 0,
       units: existingReservedUnits,
@@ -210,9 +199,9 @@ async function reserveUnitsForOrderItem(
 
   return {
     productCode,
-    requestedQty: item.quantity,
+    requestedQty,
     reservedQty: reservedUnits.length,
-    missingQty: Math.max(0, item.quantity - reservedUnits.length),
+    missingQty: Math.max(0, requestedQty - reservedUnits.length),
     units: reservedUnits,
   };
 }
@@ -250,23 +239,49 @@ export async function reserveCommercialOrderStock(
   // in the audit event as the reference, but must not become a second order id
   // for physical inventory.
   const reservationOrderId = order.sourceId || order.id;
+
+  // Consolidate all order lines by canonical finished-good code before touching
+  // physical stock. Counting reservations per line lets the same physical unit
+  // satisfy multiple lines of the same SKU and can falsely mark the order as
+  // fully reserved.
+  const requirements = new Map<
+    string,
+    { itemId: string; productCode: string; requestedQty: number }
+  >();
+  for (const item of order.items) {
+    const productCode = resolveCommercialOrderItemKey(item);
+    // Keep unmapped rows separate so one invalid line cannot hide another.
+    const requirementKey = productCode || `__unmapped:${item.id}`;
+    const existing = requirements.get(requirementKey);
+    if (existing) {
+      existing.requestedQty += item.quantity;
+    } else {
+      requirements.set(requirementKey, {
+        itemId: item.id,
+        productCode,
+        requestedQty: item.quantity,
+      });
+    }
+  }
+
   const reservationResults = [];
   const missingItems = [];
 
-  for (const item of order.items) {
-    const reservation = await reserveUnitsForOrderItem(
+  for (const requirement of requirements.values()) {
+    const reservation = await reserveUnitsForProduct(
       tx,
       reservationOrderId,
       order.id,
-      item
+      requirement.productCode,
+      requirement.requestedQty
     );
     reservationResults.push({
-      itemId: item.id,
+      itemId: requirement.itemId,
       ...reservation,
     });
     if (reservation.missingQty > 0) {
       missingItems.push({
-        itemId: item.id,
+        itemId: requirement.itemId,
         productCode: reservation.productCode,
         requestedQty: reservation.requestedQty,
         reservedQty: reservation.reservedQty,
