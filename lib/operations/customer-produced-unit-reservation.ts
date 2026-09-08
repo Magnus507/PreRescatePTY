@@ -5,10 +5,25 @@ import {
   reserveCommercialOrderStock,
 } from "@/lib/operations/commercial-order-reservation";
 
+function isTerminalCustomerOrder(order: { status: string; paymentStatus: string }) {
+  return (
+    order.status === "cancelled" ||
+    ["cancelled", "rejected", "refunded"].includes(order.paymentStatus)
+  );
+}
+
 export async function reconcileCustomerProducedUnitReservation(
   tx: Prisma.TransactionClient,
   input: { commercialOrderId: string; unitId: string }
 ) {
+  // Share the same row lock used by cancellation and stock reservation. This
+  // makes "QC vs cancel" deterministic: QC either reserves first and cancellation
+  // releases it, or cancellation wins and QC leaves the good unit in inventory.
+  await tx.operationCommercialOrder.updateMany({
+    where: { id: input.commercialOrderId },
+    data: { updatedAt: new Date() },
+  });
+
   const order = await tx.operationCommercialOrder.findUnique({
     where: { id: input.commercialOrderId },
     include: {
@@ -41,6 +56,51 @@ export async function reconcileCustomerProducedUnitReservation(
     throw new Error("PRODUCED_UNIT_RESERVED_TO_OTHER_ORDER");
   }
 
+  // Cancellation/refund does not make a physically good unit fail QA. Once the
+  // source order is terminal, an untouched passed unit becomes normal available
+  // inventory and must never be reserved or dispatched for the cancelled order.
+  if (isTerminalCustomerOrder(order)) {
+    if (
+      unit.dispatchItems.length === 0 &&
+      unit.status === "available" &&
+      unit.qaStatus === "passed" &&
+      unit.activationStatus === "not_activated" &&
+      unit.reservedOrderId === null
+    ) {
+      const existingEvent = await tx.operationFinishedGoodUnitEvent.findFirst({
+        where: {
+          unitId: unit.id,
+          eventType: "SOURCE_ORDER_TERMINAL_INVENTORY",
+          referenceId: order.id,
+        },
+        select: { id: true },
+      });
+      if (!existingEvent) {
+        await tx.operationFinishedGoodUnitEvent.create({
+          data: {
+            unitId: unit.id,
+            eventType: "SOURCE_ORDER_TERMINAL_INVENTORY",
+            reason: "Pedido origen cancelado/finalizado; unidad QA aprobada queda disponible en inventario",
+            referenceType: "commercial_order",
+            referenceId: order.id,
+            metadataJson: {
+              commercialOrderId: order.id,
+              customerOrderId: reservationOrderId,
+              orderStatus: order.status,
+              paymentStatus: order.paymentStatus,
+              productCode: unit.productCode,
+            },
+          },
+        });
+      }
+      return null;
+    }
+
+    // A terminal order must never gain a new allocation. Already committed units
+    // are left for the cancellation/returns workflow rather than rewritten here.
+    return null;
+  }
+
   const requiredByCode = new Map<string, number>();
   for (const item of order.items) {
     const code = resolveCommercialOrderItemKey(item);
@@ -49,11 +109,8 @@ export async function reconcileCustomerProducedUnitReservation(
   }
 
   const requiredQty = requiredByCode.get(unit.productCode) || 0;
-  if (requiredQty <= 0) {
-    throw new Error("PRODUCED_UNIT_PRODUCT_MISMATCH");
-  }
+  if (requiredQty <= 0) throw new Error("PRODUCED_UNIT_PRODUCT_MISMATCH");
 
-  // Once fulfilment has already advanced, QC retry is deliberately a no-op.
   if (
     unit.dispatchItems.length > 0 ||
     ["dispatched", "delivered", "activated"].includes(unit.status) ||
