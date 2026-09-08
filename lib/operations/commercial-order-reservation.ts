@@ -35,7 +35,13 @@ export type CommercialOrderReservationResult = {
   };
 };
 
-const RESERVATION_ELIGIBLE_ORDER_STATUSES = new Set(["accepted", "confirmed", "draft"]);
+const RESERVATION_ELIGIBLE_ORDER_STATUSES = new Set([
+  "accepted",
+  "confirmed",
+  "draft",
+  "needs_production",
+  "pending_stock",
+]);
 
 export function isCommercialOrderEligibleForReservation(order: {
   status: string;
