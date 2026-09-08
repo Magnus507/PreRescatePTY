@@ -20,9 +20,6 @@ export const GENERAL_ADMIN_ROLES = ["admin", "superadmin"];
  */
 export const SUPERADMIN_ROLES = ["superadmin"];
 
-/**
- * Verifica si el rol de sesión está incluido en la lista de roles permitidos.
- */
 export function hasRole(
   role: string | undefined | null,
   allowedRoles: string[]
@@ -44,6 +41,8 @@ type CurrentAuthState = {
   accountId: string | null;
   sessionVersion: number;
   deletedAt: Date | null;
+  mfaEnabled: boolean;
+  mfaSecret: string | null;
 };
 
 async function loadCurrentAuthState(userId: string): Promise<CurrentAuthState | null> {
@@ -58,6 +57,8 @@ async function loadCurrentAuthState(userId: string): Promise<CurrentAuthState | 
       accountId: true,
       sessionVersion: true,
       deletedAt: true,
+      mfaEnabled: true,
+      mfaSecret: true,
     },
   });
 }
@@ -93,10 +94,6 @@ async function assertFreshSession(session: Session) {
   };
 }
 
-/**
- * Obtiene la sesión y valida que el usuario tenga uno de los roles permitidos.
- * Retorna la sesión si es válida, o una Response de error si no.
- */
 export async function requireRole(
   allowedRoles: string[]
 ): Promise<AuthResult> {
@@ -117,6 +114,24 @@ export async function requireRole(
       authorized: false,
       response: NextResponse.json(
         { error: "Acceso denegado: solo personal autorizado" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  // Privileged personnel must enroll a working second factor before any admin
+  // API is usable. MFA setup/enable endpoints intentionally use
+  // requireFreshSession(), so an existing administrator can enroll without a
+  // database intervention and is not permanently locked out.
+  if (fresh.current.isAdmin && (!fresh.current.mfaEnabled || !fresh.current.mfaSecret)) {
+    return {
+      authorized: false,
+      response: NextResponse.json(
+        {
+          error: "MFA obligatorio para acceso administrativo",
+          code: "MFA_ENROLLMENT_REQUIRED",
+          setupUrl: "/admin/security/mfa",
+        },
         { status: 403 }
       ),
     };
