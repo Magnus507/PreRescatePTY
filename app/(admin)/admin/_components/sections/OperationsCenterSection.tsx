@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Boxes, Factory, History, RefreshCw, RotateCcw, ShoppingCart, Truck } from "lucide-react";
+import { ArrowLeft, Boxes, Factory, History, RefreshCw, RotateCcw, ShoppingCart, Truck } from "lucide-react";
 import { buildAdminOperationsUrl, parseOperationsTab, type OperationsTab } from "@/lib/admin/operations-routing";
 import DirectProductionSection from "./DirectProductionSection";
 import DirectInventorySection from "./DirectInventorySection";
@@ -48,6 +48,7 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
   const [dashboard, setDashboard] = useState<OperationsDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [historyResetKey, setHistoryResetKey] = useState(0);
   const shouldRender = adminTab === "inventory" || adminTab === "pedidos" || adminTab === "tienda";
 
   const loadDashboard = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -96,7 +97,18 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
     if (activeTab === "inventory") return <DirectInventorySection />;
     if (activeTab === "dispatch") return <DirectDispatchSection />;
     if (activeTab === "postsales") return <DirectPostSaleSection />;
-    return <HistorySection />;
+    return (
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => setHistoryResetKey((current) => current + 1)}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 transition hover:border-primary/30 hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" /> Volver al historial
+        </button>
+        <HistorySection key={historyResetKey} />
+      </div>
+    );
   };
 
   return (
