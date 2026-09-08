@@ -6,6 +6,8 @@ import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
+const SENT_STATUSES = ["dispatched", "sent", "shipped"] as const;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,6 +21,36 @@ export async function POST(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // Serialize delivery retries. A concurrent delivery that loses this lock
+      // sees the committed delivered status and becomes an idempotent no-op.
+      const lock = await tx.operationDispatch.updateMany({
+        where: { id, status: { in: [...SENT_STATUSES] } },
+        data: { updatedAt: new Date() },
+      });
+
+      if (lock.count !== 1) {
+        const current = await tx.operationDispatch.findUnique({
+          where: { id },
+          include: {
+            events: {
+              orderBy: { createdAt: "desc" },
+              select: { metadataJson: true, referenceType: true, referenceId: true },
+            },
+          },
+        });
+        if (!current) throw new Error("NOT_FOUND");
+        const orderId = getDispatchCustomerOrderId(current.events);
+        if (current.status === "delivered") {
+          return {
+            status: "delivered" as const,
+            orderStatus: orderId ? ("completed" as const) : null,
+            deliveredAt: current.deliveredAt?.toISOString() || null,
+            idempotent: true,
+          };
+        }
+        throw new Error("NOT_SENT");
+      }
+
       const dispatch = await tx.operationDispatch.findUnique({
         where: { id },
         include: {
@@ -29,41 +61,68 @@ export async function POST(
           },
         },
       });
-
       if (!dispatch) throw new Error("NOT_FOUND");
+
       const orderId = getDispatchCustomerOrderId(dispatch.events);
-
-      // Safe retry: once delivery committed, a repeated request must not create
-      // another event or mutate timestamps.
-      if (dispatch.status === "delivered") {
-        return {
-          status: "delivered" as const,
-          orderStatus: orderId ? ("completed" as const) : null,
-          deliveredAt: dispatch.deliveredAt?.toISOString() || null,
-          idempotent: true,
-        };
-      }
-
-      if (!["dispatched", "sent", "shipped"].includes(dispatch.status)) {
-        throw new Error("NOT_SENT");
-      }
-
       const deliveredAt = body.deliveredAt ? new Date(body.deliveredAt) : new Date();
       if (Number.isNaN(deliveredAt.getTime())) throw new Error("INVALID_DELIVERY_DATE");
       const notes = typeof body.notes === "string" ? body.notes.trim() || null : dispatch.notes;
 
+      if (dispatch.items.length === 0) throw new Error("NO_ITEMS");
       const unitIds = dispatch.items
         .map((item) => item.unitId)
         .filter((unitId): unitId is string => Boolean(unitId));
-      if (unitIds.length > 0) {
-        const dispatchedUnits = await tx.operationFinishedGoodUnit.count({
-          where: {
-            id: { in: unitIds },
-            status: "dispatched",
-            dispatchItems: { some: { dispatchId: id } },
+      if (unitIds.length !== dispatch.items.length) {
+        throw new Error("UNTRACEABLE_ITEMS");
+      }
+      if (new Set(unitIds).size !== unitIds.length) {
+        throw new Error("DUPLICATE_UNIT_IN_DISPATCH");
+      }
+
+      const commercialOrder = await tx.operationCommercialOrder.findFirst({
+        where: { dispatchId: id },
+        select: { id: true, sourceId: true },
+      });
+      if (dispatch.destinationType === "customer" && !commercialOrder) {
+        throw new Error("CUSTOMER_ORDER_NOT_FOUND");
+      }
+      const expectedReservationOrderId = commercialOrder
+        ? commercialOrder.sourceId || commercialOrder.id
+        : null;
+
+      const physicalUnits = await tx.operationFinishedGoodUnit.findMany({
+        where: { id: { in: unitIds } },
+        select: {
+          id: true,
+          status: true,
+          qaStatus: true,
+          activationStatus: true,
+          activatedAt: true,
+          reservedOrderId: true,
+          dispatchItems: {
+            where: { dispatchId: id },
+            select: { id: true },
           },
-        });
-        if (dispatchedUnits !== unitIds.length) {
+        },
+      });
+      if (physicalUnits.length !== unitIds.length) {
+        throw new Error("UNIT_STATE_MISMATCH");
+      }
+      for (const unit of physicalUnits) {
+        if (
+          unit.status !== "dispatched" ||
+          unit.qaStatus !== "passed" ||
+          unit.activationStatus !== "not_activated" ||
+          unit.activatedAt ||
+          unit.dispatchItems.length !== 1 ||
+          !unit.reservedOrderId
+        ) {
+          throw new Error("UNIT_STATE_MISMATCH");
+        }
+        if (
+          expectedReservationOrderId &&
+          unit.reservedOrderId !== expectedReservationOrderId
+        ) {
           throw new Error("UNIT_STATE_MISMATCH");
         }
       }
@@ -108,14 +167,18 @@ export async function POST(
         },
       });
 
-      if (unitIds.length > 0) {
-        await tx.operationFinishedGoodUnit.updateMany({
-          where: {
-            id: { in: unitIds },
-            status: "dispatched",
-          },
-          data: { status: "delivered", deliveredAt },
-        });
+      const updatedUnits = await tx.operationFinishedGoodUnit.updateMany({
+        where: {
+          id: { in: unitIds },
+          status: "dispatched",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          activatedAt: null,
+        },
+        data: { status: "delivered", deliveredAt },
+      });
+      if (updatedUnits.count !== unitIds.length) {
+        throw new Error("UNIT_STATE_MISMATCH");
       }
 
       if (orderId) {
@@ -132,7 +195,11 @@ export async function POST(
         entityId: dispatch.id,
         action: "dispatch.delivered",
         requestId,
-        before: { status: dispatch.status, orderId, deliveredAt: dispatch.deliveredAt?.toISOString() || null },
+        before: {
+          status: dispatch.status,
+          orderId,
+          deliveredAt: dispatch.deliveredAt?.toISOString() || null,
+        },
         after: {
           status: "delivered",
           orderId,
@@ -156,7 +223,11 @@ export async function POST(
       NOT_FOUND: "Despacho no encontrado",
       NOT_SENT: "El despacho debe estar enviado primero",
       INVALID_DELIVERY_DATE: "La fecha de entrega no es válida",
-      UNIT_STATE_MISMATCH: "Las unidades físicas no están todas en estado enviado; revisa el despacho antes de entregar",
+      NO_ITEMS: "El despacho no contiene artículos",
+      UNTRACEABLE_ITEMS: "Todos los artículos deben tener una unidad física trazable antes de entregar",
+      DUPLICATE_UNIT_IN_DISPATCH: "Una misma unidad física aparece más de una vez en el despacho",
+      CUSTOMER_ORDER_NOT_FOUND: "El despacho de cliente no tiene un pedido comercial propietario",
+      UNIT_STATE_MISMATCH: "Las unidades físicas no están todas en un estado entregable consistente",
     };
     if (map[message]) return NextResponse.json({ error: map[message] }, { status: 409 });
     console.error("[operations/dispatches/:id/confirm-delivery] POST error:", error);
