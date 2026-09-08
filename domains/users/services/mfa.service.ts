@@ -6,6 +6,8 @@ export const MFA_RECOVERY_CODE_COUNT = 8;
 const TOTP_PATTERN = /^\d{6}$/;
 const RECOVERY_PATTERN = /^[A-F0-9]{20}$/;
 const RECOVERY_KEY_PREFIX = "security:mfa:recovery:";
+const TOTP_REPLAY_KEY_PREFIX = "security:mfa:totp:";
+const TOTP_REPLAY_TTL_MS = 90_000;
 
 type MfaDb = Pick<Prisma.TransactionClient, "systemConfig">;
 
@@ -14,8 +16,18 @@ type StoredRecoveryCodes = {
   codes: Array<{ hash: string; usedAt: string | null }>;
 };
 
+type StoredTotpReplayState = {
+  version: 1;
+  lastTokenHash: string;
+  acceptedAt: string;
+};
+
 function recoveryKey(userId: string): string {
   return `${RECOVERY_KEY_PREFIX}${userId}`;
+}
+
+function totpReplayKey(userId: string): string {
+  return `${TOTP_REPLAY_KEY_PREFIX}${userId}`;
 }
 
 function parseStoredRecoveryCodes(value: string): StoredRecoveryCodes | null {
@@ -23,6 +35,23 @@ function parseStoredRecoveryCodes(value: string): StoredRecoveryCodes | null {
     const parsed = JSON.parse(value) as StoredRecoveryCodes;
     if (parsed?.version !== 1 || !Array.isArray(parsed.codes)) return null;
     if (!parsed.codes.every((entry) => typeof entry?.hash === "string" && (entry.usedAt === null || typeof entry.usedAt === "string"))) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function parseTotpReplayState(value: string): StoredTotpReplayState | null {
+  try {
+    const parsed = JSON.parse(value) as StoredTotpReplayState;
+    if (
+      parsed?.version !== 1 ||
+      typeof parsed.lastTokenHash !== "string" ||
+      typeof parsed.acceptedAt !== "string" ||
+      Number.isNaN(new Date(parsed.acceptedAt).getTime())
+    ) {
       return null;
     }
     return parsed;
@@ -78,6 +107,67 @@ export function hashMfaRecoveryCode(code: string): string {
   return createHash("sha256").update(normalized, "utf8").digest("hex");
 }
 
+function hashMfaTotpToken(token: string): string {
+  return createHash("sha256").update(normalizeTotpToken(token), "utf8").digest("hex");
+}
+
+/**
+ * Atomically records an already-verified TOTP token and rejects replay within
+ * the validity horizon. Call this inside a database transaction after
+ * cryptographic TOTP verification. The SystemConfig row is deliberately used
+ * as the per-user serialization point so simultaneous logins cannot both
+ * consume the same six-digit token.
+ */
+export async function consumeVerifiedMfaTotp(
+  tx: MfaDb,
+  userId: string,
+  token: string,
+  acceptedAt = new Date()
+): Promise<boolean> {
+  const normalized = normalizeTotpToken(token);
+  if (!TOTP_PATTERN.test(normalized)) return false;
+
+  const key = totpReplayKey(userId);
+  const emptyState: StoredTotpReplayState = {
+    version: 1,
+    lastTokenHash: "",
+    acceptedAt: new Date(0).toISOString(),
+  };
+
+  // PostgreSQL serializes concurrent UPSERTs for the same unique key. The
+  // losing transaction waits, then re-reads the committed token state below.
+  await tx.systemConfig.upsert({
+    where: { key },
+    create: { key, value: JSON.stringify(emptyState) },
+    update: { updatedAt: acceptedAt },
+  });
+
+  const row = await tx.systemConfig.findUnique({ where: { key } });
+  if (!row) return false;
+  const stored = parseTotpReplayState(row.value);
+  if (!stored) return false;
+
+  const tokenHash = hashMfaTotpToken(normalized);
+  const previousAcceptedAt = new Date(stored.acceptedAt).getTime();
+  if (
+    stored.lastTokenHash === tokenHash &&
+    acceptedAt.getTime() - previousAcceptedAt <= TOTP_REPLAY_TTL_MS
+  ) {
+    return false;
+  }
+
+  const next: StoredTotpReplayState = {
+    version: 1,
+    lastTokenHash: tokenHash,
+    acceptedAt: acceptedAt.toISOString(),
+  };
+  await tx.systemConfig.update({
+    where: { key },
+    data: { value: JSON.stringify(next) },
+  });
+  return true;
+}
+
 export async function replaceMfaRecoveryCodes(
   tx: MfaDb,
   userId: string,
@@ -130,6 +220,18 @@ export async function consumeMfaRecoveryCode(
 
 export async function deleteMfaRecoveryCodes(tx: MfaDb, userId: string): Promise<void> {
   await tx.systemConfig.deleteMany({ where: { key: recoveryKey(userId) } });
+}
+
+export async function deleteMfaTotpReplayState(tx: MfaDb, userId: string): Promise<void> {
+  await tx.systemConfig.deleteMany({ where: { key: totpReplayKey(userId) } });
+}
+
+export async function deleteMfaSecurityArtifacts(tx: MfaDb, userId: string): Promise<void> {
+  await tx.systemConfig.deleteMany({
+    where: {
+      key: { in: [recoveryKey(userId), totpReplayKey(userId)] },
+    },
+  });
 }
 
 export async function countRemainingMfaRecoveryCodes(tx: MfaDb, userId: string): Promise<number> {
