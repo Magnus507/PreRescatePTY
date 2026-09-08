@@ -53,39 +53,20 @@ export function isCommercialOrderEligibleForReservation(order: {
   );
 }
 
-async function reserveUnitsForOrderItem(
+type ReservableUnit = {
+  id: string;
+  internalLabel: string;
+  productCode: string;
+  productType: string;
+};
+
+async function reserveUnitsForProduct(
   tx: Prisma.TransactionClient,
   reservationOrderId: string,
   commercialOrderId: string,
-  item: {
-    id: string;
-    quantity: number;
-    productCode: string | null;
-    finishedGoodId: string | null;
-    finishedGood: { code: string; productType: string } | null;
-  }
+  productCode: string,
+  requestedQty: number
 ) {
-  // productCode is the canonical SKU that identifies the sellable finished good.
-  // productType is descriptive metadata and has changed over time (legacy rows may
-  // contain the SKU while current rows contain a slug), so it must never become a
-  // second stock key that can make physically correct inventory invisible.
-  const productCode = resolveCommercialOrderItemKey(item);
-
-  if (!productCode) {
-    return {
-      productCode: "",
-      requestedQty: item.quantity,
-      reservedQty: 0,
-      missingQty: item.quantity,
-      units: [] as Array<{
-        id: string;
-        internalLabel: string;
-        productCode: string;
-        productType: string;
-      }>,
-    };
-  }
-
   const existingReservedUnits = await tx.operationFinishedGoodUnit.findMany({
     where: {
       reservedOrderId: reservationOrderId,
@@ -102,44 +83,11 @@ async function reserveUnitsForOrderItem(
     },
   });
 
-  const alreadyReservedQty = existingReservedUnits.length;
-  const requiredQty = Math.max(0, item.quantity - alreadyReservedQty);
+  const requiredQty = Math.max(0, requestedQty - existingReservedUnits.length);
 
-  if (requiredQty === 0) {
-    return {
-      productCode,
-      requestedQty: item.quantity,
-      reservedQty: alreadyReservedQty,
-      missingQty: 0,
-      units: existingReservedUnits,
-    };
-  }
-
-  const units = await tx.operationFinishedGoodUnit.findMany({
-    where: {
-      productCode,
-      status: "available",
-      qaStatus: "passed",
-      activationStatus: "not_activated",
-      reservedOrderId: null,
-      dispatchItems: { none: {} },
-    },
-    orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
-    take: requiredQty,
-    select: {
-      id: true,
-      internalLabel: true,
-      productCode: true,
-      productType: true,
-    },
-  });
-
-  const candidateIds = units.map((unit) => unit.id);
-
-  if (candidateIds.length > 0) {
-    await tx.operationFinishedGoodUnit.updateMany({
+  if (requiredQty > 0) {
+    const candidates = await tx.operationFinishedGoodUnit.findMany({
       where: {
-        id: { in: candidateIds },
         productCode,
         status: "available",
         qaStatus: "passed",
@@ -147,24 +95,8 @@ async function reserveUnitsForOrderItem(
         reservedOrderId: null,
         dispatchItems: { none: {} },
       },
-      data: {
-        status: "reserved",
-        reservedOrderId: reservationOrderId,
-        reservedAt: new Date(),
-      },
-    });
-
-    // Re-read after the conditional claim. If another order won a concurrent
-    // race, only rows actually reserved by this order are returned and audited.
-    const claimedUnits = await tx.operationFinishedGoodUnit.findMany({
-      where: {
-        id: { in: candidateIds },
-        reservedOrderId: reservationOrderId,
-        status: "reserved",
-        productCode,
-        dispatchItems: { none: {} },
-      },
       orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
+      take: requiredQty,
       select: {
         id: true,
         internalLabel: true,
@@ -173,22 +105,59 @@ async function reserveUnitsForOrderItem(
       },
     });
 
-    if (claimedUnits.length > 0) {
-      await tx.operationFinishedGoodUnitEvent.createMany({
-        data: claimedUnits.map((unit) => ({
-          unitId: unit.id,
-          eventType: "RESERVED",
-          reason: `Reservado para pedido cliente ${reservationOrderId}`,
-          referenceType: "commercial_order",
-          referenceId: commercialOrderId,
-          metadataJson: {
-            commercialOrderId,
-            customerOrderId: reservationOrderId,
-            productCode,
-            productType: unit.productType,
-          },
-        })),
+    const candidateIds = candidates.map((unit) => unit.id);
+    if (candidateIds.length > 0) {
+      await tx.operationFinishedGoodUnit.updateMany({
+        where: {
+          id: { in: candidateIds },
+          productCode,
+          status: "available",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: null,
+          dispatchItems: { none: {} },
+        },
+        data: {
+          status: "reserved",
+          reservedOrderId: reservationOrderId,
+          reservedAt: new Date(),
+        },
       });
+
+      const claimedUnits = await tx.operationFinishedGoodUnit.findMany({
+        where: {
+          id: { in: candidateIds },
+          reservedOrderId: reservationOrderId,
+          status: "reserved",
+          productCode,
+          dispatchItems: { none: {} },
+        },
+        orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
+        select: {
+          id: true,
+          internalLabel: true,
+          productCode: true,
+          productType: true,
+        },
+      });
+
+      if (claimedUnits.length > 0) {
+        await tx.operationFinishedGoodUnitEvent.createMany({
+          data: claimedUnits.map((unit) => ({
+            unitId: unit.id,
+            eventType: "RESERVED",
+            reason: `Reservado para pedido cliente ${reservationOrderId}`,
+            referenceType: "commercial_order",
+            referenceId: commercialOrderId,
+            metadataJson: {
+              commercialOrderId,
+              customerOrderId: reservationOrderId,
+              productCode,
+              productType: unit.productType,
+            },
+          })),
+        });
+      }
     }
   }
 
@@ -210,10 +179,10 @@ async function reserveUnitsForOrderItem(
 
   return {
     productCode,
-    requestedQty: item.quantity,
-    reservedQty: reservedUnits.length,
-    missingQty: Math.max(0, item.quantity - reservedUnits.length),
-    units: reservedUnits,
+    requestedQty,
+    reservedQty: Math.min(requestedQty, reservedUnits.length),
+    missingQty: Math.max(0, requestedQty - reservedUnits.length),
+    units: reservedUnits.slice(0, requestedQty) as ReservableUnit[],
   };
 }
 
@@ -221,7 +190,13 @@ export async function reserveCommercialOrderStock(
   tx: Prisma.TransactionClient,
   input: CommercialOrderReservationInput
 ): Promise<CommercialOrderReservationResult | null> {
-  await tx.operationCommercialOrder.updateMany({ where: { id: input.orderId }, data: { updatedAt: new Date() } });
+  // Row-touch first: concurrent reservation attempts for the same commercial
+  // order are serialized before stock is inspected.
+  await tx.operationCommercialOrder.updateMany({
+    where: { id: input.orderId },
+    data: { updatedAt: new Date() },
+  });
+
   const order = await tx.operationCommercialOrder.findUnique({
     where: { id: input.orderId },
     include: {
@@ -236,44 +211,78 @@ export async function reserveCommercialOrderStock(
   });
 
   if (!order) return null;
-
-  if (order.customerType === "internal") {
-    throw new Error("INTERNAL_ORDER_NO_RESERVATION");
-  }
-
+  if (order.customerType === "internal") throw new Error("INTERNAL_ORDER_NO_RESERVATION");
   if (!isCommercialOrderEligibleForReservation(order)) {
     throw new Error("ORDER_NOT_READY_FOR_RESERVATION");
   }
 
-  // Physical units belong to the real customer Order throughout picking and
-  // dispatch. OperationCommercialOrder is the operational projection and stays
-  // in the audit event as the reference, but must not become a second order id
-  // for physical inventory.
   const reservationOrderId = order.sourceId || order.id;
-  const reservationResults = [];
-  const missingItems = [];
+
+  // One physical requirement per canonical product. Processing raw order lines
+  // independently lets line B count the unit already reserved for line A when
+  // both lines share a SKU. Aggregate before touching inventory so one physical
+  // unit can satisfy exactly one requested unit.
+  const requirements = new Map<string, { itemId: string; requestedQty: number }>();
+  let unmappedRequestedQty = 0;
+  let firstUnmappedItemId = "";
 
   for (const item of order.items) {
-    const reservation = await reserveUnitsForOrderItem(
+    const productCode = resolveCommercialOrderItemKey(item);
+    const quantity = Math.max(0, Math.floor(Number(item.quantity) || 0));
+    if (!productCode) {
+      unmappedRequestedQty += quantity;
+      if (!firstUnmappedItemId) firstUnmappedItemId = item.id;
+      continue;
+    }
+
+    const current = requirements.get(productCode);
+    if (current) {
+      current.requestedQty += quantity;
+    } else {
+      requirements.set(productCode, { itemId: item.id, requestedQty: quantity });
+    }
+  }
+
+  const reservationResults: Array<{
+    itemId: string;
+    productCode: string;
+    requestedQty: number;
+    reservedQty: number;
+    missingQty: number;
+    units: ReservableUnit[];
+  }> = [];
+
+  for (const [productCode, requirement] of requirements) {
+    const reservation = await reserveUnitsForProduct(
       tx,
       reservationOrderId,
       order.id,
-      item
+      productCode,
+      requirement.requestedQty
     );
-    reservationResults.push({
-      itemId: item.id,
-      ...reservation,
-    });
-    if (reservation.missingQty > 0) {
-      missingItems.push({
-        itemId: item.id,
-        productCode: reservation.productCode,
-        requestedQty: reservation.requestedQty,
-        reservedQty: reservation.reservedQty,
-        missingQty: reservation.missingQty,
-      });
-    }
+    reservationResults.push({ itemId: requirement.itemId, ...reservation });
   }
+
+  if (unmappedRequestedQty > 0) {
+    reservationResults.push({
+      itemId: firstUnmappedItemId,
+      productCode: "",
+      requestedQty: unmappedRequestedQty,
+      reservedQty: 0,
+      missingQty: unmappedRequestedQty,
+      units: [],
+    });
+  }
+
+  const missingItems = reservationResults
+    .filter((result) => result.missingQty > 0)
+    .map((result) => ({
+      itemId: result.itemId,
+      productCode: result.productCode,
+      requestedQty: result.requestedQty,
+      reservedQty: result.reservedQty,
+      missingQty: result.missingQty,
+    }));
 
   const totalRequested = reservationResults.reduce((sum, result) => sum + result.requestedQty, 0);
   const totalReserved = reservationResults.reduce((sum, result) => sum + result.reservedQty, 0);
@@ -284,20 +293,24 @@ export async function reserveCommercialOrderStock(
     throw new Error("INSUFFICIENT_UNIT_STOCK");
   }
 
+  const status = fullStockReserved
+    ? "stock_reserved"
+    : totalReserved > 0
+      ? "pending_stock"
+      : "needs_production";
+  const fulfillmentStatus = totalReserved > 0 ? "reserved" : "pending";
+
   await tx.operationCommercialOrder.update({
     where: { id: order.id },
-    data: {
-      status: fullStockReserved ? "stock_reserved" : totalReserved > 0 ? "pending_stock" : "needs_production",
-      fulfillmentStatus: totalReserved > 0 ? "reserved" : "pending",
-    },
+    data: { status, fulfillmentStatus },
   });
 
   return {
     order: {
       id: order.id,
-      status: fullStockReserved ? "stock_reserved" : totalReserved > 0 ? "pending_stock" : "needs_production",
+      status,
       paymentStatus: order.paymentStatus,
-      fulfillmentStatus: totalReserved > 0 ? "reserved" : "pending",
+      fulfillmentStatus,
     },
     reservedUnits: reservationResults.flatMap((result) => result.units),
     missingItems,
@@ -305,7 +318,7 @@ export async function reserveCommercialOrderStock(
       requestedQty: totalRequested,
       reservedQty: totalReserved,
       missingQty: totalMissing,
-      status: fullStockReserved ? "stock_reserved" : totalReserved > 0 ? "pending_stock" : "needs_production",
+      status,
     },
   };
 }
