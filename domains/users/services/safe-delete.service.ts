@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { parseStorageObjectRef } from "@/lib/storage-deletion";
 import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
+import { deleteMfaSecurityArtifacts } from "@/domains/users/services/mfa.service";
 import { randomBytes } from "node:crypto";
 
 export class SafeDeleteService {
@@ -68,7 +69,7 @@ export class SafeDeleteService {
         });
         await tx.appNotification.deleteMany({ where: { userId } });
         await tx.passwordResetToken.deleteMany({ where: { email: user.email } });
-        await tx.systemConfig.deleteMany({ where: { key: `security:mfa:recovery:${userId}` } });
+        await deleteMfaSecurityArtifacts(tx, userId);
 
         if (profileIds.length || chipIds.length > 0) {
           await tx.scanEvent.deleteMany({
