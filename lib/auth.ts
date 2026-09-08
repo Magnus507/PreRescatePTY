@@ -56,6 +56,7 @@ export async function authorizeCredentials(
 
     const {
       consumeMfaRecoveryCode,
+      consumeVerifiedMfaTotp,
       isRecoveryCode,
       verifyMfaToken,
     } = await import("@/domains/users/services/mfa.service");
@@ -75,10 +76,24 @@ export async function authorizeCredentials(
       if (!user.mfaSecret) {
         throw new Error("MFA_CONFIGURATION_ERROR");
       }
+      let decryptedSecret: string;
       try {
-        secondFactorValid = verifyMfaToken(
-          credentials.mfaCode,
-          decrypt(user.mfaSecret)
+        decryptedSecret = decrypt(user.mfaSecret);
+      } catch {
+        throw new Error("MFA_CONFIGURATION_ERROR");
+      }
+
+      if (!verifyMfaToken(credentials.mfaCode, decryptedSecret)) {
+        throw new Error("Código MFA inválido");
+      }
+
+      try {
+        // Cryptographic verification and replay consumption are separate on
+        // purpose: the database transaction is the serialization point. Two
+        // concurrent requests may both verify the same 30s TOTP, but only one
+        // can commit it to the per-user replay ledger.
+        secondFactorValid = await prisma.$transaction((tx) =>
+          consumeVerifiedMfaTotp(tx, user.id, credentials.mfaCode || "")
         );
       } catch {
         throw new Error("MFA_CONFIGURATION_ERROR");
@@ -86,7 +101,7 @@ export async function authorizeCredentials(
     }
 
     if (!secondFactorValid) {
-      throw new Error("Código MFA inválido");
+      throw new Error("Código MFA inválido o ya utilizado");
     }
   }
 
