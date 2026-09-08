@@ -10,6 +10,15 @@ import {
 export const dynamic = "force-dynamic";
 
 const terminalStatuses = new Set(["delivered", "cancelled"]);
+const guardedLifecycleEvents = new Set([
+  "PICKED",
+  "PACKED",
+  "RESERVED",
+  "RELEASED",
+  "DISPATCHED",
+  "DELIVERED",
+  "CANCELLED",
+]);
 
 const finishedGoodSelect = {
   id: true,
@@ -41,10 +50,6 @@ function getRequiredQuantities(
     acc.set(item.finishedGoodId, (acc.get(item.finishedGoodId) || 0) + item.quantity);
     return acc;
   }, new Map<string, number>());
-}
-
-function hasUnitItems(items: Array<{ unitId: string | null }>) {
-  return items.some((item) => Boolean(item.unitId));
 }
 
 export async function POST(
@@ -82,57 +87,58 @@ export async function POST(
         },
       });
 
-      if (!dispatch) {
-        return null;
-      }
-
+      if (!dispatch) return null;
       if (terminalStatuses.has(dispatch.status)) {
         throw new Error("TERMINAL_DISPATCH");
       }
 
-      if (data.eventType === "RESERVED" && dispatch.status !== "draft" && dispatch.status !== "released") {
-        throw new Error("INVALID_STATUS_RESERVED");
+      const hasPhysicalUnits = dispatch.items.some((item) => Boolean(item.unitId));
+      if (guardedLifecycleEvents.has(data.eventType) && hasPhysicalUnits) {
+        throw new Error("UNIT_DISPATCH_REQUIRES_DEDICATED_FLOW");
       }
-
-      if (data.eventType === "RELEASED" && dispatch.status !== "reserved") {
-        throw new Error("INVALID_STATUS_RELEASED");
-      }
-
-      if (data.eventType === "PICKED" && !["pending_pick", "draft", "reserved"].includes(dispatch.status)) {
-        throw new Error("INVALID_STATUS_PICKED");
+      if (
+        guardedLifecycleEvents.has(data.eventType) &&
+        dispatch.destinationType === "customer"
+      ) {
+        // Customer fulfillment is physical-unit based. Allowing an aggregate
+        // customer dispatch through this legacy event ledger bypasses payment,
+        // cancellation and exact reservation checks in mark-sent/delivery.
+        throw new Error("CUSTOMER_DISPATCH_REQUIRES_DEDICATED_FLOW");
       }
 
       if (
+        data.eventType === "RESERVED" &&
+        dispatch.status !== "draft" &&
+        dispatch.status !== "released"
+      ) {
+        throw new Error("INVALID_STATUS_RESERVED");
+      }
+      if (data.eventType === "RELEASED" && dispatch.status !== "reserved") {
+        throw new Error("INVALID_STATUS_RELEASED");
+      }
+      if (
+        data.eventType === "PICKED" &&
+        !["pending_pick", "draft", "reserved"].includes(dispatch.status)
+      ) {
+        throw new Error("INVALID_STATUS_PICKED");
+      }
+      if (
         data.eventType === "DISPATCHED" &&
-        !["draft", "released", "reserved", "pending_pick", "picked", "packed"].includes(dispatch.status)
+        !["draft", "released", "reserved", "pending_pick", "picked", "packed"].includes(
+          dispatch.status
+        )
       ) {
         throw new Error("INVALID_STATUS_DISPATCHED");
       }
-
       if (data.eventType === "DELIVERED" && dispatch.status !== "dispatched") {
         throw new Error("INVALID_STATUS_DELIVERED");
       }
 
       const totalQuantity = dispatch.items.reduce((sum, item) => sum + item.quantity, 0);
-      const event = await tx.operationDispatchEvent.create({
-        data: {
-          dispatchId: id,
-          eventType: data.eventType,
-          quantity: data.quantity || totalQuantity || null,
-          reason: data.reason || null,
-          referenceType: data.referenceType || null,
-          referenceId: data.referenceId || null,
-          metadataJson: data.metadataJson || null,
-          createdById,
-        },
-      });
-
       const requiredQuantities = getRequiredQuantities(dispatch.items);
       const finishedGoodIds = [...requiredQuantities.keys()];
 
-      const unitMode = hasUnitItems(dispatch.items);
-
-      if (!unitMode && (data.eventType === "RESERVED" || data.eventType === "DISPATCHED")) {
+      if (data.eventType === "RESERVED" || data.eventType === "DISPATCHED") {
         const existingEvents = await tx.operationFinishedGoodEvent.findMany({
           where: { finishedGoodId: { in: finishedGoodIds } },
           select: {
@@ -151,12 +157,24 @@ export async function POST(
             data.eventType === "DISPATCHED" && dispatch.status === "reserved"
               ? balance + requiredQuantity
               : balance;
-
           if (effectiveBalance < requiredQuantity) {
             throw new Error("INSUFFICIENT_FINISHED_GOODS");
           }
         }
       }
+
+      const event = await tx.operationDispatchEvent.create({
+        data: {
+          dispatchId: id,
+          eventType: data.eventType,
+          quantity: data.quantity || totalQuantity || null,
+          reason: data.reason || null,
+          referenceType: data.referenceType || null,
+          referenceId: data.referenceId || null,
+          metadataJson: data.metadataJson || null,
+          createdById,
+        },
+      });
 
       const finishedGoodEvents: Array<{
         finishedGoodId: string;
@@ -170,7 +188,7 @@ export async function POST(
         createdById: string | null;
       }> = [];
 
-      if (!unitMode && data.eventType === "RESERVED") {
+      if (data.eventType === "RESERVED") {
         for (const item of dispatch.items) {
           if (!item.finishedGoodId) continue;
           finishedGoodEvents.push({
@@ -187,7 +205,10 @@ export async function POST(
         }
       }
 
-      if (!unitMode && (data.eventType === "RELEASED" || (data.eventType === "CANCELLED" && dispatch.status === "reserved"))) {
+      if (
+        data.eventType === "RELEASED" ||
+        (data.eventType === "CANCELLED" && dispatch.status === "reserved")
+      ) {
         for (const item of dispatch.items) {
           if (!item.finishedGoodId) continue;
           finishedGoodEvents.push({
@@ -195,7 +216,7 @@ export async function POST(
             eventType: "RELEASE",
             quantity: item.quantity,
             unit: item.unit,
-            reason: data.reason || `Liberacion por despacho ${dispatch.code}`,
+            reason: data.reason || `Liberación por despacho ${dispatch.code}`,
             referenceType: "dispatch",
             referenceId: dispatch.id,
             metadataJson: JSON.stringify({ dispatchCode: dispatch.code, dispatchEventId: event.id }),
@@ -204,7 +225,7 @@ export async function POST(
         }
       }
 
-      if (!unitMode && data.eventType === "DISPATCHED") {
+      if (data.eventType === "DISPATCHED") {
         if (dispatch.status === "reserved") {
           for (const item of dispatch.items) {
             if (!item.finishedGoodId) continue;
@@ -213,7 +234,7 @@ export async function POST(
               eventType: "RELEASE",
               quantity: item.quantity,
               unit: item.unit,
-              reason: data.reason || `Liberacion previa a salida ${dispatch.code}`,
+              reason: data.reason || `Liberación previa a salida ${dispatch.code}`,
               referenceType: "dispatch",
               referenceId: dispatch.id,
               metadataJson: JSON.stringify({ dispatchCode: dispatch.code, dispatchEventId: event.id }),
@@ -221,7 +242,6 @@ export async function POST(
             });
           }
         }
-
         for (const item of dispatch.items) {
           if (!item.finishedGoodId) continue;
           finishedGoodEvents.push({
@@ -235,73 +255,11 @@ export async function POST(
             metadataJson: JSON.stringify({ dispatchCode: dispatch.code, dispatchEventId: event.id }),
             createdById,
           });
-          }
         }
-
-      if (finishedGoodEvents.length > 0) {
-        await tx.operationFinishedGoodEvent.createMany({
-          data: finishedGoodEvents,
-        });
       }
 
-      if (unitMode) {
-        if (data.eventType === "PICKED") {
-          for (const item of dispatch.items) {
-            if (!item.unitId) continue;
-            await tx.operationFinishedGoodUnit.update({
-              where: { id: item.unitId },
-              data: {
-                status: "reserved",
-                events: {
-                  create: {
-                    eventType: "PICKED",
-                    reason: data.reason || `Unidad separada para despacho ${dispatch.code}`,
-                    referenceType: "dispatch",
-                    referenceId: dispatch.id,
-                    metadataJson: {
-                      dispatchCode: dispatch.code,
-                      dispatchEventId: event.id,
-                      internalLabel: item.internalLabel,
-                    },
-                  },
-                },
-              },
-            });
-          }
-        }
-
-        if (data.eventType === "DISPATCHED" || data.eventType === "DELIVERED") {
-          const nextStatus = data.eventType === "DISPATCHED" ? "dispatched" : "delivered";
-          for (const item of dispatch.items) {
-            if (!item.unitId) continue;
-            await tx.operationFinishedGoodUnit.update({
-              where: { id: item.unitId },
-              data: {
-                status: nextStatus,
-                dispatchedAt: data.eventType === "DISPATCHED" ? new Date() : undefined,
-                deliveredAt: data.eventType === "DELIVERED" ? new Date() : undefined,
-                events: {
-                  create: {
-                    eventType: data.eventType,
-                    reason:
-                      data.reason ||
-                      (data.eventType === "DISPATCHED"
-                        ? `Unidad despachada fisicamente por ${dispatch.code}`
-                        : `Unidad entregada por ${dispatch.code}`),
-                    referenceType: "dispatch",
-                    referenceId: dispatch.id,
-                    metadataJson: {
-                      dispatchCode: dispatch.code,
-                      dispatchEventId: event.id,
-                      internalLabel: item.internalLabel,
-                      status: nextStatus,
-                    },
-                  },
-                },
-              },
-            });
-          }
-        }
+      if (finishedGoodEvents.length > 0) {
+        await tx.operationFinishedGoodEvent.createMany({ data: finishedGoodEvents });
       }
 
       const updateData: {
@@ -350,29 +308,36 @@ export async function POST(
     });
 
     if (!result) {
-      return NextResponse.json(
-        { error: "Despacho no encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Despacho no encontrado" }, { status: 404 });
     }
-
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "TERMINAL_DISPATCH") {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "TERMINAL_DISPATCH") {
       return NextResponse.json(
         { error: "No se pueden registrar eventos sobre despachos delivered o cancelled" },
         { status: 400 }
       );
     }
-
-    if (error instanceof Error && error.message === "INSUFFICIENT_FINISHED_GOODS") {
+    if (message === "UNIT_DISPATCH_REQUIRES_DEDICATED_FLOW") {
+      return NextResponse.json(
+        { error: "Los despachos con unidades físicas deben usar picking/preparación/envío/entrega dedicados" },
+        { status: 409 }
+      );
+    }
+    if (message === "CUSTOMER_DISPATCH_REQUIRES_DEDICATED_FLOW") {
+      return NextResponse.json(
+        { error: "Los despachos de cliente requieren unidades físicas reservadas y el flujo dedicado" },
+        { status: 409 }
+      );
+    }
+    if (message === "INSUFFICIENT_FINISHED_GOODS") {
       return NextResponse.json(
         { error: "Inventario PT insuficiente para reservar o despachar" },
         { status: 400 }
       );
     }
-
-    if (error instanceof Error && error.message.startsWith("INVALID_STATUS_")) {
+    if (message.startsWith("INVALID_STATUS_")) {
       return NextResponse.json(
         { error: "El estado actual del despacho no permite ese evento" },
         { status: 400 }
