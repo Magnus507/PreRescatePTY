@@ -42,7 +42,19 @@ export async function POST(
           select: { code: true, name: true, productType: true },
         })
       : null;
-    const finishedGoodByType = exactFinishedGood || await tx.operationFinishedGood.findFirst({
+
+    // Legacy customer-production batches were created with finishedGoodCode=null
+    // while productType contained the real finished-good code (for example
+    // PRI-001). Resolve that exact code before consulting descriptive productType
+    // or generic legacy fallbacks such as PRP-FG-STICKER.
+    const legacyFinishedGoodByCode = !exactFinishedGood && item.batch.productType
+      ? await tx.operationFinishedGood.findUnique({
+          where: { code: item.batch.productType },
+          select: { code: true, name: true, productType: true },
+        })
+      : null;
+
+    const finishedGoodByType = exactFinishedGood || legacyFinishedGoodByCode || await tx.operationFinishedGood.findFirst({
       where: { productType: item.batch.productType, status: "active" },
       orderBy: { createdAt: "asc" },
       select: { code: true, name: true, productType: true },
