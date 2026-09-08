@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import CookieConsent from "./CookieConsent";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { sanitizePublicAnalyticsUrl } from "@/lib/security/telemetry";
 
 const STORAGE_KEY = "prerescue_cookie_preferences";
 
@@ -47,8 +48,18 @@ export default function CookieConsentProvider() {
       <CookieConsent />
       {isLoaded && analyticsConsent && (
         <>
-          <Analytics />
-          <SpeedInsights />
+          <Analytics
+            beforeSend={(event) => {
+              const url = sanitizePublicAnalyticsUrl(event.url);
+              return url ? { ...event, url } : null;
+            }}
+          />
+          <SpeedInsights
+            beforeSend={(data) => {
+              const url = sanitizePublicAnalyticsUrl(data.url);
+              return url ? { ...data, url } : null;
+            }}
+          />
         </>
       )}
     </>
