@@ -30,6 +30,12 @@ export async function ensureCustomerBackorderProduction(
   });
   if (existing) return { productionOrder: existing, created: false };
 
+  // outputType historically doubled as both a descriptive type and a stock key.
+  // For customer backorders it is already the operational finished-good code in
+  // current callers. Persist that identity explicitly as productCode so digital
+  // preparation cannot silently fall back to a different legacy SKU.
+  const productCode = input.productCode?.trim() || input.outputType.trim();
+
   const productionOrder = await db.operationProductionOrder.create({
     data: {
       code,
@@ -50,7 +56,7 @@ export async function ensureCustomerBackorderProduction(
             orderNumber: input.orderNumber,
             backorderQty,
             outputType: input.outputType,
-            productCode: input.productCode || null,
+            productCode,
             productName: input.productName,
           }),
           createdById: input.createdById || null,
