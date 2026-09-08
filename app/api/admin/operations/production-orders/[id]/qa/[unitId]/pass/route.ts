@@ -7,7 +7,7 @@ import {
   normalizeQaChecklist,
 } from "@/app/api/admin/operations/finished-good-units/finished-good-units.helpers";
 import { buildProductionAssemblyState } from "@/lib/operations/production-assembly-state";
-import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-reservation";
+import { reconcileCustomerProducedUnitReservation } from "@/lib/operations/customer-produced-unit-reservation";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +100,7 @@ export async function POST(
           notes: true,
           status: true,
           plannedQuantity: true,
+          outputType: true,
           events: {
             where: { eventType: "CREATED" },
             orderBy: { createdAt: "asc" },
@@ -109,7 +110,7 @@ export async function POST(
       });
       if (!productionOrder) return null;
 
-      const unit = await tx.operationFinishedGoodUnit.findUnique({
+      let unit = await tx.operationFinishedGoodUnit.findUnique({
         where: { id: unitId },
         include: {
           digitalBatchItem: {
@@ -129,16 +130,8 @@ export async function POST(
         },
       });
       if (!unit) throw new Error("UNIT_NOT_FOUND");
-      if (unit.qaStatus === "passed") return { unit, reservation: null };
       if (!unit.digitalBatchItem || unit.digitalBatchItem.productionOrderId !== productionOrderId) {
         throw new Error("UNIT_NOT_LINKED_TO_PRODUCTION");
-      }
-
-      const assemblyState = buildProductionAssemblyState(unit.digitalBatchItem, {
-        printOrder: unit.printOrder,
-      });
-      if (!assemblyState.readyForQc || unit.status !== "qa_pending" || unit.qaStatus !== "pending") {
-        throw new Error("UNIT_NOT_READY");
       }
 
       const source = resolveProductionSource(productionOrder);
@@ -160,6 +153,82 @@ export async function POST(
       const customerOrderId = source.customerOrderId || commercialOrder?.sourceId || null;
       const internalProduction = source.internal || commercialOrder?.customerType === "internal";
 
+      // Historical backorders could lose productCode during digital preparation.
+      // Their outputType still contains the exact finished-good code, while the
+      // assembler fell back to a generic legacy SKU. Repair only an untouched,
+      // QA-passed inventory unit; never rewrite a reserved/dispatched identity.
+      if (
+        unit.qaStatus === "passed" &&
+        !internalProduction &&
+        commercialOrder &&
+        unit.status === "available" &&
+        unit.reservedOrderId === null &&
+        productionOrder.outputType
+      ) {
+        const canonicalFinishedGood = await tx.operationFinishedGood.findUnique({
+          where: { code: productionOrder.outputType },
+          select: { code: true, name: true, productType: true },
+        });
+        if (canonicalFinishedGood && unit.productCode !== canonicalFinishedGood.code) {
+          unit = await tx.operationFinishedGoodUnit.update({
+            where: { id: unit.id },
+            data: {
+              productCode: canonicalFinishedGood.code,
+              productName: canonicalFinishedGood.name,
+              productType: canonicalFinishedGood.productType,
+              events: {
+                create: {
+                  eventType: "PRODUCT_IDENTITY_RECONCILED",
+                  reason: "Identidad de producto reconciliada desde la orden de producción",
+                  referenceType: "production_order",
+                  referenceId: productionOrderId,
+                  metadataJson: toJson({
+                    previousProductCode: unit.productCode,
+                    canonicalProductCode: canonicalFinishedGood.code,
+                    customerOrderId,
+                    commercialOrderId: commercialOrder.id,
+                  }),
+                },
+              },
+            },
+            include: {
+              digitalBatchItem: {
+                select: {
+                  id: true,
+                  productionOrderId: true,
+                  status: true,
+                  nfcProgrammed: true,
+                  qrPrepared: true,
+                  internalLabel: true,
+                  shortCode: true,
+                },
+              },
+              printOrder: { select: { status: true } },
+            },
+          });
+        }
+      }
+
+      // Idempotent recovery path: a previously passed QC must still reconcile
+      // reservation. The old early return made a post-QC failure permanent.
+      if (unit.qaStatus === "passed") {
+        const reservation = !internalProduction && commercialOrder
+          ? await reconcileCustomerProducedUnitReservation(tx, {
+              commercialOrderId: commercialOrder.id,
+              unitId: unit.id,
+            })
+          : null;
+        const refreshedUnit = await tx.operationFinishedGoodUnit.findUnique({ where: { id: unit.id } });
+        return { unit: refreshedUnit, reservation };
+      }
+
+      const assemblyState = buildProductionAssemblyState(unit.digitalBatchItem, {
+        printOrder: unit.printOrder,
+      });
+      if (!assemblyState.readyForQc || unit.status !== "qa_pending" || unit.qaStatus !== "pending") {
+        throw new Error("UNIT_NOT_READY");
+      }
+
       await tx.operationFinishedGoodUnit.update({
         where: { id: unitId },
         data: {
@@ -177,7 +246,9 @@ export async function POST(
               },
               {
                 eventType: "INVENTORY_AVAILABLE",
-                reason: "Unidad aprobada y disponible para inventario",
+                reason: internalProduction
+                  ? "Unidad interna aprobada y disponible para inventario"
+                  : "Unidad aprobada; pendiente de conciliación con su pedido origen",
                 referenceType: "production_order",
                 referenceId: productionOrderId,
                 metadataJson: toJson({
@@ -191,13 +262,12 @@ export async function POST(
         },
       });
 
-      let reservation = null;
-      if (!internalProduction && commercialOrder) {
-        reservation = await reserveCommercialOrderStock(tx, {
-          orderId: commercialOrder.id,
-          allowPartial: true,
-        });
-      }
+      const reservation = !internalProduction && commercialOrder
+        ? await reconcileCustomerProducedUnitReservation(tx, {
+            commercialOrderId: commercialOrder.id,
+            unitId,
+          })
+        : null;
 
       const acceptedUnits = await tx.operationFinishedGoodUnit.count({
         where: {
@@ -256,6 +326,18 @@ export async function POST(
     }
     if (error instanceof Error && error.message === "UNIT_NOT_READY") {
       return NextResponse.json({ error: "La unidad debe completar identidad, impresión, ensamblaje y empaque antes de QC" }, { status: 400 });
+    }
+    if (error instanceof Error && [
+      "PRODUCED_UNIT_PRODUCT_MISMATCH",
+      "PRODUCED_UNIT_RESERVED_TO_OTHER_ORDER",
+      "PRODUCED_UNIT_NOT_RESERVABLE",
+      "PRODUCED_UNIT_RESERVATION_RACE",
+      "ORDER_NOT_READY_FOR_RESERVATION",
+    ].includes(error.message)) {
+      return NextResponse.json(
+        { error: "QC aprobado, pero la conciliación segura con el pedido no pudo completarse.", code: error.message },
+        { status: 409 }
+      );
     }
     console.error("[operations/production-orders/:id/qa/:unitId/pass] POST error:", error);
     return NextResponse.json({ error: "Error al aprobar QC" }, { status: 500 });
