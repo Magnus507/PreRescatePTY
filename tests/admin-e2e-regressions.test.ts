@@ -36,12 +36,13 @@ describe("admin E2E regression guardrails", () => {
     expect(production).toContain("sourceType: \"customer_order\"");
   });
 
-  it("consolidates reservation requirements by canonical SKU before counting physical units", () => {
+  it("consolidates reservation requirements by canonical SKU and rejects cancelled source orders", () => {
     const reservation = source("lib/operations/commercial-order-reservation.ts");
     expect(reservation).toContain("const requirements = new Map");
     expect(reservation).toContain("const requirementKey = productCode || `__unmapped:${item.id}`");
     expect(reservation).toContain("existing.requestedQty += item.quantity");
     expect(reservation).toContain("reserveUnitsForProduct");
+    expect(reservation).toContain("SOURCE_ORDER_CANCELLED");
   });
 
   it("requires an explicit production mode and creates product-specific production records", () => {
@@ -76,11 +77,52 @@ describe("admin E2E regression guardrails", () => {
 
   it("revalidates payment, cancellation and exact physical reservation immediately before shipping", () => {
     const sent = source("app/api/admin/operations/dispatches/[id]/mark-sent/route.ts");
+    expect(sent).toContain("const lock = await tx.operationDispatch.updateMany");
     expect(sent).toContain("ORDER_NO_LONGER_SHIPPABLE");
+    expect(sent).toContain("UNTRACEABLE_ITEMS");
     expect(sent).toContain("RESERVATION_CHANGED_BEFORE_SHIPMENT");
-    expect(sent).toContain('status: "reserved"');
-    expect(sent).toContain('qaStatus: "passed"');
-    expect(sent).toContain("reservedOrderId: reservationOrderId");
+    expect(sent).toContain('status !== "reserved"');
+    expect(sent).toContain('qaStatus !== "passed"');
+    expect(sent).toContain("expectedReservationOrderId");
+  });
+
+  it("never prepares a physical dispatch without complete unit traceability", () => {
+    const prepared = source("app/api/admin/operations/dispatches/[id]/mark-prepared/route.ts");
+    expect(prepared).toContain("UNTRACEABLE_ITEMS");
+    expect(prepared).toContain("DUPLICATE_UNIT_IN_DISPATCH");
+    expect(prepared).toContain("UNIT_NO_LONGER_PREPARABLE");
+    expect(prepared).toContain("traceableItems.length !== dispatch.items.length");
+  });
+
+  it("cancels an unshipped dispatch by detaching items before releasing the physical reservation", () => {
+    const cancel = source("app/api/admin/operations/dispatches/[id]/cancel/route.ts");
+    expect(cancel).toContain("CANCELLABLE_STATUSES");
+    expect(cancel).toContain("data: { unitId: null, status: \"cancelled\" }");
+    expect(cancel).toContain("releaseEligibleOrderReservations");
+    expect(cancel).toContain("dispatchId: null");
+    expect(cancel).toContain("DISPATCH_ALREADY_COMMITTED");
+  });
+
+  it("blocks generic dispatch events from bypassing dedicated physical/customer lifecycle guards", () => {
+    const events = source("app/api/admin/operations/dispatches/[id]/events/route.ts");
+    expect(events).toContain("UNIT_DISPATCH_REQUIRES_DEDICATED_FLOW");
+    expect(events).toContain("CUSTOMER_DISPATCH_REQUIRES_DEDICATED_FLOW");
+    expect(events).toContain("guardedLifecycleEvents");
+  });
+
+  it("requests commercial fulfillment without creating a unitless dispatch and releases the correct reservation owner", () => {
+    const events = source("app/api/admin/operations/commercial-orders/[id]/events/route.ts");
+    expect(events).not.toContain("tx.operationDispatch.create");
+    expect(events).toContain("commercialOrder.sourceId || commercialOrder.id");
+    expect(events).toContain("releaseEligibleOrderReservations");
+    expect(events).toContain("ACTIVE_DISPATCH_MUST_BE_CANCELLED_FIRST");
+  });
+
+  it("never releases a unit while a dispatch item still references it", () => {
+    const release = source("lib/operations/release-order-reservations.ts");
+    expect(release).toContain("dispatchItems");
+    expect(release).toContain("dispatchItems: { none: {} }");
+    expect(release).toContain("Unidad vinculada a un despacho");
   });
 
   it("makes delivery retries idempotent and refuses to overwrite inconsistent unit states", () => {
