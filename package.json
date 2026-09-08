@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test:run": "vitest run --exclude 'tests/integration/**'",
     "test:integration": "vitest run tests/integration",
-    "build": "npm run prisma:generate && npm run typecheck && next build",
+    "build": "npm run prisma:generate && next build",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest",
@@ -81,5 +81,13 @@
     "next": {
       "postcss": "8.5.23"
     }
+  },
+  "allowScripts": {
+    "@prisma/client": false,
+    "@prisma/engines": false,
+    "@sentry/cli": false,
+    "esbuild": false,
+    "prisma": false,
+    "unrs-resolver": false
   }
 }
