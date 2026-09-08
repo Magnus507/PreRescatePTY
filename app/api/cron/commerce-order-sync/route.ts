@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processCommerceOrderSyncOutboxBatch } from "@/lib/operations/commerce-order-sync-outbox";
+import { recoverStrandedCustomerProducedUnits } from "@/lib/operations/stranded-customer-production-recovery";
 import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
 
 function authorizeCronRequest(req: NextRequest) {
@@ -88,19 +89,30 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const limit = Number(new URL(req.url).searchParams.get("limit") || "10");
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 25) : 10;
   const result = await processCommerceOrderSyncOutboxBatch(prisma, {
-    limit: Number.isFinite(limit) && limit > 0 ? Math.min(limit, 25) : 10,
+    limit: safeLimit,
     workerId: "cron:commerce-order-sync",
+  });
+
+  // Recover historical customer-produced units that already passed QC but were
+  // left as free inventory by the pre-fix flow. The helper is intentionally
+  // strict: internal production, dispatched/activated units and SKU mismatches
+  // are never silently converted or reserved.
+  const customerProductionRecovery = await recoverStrandedCustomerProducedUnits(prisma, {
+    limit: safeLimit,
   });
 
   const reconciliation = await buildReconciliationSummary();
   await recordCronSuccess(CRON_MONITOR_KEYS.commerceOrderSync, {
     ...result,
     ...reconciliation,
+    customerProductionRecovery,
   });
 
   return NextResponse.json({
     result,
+    customerProductionRecovery,
     reconciliation,
   });
 }
