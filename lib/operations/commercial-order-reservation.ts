@@ -1,5 +1,8 @@
 import { Prisma } from "@prisma/client";
-import { resolveCommercialOrderItemKey } from "@/app/api/admin/operations/commercial-orders/commercial-orders.helpers";
+import {
+  getCommercialOrderReservationOwnerId,
+  resolveCommercialOrderItemKey,
+} from "@/app/api/admin/operations/commercial-orders/commercial-orders.helpers";
 
 export type CommercialOrderReservationInput = {
   orderId: string;
@@ -247,7 +250,7 @@ export async function reserveCommercialOrderStock(
     }
   }
 
-  const reservationOrderId = order.sourceId || order.id;
+  const reservationOrderId = getCommercialOrderReservationOwnerId(order);
 
   // Consolidate all order lines by canonical finished-good code before touching
   // physical stock. Counting reservations per line lets the same physical unit
