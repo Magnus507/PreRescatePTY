@@ -37,6 +37,62 @@ export async function POST(
         throw new Error("ITEMS_NOT_PACKED");
       }
 
+      const orderId = getDispatchCustomerOrderId(dispatch.events);
+      const commercialOrder = await tx.operationCommercialOrder.findFirst({
+        where: { dispatchId: id },
+        select: {
+          id: true,
+          sourceId: true,
+          status: true,
+          paymentStatus: true,
+        },
+      });
+
+      if (commercialOrder) {
+        if (
+          ["cancelled", "rejected"].includes(commercialOrder.status) ||
+          commercialOrder.paymentStatus !== "paid"
+        ) {
+          throw new Error("ORDER_NO_LONGER_SHIPPABLE");
+        }
+
+        const sourceOrderId = commercialOrder.sourceId || orderId;
+        if (sourceOrderId) {
+          const sourceOrder = await tx.order.findUnique({
+            where: { id: sourceOrderId },
+            select: { orderStatus: true, paymentStatus: true },
+          });
+          if (
+            sourceOrder &&
+            (sourceOrder.orderStatus === "cancelled" || sourceOrder.paymentStatus !== "paid")
+          ) {
+            throw new Error("ORDER_NO_LONGER_SHIPPABLE");
+          }
+        }
+
+        const reservationOrderId = commercialOrder.sourceId || commercialOrder.id;
+        const unitIds = dispatch.items
+          .map((item) => item.unitId)
+          .filter((unitId): unitId is string => Boolean(unitId));
+        if (unitIds.length !== dispatch.items.length) {
+          throw new Error("COMMERCIAL_DISPATCH_UNTRACEABLE_ITEMS");
+        }
+
+        const validReservedUnits = await tx.operationFinishedGoodUnit.count({
+          where: {
+            id: { in: unitIds },
+            status: "reserved",
+            qaStatus: "passed",
+            activationStatus: "not_activated",
+            reservedOrderId: reservationOrderId,
+            dispatchItems: { some: { dispatchId: id } },
+          },
+        });
+        if (validReservedUnits !== unitIds.length) {
+          throw new Error("RESERVATION_CHANGED_BEFORE_SHIPMENT");
+        }
+      }
+
       const sentAt = new Date();
       const carrierName =
         typeof body.carrierName === "string" ? body.carrierName.trim() || null : dispatch.carrierName;
@@ -45,7 +101,6 @@ export async function POST(
           ? body.trackingReference.trim() || null
           : dispatch.trackingReference;
       const notes = typeof body.notes === "string" ? body.notes.trim() || null : dispatch.notes;
-      const orderId = getDispatchCustomerOrderId(dispatch.events);
 
       await tx.operationDispatch.update({
         where: { id },
@@ -146,8 +201,11 @@ export async function POST(
       NOT_PREPARED: "El despacho debe estar preparado primero",
       NO_ITEMS: "El despacho no contiene artículos",
       ITEMS_NOT_PACKED: "Todos los artículos deben estar preparados antes de enviar",
+      ORDER_NO_LONGER_SHIPPABLE: "El pedido fue cancelado, rechazado o dejó de estar pagado; no puede enviarse",
+      COMMERCIAL_DISPATCH_UNTRACEABLE_ITEMS: "El despacho comercial contiene artículos sin unidad física trazable",
+      RESERVATION_CHANGED_BEFORE_SHIPMENT: "La reserva física cambió; vuelve a validar el pedido antes de enviar",
     };
-    if (map[message]) return NextResponse.json({ error: map[message] }, { status: 400 });
+    if (map[message]) return NextResponse.json({ error: map[message] }, { status: 409 });
     console.error("[operations/dispatches/:id/mark-sent] POST error:", error);
     return NextResponse.json({ error: "No se pudo marcar enviado" }, { status: 500 });
   }
