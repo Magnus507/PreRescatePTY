@@ -2,5 +2,10 @@
   "buildCommand": "npm run build",
   "crons": [
     { "path": "/api/cron/expire-chips", "schedule": "0 6 * * *" }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "internal-vercel-npm-hardening-20260908": false
+    }
+  }
 }
