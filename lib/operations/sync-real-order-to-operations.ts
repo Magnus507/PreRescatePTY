@@ -52,7 +52,6 @@ function buildOrderCode(input: SyncRealOrderToOperationsInput) {
   if (input.sourceCode?.trim()) {
     return `OP-${input.orderType === "enterprise" ? "EMP" : "CLI"}-${input.sourceCode.trim()}`;
   }
-
   return `OP-${input.orderType === "enterprise" ? "EMP" : "CLI"}-${input.sourceId.slice(-8).toUpperCase()}`;
 }
 
@@ -60,21 +59,13 @@ function buildCustomerName(input: SyncRealOrderToOperationsInput) {
   if (input.orderType === "enterprise") {
     return input.companyName?.trim() || input.customerName?.trim() || input.contactName?.trim() || null;
   }
-
   return input.customerName?.trim() || input.contactName?.trim() || null;
 }
 
 function buildNotes(input: SyncRealOrderToOperationsInput) {
   const fragments = [];
-
-  if (input.notes?.trim()) {
-    fragments.push(input.notes.trim());
-  }
-
-  if (input.paymentReference?.trim()) {
-    fragments.push(`paymentReference:${input.paymentReference.trim()}`);
-  }
-
+  if (input.notes?.trim()) fragments.push(input.notes.trim());
+  if (input.paymentReference?.trim()) fragments.push(`paymentReference:${input.paymentReference.trim()}`);
   return fragments.join("\n");
 }
 
@@ -88,13 +79,13 @@ export async function syncRealOrderToOperations(
   const notes = buildNotes(input);
   const totalAmount = input.totalAmount !== undefined && input.totalAmount !== null
     ? parseMoney(input.totalAmount)
-    : input.items.reduce((sum, item) => addMoney(sum, multiplyMoney(item.unitPrice, item.quantity)), parseMoney(0));
+    : input.items.reduce(
+        (sum, item) => addMoney(sum, multiplyMoney(item.unitPrice, item.quantity)),
+        parseMoney(0)
+      );
 
   const existing = await db.operationCommercialOrder.findFirst({
-    where: {
-      sourceType: input.sourceType,
-      sourceId: input.sourceId,
-    },
+    where: { sourceType: input.sourceType, sourceId: input.sourceId },
     select: { id: true },
   });
 
@@ -122,13 +113,14 @@ export async function syncRealOrderToOperations(
     const directFinishedGoodId = item.operationalFinishedGoodId?.trim() || item.finishedGoodId?.trim() || null;
 
     if (directOperationalProductCode && directFinishedGoodId) {
+      const physicalQuantity = Math.max(1, Math.floor(Number(item.quantity || 1)));
       return {
         finishedGoodId: directFinishedGoodId,
         productCode: directOperationalProductCode,
         productName: directOperationalProductName || item.productName,
-        quantity: Math.max(1, Math.floor(Number(item.quantity || 1))),
+        quantity: physicalQuantity,
         unitPrice: moneyToNumber(item.unitPrice),
-        totalPrice: moneyToNumber(multiplyMoney(item.unitPrice, Math.max(1, Math.floor(Number(item.quantity || 1))))),
+        totalPrice: moneyToNumber(multiplyMoney(item.unitPrice, physicalQuantity)),
         unit: item.unit?.trim() || "unit",
         notes: item.operationalMappingId
           ? `[operationalMappingId:${item.operationalMappingId}]`
@@ -143,11 +135,15 @@ export async function syncRealOrderToOperations(
       productName: item.productName,
     });
 
+    // Fallback mapping is used for legacy/un-snapshotted rows. Its explicit
+    // contract separates commercialQuantity (packs sold) from operationalQuantity
+    // (physical finished-good units). Operations must persist the latter or a
+    // Duo/Familiar package can reserve/produce only one physical unit.
     return {
       finishedGoodId: item.finishedGoodId?.trim() || null,
       productCode: mapping.operationalProductCode,
       productName: mapping.operationalProductName,
-      quantity: mapping.commercialQuantity,
+      quantity: mapping.operationalQuantity,
       unitPrice: moneyToNumber(item.unitPrice),
       totalPrice: moneyToNumber(multiplyMoney(item.unitPrice, mapping.commercialQuantity)),
       unit: item.unit?.trim() || "unit",
@@ -162,22 +158,17 @@ export async function syncRealOrderToOperations(
       where: { id: existing.id },
       data: {
         ...orderData,
-        // Retries synchronize commercial facts, never rewind fulfilment or replace
-        // operational item identities after inventory/production work has started.
         status: ["cancelled", "rejected"].includes(input.paymentStatus || "") ? "cancelled" : undefined,
         fulfillmentStatus: undefined,
       },
     });
-
     return { order: updated, created: false, sourceKey: buildSourceMarker(input.sourceType, input.sourceId) };
   }
 
   const created = await db.operationCommercialOrder.create({
     data: {
       ...orderData,
-      items: {
-        create: mappedItems,
-      },
+      items: { create: mappedItems },
     },
   });
 
