@@ -30,5 +30,7 @@ describe("build security policy", () => {
   it("fails closed when a new dependency introduces an unreviewed install script", () => {
     const npmrc = readFileSync(new URL("../.npmrc", import.meta.url), "utf8");
     expect(npmrc).toMatch(/^strict-allow-scripts=true\s*$/m);
+    expect(npmrc).not.toContain("dangerously-allow-all-scripts=true");
+    expect(npmrc).not.toContain("ignore-scripts=true");
   });
 });
