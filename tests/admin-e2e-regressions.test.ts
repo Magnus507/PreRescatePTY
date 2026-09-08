@@ -45,11 +45,14 @@ describe("admin E2E regression guardrails", () => {
     expect(reservation).toContain("SOURCE_ORDER_CANCELLED");
   });
 
-  it("requires an explicit production mode and creates product-specific production records", () => {
+  it("requires explicit production intent and derives manual backorders from committed reservation state", () => {
     const route = source("app/api/admin/operations/commercial-orders/[id]/send-to-production/route.ts");
     expect(route).toContain("mode=full o mode=backorder explícitamente");
     expect(route).toContain("const groupedProducts = new Map");
     expect(route).toContain("for (const product of products)");
+    expect(route).toContain("reserveCommercialOrderStock");
+    expect(route).toContain("BACKORDER_EXPLICIT_QTY_NOT_ALLOWED");
+    expect(route).toContain("BACKORDER_RECONCILIATION_REQUIRED");
     expect(route).toContain("productionOrderCodes");
     expect(route).toContain("productCode: product.productCode");
   });
@@ -75,7 +78,7 @@ describe("admin E2E regression guardrails", () => {
     expect(reconciliation).toContain("id: unit.id");
   });
 
-  it("revalidates payment, cancellation and exact physical reservation immediately before shipping", () => {
+  it("revalidates and compare-and-sets every physical reservation immediately before shipping", () => {
     const sent = source("app/api/admin/operations/dispatches/[id]/mark-sent/route.ts");
     expect(sent).toContain("const lock = await tx.operationDispatch.updateMany");
     expect(sent).toContain("ORDER_NO_LONGER_SHIPPABLE");
@@ -84,6 +87,8 @@ describe("admin E2E regression guardrails", () => {
     expect(sent).toContain('status !== "reserved"');
     expect(sent).toContain('qaStatus !== "passed"');
     expect(sent).toContain("expectedReservationOrderId");
+    expect(sent).toContain("updatedUnits.count !== unitIds.length");
+    expect(sent).toContain("every: { dispatchId: id }");
   });
 
   it("never prepares a physical dispatch without complete unit traceability", () => {
@@ -125,12 +130,14 @@ describe("admin E2E regression guardrails", () => {
     expect(release).toContain("Unidad vinculada a un despacho");
   });
 
-  it("makes delivery retries idempotent and refuses to overwrite inconsistent unit states", () => {
+  it("makes delivery retries idempotent and refuses to overwrite inconsistent or shared unit states", () => {
     const delivery = source("app/api/admin/operations/dispatches/[id]/confirm-delivery/route.ts");
-    expect(delivery).toContain('if (dispatch.status === "delivered")');
+    expect(delivery).toContain('if (current.status === "delivered")');
     expect(delivery).toContain("idempotent: true");
     expect(delivery).toContain("UNIT_STATE_MISMATCH");
     expect(delivery).toContain('status: "dispatched"');
+    expect(delivery).toContain("updatedUnits.count !== unitIds.length");
+    expect(delivery).toContain("every: { dispatchId: id }");
   });
 
   it("runs historical post-QC recovery from the already-monitored commerce sync worker", () => {
