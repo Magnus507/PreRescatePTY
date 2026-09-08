@@ -11,6 +11,7 @@
     "env:verify:production": "tsx scripts/verify-env.ts production",
     "env:verify:staging": "tsx scripts/verify-env.ts staging",
     "env:verify:test": "tsx scripts/verify-env.ts test",
+    "dr:verify-restore": "tsx scripts/verify-restore.ts",
     "typecheck": "tsc --noEmit",
     "test:run": "vitest run --exclude 'tests/integration/**'",
     "test:integration": "vitest run tests/integration",
