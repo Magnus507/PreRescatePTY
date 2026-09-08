@@ -7,7 +7,10 @@ import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 export async function GET() {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
-  const configs = await ConfigRepository.getAll();
+  const allConfigs = await ConfigRepository.getAll();
+  const configs = Object.fromEntries(
+    CONFIG_KEYS.map((key) => [key, allConfigs[key] ?? ""])
+  ) as Record<ConfigKey, string>;
   return NextResponse.json({ configs });
 }
 
