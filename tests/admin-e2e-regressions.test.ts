@@ -54,4 +54,25 @@ describe("admin E2E regression guardrails", () => {
     expect(reconciliation).toContain("reservationSource: \"customer_production_qc\"");
     expect(reconciliation).toContain("id: unit.id");
   });
+
+  it("runs historical post-QC recovery from the already-monitored commerce sync worker", () => {
+    const cron = source("app/api/cron/commerce-order-sync/route.ts");
+    expect(cron).toContain("recoverStrandedCustomerProducedUnits");
+    expect(cron).toContain("customerProductionRecovery");
+    expect(cron).toContain("recordCronSuccess");
+  });
+
+  it("historical recovery only claims untouched customer-produced QC units and never creates dispatch", () => {
+    const recovery = source("lib/operations/stranded-customer-production-recovery.ts");
+    expect(recovery).toContain('metadataJson: { contains: "\\\"sourceType\\\":\\\"customer_order\\\"" }');
+    expect(recovery).toContain('status: "available"');
+    expect(recovery).toContain('qaStatus: "passed"');
+    expect(recovery).toContain('activationStatus: "not_activated"');
+    expect(recovery).toContain('reservedOrderId: null');
+    expect(recovery).toContain('dispatchItems: { none: {} }');
+    expect(recovery).toContain("reconcileCustomerProducedUnitReservation");
+    expect(recovery).toContain('eventType: "CUSTOMER_UNIT_RECOVERED"');
+    expect(recovery).not.toContain("operationDispatch.create");
+    expect(recovery).not.toContain("operationDispatchItem.create");
+  });
 });
