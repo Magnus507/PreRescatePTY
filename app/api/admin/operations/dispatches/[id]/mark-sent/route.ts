@@ -114,8 +114,7 @@ export async function POST(
           deliveredAt: true,
           activatedAt: true,
           dispatchItems: {
-            where: { dispatchId: id },
-            select: { id: true },
+            select: { id: true, dispatchId: true },
           },
         },
       });
@@ -131,7 +130,8 @@ export async function POST(
           unit.dispatchedAt ||
           unit.deliveredAt ||
           unit.activatedAt ||
-          unit.dispatchItems.length !== 1
+          unit.dispatchItems.length !== 1 ||
+          unit.dispatchItems[0]?.dispatchId !== id
         ) {
           throw new Error("RESERVATION_CHANGED_BEFORE_SHIPMENT");
         }
@@ -154,6 +154,29 @@ export async function POST(
           ? body.trackingReference.trim() || null
           : dispatch.trackingReference;
       const notes = typeof body.notes === "string" ? body.notes.trim() || null : dispatch.notes;
+
+      const updatedUnits = await tx.operationFinishedGoodUnit.updateMany({
+        where: {
+          id: { in: unitIds },
+          status: "reserved",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: expectedReservationOrderId
+            ? expectedReservationOrderId
+            : { not: null },
+          dispatchedAt: null,
+          deliveredAt: null,
+          activatedAt: null,
+          dispatchItems: {
+            some: { dispatchId: id },
+            every: { dispatchId: id },
+          },
+        },
+        data: { status: "dispatched", dispatchedAt: sentAt },
+      });
+      if (updatedUnits.count !== unitIds.length) {
+        throw new Error("RESERVATION_CHANGED_BEFORE_SHIPMENT");
+      }
 
       await tx.operationDispatch.update({
         where: { id },
@@ -197,16 +220,6 @@ export async function POST(
           }),
           createdById: auth.session.user.id || null,
         },
-      });
-
-      await tx.operationFinishedGoodUnit.updateMany({
-        where: {
-          id: { in: unitIds },
-          status: "reserved",
-          qaStatus: "passed",
-          activationStatus: "not_activated",
-        },
-        data: { status: "dispatched", dispatchedAt: sentAt },
       });
 
       if (orderId) {
