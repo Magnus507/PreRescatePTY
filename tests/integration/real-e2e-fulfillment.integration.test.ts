@@ -13,6 +13,7 @@ vi.mock("@/lib/rbac", () => ({ GENERAL_ADMIN_ROLES: ["admin"], requireRole: auth
 
 const db = createIntegrationPrismaClient();
 const run = `fulfillment-${Date.now()}`;
+let sendToProduction: typeof import("@/app/api/admin/operations/commercial-orders/[id]/send-to-production/route").POST;
 let markSent: typeof import("@/app/api/admin/operations/dispatches/[id]/mark-sent/route").POST;
 let cancelDispatch: typeof import("@/app/api/admin/operations/dispatches/[id]/cancel/route").POST;
 let delivery: typeof import("@/app/api/admin/operations/dispatches/[id]/confirm-delivery/route").POST;
@@ -24,6 +25,7 @@ describe("real PostgreSQL fulfillment and support history", () => {
     await assertIntegrationDatabaseReady(db);
     const user = await seedIntegrationUser(db, { email: `${run}@example.invalid` });
     auth.mockResolvedValue({ authorized: true, session: { user: { id: user.id } } });
+    ({ POST: sendToProduction } = await import("@/app/api/admin/operations/commercial-orders/[id]/send-to-production/route"));
     ({ POST: markSent } = await import("@/app/api/admin/operations/dispatches/[id]/mark-sent/route"));
     ({ POST: cancelDispatch } = await import("@/app/api/admin/operations/dispatches/[id]/cancel/route"));
     ({ POST: delivery } = await import("@/app/api/admin/operations/dispatches/[id]/confirm-delivery/route"));
@@ -32,6 +34,105 @@ describe("real PostgreSQL fulfillment and support history", () => {
 
   afterAll(async () => {
     await db.$disconnect();
+  });
+
+  it("manual backorder reserves available stock first and only produces the exact remaining shortage", async () => {
+    const sku = `${run}-backorder-sku`;
+    const order = await db.operationCommercialOrder.create({
+      data: {
+        code: `${run}-backorder-order`,
+        status: "accepted",
+        customerType: "customer",
+        paymentStatus: "paid",
+        fulfillmentStatus: "pending",
+        items: {
+          create: {
+            productCode: sku,
+            productName: "Backorder fixture",
+            quantity: 5,
+            unitPrice: 1,
+            totalPrice: 5,
+            unit: "unit",
+          },
+        },
+      },
+    });
+
+    for (let index = 0; index < 2; index += 1) {
+      await db.operationFinishedGoodUnit.create({
+        data: {
+          internalLabel: `${run}-backorder-reserved-${index}`,
+          productCode: sku,
+          productName: "Backorder fixture",
+          productType: sku,
+          status: "reserved",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: order.id,
+        },
+      });
+    }
+    const availableUnit = await db.operationFinishedGoodUnit.create({
+      data: {
+        internalLabel: `${run}-backorder-available`,
+        productCode: sku,
+        productName: "Backorder fixture",
+        productType: sku,
+        status: "available",
+        qaStatus: "passed",
+        activationStatus: "not_activated",
+      },
+    });
+
+    const response = await sendToProduction(
+      new NextRequest("http://localhost/send-to-production", {
+        method: "POST",
+        body: JSON.stringify({ mode: "backorder" }),
+        headers: { "content-type": "application/json" },
+      }),
+      { params: Promise.resolve({ id: order.id }) }
+    );
+    expect(response.status).toBe(201);
+    const payload = await response.json();
+    expect(payload.products).toEqual([
+      expect.objectContaining({ productCode: sku, plannedQuantity: 2, backorderQty: 2 }),
+    ]);
+
+    const nowReserved = await db.operationFinishedGoodUnit.count({
+      where: { reservedOrderId: order.id, productCode: sku, status: "reserved" },
+    });
+    expect(nowReserved).toBe(3);
+    const claimedAvailable = await db.operationFinishedGoodUnit.findUniqueOrThrow({
+      where: { id: availableUnit.id },
+    });
+    expect(claimedAvailable.status).toBe("reserved");
+    expect(claimedAvailable.reservedOrderId).toBe(order.id);
+
+    const productions = await db.operationProductionOrder.findMany({
+      where: { notes: { contains: `W605H-B-BACKORDER-PRODUCTION:${order.id}:${sku}` } },
+    });
+    expect(productions).toHaveLength(1);
+    expect(productions[0].plannedQuantity).toBe(2);
+
+    const retry = await sendToProduction(
+      new NextRequest("http://localhost/send-to-production", {
+        method: "POST",
+        body: JSON.stringify({ mode: "backorder" }),
+        headers: { "content-type": "application/json" },
+      }),
+      { params: Promise.resolve({ id: order.id }) }
+    );
+    expect(retry.status).toBe(200);
+    expect(
+      await db.operationProductionOrder.count({
+        where: { notes: { contains: `W605H-B-BACKORDER-PRODUCTION:${order.id}:${sku}` } },
+      })
+    ).toBe(1);
+    expect(
+      await db.operationFinishedGoodUnit.count({
+        where: { reservedOrderId: order.id, productCode: sku, status: "reserved" },
+      })
+    ).toBe(3);
   });
 
   it("sending a valid dispatch advances the commercial projection without losing allocation", async () => {
@@ -82,6 +183,7 @@ describe("real PostgreSQL fulfillment and support history", () => {
     const sentUnit = await db.operationFinishedGoodUnit.findUniqueOrThrow({ where: { id: unit.id } });
     expect(sentUnit.status).toBe("dispatched");
     expect(sentUnit.reservedOrderId).toBe(order.id);
+    expect(sentUnit.dispatchedAt).not.toBeNull();
   });
 
   it("blocks a prepared dispatch if the commercial order is cancelled before shipment", async () => {
@@ -138,7 +240,7 @@ describe("real PostgreSQL fulfillment and support history", () => {
     ).toBe(0);
   });
 
-  it("cancels a prepared dispatch by detaching its item and safely returning the unit to stock", async () => {
+  it("cancels a prepared dispatch by detaching its item, returns the unit to stock, and makes later shipment impossible", async () => {
     const dispatch = await db.operationDispatch.create({
       data: { code: `${run}-safe-cancel-dispatch`, status: "prepared" },
     });
@@ -205,6 +307,100 @@ describe("real PostgreSQL fulfillment and support history", () => {
         where: { unitId: unit.id, eventType: "RELEASED" },
       })
     ).toBe(1);
+
+    const sendAfterCancel = await markSent(
+      new NextRequest("http://localhost/mark-sent", { method: "POST", body: "{}" }),
+      { params: Promise.resolve({ id: dispatch.id }) }
+    );
+    expect(sendAfterCancel.status).toBe(409);
+    expect((await db.operationDispatch.findUniqueOrThrow({ where: { id: dispatch.id } })).status).toBe("cancelled");
+    expect((await db.operationFinishedGoodUnit.findUniqueOrThrow({ where: { id: unit.id } })).status).toBe("available");
+  });
+
+  it("serializes cancellation against shipment so exactly one terminal transition wins", async () => {
+    const dispatch = await db.operationDispatch.create({
+      data: { code: `${run}-race-dispatch`, status: "prepared" },
+    });
+    const order = await db.operationCommercialOrder.create({
+      data: {
+        code: `${run}-race-order`,
+        status: "dispatch_created",
+        paymentStatus: "paid",
+        fulfillmentStatus: "reserved",
+        dispatchId: dispatch.id,
+      },
+    });
+    const unit = await db.operationFinishedGoodUnit.create({
+      data: {
+        internalLabel: `${run}-race-unit`,
+        productCode: `${run}-race-sku`,
+        productName: "Race fixture",
+        productType: "test",
+        status: "reserved",
+        qaStatus: "passed",
+        activationStatus: "not_activated",
+        reservedOrderId: order.id,
+      },
+    });
+    const item = await db.operationDispatchItem.create({
+      data: {
+        dispatchId: dispatch.id,
+        unitId: unit.id,
+        internalLabel: unit.internalLabel,
+        productCode: unit.productCode,
+        productName: unit.productName,
+        quantity: 1,
+        unit: "piece",
+        status: "packed",
+        packedAt: new Date(),
+      },
+    });
+
+    const [sendResponse, cancelResponse] = await Promise.all([
+      markSent(
+        new NextRequest("http://localhost/race-send", { method: "POST", body: "{}" }),
+        { params: Promise.resolve({ id: dispatch.id }) }
+      ),
+      cancelDispatch(
+        new NextRequest("http://localhost/race-cancel", {
+          method: "POST",
+          body: JSON.stringify({ reason: "Concurrent cancellation test" }),
+          headers: { "content-type": "application/json" },
+        }),
+        { params: Promise.resolve({ id: dispatch.id }) }
+      ),
+    ]);
+
+    expect([sendResponse.status, cancelResponse.status].sort()).toEqual([200, 409]);
+
+    const finalDispatch = await db.operationDispatch.findUniqueOrThrow({ where: { id: dispatch.id } });
+    const finalUnit = await db.operationFinishedGoodUnit.findUniqueOrThrow({ where: { id: unit.id } });
+    const finalItem = await db.operationDispatchItem.findUniqueOrThrow({ where: { id: item.id } });
+    const finalOrder = await db.operationCommercialOrder.findUniqueOrThrow({ where: { id: order.id } });
+
+    if (finalDispatch.status === "dispatched") {
+      expect(finalUnit.status).toBe("dispatched");
+      expect(finalUnit.reservedOrderId).toBe(order.id);
+      expect(finalItem.unitId).toBe(unit.id);
+      expect(finalOrder.dispatchId).toBe(dispatch.id);
+      expect(finalOrder.fulfillmentStatus).toBe("dispatched");
+    } else {
+      expect(finalDispatch.status).toBe("cancelled");
+      expect(finalUnit.status).toBe("available");
+      expect(finalUnit.reservedOrderId).toBeNull();
+      expect(finalItem.unitId).toBeNull();
+      expect(finalOrder.dispatchId).toBeNull();
+      expect(finalOrder.fulfillmentStatus).toBe("pending");
+    }
+
+    expect(
+      await db.operationDispatchEvent.count({
+        where: {
+          dispatchId: dispatch.id,
+          eventType: { in: ["DISPATCHED", "CANCELLED"] },
+        },
+      })
+    ).toBe(1);
   });
 
   it("delivery preserves allocation, finalizes the projection, appears in history, and cannot be released to stock", async () => {
@@ -219,6 +415,7 @@ describe("real PostgreSQL fulfillment and support history", () => {
         dispatchId: dispatch.id,
       },
     });
+    const dispatchedAt = new Date();
     const unit = await db.operationFinishedGoodUnit.create({
       data: {
         internalLabel: run,
@@ -228,6 +425,7 @@ describe("real PostgreSQL fulfillment and support history", () => {
         status: "dispatched",
         qaStatus: "passed",
         reservedOrderId: order.id,
+        dispatchedAt,
       },
     });
     await db.operationDispatchItem.create({
@@ -237,17 +435,22 @@ describe("real PostgreSQL fulfillment and support history", () => {
         quantity: 1,
         unit: "piece",
         status: "dispatched",
-        dispatchedAt: new Date(),
+        dispatchedAt,
       },
     });
-    expect(
-      (
-        await delivery(
-          new NextRequest("http://localhost/delivery", { method: "POST", body: "{}" }),
-          { params: Promise.resolve({ id: dispatch.id }) }
-        )
-      ).status
-    ).toBe(200);
+    const firstDelivery = await delivery(
+      new NextRequest("http://localhost/delivery", { method: "POST", body: "{}" }),
+      { params: Promise.resolve({ id: dispatch.id }) }
+    );
+    expect(firstDelivery.status).toBe(200);
+    expect((await firstDelivery.json()).idempotent).toBe(false);
+
+    const retryDelivery = await delivery(
+      new NextRequest("http://localhost/delivery", { method: "POST", body: "{}" }),
+      { params: Promise.resolve({ id: dispatch.id }) }
+    );
+    expect(retryDelivery.status).toBe(200);
+    expect((await retryDelivery.json()).idempotent).toBe(true);
 
     const delivered = await db.operationFinishedGoodUnit.findUniqueOrThrow({ where: { id: unit.id } });
     expect(delivered.status).toBe("delivered");
