@@ -53,6 +53,29 @@ const SENSITIVE_KEY_FRAGMENTS = [
   "cvv",
 ] as const;
 
+const PUBLIC_ANALYTICS_EXACT_PATHS = new Set([
+  "/",
+  "/como-funciona",
+  "/faq",
+  "/contacto",
+  "/demo",
+  "/empresa",
+  "/empresas",
+  "/para-quien-es",
+  "/comprar",
+  "/legal",
+]);
+
+const PUBLIC_ANALYTICS_PATH_PREFIXES = ["/legal/"] as const;
+
+const SENSITIVE_PATH_REDACTIONS = [
+  { pattern: /^\/e\/[^/?#]+/i, replacement: "/e/[REDACTED]" },
+  { pattern: /^\/activar\/[^/?#]+/i, replacement: "/activar/[REDACTED]" },
+  { pattern: /^\/reset-password\/[^/?#]+/i, replacement: "/reset-password/[REDACTED]" },
+] as const;
+
+const UUID_PATH_SEGMENT_PATTERN =
+  /\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?=\/|$)/gi;
 const BEARER_PATTERN = /\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi;
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/g;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
@@ -83,6 +106,80 @@ export function redactTelemetryString(value: string) {
     .replace(MEDICAL_ASSIGNMENT_PATTERN, TELEMETRY_REDACTED)
     .replace(RECEIPT_ASSIGNMENT_PATTERN, TELEMETRY_REDACTED)
     .replace(SENSITIVE_QUERY_PATTERN, "$1[REDACTED]");
+}
+
+function stripUrlQueryAndHash(url: string) {
+  const queryIndex = url.indexOf("?");
+  const hashIndex = url.indexOf("#");
+  const cutoff = [queryIndex, hashIndex]
+    .filter((index) => index >= 0)
+    .reduce((smallest, index) => Math.min(smallest, index), url.length);
+
+  return url.slice(0, cutoff);
+}
+
+function normalizePathname(pathname: string) {
+  if (!pathname || pathname === "/") return "/";
+  return pathname.length > 1 && pathname.endsWith("/")
+    ? pathname.slice(0, -1)
+    : pathname;
+}
+
+export function isPublicAnalyticsPath(pathname: string) {
+  const normalized = normalizePathname(pathname);
+  return (
+    PUBLIC_ANALYTICS_EXACT_PATHS.has(normalized) ||
+    PUBLIC_ANALYTICS_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix))
+  );
+}
+
+export function sanitizePublicAnalyticsUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    const pathname = normalizePathname(url.pathname);
+
+    if (!isPublicAnalyticsPath(pathname)) {
+      return null;
+    }
+
+    url.pathname = pathname;
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function redactTelemetryPath(pathname: string) {
+  let safePath = normalizePathname(pathname);
+
+  for (const { pattern, replacement } of SENSITIVE_PATH_REDACTIONS) {
+    safePath = safePath.replace(pattern, replacement);
+  }
+
+  safePath = safePath.replace(UUID_PATH_SEGMENT_PATTERN, "/[REDACTED]");
+  return redactTelemetryString(safePath);
+}
+
+export function sanitizeOperationalTelemetryUrl(value: string) {
+  const withoutQueryOrHash = stripUrlQueryAndHash(value);
+  const isAbsolute = /^[a-z][a-z\d+.-]*:\/\//i.test(withoutQueryOrHash);
+
+  try {
+    const url = new URL(withoutQueryOrHash, "https://telemetry.invalid");
+    url.pathname = redactTelemetryPath(url.pathname);
+    url.search = "";
+    url.hash = "";
+
+    if (!isAbsolute) {
+      return url.pathname;
+    }
+
+    return `${url.protocol}//${url.host}${url.pathname}`;
+  } catch {
+    return redactTelemetryPath(withoutQueryOrHash);
+  }
 }
 
 function redactValue(
@@ -159,16 +256,6 @@ export function sanitizeTelemetry<T>(value: T): T {
   return redactValue(value, undefined, new WeakSet<object>(), 0) as T;
 }
 
-function stripUrlQueryAndHash(url: string) {
-  const queryIndex = url.indexOf("?");
-  const hashIndex = url.indexOf("#");
-  const cutoff = [queryIndex, hashIndex]
-    .filter((index) => index >= 0)
-    .reduce((smallest, index) => Math.min(smallest, index), url.length);
-
-  return redactTelemetryString(url.slice(0, cutoff));
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -186,7 +273,7 @@ export function sanitizeSentryEvent<T>(event: T): T {
     const request = { ...result.request };
 
     if (typeof request.url === "string") {
-      request.url = stripUrlQueryAndHash(request.url);
+      request.url = sanitizeOperationalTelemetryUrl(request.url);
     }
 
     if ("query_string" in request) {

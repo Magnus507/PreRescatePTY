@@ -1,6 +1,6 @@
 import DynamicRequestBoundary from "@/components/security/DynamicRequestBoundary";
 
-export default function AdminRootGroup({
+export default function AppGroupLayout({
   children,
 }: {
   children: React.ReactNode;
