@@ -84,4 +84,29 @@ describe("admin E2E regression guardrails", () => {
     expect(cron).toContain('duplicateSourcePairs: activeOverlappingSourcePairs');
     expect(cron).not.toContain('HAVING COUNT(*) > 1');
   });
+
+  it("serializes QA pass and fail decisions on the production-order row before loading the unit", () => {
+    const routes = [
+      source("app/api/admin/operations/production-orders/[id]/qa/[unitId]/pass/route.ts"),
+      source("app/api/admin/operations/production-orders/[id]/qa/[unitId]/fail/route.ts"),
+    ];
+
+    for (const route of routes) {
+      const lockIndex = route.indexOf("const productionOrderLock = await tx.operationProductionOrder.updateMany");
+      const unitReadIndex = route.indexOf("tx.operationFinishedGoodUnit.findUnique");
+      expect(route).toContain("prisma.$transaction");
+      expect(route).toContain("if (productionOrderLock.count !== 1) return null");
+      expect(lockIndex).toBeGreaterThan(-1);
+      expect(unitReadIndex).toBeGreaterThan(lockIndex);
+    }
+  });
+
+  it("keeps QA failure unit/event and production-order state changes atomic", () => {
+    const fail = source("app/api/admin/operations/production-orders/[id]/qa/[unitId]/fail/route.ts");
+    expect(fail).toContain("const result = await prisma.$transaction");
+    expect(fail).toContain("await tx.operationFinishedGoodUnit.update");
+    expect(fail).toContain("await tx.operationProductionOrder.update");
+    expect(fail).not.toContain("await prisma.operationFinishedGoodUnit.update");
+    expect(fail).not.toContain("await prisma.operationProductionOrder.update");
+  });
 });
