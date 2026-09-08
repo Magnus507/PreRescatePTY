@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { getCommercialOrderReservationOwnerId } from "../commercial-orders.helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -66,8 +67,9 @@ export async function GET(
       );
     }
 
+    const reservationOrderId = getCommercialOrderReservationOwnerId(commercialOrder);
     const reservedUnits = await prisma.operationFinishedGoodUnit.findMany({
-      where: { reservedOrderId: id, status: "reserved" },
+      where: { reservedOrderId: reservationOrderId, status: "reserved" },
       select: {
         id: true,
         internalLabel: true,
@@ -82,7 +84,9 @@ export async function GET(
       orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
     });
 
-    return NextResponse.json({ commercialOrder: { ...commercialOrder, reservedUnits } });
+    return NextResponse.json({
+      commercialOrder: { ...commercialOrder, reservationOrderId, reservedUnits },
+    });
   } catch (error) {
     console.error("[operations/commercial-orders/:id] GET error:", error);
     return NextResponse.json(
