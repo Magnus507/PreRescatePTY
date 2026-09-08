@@ -14,6 +14,7 @@ vi.mock("@/lib/rbac", () => ({ GENERAL_ADMIN_ROLES: ["admin"], requireRole: auth
 const db = createIntegrationPrismaClient();
 const run = `fulfillment-${Date.now()}`;
 let markSent: typeof import("@/app/api/admin/operations/dispatches/[id]/mark-sent/route").POST;
+let cancelDispatch: typeof import("@/app/api/admin/operations/dispatches/[id]/cancel/route").POST;
 let delivery: typeof import("@/app/api/admin/operations/dispatches/[id]/confirm-delivery/route").POST;
 let history: typeof import("@/lib/operations/operation-history").getOperationHistory;
 
@@ -24,6 +25,7 @@ describe("real PostgreSQL fulfillment and support history", () => {
     const user = await seedIntegrationUser(db, { email: `${run}@example.invalid` });
     auth.mockResolvedValue({ authorized: true, session: { user: { id: user.id } } });
     ({ POST: markSent } = await import("@/app/api/admin/operations/dispatches/[id]/mark-sent/route"));
+    ({ POST: cancelDispatch } = await import("@/app/api/admin/operations/dispatches/[id]/cancel/route"));
     ({ POST: delivery } = await import("@/app/api/admin/operations/dispatches/[id]/confirm-delivery/route"));
     ({ getOperationHistory: history } = await import("@/lib/operations/operation-history"));
   });
@@ -134,6 +136,75 @@ describe("real PostgreSQL fulfillment and support history", () => {
         where: { dispatchId: dispatch.id, eventType: "DISPATCHED" },
       })
     ).toBe(0);
+  });
+
+  it("cancels a prepared dispatch by detaching its item and safely returning the unit to stock", async () => {
+    const dispatch = await db.operationDispatch.create({
+      data: { code: `${run}-safe-cancel-dispatch`, status: "prepared" },
+    });
+    const order = await db.operationCommercialOrder.create({
+      data: {
+        code: `${run}-safe-cancel-order`,
+        status: "dispatch_created",
+        paymentStatus: "paid",
+        fulfillmentStatus: "reserved",
+        dispatchId: dispatch.id,
+      },
+    });
+    const unit = await db.operationFinishedGoodUnit.create({
+      data: {
+        internalLabel: `${run}-safe-cancel-unit`,
+        productCode: run,
+        productName: "Fixture",
+        productType: "test",
+        status: "reserved",
+        qaStatus: "passed",
+        activationStatus: "not_activated",
+        reservedOrderId: order.id,
+      },
+    });
+    const item = await db.operationDispatchItem.create({
+      data: {
+        dispatchId: dispatch.id,
+        unitId: unit.id,
+        internalLabel: unit.internalLabel,
+        productCode: unit.productCode,
+        productName: unit.productName,
+        quantity: 1,
+        unit: "piece",
+        status: "packed",
+        packedAt: new Date(),
+      },
+    });
+
+    const response = await cancelDispatch(
+      new NextRequest("http://localhost/cancel-dispatch", {
+        method: "POST",
+        body: JSON.stringify({ reason: "Cliente cambió el pedido" }),
+        headers: { "content-type": "application/json" },
+      }),
+      { params: Promise.resolve({ id: dispatch.id }) }
+    );
+    expect(response.status).toBe(200);
+
+    const cancelled = await db.operationDispatch.findUniqueOrThrow({ where: { id: dispatch.id } });
+    const releasedUnit = await db.operationFinishedGoodUnit.findUniqueOrThrow({ where: { id: unit.id } });
+    const detachedItem = await db.operationDispatchItem.findUniqueOrThrow({ where: { id: item.id } });
+    const projected = await db.operationCommercialOrder.findUniqueOrThrow({ where: { id: order.id } });
+
+    expect(cancelled.status).toBe("cancelled");
+    expect(releasedUnit.status).toBe("available");
+    expect(releasedUnit.reservedOrderId).toBeNull();
+    expect(detachedItem.unitId).toBeNull();
+    expect(detachedItem.status).toBe("cancelled");
+    expect(projected.dispatchId).toBeNull();
+    expect(projected.status).toBe("accepted");
+    expect(projected.fulfillmentStatus).toBe("pending");
+    expect(
+      await db.operationFinishedGoodUnitEvent.count({
+        where: { unitId: unit.id, eventType: "RELEASED" },
+      })
+    ).toBe(1);
   });
 
   it("delivery preserves allocation, finalizes the projection, appears in history, and cannot be released to stock", async () => {
