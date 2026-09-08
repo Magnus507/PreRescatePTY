@@ -21,9 +21,6 @@ export async function reconcileCustomerProducedUnitReservation(
   });
   if (!order) throw new Error("COMMERCIAL_ORDER_NOT_FOUND");
   if (order.customerType === "internal") return null;
-  if (!isCommercialOrderEligibleForReservation(order)) {
-    throw new Error("ORDER_NOT_READY_FOR_RESERVATION");
-  }
 
   const unit = await tx.operationFinishedGoodUnit.findUnique({
     where: { id: input.unitId },
@@ -40,6 +37,10 @@ export async function reconcileCustomerProducedUnitReservation(
   if (!unit) throw new Error("UNIT_NOT_FOUND");
 
   const reservationOrderId = order.sourceId || order.id;
+  if (unit.reservedOrderId && unit.reservedOrderId !== reservationOrderId) {
+    throw new Error("PRODUCED_UNIT_RESERVED_TO_OTHER_ORDER");
+  }
+
   const requiredByCode = new Map<string, number>();
   for (const item of order.items) {
     const code = resolveCommercialOrderItemKey(item);
@@ -52,18 +53,17 @@ export async function reconcileCustomerProducedUnitReservation(
     throw new Error("PRODUCED_UNIT_PRODUCT_MISMATCH");
   }
 
-  // A retry after the unit has already progressed into a dispatch must be a
-  // no-op. Re-running generic stock reservation here could make a completed
-  // fulfilment look short because dispatched units are intentionally excluded.
-  if (unit.dispatchItems.length > 0 || ["dispatched", "delivered", "activated"].includes(unit.status)) {
-    if (unit.reservedOrderId && unit.reservedOrderId !== reservationOrderId) {
-      throw new Error("PRODUCED_UNIT_RESERVED_TO_OTHER_ORDER");
-    }
+  // Once fulfilment has already advanced, QC retry is deliberately a no-op.
+  if (
+    unit.dispatchItems.length > 0 ||
+    ["dispatched", "delivered", "activated"].includes(unit.status) ||
+    (["stock_reserved", "dispatch_created"].includes(order.status) && unit.reservedOrderId === reservationOrderId)
+  ) {
     return null;
   }
 
-  if (unit.reservedOrderId && unit.reservedOrderId !== reservationOrderId) {
-    throw new Error("PRODUCED_UNIT_RESERVED_TO_OTHER_ORDER");
+  if (!isCommercialOrderEligibleForReservation(order)) {
+    throw new Error("ORDER_NOT_READY_FOR_RESERVATION");
   }
 
   if (unit.reservedOrderId === reservationOrderId && unit.status === "reserved") {
@@ -91,8 +91,6 @@ export async function reconcileCustomerProducedUnitReservation(
     },
   });
 
-  // If the order is already fully covered by this SKU, do not over-reserve the
-  // newly produced unit. It remains legitimate free stock.
   if (alreadyReservedForCode < requiredQty) {
     const claimed = await tx.operationFinishedGoodUnit.updateMany({
       where: {
@@ -129,7 +127,6 @@ export async function reconcileCustomerProducedUnitReservation(
     });
   }
 
-  // Complete any remaining quantities with the normal strict FIFO allocator.
   return reserveCommercialOrderStock(tx, {
     orderId: order.id,
     allowPartial: true,
