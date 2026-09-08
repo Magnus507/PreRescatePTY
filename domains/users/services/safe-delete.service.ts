@@ -6,7 +6,9 @@ import { randomBytes } from "node:crypto";
 export class SafeDeleteService {
   /**
    * Performs a comprehensive delete of a user account and its data.
-   * Anonymizes application data and durably queues storage cleanup.
+   * Sensitive operational projections are anonymized while financial records
+   * that may require legal retention are preserved at the minimum necessary level.
+   * Storage cleanup is durably queued in the same transaction.
    */
   static async deleteUserAccount(userId: string, actorId: string): Promise<boolean> {
     try {
@@ -27,6 +29,7 @@ export class SafeDeleteService {
         : [];
       const profiles = [...(user.profile ? [user.profile] : []), ...dependentProfiles];
       const profileIds = profiles.map(profile => profile.id);
+      const orderIds = user.orders.map((order) => order.id);
       const storageRefs = [
         ...profiles.map(profile => parseStorageObjectRef(profile.photoUrl)),
         ...user.orders.map((order) => parseStorageObjectRef(order.paymentProofUrl)),
@@ -34,8 +37,6 @@ export class SafeDeleteService {
 
       const chipIds = user.chips.map((chip) => chip.id);
       await prisma.$transaction(async (tx) => {
-        // Enqueue before removing references, in the same transaction. Storage
-        // failures after commit remain recoverable by the cleanup worker.
         for (const ref of storageRefs) {
           await tx.storageCleanupOutbox.upsert({
             where: { objectKey: `${ref.bucket}:${ref.path}` },
@@ -43,7 +44,7 @@ export class SafeDeleteService {
             create: { objectKey: `${ref.bucket}:${ref.path}`, bucket: ref.bucket, path: ref.path, actorUserId: actorId, accountId: user.accountId },
           });
         }
-        // 1. Audit Log: Entry before destruction
+
         await tx.auditLog.create({
           data: {
             accountId: user.accountId,
@@ -55,7 +56,7 @@ export class SafeDeleteService {
           }
         });
 
-        // 2. Remove contacts, scans, alerts, consent evidence and app messages.
+        // Remove direct personal/contact/consent data and ephemeral auth artifacts.
         await tx.contact.deleteMany({ where: { userId } });
         await tx.consent.deleteMany({
           where: {
@@ -67,6 +68,8 @@ export class SafeDeleteService {
         });
         await tx.appNotification.deleteMany({ where: { userId } });
         await tx.passwordResetToken.deleteMany({ where: { email: user.email } });
+        await tx.$executeRaw`DELETE FROM "MfaRecoveryCode" WHERE "userId" = ${userId}`;
+
         if (profileIds.length || chipIds.length > 0) {
           await tx.scanEvent.deleteMany({
             where: {
@@ -82,7 +85,8 @@ export class SafeDeleteService {
           await tx.chipClaimToken.deleteMany({ where: { chipId: { in: chipIds } } });
         }
 
-        // 3. Clear all sensitive medical and location fields.
+        // Clear medical, identity and precise-location data from profiles retained
+        // only as tombstones for referential integrity.
         for (const profile of profiles) {
           await tx.profile.update({
             where: { id: profile.id },
@@ -131,7 +135,8 @@ export class SafeDeleteService {
           await tx.account.update({ where: { id: user.account.id }, data: { accountName: "Cuenta eliminada" } });
         }
 
-        // 4. Keep accounting rows, but remove customer identity, shipping and proof references.
+        // Keep order/accounting amounts and lifecycle facts, but remove identity,
+        // shipping, free-text and proof references that are no longer necessary.
         await tx.order.updateMany({
           where: { userId },
           data: {
@@ -142,25 +147,74 @@ export class SafeDeleteService {
             shippingAddress: null,
             shippingCity: null,
             shippingNotes: null,
+            deliveryNote: null,
+            adminReviewNotes: null,
             paymentProofUrl: null,
             manualPaymentReference: null,
           },
         });
 
-        // 5. Disable physical identifiers without deleting inventory history.
+        if (orderIds.length > 0) {
+          // OperationCommercialOrder is a denormalized projection. Production
+          // checkout rows use sourceId = Order.id, so anonymize the projection too.
+          await tx.operationCommercialOrder.updateMany({
+            where: { sourceId: { in: orderIds } },
+            data: {
+              customerName: "Cuenta eliminada",
+              customerEmail: null,
+              customerPhone: null,
+              customerReference: null,
+              notes: null,
+            },
+          });
+
+          // Pending/non-fiscal invoice drafts have no reason to retain buyer PII
+          // after erasure. Issued/cancelled fiscal documents are intentionally
+          // preserved for legal/accounting retention and must follow the formal
+          // retention schedule rather than being silently destroyed here.
+          await tx.invoice.updateMany({
+            where: {
+              orderId: { in: orderIds },
+              status: { in: ["pending_configuration", "pending_issue"] },
+            },
+            data: {
+              buyerName: "Cuenta eliminada",
+              buyerEmail: null,
+              buyerDocument: null,
+              buyerPhone: null,
+              buyerAddress: null,
+            },
+          });
+
+          // The commerce worker rebuilds its input from the current Order row and
+          // does not rely on payloadJson. Redact historical snapshots so stale PII
+          // cannot survive in a processed/retry outbox entry.
+          await tx.commerceOrderSyncOutbox.updateMany({
+            where: { sourceId: { in: orderIds } },
+            data: { payloadJson: JSON.stringify({ redacted: true }) },
+          });
+
+          await tx.paymentAttempt.updateMany({
+            where: { orderId: { in: orderIds } },
+            data: { checkoutSessionJson: null },
+          });
+        }
+
+        // Disable physical identifiers without deleting inventory history.
         await tx.chip.updateMany({
           where: { ownerUserId: userId },
-          data: { 
-            ownerUserId: null, 
+          data: {
+            ownerUserId: null,
             assignedProfileId: null,
-            status: "deactivated" 
+            status: "deactivated"
           }
         });
 
-        // 6. Invalidate credentials and active sessions, then anonymize the user.
+        // Invalidate credentials and every active JWT session, then anonymize the
+        // application identity. The random password is deliberately unusable.
         await tx.user.update({
           where: { id: userId },
-          data: { 
+          data: {
             status: "deleted",
             deletedAt: new Date(),
             email: `deleted_${userId}@prerescate.invalid`,
