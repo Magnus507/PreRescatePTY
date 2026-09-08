@@ -6,6 +6,7 @@ const db = createIntegrationPrismaClient();
 const RUN_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const RESERVATION_PRODUCT_CODE = `PRD-RES-${RUN_ID}`;
 const UNPAID_PRODUCT_CODE = `PRD-UNPAID-${RUN_ID}`;
+const DUPLICATE_LINE_PRODUCT_CODE = `PRD-DUP-${RUN_ID}`;
 
 describe("PostgreSQL integration: commercial order reservation", () => {
   beforeAll(async () => {
@@ -108,6 +109,87 @@ describe("PostgreSQL integration: commercial order reservation", () => {
 
     expect(refreshedOrders).toHaveLength(2);
     expect(refreshedOrders.every((order) => ["stock_reserved", "pending_stock", "needs_production"].includes(order.status))).toBe(true);
+  });
+
+  it("does not count one physical unit twice across duplicate lines of the same SKU", async () => {
+    const sourceOrderId = `source-dup-${RUN_ID}`;
+    const unit = await db.operationFinishedGoodUnit.create({
+      data: {
+        internalLabel: `INT-DUP-${RUN_ID}`,
+        productCode: DUPLICATE_LINE_PRODUCT_CODE,
+        productName: "Producto duplicado",
+        productType: DUPLICATE_LINE_PRODUCT_CODE,
+        status: "available",
+        qaStatus: "passed",
+        activationStatus: "not_activated",
+      },
+    });
+
+    const order = await db.operationCommercialOrder.create({
+      data: {
+        code: `OP-DUP-${RUN_ID}`,
+        sourceType: "checkout",
+        sourceId: sourceOrderId,
+        status: "draft",
+        customerType: "customer",
+        salesChannel: "web",
+        paymentStatus: "paid",
+        fulfillmentStatus: "pending",
+        totalAmount: "50.00",
+        currency: "USD",
+        items: {
+          create: [
+            {
+              productName: "Producto duplicado A",
+              quantity: 1,
+              unitPrice: "25.00",
+              totalPrice: "25.00",
+              productCode: DUPLICATE_LINE_PRODUCT_CODE,
+              unit: "unit",
+            },
+            {
+              productName: "Producto duplicado B",
+              quantity: 1,
+              unitPrice: "25.00",
+              totalPrice: "25.00",
+              productCode: DUPLICATE_LINE_PRODUCT_CODE,
+              unit: "unit",
+            },
+          ],
+        },
+      },
+      select: { id: true },
+    });
+
+    const result = await db.$transaction((tx) =>
+      reserveCommercialOrderStock(tx, { orderId: order.id, allowPartial: true })
+    );
+
+    expect(result?.summary).toMatchObject({
+      requestedQty: 2,
+      reservedQty: 1,
+      missingQty: 1,
+      status: "pending_stock",
+    });
+    expect(result?.missingItems).toHaveLength(1);
+    expect(result?.missingItems[0]).toMatchObject({
+      productCode: DUPLICATE_LINE_PRODUCT_CODE,
+      requestedQty: 2,
+      reservedQty: 1,
+      missingQty: 1,
+    });
+
+    const reservedUnits = await db.operationFinishedGoodUnit.findMany({
+      where: { reservedOrderId: sourceOrderId, productCode: DUPLICATE_LINE_PRODUCT_CODE },
+      select: { id: true },
+    });
+    expect(reservedUnits).toEqual([{ id: unit.id }]);
+
+    const refreshedOrder = await db.operationCommercialOrder.findUnique({
+      where: { id: order.id },
+      select: { status: true, fulfillmentStatus: true },
+    });
+    expect(refreshedOrder).toEqual({ status: "pending_stock", fulfillmentStatus: "reserved" });
   });
 
   it("rejects an unpaid order without reserving its available unit", async () => {
