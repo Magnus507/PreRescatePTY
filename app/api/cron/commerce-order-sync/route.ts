@@ -20,7 +20,10 @@ function authorizeCronRequest(req: NextRequest) {
 
 async function buildReconciliationSummary() {
   type OutboxSourceRow = { sourceId: string };
-  type DuplicatePairCount = { count: bigint };
+  type SourcePairOverlapCounts = {
+    historicalMultiEventSourcePairs: bigint;
+    activeOverlappingSourcePairs: bigint;
+  };
 
   const [pending, processing, retrying, failed, staleProcessing, orders, outboxRows, unresolvedCommercialOrders] =
     await Promise.all([
@@ -53,16 +56,34 @@ async function buildReconciliationSummary() {
 
   const outboxSourceIds = new Set(outboxRows.map((row) => row.sourceId));
   const missingOutboxOrders = orders.filter((order) => !outboxSourceIds.has(order.id)).length;
-  const duplicateSourcePairs = await prisma.$queryRaw<DuplicatePairCount[]>`
-    SELECT COUNT(*)::bigint AS count
+
+  // A source pair can legitimately have multiple historical lifecycle events:
+  // deduplication is enforced by the unique deduplicationKey, which includes the
+  // event suffix. Keep that historical count informational and separately report
+  // only source pairs with more than one non-terminal event at the same time.
+  const sourcePairOverlap = await prisma.$queryRaw<SourcePairOverlapCounts[]>`
+    SELECT
+      COUNT(*) FILTER (WHERE "totalCount" > 1)::bigint AS "historicalMultiEventSourcePairs",
+      COUNT(*) FILTER (WHERE "activeCount" > 1)::bigint AS "activeOverlappingSourcePairs"
     FROM (
-      SELECT "sourceType", "sourceId"
+      SELECT
+        "sourceType",
+        "sourceId",
+        COUNT(*) AS "totalCount",
+        COUNT(*) FILTER (
+          WHERE status IN ('pending', 'processing', 'retrying')
+        ) AS "activeCount"
       FROM "CommerceOrderSyncOutbox"
       WHERE "sourceType" IS NOT NULL AND "sourceId" IS NOT NULL
       GROUP BY "sourceType", "sourceId"
-      HAVING COUNT(*) > 1
-    ) duplicated
-  `.catch(() => [{ count: BigInt(0) }]);
+    ) grouped
+  `.catch(() => [{
+    historicalMultiEventSourcePairs: BigInt(0),
+    activeOverlappingSourcePairs: BigInt(0),
+  }]);
+
+  const historicalMultiEventSourcePairs = Number(sourcePairOverlap[0]?.historicalMultiEventSourcePairs || 0);
+  const activeOverlappingSourcePairs = Number(sourcePairOverlap[0]?.activeOverlappingSourcePairs || 0);
 
   return {
     pending,
@@ -72,7 +93,12 @@ async function buildReconciliationSummary() {
     staleProcessing,
     missingOutboxOrders,
     unresolvedCommercialOrders,
-    duplicateSourcePairs: Number(duplicateSourcePairs[0]?.count || 0),
+    historicalMultiEventSourcePairs,
+    activeOverlappingSourcePairs,
+    // Backward-compatible health field: unlike the previous implementation,
+    // this now represents only simultaneous non-terminal overlap, not harmless
+    // historical lifecycle events for the same source.
+    duplicateSourcePairs: activeOverlappingSourcePairs,
   };
 }
 
