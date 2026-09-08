@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
@@ -11,7 +12,7 @@ function parseOrderCode(orderNumber: string) {
 }
 
 async function getAvailableDispatchCode(
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  tx: Prisma.TransactionClient,
   orderNumber: string
 ) {
   const baseCode = `DSP-${parseOrderCode(orderNumber)}`;
