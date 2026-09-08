@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSequentialCode } from "@/lib/operations/order-code";
-import { loadInventoryStockRows } from "@/lib/operations/inventory-stock";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
@@ -16,14 +15,15 @@ function getProductInfo(item: {
   productName: string;
 }) {
   return {
-    productCode: item.finishedGood?.code || item.productCode || "UNKNOWN",
+    productCode: item.finishedGood?.code || item.productCode || "",
     productName: item.finishedGood?.name || item.productName,
-    productType: item.finishedGood?.productType || "general",
+    productType: item.finishedGood?.productType || item.productCode || "general",
   };
 }
 
-function normalizeMode(value: unknown): "backorder" | "full" {
-  return value === "backorder" ? "backorder" : "full";
+function normalizeMode(value: unknown): "backorder" | "full" | null {
+  if (value === "backorder" || value === "full") return value;
+  return null;
 }
 
 function toPositiveInteger(value: unknown): number | null {
@@ -44,6 +44,12 @@ export async function POST(
   const requestId = getAuditRequestId(req);
   const body = await req.json().catch(() => ({}));
   const mode = normalizeMode(body?.mode);
+  if (!mode) {
+    return NextResponse.json(
+      { error: "Debes indicar mode=full o mode=backorder explícitamente" },
+      { status: 400 }
+    );
+  }
   const explicitPlannedQuantity = toPositiveInteger(body?.plannedQuantity);
   const confirmPendingPayment = Boolean(body?.confirmPendingPayment);
 
@@ -63,164 +69,178 @@ export async function POST(
       });
 
       if (!commercialOrder) return null;
-      if (commercialOrder.status === "cancelled" || commercialOrder.status === "rejected") {
-        throw new Error("COMMERCIAL_ORDER_CANCELLED");
+      if (["cancelled", "rejected", "completed", "dispatch_created"].includes(commercialOrder.status)) {
+        throw new Error("COMMERCIAL_ORDER_LOCKED");
       }
       if (commercialOrder.paymentStatus === "pending" && !confirmPendingPayment) {
         throw new Error("PENDING_PAYMENT_CONFIRMATION_REQUIRED");
       }
 
-      const productCodes = Array.from(
-        new Set(
-          commercialOrder.items
-            .map((item) => getProductInfo(item).productCode)
-            .filter((code) => code && code !== "UNKNOWN")
-        )
-      );
-      const totalQuantity = commercialOrder.items.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0);
-      const firstItem = commercialOrder.items[0];
-      const productInfo = firstItem ? getProductInfo(firstItem) : null;
-      const isInternal = commercialOrder.customerType === "internal";
-      const productionTitle = isInternal
-        ? `Producción interna desde ${commercialOrder.code}`
-        : `Producción desde ${commercialOrder.code}`;
-      const productionNotesMarker = `${BACKORDER_MARKER_PREFIX}:${commercialOrder.id}`;
-      const legacyMarker = `[commercialOrderId:${commercialOrder.id}]`;
-      const existingProductionOrder = await tx.operationProductionOrder.findFirst({
-        where: {
-          OR: [
-            { notes: { contains: productionNotesMarker } },
-            { notes: { contains: legacyMarker } },
-          ],
-        },
-      });
+      const groupedProducts = new Map<
+        string,
+        { productCode: string; productName: string; productType: string; requestedQty: number }
+      >();
+      for (const item of commercialOrder.items) {
+        const info = getProductInfo(item);
+        if (!info.productCode) throw new Error("MISSING_PRODUCT_CODE");
+        const existing = groupedProducts.get(info.productCode);
+        if (existing) {
+          existing.requestedQty += item.quantity;
+        } else {
+          groupedProducts.set(info.productCode, {
+            ...info,
+            requestedQty: item.quantity,
+          });
+        }
+      }
 
-      if (existingProductionOrder) {
-        await tx.operationCommercialOrder.update({
-          where: { id: commercialOrder.id },
+      const products = Array.from(groupedProducts.values());
+      if (products.length === 0) throw new Error("COMMERCIAL_ORDER_ITEMS_REQUIRED");
+      if (products.length > 1 && explicitPlannedQuantity) {
+        throw new Error("MULTI_PRODUCT_EXPLICIT_QTY_NOT_SUPPORTED");
+      }
+
+      const isInternal = commercialOrder.customerType === "internal";
+      if (isInternal && mode === "backorder") {
+        throw new Error("INTERNAL_BACKORDER_NOT_ALLOWED");
+      }
+
+      const legacyMarker = `[commercialOrderId:${commercialOrder.id}]`;
+      const productionResults: Array<{
+        productionOrder: { id: string; code: string; plannedQuantity: number; status: string };
+        created: boolean;
+        productCode: string;
+        plannedQuantity: number;
+        backorderQty: number | null;
+      }> = [];
+
+      for (const product of products) {
+        let backorderQty: number | null = null;
+        let plannedQuantity = product.requestedQty;
+
+        if (!isInternal && mode === "backorder") {
+          const availableStock = await tx.operationFinishedGoodUnit.count({
+            where: {
+              productCode: product.productCode,
+              status: "available",
+              qaStatus: "passed",
+              activationStatus: "not_activated",
+              reservedOrderId: null,
+              dispatchItems: { none: {} },
+            },
+          });
+          backorderQty = Math.max(product.requestedQty - availableStock, 0);
+          plannedQuantity = explicitPlannedQuantity ?? backorderQty;
+          if (plannedQuantity <= 0) continue;
+        } else if (explicitPlannedQuantity) {
+          plannedQuantity = explicitPlannedQuantity;
+        }
+
+        const productionMarker = `${BACKORDER_MARKER_PREFIX}:${commercialOrder.id}:${product.productCode}`;
+        const existingProductionOrder = await tx.operationProductionOrder.findFirst({
+          where: {
+            OR: [
+              { notes: { contains: productionMarker } },
+              ...(products.length === 1 ? [{ notes: { contains: legacyMarker } }] : []),
+            ],
+          },
+          select: { id: true, code: true, plannedQuantity: true, status: true },
+        });
+
+        if (existingProductionOrder) {
+          productionResults.push({
+            productionOrder: existingProductionOrder,
+            created: false,
+            productCode: product.productCode,
+            plannedQuantity: existingProductionOrder.plannedQuantity,
+            backorderQty,
+          });
+          continue;
+        }
+
+        const productionCode = await generateSequentialCode({
+          tx,
+          model: "productionOrder",
+          prefix: isInternal ? "PROD-INT" : "PROD",
+        });
+        const productionTitle = isInternal
+          ? `Producción interna desde ${commercialOrder.code} · ${product.productName}`
+          : `Producción desde ${commercialOrder.code} · ${product.productName}`;
+        const productionReason = isInternal
+          ? `Orden creada desde pedido interno ${commercialOrder.code}`
+          : mode === "backorder"
+            ? `Orden creada desde pedido comercial ${commercialOrder.code} por faltante de backorder`
+            : `Orden creada desde pedido comercial ${commercialOrder.code}`;
+        const productionNotes = isInternal
+          ? `${productionMarker} ${legacyMarker} Pedido interno para fabricar inventario.`
+          : `${productionMarker} ${legacyMarker} Pedido operativo enviado a producción real.`;
+
+        const productionOrder = await tx.operationProductionOrder.create({
           data: {
-            fulfillmentStatus: "requested",
+            code: productionCode,
+            title: productionTitle.slice(0, 180),
+            status: "draft",
+            plannedQuantity,
+            producedQuantity: 0,
+            outputType: product.productType,
+            notes: productionNotes,
+            events: {
+              create: {
+                eventType: "CREATED",
+                quantity: plannedQuantity,
+                reason: productionReason,
+                metadataJson: JSON.stringify({
+                  commercialOrderId: commercialOrder.id,
+                  commercialOrderCode: commercialOrder.code,
+                  orderSource: isInternal ? "internal" : "commercial",
+                  mode,
+                  productCode: product.productCode,
+                  productName: product.productName,
+                  productType: product.productType,
+                  requestedQuantity: product.requestedQty,
+                  backorderQty,
+                  plannedQuantity,
+                  confirmPendingPayment,
+                }),
+                createdById: auth.session.user.id || null,
+              },
+            },
+          },
+          select: { id: true, code: true, plannedQuantity: true, status: true },
+        });
+
+        await tx.operationCommercialOrderEvent.create({
+          data: {
+            commercialOrderId: commercialOrder.id,
+            eventType: "FULFILLMENT_REQUESTED",
+            reason: `Producto ${product.productCode} enviado a producción`,
+            referenceType: "production_order",
+            referenceId: productionOrder.id,
+            metadataJson: JSON.stringify({
+              productionOrderId: productionOrder.id,
+              productionOrderCode: productionOrder.code,
+              productCode: product.productCode,
+              plannedQuantity,
+              mode,
+            }),
+            createdById: auth.session.user.id || null,
           },
         });
 
-        return {
-          commercialOrder,
-          productionOrder: existingProductionOrder,
-          created: false,
-        };
-      }
-
-      if (!productInfo) {
-        throw new Error("COMMERCIAL_ORDER_ITEMS_REQUIRED");
-      }
-
-      let plannedQuantity = totalQuantity;
-      let backorderQty: number | null = null;
-      let productionReason = isInternal
-        ? `Orden creada desde pedido interno ${commercialOrder.code}`
-        : `Orden creada desde pedido comercial ${commercialOrder.code}`;
-      let productionMetadata: Record<string, unknown> = {
-        commercialOrderId: commercialOrder.id,
-        commercialOrderCode: commercialOrder.code,
-        itemCount: commercialOrder.items.length,
-        productType: productInfo.productType,
-        orderSource: isInternal ? "internal" : "commercial",
-      };
-
-      if (!isInternal && mode === "backorder") {
-        if (productCodes.length !== 1) {
-          throw new Error("BACKORDER_MULTI_PRODUCT_NOT_SUPPORTED");
-        }
-
-        const stockRows = await loadInventoryStockRows();
-        const stockByCode = new Map(stockRows.map((row) => [row.productCode, row]));
-        const productCode = productCodes[0];
-        const availableStock = Math.max(0, stockByCode.get(productCode)?.availableCount ?? 0);
-        backorderQty = Math.max(totalQuantity - availableStock, 0);
-
-        if (backorderQty <= 0 && !explicitPlannedQuantity) {
-          throw new Error("BACKORDER_QTY_REQUIRED");
-        }
-
-        plannedQuantity = explicitPlannedQuantity ?? backorderQty;
-        if (plannedQuantity <= 0) {
-          throw new Error("BACKORDER_QTY_REQUIRED");
-        }
-
-        productionReason = `Orden creada desde pedido comercial ${commercialOrder.code} por faltante de backorder`;
-        productionMetadata = {
-          ...productionMetadata,
-          mode: "backorder",
-          productCode,
-          requestedQuantity: totalQuantity,
-          availableStock,
+        productionResults.push({
+          productionOrder,
+          created: true,
+          productCode: product.productCode,
+          plannedQuantity,
           backorderQty,
-          plannedQuantity,
-          confirmPendingPayment,
-        };
-      } else {
-        if (explicitPlannedQuantity && explicitPlannedQuantity !== totalQuantity) {
-          plannedQuantity = explicitPlannedQuantity;
-        }
-        productionMetadata = {
-          ...productionMetadata,
-          mode: "full",
-          productCode: productInfo.productCode,
-          requestedQuantity: totalQuantity,
-          plannedQuantity,
-        };
+        });
       }
 
-      const productionNotes = isInternal
-        ? `${legacyMarker} Pedido interno para fabricar inventario.`
-        : `${productionNotesMarker} Pedido operativo enviado a producción real.`;
-      const productionCode = await generateSequentialCode({
-        tx,
-        model: "productionOrder",
-        prefix: isInternal ? "PROD-INT" : "PROD",
-      });
-
-      const productionOrder = await tx.operationProductionOrder.create({
-        data: {
-          code: productionCode,
-          title: productionTitle,
-          status: "draft",
-          plannedQuantity,
-          producedQuantity: 0,
-          outputType: productInfo.productType,
-          notes: productionNotes,
-          events: {
-            create: {
-              eventType: "CREATED",
-              quantity: plannedQuantity,
-              reason: productionReason,
-              metadataJson: JSON.stringify(productionMetadata),
-              createdById: auth.session.user.id || null,
-            },
-          },
-        },
-      });
-
-      await tx.operationCommercialOrderEvent.create({
-        data: {
-          commercialOrderId: commercialOrder.id,
-          eventType: "FULFILLMENT_REQUESTED",
-          reason: "Pedido enviado a producción",
-          referenceType: "production_order",
-          referenceId: productionOrder.id,
-          metadataJson: JSON.stringify({
-            productionOrderId: productionOrder.id,
-            productionOrderCode: productionOrder.code,
-          }),
-          createdById: auth.session.user.id || null,
-        },
-      });
+      if (productionResults.length === 0) throw new Error("BACKORDER_QTY_REQUIRED");
 
       await tx.operationCommercialOrder.update({
         where: { id: commercialOrder.id },
-        data: {
-          fulfillmentStatus: "requested",
-        },
+        data: { fulfillmentStatus: "requested" },
       });
 
       await writeAuditLog(tx, {
@@ -236,22 +256,31 @@ export async function POST(
           paymentStatus: commercialOrder.paymentStatus,
         },
         after: {
-          productionOrderId: productionOrder.id,
-          productionOrderCode: productionOrder.code,
           mode,
-          plannedQuantity,
-          backorderQty,
+          productions: productionResults.map((entry) => ({
+            productionOrderId: entry.productionOrder.id,
+            productionOrderCode: entry.productionOrder.code,
+            productCode: entry.productCode,
+            plannedQuantity: entry.plannedQuantity,
+            backorderQty: entry.backorderQty,
+            created: entry.created,
+          })),
         },
       });
 
       return {
         commercialOrder,
-        productionOrder,
-        created: true,
+        productionOrder: productionResults[0]?.productionOrder || null,
+        productionOrders: productionResults.map((entry) => entry.productionOrder),
+        productionOrderCode: productionResults[0]?.productionOrder.code || null,
+        productionOrderCodes: productionResults.map((entry) => entry.productionOrder.code),
+        created: productionResults.some((entry) => entry.created),
         mode,
-        plannedQuantity,
-        productCode: productInfo.productCode,
-        backorderQty,
+        products: productionResults.map((entry) => ({
+          productCode: entry.productCode,
+          plannedQuantity: entry.plannedQuantity,
+          backorderQty: entry.backorderQty,
+        })),
       };
     });
 
@@ -261,27 +290,34 @@ export async function POST(
 
     return NextResponse.json(result, { status: result.created ? 201 : 200 });
   } catch (error: unknown) {
-    if (error instanceof Error && error.message === "COMMERCIAL_ORDER_CANCELLED") {
-      return NextResponse.json({ error: "El pedido cancelado no puede enviarse a produccion" }, { status: 400 });
+    const message = error instanceof Error ? error.message : "";
+    if (message === "COMMERCIAL_ORDER_LOCKED") {
+      return NextResponse.json({ error: "El pedido ya no permite crear producción" }, { status: 409 });
     }
-    if (error instanceof Error && error.message === "PENDING_PAYMENT_CONFIRMATION_REQUIRED") {
+    if (message === "PENDING_PAYMENT_CONFIRMATION_REQUIRED") {
       return NextResponse.json({ error: "Confirma explícitamente que deseas enviar un pedido con pago pendiente a producción" }, { status: 400 });
     }
-    if (error instanceof Error && error.message === "BACKORDER_MULTI_PRODUCT_NOT_SUPPORTED") {
-      return NextResponse.json({ error: "El modo backorder solo admite pedidos con un único productCode. Crea producciones separadas o usa modo full." }, { status: 400 });
+    if (message === "BACKORDER_QTY_REQUIRED") {
+      return NextResponse.json({ error: "No existe faltante físico que requiera producción" }, { status: 409 });
     }
-    if (error instanceof Error && error.message === "BACKORDER_QTY_REQUIRED") {
-      return NextResponse.json({ error: "No se pudo determinar una cantidad faltante válida para producir" }, { status: 400 });
-    }
-    if (error instanceof Error && error.message === "COMMERCIAL_ORDER_ITEMS_REQUIRED") {
+    if (message === "COMMERCIAL_ORDER_ITEMS_REQUIRED") {
       return NextResponse.json({ error: "El pedido no tiene items válidos para producir" }, { status: 400 });
+    }
+    if (message === "MISSING_PRODUCT_CODE") {
+      return NextResponse.json({ error: "Todos los artículos deben tener un productCode canónico antes de producir" }, { status: 400 });
+    }
+    if (message === "MULTI_PRODUCT_EXPLICIT_QTY_NOT_SUPPORTED") {
+      return NextResponse.json({ error: "plannedQuantity explícito solo se admite en pedidos de un único SKU" }, { status: 400 });
+    }
+    if (message === "INTERNAL_BACKORDER_NOT_ALLOWED") {
+      return NextResponse.json({ error: "Los pedidos internos solo admiten producción completa" }, { status: 400 });
     }
 
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ error: "Ya existe una orden de produccion con ese code" }, { status: 409 });
+      return NextResponse.json({ error: "Ya existe una orden de producción con ese código" }, { status: 409 });
     }
 
     console.error("[operations/commercial-orders/:id/send-to-production] POST error:", error);
-    return NextResponse.json({ error: "Error al enviar el pedido a produccion" }, { status: 500 });
+    return NextResponse.json({ error: "Error al enviar el pedido a producción" }, { status: 500 });
   }
 }
