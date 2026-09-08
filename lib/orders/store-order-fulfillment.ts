@@ -54,9 +54,7 @@ function buildCustomerMessage(availableStock: number, requestedQty: number, back
   if (backorderQty > 0) {
     return `Tenemos ${availableStock} disponibles. Las ${backorderQty} restantes entran a producción. Tiempo estimado: 2 semanas.`;
   }
-  if (requestedQty <= availableStock) {
-    return "Disponible para pedido.";
-  }
+  if (requestedQty <= availableStock) return "Disponible para pedido.";
   return "Disponible para pedido.";
 }
 
@@ -67,10 +65,7 @@ export async function resolveStoreProductForOrder(
   const product = await db.product.findFirst({
     where: {
       isActive: true,
-      OR: [
-        { id: productType },
-        { name: productType },
-      ],
+      OR: [{ id: productType }, { name: productType }],
     },
     select: {
       id: true,
@@ -94,19 +89,15 @@ export async function resolveStoreProductForOrder(
     },
   });
 
-  if (!product) {
-    throw new Error("Producto invalido o no disponible");
-  }
+  if (!product) throw new Error("Producto invalido o no disponible");
 
   const mapping = product.operationalMapping;
   if (!mapping || !mapping.isPublished || !mapping.productCode || !mapping.finishedGoodId || !mapping.finishedGood) {
     throw new Error("El producto seleccionado no tiene una configuración operativa válida.");
   }
-
   if (!isStoreSection(mapping.storeSection) || mapping.storeSection !== "personal_devices") {
     throw new Error("El producto seleccionado no está disponible para compra personal.");
   }
-
   if (mapping.finishedGood.status === "inactive") {
     throw new Error("El producto seleccionado no tiene inventario operativo activo.");
   }
@@ -142,16 +133,23 @@ export async function calculateStoreOrderFulfillment(
   }>
 ): Promise<{ resolvedItems: StoreOrderResolvedItem[]; summary: StoreOrderFulfillmentSummary }> {
   const stockRows = await loadInventoryStockRows();
-  const stockByCode = new Map(stockRows.map((row) => [row.productCode, row]));
+  const remainingStockByCode = new Map(
+    stockRows.map((row) => [row.productCode, Math.max(0, row.availableCount)])
+  );
   const productionEstimateDays = 14;
 
+  // Allocate each physical unit once across the complete order. Without the
+  // remaining-stock ledger, two separate lines for the same SKU each see the
+  // same database count and can both claim that one unit is available.
   const resolvedItems = items.map((item) => {
     const requestedQty = normalizeQuantity(item.quantity);
-    const availableStock = Math.max(0, stockByCode.get(item.productCode)?.availableCount ?? 0);
+    const availableStock = Math.max(0, remainingStockByCode.get(item.productCode) ?? 0);
     const stockCoveredQty = Math.min(requestedQty, availableStock);
-    const backorderQty = Math.max(requestedQty - availableStock, 0);
+    const backorderQty = Math.max(requestedQty - stockCoveredQty, 0);
+    remainingStockByCode.set(item.productCode, Math.max(0, availableStock - stockCoveredQty));
+
     const fulfillmentMode: StoreOrderResolvedItem["fulfillmentMode"] =
-      availableStock <= 0
+      stockCoveredQty <= 0
         ? "production_backorder"
         : backorderQty > 0
           ? "partial_backorder"
@@ -190,12 +188,10 @@ export async function calculateStoreOrderFulfillment(
   };
 }
 
-export function buildStoreOrderInternalNote(
-  summary: StoreOrderFulfillmentSummary
-) {
-  const fragments = summary.items.map((item) => {
-    return `${item.productCode}: disponible=${item.availableStock}, solicitada=${item.quantity}, backorder=${item.backorderQty}, modo=${item.fulfillmentMode}, estimado=${item.productionEstimateDays}d`;
-  });
+export function buildStoreOrderInternalNote(summary: StoreOrderFulfillmentSummary) {
+  const fragments = summary.items.map((item) =>
+    `${item.productCode}: disponible=${item.availableStock}, solicitada=${item.quantity}, backorder=${item.backorderQty}, modo=${item.fulfillmentMode}, estimado=${item.productionEstimateDays}d`
+  );
 
   return [
     `Stock/backorder calculado automáticamente.`,
@@ -239,9 +235,7 @@ export function parseCustomerFulfillmentSummaryFromInternalNote(
   const customerMessage = customerMessageMatch?.[1]?.trim() || null;
   const backorderQtyTotal = backorderMatches.reduce((sum, match) => sum + Number(match[1] || 0), 0);
 
-  if (!hasBackorder && !customerMessageMatch && !productionEstimateMatch) {
-    return null;
-  }
+  if (!hasBackorder && !customerMessageMatch && !productionEstimateMatch) return null;
 
   return {
     hasBackorder,
