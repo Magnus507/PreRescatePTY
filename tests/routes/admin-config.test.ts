@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   auditCreate: vi.fn(),
   transaction: vi.fn(),
   invalidateMany: vi.fn(),
+  getAll: vi.fn(),
 }));
 
 vi.mock("@/lib/rbac", () => ({
@@ -22,12 +23,12 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/domains/shared/repositories/config.repository", () => ({
   CONFIG_KEYS: ["yappy_handle", "bank_name"],
   ConfigRepository: {
-    getAll: vi.fn(),
+    getAll: mocks.getAll,
     invalidateMany: mocks.invalidateMany,
   },
 }));
 
-import { PATCH } from "@/app/api/admin/config/route";
+import { GET, PATCH } from "@/app/api/admin/config/route";
 
 function request(configs: Record<string, unknown>) {
   return new NextRequest("https://example.test/api/admin/config", {
@@ -37,12 +38,16 @@ function request(configs: Record<string, unknown>) {
   });
 }
 
-describe("PATCH /api/admin/config", () => {
+describe("/api/admin/config", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireRole.mockResolvedValue({
       authorized: true,
       session: { user: { id: "admin-1", accountId: "account-1" } },
+    });
+    mocks.getAll.mockResolvedValue({
+      yappy_handle: "@prerescatepty",
+      bank_name: "Banco General",
     });
     mocks.findMany.mockResolvedValue([{ key: "bank_name", value: "Anterior" }]);
     mocks.upsert.mockResolvedValue({});
@@ -53,13 +58,33 @@ describe("PATCH /api/admin/config", () => {
     }));
   });
 
-  it("rejects unknown keys before mutating data", async () => {
+  it("GET exposes only editable configuration and never heartbeat/internal keys", async () => {
+    mocks.getAll.mockResolvedValue({
+      yappy_handle: "@prerescatepty",
+      bank_name: "Banco General",
+      "cron:last-success:notify": "2026-09-08T02:00:00.000Z",
+      "cron:last-success:expire-chips": "2026-09-08T02:00:00.000Z",
+      arbitrary_internal: "must-not-leak-into-form",
+    });
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.configs).toEqual({
+      yappy_handle: "@prerescatepty",
+      bank_name: "Banco General",
+    });
+    expect(payload.configs["cron:last-success:notify"]).toBeUndefined();
+    expect(payload.configs.arbitrary_internal).toBeUndefined();
+  });
+
+  it("PATCH rejects unknown keys before mutating data", async () => {
     const response = await PATCH(request({ arbitrary_secret: "value" }));
     expect(response.status).toBe(400);
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
-  it("updates configuration and audit evidence atomically", async () => {
+  it("PATCH updates configuration and audit evidence atomically", async () => {
     const response = await PATCH(request({ bank_name: "Nuevo" }));
     expect(response.status).toBe(200);
     expect(mocks.upsert).toHaveBeenCalledWith({
@@ -81,7 +106,7 @@ describe("PATCH /api/admin/config", () => {
     expect(mocks.invalidateMany).toHaveBeenCalledWith(["bank_name"]);
   });
 
-  it("does not invalidate cache or report success when audit persistence fails", async () => {
+  it("PATCH does not invalidate cache or report success when audit persistence fails", async () => {
     mocks.auditCreate.mockRejectedValue(new Error("AUDIT_FAILED"));
     const response = await PATCH(request({ bank_name: "Nuevo" }));
     expect(response.status).toBe(500);
