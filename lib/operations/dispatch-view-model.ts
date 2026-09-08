@@ -1,4 +1,9 @@
-import type { OperationDispatch, OperationDispatchItem, OperationDispatchEvent, OperationFinishedGoodUnit } from "@prisma/client";
+import type {
+  OperationDispatch,
+  OperationDispatchItem,
+  OperationDispatchEvent,
+  OperationFinishedGoodUnit,
+} from "@prisma/client";
 
 export type DispatchViewModel = {
   id: string;
@@ -41,14 +46,25 @@ export type DispatchViewModel = {
   canMarkPrepared: boolean;
   canMarkSent: boolean;
   canConfirmDelivery: boolean;
+  canCancel: boolean;
   blockedReasons: string[];
 };
 
 type DispatchLike = OperationDispatch & {
-  items: Array<Pick<OperationDispatchItem, "id" | "quantity" | "unitId" | "internalLabel" | "productCode" | "productName" | "status" | "pickedAt"> & {
-    unitRecord?: Pick<OperationFinishedGoodUnit, "id" | "internalLabel" | "productCode" | "productName" | "status" | "qaStatus" | "activationStatus"> | null;
-  }>;
-  events?: Array<Pick<OperationDispatchEvent, "metadataJson" | "referenceType" | "referenceId" | "createdAt">>;
+  items: Array<
+    Pick<
+      OperationDispatchItem,
+      "id" | "quantity" | "unitId" | "internalLabel" | "productCode" | "productName" | "status" | "pickedAt"
+    > & {
+      unitRecord?: Pick<
+        OperationFinishedGoodUnit,
+        "id" | "internalLabel" | "productCode" | "productName" | "status" | "qaStatus" | "activationStatus"
+      > | null;
+    }
+  >;
+  events?: Array<
+    Pick<OperationDispatchEvent, "metadataJson" | "referenceType" | "referenceId" | "createdAt">
+  >;
   sourceOrder?: {
     id: string;
     orderNumber: string;
@@ -97,7 +113,9 @@ export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewMode
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
   const parsedEvents = orderedEvents.map((event) => ({ event, meta: parseMetadata(event) }));
-  const eventMetas = parsedEvents.map((entry) => entry.meta).filter(Boolean) as Record<string, unknown>[];
+  const eventMetas = parsedEvents
+    .map((entry) => entry.meta)
+    .filter(Boolean) as Record<string, unknown>[];
   const sourceOrder = dispatch.sourceOrder || null;
   const isCustomerDispatch = dispatch.destinationType === "customer";
 
@@ -121,21 +139,28 @@ export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewMode
     dispatch.destinationReference ||
     dispatch.code;
   const customerName = String(
-    sourceOrder?.customerName || findMetaString("customerName") || dispatch.destinationName || (isCustomerDispatch ? "Sin cliente" : "Traslado logístico")
+    sourceOrder?.customerName ||
+      findMetaString("customerName") ||
+      dispatch.destinationName ||
+      (isCustomerDispatch ? "Sin cliente" : "Traslado logístico")
   );
   const customerEmail = sourceOrder?.customerEmail || findMetaString("customerEmail");
   const customerPhone = sourceOrder?.customerPhone || findMetaString("customerPhone");
   const city = sourceOrder?.shippingCity || findMetaString("shippingCity");
   const address = String(
-    sourceOrder?.shippingAddress || findMetaString("shippingAddress") || dispatch.destinationAddress || ""
+    sourceOrder?.shippingAddress ||
+      findMetaString("shippingAddress") ||
+      dispatch.destinationAddress ||
+      ""
   );
   const deliveryReference = String(
-    sourceOrder?.shippingNotes || findMetaString("shippingNotes") || dispatch.notes || dispatch.destinationReference || ""
+    sourceOrder?.shippingNotes ||
+      findMetaString("shippingNotes") ||
+      dispatch.notes ||
+      dispatch.destinationReference ||
+      ""
   );
 
-  // Persisted OperationDispatchItem state is authoritative. Event metadata is
-  // only a compatibility fallback for dispatches created before pickedAt/status
-  // became the canonical current-state fields.
   const legacyPickState = new Map<string, { picked: boolean; pickedAt: string | null }>();
   for (const { event, meta } of parsedEvents) {
     const unitId = typeof meta?.unitId === "string" ? meta.unitId : null;
@@ -152,11 +177,14 @@ export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewMode
   }
 
   const traceableItems = dispatch.items.filter((item) => Boolean(item.unitId || item.unitRecord));
+  const fullyTraceable = dispatch.items.length > 0 && traceableItems.length === dispatch.items.length;
   const units = traceableItems.map((item) => {
     const persistedPicked =
       Boolean(item.pickedAt) || ["picked", "packed", "dispatched", "delivered"].includes(item.status);
     const legacy = item.unitId ? legacyPickState.get(item.unitId) : undefined;
-    const picked = persistedPicked || (!item.pickedAt && item.status === "pending_pick" && Boolean(legacy?.picked));
+    const picked =
+      persistedPicked ||
+      (!item.pickedAt && item.status === "pending_pick" && Boolean(legacy?.picked));
     const pickedAt = item.pickedAt?.toISOString() || (picked ? legacy?.pickedAt || null : null);
 
     return {
@@ -172,18 +200,32 @@ export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewMode
     };
   });
 
-  const allUnitsPicked = units.length === 0 || units.every((unit) => unit.picked);
-  const canMarkUnitPicked = ["draft", "pending_pick", "pending_preparation"].includes(dispatch.status) && units.length > 0;
-  const canMarkPrepared = ["draft", "pending_pick", "pending_preparation"].includes(dispatch.status) && allUnitsPicked;
-  const canMarkSent = dispatch.status === "prepared";
-  const canConfirmDelivery = ["sent", "shipped", "dispatched"].includes(dispatch.status);
+  const allUnitsPicked = fullyTraceable && units.every((unit) => unit.picked);
+  const cancellable = [
+    "draft",
+    "pending_pick",
+    "pending_preparation",
+    "picked",
+    "packed",
+    "prepared",
+    "reserved",
+    "released",
+  ].includes(dispatch.status);
+  const canMarkUnitPicked =
+    ["draft", "pending_pick", "pending_preparation"].includes(dispatch.status) && fullyTraceable;
+  const canMarkPrepared =
+    ["draft", "pending_pick", "pending_preparation"].includes(dispatch.status) && allUnitsPicked;
+  const canMarkSent = dispatch.status === "prepared" && fullyTraceable;
+  const canConfirmDelivery =
+    ["sent", "shipped", "dispatched"].includes(dispatch.status) && fullyTraceable;
+  const canCancel = cancellable && (fullyTraceable || traceableItems.length === 0);
   const blockedReasons: string[] = [];
 
   if (isCustomerDispatch) {
     if (!orderId) blockedReasons.push("Pedido origen no resuelto");
     if (!customerName || customerName === "Sin cliente") blockedReasons.push("Cliente no resuelto");
     if (!address) blockedReasons.push("Dirección no resuelta");
-    if (units.length === 0) blockedReasons.push("Sin unidades físicas asignadas");
+    if (!fullyTraceable) blockedReasons.push("Sin trazabilidad física completa");
   }
 
   return {
@@ -208,15 +250,13 @@ export function buildDispatchViewModel(dispatch: DispatchLike): DispatchViewMode
     carrierName: dispatch.carrierName,
     trackingReference: dispatch.trackingReference,
     units,
-    items: dispatch.items.map((item) => ({
-      id: item.id,
-      quantity: item.quantity,
-    })),
+    items: dispatch.items.map((item) => ({ id: item.id, quantity: item.quantity })),
     allUnitsPicked,
     canMarkUnitPicked,
     canMarkPrepared,
     canMarkSent,
     canConfirmDelivery,
+    canCancel,
     blockedReasons,
   };
 }
