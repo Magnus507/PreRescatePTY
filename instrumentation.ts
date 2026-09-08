@@ -1,7 +1,7 @@
 import { validateStartupEnv } from "./lib/env";
 import {
   getSentryPrivacyConfig,
-  redactTelemetryString,
+  sanitizeOperationalTelemetryUrl,
   sanitizeTelemetry,
 } from "./lib/security/telemetry";
 
@@ -44,7 +44,7 @@ export const onRequestError = async (
 ) => {
   const Sentry = await import("@sentry/nextjs");
   const safeRequest = {
-    path: redactTelemetryString(request.path.split("?")[0]),
+    path: sanitizeOperationalTelemetryUrl(request.path),
     method: request.method,
     headers: {},
   };
