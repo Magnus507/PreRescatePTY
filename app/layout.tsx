@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import "./visual-performance.css";
@@ -70,15 +69,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Reading request headers keeps the layout dynamic so Next can propagate the
-  // request CSP nonce to framework scripts.
-  await headers();
-
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
