@@ -28,10 +28,33 @@ describe("admin E2E regression guardrails", () => {
     expect(isCommercialOrderEligibleForReservation({ status: "stock_reserved", paymentStatus: "paid" })).toBe(false);
   });
 
-  it("persists the finished-good code on customer backorder production", () => {
+  it("persists canonical product identity and splits customer backorders by SKU", () => {
     const production = source("lib/operations/customer-order-production.ts");
-    expect(production).toContain("input.productCode?.trim() || input.outputType.trim()");
-    expect(production).toContain("productCode,");
+    expect(production).toContain("resolveBackorderRequirements");
+    expect(production).toContain("productCode: requirement.productCode");
+    expect(production).toContain("productionKey: multiSku ? requirement.productCode : input.productionKey");
+    expect(production).toContain("sourceType: \"customer_order\"");
+  });
+
+  it("consolidates reservation requirements by canonical SKU and rejects cancelled source orders", () => {
+    const reservation = source("lib/operations/commercial-order-reservation.ts");
+    expect(reservation).toContain("const requirements = new Map");
+    expect(reservation).toContain("const requirementKey = productCode || `__unmapped:${item.id}`");
+    expect(reservation).toContain("existing.requestedQty += item.quantity");
+    expect(reservation).toContain("reserveUnitsForProduct");
+    expect(reservation).toContain("SOURCE_ORDER_CANCELLED");
+  });
+
+  it("requires explicit production intent and derives manual backorders from committed reservation state", () => {
+    const route = source("app/api/admin/operations/commercial-orders/[id]/send-to-production/route.ts");
+    expect(route).toContain("mode=full o mode=backorder explícitamente");
+    expect(route).toContain("const groupedProducts = new Map");
+    expect(route).toContain("for (const product of products)");
+    expect(route).toContain("reserveCommercialOrderStock");
+    expect(route).toContain("BACKORDER_EXPLICIT_QTY_NOT_ALLOWED");
+    expect(route).toContain("BACKORDER_RECONCILIATION_REQUIRED");
+    expect(route).toContain("productionOrderCodes");
+    expect(route).toContain("productCode: product.productCode");
   });
 
   it("resolves legacy production output as an exact finished-good code before generic fallbacks", () => {
@@ -53,6 +76,68 @@ describe("admin E2E regression guardrails", () => {
     expect(reconciliation).toContain("PRODUCED_UNIT_RESERVED_TO_OTHER_ORDER");
     expect(reconciliation).toContain("reservationSource: \"customer_production_qc\"");
     expect(reconciliation).toContain("id: unit.id");
+  });
+
+  it("revalidates and compare-and-sets every physical reservation immediately before shipping", () => {
+    const sent = source("app/api/admin/operations/dispatches/[id]/mark-sent/route.ts");
+    expect(sent).toContain("const lock = await tx.operationDispatch.updateMany");
+    expect(sent).toContain("ORDER_NO_LONGER_SHIPPABLE");
+    expect(sent).toContain("UNTRACEABLE_ITEMS");
+    expect(sent).toContain("RESERVATION_CHANGED_BEFORE_SHIPMENT");
+    expect(sent).toContain('status !== "reserved"');
+    expect(sent).toContain('qaStatus !== "passed"');
+    expect(sent).toContain("expectedReservationOrderId");
+    expect(sent).toContain("updatedUnits.count !== unitIds.length");
+    expect(sent).toContain("every: { dispatchId: id }");
+  });
+
+  it("never prepares a physical dispatch without complete unit traceability", () => {
+    const prepared = source("app/api/admin/operations/dispatches/[id]/mark-prepared/route.ts");
+    expect(prepared).toContain("UNTRACEABLE_ITEMS");
+    expect(prepared).toContain("DUPLICATE_UNIT_IN_DISPATCH");
+    expect(prepared).toContain("UNIT_NO_LONGER_PREPARABLE");
+    expect(prepared).toContain("traceableItems.length !== dispatch.items.length");
+  });
+
+  it("cancels an unshipped dispatch by detaching items before releasing the physical reservation", () => {
+    const cancel = source("app/api/admin/operations/dispatches/[id]/cancel/route.ts");
+    expect(cancel).toContain("CANCELLABLE_STATUSES");
+    expect(cancel).toContain("data: { unitId: null, status: \"cancelled\" }");
+    expect(cancel).toContain("releaseEligibleOrderReservations");
+    expect(cancel).toContain("dispatchId: null");
+    expect(cancel).toContain("DISPATCH_ALREADY_COMMITTED");
+  });
+
+  it("blocks generic dispatch events from bypassing dedicated physical/customer lifecycle guards", () => {
+    const events = source("app/api/admin/operations/dispatches/[id]/events/route.ts");
+    expect(events).toContain("UNIT_DISPATCH_REQUIRES_DEDICATED_FLOW");
+    expect(events).toContain("CUSTOMER_DISPATCH_REQUIRES_DEDICATED_FLOW");
+    expect(events).toContain("guardedLifecycleEvents");
+  });
+
+  it("requests commercial fulfillment without creating a unitless dispatch and releases the correct reservation owner", () => {
+    const events = source("app/api/admin/operations/commercial-orders/[id]/events/route.ts");
+    expect(events).not.toContain("tx.operationDispatch.create");
+    expect(events).toContain("commercialOrder.sourceId || commercialOrder.id");
+    expect(events).toContain("releaseEligibleOrderReservations");
+    expect(events).toContain("ACTIVE_DISPATCH_MUST_BE_CANCELLED_FIRST");
+  });
+
+  it("never releases a unit while a dispatch item still references it", () => {
+    const release = source("lib/operations/release-order-reservations.ts");
+    expect(release).toContain("dispatchItems");
+    expect(release).toContain("dispatchItems: { none: {} }");
+    expect(release).toContain("Unidad vinculada a un despacho");
+  });
+
+  it("makes delivery retries idempotent and refuses to overwrite inconsistent or shared unit states", () => {
+    const delivery = source("app/api/admin/operations/dispatches/[id]/confirm-delivery/route.ts");
+    expect(delivery).toContain('if (current.status === "delivered")');
+    expect(delivery).toContain("idempotent: true");
+    expect(delivery).toContain("UNIT_STATE_MISMATCH");
+    expect(delivery).toContain('status: "dispatched"');
+    expect(delivery).toContain("updatedUnits.count !== unitIds.length");
+    expect(delivery).toContain("every: { dispatchId: id }");
   });
 
   it("runs historical post-QC recovery from the already-monitored commerce sync worker", () => {

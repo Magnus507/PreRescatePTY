@@ -13,6 +13,7 @@ const expectedDeniedInstallScripts = {
   "@prisma/engines": false,
   "@sentry/cli": false,
   esbuild: false,
+  fsevents: false,
   prisma: false,
   "unrs-resolver": false,
 };

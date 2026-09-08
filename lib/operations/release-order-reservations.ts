@@ -57,6 +57,7 @@ export async function releaseEligibleOrderReservations(
         deliveredAt: Date | null;
         activatedAt: Date | null;
         activationStatus: string;
+        dispatchItems?: Array<{ id: string }>;
       }>>;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       update: (args: any) => Promise<unknown>;
@@ -76,6 +77,10 @@ export async function releaseEligibleOrderReservations(
       deliveredAt: true,
       activatedAt: true,
       activationStatus: true,
+      dispatchItems: {
+        select: { id: true },
+        take: 1,
+      },
     },
     orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
   });
@@ -89,6 +94,20 @@ export async function releaseEligibleOrderReservations(
         id: unit.id,
         internalLabel: unit.internalLabel,
         reason: "Unidad ya avanzó a despacho/entrega/activación",
+      });
+      continue;
+    }
+
+    // A unit attached to any dispatch must be detached/cancelled by the dispatch
+    // workflow first. Returning it to inventory while an OperationDispatchItem
+    // still points at it creates an orphaned shipment and also makes the unit
+    // permanently ineligible for future reservation (reservation queries require
+    // dispatchItems: none).
+    if ((unit.dispatchItems?.length || 0) > 0) {
+      blockedUnits.push({
+        id: unit.id,
+        internalLabel: unit.internalLabel,
+        reason: "Unidad vinculada a un despacho; cancela el despacho antes de liberar",
       });
       continue;
     }
@@ -123,6 +142,7 @@ export async function releaseEligibleOrderReservations(
           deliveredAt: null,
           activatedAt: null,
           activationStatus: { not: "activated" },
+          dispatchItems: { none: {} },
         },
         data: {
           status: "available",

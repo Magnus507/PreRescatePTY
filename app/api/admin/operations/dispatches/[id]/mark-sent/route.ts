@@ -19,6 +19,22 @@ export async function POST(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // Serialize shipment against cancellation (and duplicate shipment calls)
+      // using a row write. PostgreSQL re-evaluates the status predicate after a
+      // concurrent writer commits, so only one terminal transition can win.
+      const lock = await tx.operationDispatch.updateMany({
+        where: { id, status: "prepared" },
+        data: { updatedAt: new Date() },
+      });
+      if (lock.count !== 1) {
+        const current = await tx.operationDispatch.findUnique({
+          where: { id },
+          select: { status: true },
+        });
+        if (!current) throw new Error("NOT_FOUND");
+        throw new Error("NOT_PREPARED");
+      }
+
       const dispatch = await tx.operationDispatch.findUnique({
         where: { id },
         include: {
@@ -31,10 +47,103 @@ export async function POST(
       });
 
       if (!dispatch) throw new Error("NOT_FOUND");
-      if (dispatch.status !== "prepared") throw new Error("NOT_PREPARED");
       if (dispatch.items.length === 0) throw new Error("NO_ITEMS");
       if (dispatch.items.some((item) => !item.packedAt && item.status !== "packed")) {
         throw new Error("ITEMS_NOT_PACKED");
+      }
+
+      const unitIds = dispatch.items
+        .map((item) => item.unitId)
+        .filter((unitId): unitId is string => Boolean(unitId));
+      if (unitIds.length !== dispatch.items.length) {
+        throw new Error("UNTRACEABLE_ITEMS");
+      }
+      if (new Set(unitIds).size !== unitIds.length) {
+        throw new Error("DUPLICATE_UNIT_IN_DISPATCH");
+      }
+
+      const orderId = getDispatchCustomerOrderId(dispatch.events);
+      const commercialOrder = await tx.operationCommercialOrder.findFirst({
+        where: { dispatchId: id },
+        select: {
+          id: true,
+          sourceId: true,
+          status: true,
+          paymentStatus: true,
+        },
+      });
+
+      if (dispatch.destinationType === "customer" && !commercialOrder) {
+        throw new Error("CUSTOMER_ORDER_NOT_FOUND");
+      }
+
+      let expectedReservationOrderId: string | null = null;
+      if (commercialOrder) {
+        if (
+          ["cancelled", "rejected"].includes(commercialOrder.status) ||
+          commercialOrder.paymentStatus !== "paid"
+        ) {
+          throw new Error("ORDER_NO_LONGER_SHIPPABLE");
+        }
+
+        const sourceOrderId = commercialOrder.sourceId || orderId;
+        if (sourceOrderId) {
+          const sourceOrder = await tx.order.findUnique({
+            where: { id: sourceOrderId },
+            select: { orderStatus: true, paymentStatus: true },
+          });
+          if (
+            sourceOrder &&
+            (sourceOrder.orderStatus === "cancelled" || sourceOrder.paymentStatus !== "paid")
+          ) {
+            throw new Error("ORDER_NO_LONGER_SHIPPABLE");
+          }
+        }
+        expectedReservationOrderId = commercialOrder.sourceId || commercialOrder.id;
+      }
+
+      const physicalUnits = await tx.operationFinishedGoodUnit.findMany({
+        where: { id: { in: unitIds } },
+        select: {
+          id: true,
+          status: true,
+          qaStatus: true,
+          activationStatus: true,
+          reservedOrderId: true,
+          dispatchedAt: true,
+          deliveredAt: true,
+          activatedAt: true,
+          dispatchItems: {
+            select: { id: true, dispatchId: true },
+          },
+        },
+      });
+      if (physicalUnits.length !== unitIds.length) {
+        throw new Error("PHYSICAL_UNIT_MISSING");
+      }
+
+      for (const unit of physicalUnits) {
+        if (
+          unit.status !== "reserved" ||
+          unit.qaStatus !== "passed" ||
+          unit.activationStatus !== "not_activated" ||
+          unit.dispatchedAt ||
+          unit.deliveredAt ||
+          unit.activatedAt ||
+          unit.dispatchItems.length !== 1 ||
+          unit.dispatchItems[0]?.dispatchId !== id
+        ) {
+          throw new Error("RESERVATION_CHANGED_BEFORE_SHIPMENT");
+        }
+        if (
+          expectedReservationOrderId &&
+          unit.reservedOrderId !== expectedReservationOrderId
+        ) {
+          throw new Error("RESERVATION_CHANGED_BEFORE_SHIPMENT");
+        }
+        if (!unit.reservedOrderId) {
+          throw new Error("RESERVATION_CHANGED_BEFORE_SHIPMENT");
+        }
       }
 
       const sentAt = new Date();
@@ -45,7 +154,29 @@ export async function POST(
           ? body.trackingReference.trim() || null
           : dispatch.trackingReference;
       const notes = typeof body.notes === "string" ? body.notes.trim() || null : dispatch.notes;
-      const orderId = getDispatchCustomerOrderId(dispatch.events);
+
+      const updatedUnits = await tx.operationFinishedGoodUnit.updateMany({
+        where: {
+          id: { in: unitIds },
+          status: "reserved",
+          qaStatus: "passed",
+          activationStatus: "not_activated",
+          reservedOrderId: expectedReservationOrderId
+            ? expectedReservationOrderId
+            : { not: null },
+          dispatchedAt: null,
+          deliveredAt: null,
+          activatedAt: null,
+          dispatchItems: {
+            some: { dispatchId: id },
+            every: { dispatchId: id },
+          },
+        },
+        data: { status: "dispatched", dispatchedAt: sentAt },
+      });
+      if (updatedUnits.count !== unitIds.length) {
+        throw new Error("RESERVATION_CHANGED_BEFORE_SHIPMENT");
+      }
 
       await tx.operationDispatch.update({
         where: { id },
@@ -90,16 +221,6 @@ export async function POST(
           createdById: auth.session.user.id || null,
         },
       });
-
-      const unitIds = dispatch.items
-        .map((item) => item.unitId)
-        .filter((unitId): unitId is string => Boolean(unitId));
-      if (unitIds.length > 0) {
-        await tx.operationFinishedGoodUnit.updateMany({
-          where: { id: { in: unitIds } },
-          data: { status: "dispatched", dispatchedAt: sentAt },
-        });
-      }
 
       if (orderId) {
         await tx.order.update({
@@ -146,8 +267,14 @@ export async function POST(
       NOT_PREPARED: "El despacho debe estar preparado primero",
       NO_ITEMS: "El despacho no contiene artículos",
       ITEMS_NOT_PACKED: "Todos los artículos deben estar preparados antes de enviar",
+      UNTRACEABLE_ITEMS: "Todos los artículos deben tener una unidad física trazable antes de enviar",
+      DUPLICATE_UNIT_IN_DISPATCH: "Una misma unidad física aparece más de una vez en el despacho",
+      CUSTOMER_ORDER_NOT_FOUND: "El despacho de cliente no tiene un pedido comercial propietario",
+      ORDER_NO_LONGER_SHIPPABLE: "El pedido fue cancelado, rechazado o dejó de estar pagado; no puede enviarse",
+      PHYSICAL_UNIT_MISSING: "Una unidad física del despacho ya no existe",
+      RESERVATION_CHANGED_BEFORE_SHIPMENT: "La reserva física cambió; vuelve a validar el pedido antes de enviar",
     };
-    if (map[message]) return NextResponse.json({ error: map[message] }, { status: 400 });
+    if (map[message]) return NextResponse.json({ error: map[message] }, { status: 409 });
     console.error("[operations/dispatches/:id/mark-sent] POST error:", error);
     return NextResponse.json({ error: "No se pudo marcar enviado" }, { status: 500 });
   }
