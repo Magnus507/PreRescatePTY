@@ -30,6 +30,16 @@ const ENV_PATTERNS = [
   /\benv\(\s*['"]([A-Z][A-Z0-9_]*)['"]\s*\)/g,
 ];
 
+// Disaster-recovery verification uses two one-shot database credentials that
+// intentionally do not belong to the application environment contract. They
+// must never become production/runtime configuration. Keep this allow-list
+// path-scoped so CI fails immediately if either credential is consumed by any
+// other source file.
+const ISOLATED_SCRIPT_ENV: Record<string, ReadonlySet<string>> = {
+  SOURCE_DATABASE_URL: new Set(["scripts/verify-restore.ts"]),
+  RESTORE_DATABASE_URL: new Set(["scripts/verify-restore.ts"]),
+};
+
 function collectSourceFiles(directory: string): string[] {
   const files: string[] = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -86,10 +96,34 @@ const contractKeys = new Set(Object.keys(ENV_CONTRACT));
 const discovered = discoverEnvironmentKeys();
 
 for (const [key, files] of discovered) {
-  if (!contractKeys.has(key)) {
-    errors.push(
-      `${key} is consumed by code but missing from ENV_CONTRACT (${Array.from(files).sort().join(", ")})`,
-    );
+  if (contractKeys.has(key)) continue;
+
+  const allowedFiles = ISOLATED_SCRIPT_ENV[key];
+  if (allowedFiles) {
+    const unexpectedFiles = Array.from(files).filter((file) => !allowedFiles.has(file));
+    if (unexpectedFiles.length > 0) {
+      errors.push(
+        `${key} is an isolated DR credential but is consumed outside its approved verifier (${unexpectedFiles.sort().join(", ")})`,
+      );
+    }
+    continue;
+  }
+
+  errors.push(
+    `${key} is consumed by code but missing from ENV_CONTRACT (${Array.from(files).sort().join(", ")})`,
+  );
+}
+
+for (const [key, allowedFiles] of Object.entries(ISOLATED_SCRIPT_ENV)) {
+  const actualFiles = discovered.get(key);
+  if (!actualFiles) {
+    errors.push(`${key} is declared as an isolated DR credential but is not consumed`);
+    continue;
+  }
+  for (const allowedFile of allowedFiles) {
+    if (!actualFiles.has(allowedFile)) {
+      errors.push(`${key} is expected only in ${allowedFile} but that usage was not found`);
+    }
   }
 }
 
@@ -125,7 +159,7 @@ if (errors.length > 0) {
   const consumedKeys = Array.from(discovered.keys()).sort();
   const documentedKeys = Array.from(contractKeys).sort();
   console.log(
-    `Environment contract OK: ${documentedKeys.length} declared keys, ${consumedKeys.length} consumed keys, .env.example and documentation aligned.`,
+    `Environment contract OK: ${documentedKeys.length} declared app keys, ${Object.keys(ISOLATED_SCRIPT_ENV).length} isolated DR keys, ${consumedKeys.length} consumed keys, .env.example and documentation aligned.`,
   );
 }
 
