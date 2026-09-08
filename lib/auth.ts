@@ -63,10 +63,10 @@ export async function authorizeCredentials(
     let secondFactorValid = false;
     if (isRecoveryCode(credentials.mfaCode)) {
       try {
-        secondFactorValid = await consumeMfaRecoveryCode(
-          prisma,
-          user.id,
-          credentials.mfaCode
+        // Keep lock, read and consume inside one database transaction so two
+        // simultaneous logins can never spend the same recovery code twice.
+        secondFactorValid = await prisma.$transaction((tx) =>
+          consumeMfaRecoveryCode(tx, user.id, credentials.mfaCode || "")
         );
       } catch {
         throw new Error("MFA_CONFIGURATION_ERROR");
