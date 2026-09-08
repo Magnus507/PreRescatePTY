@@ -5,6 +5,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "master": true,
       "internal-vercel-npm-hardening-20260908": false
     }
   }
