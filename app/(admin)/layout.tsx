@@ -1,9 +1,9 @@
-import React from "react";
+import DynamicRequestBoundary from "@/components/security/DynamicRequestBoundary";
 
 export default function AdminRootGroup({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return <DynamicRequestBoundary>{children}</DynamicRequestBoundary>;
 }
