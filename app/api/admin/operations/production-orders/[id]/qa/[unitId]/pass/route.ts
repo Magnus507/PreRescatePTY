@@ -323,7 +323,7 @@ export async function POST(
       return NextResponse.json({ error: "Unidad no encontrada" }, { status: 404 });
     }
     if (error instanceof Error && error.message === "UNIT_NOT_LINKED_TO_PRODUCTION") {
-      return NextResponse.json({ error: "La unidad no pertenecece a esta orden de producción" }, { status: 409 });
+      return NextResponse.json({ error: "La unidad no pertenece a esta orden de producción" }, { status: 409 });
     }
     if (error instanceof Error && error.message === "UNIT_NOT_READY") {
       return NextResponse.json({ error: "La unidad debe completar identidad, impresión, ensamblaje y empaque antes de QC" }, { status: 400 });
