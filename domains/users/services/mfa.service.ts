@@ -102,10 +102,12 @@ export async function consumeMfaRecoveryCode(
   if (!isRecoveryCode(code)) return false;
   const key = recoveryKey(userId);
 
-  // A no-op write serializes concurrent consumers on this user's recovery set.
+  // A harmless timestamp write locks this user's recovery row. Concurrent
+  // attempts then re-read the committed state before deciding whether a code
+  // is still unused.
   const locked = await tx.systemConfig.updateMany({
     where: { key },
-    data: { value: undefined },
+    data: { updatedAt: new Date() },
   });
   if (locked.count !== 1) return false;
 
