@@ -2,9 +2,13 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
-export function buildCustomerProductionCode(orderNumber: string) {
-  const safe = orderNumber.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 68);
-  return `PROD-${safe}`;
+export function buildCustomerProductionCode(orderNumber: string, productionKey?: string | null) {
+  const safeOrder = orderNumber.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 68);
+  const safeKey = productionKey
+    ?.trim()
+    .replace(/[^A-Za-z0-9_-]/g, "-")
+    .slice(0, 40);
+  return safeKey ? `PROD-${safeOrder}-${safeKey}`.slice(0, 120) : `PROD-${safeOrder}`;
 }
 
 export async function ensureCustomerBackorderProduction(
@@ -17,13 +21,14 @@ export async function ensureCustomerBackorderProduction(
     outputType: string;
     productName: string;
     productCode?: string | null;
+    productionKey?: string | null;
     createdById?: string | null;
   }
 ) {
   const backorderQty = Math.max(0, Math.floor(Number(input.backorderQty) || 0));
   if (backorderQty <= 0) return null;
 
-  const code = buildCustomerProductionCode(input.orderNumber);
+  const code = buildCustomerProductionCode(input.orderNumber, input.productionKey);
   const existing = await db.operationProductionOrder.findUnique({
     where: { code },
     select: { id: true, code: true, status: true, plannedQuantity: true },
@@ -58,6 +63,7 @@ export async function ensureCustomerBackorderProduction(
             outputType: input.outputType,
             productCode,
             productName: input.productName,
+            productionKey: input.productionKey || null,
           }),
           createdById: input.createdById || null,
         },
