@@ -75,4 +75,13 @@ describe("admin E2E regression guardrails", () => {
     expect(recovery).not.toContain("operationDispatch.create");
     expect(recovery).not.toContain("operationDispatchItem.create");
   });
+
+  it("separates legitimate historical outbox lifecycle events from simultaneous active overlap", () => {
+    const cron = source("app/api/cron/commerce-order-sync/route.ts");
+    expect(cron).toContain('historicalMultiEventSourcePairs');
+    expect(cron).toContain('activeOverlappingSourcePairs');
+    expect(cron).toContain("WHERE status IN ('pending', 'processing', 'retrying')");
+    expect(cron).toContain('duplicateSourcePairs: activeOverlappingSourcePairs');
+    expect(cron).not.toContain('HAVING COUNT(*) > 1');
+  });
 });
