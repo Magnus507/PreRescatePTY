@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  consumeVerifiedMfaTotp,
   countRemainingMfaRecoveryCodes,
   consumeMfaRecoveryCode,
   generateMfaRecoveryCodes,
@@ -30,8 +31,9 @@ describe("MFA and security hardening", () => {
   it("serializes recovery codes as hashes and consumes each code only once", async () => {
     let value: string | null = null;
     const config = {
-      upsert: async (args: { create: { value: string }; update: { value: string } }) => {
-        value = value === null ? args.create.value : args.update.value;
+      upsert: async (args: { create: { value: string }; update: { value?: string } }) => {
+        if (value === null) value = args.create.value;
+        else if (typeof args.update.value === "string") value = args.update.value;
         return { key: "x", value };
       },
       updateMany: async () => ({ count: value === null ? 0 : 1 }),
@@ -57,12 +59,38 @@ describe("MFA and security hardening", () => {
     expect(await countRemainingMfaRecoveryCodes(tx, "user-1")).toBe(1);
   });
 
-  it("fails closed for inconsistent MFA and permits recovery-code login", () => {
+  it("rejects replay of an already-verified TOTP during its validity horizon", async () => {
+    let value: string | null = null;
+    const config = {
+      upsert: async (args: { create: { value: string } }) => {
+        if (value === null) value = args.create.value;
+        return { key: "totp", value };
+      },
+      findUnique: async () => value === null ? null : ({ key: "totp", value }),
+      update: async (args: { data: { value: string } }) => {
+        value = args.data.value;
+        return { key: "totp", value };
+      },
+      deleteMany: async () => ({ count: value === null ? 0 : 1 }),
+    };
+    const tx = { systemConfig: config } as never;
+    const acceptedAt = new Date("2026-09-08T20:00:00.000Z");
+
+    expect(await consumeVerifiedMfaTotp(tx, "user-1", "123456", acceptedAt)).toBe(true);
+    expect(await consumeVerifiedMfaTotp(tx, "user-1", "123456", new Date(acceptedAt.getTime() + 10_000))).toBe(false);
+    expect(await consumeVerifiedMfaTotp(tx, "user-1", "654321", new Date(acceptedAt.getTime() + 10_000))).toBe(true);
+    expect(value).not.toContain("123456");
+    expect(value).not.toContain("654321");
+  });
+
+  it("fails closed for inconsistent MFA and consumes TOTP/recovery credentials transactionally", () => {
     const auth = source("lib/auth.ts");
     expect(auth).toContain("if (user.mfaEnabled || user.mfaSecret)");
     expect(auth).toContain("MFA_CONFIGURATION_ERROR");
     expect(auth).toContain("consumeMfaRecoveryCode");
+    expect(auth).toContain("consumeVerifiedMfaTotp");
     expect(auth).toContain('rateLimit("login:mfa"');
+    expect(auth).toContain("prisma.$transaction");
     expect(auth).not.toContain("user.mfaEnabled && user.mfaSecret");
   });
 
@@ -85,16 +113,17 @@ describe("MFA and security hardening", () => {
     expect(enable).toContain("replaceMfaRecoveryCodes");
     expect(enable).toContain("sessionVersion: { increment: 1 }");
     expect(disable).toContain("consumeMfaRecoveryCode");
+    expect(disable).toContain("deleteMfaSecurityArtifacts");
     expect(disable).toContain("sessionVersion: { increment: 1 }");
   });
 
-  it("safe deletion redacts commercial projections, draft invoices, outbox snapshots and MFA recovery artifacts", () => {
+  it("safe deletion redacts commercial projections, draft invoices, outbox snapshots and all MFA artifacts", () => {
     const safeDelete = source("domains/users/services/safe-delete.service.ts");
     expect(safeDelete).toContain("operationCommercialOrder.updateMany");
     expect(safeDelete).toContain('status: { in: ["pending_configuration", "pending_issue"] }');
     expect(safeDelete).toContain("commerceOrderSyncOutbox.updateMany");
     expect(safeDelete).toContain("checkoutSessionJson: null");
-    expect(safeDelete).toContain("security:mfa:recovery:");
+    expect(safeDelete).toContain("deleteMfaSecurityArtifacts");
     expect(safeDelete).toContain("sessionVersion: { increment: 1 }");
     expect(safeDelete).not.toContain('DELETE FROM "MfaRecoveryCode"');
   });
