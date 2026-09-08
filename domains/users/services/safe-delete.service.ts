@@ -68,7 +68,7 @@ export class SafeDeleteService {
         });
         await tx.appNotification.deleteMany({ where: { userId } });
         await tx.passwordResetToken.deleteMany({ where: { email: user.email } });
-        await tx.$executeRaw`DELETE FROM "MfaRecoveryCode" WHERE "userId" = ${userId}`;
+        await tx.systemConfig.deleteMany({ where: { key: `security:mfa:recovery:${userId}` } });
 
         if (profileIds.length || chipIds.length > 0) {
           await tx.scanEvent.deleteMany({
