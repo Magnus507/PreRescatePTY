@@ -13,18 +13,20 @@ export function buildCustomerProductProductionCode(orderNumber: string, productC
   return `PROD-${safeOrder}-${safeProduct}`.slice(0, 80);
 }
 
-export async function ensureCustomerBackorderProduction(
+type SingleCustomerProductionInput = {
+  orderId: string;
+  orderNumber: string;
+  customerName?: string | null;
+  backorderQty: number;
+  outputType: string;
+  productName: string;
+  productCode?: string | null;
+  createdById?: string | null;
+};
+
+async function ensureSingleCustomerBackorderProduction(
   db: DbClient,
-  input: {
-    orderId: string;
-    orderNumber: string;
-    customerName?: string | null;
-    backorderQty: number;
-    outputType: string;
-    productName: string;
-    productCode?: string | null;
-    createdById?: string | null;
-  }
+  input: SingleCustomerProductionInput
 ) {
   const backorderQty = Math.max(0, Math.floor(Number(input.backorderQty) || 0));
   if (backorderQty <= 0) return null;
@@ -199,12 +201,25 @@ export async function ensureCustomerBackorderProductions(
     productMetadata.set(productCode, metadata);
   }
 
-  const results = [];
+  const results: Array<{
+    productCode: string;
+    missingQty: number;
+    productionOrder: {
+      id: string;
+      code: string;
+      status: string;
+      plannedQuantity: number;
+      producedQuantity: number;
+      outputType: string;
+    };
+    created: boolean;
+  }> = [];
+
   for (const [productCode, missingQty] of missingByCode) {
     const metadata = productMetadata.get(productCode);
     if (!metadata) throw new Error("CUSTOMER_PRODUCTION_OPERATIONAL_PRODUCT_NOT_FOUND");
 
-    const production = await ensureCustomerBackorderProduction(db, {
+    const production = await ensureSingleCustomerBackorderProduction(db, {
       orderId: input.orderId,
       orderNumber: input.orderNumber,
       customerName: input.customerName,
@@ -225,4 +240,88 @@ export async function ensureCustomerBackorderProductions(
   }
 
   return results;
+}
+
+/**
+ * Backward-compatible entry point used by older order routes. When an
+ * operational projection exists, ignore the caller's aggregate/first-item
+ * inference and derive the real current missing demand per SKU instead.
+ */
+export async function ensureCustomerBackorderProduction(
+  db: DbClient,
+  input: SingleCustomerProductionInput
+) {
+  const commercialOrder = await db.operationCommercialOrder.findFirst({
+    where: {
+      sourceId: input.orderId,
+      customerType: { not: "internal" },
+    },
+    select: {
+      id: true,
+      sourceId: true,
+      items: {
+        select: {
+          quantity: true,
+          productCode: true,
+          finishedGoodId: true,
+          finishedGood: { select: { code: true } },
+        },
+      },
+    },
+  });
+
+  if (!commercialOrder) {
+    return ensureSingleCustomerBackorderProduction(db, input);
+  }
+
+  const requiredByCode = new Map<string, number>();
+  for (const item of commercialOrder.items) {
+    const productCode = item.finishedGood?.code?.trim() || item.productCode?.trim() || "";
+    const quantity = Math.max(0, Math.floor(Number(item.quantity) || 0));
+    if (!productCode && quantity > 0) {
+      throw new Error("CUSTOMER_PRODUCTION_PRODUCT_CODE_REQUIRED");
+    }
+    if (!productCode || quantity <= 0) continue;
+    requiredByCode.set(productCode, (requiredByCode.get(productCode) || 0) + quantity);
+  }
+
+  const reservationOrderId = commercialOrder.sourceId || commercialOrder.id;
+  const reservedUnits = await db.operationFinishedGoodUnit.findMany({
+    where: {
+      reservedOrderId: reservationOrderId,
+      status: "reserved",
+      dispatchItems: { none: {} },
+    },
+    select: { productCode: true },
+  });
+  const reservedByCode = new Map<string, number>();
+  for (const unit of reservedUnits) {
+    reservedByCode.set(unit.productCode, (reservedByCode.get(unit.productCode) || 0) + 1);
+  }
+
+  const missingItems: CustomerBackorderRequirement[] = [];
+  for (const [productCode, requiredQty] of requiredByCode) {
+    const missingQty = Math.max(0, requiredQty - (reservedByCode.get(productCode) || 0));
+    if (missingQty > 0) missingItems.push({ productCode, missingQty });
+  }
+
+  const productions = await ensureCustomerBackorderProductions(db, {
+    commercialOrderId: commercialOrder.id,
+    orderId: input.orderId,
+    orderNumber: input.orderNumber,
+    customerName: input.customerName,
+    missingItems,
+    createdById: input.createdById,
+  });
+
+  if (productions.length === 0) return null;
+
+  const requestedProductCode = input.productCode?.trim() || input.outputType.trim();
+  const primary = productions.find((row) => row.productCode === requestedProductCode) || productions[0];
+
+  return {
+    productionOrder: primary.productionOrder,
+    created: productions.some((row) => row.created),
+    productions,
+  };
 }
