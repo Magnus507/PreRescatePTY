@@ -11,7 +11,6 @@ export async function authorizeCredentials(
   credentials: { email?: string; password?: string; mfaCode?: string } | undefined,
   req?: Parameters<typeof getClientIp>[0]
 ) {
-  // Rate limiting
   const ip = getClientIp(req ?? {}, "auth-login");
   const limiter = await rateLimit("login", ip, { limit: 10, windowMs: 60_000 * 15 });
   if (!limiter.allowed) {
@@ -23,13 +22,11 @@ export async function authorizeCredentials(
   }
 
   const emailLower = credentials.email.toLowerCase();
-
-  // Unified lookup: single User table
   const user = await prisma.user.findUnique({
     where: { email: emailLower },
   }) as User | null;
 
-  if (!user || user.status !== "active") {
+  if (!user || user.status !== "active" || user.deletedAt) {
     throw new Error("Credenciales inválidas");
   }
 
@@ -38,27 +35,66 @@ export async function authorizeCredentials(
     throw new Error("Credenciales inválidas");
   }
 
-  // Check MFA
-  if (user && user.mfaEnabled && user.mfaSecret) {
+  // MFA must fail closed. A stale secret while disabled, or an enabled factor
+  // without a usable TOTP/recovery credential, is an account configuration
+  // problem — never a reason to silently fall back to password-only login.
+  if (user.mfaEnabled || user.mfaSecret) {
+    if (!user.mfaEnabled && user.mfaSecret) {
+      throw new Error("MFA_CONFIGURATION_ERROR");
+    }
     if (!credentials.mfaCode) {
       throw new Error("MFA_REQUIRED");
     }
 
-    const { verifyMfaToken } = await import("@/domains/users/services/mfa.service");
-    const isTokenValid = verifyMfaToken(credentials.mfaCode, decrypt(user.mfaSecret));
+    const mfaLimiter = await rateLimit("login:mfa", user.id, {
+      limit: 8,
+      windowMs: 60_000 * 15,
+    });
+    if (!mfaLimiter.allowed) {
+      throw new Error("Demasiados intentos MFA. Intenta de nuevo más tarde.");
+    }
 
-    if (!isTokenValid) {
+    const {
+      consumeMfaRecoveryCode,
+      isRecoveryCode,
+      verifyMfaToken,
+    } = await import("@/domains/users/services/mfa.service");
+
+    let secondFactorValid = false;
+    if (isRecoveryCode(credentials.mfaCode)) {
+      try {
+        secondFactorValid = await consumeMfaRecoveryCode(
+          prisma,
+          user.id,
+          credentials.mfaCode
+        );
+      } catch {
+        throw new Error("MFA_CONFIGURATION_ERROR");
+      }
+    } else {
+      if (!user.mfaSecret) {
+        throw new Error("MFA_CONFIGURATION_ERROR");
+      }
+      try {
+        secondFactorValid = verifyMfaToken(
+          credentials.mfaCode,
+          decrypt(user.mfaSecret)
+        );
+      } catch {
+        throw new Error("MFA_CONFIGURATION_ERROR");
+      }
+    }
+
+    if (!secondFactorValid) {
       throw new Error("Código MFA inválido");
     }
   }
 
-  // Update last login
   await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
   });
 
-  // Determine role: admin users use adminRole, regular users use role
   const effectiveRole = user.isAdmin ? (user.adminRole || "admin") : (user.role || "owner");
 
   return {
@@ -75,7 +111,7 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
   pages: {
     signIn: "/login",
@@ -139,7 +175,6 @@ export const authOptions: NextAuthOptions = {
         token.accountId = currentUser.accountId;
         token.sessionVersion = currentUser.sessionVersion;
       } catch {
-        // Fail closed when the current account state cannot be verified.
         token.revoked = true;
       }
 
@@ -161,16 +196,13 @@ export const authOptions: NextAuthOptions = {
     },
     async redirect({ url, baseUrl }) {
       try {
-        // Permite URLs relativas dentro del mismo sitio
         if (url.startsWith("/")) return `${baseUrl}${url}`;
-        // Permite URLs absolutas si pertenecen al mismo dominio
         const urlObj = new URL(url);
         if (urlObj.origin === baseUrl) return url;
       } catch {
-        // En caso de error (URL malformada), por defecto ir al origen
+        // Malformed URLs fall back to the application origin.
       }
       return baseUrl;
     },
   },
-
 };
