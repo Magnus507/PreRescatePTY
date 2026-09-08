@@ -32,14 +32,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     },
   });
 
-  if (!order) {
-    return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
-  }
+  if (!order) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+
+  const cancellationReason = reason.trim() ||
+    `Pedido cancelado por ${auth.session.user.email || auth.session.user.id || "admin"}`;
 
   const reservationResult = await releaseEligibleOrderReservations(prisma, {
     orderId: id,
     actorId: auth.session.user.id || null,
-    reason: reason.trim() || `Pedido cancelado por ${auth.session.user.email || auth.session.user.id || "admin"}`,
+    reason: cancellationReason,
     dryRun: true,
   });
 
@@ -55,11 +56,35 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   }
 
   await prisma.$transaction(async (tx) => {
+    // Serialize cancellation against reservation/dispatch work on every matching
+    // operational projection before releasing inventory. The customer Order and
+    // its Operations projection must become terminal in the same transaction;
+    // otherwise a cancelled paid order can remain dispatch-eligible indefinitely.
+    const operationalOrders = await tx.operationCommercialOrder.findMany({
+      where: { sourceId: id },
+      select: { id: true },
+    });
+    for (const operationalOrder of operationalOrders) {
+      await tx.operationCommercialOrder.updateMany({
+        where: { id: operationalOrder.id },
+        data: { updatedAt: new Date() },
+      });
+    }
+
     await releaseEligibleOrderReservations(tx, {
       orderId: id,
       actorId: auth.session.user.id || null,
-      reason: reason.trim() || `Pedido cancelado por ${auth.session.user.email || auth.session.user.id || "admin"}`,
+      reason: cancellationReason,
       dryRun: false,
+    });
+
+    await tx.operationCommercialOrder.updateMany({
+      where: { sourceId: id },
+      data: {
+        status: "cancelled",
+        paymentStatus: "cancelled",
+        fulfillmentStatus: "cancelled",
+      },
     });
 
     await tx.order.update({
@@ -80,6 +105,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           orderNumber: order.orderNumber,
           providerReference: order.providerReference,
           customerName: order.customerName,
+          orderStatus: order.orderStatus,
+          paymentStatus: order.paymentStatus,
         }),
         newValuesJson: JSON.stringify({
           deletedAt: new Date().toISOString(),
@@ -88,6 +115,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           deletedReason: reason.trim() || null,
           deletedBy: auth.session.user.id || auth.session.user.email || null,
           releasedReservationsCount: reservationResult.releasedCount,
+          operationalProjectionStatus: "cancelled",
+          operationalProjectionPaymentStatus: "cancelled",
         }),
       },
     });
