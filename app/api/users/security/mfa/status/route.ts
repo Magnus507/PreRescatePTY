@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFreshSession } from "@/lib/rbac";
+import { countRemainingMfaRecoveryCodes } from "@/domains/users/services/mfa.service";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +23,9 @@ export async function GET() {
     return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
   }
 
-  const recoveryRows = user.mfaEnabled
-    ? await prisma.$queryRaw<Array<{ remaining: bigint }>>`
-        SELECT COUNT(*)::bigint AS "remaining"
-        FROM "MfaRecoveryCode"
-        WHERE "userId" = ${auth.session.user.id}
-          AND "usedAt" IS NULL
-      `.catch(() => [{ remaining: 0n }])
-    : [{ remaining: 0n }];
+  const recoveryCodesRemaining = user.mfaEnabled
+    ? await countRemainingMfaRecoveryCodes(prisma, auth.session.user.id)
+    : 0;
 
   const configured = user.mfaEnabled && Boolean(user.mfaSecret);
   const inconsistent = user.mfaEnabled !== Boolean(user.mfaSecret);
@@ -39,7 +35,7 @@ export async function GET() {
       enabled: user.mfaEnabled,
       configured,
       inconsistent,
-      recoveryCodesRemaining: Number(recoveryRows[0]?.remaining || 0n),
+      recoveryCodesRemaining,
       admin: user.isAdmin,
       adminRole: user.adminRole,
     },
