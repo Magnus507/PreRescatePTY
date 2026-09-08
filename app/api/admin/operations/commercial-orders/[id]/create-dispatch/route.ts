@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
-import { getFirstValidationMessage } from "../../commercial-orders.helpers";
+import {
+  getFirstValidationMessage,
+  resolveCommercialOrderItemKey,
+} from "../../commercial-orders.helpers";
 import { z } from "zod";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
@@ -37,14 +40,22 @@ export async function POST(
       const order = await tx.operationCommercialOrder.findUnique({
         where: { id: commercialOrderId },
         include: {
-          items: true,
+          items: {
+            include: {
+              finishedGood: {
+                select: { code: true, productType: true },
+              },
+            },
+          },
           dispatch: true,
         },
       });
 
       if (!order) return null;
       if (order.dispatch) throw new Error("ORDER_ALREADY_HAS_DISPATCH");
-      if (order.status === "cancelled") throw new Error("ORDER_CANCELLED");
+      if (["cancelled", "rejected", "completed"].includes(order.status)) {
+        throw new Error("ORDER_CANCELLED");
+      }
       if (order.customerType === "internal") throw new Error("INTERNAL_ORDER_NO_DISPATCH");
       if (order.paymentStatus !== "paid") throw new Error("ORDER_NOT_PAID");
 
@@ -61,13 +72,22 @@ export async function POST(
               shippingAddress: true,
               shippingCity: true,
               shippingNotes: true,
+              orderStatus: true,
+              paymentStatus: true,
             },
           })
         : null;
 
+      if (
+        customerOrder &&
+        (customerOrder.orderStatus === "cancelled" || customerOrder.paymentStatus !== "paid")
+      ) {
+        throw new Error("SOURCE_ORDER_NOT_SHIPPABLE");
+      }
+
       const requiredByProductCode = new Map<string, number>();
       for (const item of order.items) {
-        const productCode = item.productCode?.trim();
+        const productCode = resolveCommercialOrderItemKey(item).trim();
         if (!productCode) throw new Error("MISSING_PRODUCT_CODE");
         requiredByProductCode.set(
           productCode,
@@ -248,7 +268,13 @@ export async function POST(
       return NextResponse.json({ error: "El pedido ya tiene un despacho asociado" }, { status: 409 });
     }
     if (error instanceof Error && error.message === "ORDER_CANCELLED") {
-      return NextResponse.json({ error: "El pedido cancelado no puede crear despacho" }, { status: 400 });
+      return NextResponse.json({ error: "El pedido ya no permite crear despacho" }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "SOURCE_ORDER_NOT_SHIPPABLE") {
+      return NextResponse.json(
+        { error: "El pedido origen fue cancelado o dejó de estar pagado; no puede crear despacho" },
+        { status: 409 }
+      );
     }
     if (error instanceof Error && error.message === "INTERNAL_ORDER_NO_DISPATCH") {
       return NextResponse.json(
