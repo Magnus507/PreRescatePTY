@@ -7,69 +7,12 @@ import {
   normalizeQaChecklist,
 } from "@/app/api/admin/operations/finished-good-units/finished-good-units.helpers";
 import { buildProductionAssemblyState } from "@/lib/operations/production-assembly-state";
-import { reserveCommercialOrderStock } from "@/lib/operations/commercial-order-reservation";
+import { routeCustomerProductionUnit } from "@/lib/operations/customer-production-routing";
 
 export const dynamic = "force-dynamic";
 
-type ProductionSource = {
-  customerOrderId: string | null;
-  commercialOrderId: string | null;
-  internal: boolean;
-};
-
 function toJson(value: Record<string, unknown>) {
   return value as Prisma.InputJsonValue;
-}
-
-function parseMetadata(value: string | null | undefined): Record<string, unknown> | null {
-  if (!value) return null;
-  try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed as Record<string, unknown>
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function resolveProductionSource(input: {
-  code: string;
-  notes: string | null;
-  events: Array<{ eventType: string; metadataJson: string | null }>;
-}): ProductionSource {
-  for (const event of input.events) {
-    if (event.eventType !== "CREATED") continue;
-    const metadata = parseMetadata(event.metadataJson);
-    if (!metadata) continue;
-
-    const sourceType = typeof metadata.sourceType === "string" ? metadata.sourceType : null;
-    const orderSource = typeof metadata.orderSource === "string" ? metadata.orderSource : null;
-    const orderId = typeof metadata.orderId === "string" ? metadata.orderId : null;
-    const commercialOrderId = typeof metadata.commercialOrderId === "string" ? metadata.commercialOrderId : null;
-
-    if (sourceType === "customer_order" && orderId) {
-      return { customerOrderId: orderId, commercialOrderId, internal: false };
-    }
-    if (orderSource === "internal") {
-      return { customerOrderId: null, commercialOrderId, internal: true };
-    }
-    if (commercialOrderId) {
-      return { customerOrderId: null, commercialOrderId, internal: false };
-    }
-  }
-
-  const legacyCommercialOrderId = input.notes?.match(/\[commercialOrderId:([^\]]+)\]/)?.[1]
-    || input.notes?.match(/W605H-B-BACKORDER-PRODUCTION:([^\s]+)/)?.[1]
-    || null;
-
-  return {
-    customerOrderId: null,
-    commercialOrderId: legacyCommercialOrderId,
-    internal:
-      input.code.startsWith("PROD-INT-") ||
-      Boolean(input.notes?.includes("Pedido interno para fabricar inventario")),
-  };
 }
 
 export async function POST(
@@ -97,14 +40,8 @@ export async function POST(
         select: {
           id: true,
           code: true,
-          notes: true,
           status: true,
           plannedQuantity: true,
-          events: {
-            where: { eventType: "CREATED" },
-            orderBy: { createdAt: "asc" },
-            select: { eventType: true, metadataJson: true },
-          },
         },
       });
       if (!productionOrder) return null;
@@ -129,9 +66,17 @@ export async function POST(
         },
       });
       if (!unit) throw new Error("UNIT_NOT_FOUND");
-      if (unit.qaStatus === "passed") return { unit, reservation: null };
       if (!unit.digitalBatchItem || unit.digitalBatchItem.productionOrderId !== productionOrderId) {
         throw new Error("UNIT_NOT_LINKED_TO_PRODUCTION");
+      }
+
+      // Idempotent recovery path: a unit that already passed QC can be routed
+      // again. This repairs historic customer-production rows whose SKU/type was
+      // inconsistent without duplicating QA events. Internal production remains
+      // inventory stock and is a no-op here.
+      if (unit.qaStatus === "passed") {
+        const routed = await routeCustomerProductionUnit(tx, { productionOrderId, unitId });
+        return { unit: routed.unit || unit, reservation: routed.reservation };
       }
 
       const assemblyState = buildProductionAssemblyState(unit.digitalBatchItem, {
@@ -140,25 +85,6 @@ export async function POST(
       if (!assemblyState.readyForQc || unit.status !== "qa_pending" || unit.qaStatus !== "pending") {
         throw new Error("UNIT_NOT_READY");
       }
-
-      const source = resolveProductionSource(productionOrder);
-      let commercialOrder = source.commercialOrderId
-        ? await tx.operationCommercialOrder.findUnique({
-            where: { id: source.commercialOrderId },
-            select: { id: true, sourceId: true, customerType: true },
-          })
-        : null;
-
-      if (!commercialOrder && source.customerOrderId) {
-        commercialOrder = await tx.operationCommercialOrder.findFirst({
-          where: { sourceId: source.customerOrderId },
-          orderBy: { createdAt: "desc" },
-          select: { id: true, sourceId: true, customerType: true },
-        });
-      }
-
-      const customerOrderId = source.customerOrderId || commercialOrder?.sourceId || null;
-      const internalProduction = source.internal || commercialOrder?.customerType === "internal";
 
       await tx.operationFinishedGoodUnit.update({
         where: { id: unitId },
@@ -177,27 +103,20 @@ export async function POST(
               },
               {
                 eventType: "INVENTORY_AVAILABLE",
-                reason: "Unidad aprobada y disponible para inventario",
+                reason: "Unidad aprobada; pendiente de enrutamiento según origen de producción",
                 referenceType: "production_order",
                 referenceId: productionOrderId,
-                metadataJson: toJson({
-                  productionOrderId,
-                  customerOrderId,
-                  commercialOrderId: commercialOrder?.id || null,
-                }),
+                metadataJson: toJson({ productionOrderId }),
               },
             ],
           },
         },
       });
 
-      let reservation = null;
-      if (!internalProduction && commercialOrder) {
-        reservation = await reserveCommercialOrderStock(tx, {
-          orderId: commercialOrder.id,
-          allowPartial: true,
-        });
-      }
+      // A customer backorder is normalized to its canonical finished-good SKU
+      // and immediately reserved to the originating order. Internal production
+      // is intentionally left available in inventory.
+      const routed = await routeCustomerProductionUnit(tx, { productionOrderId, unitId });
 
       const acceptedUnits = await tx.operationFinishedGoodUnit.count({
         where: {
@@ -229,6 +148,10 @@ export async function POST(
               productionOrderId,
               acceptedUnits,
               plannedQuantity,
+              routingKind: routed.kind,
+              commercialOrderId: routed.commercialOrder?.id || null,
+              customerOrderId: routed.customerOrderId,
+              reservationStatus: routed.reservation?.summary.status || null,
             }),
             createdById: auth.session.user.id || null,
           },
@@ -239,7 +162,7 @@ export async function POST(
         where: { id: unitId },
       });
 
-      return { unit: refreshedUnit, reservation };
+      return { unit: refreshedUnit, reservation: routed.reservation };
     });
 
     if (!result) {
@@ -251,11 +174,28 @@ export async function POST(
     if (error instanceof Error && error.message === "UNIT_NOT_FOUND") {
       return NextResponse.json({ error: "Unidad no encontrada" }, { status: 404 });
     }
-    if (error instanceof Error && error.message === "UNIT_NOT_LINKED_TO_PRODUCTION") {
+    if (
+      error instanceof Error &&
+      ["UNIT_NOT_LINKED_TO_PRODUCTION", "CUSTOMER_PRODUCTION_UNIT_MISMATCH"].includes(error.message)
+    ) {
       return NextResponse.json({ error: "La unidad no pertenece a esta orden de producción" }, { status: 409 });
     }
     if (error instanceof Error && error.message === "UNIT_NOT_READY") {
       return NextResponse.json({ error: "La unidad debe completar identidad, impresión, ensamblaje y empaque antes de QC" }, { status: 400 });
+    }
+    if (
+      error instanceof Error &&
+      [
+        "CUSTOMER_PRODUCTION_ORDER_NOT_FOUND",
+        "CUSTOMER_PRODUCTION_PRODUCT_UNRESOLVED",
+        "CUSTOMER_PRODUCTION_CONTEXT_INCOMPLETE",
+        "CUSTOMER_PRODUCTION_IDENTITY_LOCKED",
+      ].includes(error.message)
+    ) {
+      return NextResponse.json(
+        { error: "La producción de cliente no pudo reconciliarse de forma segura con su pedido." },
+        { status: 409 }
+      );
     }
     console.error("[operations/production-orders/:id/qa/:unitId/pass] POST error:", error);
     return NextResponse.json({ error: "Error al aprobar QC" }, { status: 500 });
