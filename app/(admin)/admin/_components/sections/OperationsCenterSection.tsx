@@ -9,6 +9,7 @@ import DirectInventorySection from "./DirectInventorySection";
 import { DirectDispatchSection } from "./DirectDispatchSection";
 import { DirectPostSaleSection } from "./DirectPostSaleSection";
 import { HistorySection } from "./HistorySection";
+import { OperationsReconciliationBanner } from "./OperationsReconciliationBanner";
 import { PedidosSection } from "./PedidosSection";
 
 interface OperationsCenterSectionProps {
@@ -117,6 +118,7 @@ export function OperationsCenterSection({ role, initialTab = "commercial", onTab
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h2 className="text-base font-black text-slate-950">Centro de Operaciones</h2><button type="button" onClick={() => loadDashboard({ silent: true })} disabled={refreshing} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 disabled:opacity-50" aria-label="Actualizar"><RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /></button></div>
         <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 lg:grid-cols-6 lg:divide-y-0">{TABS.map((tab) => { const Icon = tab.icon; const active = activeTab === tab.id; const metric = metrics[tab.id]; return <button key={tab.id} type="button" onClick={() => changeTab(tab.id)} className={`min-h-[96px] p-4 text-left transition ${active ? "bg-white shadow-[inset_0_-3px_0_#DA1A21]" : "bg-slate-50 hover:bg-white"}`}><div className="flex items-center justify-between"><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tab.iconClass}`}><Icon className="h-4 w-4" /></span>{metric.attention > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[8px] font-black text-amber-700 ring-1 ring-amber-200">{metric.attention}</span>}</div><div className="mt-3 flex items-end justify-between gap-2"><span className="text-xl font-black text-slate-950">{loading ? "—" : compactNumber(metric.value)}</span><span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{tab.label}</span></div></button>; })}</div>
       </section>
+      <OperationsReconciliationBanner />
       <div role="tabpanel">{renderContent()}</div>
       {role === "imprenta" && <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-[11px] font-bold text-indigo-700">Vista de imprenta</div>}
     </div>
