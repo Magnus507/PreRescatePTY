@@ -8,7 +8,7 @@ import { decrypt } from "@/lib/encryption";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 import {
   consumeMfaRecoveryCode,
-  deleteMfaRecoveryCodes,
+  deleteMfaSecurityArtifacts,
   isRecoveryCode,
   verifyMfaToken,
 } from "@/domains/users/services/mfa.service";
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       });
       if (updated.count !== 1) throw new Error("MFA_STATE_CHANGED");
 
-      await deleteMfaRecoveryCodes(tx, user.id);
+      await deleteMfaSecurityArtifacts(tx, user.id);
       await writeAuditLog(tx, {
         accountId: user.accountId,
         actorUserId: user.id,
