@@ -8,7 +8,7 @@ import {
   buildContentSecurityPolicy,
   buildStaticPublicContentSecurityPolicy,
   isProtectedAppRoute,
-  requiresNonceCsp,
+  isStaticPublicRoute,
 } from "@/lib/security/csp";
 
 const ADMIN_ROLES = ["admin", "superadmin", "imprenta"];
@@ -92,11 +92,13 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     return protectedMiddleware(req as NextRequestWithAuth, event);
   }
 
-  if (requiresNonceCsp(pathname)) {
-    return continueWithNonceCsp(req);
+  if (isStaticPublicRoute(pathname)) {
+    return continueWithStaticPublicCsp();
   }
 
-  return continueWithStaticPublicCsp();
+  // Fail closed: unknown/new routes remain request-scoped with nonce CSP until
+  // they are explicitly reviewed and added to the static public allowlist.
+  return continueWithNonceCsp(req);
 }
 
 export const config = {
