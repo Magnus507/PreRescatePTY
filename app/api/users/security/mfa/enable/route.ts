@@ -7,6 +7,7 @@ import { getClientIp } from "@/lib/request-ip";
 import { encrypt } from "@/lib/encryption";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 import {
+  consumeVerifiedMfaTotp,
   generateMfaRecoveryCodes,
   openMfaSetupChallenge,
   replaceMfaRecoveryCodes,
@@ -72,6 +73,12 @@ export async function POST(req: NextRequest) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      // Enrollment verification is a successful OTP validation too. Persist it
+      // in the same replay ledger used by login/disable so the just-used TOTP
+      // cannot be reused immediately after enrollment.
+      const consumed = await consumeVerifiedMfaTotp(tx, user.id, code);
+      if (!consumed) throw new Error("MFA_CODE_REUSED");
+
       const updated = await tx.user.updateMany({
         where: {
           id: user.id,
@@ -101,6 +108,9 @@ export async function POST(req: NextRequest) {
       });
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "MFA_CODE_REUSED") {
+      return NextResponse.json({ error: "El código MFA ya fue utilizado; espera uno nuevo" }, { status: 400 });
+    }
     if (error instanceof Error && error.message === "MFA_STATE_CHANGED") {
       return NextResponse.json({ error: "El estado MFA cambió; vuelve a iniciar el proceso" }, { status: 409 });
     }
