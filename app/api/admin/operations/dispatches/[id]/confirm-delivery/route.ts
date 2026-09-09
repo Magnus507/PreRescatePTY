@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getDispatchCustomerOrderId } from "@/lib/operations/dispatch-source";
+import { reconcileDeliveredCommercialOrderProjection } from "@/lib/operations/delivered-commercial-order-reconciliation";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,17 @@ export async function POST(
         if (!current) throw new Error("NOT_FOUND");
         const orderId = getDispatchCustomerOrderId(current.events);
         if (current.status === "delivered") {
+          // Historical versions could commit delivery while leaving the derived
+          // commercial projection stale. A retry now self-heals only when the
+          // source order, dispatch items and physical units independently prove
+          // the same delivered fact; unsafe records remain untouched.
+          const commercialOrder = await tx.operationCommercialOrder.findFirst({
+            where: { dispatchId: id },
+            select: { id: true },
+          });
+          if (commercialOrder) {
+            await reconcileDeliveredCommercialOrderProjection(tx, commercialOrder.id);
+          }
           return {
             status: "delivered" as const,
             orderStatus: orderId ? ("completed" as const) : null,
