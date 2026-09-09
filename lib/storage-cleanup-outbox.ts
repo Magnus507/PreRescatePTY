@@ -20,7 +20,7 @@ function safeError(error: unknown) {
 
 export async function cleanupUploadedObjectOrRecordOrphan(
   value: string,
-  context: { actorUserId: string; accountId?: string | null }
+  _context: { actorUserId: string; accountId?: string | null }
 ) {
   const ref = parseStorageObjectRef(value);
   if (!ref) return { cleaned: false, recorded: false };
@@ -36,14 +36,16 @@ export async function cleanupUploadedObjectOrRecordOrphan(
         availableAt: new Date(),
         lockedAt: null,
         lockedBy: null,
+        actorUserId: null,
+        accountId: null,
         lastErrorMessage: safeError(error),
       },
       create: {
         objectKey: objectKey(ref.bucket, ref.path),
         bucket: ref.bucket,
         path: ref.path,
-        actorUserId: context.actorUserId,
-        accountId: context.accountId || null,
+        actorUserId: null,
+        accountId: null,
         lastErrorMessage: safeError(error),
       },
     });
@@ -121,6 +123,7 @@ export async function processStorageCleanupOutbox(
 
     try {
       await deleteStorageObjects([{ bucket: row.bucket, path: row.path }]);
+      const erasedReceipt = randomUUID();
       const finalized = await prisma.storageCleanupOutbox.updateMany({
         where: { id: row.id, status: "processing", lockedBy: workerId },
         data: {
@@ -129,6 +132,11 @@ export async function processStorageCleanupOutbox(
           lockedAt: null,
           lockedBy: null,
           lastErrorMessage: null,
+          objectKey: `erased:${erasedReceipt}`,
+          bucket: "erased",
+          path: `erased/${erasedReceipt}`,
+          actorUserId: null,
+          accountId: null,
         },
       });
       if (finalized.count === 1) cleaned += 1;
