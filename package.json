@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prisma:generate": "prisma generate",
+    "prisma:generate": "node ./node_modules/prisma/build/index.js generate",
     "db:seed": "prisma db seed",
     "db:backfill-activation-codes": "tsx scripts/backfill-activation-codes.ts",
     "env:check": "tsx scripts/check-env-contract.ts",
