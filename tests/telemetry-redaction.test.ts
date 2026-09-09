@@ -33,6 +33,33 @@ describe("telemetry privacy", () => {
     expect(sanitized.orderId).toBe("ORD-SAFE-123");
   });
 
+  it("redacts direct identity keys without redacting operational product names", () => {
+    const sanitized = sanitizeTelemetry({
+      firstName: "SentinelFirst",
+      lastName: "SentinelLast",
+      fullName: "Sentinel Full",
+      customerName: "Sentinel Customer",
+      buyerName: "Sentinel Buyer",
+      nationalId: "SENTINEL-ID-123",
+      customerDocument: "SENTINEL-DOC-123",
+      shippingCity: "Sentinel City",
+      shippingNotes: "Apartment 9",
+      productName: "Pulsera NFC",
+      operationName: "QA lote 9",
+    });
+
+    const serialized = JSON.stringify(sanitized);
+    expect(serialized).not.toContain("SentinelFirst");
+    expect(serialized).not.toContain("SentinelLast");
+    expect(serialized).not.toContain("Sentinel Customer");
+    expect(serialized).not.toContain("SENTINEL-ID-123");
+    expect(serialized).not.toContain("SENTINEL-DOC-123");
+    expect(serialized).not.toContain("Sentinel City");
+    expect(serialized).not.toContain("Apartment 9");
+    expect(sanitized.productName).toBe("Pulsera NFC");
+    expect(sanitized.operationName).toBe("QA lote 9");
+  });
+
   it("redacts common secrets, contact data and medical values embedded in strings", () => {
     const sanitized = redactTelemetryString(
       "contact person@example.com +507 6123-4567 token=synthetic-secret allergies: penicillin receipt=https://example.invalid/proof.jpg",
