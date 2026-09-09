@@ -282,7 +282,7 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     );
     expect(mockPrisma.paymentEvent.updateMany).toHaveBeenCalledWith({
       where: { paymentAttemptId: { in: ["payment-attempt-1"] } },
-      data: { payloadJson: null },
+      data: { payloadJson: "{}" },
     });
     expect(mockPrisma.commerceOrderSyncOutbox.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
