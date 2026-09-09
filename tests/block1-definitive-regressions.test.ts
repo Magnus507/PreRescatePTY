@@ -61,6 +61,7 @@ describe("Block 1 definitive fulfillment guardrails", () => {
     expect(route).toContain('unit.dispatchItems.length !== 1');
     expect(route).toContain('unit.status !== "dispatched"');
     expect(route).toContain('fulfillmentStatus: afterShipment ? "dispatched" : "dispatch_pending"');
+    expect(route).toContain('if (!validated) throw new Error("EXISTING_DISPATCH_MISMATCH")');
   });
 
   it("prevents arbitrary customer dispatch ownership through manual commercial-order creation", () => {
