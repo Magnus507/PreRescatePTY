@@ -7,7 +7,13 @@ describe("Block 2 JWT continuity", () => {
     const rotatedSecret = "block2-ci-rotated-secret-at-least-32-characters";
     const token = await encode({
       secret: stableSecret,
-      token: { sub: "user-1", sessionVersion: 9, role: "admin" },
+      token: {
+        id: "user-1",
+        sub: "user-1",
+        role: "admin",
+        accountId: null,
+        sessionVersion: 9,
+      },
       maxAge: 60 * 60,
     });
 
