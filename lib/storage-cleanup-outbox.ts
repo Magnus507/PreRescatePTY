@@ -22,6 +22,7 @@ export async function cleanupUploadedObjectOrRecordOrphan(
   value: string,
   _context: { actorUserId: string; accountId?: string | null }
 ) {
+  void _context;
   const ref = parseStorageObjectRef(value);
   if (!ref) return { cleaned: false, recorded: false };
 
