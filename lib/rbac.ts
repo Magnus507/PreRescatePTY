@@ -10,25 +10,22 @@ export const ORDER_REVIEW_ROLES = ["admin", "superadmin"];
 /** Fulfilment actions that the print shop needs to perform. */
 export const ORDER_FULFILLMENT_ROLES = ["admin", "superadmin", "imprenta"];
 
-/**
- * Roles autorizados para administración general (sin imprenta)
- */
+/** Roles autorizados para administración general (sin imprenta). */
 export const GENERAL_ADMIN_ROLES = ["admin", "superadmin"];
 
-/**
- * Roles exclusivos de superadmin
- */
+/** Roles exclusivos de superadmin. */
 export const SUPERADMIN_ROLES = ["superadmin"];
 
-/**
- * Verifica si el rol de sesión está incluido en la lista de roles permitidos.
- */
 export function hasRole(
   role: string | undefined | null,
   allowedRoles: string[]
 ): boolean {
   if (!role) return false;
   return allowedRoles.includes(role);
+}
+
+export function isAdminMfaEnforcementEnabled(): boolean {
+  return process.env.ADMIN_MFA_ENFORCEMENT_ENABLED === "true";
 }
 
 export type AuthSuccess = { authorized: true; session: Session };
@@ -41,6 +38,7 @@ type CurrentAuthState = {
   role: string;
   adminRole: string | null;
   isAdmin: boolean;
+  mfaEnabled: boolean;
   accountId: string | null;
   sessionVersion: number;
   deletedAt: Date | null;
@@ -55,6 +53,7 @@ async function loadCurrentAuthState(userId: string): Promise<CurrentAuthState | 
       role: true,
       adminRole: true,
       isAdmin: true,
+      mfaEnabled: true,
       accountId: true,
       sessionVersion: true,
       deletedAt: true,
@@ -72,30 +71,21 @@ async function assertFreshSession(session: Session) {
     return { ok: false as const, response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
   }
 
-  if (
-    current.deletedAt ||
-    (current.status !== undefined && current.status !== "active")
-  ) {
+  if (current.deletedAt || current.status !== "active") {
     return { ok: false as const, response: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
   }
 
-  if (current.sessionVersion !== undefined && current.sessionVersion !== session.user.sessionVersion) {
+  if (current.sessionVersion !== session.user.sessionVersion) {
     return { ok: false as const, response: NextResponse.json({ error: "Sesión revocada" }, { status: 401 }) };
   }
 
-  return {
-    ok: true as const,
-    current: {
-      ...current,
-      status: current.status ?? "active",
-      sessionVersion: current.sessionVersion ?? session.user.sessionVersion,
-    },
-  };
+  return { ok: true as const, current };
 }
 
 /**
- * Obtiene la sesión y valida que el usuario tenga uno de los roles permitidos.
- * Retorna la sesión si es válida, o una Response de error si no.
+ * Role authorization uses live database state. MFA enforcement is deliberately
+ * feature-gated so enrollment can be deployed and proven with the real admin
+ * before privileged access starts requiring the factor.
  */
 export async function requireRole(
   allowedRoles: string[]
@@ -117,6 +107,20 @@ export async function requireRole(
       authorized: false,
       response: NextResponse.json(
         { error: "Acceso denegado: solo personal autorizado" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  if (
+    fresh.current.isAdmin &&
+    isAdminMfaEnforcementEnabled() &&
+    !fresh.current.mfaEnabled
+  ) {
+    return {
+      authorized: false,
+      response: NextResponse.json(
+        { error: "MFA administrativo requerido", code: "ADMIN_MFA_REQUIRED" },
         { status: 403 }
       ),
     };
