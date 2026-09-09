@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
           {sent ? (
             <div className="relative z-10 space-y-7 text-center">
               <p className="text-sm text-slate-200">
-                Hemos enviado las instrucciones a <strong>{email}</strong>. Si no lo ves en tu bandeja principal, revisa spam o promociones.
+                Si existe una cuenta asociada a ese correo, recibirás las instrucciones en unos minutos. Revisa también spam o promociones.
               </p>
               <Link
                 href="/login"
