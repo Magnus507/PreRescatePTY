@@ -22,8 +22,8 @@ function ResetPasswordForm() {
       toast.error("Las contraseñas no coinciden");
       return;
     }
-    if (password.length < 8) {
-      toast.error("La contraseña debe tener al menos 8 caracteres");
+    if (password.length < 15) {
+      toast.error("La contraseña debe tener al menos 15 caracteres");
       return;
     }
 
@@ -94,10 +94,12 @@ function ResetPasswordForm() {
           id="pass"
           type="password"
           required
+          minLength={15}
+          maxLength={128}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
-          placeholder="Mínimo 8 caracteres"
+          placeholder="Mínimo 15 caracteres"
         />
       </div>
 
@@ -107,12 +109,16 @@ function ResetPasswordForm() {
           id="cpass"
           type="password"
           required
+          minLength={15}
+          maxLength={128}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           className="w-full rounded-[1.75rem] border border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition"
           placeholder="Debe coincidir con la anterior"
         />
       </div>
+
+      <p className="text-xs text-slate-400">Usa al menos 15 caracteres y evita contraseñas comunes o comprometidas.</p>
 
       <button
         type="submit"
@@ -171,7 +177,7 @@ export default function ResetPasswordPage() {
               <div className="md:hidden inline-flex rounded-full bg-brand/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] text-brand mb-8">Cambio seguro</div>
               
               <h2 className="text-3xl font-black tracking-tight mb-2">Nueva contraseña</h2>
-              <p className="text-slate-400 leading-relaxed mb-10">Crea una contraseña fuerte para proteger tu perfil médico. Mínimo 8 caracteres.</p>
+              <p className="text-slate-400 leading-relaxed mb-10">Crea una contraseña fuerte para proteger tu perfil médico. Mínimo 15 caracteres.</p>
 
               <Suspense fallback={<p className="text-center text-sm text-slate-300">Cargando...</p>}>
                 <ResetPasswordForm />

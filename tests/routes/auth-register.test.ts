@@ -16,6 +16,10 @@ vi.mock("@/lib/request-ip", () => ({
   getClientIp: vi.fn(() => "127.0.0.1"),
 }));
 
+vi.mock("@/lib/password-policy", () => ({
+  validatePasswordPolicy: vi.fn().mockResolvedValue({ ok: true }),
+}));
+
 vi.mock("bcryptjs", () => ({
   default: {
     hash: vi.fn().mockResolvedValue("hashed-password"),
@@ -35,8 +39,8 @@ function createRegisterRequest(body: Record<string, unknown>) {
 const validRegistration = {
   email: "user@example.com",
   phone: "+507 6000-0000",
-  password: "Password123!",
-  confirmPassword: "Password123!",
+  password: "RiverQuartz!2026Secure",
+  confirmPassword: "RiverQuartz!2026Secure",
   accountType: "personal",
   acceptedTerms: true,
   consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,

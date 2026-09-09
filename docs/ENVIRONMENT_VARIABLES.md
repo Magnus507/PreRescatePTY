@@ -27,6 +27,14 @@ This file is the human-readable companion to `lib/env.ts`. Variable names are do
 
 Production startup fails closed when this core is missing or malformed. Staging uses the same strict validator so configuration drift is detected before promotion.
 
+## Runtime security controls
+
+| Variable | Scope | Sensitive | Purpose |
+| --- | --- | --- | --- |
+| `ADMIN_MFA_ENFORCEMENT_ENABLED` | runtime | no | Staged administrative MFA gate. Keep `false` during enrollment; set `true` only after the real administrator successfully proves MFA login and recovery handling. |
+
+The MFA enforcement flag is intentionally not production-required during initial enrollment. Missing or `false` means enrollment can proceed without locking out the only administrator. Once the live administrator has proven the factor, production must explicitly set it to `true` before Block 2 can close.
+
 ## Build/public optional
 
 | Variable | Scope | Sensitive | Purpose |
@@ -109,6 +117,7 @@ CI runs the contract check plus the strict production schema using non-secret CI
 - [ ] Run `npm run env:check` and `npm run env:verify:staging` successfully.
 - [ ] `DATABASE_URL`/`DIRECT_URL` target only the intended non-production database when exercising migrations or destructive scripts.
 - [ ] `NEXTAUTH_URL` and `NEXT_PUBLIC_SITE_URL` resolve to the staging/preview origin.
+- [ ] `ADMIN_MFA_ENFORCEMENT_ENABLED=false` until the real administrator completes enrollment and a successful MFA login.
 - [ ] Yappy remains UAT unless the release gate explicitly authorizes production credentials.
 - [ ] Optional integrations are either complete or absent; never leave half-configured credentials.
 - [ ] Seed credentials and one-shot confirmation flags are absent from persistent deployment environments.
@@ -121,6 +130,7 @@ CI runs the contract check plus the strict production schema using non-secret CI
 - [ ] Confirm `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL` and `YAPPY_DOMAIN` use the approved production origin where applicable.
 - [ ] Confirm `DATABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` belong to the production project and are server-only.
 - [ ] Confirm `ENCRYPTION_KEY`, `NEXTAUTH_SECRET` and `CRON_SECRET` are present and stored only in the deployment secret store.
+- [ ] Confirm `ADMIN_MFA_ENFORCEMENT_ENABLED=true` only after real-admin MFA enrollment and successful MFA login evidence; never enable it pre-enrollment.
 - [ ] Confirm optional provider groups in launch scope are complete; providers outside launch scope are explicitly absent/disabled.
 - [ ] Confirm all seed credentials and one-shot script guards listed above are absent from Vercel production variables.
 - [ ] After deployment, require HTTP 200 smoke tests and no environment-validation error before promotion is accepted.

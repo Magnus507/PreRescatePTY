@@ -28,8 +28,9 @@ const RUN_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const TEST_EMAIL = `reset-user-${RUN_ID}@test.local`;
 const TEST_TOKEN = `reset-token-${RUN_ID}`;
 const TEST_TOKEN_HASH = hashPasswordResetToken(TEST_TOKEN);
+const TEST_NEW_PASSWORD = "RiverQuartz!2026Secure";
 
-function createRequest(token?: string, password = "NuevaClave123") {
+function createRequest(token?: string, password = TEST_NEW_PASSWORD) {
   return new NextRequest("http://localhost/api/auth/reset-password", {
     method: "POST",
     body: JSON.stringify({ token, password }),
@@ -50,9 +51,15 @@ describe("PostgreSQL integration: password reset", () => {
     mockRateLimit.mockResolvedValue({ allowed: true, remaining: 1, resetAt: Date.now() + 1000 });
     mockGetClientIp.mockReturnValue("127.0.0.1");
     mockBcryptHash.mockResolvedValue("$2a$10$HASHED" as never);
+    // Keep this PostgreSQL/route integration test deterministic while the
+    // password-policy unit suite separately verifies HIBP k-anonymity,
+    // breached-password rejection and fail-safe network handling. Each
+    // concurrent request needs its own Response body.
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response("", { status: 200 })));
   });
 
   afterAll(async () => {
+    vi.unstubAllGlobals();
     await db.$disconnect();
   });
 

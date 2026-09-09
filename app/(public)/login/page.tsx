@@ -73,7 +73,7 @@ function LoginContent() {
           redirect: false,
           email,
           password,
-          mfaCode: requiresMfa ? mfaCode : undefined,
+          mfaCode: requiresMfa ? mfaCode.trim() : undefined,
         }),
         15000,
         "LOGIN_TIMEOUT"
@@ -160,7 +160,7 @@ function LoginContent() {
 
             <div className="mt-10 rounded-[2rem] border border-white/10 bg-slate-950/80 p-6">
               <p className="text-sm uppercase tracking-[0.35em] text-slate-400 font-black">Accede con confianza</p>
-              <p className="mt-4 text-slate-300 leading-relaxed">Si tienes MFA activado, el sistema te pedirá tu código de seguridad después de tus credenciales.</p>
+              <p className="mt-4 text-slate-300 leading-relaxed">Si tienes MFA activado, el sistema te pedirá un TOTP o un código de recuperación después de tus credenciales.</p>
             </div>
           </section>
 
@@ -235,22 +235,26 @@ function LoginContent() {
                 <div className="space-y-4">
                   <div className="rounded-3xl border border-blue-400/10 bg-blue-500/10 p-4">
                     <p className="text-xs uppercase tracking-[0.35em] text-blue-200 font-black">Paso extra</p>
-                    <p className="mt-2 text-sm text-blue-100 leading-relaxed">Ingresa tu código de 6 dígitos para completar el acceso seguro.</p>
+                    <p className="mt-2 text-sm text-blue-100 leading-relaxed">Ingresa el código de 6 dígitos de tu autenticador o uno de tus códigos de recuperación de un solo uso.</p>
                   </div>
                   <input
                     type="text"
-                    maxLength={6}
+                    maxLength={24}
                     required
                     autoFocus
+                    autoComplete="one-time-code"
                     value={mfaCode}
-                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) => setMfaCode(e.target.value.toUpperCase())}
                     disabled={loading || isSuccess}
-                    className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-6 py-4 text-center text-3xl font-black tracking-[0.5em] text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 input-premium"
-                    placeholder="000000"
+                    className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-6 py-4 text-center text-xl font-black tracking-[0.18em] text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 input-premium"
+                    placeholder="000000 o código recovery"
                   />
                   <button
                     type="button"
-                    onClick={() => setRequiresMfa(false)}
+                    onClick={() => {
+                      setRequiresMfa(false);
+                      setMfaCode("");
+                    }}
                     className="w-full text-sm font-black uppercase tracking-[0.25em] text-slate-400 hover:text-white transition"
                   >
                     Volver a contraseña

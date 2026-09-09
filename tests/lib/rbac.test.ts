@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   hasRole,
+  requiresAdminMfa,
   ORDER_REVIEW_ROLES,
   ORDER_FULFILLMENT_ROLES,
   GENERAL_ADMIN_ROLES,
@@ -62,6 +63,24 @@ describe('hasRole', () => {
 
   it('returns false for user in ORDER_REVIEW_ROLES', () => {
     expect(hasRole('user', ORDER_REVIEW_ROLES)).toBe(false)
+  })
+})
+
+describe('admin MFA enforcement gate', () => {
+  it('denies a privileged admin without MFA once enforcement is enabled', () => {
+    expect(requiresAdminMfa(true, false, true)).toBe(true)
+  })
+
+  it('permits an admin with MFA once enforcement is enabled', () => {
+    expect(requiresAdminMfa(true, true, true)).toBe(false)
+  })
+
+  it('does not apply the admin-only MFA gate to a non-admin user', () => {
+    expect(requiresAdminMfa(false, false, true)).toBe(false)
+  })
+
+  it('keeps enrollment possible while enforcement is disabled', () => {
+    expect(requiresAdminMfa(true, false, false)).toBe(false)
   })
 })
 

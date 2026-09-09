@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { registerSchema } from "@/lib/validations";
+import { validatePasswordPolicy } from "@/lib/password-policy";
 import { ACCOUNT_TYPES, USER_ROLES } from "@/domains/shared/constants";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
@@ -19,7 +20,7 @@ const REGISTRATION_LEGAL_DOCUMENTS = {
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp(req, "auth-register");
-    const limiter = await rateLimit("register", ip, { limit: 5, windowMs: 60_000 * 15 }); // 5 per 15 min
+    const limiter = await rateLimit("register", ip, { limit: 5, windowMs: 60_000 * 15 });
     if (!limiter.allowed) {
       return NextResponse.json({ error: "Demasiados intentos. Intenta de nuevo más tarde." }, { status: 429 });
     }
@@ -38,9 +39,14 @@ export async function POST(req: NextRequest) {
       consentTextVersion,
     } = validation.data;
 
-    // The client must attest to the exact legal text version currently served.
-    // This prevents a stale or handcrafted client from creating fabricated
-    // consent evidence for a different version of the terms/privacy notice.
+    const passwordPolicy = await validatePasswordPolicy(password, { email: emailLower });
+    if (!passwordPolicy.ok) {
+      return NextResponse.json(
+        { error: passwordPolicy.error, code: passwordPolicy.reason },
+        { status: passwordPolicy.reason === "breach_check_unavailable" ? 503 : 400 }
+      );
+    }
+
     if (consentTextVersion !== CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY) {
       return NextResponse.json(
         { error: "Los términos fueron actualizados. Recarga la página y vuelve a aceptarlos." },
@@ -57,56 +63,32 @@ export async function POST(req: NextRequest) {
     if (packageId) {
       selectedPackage = await prisma.package.findUnique({ where: { id: packageId } });
       if (!selectedPackage || !selectedPackage.isActive) {
-        return NextResponse.json(
-          { error: "Package inválido o inactivo" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Package inválido o inactivo" }, { status: 400 });
       }
-
       if (!ACTIVE_ACCOUNT_TYPES.has(selectedPackage.accountType)) {
-        return NextResponse.json(
-          { error: "Package con accountType inválido" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Package con accountType inválido" }, { status: 400 });
       }
-
       if (body.accountType && accountType !== selectedPackage.accountType) {
-        return NextResponse.json(
-          { error: "accountType no coincide con el Package seleccionado" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "accountType no coincide con el Package seleccionado" }, { status: 400 });
       }
     }
 
     const resolvedAccountType = selectedPackage?.accountType || accountType || ACCOUNT_TYPES.PERSONAL;
-
-    // Check if user exists
-    const existing = await prisma.user.findUnique({
-      where: { email: emailLower },
-    });
-
+    const existing = await prisma.user.findUnique({ where: { email: emailLower } });
     if (existing) {
-      return NextResponse.json(
-        { error: "Este email ya está registrado" },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: "Este email ya está registrado" }, { status: 409 });
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
-
-    // Create account + user in transaction
     const user = await prisma.$transaction(async (tx) => {
-      const accountData = {
-        accountType: resolvedAccountType,
-        accountName: emailLower,
-        status: "active",
-        packageId: selectedPackage?.id || null,
-        maxChipsAllocated: 0, // Still 0 until paid
-      };
-
       const account = await tx.account.create({
-        data: accountData,
+        data: {
+          accountType: resolvedAccountType,
+          accountName: emailLower,
+          status: "active",
+          packageId: selectedPackage?.id || null,
+          maxChipsAllocated: 0,
+        },
       });
 
       const newUser = await tx.user.create({
@@ -119,13 +101,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Set account owner
-      await tx.account.update({
-        where: { id: account.id },
-        data: { ownerUserId: newUser.id },
-      });
-
-      // Create blank profile so the user can activate chips immediately
+      await tx.account.update({ where: { id: account.id }, data: { ownerUserId: newUser.id } });
       await tx.profile.create({
         data: {
           userId: newUser.id,
@@ -135,7 +111,6 @@ export async function POST(req: NextRequest) {
           bloodType: "Pendiente",
         },
       });
-
       await tx.consent.create({
         data: {
           accountId: account.id,
@@ -153,7 +128,6 @@ export async function POST(req: NextRequest) {
           }),
         },
       });
-
       await tx.auditLog.create({
         data: {
           accountId: account.id,
@@ -164,25 +138,15 @@ export async function POST(req: NextRequest) {
           newValuesJson: JSON.stringify({ email: emailLower }),
         },
       });
-
       return newUser;
     });
 
-    return NextResponse.json(
-      { message: "Cuenta creada exitosamente", userId: user.id },
-      { status: 201 }
-    );
+    return NextResponse.json({ message: "Cuenta creada exitosamente", userId: user.id }, { status: 201 });
   } catch (error) {
     console.error("Register error:", error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { error: "Este email ya está registrado" },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: "Este email ya está registrado" }, { status: 409 });
     }
-    return NextResponse.json(
-      { error: "Error interno del servidor" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
