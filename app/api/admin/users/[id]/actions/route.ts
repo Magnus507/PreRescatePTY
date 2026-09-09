@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { ACCOUNT_TYPES, ORGANIZATION_TYPES, BUSINESS_RULES } from "@/domains/shared/constants";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { bumpUserSessionVersion, requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
+import { validatePasswordPolicy } from "@/lib/password-policy";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
@@ -19,17 +20,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     switch (action) {
       case "reset-password": {
         const { password } = data;
-        if (!password) {
+        if (!password || typeof password !== "string") {
           return NextResponse.json({ error: "Contraseña requerida" }, { status: 400 });
         }
-        
-        const passwordHash = await bcrypt.hash(password, 10);
-        
+
+        const target = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true },
+        });
+        if (!target) {
+          return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+        }
+        const policy = await validatePasswordPolicy(password, { email: target.email });
+        if (!policy.ok) {
+          return NextResponse.json(
+            { error: policy.error, code: policy.reason },
+            { status: policy.reason === "breach_check_unavailable" ? 503 : 400 }
+          );
+        }
+
+        const passwordHash = await bcrypt.hash(password, 12);
         await prisma.user.update({
           where: { id: userId },
-          data: { passwordHash },
+          data: { passwordHash, sessionVersion: { increment: 1 } },
         });
-        await bumpUserSessionVersion(userId);
 
         await prisma.appNotification.create({
           data: {
@@ -39,8 +53,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             type: "warning"
           }
         });
-        
-        return NextResponse.json({ message: "Contraseña actualizada exitosamente" });
+
+        return NextResponse.json({ message: "Contraseña actualizada exitosamente", sessionRevoked: true });
       }
 
       case "convert-to-org": {
@@ -55,14 +69,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         await prisma.account.update({
           where: { id: user.accountId },
-          data: { 
+          data: {
             accountType: ACCOUNT_TYPES.COMPANY,
             accountName: data.legalName || `${user.profile?.firstName} ${user.profile?.lastName} Org`
           },
         });
         await bumpUserSessionVersion(userId);
 
-        // 2. Create Organization record
         const organization = await prisma.organization.create({
           data: {
             accountId: user.accountId,
@@ -84,27 +97,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           }
         });
 
-        return NextResponse.json({ 
-          message: "Cuenta convertida a corporativa exitosamente", 
-          organization 
+        return NextResponse.json({
+          message: "Cuenta convertida a corporativa exitosamente",
+          organization
         });
       }
 
       case "update-plan": {
         const { packageId, maxChips, accountType } = data;
-        
-        const user = await prisma.user.findUnique({ 
+
+        const user = await prisma.user.findUnique({
           where: { id: userId },
           include: { account: true }
         });
         if (!user || !user.accountId) return NextResponse.json({ error: "Usuario sin cuenta" }, { status: 404 });
 
-        // 1. Try to find the package in the DB first (Real CUIDs)
         let dbPackage = null;
         if (packageId) {
-          dbPackage = await prisma.package.findUnique({
-            where: { id: packageId }
-          });
+          dbPackage = await prisma.package.findUnique({ where: { id: packageId } });
 
           if (!dbPackage || !dbPackage.isActive) {
             return NextResponse.json({ error: "Package inválido o inactivo" }, { status: 400 });
@@ -115,13 +125,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           }
         }
 
-        // 2. Map values — ACUMULATIVO: si el usuario ya tiene chips de un plan previo,
-        // el nuevo plan SUMA sus chips al total (no reemplaza).
-        // Si se envía maxChips explícito (override manual), se usa directamente.
-        // CUMULATIVE SALES PACK LOGIC: Selecting a package ADDS chips to the current total.
         const currentMaxChips = user.account?.maxChipsAllocated ?? 0;
         const currentMaxProfiles = user.account?.maxProfilesAllocated ?? 1;
-        
         const newPlanChips = dbPackage ? dbPackage.maxChips : (maxChips !== undefined ? parseInt(maxChips) : 1);
         const newPlanProfiles = dbPackage ? dbPackage.maxProfiles : (maxChips !== undefined ? parseInt(maxChips) : 1);
 
@@ -129,16 +134,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         let finalMaxProfiles: number;
 
         if (maxChips !== undefined && !dbPackage) {
-          // Admin overriding manually — use the explicit number as total
           finalMaxChips = parseInt(maxChips);
-          finalMaxProfiles = parseInt(maxChips); // Maintain 1:1 for manual override
+          finalMaxProfiles = parseInt(maxChips);
         } else {
-          // Cumulative logic: current + new pack
           finalMaxChips = currentMaxChips + newPlanChips;
           finalMaxProfiles = currentMaxProfiles + newPlanProfiles;
         }
         const finalPackageId = dbPackage ? dbPackage.id : null;
-
         const finalAccountType = dbPackage?.accountType || (
           accountType === ACCOUNT_TYPES.COMPANY ? ACCOUNT_TYPES.COMPANY : ACCOUNT_TYPES.PERSONAL
         );
@@ -153,40 +155,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
 
-        const isB2B = finalAccountType === ACCOUNT_TYPES.COMPANY || 
-                      dbPackage?.allowsOrganizationModule;
+        const isB2B = finalAccountType === ACCOUNT_TYPES.COMPANY || dbPackage?.allowsOrganizationModule;
 
         if (isB2B) {
-          const existingOrg = await prisma.organization.findFirst({
-            where: { accountId: user.accountId }
-          });
+          const existingOrg = await prisma.organization.findFirst({ where: { accountId: user.accountId } });
 
           if (!existingOrg) {
-             const userProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
-              await prisma.organization.create({
-                data: {
-                  accountId: user.accountId,
-                  legalName: `${userProfile?.firstName || 'Org'} ${userProfile?.lastName || ''} Corp`,
-                  displayName: `${userProfile?.firstName || 'Member'} Corp`,
-                  organizationType: ORGANIZATION_TYPES.COMPANY,
-                  status: "active",
-                  contactEmail: user.email,
-                }
-              });
+            const userProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
+            await prisma.organization.create({
+              data: {
+                accountId: user.accountId,
+                legalName: `${userProfile?.firstName || 'Org'} ${userProfile?.lastName || ''} Corp`,
+                displayName: `${userProfile?.firstName || 'Member'} Corp`,
+                organizationType: ORGANIZATION_TYPES.COMPANY,
+                status: "active",
+                contactEmail: user.email,
+              }
+            });
           }
         }
 
-        // Log the update in Audit
         await prisma.auditLog.create({
           data: {
             actorUserId: adminId,
             entityType: "account",
             entityId: user.accountId,
             action: "upgrade_package",
-            newValuesJson: JSON.stringify({
-              packageId: finalPackageId,
-              maxChips: finalMaxChips
-            })
+            newValuesJson: JSON.stringify({ packageId: finalPackageId, maxChips: finalMaxChips })
           }
         });
 
@@ -201,7 +196,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           }
         });
 
-        return NextResponse.json({ 
+        return NextResponse.json({
           message: `Combo actualizado. Total chips asignados: ${finalMaxChips} (acumulativo).`,
           newTotal: finalMaxChips,
           previousTotal: currentMaxChips,
@@ -210,7 +205,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
 
       case "add-chips": {
-        // Admin manually adds individual chips ($25/chip) to a user's account
         const { quantity } = data;
         const qty = parseInt(quantity);
 
@@ -232,7 +226,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         const totalCost = qty * BUSINESS_RULES.EXTRA_CHIP_PRICE;
 
-        // Log the order
         await prisma.order.create({
           data: {
             userId,
@@ -271,7 +264,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (!user?.accountId || !user.account) return NextResponse.json({ error: "Usuario sin cuenta" }, { status: 404 });
 
         const pkg = user.account.package;
-        // If there's a package, fallback to its literal maxChips, if not, literal 1
         const baseChips = pkg ? pkg.maxChips : 1;
 
         await prisma.account.update({
@@ -286,20 +278,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       case "add-member": {
         const { email, password, role, firstName, lastName, phone, bloodType } = data;
-        const targetOrgId = userId; // In this case 'userId' was used as orgId in the UI call
+        const targetOrgId = userId;
 
-        const org = await prisma.organization.findUnique({
-          where: { id: targetOrgId },
-        });
-
+        const org = await prisma.organization.findUnique({ where: { id: targetOrgId } });
         if (!org) return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
+        if (typeof email !== "string" || typeof password !== "string") {
+          return NextResponse.json({ error: "Email y contraseña requeridos" }, { status: 400 });
+        }
 
-        const passwordHash = await bcrypt.hash(password, 10);
-        
+        const policy = await validatePasswordPolicy(password, { email });
+        if (!policy.ok) {
+          return NextResponse.json(
+            { error: policy.error, code: policy.reason },
+            { status: policy.reason === "breach_check_unavailable" ? 503 : 400 }
+          );
+        }
+        const passwordHash = await bcrypt.hash(password, 12);
+
         const newUser = await prisma.$transaction(async (tx) => {
           const u = await tx.user.create({
             data: {
-              email,
+              email: email.toLowerCase().trim(),
               passwordHash,
               phone: phone || null,
               role: role || "user",
@@ -317,7 +316,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             include: { profile: true }
           });
 
-          // CRITICAL: Link to organization
           await tx.organizationMember.create({
             data: {
               organizationId: org.id,
@@ -329,9 +327,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           return u;
         });
 
-        return NextResponse.json({ 
-          message: "Miembro añadido y vinculado exitosamente", 
-          user: { id: newUser.id, email: newUser.email } 
+        return NextResponse.json({
+          message: "Miembro añadido y vinculado exitosamente",
+          user: { id: newUser.id, email: newUser.email }
         });
       }
 
@@ -351,40 +349,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const accountId = target.accountId;
 
         await prisma.$transaction(async (tx) => {
-          // 1. Unassign all Chips (Back to inventory)
-          // We do this to ensure hardware is freed up when capacity changes or for a "clean" hardware state
           await tx.chip.updateMany({
             where: { accountId: accountId },
-            data: { 
-              assignedProfileId: null, 
-              ownerUserId: null, 
+            data: {
+              assignedProfileId: null,
+              ownerUserId: null,
               status: "inventory",
-              chipAlias: null 
+              chipAlias: null
             },
           });
 
-          // 2. Adjust Account state
-          // We NO LONGER delete profiles or contacts. We only manage capacity and plan.
           await tx.account.update({
             where: { id: accountId },
             data: {
               accountType: ACCOUNT_TYPES.PERSONAL,
               maxChipsAllocated: finalCapacity,
               maxProfilesAllocated: finalCapacity,
-              // If capacity is 0, account becomes inactive.
               status: finalCapacity === 0 ? "inactive" : "active",
               packageId: null
             }
           });
 
-          // 3. Log the administrative adjustment
           await tx.auditLog.create({
             data: {
               actorUserId: adminId,
               entityType: "account",
               entityId: accountId,
               action: "account_governance_adjustment",
-              newValuesJson: JSON.stringify({ 
+              newValuesJson: JSON.stringify({
                 capacity: finalCapacity,
                 status: finalCapacity === 0 ? "inactive" : "active"
               })
@@ -403,8 +395,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           }
         });
 
-        return NextResponse.json({ 
-          message: `Ajuste de gobernanza completado. Capacidad: ${finalCapacity}. Estado: ${finalCapacity === 0 ? 'Inactivo' : 'Activo'}. Los perfiles fueron preservados.` 
+        return NextResponse.json({
+          message: `Ajuste de gobernanza completado. Capacidad: ${finalCapacity}. Estado: ${finalCapacity === 0 ? 'Inactivo' : 'Activo'}. Los perfiles fueron preservados.`
         });
       }
 
@@ -413,35 +405,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           where: { id: userId },
           include: { account: true, profile: true }
         });
-        
+
         if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
-        
+
         await prisma.$transaction(async (tx) => {
-          // 1. Unassign chips and return to inventory
           if (user.accountId) {
             await tx.chip.updateMany({
               where: { OR: [{ ownerUserId: userId }, { accountId: user.accountId }] },
-              data: { 
-                ownerUserId: null, 
-                accountId: null, 
-                assignedProfileId: null, 
+              data: {
+                ownerUserId: null,
+                accountId: null,
+                assignedProfileId: null,
                 status: "inventory",
-                chipAlias: null 
+                chipAlias: null
               }
             });
           }
 
-          // 2. Delete Notifications, Consents, ResetTokens
           await tx.appNotification.deleteMany({ where: { userId } });
           await tx.consent.deleteMany({ where: { userId } });
           await tx.passwordResetToken.deleteMany({ where: { email: user.email } });
-          
-          // 3. Delete Scan Events related to this user's account or profiles
+
           const orConditions: Array<{ userId: string } | { accountId: string }> = [{ userId }];
           if (user.accountId) orConditions.push({ accountId: user.accountId });
           const profiles = await tx.profile.findMany({ where: { OR: orConditions } });
           const profileIds = profiles.map(p => p.id);
-          
+
           if (profileIds.length > 0) {
             await tx.scanEvent.deleteMany({ where: { profileId: { in: profileIds } } });
             await tx.profileContact.deleteMany({ where: { profileId: { in: profileIds } } });
@@ -449,23 +438,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             await tx.profile.deleteMany({ where: { id: { in: profileIds } } });
           }
 
-          // 4. Delete Contacts & Orders
           await tx.contact.deleteMany({ where: { userId } });
           await tx.order.deleteMany({ where: { userId } });
-
-          // 5. Delete the User
           await tx.user.delete({ where: { id: userId } });
 
-          // 6. Delete the Account (if orphaned)
           if (user.accountId) {
-             const remainingUsers = await tx.user.count({ where: { accountId: user.accountId } });
-             if (remainingUsers === 0) {
-                await tx.organization.deleteMany({ where: { accountId: user.accountId } });
-                await tx.account.delete({ where: { id: user.accountId } });
-             }
+            const remainingUsers = await tx.user.count({ where: { accountId: user.accountId } });
+            if (remainingUsers === 0) {
+              await tx.organization.deleteMany({ where: { accountId: user.accountId } });
+              await tx.account.delete({ where: { id: user.accountId } });
+            }
           }
 
-          // 7. Audit Log
           await tx.auditLog.create({
             data: {
               actorUserId: adminId || "system",
@@ -477,7 +461,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           });
         });
 
-        // Invalidate cache
         await AccountStateService.invalidateCache(userId);
 
         return NextResponse.json({ message: "Usuario y todos sus datos vinculados eliminados definitivamente. El hardware ha regresado a inventario." });
@@ -488,7 +471,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   } catch (err: unknown) {
     console.error("Admin Action Error:", err);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: "Error interno al procesar la acción administrativa"
     }, { status: 500 });
   }
