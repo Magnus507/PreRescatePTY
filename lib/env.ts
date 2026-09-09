@@ -3,6 +3,7 @@ import { z } from "zod";
 export type EnvScope = "build" | "runtime" | "script" | "test" | "platform";
 
 export const ENV_CONTRACT = {
+  ADMIN_MFA_ENFORCEMENT_ENABLED: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
   APP_URL: { scopes: ["script"], example: true, sensitive: false, requiredInProduction: false },
   APPLY_W605G_H5: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
   BOOTSTRAP_ADMIN_USER_ID: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
@@ -69,6 +70,7 @@ const nonEmpty = z.string().trim().min(1);
 const httpUrl = z.string().url();
 const optionalUrl = z.union([httpUrl, z.literal("")]).optional();
 const optionalString = z.string().optional();
+const optionalBooleanString = z.enum(["true", "false"]).optional();
 const vercelEnvironment = z.enum(["development", "preview", "production"]).optional();
 
 const encryptionKey = z.string().superRefine((value, ctx) => {
@@ -137,6 +139,7 @@ export const buildEnvSchema = z.object({
 });
 
 export const runtimeEnvSchema = z.object({
+  ADMIN_MFA_ENFORCEMENT_ENABLED: optionalBooleanString,
   DATABASE_URL: optionalString,
   ENCRYPTION_KEY: optionalString,
   NEXTAUTH_SECRET: optionalString,
@@ -174,6 +177,7 @@ function requireFieldsWhenEnabled(
 }
 
 const productionRuntimeBaseSchema = z.object({
+  ADMIN_MFA_ENFORCEMENT_ENABLED: optionalBooleanString,
   DATABASE_URL: nonEmpty,
   ENCRYPTION_KEY: encryptionKey,
   NEXTAUTH_SECRET: z.string().min(32),
