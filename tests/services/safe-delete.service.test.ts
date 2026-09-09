@@ -4,6 +4,7 @@ import { resetAllMocks } from "../helpers/reset-mocks";
 
 const mockProcessStorageCleanupOutbox = vi.hoisted(() => vi.fn());
 const mockEraseMatchingSupabaseAuthIdentity = vi.hoisted(() => vi.fn());
+const mockListUserScopedStorageRefs = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/storage-cleanup-outbox", () => ({ processStorageCleanupOutbox: mockProcessStorageCleanupOutbox }));
 vi.mock("@/lib/privacy/supabase-auth-erasure", () => ({
@@ -18,6 +19,7 @@ vi.mock("@/lib/storage-deletion", () => ({
       ? { bucket: "payment-proofs", path: "payments/user-1/proof.webp" }
       : { bucket: "profile-photos", path: "user-1/profile.webp" };
   }),
+  listUserScopedStorageRefs: mockListUserScopedStorageRefs,
   deleteStorageObjects: mockProcessStorageCleanupOutbox,
 }));
 
@@ -52,6 +54,7 @@ function setupUser() {
   );
   mockProcessStorageCleanupOutbox.mockResolvedValue(undefined);
   mockEraseMatchingSupabaseAuthIdentity.mockResolvedValue({ matched: true, deleted: true });
+  mockListUserScopedStorageRefs.mockResolvedValue([]);
 }
 
 describe("SafeDeleteService.deleteUserAccount", () => {
@@ -59,6 +62,7 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     resetAllMocks();
     mockProcessStorageCleanupOutbox.mockReset();
     mockEraseMatchingSupabaseAuthIdentity.mockReset();
+    mockListUserScopedStorageRefs.mockReset();
     setupUser();
   });
 
@@ -67,11 +71,13 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(false);
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
     expect(mockEraseMatchingSupabaseAuthIdentity).not.toHaveBeenCalled();
+    expect(mockListUserScopedStorageRefs).not.toHaveBeenCalled();
   });
 
   it("resolves the same subject in Supabase Auth before destroying the application email", async () => {
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(true);
     expect(mockEraseMatchingSupabaseAuthIdentity).toHaveBeenCalledWith(EMAIL);
+    expect(mockListUserScopedStorageRefs).toHaveBeenCalledWith(USER_ID);
     expect(mockEraseMatchingSupabaseAuthIdentity.mock.invocationCallOrder[0]).toBeLessThan(
       mockPrisma.user.update.mock.invocationCallOrder[0],
     );
@@ -84,14 +90,34 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
-  it("durably queues profile photos and payment proofs without copying subject IDs into cleanup rows", async () => {
+  it("fails closed before the database tombstone when user storage cannot be enumerated", async () => {
+    mockListUserScopedStorageRefs.mockRejectedValue(new Error("storage unavailable"));
+    expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(false);
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("durably queues referenced and discovered user storage without copying subject IDs into cleanup metadata", async () => {
+    mockListUserScopedStorageRefs.mockResolvedValue([
+      { bucket: "general", path: "user-1/orphan.webp" },
+    ]);
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(true);
-    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(3);
     expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
           bucket: "profile-photos",
           path: "user-1/profile.webp",
+          actorUserId: null,
+          accountId: null,
+        }),
+      }),
+    );
+    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          bucket: "general",
+          path: "user-1/orphan.webp",
           actorUserId: null,
           accountId: null,
         }),
@@ -401,7 +427,7 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     );
   });
 
-  it("keeps deletion committed and cleanup durably queued when storage is temporarily unavailable", async () => {
+  it("keeps deletion committed and cleanup durably queued when storage is temporarily unavailable after commit", async () => {
     mockProcessStorageCleanupOutbox.mockRejectedValue(new Error("storage unavailable"));
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(true);
     expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(2);
