@@ -41,7 +41,10 @@ async function buildReconciliationSummary() {
       prisma.order.findMany({
         where: {
           packageId: null,
-          orderType: { in: ["customer", "corporate_employee_purchase"] },
+          // The live checkout/manual API stores ordinary store purchases as
+          // orderType="manual". Excluding that value made missingOutboxOrders a
+          // false-negative for the exact orders this worker is meant to reconcile.
+          orderType: { in: ["manual", "customer", "corporate_employee_purchase"] },
         },
         select: { id: true },
       }),
