@@ -42,13 +42,13 @@ export async function POST(req: Request) {
       (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL)
     ) {
       console.error("[ForgotPassword] CRITICAL: Email provider is not fully configured.");
-      return NextResponse.json(GENERIC_RESPONSE, { status: 202 });
+      return NextResponse.json(GENERIC_RESPONSE, { status: 200 });
     }
 
     const user = await prisma.user.findUnique({ where: { email: emailLower } });
 
     if (!user) {
-      return NextResponse.json(GENERIC_RESPONSE, { status: 202 });
+      return NextResponse.json(GENERIC_RESPONSE, { status: 200 });
     }
 
     const token = createPasswordResetToken();
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
       console.warn(`Reset Link: ${resetLink}`);
     }
 
-    return NextResponse.json(GENERIC_RESPONSE, { status: 202 });
+    return NextResponse.json(GENERIC_RESPONSE, { status: 200 });
   } catch (error) {
     console.error("Forgot Password Error:", error);
     return NextResponse.json(
