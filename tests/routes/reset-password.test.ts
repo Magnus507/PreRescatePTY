@@ -18,6 +18,10 @@ vi.mock("@/lib/request-ip", () => ({
   getClientIp: mockGetClientIp,
 }));
 
+vi.mock("@/lib/password-policy", () => ({
+  validatePasswordPolicy: vi.fn().mockResolvedValue({ ok: true }),
+}));
+
 const mockBcryptHash = vi.hoisted(() => vi.fn());
 vi.mock("bcryptjs", () => ({
   default: { hash: mockBcryptHash },
@@ -30,7 +34,7 @@ const TEST_EMAIL = "user@test.com";
 const TEST_TOKEN = "reset-token-plain";
 const TEST_TOKEN_HASH = hashPasswordResetToken(TEST_TOKEN);
 
-function createRequest(token?: string, password = "NuevaClave123") {
+function createRequest(token?: string, password = "RiverQuartz!2026Secure") {
   return new NextRequest("http://localhost/api/auth/reset-password", {
     method: "POST",
     body: JSON.stringify({ token, password }),
