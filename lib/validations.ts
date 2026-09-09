@@ -17,16 +17,21 @@ export const VALID_ACCOUNT_TYPES = ["personal", "company"] as const;
 
 // ──────────────────────────────────────────────
 // AUTH SCHEMAS
+// Password strength/compromise checks intentionally live in lib/password-policy
+// so register/reset/admin flows cannot drift apart. These schemas only validate
+// transport shape and cap pathological input sizes.
 // ──────────────────────────────────────────────
+
+const passwordInputSchema = z.string().min(1, "Contraseña requerida").max(128, "Contraseña demasiado larga");
 
 export const loginSchema = z.object({
   email: z.string().email("Email inválido").transform(v => v.toLowerCase().trim()),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  password: passwordInputSchema,
 });
 
 export const registerSchema = z.object({
   email: z.string().email("Email inválido").transform(v => v.toLowerCase().trim()),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  password: passwordInputSchema,
   phone: z.string().optional(),
   accountType: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase() : v), z.enum(VALID_ACCOUNT_TYPES)).default("personal"),
   acceptedTerms: z.boolean().refine((value) => value === true, {
@@ -52,7 +57,7 @@ export const contactSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, "Token requerido"),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  password: passwordInputSchema,
 });
 
 // ──────────────────────────────────────────────
@@ -149,7 +154,7 @@ export const publicScanSchema = z.object({
 
 export const adminCreateSchema = z.object({
   email: z.string().email("Email inválido").transform(v => v.toLowerCase().trim()),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  password: passwordInputSchema,
   role: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase() : v), z.enum(VALID_ADMIN_ROLES)).default("admin"),
 });
 
