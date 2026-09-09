@@ -167,7 +167,7 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        if (!isStoredSessionValid(currentUser, token.sessionVersion)) {
+        if (!currentUser || !isStoredSessionValid(currentUser, token.sessionVersion)) {
           token.revoked = true;
           return token;
         }
