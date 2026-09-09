@@ -3,12 +3,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { adminCreateSchema, adminUpdateSchema, validateOrNull } from "@/lib/validations";
+import { validatePasswordPolicy } from "@/lib/password-policy";
 import { requireRole, SUPERADMIN_ROLES } from "@/lib/rbac";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
-// List all admin users
 export async function GET() {
   const auth = await requireRole(SUPERADMIN_ROLES);
   if (!auth.authorized) return auth.response;
@@ -26,19 +26,17 @@ export async function GET() {
     },
   });
 
-  // Map to expected shape for frontend compatibility
-  const mapped = admins.map(a => ({
-    id: a.id,
-    email: a.email,
-    role: a.adminRole || a.role,
-    status: a.status,
-    createdAt: a.createdAt,
-  }));
-
-  return NextResponse.json({ admins: mapped });
+  return NextResponse.json({
+    admins: admins.map((a) => ({
+      id: a.id,
+      email: a.email,
+      role: a.adminRole || a.role,
+      status: a.status,
+      createdAt: a.createdAt,
+    })),
+  });
 }
 
-// Create a new admin user
 export async function POST(req: NextRequest) {
   const auth = await requireRole(SUPERADMIN_ROLES);
   if (!auth.authorized) return auth.response;
@@ -49,13 +47,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error || "Datos inválidos" }, { status: 400 });
   }
 
-  // Check if user already exists
   const existing = await prisma.user.findUnique({ where: { email: validated.email } });
   if (existing) {
     if (existing.isAdmin) {
       return NextResponse.json({ error: "Este email ya está registrado como admin" }, { status: 409 });
     }
-    // Upgrade existing user to admin
     try {
       const admin = await prisma.$transaction(async (tx) => {
         const updated = await tx.user.update({
@@ -79,11 +75,19 @@ export async function POST(req: NextRequest) {
         return updated;
       });
       return NextResponse.json({
-        admin: { id: admin.id, email: admin.email, role: admin.adminRole, status: admin.status, createdAt: admin.createdAt }
-      }, { status: 200 });
+        admin: { id: admin.id, email: admin.email, role: admin.adminRole, status: admin.status, createdAt: admin.createdAt },
+      });
     } catch {
       return NextResponse.json({ error: "Error al otorgar acceso administrativo" }, { status: 500 });
     }
+  }
+
+  const passwordPolicy = await validatePasswordPolicy(validated.password, { email: validated.email });
+  if (!passwordPolicy.ok) {
+    return NextResponse.json(
+      { error: passwordPolicy.error, code: passwordPolicy.reason },
+      { status: passwordPolicy.reason === "breach_check_unavailable" ? 503 : 400 }
+    );
   }
 
   try {
@@ -111,7 +115,10 @@ export async function POST(req: NextRequest) {
       });
       return created;
     });
-    return NextResponse.json({ admin: { id: admin.id, email: admin.email, role: admin.adminRole, status: admin.status, createdAt: admin.createdAt } }, { status: 201 });
+    return NextResponse.json(
+      { admin: { id: admin.id, email: admin.email, role: admin.adminRole, status: admin.status, createdAt: admin.createdAt } },
+      { status: 201 }
+    );
   } catch (mutationError) {
     if (mutationError instanceof Prisma.PrismaClientKnownRequestError && mutationError.code === "P2002") {
       return NextResponse.json({ error: "Este email ya está registrado" }, { status: 409 });
@@ -120,7 +127,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Update admin (status, role)
 export async function PATCH(req: NextRequest) {
   const auth = await requireRole(SUPERADMIN_ROLES);
   if (!auth.authorized) return auth.response;
@@ -135,14 +141,13 @@ export async function PATCH(req: NextRequest) {
   if (!currentAdmin?.isAdmin) {
     return NextResponse.json({ error: "Usuario no es administrador" }, { status: 404 });
   }
-  if (currentAdmin?.email === "admin@prerescatepty.com") {
+  if (currentAdmin.email === "admin@prerescatepty.com") {
     return NextResponse.json({ error: "La cuenta maestra no puede ser modificada" }, { status: 403 });
   }
 
   const updateData: Partial<{ status: string; adminRole: string }> = {};
   if (validated.status) updateData.status = validated.status as string;
   if (validated.role) updateData.adminRole = validated.role as string;
-
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
   }
@@ -165,7 +170,9 @@ export async function PATCH(req: NextRequest) {
       });
       return updated;
     });
-    return NextResponse.json({ admin: { id: admin.id, email: admin.email, role: admin.adminRole, status: admin.status, createdAt: admin.createdAt } });
+    return NextResponse.json({
+      admin: { id: admin.id, email: admin.email, role: admin.adminRole, status: admin.status, createdAt: admin.createdAt },
+    });
   } catch {
     return NextResponse.json({ error: "Error al actualizar administrador" }, { status: 500 });
   }
