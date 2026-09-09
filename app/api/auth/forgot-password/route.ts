@@ -11,7 +11,7 @@ import {
 
 const GENERIC_RESPONSE = {
   success: true,
-  message: "Si el correo está registrado, recibirás un enlace de recuperación en unos minutos.",
+  message: "Si el correo existe, recibirás un enlace de recuperación en unos minutos.",
 };
 
 export async function POST(req: Request) {
