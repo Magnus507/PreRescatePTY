@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processCommerceOrderSyncOutboxBatch } from "@/lib/operations/commerce-order-sync-outbox";
 import { recoverStrandedCustomerProducedUnits } from "@/lib/operations/stranded-customer-production-recovery";
+import { recoverDeliveredCommercialOrderProjections } from "@/lib/operations/delivered-commercial-order-reconciliation";
 import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
 
 function authorizeCronRequest(req: NextRequest) {
@@ -129,16 +130,25 @@ export async function POST(req: NextRequest) {
     limit: safeLimit,
   });
 
+  // Heal only historical commercial projections whose source order, dispatch,
+  // dispatch items and physical units all prove that delivery already happened.
+  // Ambiguous or partially delivered records are skipped without mutation.
+  const deliveredProjectionRecovery = await recoverDeliveredCommercialOrderProjections(prisma, {
+    limit: safeLimit,
+  });
+
   const reconciliation = await buildReconciliationSummary();
   await recordCronSuccess(CRON_MONITOR_KEYS.commerceOrderSync, {
     ...result,
     ...reconciliation,
     customerProductionRecovery,
+    deliveredProjectionRecovery,
   });
 
   return NextResponse.json({
     result,
     customerProductionRecovery,
+    deliveredProjectionRecovery,
     reconciliation,
   });
 }
