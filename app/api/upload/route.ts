@@ -90,18 +90,28 @@ export async function POST(req: NextRequest) {
         if (targetProfileId) {
           const [user, profile] = await Promise.all([
             prisma.user.findUnique({ where: { id: userId }, select: { accountId: true } }),
-            prisma.profile.findUnique({ where: { id: targetProfileId }, select: { accountId: true } }),
+            prisma.profile.findUnique({ where: { id: targetProfileId }, select: { accountId: true, photoUrl: true } }),
           ]);
           if (!user?.accountId || user.accountId !== profile?.accountId) {
             throw new Error("PROFILE_OWNERSHIP_MISMATCH");
           }
           await prisma.profile.update({ where: { id: targetProfileId }, data: { photoUrl: publicUrl } });
+          if (profile.photoUrl && profile.photoUrl !== publicUrl) {
+            await cleanupUploadedObjectOrRecordOrphan(profile.photoUrl, { actorUserId: userId, accountId: user.accountId });
+          }
         } else {
+          const [user, existingProfile] = await Promise.all([
+            prisma.user.findUnique({ where: { id: userId }, select: { accountId: true } }),
+            prisma.profile.findUnique({ where: { userId }, select: { photoUrl: true } }),
+          ]);
           await prisma.profile.upsert({
             where: { userId },
             update: { photoUrl: publicUrl },
             create: { userId, photoUrl: publicUrl, firstName: "", lastName: "", bloodType: "Pendiente" },
           });
+          if (existingProfile?.photoUrl && existingProfile.photoUrl !== publicUrl) {
+            await cleanupUploadedObjectOrRecordOrphan(existingProfile.photoUrl, { actorUserId: userId, accountId: user?.accountId });
+          }
         }
       } catch (error) {
         console.error("PROFILE_PHOTO_UPDATE_ERROR", error);
