@@ -56,6 +56,7 @@ describe("Block 1 definitive fulfillment guardrails", () => {
     expect(route).toContain("validateExistingCustomerDispatch");
     expect(route).toContain("EXISTING_DISPATCH_MISMATCH");
     expect(route).toContain("EXISTING_DISPATCH_ALREADY_DELIVERED");
+    expect(route).toContain('dispatch.status === "delivered"');
     expect(route).toContain('unit.reservedOrderId !== order.id');
     expect(route).toContain('unit.dispatchItems.length !== 1');
     expect(route).toContain('unit.status !== "dispatched"');
