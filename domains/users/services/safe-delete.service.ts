@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { parseStorageObjectRef } from "@/lib/storage-deletion";
 import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
 import { COMMERCE_ORDER_SYNC_PAYLOAD_VERSION } from "@/lib/operations/commerce-order-sync-outbox";
-import { redactPersistedJson } from "@/lib/privacy/persisted-json";
 import { eraseMatchingSupabaseAuthIdentity } from "@/lib/privacy/supabase-auth-erasure";
 import { randomBytes } from "node:crypto";
 
@@ -19,10 +18,9 @@ export class SafeDeleteService {
         where: { id: userId },
         include: {
           account: true,
-          profile: { select: { id: true, photoUrl: true } },
-          chips: { select: { id: true } },
+          profile: { select: { id: true, photoUrl: true, accountId: true } },
           orders: { select: { id: true, paymentProofUrl: true } },
-        }
+        },
       });
 
       if (!user) throw new Error("User not found");
@@ -32,96 +30,229 @@ export class SafeDeleteService {
       // mapping. Failure is fail-closed so erasure is never falsely reported.
       await eraseMatchingSupabaseAuthIdentity(user.email);
 
-      const dependentProfiles = user.account?.ownerUserId === userId
-        ? await prisma.profile.findMany({ where: { accountId: user.accountId, userId: null, profileType: { not: "corporate" } }, select: { id: true, photoUrl: true } })
+      const ownsAccount = user.account?.ownerUserId === userId;
+      const dependentProfiles = ownsAccount
+        ? await prisma.profile.findMany({
+            where: {
+              accountId: user.accountId,
+              userId: null,
+              profileType: { not: "corporate" },
+            },
+            select: { id: true, photoUrl: true, accountId: true },
+          })
         : [];
       const profiles = [...(user.profile ? [user.profile] : []), ...dependentProfiles];
-      const profileIds = profiles.map(profile => profile.id);
+      const profileIds = profiles.map((profile) => profile.id);
       const orderIds = user.orders.map((order) => order.id);
-      const chipIds = user.chips.map((chip) => chip.id);
       const storageRefs = [
-        ...profiles.map(profile => parseStorageObjectRef(profile.photoUrl)),
+        ...profiles.map((profile) => parseStorageObjectRef(profile.photoUrl)),
         ...user.orders.map((order) => parseStorageObjectRef(order.paymentProofUrl)),
       ].filter((ref): ref is NonNullable<typeof ref> => ref !== null);
+      const erasureReceiptId = `erasure_${randomBytes(16).toString("hex")}`;
 
       await prisma.$transaction(async (tx) => {
-        const commercialOrders = orderIds.length > 0
-          ? await tx.operationCommercialOrder.findMany({
-              where: { sourceId: { in: orderIds } },
-              select: { id: true, dispatchId: true },
-            })
-          : [];
+        const affectedChips = await tx.chip.findMany({
+          where: {
+            OR: [
+              { ownerUserId: userId },
+              ...(profileIds.length > 0
+                ? [{ assignedProfileId: { in: profileIds } }]
+                : []),
+            ],
+          },
+          select: { id: true },
+        });
+        const chipIds = affectedChips.map((chip) => chip.id);
+
+        const commercialOrders =
+          orderIds.length > 0
+            ? await tx.operationCommercialOrder.findMany({
+                where: { sourceId: { in: orderIds } },
+                select: { id: true, dispatchId: true },
+              })
+            : [];
         const commercialOrderIds = commercialOrders.map((row) => row.id);
 
-        const referencedDispatchEvents = orderIds.length > 0
-          ? await tx.operationDispatchEvent.findMany({
-              where: { referenceType: "order", referenceId: { in: orderIds } },
-              select: { dispatchId: true },
-            })
-          : [];
-        const dispatchIds = Array.from(new Set([
-          ...commercialOrders.map((row) => row.dispatchId).filter((id): id is string => Boolean(id)),
-          ...referencedDispatchEvents.map((row) => row.dispatchId),
-        ]));
+        const referencedDispatchEvents =
+          orderIds.length > 0
+            ? await tx.operationDispatchEvent.findMany({
+                where: { referenceType: "order", referenceId: { in: orderIds } },
+                select: { dispatchId: true },
+              })
+            : [];
+        const dispatchIds = Array.from(
+          new Set([
+            ...commercialOrders
+              .map((row) => row.dispatchId)
+              .filter((id): id is string => Boolean(id)),
+            ...referencedDispatchEvents.map((row) => row.dispatchId),
+          ]),
+        );
 
-        const paymentAttempts = orderIds.length > 0
-          ? await tx.paymentAttempt.findMany({
-              where: { orderId: { in: orderIds } },
-              select: { id: true },
-            })
-          : [];
+        const paymentAttempts =
+          orderIds.length > 0
+            ? await tx.paymentAttempt.findMany({
+                where: { orderId: { in: orderIds } },
+                select: { id: true },
+              })
+            : [];
         const paymentAttemptIds = paymentAttempts.map((row) => row.id);
 
-        const issuedInvoiceCount = orderIds.length > 0
-          ? await tx.invoice.count({ where: { orderId: { in: orderIds }, status: "issued" } })
-          : 0;
+        const warranties =
+          commercialOrderIds.length > 0
+            ? await tx.operationWarranty.findMany({
+                where: { commercialOrderId: { in: commercialOrderIds } },
+                select: { id: true },
+              })
+            : [];
+        const warrantyIds = warranties.map((row) => row.id);
+        const returns =
+          commercialOrderIds.length > 0
+            ? await tx.operationReturn.findMany({
+                where: { commercialOrderId: { in: commercialOrderIds } },
+                select: { id: true },
+              })
+            : [];
+        const returnIds = returns.map((row) => row.id);
+        const replacements =
+          commercialOrderIds.length > 0
+            ? await tx.operationReplacement.findMany({
+                where: { commercialOrderId: { in: commercialOrderIds } },
+                select: { id: true },
+              })
+            : [];
+        const replacementIds = replacements.map((row) => row.id);
 
-        // Enqueue before removing references, in the same transaction. Storage
-        // failures after commit remain recoverable by the cleanup worker.
+        const issuedInvoiceCount =
+          orderIds.length > 0
+            ? await tx.invoice.count({
+                where: { orderId: { in: orderIds }, status: "issued" },
+              })
+            : 0;
+
+        // Enqueue before removing references, in the same transaction. The
+        // object key/path is sufficient for cleanup; do not copy subject IDs
+        // into the durable queue.
         for (const ref of storageRefs) {
           await tx.storageCleanupOutbox.upsert({
             where: { objectKey: `${ref.bucket}:${ref.path}` },
             update: {},
-            create: { objectKey: `${ref.bucket}:${ref.path}`, bucket: ref.bucket, path: ref.path, actorUserId: actorId, accountId: user.accountId },
+            create: {
+              objectKey: `${ref.bucket}:${ref.path}`,
+              bucket: ref.bucket,
+              path: ref.path,
+              actorUserId: null,
+              accountId: null,
+            },
           });
         }
 
-        // Keep a minimal audit fact, never an identity/medical snapshot.
+        // Keep only a non-identifying audit receipt and aggregate facts.
         await tx.auditLog.create({
           data: {
-            accountId: user.accountId,
-            actorUserId: actorId,
-            entityType: "USER",
-            entityId: userId,
+            accountId: null,
+            actorUserId: actorId === userId ? null : actorId,
+            entityType: "ERASURE_RECEIPT",
+            entityId: erasureReceiptId,
             action: "HARD_DELETE_REQUESTED_BY_USER",
             oldValuesJson: JSON.stringify({
               profileDeleted: Boolean(user.profile),
               ordersAnonymized: user.orders.length,
               issuedInvoicesRetainedForLegalRecord: issuedInvoiceCount,
             }),
-          }
+          },
         });
 
-        // Remove contacts, scans, alerts, consent evidence, passes and app messages.
+        // Remove profile/contact links first. Then remove user-owned contacts
+        // and any profile contacts that became truly orphaned, preserving a
+        // contact only if another unaffected profile still references it.
+        const profileContactRows =
+          profileIds.length > 0
+            ? await tx.profileContact.findMany({
+                where: { profileId: { in: profileIds } },
+                select: { contactId: true },
+              })
+            : [];
+        const candidateContactIds = Array.from(
+          new Set(profileContactRows.map((row) => row.contactId)),
+        );
+        if (profileIds.length > 0) {
+          await tx.profileContact.deleteMany({
+            where: { profileId: { in: profileIds } },
+          });
+        }
         await tx.contact.deleteMany({ where: { userId } });
+        if (candidateContactIds.length > 0) {
+          const remainingContactLinks = await tx.profileContact.findMany({
+            where: { contactId: { in: candidateContactIds } },
+            select: { contactId: true },
+          });
+          const stillReferenced = new Set(
+            remainingContactLinks.map((row) => row.contactId),
+          );
+          const orphanedContactIds = candidateContactIds.filter(
+            (contactId) => !stillReferenced.has(contactId),
+          );
+          if (orphanedContactIds.length > 0) {
+            await tx.contact.deleteMany({ where: { id: { in: orphanedContactIds } } });
+          }
+        }
+
         await tx.consent.deleteMany({
           where: {
             OR: [
               { userId },
-              ...(profileIds.length ? [{ profileId: { in: profileIds } }] : []),
+              ...(profileIds.length > 0
+                ? [{ profileId: { in: profileIds } }]
+                : []),
             ],
           },
         });
         await tx.appNotification.deleteMany({ where: { userId } });
         await tx.passwordResetToken.deleteMany({ where: { email: user.email } });
+
         if (profileIds.length > 0) {
           await tx.digitalPass.deleteMany({ where: { profileId: { in: profileIds } } });
+
+          // Corporate membership rows may be part of business history and are
+          // referenced by fulfillment records, so tombstone their human/medical
+          // projection instead of deleting the row blindly.
+          await tx.organizationMember.updateMany({
+            where: { profileId: { in: profileIds } },
+            data: {
+              internalCode: null,
+              department: null,
+              position: null,
+              memberStatus: "deleted",
+              locationId: null,
+              departmentId: null,
+              employeeId: null,
+              shift: null,
+              occupationalRisks: [],
+              medicalRestrictions: null,
+              emergencyProtocol: null,
+              supervisorName: null,
+              supervisorPhone: null,
+              corporateStatus: "deleted",
+              employeeNationalId: null,
+              employeeAge: null,
+              employeePhone: null,
+              employeePosition: null,
+              employeeDepartment: null,
+              employeeInternalId: null,
+              employeeNote: null,
+              corporateProfileId: null,
+            },
+          });
         }
-        if (profileIds.length || chipIds.length > 0) {
+
+        if (profileIds.length > 0 || chipIds.length > 0) {
           await tx.scanEvent.deleteMany({
             where: {
               OR: [
-                ...(profileIds.length ? [{ profileId: { in: profileIds } }] : []),
+                ...(profileIds.length > 0
+                  ? [{ profileId: { in: profileIds } }]
+                  : []),
                 ...(chipIds.length > 0 ? [{ chipId: { in: chipIds } }] : []),
               ],
             },
@@ -132,22 +263,17 @@ export class SafeDeleteService {
           await tx.chipClaimToken.deleteMany({ where: { chipId: { in: chipIds } } });
         }
 
-        // Remove payment checkout snapshots; retain provider/commercial facts.
+        // Remove payment checkout/event snapshots entirely. Structured provider,
+        // amount, status and timestamps remain as the operational record.
         if (paymentAttemptIds.length > 0) {
           await tx.paymentAttempt.updateMany({
             where: { id: { in: paymentAttemptIds } },
             data: { checkoutSessionJson: null },
           });
-          const paymentEvents = await tx.paymentEvent.findMany({
+          await tx.paymentEvent.updateMany({
             where: { paymentAttemptId: { in: paymentAttemptIds } },
-            select: { id: true, payloadJson: true },
+            data: { payloadJson: null },
           });
-          for (const event of paymentEvents) {
-            await tx.paymentEvent.update({
-              where: { id: event.id },
-              data: { payloadJson: redactPersistedJson(event.payloadJson) },
-            });
-          }
         }
 
         // Clear all sensitive medical, vulnerability, identity and location fields.
@@ -155,6 +281,8 @@ export class SafeDeleteService {
           await tx.profile.update({
             where: { id: profile.id },
             data: {
+              userId: null,
+              accountId: ownsAccount ? null : profile.accountId,
               firstName: "Cuenta",
               lastName: "Eliminada",
               displayNamePublic: null,
@@ -191,19 +319,24 @@ export class SafeDeleteService {
               safeReturnContactName: null,
               safeReturnContactPhone: null,
               profileVisibilityStatus: "deleted",
-            }
+            },
           });
         }
 
-        if (user.account?.ownerUserId === userId) {
-          await tx.account.update({ where: { id: user.account.id }, data: { accountName: "Cuenta eliminada" } });
+        if (ownsAccount && user.account) {
+          await tx.account.update({
+            where: { id: user.account.id },
+            data: { accountName: "Cuenta eliminada", ownerUserId: null },
+          });
         }
 
-        // Keep accounting rows, but remove customer identity, shipping and proof references.
+        // Keep accounting rows, but remove customer identity, shipping, proof
+        // references and the direct user relation.
         if (orderIds.length > 0) {
           await tx.order.updateMany({
             where: { id: { in: orderIds } },
             data: {
+              userId: null,
               customerName: "Cuenta eliminada",
               customerEmail: null,
               customerPhone: null,
@@ -216,7 +349,6 @@ export class SafeDeleteService {
             },
           });
 
-          // Non-issued invoices have no legal reason to retain buyer identity.
           await tx.invoice.updateMany({
             where: {
               orderId: { in: orderIds },
@@ -231,8 +363,8 @@ export class SafeDeleteService {
             },
           });
 
-          // Issued invoices are an explicit RETAIN_LEGAL allowlist. Contact
-          // channels are not required for the retained accounting fact.
+          // Issued invoices remain an explicit RETAIN_LEGAL allowlist pending
+          // the formal Block 7 retention policy. Contact channels are removed.
           await tx.invoice.updateMany({
             where: { orderId: { in: orderIds }, status: "issued" },
             data: { buyerEmail: null, buyerPhone: null },
@@ -251,17 +383,10 @@ export class SafeDeleteService {
               notes: null,
             },
           });
-
-          const commercialEvents = await tx.operationCommercialOrderEvent.findMany({
+          await tx.operationCommercialOrderEvent.updateMany({
             where: { commercialOrderId: { in: commercialOrderIds } },
-            select: { id: true, metadataJson: true },
+            data: { metadataJson: null, reason: null },
           });
-          for (const event of commercialEvents) {
-            await tx.operationCommercialOrderEvent.update({
-              where: { id: event.id },
-              data: { metadataJson: redactPersistedJson(event.metadataJson) },
-            });
-          }
         }
 
         if (dispatchIds.length > 0) {
@@ -274,17 +399,61 @@ export class SafeDeleteService {
               notes: null,
             },
           });
-
-          const dispatchEvents = await tx.operationDispatchEvent.findMany({
+          await tx.operationDispatchEvent.updateMany({
             where: { dispatchId: { in: dispatchIds } },
-            select: { id: true, metadataJson: true },
+            data: { metadataJson: null, reason: null },
           });
-          for (const event of dispatchEvents) {
-            await tx.operationDispatchEvent.update({
-              where: { id: event.id },
-              data: { metadataJson: redactPersistedJson(event.metadataJson) },
-            });
-          }
+        }
+
+        // Warranty/return/replacement records can exist long after fulfillment.
+        // Preserve state/traceability but strip every free-text/customer projection.
+        if (warrantyIds.length > 0) {
+          await tx.operationWarranty.updateMany({
+            where: { id: { in: warrantyIds } },
+            data: {
+              customerName: null,
+              customerEmail: null,
+              customerPhone: null,
+              notes: null,
+            },
+          });
+          await tx.operationWarrantyEvent.updateMany({
+            where: { warrantyId: { in: warrantyIds } },
+            data: { reason: null, metadataJson: null },
+          });
+        }
+        if (returnIds.length > 0) {
+          await tx.operationReturn.updateMany({
+            where: { id: { in: returnIds } },
+            data: {
+              customerName: null,
+              customerEmail: null,
+              customerPhone: null,
+              reason: null,
+              resolution: null,
+              notes: null,
+            },
+          });
+          await tx.operationReturnEvent.updateMany({
+            where: { returnId: { in: returnIds } },
+            data: { reason: null, metadataJson: null },
+          });
+        }
+        if (replacementIds.length > 0) {
+          await tx.operationReplacement.updateMany({
+            where: { id: { in: replacementIds } },
+            data: {
+              customerName: null,
+              customerEmail: null,
+              customerPhone: null,
+              reason: null,
+              notes: null,
+            },
+          });
+          await tx.operationReplacementEvent.updateMany({
+            where: { replacementId: { in: replacementIds } },
+            data: { reason: null, metadataJson: null },
+          });
         }
 
         // The worker rebuilds from Order using sourceId; the outbox payload is
@@ -294,53 +463,59 @@ export class SafeDeleteService {
             where: { sourceId: { in: orderIds } },
             data: {
               payloadVersion: COMMERCE_ORDER_SYNC_PAYLOAD_VERSION,
-              payloadJson: JSON.stringify({ version: COMMERCE_ORDER_SYNC_PAYLOAD_VERSION, redacted: true }),
+              payloadJson: JSON.stringify({
+                version: COMMERCE_ORDER_SYNC_PAYLOAD_VERSION,
+                redacted: true,
+              }),
             },
           });
         }
 
-        // Redact historical audit snapshots connected to this subject while
-        // preserving action/entity/timestamps and other operational facts.
-        const auditEntityIds = Array.from(new Set([
-          userId,
-          ...profileIds,
-          ...chipIds,
-          ...orderIds,
-          ...commercialOrderIds,
-          ...dispatchIds,
-          ...paymentAttemptIds,
-        ]));
-        const auditRows = await tx.auditLog.findMany({
+        // Subject-linked audit snapshots are unnecessary after erasure. Keep
+        // only structured action/timestamp/result facts and break actor identity.
+        const auditEntityIds = Array.from(
+          new Set([
+            userId,
+            ...profileIds,
+            ...chipIds,
+            ...orderIds,
+            ...commercialOrderIds,
+            ...dispatchIds,
+            ...paymentAttemptIds,
+            ...warrantyIds,
+            ...returnIds,
+            ...replacementIds,
+          ]),
+        );
+        await tx.auditLog.updateMany({
           where: {
             OR: [
               { actorUserId: userId },
               { entityId: { in: auditEntityIds } },
             ],
           },
-          select: { id: true, oldValuesJson: true, newValuesJson: true },
+          data: {
+            oldValuesJson: null,
+            newValuesJson: null,
+            actorUserId: null,
+          },
         });
-        for (const row of auditRows) {
-          await tx.auditLog.update({
-            where: { id: row.id },
+
+        // Disable every physical identifier that either belongs to the user OR
+        // points at an erased profile. This closes the assignedProfile-only gap.
+        if (chipIds.length > 0) {
+          await tx.chip.updateMany({
+            where: { id: { in: chipIds } },
             data: {
-              oldValuesJson: redactPersistedJson(row.oldValuesJson),
-              newValuesJson: redactPersistedJson(row.newValuesJson),
+              ownerUserId: null,
+              assignedProfileId: null,
+              accountId: ownsAccount ? null : undefined,
+              lastScanAt: null,
+              lastScanLocation: null,
+              status: "deactivated",
             },
           });
         }
-
-        // Disable physical identifiers without deleting inventory history and
-        // clear the last known location retained on the chip itself.
-        await tx.chip.updateMany({
-          where: { ownerUserId: userId },
-          data: {
-            ownerUserId: null,
-            assignedProfileId: null,
-            lastScanAt: null,
-            lastScanLocation: null,
-            status: "deactivated"
-          }
-        });
 
         // Invalidate credentials and active NextAuth sessions, then anonymize the user.
         await tx.user.update({
@@ -348,14 +523,14 @@ export class SafeDeleteService {
           data: {
             status: "deleted",
             deletedAt: new Date(),
-            email: `deleted_${userId}@prerescate.invalid`,
+            email: `deleted_${erasureReceiptId}@prerescate.invalid`,
             phone: null,
             passwordHash: randomBytes(32).toString("hex"),
             mfaEnabled: false,
             mfaSecret: null,
             lastLoginAt: null,
             sessionVersion: { increment: 1 },
-          }
+          },
         });
 
         return true;
