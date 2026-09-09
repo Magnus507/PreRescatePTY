@@ -13,6 +13,11 @@ describe("Block 1 delivered projection recovery guardrails", () => {
     expect(cron).toContain("recordCronSuccess");
   });
 
+  it("includes the live manual customer order type in missing-outbox reconciliation", () => {
+    const cron = source("app/api/cron/commerce-order-sync/route.ts");
+    expect(cron).toContain('orderType: { in: ["manual", "customer", "corporate_employee_purchase"] }');
+  });
+
   it("makes an idempotent delivery retry capable of healing a proven stale projection", () => {
     const route = source("app/api/admin/operations/dispatches/[id]/confirm-delivery/route.ts");
     expect(route).toContain("reconcileDeliveredCommercialOrderProjection");
