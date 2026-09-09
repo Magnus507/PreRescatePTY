@@ -1,5 +1,8 @@
 import { Prisma } from "@prisma/client";
-import { resolveCommercialOrderItemKey } from "@/app/api/admin/operations/commercial-orders/commercial-orders.helpers";
+import {
+  getCommercialOrderReservationOwnerId,
+  resolveCommercialOrderItemKey,
+} from "@/app/api/admin/operations/commercial-orders/commercial-orders.helpers";
 import {
   isCommercialOrderEligibleForReservation,
   reserveCommercialOrderStock,
@@ -9,6 +12,17 @@ export async function reconcileCustomerProducedUnitReservation(
   tx: Prisma.TransactionClient,
   input: { commercialOrderId: string; unitId: string }
 ) {
+  // Serialize QC-to-reservation reconciliation against cancellation, rejection,
+  // refund and other commercial-order decisions. If a terminal transition wins
+  // first, this transaction observes it and leaves the produced unit in stock;
+  // if QC wins first, the later terminal transition sees and safely releases the
+  // reservation in its own transaction.
+  const commercialOrderLock = await tx.operationCommercialOrder.updateMany({
+    where: { id: input.commercialOrderId },
+    data: { updatedAt: new Date() },
+  });
+  if (commercialOrderLock.count !== 1) throw new Error("COMMERCIAL_ORDER_NOT_FOUND");
+
   const order = await tx.operationCommercialOrder.findUnique({
     where: { id: input.commercialOrderId },
     include: {
@@ -21,6 +35,29 @@ export async function reconcileCustomerProducedUnitReservation(
   });
   if (!order) throw new Error("COMMERCIAL_ORDER_NOT_FOUND");
   if (order.customerType === "internal") return null;
+
+  // A checkout/source Order is the authoritative terminal-state guard. Lock it
+  // before touching physical inventory so a concurrent cancellation cannot race
+  // between our eligibility check and the produced-unit claim.
+  if (order.sourceId) {
+    const sourceLock = await tx.order.updateMany({
+      where: { id: order.sourceId },
+      data: { updatedAt: new Date() },
+    });
+    if (sourceLock.count === 1) {
+      const sourceOrder = await tx.order.findUnique({
+        where: { id: order.sourceId },
+        select: { orderStatus: true, paymentStatus: true },
+      });
+      if (
+        sourceOrder &&
+        (sourceOrder.paymentStatus !== "paid" ||
+          ["shipped", "completed", "cancelled"].includes(sourceOrder.orderStatus))
+      ) {
+        return null;
+      }
+    }
+  }
 
   const unit = await tx.operationFinishedGoodUnit.findUnique({
     where: { id: input.unitId },
@@ -36,7 +73,7 @@ export async function reconcileCustomerProducedUnitReservation(
   });
   if (!unit) throw new Error("UNIT_NOT_FOUND");
 
-  const reservationOrderId = order.sourceId || order.id;
+  const reservationOrderId = getCommercialOrderReservationOwnerId(order);
   if (unit.reservedOrderId && unit.reservedOrderId !== reservationOrderId) {
     throw new Error("PRODUCED_UNIT_RESERVED_TO_OTHER_ORDER");
   }
@@ -53,17 +90,21 @@ export async function reconcileCustomerProducedUnitReservation(
     throw new Error("PRODUCED_UNIT_PRODUCT_MISMATCH");
   }
 
-  // Once fulfilment has already advanced, QC retry is deliberately a no-op.
+  // Once fulfillment has already advanced, QC retry is deliberately a no-op.
   if (
     unit.dispatchItems.length > 0 ||
     ["dispatched", "delivered", "activated"].includes(unit.status) ||
-    (["stock_reserved", "dispatch_created"].includes(order.status) && unit.reservedOrderId === reservationOrderId)
+    ["stock_reserved", "dispatch_created", "processing", "completed", "cancelled", "rejected"].includes(order.status)
   ) {
     return null;
   }
 
+  // A unit that was physically produced remains valid inventory even if the
+  // demand disappeared while production was in flight. Terminal/unpaid orders
+  // must not make QC fail or strand the unit in qa_pending; simply do not reserve
+  // it back to that order.
   if (!isCommercialOrderEligibleForReservation(order)) {
-    throw new Error("ORDER_NOT_READY_FOR_RESERVATION");
+    return null;
   }
 
   if (unit.reservedOrderId === reservationOrderId && unit.status === "reserved") {

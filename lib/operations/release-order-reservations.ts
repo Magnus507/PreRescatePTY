@@ -5,6 +5,7 @@ type ReleaseOrderReservationsInput = {
   actorId?: string | null;
   reason?: string | null;
   dryRun?: boolean;
+  unitIds?: string[];
 };
 
 export type ReleasedOrderReservationUnit = {
@@ -63,10 +64,24 @@ export async function releaseEligibleOrderReservations(
       update: (args: any) => Promise<unknown>;
     };
   },
-  { orderId, actorId, reason, dryRun = false }: ReleaseOrderReservationsInput
+  { orderId, actorId, reason, dryRun = false, unitIds }: ReleaseOrderReservationsInput
 ): Promise<ReleaseOrderReservationsResult> {
+  const uniqueUnitIds = unitIds ? [...new Set(unitIds.filter(Boolean))] : null;
+  if (uniqueUnitIds && uniqueUnitIds.length === 0) {
+    return {
+      eligibleCount: 0,
+      releasedCount: 0,
+      blockedCount: 0,
+      releasedUnits: [],
+      blockedUnits: [],
+    };
+  }
+
   const units = await prisma.operationFinishedGoodUnit.findMany({
-    where: { reservedOrderId: orderId },
+    where: {
+      reservedOrderId: orderId,
+      ...(uniqueUnitIds ? { id: { in: uniqueUnitIds } } : {}),
+    },
     select: {
       id: true,
       internalLabel: true,
@@ -127,6 +142,19 @@ export async function releaseEligibleOrderReservations(
       previousStatus: unit.status,
       newStatus: "available",
     });
+  }
+
+  if (uniqueUnitIds && units.length !== uniqueUnitIds.length) {
+    const foundIds = new Set(units.map((unit) => unit.id));
+    for (const unitId of uniqueUnitIds) {
+      if (!foundIds.has(unitId)) {
+        blockedUnits.push({
+          id: unitId,
+          internalLabel: unitId,
+          reason: "La unidad ya no pertenece a esta reserva",
+        });
+      }
+    }
   }
 
   if (!dryRun && releasedUnits.length > 0) {

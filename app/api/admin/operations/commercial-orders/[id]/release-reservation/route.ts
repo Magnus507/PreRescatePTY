@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
+import { releaseEligibleOrderReservations } from "@/lib/operations/release-order-reservations";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
+import { getCommercialOrderReservationOwnerId } from "../../commercial-orders.helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,11 @@ export async function POST(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      await tx.operationCommercialOrder.updateMany({ where: { id: id }, data: { updatedAt: new Date() } });
+      // Serialize release against other commercial-order decisions.
+      await tx.operationCommercialOrder.updateMany({
+        where: { id },
+        data: { updatedAt: new Date() },
+      });
       const order = await tx.operationCommercialOrder.findUnique({
         where: { id },
         select: {
@@ -36,12 +42,11 @@ export async function POST(
       if (!order) return null;
       if (order.dispatchId) throw new Error("ORDER_HAS_DISPATCH");
 
-      const reservationOrderId = order.sourceId || order.id;
+      const reservationOrderId = getCommercialOrderReservationOwnerId(order);
       const reservedUnits = await tx.operationFinishedGoodUnit.findMany({
         where: {
           reservedOrderId: reservationOrderId,
           status: "reserved",
-          dispatchItems: { none: {} },
         },
         orderBy: [{ reservedAt: "asc" }, { createdAt: "asc" }, { internalLabel: "asc" }],
         select: { id: true, internalLabel: true, productCode: true },
@@ -54,40 +59,22 @@ export async function POST(
         ? reservedUnits
         : reservedUnits.slice(Math.max(0, reservedUnits.length - requestedQty));
 
-      if (unitsToRelease.length > 0) {
-        await tx.operationFinishedGoodUnit.updateMany({
-          where: {
-            id: { in: unitsToRelease.map((unit) => unit.id) },
-            reservedOrderId: reservationOrderId,
-            status: "reserved",
-            dispatchItems: { none: {} },
-          },
-          data: {
-            status: "available",
-            reservedOrderId: null,
-            reservedAt: null,
-          },
-        });
-
-        await tx.operationFinishedGoodUnitEvent.createMany({
-          data: unitsToRelease.map((unit) => ({
-            unitId: unit.id,
-            eventType: "RELEASED",
-            reason: reason || `Liberado desde pedido comercial ${order.id}`,
-            referenceType: "commercial_order",
-            referenceId: order.id,
-            metadataJson: {
-              commercialOrderId: order.id,
-              customerOrderId: order.sourceId || null,
-              reservationOrderId,
-              internalLabel: unit.internalLabel,
-              reason: reason || null,
-            },
-          })),
-        });
+      const release = await releaseEligibleOrderReservations(tx, {
+        orderId: reservationOrderId,
+        actorId: auth.session.user.id || null,
+        reason: reason || `Liberado desde pedido comercial ${order.id}`,
+        unitIds: unitsToRelease.map((unit) => unit.id),
+      });
+      if (release.blockedCount > 0) {
+        throw new Error("RESERVATION_RELEASE_BLOCKED");
       }
 
-      const remainingReserved = Math.max(0, reservedUnits.length - unitsToRelease.length);
+      const remainingReserved = await tx.operationFinishedGoodUnit.count({
+        where: {
+          reservedOrderId: reservationOrderId,
+          status: "reserved",
+        },
+      });
       const requiredQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
       const nextStatus = remainingReserved === 0
         ? "accepted"
@@ -119,7 +106,7 @@ export async function POST(
         after: {
           status: updatedOrder.status,
           fulfillmentStatus: updatedOrder.fulfillmentStatus,
-          releasedQty: unitsToRelease.length,
+          releasedQty: release.releasedCount,
           remainingReserved,
           reason: reason || null,
         },
@@ -128,8 +115,8 @@ export async function POST(
       return {
         orderId: order.id,
         order: updatedOrder,
-        releasedUnits: unitsToRelease,
-        releasedQty: unitsToRelease.length,
+        releasedUnits: release.releasedUnits,
+        releasedQty: release.releasedCount,
         remainingReserved,
         reason: reason || null,
       };
@@ -144,8 +131,15 @@ export async function POST(
       message: result.releasedQty > 0 ? "Reserva liberada" : "No había unidades reservadas para liberar",
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "ORDER_HAS_DISPATCH") {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "ORDER_HAS_DISPATCH") {
       return NextResponse.json({ error: "No se puede liberar una reserva con despacho asociado" }, { status: 409 });
+    }
+    if (message === "RESERVATION_RELEASE_BLOCKED") {
+      return NextResponse.json(
+        { error: "La reserva cambió o una unidad ya está comprometida; no se liberó inventario." },
+        { status: 409 }
+      );
     }
 
     console.error("[operations/commercial-orders/:id/release-reservation] POST error:", error);

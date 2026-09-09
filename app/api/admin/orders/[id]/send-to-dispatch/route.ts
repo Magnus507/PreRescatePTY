@@ -1,12 +1,42 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
+import { resolveCommercialOrderItemKey } from "@/app/api/admin/operations/commercial-orders/commercial-orders.helpers";
 
 export const dynamic = "force-dynamic";
 
+const PRE_SHIPMENT_DISPATCH_STATUSES = new Set([
+  "draft",
+  "pending_pick",
+  "pending_preparation",
+  "picked",
+  "packed",
+  "prepared",
+  "reserved",
+]);
+const SHIPPED_DISPATCH_STATUSES = new Set(["sent", "shipped", "dispatched", "in_transit"]);
+
 function parseOrderCode(orderNumber: string) {
   return orderNumber.startsWith("OP-") ? orderNumber : `OP-CLI-${orderNumber}`;
+}
+
+async function getAvailableDispatchCode(
+  tx: Prisma.TransactionClient,
+  orderNumber: string
+) {
+  const baseCode = `DSP-${parseOrderCode(orderNumber)}`;
+  let candidate = baseCode;
+  for (let suffix = 2; suffix <= 50; suffix += 1) {
+    const existing = await tx.operationDispatch.findUnique({
+      where: { code: candidate },
+      select: { id: true },
+    });
+    if (!existing) return candidate;
+    candidate = `${baseCode}-R${suffix}`;
+  }
+  throw new Error("DISPATCH_CODE_EXHAUSTED");
 }
 
 export async function POST(
@@ -21,6 +51,15 @@ export async function POST(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // Serialize duplicate dispatch requests and cancellation-sensitive reads on
+      // the immutable checkout Order. A second request re-reads the state after
+      // the first transaction commits instead of creating a parallel dispatch.
+      const orderLock = await tx.order.updateMany({
+        where: { id },
+        data: { updatedAt: new Date() },
+      });
+      if (orderLock.count !== 1) throw new Error("ORDER_NOT_FOUND");
+
       const order = await tx.order.findUnique({
         where: { id },
         include: {
@@ -35,48 +74,182 @@ export async function POST(
       }
       if (order.orderStatus === "cancelled") throw new Error("ORDER_CANCELLED");
       if (order.orderStatus === "completed") throw new Error("ORDER_COMPLETED");
-      if (order.paymentStatus !== "paid" && order.adminReviewStatus !== "approved") {
+      if (order.paymentStatus !== "paid") {
         throw new Error("PAYMENT_NOT_APPROVED");
       }
 
-      const operationalOrder = await tx.operationCommercialOrder.findFirst({
+      const operationalOrders = await tx.operationCommercialOrder.findMany({
         where: {
           sourceId: order.id,
           customerType: { not: "internal" },
         },
         orderBy: { createdAt: "desc" },
+        take: 2,
         select: {
           id: true,
           code: true,
+          sourceId: true,
+          status: true,
+          paymentStatus: true,
           dispatchId: true,
           items: {
-            select: { quantity: true },
+            include: {
+              finishedGood: {
+                select: { code: true, productType: true },
+              },
+            },
           },
         },
       });
 
-      if (operationalOrder?.dispatchId) {
-        const existing = await tx.operationDispatch.findUnique({
-          where: { id: operationalOrder.dispatchId },
-          select: { id: true, code: true, status: true },
+      if (operationalOrders.length === 0) throw new Error("OPERATIONAL_ORDER_REQUIRED");
+      if (operationalOrders.length > 1) throw new Error("AMBIGUOUS_OPERATIONAL_ORDER");
+      const operationalOrder = operationalOrders[0];
+      if (["cancelled", "rejected", "completed"].includes(operationalOrder.status)) {
+        throw new Error("OPERATIONAL_ORDER_NOT_SHIPPABLE");
+      }
+      if (operationalOrder.paymentStatus !== "paid") {
+        throw new Error("OPERATIONAL_ORDER_NOT_SHIPPABLE");
+      }
+
+      const operationalQuantity = operationalOrder.items.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      );
+      if (operationalQuantity <= 0) throw new Error("INVALID_OPERATIONAL_QUANTITY");
+
+      const requiredByProductCode = new Map<string, number>();
+      for (const item of operationalOrder.items) {
+        const productCode = resolveCommercialOrderItemKey(item).trim();
+        if (!productCode) throw new Error("MISSING_PRODUCT_CODE");
+        requiredByProductCode.set(
+          productCode,
+          (requiredByProductCode.get(productCode) || 0) + item.quantity
+        );
+      }
+
+      const validateExistingCustomerDispatch = async (dispatchId: string) => {
+        const dispatch = await tx.operationDispatch.findUnique({
+          where: { id: dispatchId },
+          include: {
+            items: {
+              include: {
+                unitRecord: {
+                  include: {
+                    dispatchItems: {
+                      select: { id: true, dispatchId: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
         });
-        if (existing) {
+        if (!dispatch || dispatch.status === "cancelled") return null;
+        if (dispatch.destinationType !== "customer") {
+          throw new Error("EXISTING_DISPATCH_MISMATCH");
+        }
+        if (dispatch.status === "delivered") {
+          throw new Error("EXISTING_DISPATCH_ALREADY_DELIVERED");
+        }
+
+        const beforeShipment = PRE_SHIPMENT_DISPATCH_STATUSES.has(dispatch.status);
+        const afterShipment = SHIPPED_DISPATCH_STATUSES.has(dispatch.status);
+        if (!beforeShipment && !afterShipment) {
+          throw new Error("EXISTING_DISPATCH_MISMATCH");
+        }
+        if (dispatch.items.length !== operationalQuantity) {
+          throw new Error("EXISTING_DISPATCH_MISMATCH");
+        }
+
+        const unitIds = dispatch.items
+          .map((item) => item.unitId)
+          .filter((unitId): unitId is string => Boolean(unitId));
+        if (unitIds.length !== dispatch.items.length || new Set(unitIds).size !== unitIds.length) {
+          throw new Error("EXISTING_DISPATCH_MISMATCH");
+        }
+
+        const actualByProductCode = new Map<string, number>();
+        for (const item of dispatch.items) {
+          const unit = item.unitRecord;
+          if (!item.unitId || !unit || unit.id !== item.unitId) {
+            throw new Error("EXISTING_DISPATCH_MISMATCH");
+          }
+          if (
+            !unit.productCode ||
+            (item.productCode && item.productCode !== unit.productCode) ||
+            unit.reservedOrderId !== order.id ||
+            unit.qaStatus !== "passed" ||
+            unit.dispatchItems.length !== 1 ||
+            unit.dispatchItems[0]?.dispatchId !== dispatch.id
+          ) {
+            throw new Error("EXISTING_DISPATCH_MISMATCH");
+          }
+
+          if (beforeShipment) {
+            if (
+              unit.status !== "reserved" ||
+              unit.activationStatus !== "not_activated" ||
+              unit.dispatchedAt ||
+              unit.deliveredAt ||
+              unit.activatedAt
+            ) {
+              throw new Error("EXISTING_DISPATCH_MISMATCH");
+            }
+          } else if (
+            unit.status !== "dispatched" ||
+            unit.activationStatus !== "not_activated" ||
+            !unit.dispatchedAt ||
+            unit.deliveredAt ||
+            unit.activatedAt
+          ) {
+            throw new Error("EXISTING_DISPATCH_MISMATCH");
+          }
+
+          actualByProductCode.set(
+            unit.productCode,
+            (actualByProductCode.get(unit.productCode) || 0) + 1
+          );
+        }
+
+        if (actualByProductCode.size !== requiredByProductCode.size) {
+          throw new Error("EXISTING_DISPATCH_MISMATCH");
+        }
+        for (const [productCode, requiredQty] of requiredByProductCode.entries()) {
+          if ((actualByProductCode.get(productCode) || 0) !== requiredQty) {
+            throw new Error("EXISTING_DISPATCH_MISMATCH");
+          }
+        }
+
+        return {
+          id: dispatch.id,
+          code: dispatch.code,
+          status: dispatch.status,
+          fulfillmentStatus: afterShipment ? "dispatched" : "dispatch_pending",
+        };
+      };
+
+      if (operationalOrder.dispatchId) {
+        const linked = await validateExistingCustomerDispatch(operationalOrder.dispatchId);
+        if (linked) {
           return {
             order,
             operationalOrder,
-            dispatch: existing,
+            dispatch: linked,
             reservedUnits: [] as Array<{ id: string }>,
-            operationalQuantity: operationalOrder.items.reduce(
-              (sum, item) => sum + item.quantity,
-              0
-            ),
+            operationalQuantity,
             existing: true,
           };
         }
+        await tx.operationCommercialOrder.update({
+          where: { id: operationalOrder.id },
+          data: { dispatchId: null },
+        });
       }
 
       const existingDispatch = await tx.operationDispatch.findFirst({
         where: {
+          status: { not: "cancelled" },
           events: {
             some: {
               referenceType: "order",
@@ -84,29 +257,29 @@ export async function POST(
             },
           },
         },
-        select: { id: true, code: true, status: true },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
       });
 
       if (existingDispatch) {
-        if (operationalOrder && !operationalOrder.dispatchId) {
-          await tx.operationCommercialOrder.update({
-            where: { id: operationalOrder.id },
-            data: {
-              dispatchId: existingDispatch.id,
-              fulfillmentStatus: "dispatch_pending",
-              status: "processing",
-            },
-          });
-        }
+        const validated = await validateExistingCustomerDispatch(existingDispatch.id);
+        if (!validated) throw new Error("EXISTING_DISPATCH_MISMATCH");
+
+        await tx.operationCommercialOrder.update({
+          where: { id: operationalOrder.id },
+          data: {
+            dispatchId: validated.id,
+            fulfillmentStatus: validated.fulfillmentStatus,
+            status: "processing",
+          },
+        });
 
         return {
           order,
           operationalOrder,
-          dispatch: existingDispatch,
+          dispatch: validated,
           reservedUnits: [] as Array<{ id: string }>,
-          operationalQuantity: operationalOrder
-            ? operationalOrder.items.reduce((sum, item) => sum + item.quantity, 0)
-            : order.items.reduce((sum, item) => sum + item.quantity, 0),
+          operationalQuantity,
           existing: true,
         };
       }
@@ -118,25 +291,33 @@ export async function POST(
           qaStatus: "passed",
           activationStatus: "not_activated",
           internalLabel: { not: "" },
+          dispatchItems: { none: {} },
         },
         orderBy: [{ createdAt: "asc" }, { internalLabel: "asc" }],
       });
 
-      // Reservation is performed from the operational commercial order, so the
-      // dispatch gate validates against that same physical quantity. Legacy
-      // Order items remain only as a compatibility fallback.
-      const operationalQuantity = operationalOrder
-        ? operationalOrder.items.reduce((sum, item) => sum + item.quantity, 0)
-        : order.items.reduce((sum, item) => sum + item.quantity, 0);
-
-      if (operationalQuantity <= 0) throw new Error("INVALID_OPERATIONAL_QUANTITY");
       if (reservedUnits.length !== operationalQuantity) throw new Error("RESERVATION_MISMATCH");
-
       if (reservedUnits.some((unit) => unit.reservedOrderId !== order.id)) {
         throw new Error("UNIT_ORDER_MISMATCH");
       }
 
-      const dispatchCode = `DSP-${parseOrderCode(order.orderNumber)}`;
+      const reservedByProductCode = new Map<string, number>();
+      for (const unit of reservedUnits) {
+        reservedByProductCode.set(
+          unit.productCode,
+          (reservedByProductCode.get(unit.productCode) || 0) + 1
+        );
+      }
+      if (reservedByProductCode.size !== requiredByProductCode.size) {
+        throw new Error("PRODUCT_RESERVATION_MISMATCH");
+      }
+      for (const [productCode, requiredQty] of requiredByProductCode.entries()) {
+        if ((reservedByProductCode.get(productCode) || 0) !== requiredQty) {
+          throw new Error("PRODUCT_RESERVATION_MISMATCH");
+        }
+      }
+
+      const dispatchCode = await getAvailableDispatchCode(tx, order.orderNumber);
       const fullDestinationAddress = [order.shippingAddress, order.shippingCity]
         .filter((value): value is string => Boolean(value?.trim()))
         .join(", ");
@@ -165,16 +346,17 @@ export async function POST(
           events: {
             create: {
               eventType: "CREATED",
-              reason: "Despacho creado desde pedido con reserva completa",
+              reason: "Despacho creado desde pedido con reserva completa y validada por SKU",
               referenceType: "order",
               referenceId: order.id,
               metadataJson: JSON.stringify({
                 orderId: order.id,
                 orderCode: order.orderNumber,
                 orderDisplayCode: order.providerReference || order.orderNumber,
-                operationalOrderId: operationalOrder?.id || null,
-                operationalOrderCode: operationalOrder?.code || null,
+                operationalOrderId: operationalOrder.id,
+                operationalOrderCode: operationalOrder.code,
                 operationalQuantity,
+                requiredByProductCode: Object.fromEntries(requiredByProductCode),
                 customerName: order.customerName,
                 customerEmail: order.customerEmail,
                 customerPhone: order.customerPhone,
@@ -191,16 +373,14 @@ export async function POST(
         select: { id: true, code: true, status: true },
       });
 
-      if (operationalOrder) {
-        await tx.operationCommercialOrder.update({
-          where: { id: operationalOrder.id },
-          data: {
-            dispatchId: dispatch.id,
-            fulfillmentStatus: "dispatch_pending",
-            status: "processing",
-          },
-        });
-      }
+      await tx.operationCommercialOrder.update({
+        where: { id: operationalOrder.id },
+        data: {
+          dispatchId: dispatch.id,
+          fulfillmentStatus: "dispatch_pending",
+          status: "processing",
+        },
+      });
 
       await tx.order.update({
         where: { id: order.id },
@@ -214,7 +394,13 @@ export async function POST(
         action: "order.sent_to_dispatch",
         requestId,
         before: { orderStatus: order.orderStatus, paymentStatus: order.paymentStatus },
-        after: { dispatchId: dispatch.id, dispatchCode: dispatch.code, operationalOrderId: operationalOrder?.id || null, operationalQuantity },
+        after: {
+          dispatchId: dispatch.id,
+          dispatchCode: dispatch.code,
+          operationalOrderId: operationalOrder.id,
+          operationalQuantity,
+          requiredByProductCode: Object.fromEntries(requiredByProductCode),
+        },
       });
 
       return {
@@ -232,7 +418,7 @@ export async function POST(
       dispatchId: result.dispatch.id,
       dispatchCode: result.dispatch.code,
       status: result.dispatch.status,
-      operationalOrderId: result.operationalOrder?.id || null,
+      operationalOrderId: result.operationalOrder.id,
       operationalQuantity: result.operationalQuantity,
       alreadyExisted: result.existing,
       message: result.existing
@@ -247,13 +433,21 @@ export async function POST(
         INTERNAL_ORDER_NO_DISPATCH: "Los pedidos internos no crean despacho desde esta ruta",
         ORDER_CANCELLED: "El pedido cancelado no puede enviarse a despacho",
         ORDER_COMPLETED: "El pedido completado no puede enviarse a despacho",
-        PAYMENT_NOT_APPROVED: "El pedido no tiene pago aprobado",
+        PAYMENT_NOT_APPROVED: "El pedido debe estar pagado antes de crear despacho",
+        OPERATIONAL_ORDER_REQUIRED: "El pedido todavía no tiene su proyección operativa; vuelve a sincronizarlo antes de despacho",
+        AMBIGUOUS_OPERATIONAL_ORDER: "Hay más de una proyección operativa para el mismo pedido; requiere reconciliación",
+        OPERATIONAL_ORDER_NOT_SHIPPABLE: "La proyección operativa fue cancelada, completada o dejó de estar pagada",
         INVALID_OPERATIONAL_QUANTITY: "El pedido no tiene cantidad operativa válida",
+        MISSING_PRODUCT_CODE: "Todos los artículos necesitan un código de producto canónico antes de despacho",
         RESERVATION_MISMATCH: "Las unidades reservadas no coinciden con la cantidad operativa",
+        PRODUCT_RESERVATION_MISMATCH: "Las unidades reservadas no coinciden por producto/SKU con el pedido",
         UNIT_ORDER_MISMATCH: "Hay unidades reservadas que no pertenecen al pedido",
+        EXISTING_DISPATCH_MISMATCH: "El despacho histórico no coincide exactamente con la reserva, SKU y dueño actuales; requiere reconciliación",
+        EXISTING_DISPATCH_ALREADY_DELIVERED: "Existe un despacho ya entregado; no puede reabrirse desde el flujo de envío a despacho",
+        DISPATCH_CODE_EXHAUSTED: "No se pudo generar un código único para el nuevo despacho",
       };
       if (messageMap[error.message]) {
-        return NextResponse.json({ error: messageMap[error.message] }, { status: 400 });
+        return NextResponse.json({ error: messageMap[error.message] }, { status: 409 });
       }
     }
 

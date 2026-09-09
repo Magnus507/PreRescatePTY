@@ -8,6 +8,11 @@ type BackorderRequirement = {
   missingQty: number;
 };
 
+type BackorderResolution = {
+  commercialOrderId: string | null;
+  requirements: BackorderRequirement[];
+};
+
 export function buildCustomerProductionCode(orderNumber: string, productionKey?: string | null) {
   const safeOrder = orderNumber.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 68);
   const safeKey = productionKey
@@ -20,9 +25,28 @@ export function buildCustomerProductionCode(orderNumber: string, productionKey?:
 async function resolveBackorderRequirements(
   db: DbClient,
   orderId: string
-): Promise<BackorderRequirement[]> {
-  const commercialOrder = await db.operationCommercialOrder.findFirst({
+): Promise<BackorderResolution> {
+  const candidate = await db.operationCommercialOrder.findFirst({
     where: { sourceId: orderId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+
+  if (!candidate) {
+    return { commercialOrderId: null, requirements: [] };
+  }
+
+  // All production decisions for the same customer demand must be based on one
+  // serialized operational snapshot. When called inside the normal transaction
+  // flows this row write locks the commercial order, so concurrent retries cannot
+  // both derive/create production from the same shortage independently.
+  await db.operationCommercialOrder.updateMany({
+    where: { id: candidate.id },
+    data: { updatedAt: new Date() },
+  });
+
+  const commercialOrder = await db.operationCommercialOrder.findUnique({
+    where: { id: candidate.id },
     include: {
       items: {
         include: {
@@ -34,7 +58,9 @@ async function resolveBackorderRequirements(
     },
   });
 
-  if (!commercialOrder) return [];
+  if (!commercialOrder) {
+    return { commercialOrderId: null, requirements: [] };
+  }
 
   const requiredByCode = new Map<string, { productName: string; requiredQty: number }>();
   for (const item of commercialOrder.items) {
@@ -64,7 +90,7 @@ async function resolveBackorderRequirements(
     reservedByCode.set(unit.productCode, (reservedByCode.get(unit.productCode) || 0) + 1);
   }
 
-  return Array.from(requiredByCode.entries())
+  const requirements = Array.from(requiredByCode.entries())
     .map(([productCode, requirement]) => ({
       productCode,
       productName: requirement.productName,
@@ -74,6 +100,8 @@ async function resolveBackorderRequirements(
       ),
     }))
     .filter((requirement) => requirement.missingQty > 0);
+
+  return { commercialOrderId: commercialOrder.id, requirements };
 }
 
 async function ensureSingleCustomerBackorderProduction(
@@ -149,11 +177,17 @@ export async function ensureCustomerBackorderProduction(
   if (backorderQty <= 0) return null;
 
   // Resolve the canonical outstanding requirement from the operational order in
-  // the same transaction that just performed reservation. This prevents a
-  // multi-SKU order from collapsing all missing quantities into the first SKU.
-  const requirements = await resolveBackorderRequirements(db, input.orderId);
-  const effectiveRequirements = requirements.length > 0
-    ? requirements
+  // the same transaction that performs the production decision. A stale UI/note
+  // may still say "backorder" after stock was reserved later; when a commercial
+  // projection exists, zero live shortage means zero production. The legacy
+  // fallback is used only when no operational projection exists at all.
+  const resolution = await resolveBackorderRequirements(db, input.orderId);
+  if (resolution.commercialOrderId && resolution.requirements.length === 0) {
+    return null;
+  }
+
+  const effectiveRequirements = resolution.requirements.length > 0
+    ? resolution.requirements
     : [{
         productCode: input.productCode?.trim() || input.outputType.trim(),
         productName: input.productName,

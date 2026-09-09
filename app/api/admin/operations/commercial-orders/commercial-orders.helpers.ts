@@ -100,6 +100,13 @@ export function getFirstValidationMessage(error: z.ZodError): string {
   return error.errors[0]?.message || "Datos invalidos";
 }
 
+export function getCommercialOrderReservationOwnerId(order: {
+  id: string;
+  sourceId?: string | null;
+}) {
+  return order.sourceId || order.id;
+}
+
 export function resolveCommercialOrderItemKey(item: {
   finishedGoodId: string | null;
   productCode: string | null;

@@ -6,6 +6,7 @@ import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import {
   CreateCommercialOrderSchema,
   calculateCommercialOrderTotal,
+  getCommercialOrderReservationOwnerId,
   getFirstValidationMessage,
 } from "./commercial-orders.helpers";
 
@@ -124,14 +125,27 @@ export async function GET() {
         notes: true,
       },
     });
-    const reservedUnitsByOrder = await prisma.operationFinishedGoodUnit.findMany({
-      where: { reservedOrderId: { in: commercialOrders.map((order) => order.id) }, status: "reserved" },
-      select: {
-        id: true,
-        reservedOrderId: true,
-        internalLabel: true,
-      },
-    });
+
+    const reservationOwnerByOrderId = new Map(
+      commercialOrders.map((order) => [
+        order.id,
+        getCommercialOrderReservationOwnerId(order),
+      ])
+    );
+    const reservationOwnerIds = [...new Set(reservationOwnerByOrderId.values())];
+    const reservedUnitsByOrder = reservationOwnerIds.length > 0
+      ? await prisma.operationFinishedGoodUnit.findMany({
+          where: {
+            reservedOrderId: { in: reservationOwnerIds },
+            status: "reserved",
+          },
+          select: {
+            id: true,
+            reservedOrderId: true,
+            internalLabel: true,
+          },
+        })
+      : [];
 
     const reservedCountMap = reservedUnitsByOrder.reduce<Record<string, number>>((acc, unit) => {
       if (!unit.reservedOrderId) return acc;
@@ -150,11 +164,15 @@ export async function GET() {
     );
 
     return NextResponse.json({
-      commercialOrders: commercialOrders.map((order) => ({
-        ...order,
-        reservedUnitsCount: reservedCountMap[order.id] || 0,
-        productionOrder: productionOrderByCommercialOrderId[order.id] || null,
-      })),
+      commercialOrders: commercialOrders.map((order) => {
+        const reservationOrderId = reservationOwnerByOrderId.get(order.id) || order.id;
+        return {
+          ...order,
+          reservationOrderId,
+          reservedUnitsCount: reservedCountMap[reservationOrderId] || 0,
+          productionOrder: productionOrderByCommercialOrderId[order.id] || null,
+        };
+      }),
     });
   } catch (error) {
     console.error("[operations/commercial-orders] GET error:", error);
@@ -225,11 +243,21 @@ export async function POST(req: NextRequest) {
             if (data.dispatchId) {
               const dispatch = await tx.operationDispatch.findUnique({
                 where: { id: data.dispatchId },
-                select: { id: true },
+                select: { id: true, destinationType: true },
               });
 
               if (!dispatch) {
                 throw new Error("INVALID_DISPATCH");
+              }
+              if (customerType === "customer" || dispatch.destinationType === "customer") {
+                throw new Error("CUSTOMER_DISPATCH_REQUIRES_DEDICATED_FLOW");
+              }
+              const existingOwner = await tx.operationCommercialOrder.findFirst({
+                where: { dispatchId: data.dispatchId },
+                select: { id: true },
+              });
+              if (existingOwner) {
+                throw new Error("DISPATCH_ALREADY_OWNED");
               }
             }
 
@@ -241,7 +269,7 @@ export async function POST(req: NextRequest) {
                 customerName: isInternal ? null : data.customerName || null,
                 customerEmail: isInternal ? null : data.customerEmail || null,
                 customerPhone: isInternal ? null : data.customerPhone || null,
-                customerReference: isInternal ? data.customerReference || null : data.customerReference || null,
+                customerReference: data.customerReference || null,
                 salesChannel: isInternal ? "internal" : data.salesChannel || "admin",
                 paymentStatus: isInternal ? "pending" : data.paymentStatus || "pending",
                 fulfillmentStatus: data.fulfillmentStatus || "pending",
@@ -329,6 +357,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "dispatchId no existe" },
         { status: 400 }
+      );
+    }
+
+    if (error instanceof Error && error.message === "CUSTOMER_DISPATCH_REQUIRES_DEDICATED_FLOW") {
+      return NextResponse.json(
+        { error: "Los despachos de cliente solo se vinculan desde el flujo dedicado de fulfillment." },
+        { status: 409 }
+      );
+    }
+
+    if (error instanceof Error && error.message === "DISPATCH_ALREADY_OWNED") {
+      return NextResponse.json(
+        { error: "El despacho ya pertenece a otro pedido comercial." },
+        { status: 409 }
       );
     }
 
