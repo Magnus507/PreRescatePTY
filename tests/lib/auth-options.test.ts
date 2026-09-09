@@ -3,10 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   userUpdate: vi.fn(),
+  transactionMock: vi.fn(),
   rateLimitMock: vi.fn(),
   getClientIpMock: vi.fn(),
   decryptMock: vi.fn(),
   verifyMfaTokenMock: vi.fn(),
+  consumeMfaRecoveryCodeMock: vi.fn(),
+  consumeVerifiedMfaTotpMock: vi.fn(),
+  isRecoveryCodeMock: vi.fn(),
   bcryptCompareMock: vi.fn(),
 }));
 
@@ -16,6 +20,7 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: mocks.userFindUnique,
       update: mocks.userUpdate,
     },
+    $transaction: mocks.transactionMock,
   },
 }));
 
@@ -33,6 +38,9 @@ vi.mock("@/lib/encryption", () => ({
 
 vi.mock("@/domains/users/services/mfa.service", () => ({
   verifyMfaToken: mocks.verifyMfaTokenMock,
+  consumeMfaRecoveryCode: mocks.consumeMfaRecoveryCodeMock,
+  consumeVerifiedMfaTotp: mocks.consumeVerifiedMfaTotpMock,
+  isRecoveryCode: mocks.isRecoveryCodeMock,
 }));
 
 vi.mock("bcryptjs", () => ({
@@ -51,8 +59,12 @@ describe("authOptions credentials flow", () => {
     mocks.getClientIpMock.mockReturnValue("127.0.0.1");
     mocks.decryptMock.mockReturnValue("mfa-secret");
     mocks.verifyMfaTokenMock.mockReturnValue(true);
+    mocks.consumeMfaRecoveryCodeMock.mockResolvedValue(true);
+    mocks.consumeVerifiedMfaTotpMock.mockResolvedValue(true);
+    mocks.isRecoveryCodeMock.mockReturnValue(false);
     mocks.bcryptCompareMock.mockResolvedValue(true);
     mocks.userUpdate.mockResolvedValue({});
+    mocks.transactionMock.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => callback({}));
   });
 
   it("authorizes an active user with sessionVersion 0", async () => {
@@ -61,6 +73,7 @@ describe("authOptions credentials flow", () => {
       email: "client@example.com",
       passwordHash: "hashed",
       status: "active",
+      deletedAt: null,
       role: "owner",
       isAdmin: false,
       adminRole: null,
@@ -93,6 +106,7 @@ describe("authOptions credentials flow", () => {
       email: "disabled@example.com",
       passwordHash: "hashed",
       status: "suspended",
+      deletedAt: null,
       role: "owner",
       isAdmin: false,
       adminRole: null,
@@ -113,6 +127,7 @@ describe("authOptions credentials flow", () => {
       email: "mfa@example.com",
       passwordHash: "hashed",
       status: "active",
+      deletedAt: null,
       role: "owner",
       isAdmin: false,
       adminRole: null,
@@ -133,6 +148,7 @@ describe("authOptions credentials flow", () => {
 
     expect(withCode?.id).toBe("user-3");
     expect(mocks.verifyMfaTokenMock).toHaveBeenCalledWith("123456", "mfa-secret");
+    expect(mocks.consumeVerifiedMfaTotpMock).toHaveBeenCalledWith(expect.anything(), "user-3", "123456");
   });
 
   it("propagates claims through jwt and session callbacks", async () => {
