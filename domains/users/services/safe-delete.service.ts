@@ -272,7 +272,7 @@ export class SafeDeleteService {
           });
           await tx.paymentEvent.updateMany({
             where: { paymentAttemptId: { in: paymentAttemptIds } },
-            data: { payloadJson: null },
+            data: { payloadJson: "{}" },
           });
         }
 
