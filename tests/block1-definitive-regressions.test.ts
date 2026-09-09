@@ -53,6 +53,9 @@ describe("Block 1 definitive fulfillment guardrails", () => {
     expect(route).toContain("dispatchItems: { none: {} }");
     expect(route).toContain('status: { not: "cancelled" }');
     expect(route).toContain("getAvailableDispatchCode");
+    expect(route).toContain("validateExistingCustomerDispatch");
+    expect(route).toContain("EXISTING_DISPATCH_MISMATCH");
+    expect(route).toContain("EXISTING_DISPATCH_ALREADY_DELIVERED");
   });
 
   it("prevents arbitrary customer dispatch ownership through manual commercial-order creation", () => {
