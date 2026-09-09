@@ -2,8 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockPrisma } from "../helpers/mock-prisma";
 import { resetAllMocks } from "../helpers/reset-mocks";
 
-const mockDeleteStorageObjects = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/storage-cleanup-outbox", () => ({ processStorageCleanupOutbox: mockDeleteStorageObjects }));
+const mockProcessStorageCleanupOutbox = vi.hoisted(() => vi.fn());
+const mockEraseMatchingSupabaseAuthIdentity = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/storage-cleanup-outbox", () => ({ processStorageCleanupOutbox: mockProcessStorageCleanupOutbox }));
+vi.mock("@/lib/privacy/supabase-auth-erasure", () => ({
+  eraseMatchingSupabaseAuthIdentity: mockEraseMatchingSupabaseAuthIdentity,
+}));
 
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
 vi.mock("@/lib/storage-deletion", () => ({
@@ -13,7 +18,7 @@ vi.mock("@/lib/storage-deletion", () => ({
       ? { bucket: "payment-proofs", path: "payments/user-1/proof.webp" }
       : { bucket: "profile-photos", path: "user-1/profile.webp" };
   }),
-  deleteStorageObjects: mockDeleteStorageObjects,
+  deleteStorageObjects: mockProcessStorageCleanupOutbox,
 }));
 
 import { SafeDeleteService } from "@/domains/users/services/safe-delete.service";
@@ -34,13 +39,15 @@ function setupUser() {
     orders: [{ id: "order-1", paymentProofUrl: "/api/image-proxy?bucket=payment-proofs&path=payments/user-1/proof.webp" }],
   } as never);
   mockPrisma.$transaction.mockImplementation(async (callback: (tx: typeof mockPrisma) => Promise<boolean>) => callback(mockPrisma));
-  mockDeleteStorageObjects.mockResolvedValue(undefined);
+  mockProcessStorageCleanupOutbox.mockResolvedValue(undefined);
+  mockEraseMatchingSupabaseAuthIdentity.mockResolvedValue({ matched: true, deleted: true });
 }
 
 describe("SafeDeleteService.deleteUserAccount", () => {
   beforeEach(() => {
     resetAllMocks();
-    mockDeleteStorageObjects.mockReset();
+    mockProcessStorageCleanupOutbox.mockReset();
+    mockEraseMatchingSupabaseAuthIdentity.mockReset();
     setupUser();
   });
 
@@ -48,6 +55,22 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(false);
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    expect(mockEraseMatchingSupabaseAuthIdentity).not.toHaveBeenCalled();
+  });
+
+  it("resolves the same subject in Supabase Auth before destroying the application email", async () => {
+    expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(true);
+    expect(mockEraseMatchingSupabaseAuthIdentity).toHaveBeenCalledWith(EMAIL);
+    expect(mockEraseMatchingSupabaseAuthIdentity.mock.invocationCallOrder[0]).toBeLessThan(
+      mockPrisma.user.update.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("fails closed before the database tombstone when the parallel auth store cannot be erased", async () => {
+    mockEraseMatchingSupabaseAuthIdentity.mockRejectedValue(new Error("auth unavailable"));
+    expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(false);
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
   it("durably queues profile photos and payment proofs before anonymizing references", async () => {
@@ -55,7 +78,7 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(2);
     expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ bucket: "profile-photos", path: "user-1/profile.webp" }) }));
     expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { userId: USER_ID },
+      where: { id: { in: ["order-1"] } },
       data: expect.objectContaining({
         customerEmail: null,
         customerPhone: null,
@@ -65,10 +88,11 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     }));
   });
 
-  it("removes contacts, consent evidence, scans, alerts and claim tokens", async () => {
+  it("removes contacts, consent evidence, scans, passes, alerts and claim tokens", async () => {
     await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID);
     expect(mockPrisma.contact.deleteMany).toHaveBeenCalledWith({ where: { userId: USER_ID } });
     expect(mockPrisma.consent.deleteMany).toHaveBeenCalled();
+    expect(mockPrisma.digitalPass.deleteMany).toHaveBeenCalledWith({ where: { profileId: { in: [PROFILE_ID] } } });
     expect(mockPrisma.scanEvent.deleteMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ OR: expect.any(Array) }),
     }));
@@ -99,11 +123,17 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     }));
   });
 
-  it("unlinks chips and invalidates credentials and sessions", async () => {
+  it("unlinks physical identifiers, clears chip location and invalidates credentials and sessions", async () => {
     await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID);
     expect(mockPrisma.chip.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { ownerUserId: USER_ID },
-      data: { ownerUserId: null, assignedProfileId: null, status: "deactivated" },
+      data: {
+        ownerUserId: null,
+        assignedProfileId: null,
+        lastScanAt: null,
+        lastScanLocation: null,
+        status: "deactivated",
+      },
     }));
     expect(mockPrisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: USER_ID },
@@ -118,6 +148,75 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     }));
   });
 
+  it("pseudonymizes projections and redacts historical JSON linked to the erased subject", async () => {
+    mockPrisma.operationCommercialOrder.findMany.mockResolvedValue([{ id: "op-order-1", dispatchId: "dispatch-1" }] as never);
+    mockPrisma.operationDispatchEvent.findMany
+      .mockResolvedValueOnce([{ dispatchId: "dispatch-1" }] as never)
+      .mockResolvedValueOnce([{ id: "dispatch-event-1", metadataJson: '{"customerName":"Sentinel Customer","orderId":"order-1"}' }] as never);
+    mockPrisma.operationCommercialOrderEvent.findMany.mockResolvedValue([
+      { id: "commercial-event-1", metadataJson: '{"customerEmail":"sentinel@example.com","quantity":1}' },
+    ] as never);
+    mockPrisma.paymentAttempt.findMany.mockResolvedValue([{ id: "payment-attempt-1" }] as never);
+    mockPrisma.paymentEvent.findMany.mockResolvedValue([
+      { id: "payment-event-1", payloadJson: '{"customerName":"Sentinel Payment","status":"cancelled"}' },
+    ] as never);
+    mockPrisma.auditLog.findMany.mockResolvedValue([
+      { id: "audit-1", oldValuesJson: '{"firstName":"SentinelFirst"}', newValuesJson: '{"productName":"Pulsera NFC"}' },
+    ] as never);
+
+    await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID);
+
+    expect(mockPrisma.operationCommercialOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: { in: ["op-order-1"] } },
+      data: expect.objectContaining({ customerEmail: null, customerPhone: null, customerReference: null, notes: null }),
+    }));
+    expect(mockPrisma.operationDispatch.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: { in: ["dispatch-1"] } },
+      data: expect.objectContaining({ destinationName: null, destinationAddress: null, notes: null }),
+    }));
+    expect(mockPrisma.operationDispatchEvent.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "dispatch-event-1" },
+      data: { metadataJson: expect.not.stringContaining("Sentinel Customer") },
+    }));
+    expect(mockPrisma.operationCommercialOrderEvent.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "commercial-event-1" },
+      data: { metadataJson: expect.not.stringContaining("sentinel@example.com") },
+    }));
+    expect(mockPrisma.paymentAttempt.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: { checkoutSessionJson: null },
+    }));
+    expect(mockPrisma.paymentEvent.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "payment-event-1" },
+      data: { payloadJson: expect.not.stringContaining("Sentinel Payment") },
+    }));
+    expect(mockPrisma.commerceOrderSyncOutbox.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { sourceId: { in: ["order-1"] } },
+      data: expect.objectContaining({ payloadVersion: 2, payloadJson: expect.not.stringContaining("sentinel") }),
+    }));
+    expect(mockPrisma.auditLog.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "audit-1" },
+      data: expect.objectContaining({ oldValuesJson: expect.not.stringContaining("SentinelFirst") }),
+    }));
+  });
+
+  it("redacts non-issued invoices and minimizes contact fields on issued legal records", async () => {
+    await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID);
+    expect(mockPrisma.invoice.updateMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      where: expect.objectContaining({ status: { in: ["pending_configuration", "pending_issue", "cancelled"] } }),
+      data: {
+        buyerName: null,
+        buyerEmail: null,
+        buyerDocument: null,
+        buyerPhone: null,
+        buyerAddress: null,
+      },
+    }));
+    expect(mockPrisma.invoice.updateMany).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      where: expect.objectContaining({ status: "issued" }),
+      data: { buyerEmail: null, buyerPhone: null },
+    }));
+  });
+
   it("keeps an audit fact without retaining the deleted email", async () => {
     await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID);
     const data = mockPrisma.auditLog.create.mock.calls[0][0].data;
@@ -126,7 +225,7 @@ describe("SafeDeleteService.deleteUserAccount", () => {
   });
 
   it("keeps deletion committed and cleanup durably queued when storage is unavailable", async () => {
-    mockDeleteStorageObjects.mockRejectedValue(new Error("storage unavailable"));
+    mockProcessStorageCleanupOutbox.mockRejectedValue(new Error("storage unavailable"));
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(true);
     expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(2);
     expect(mockPrisma.user.update).toHaveBeenCalled();
@@ -135,14 +234,14 @@ describe("SafeDeleteService.deleteUserAccount", () => {
   it("returns false when the database transaction fails", async () => {
     mockPrisma.$transaction.mockRejectedValue(new Error("transaction failed"));
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(false);
-    expect(mockDeleteStorageObjects).not.toHaveBeenCalled();
+    expect(mockProcessStorageCleanupOutbox).not.toHaveBeenCalled();
   });
 
   it("queues cleanup in the transaction before removing database references", async () => {
     mockPrisma.storageCleanupOutbox.upsert.mockRejectedValueOnce(new Error("injected queue failure"));
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(false);
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
-    expect(mockDeleteStorageObjects).not.toHaveBeenCalled();
+    expect(mockProcessStorageCleanupOutbox).not.toHaveBeenCalled();
   });
 
   it("does not select other members' profiles when the user is not the account owner", async () => {
