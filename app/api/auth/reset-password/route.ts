@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
 import { hashPasswordResetToken } from "@/lib/password-reset";
+import { validatePasswordPolicy } from "@/lib/password-policy";
 
 export async function POST(req: Request) {
   try {
@@ -18,30 +19,30 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!token || !password) {
+    if (!token || typeof password !== "string" || !password) {
       return NextResponse.json({ error: "Token y contraseña son requeridos" }, { status: 400 });
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json({ error: "La contraseña debe tener al menos 8 caracteres" }, { status: 400 });
     }
 
     const tokenHash = hashPasswordResetToken(String(token));
     const now = new Date();
-
-    const resetRecord = await prisma.passwordResetToken.findUnique({
-      where: { token: tokenHash },
-    });
+    const resetRecord = await prisma.passwordResetToken.findUnique({ where: { token: tokenHash } });
 
     if (!resetRecord) {
       return NextResponse.json({ error: "El enlace es inválido o ya ha sido utilizado." }, { status: 400 });
     }
-
     if (resetRecord.consumedAt || resetRecord.expiresAt < now) {
       return NextResponse.json({ error: "El enlace ha expirado. Por favor solicita uno nuevo." }, { status: 400 });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const passwordPolicy = await validatePasswordPolicy(password, { email: resetRecord.email });
+    if (!passwordPolicy.ok) {
+      return NextResponse.json(
+        { error: passwordPolicy.error, code: passwordPolicy.reason },
+        { status: passwordPolicy.reason === "breach_check_unavailable" ? 503 : 400 }
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
     const emailLower = resetRecord.email;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -54,7 +55,6 @@ export async function POST(req: Request) {
         },
         data: { consumedAt: now },
       });
-
       if (claimed.count !== 1) {
         return { status: 400 as const, body: { error: "El enlace es inválido o ya ha sido utilizado." } };
       }
@@ -66,31 +66,20 @@ export async function POST(req: Request) {
           sessionVersion: { increment: 1 },
         },
       });
-
       if (updatedUser.count !== 1) {
         return { status: 400 as const, body: { error: "El enlace es inválido o ya ha sido utilizado." } };
       }
 
       await tx.passwordResetToken.deleteMany({
-        where: {
-          email: emailLower,
-          id: { not: resetRecord.id },
-        },
+        where: { email: emailLower, id: { not: resetRecord.id } },
       });
-
       return { status: 200 as const, body: { success: true, message: "Contraseña actualizada exitosamente." } };
     });
 
-    if (result.status !== 200) {
-      return NextResponse.json(result.body, { status: result.status });
-    }
-
+    if (result.status !== 200) return NextResponse.json(result.body, { status: result.status });
     return NextResponse.json(result.body);
   } catch (error) {
     console.error("Reset Password Error:", error);
-    return NextResponse.json(
-      { error: "Error al cambiar la contraseña." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error al cambiar la contraseña." }, { status: 500 });
   }
 }
