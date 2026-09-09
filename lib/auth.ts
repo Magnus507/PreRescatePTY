@@ -66,14 +66,21 @@ export async function authorizeCredentials(
 
   let effectiveSessionVersion = user.sessionVersion;
   if (user.mfaEnabled) {
-    if (!credentials.mfaCode || !user.mfaSecret) {
+    const submittedMfaCode = credentials.mfaCode?.trim();
+    const hasSubmittedMfaCode = Boolean(
+      submittedMfaCode && submittedMfaCode !== "undefined" && submittedMfaCode !== "null"
+    );
+
+    if (!hasSubmittedMfaCode || !user.mfaSecret) {
       throw new Error("MFA_REQUIRED");
     }
 
+    const mfaCode = submittedMfaCode!;
+
     try {
-      if (isRecoveryCode(credentials.mfaCode)) {
+      if (isRecoveryCode(mfaCode)) {
         effectiveSessionVersion = await prisma.$transaction(async (tx) => {
-          const consumed = await consumeMfaRecoveryCode(tx, user.id, credentials.mfaCode!);
+          const consumed = await consumeMfaRecoveryCode(tx, user.id, mfaCode);
           if (!consumed) throw new Error("INVALID_MFA");
           const updated = await tx.user.update({
             where: { id: user.id },
@@ -84,11 +91,11 @@ export async function authorizeCredentials(
         });
       } else {
         const secret = decrypt(user.mfaSecret);
-        if (!verifyMfaToken(credentials.mfaCode, secret)) {
+        if (!verifyMfaToken(mfaCode, secret)) {
           throw new Error("INVALID_MFA");
         }
         const consumed = await prisma.$transaction((tx) =>
-          consumeVerifiedMfaTotp(tx, user.id, credentials.mfaCode!)
+          consumeVerifiedMfaTotp(tx, user.id, mfaCode)
         );
         if (!consumed) throw new Error("INVALID_MFA");
       }
