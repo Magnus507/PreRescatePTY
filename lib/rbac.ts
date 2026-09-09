@@ -28,6 +28,14 @@ export function isAdminMfaEnforcementEnabled(): boolean {
   return process.env.ADMIN_MFA_ENFORCEMENT_ENABLED === "true";
 }
 
+export function requiresAdminMfa(
+  isAdmin: boolean,
+  mfaEnabled: boolean,
+  enforcementEnabled = isAdminMfaEnforcementEnabled()
+): boolean {
+  return isAdmin && enforcementEnabled && !mfaEnabled;
+}
+
 export type AuthSuccess = { authorized: true; session: Session };
 export type AuthFailure = { authorized: false; response: Response };
 export type AuthResult = AuthSuccess | AuthFailure;
@@ -112,11 +120,7 @@ export async function requireRole(
     };
   }
 
-  if (
-    fresh.current.isAdmin &&
-    isAdminMfaEnforcementEnabled() &&
-    !fresh.current.mfaEnabled
-  ) {
+  if (requiresAdminMfa(fresh.current.isAdmin, fresh.current.mfaEnabled)) {
     return {
       authorized: false,
       response: NextResponse.json(
