@@ -66,8 +66,8 @@ function RegistroForm() {
       return;
     }
 
-    if (form.password.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres");
+    if (form.password.length < 15) {
+      setError("La contraseña debe tener al menos 15 caracteres");
       return;
     }
 
@@ -101,7 +101,6 @@ function RegistroForm() {
         return;
       }
 
-      // Auto sign in
       const signInRes = await signIn("credentials", {
         redirect: false,
         email: form.email,
@@ -128,7 +127,6 @@ function RegistroForm() {
 
       <div className="mx-auto w-full max-w-7xl rounded-[3rem] border border-white/10 bg-white/5 shadow-2xl shadow-blue-500/20 backdrop-blur-xl overflow-hidden flex flex-col md:flex-row min-h-[85vh]">
 
-        {/* Left Side: Branding & Account Types */}
         <div className="hidden md:flex md:w-[40%] bg-slate-950/95 p-12 text-white flex-col justify-between relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(218,26,33,0.04)_0%,_transparent_70%)] mix-blend-overlay"></div>
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-transparent to-emerald-600/10"></div>
@@ -177,7 +175,6 @@ function RegistroForm() {
           </div>
         </div>
 
-        {/* Right Side: Step-by-Step Form */}
         <div className="flex-1 p-8 md:p-12 lg:p-16 flex flex-col justify-center bg-slate-950/95 scrollbar-hide overflow-y-auto max-h-[90vh]">
           <div className="max-w-md mx-auto w-full">
             <div className="md:hidden flex items-center gap-2 mb-8 justify-center">
@@ -210,8 +207,6 @@ function RegistroForm() {
                   {error}
                 </div>
               )}
-
-
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5 md:col-span-2">
@@ -258,11 +253,13 @@ function RegistroForm() {
                     <input
                       type="password"
                       required
+                      minLength={15}
+                      maxLength={128}
                       value={form.password}
                       onChange={(e) => update("password", e.target.value)}
                       disabled={loading}
                       className="w-full bg-slate-800/60 border border-slate-600 rounded-2xl pl-12 pr-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-white/30 transition-all shadow-sm"
-                      placeholder="••••••••"
+                      placeholder="15 caracteres o más"
                     />
                   </div>
                 </div>
@@ -276,6 +273,8 @@ function RegistroForm() {
                     <input
                       type="password"
                       required
+                      minLength={15}
+                      maxLength={128}
                       value={form.confirm}
                       onChange={(e) => update("confirm", e.target.value)}
                       disabled={loading}
@@ -285,6 +284,8 @@ function RegistroForm() {
                   </div>
                 </div>
               </div>
+
+              <p className="text-[11px] text-slate-400">Usa al menos 15 caracteres. Evita contraseñas comunes o comprometidas.</p>
 
               <div className="py-2">
                 <label className="flex items-start gap-3 cursor-pointer group">
