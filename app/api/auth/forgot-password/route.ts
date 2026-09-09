@@ -3,7 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { Resend } from "resend";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
-import { createPasswordResetToken, hashPasswordResetToken } from "@/lib/password-reset";
+import {
+  buildPasswordResetUrl,
+  createPasswordResetToken,
+  hashPasswordResetToken,
+} from "@/lib/password-reset";
+
+const GENERIC_RESPONSE = {
+  success: true,
+  message: "Si el correo existe, recibirás un enlace de recuperación en unos minutos.",
+};
 
 export async function POST(req: Request) {
   try {
@@ -14,6 +23,7 @@ export async function POST(req: Request) {
     }
 
     const emailLower = String(email).toLowerCase().trim();
+    const maskedEmail = emailLower.replace(/(.{2}).+(@.+)/, "$1***$2");
     const ip = getClientIp(req, "forgot-password");
     const [ipLimit, emailLimit] = await Promise.all([
       rateLimit("forgot-password:ip", ip, { limit: 5, windowMs: 60_000 * 15 }),
@@ -26,19 +36,24 @@ export async function POST(req: Request) {
         { status: 429 }
       );
     }
-    
-    // Unified user lookup
+
+    if (
+      process.env.NODE_ENV === "production" &&
+      (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL)
+    ) {
+      console.error("[ForgotPassword] CRITICAL: Email provider is not fully configured.");
+      return NextResponse.json(GENERIC_RESPONSE, { status: 200 });
+    }
+
     const user = await prisma.user.findUnique({ where: { email: emailLower } });
 
     if (!user) {
-      // Return success anyway to prevent email enumeration
-      return NextResponse.json({ success: true, message: "Si el correo existe, se ha enviado un enlace de recuperación." });
+      return NextResponse.json(GENERIC_RESPONSE, { status: 200 });
     }
 
-    // Generate token and store only its hash
     const token = createPasswordResetToken();
     const tokenHash = hashPasswordResetToken(token);
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
 
     await prisma.$transaction([
       prisma.passwordResetToken.deleteMany({ where: { email: emailLower } }),
@@ -51,12 +66,12 @@ export async function POST(req: Request) {
       }),
     ]);
 
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${token}`;
+    const resetLink = buildPasswordResetUrl(token, { requestUrl: req.url });
 
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
-      await resend.emails.send({
-        from: "PreRescatePTY <soporte@prerescatepty.com>",
+      const { error: sendError } = await resend.emails.send({
+        from: `PreRescatePTY <${process.env.RESEND_FROM_EMAIL || "soporte@prerescatepty.com"}>`,
         to: emailLower,
         subject: "Recuperación de Contraseña - PreRescatePTY",
         html: `
@@ -67,17 +82,20 @@ export async function POST(req: Request) {
           <p>Si no solicitaste este cambio, puedes ignorar este correo.</p>
         `,
       });
-    } else {
-      if (process.env.NODE_ENV === "production") {
-        console.error(`[ForgotPassword] CRITICAL: Email provider not configured. Could not send reset link to ${emailLower.replace(/(.{2}).+(@.+)/, "$1***$2")}`);
-      } else {
-        console.warn("Simulated Password Reset Email:");
-        console.warn(`To: ${emailLower.replace(/(.{2}).+(@.+)/, "$1***$2")}`);
-        console.warn(`Reset Link: ${resetLink}`);
+
+      if (sendError) {
+        await prisma.passwordResetToken.deleteMany({
+          where: { email: emailLower, token: tokenHash },
+        });
+        console.error(`[ForgotPassword] Email delivery rejected for ${maskedEmail}.`);
       }
+    } else {
+      console.warn("Simulated Password Reset Email:");
+      console.warn(`To: ${maskedEmail}`);
+      console.warn(`Reset Link: ${resetLink}`);
     }
 
-    return NextResponse.json({ success: true, message: "Si el correo existe, se ha enviado un enlace de recuperación." });
+    return NextResponse.json(GENERIC_RESPONSE, { status: 200 });
   } catch (error) {
     console.error("Forgot Password Error:", error);
     return NextResponse.json(
