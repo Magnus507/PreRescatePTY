@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   userUpdate: vi.fn(),
+  txUserUpdateMock: vi.fn(),
   transactionMock: vi.fn(),
   rateLimitMock: vi.fn(),
   getClientIpMock: vi.fn(),
@@ -52,6 +53,21 @@ vi.mock("bcryptjs", () => ({
 import bcrypt from "bcryptjs";
 import { authOptions, authorizeCredentials } from "@/lib/auth";
 
+const mfaUser = {
+  id: "user-3",
+  email: "mfa@example.com",
+  passwordHash: "hashed",
+  status: "active",
+  deletedAt: null,
+  role: "owner",
+  isAdmin: false,
+  adminRole: null,
+  accountId: "account-3",
+  sessionVersion: 0,
+  mfaEnabled: true,
+  mfaSecret: "encrypted-secret",
+};
+
 describe("authOptions credentials flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,7 +80,10 @@ describe("authOptions credentials flow", () => {
     mocks.isRecoveryCodeMock.mockReturnValue(false);
     mocks.bcryptCompareMock.mockResolvedValue(true);
     mocks.userUpdate.mockResolvedValue({});
-    mocks.transactionMock.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => callback({}));
+    mocks.txUserUpdateMock.mockResolvedValue({ sessionVersion: 1 });
+    mocks.transactionMock.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => callback({
+      user: { update: mocks.txUserUpdateMock },
+    }));
   });
 
   it("authorizes an active user with sessionVersion 0", async () => {
@@ -122,20 +141,7 @@ describe("authOptions credentials flow", () => {
   });
 
   it("requires MFA when the user has it enabled", async () => {
-    mocks.userFindUnique.mockResolvedValue({
-      id: "user-3",
-      email: "mfa@example.com",
-      passwordHash: "hashed",
-      status: "active",
-      deletedAt: null,
-      role: "owner",
-      isAdmin: false,
-      adminRole: null,
-      accountId: "account-3",
-      sessionVersion: 0,
-      mfaEnabled: true,
-      mfaSecret: "encrypted-secret",
-    });
+    mocks.userFindUnique.mockResolvedValue(mfaUser);
 
     await expect(
       authorizeCredentials({ email: "mfa@example.com", password: "Secret123!" }, {} as never)
@@ -149,6 +155,68 @@ describe("authOptions credentials flow", () => {
     expect(withCode?.id).toBe("user-3");
     expect(mocks.verifyMfaTokenMock).toHaveBeenCalledWith("123456", "mfa-secret");
     expect(mocks.consumeVerifiedMfaTotpMock).toHaveBeenCalledWith(expect.anything(), "user-3", "123456");
+  });
+
+  it("DENY: rejects an incorrect MFA TOTP at login", async () => {
+    mocks.userFindUnique.mockResolvedValue(mfaUser);
+    mocks.verifyMfaTokenMock.mockReturnValue(false);
+
+    await expect(
+      authorizeCredentials(
+        { email: "mfa@example.com", password: "Secret123!", mfaCode: "000000" },
+        {} as never
+      )
+    ).rejects.toThrow("Código MFA inválido o ya utilizado");
+    expect(mocks.consumeVerifiedMfaTotpMock).not.toHaveBeenCalled();
+  });
+
+  it("DENY: rejects reuse when the verified TOTP was already consumed", async () => {
+    mocks.userFindUnique.mockResolvedValue(mfaUser);
+    mocks.consumeVerifiedMfaTotpMock.mockResolvedValue(false);
+
+    await expect(
+      authorizeCredentials(
+        { email: "mfa@example.com", password: "Secret123!", mfaCode: "123456" },
+        {} as never
+      )
+    ).rejects.toThrow("Código MFA inválido o ya utilizado");
+  });
+
+  it("PASS once / DENY reuse: recovery code login is one-time and revokes older sessions", async () => {
+    mocks.userFindUnique.mockResolvedValue(mfaUser);
+    mocks.isRecoveryCodeMock.mockReturnValue(true);
+    mocks.consumeMfaRecoveryCodeMock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    const first = await authorizeCredentials(
+      { email: "mfa@example.com", password: "Secret123!", mfaCode: "RECOVERY-ONE" },
+      {} as never
+    );
+
+    expect(first?.sessionVersion).toBe(1);
+    expect(mocks.txUserUpdateMock).toHaveBeenCalledWith({
+      where: { id: "user-3" },
+      data: { sessionVersion: { increment: 1 } },
+      select: { sessionVersion: true },
+    });
+
+    await expect(
+      authorizeCredentials(
+        { email: "mfa@example.com", password: "Secret123!", mfaCode: "RECOVERY-ONE" },
+        {} as never
+      )
+    ).rejects.toThrow("Código MFA inválido o ya utilizado");
+  });
+
+  it("FAIL CLOSED: denies login when the MFA backend degrades", async () => {
+    mocks.userFindUnique.mockResolvedValue(mfaUser);
+    mocks.consumeVerifiedMfaTotpMock.mockRejectedValue(new Error("backend unavailable"));
+
+    await expect(
+      authorizeCredentials(
+        { email: "mfa@example.com", password: "Secret123!", mfaCode: "123456" },
+        {} as never
+      )
+    ).rejects.toThrow("No se pudo verificar MFA");
   });
 
   it("propagates claims through jwt and session callbacks", async () => {
