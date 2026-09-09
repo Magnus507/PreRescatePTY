@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { parseStorageObjectRef } from "@/lib/storage-deletion";
+import { listUserScopedStorageRefs, parseStorageObjectRef } from "@/lib/storage-deletion";
 import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
 import { COMMERCE_ORDER_SYNC_PAYLOAD_VERSION } from "@/lib/operations/commerce-order-sync-outbox";
 import { eraseMatchingSupabaseAuthIdentity } from "@/lib/privacy/supabase-auth-erasure";
@@ -9,8 +9,9 @@ export class SafeDeleteService {
   /**
    * Performs a comprehensive erase of a user account and its personal data.
    * Application facts required for audit/accounting remain pseudonymized, while
-   * storage cleanup is durably queued. A matching legacy Supabase Auth identity
-   * is removed synchronously and fail-closed before the database tombstone.
+   * storage cleanup is durably queued. Matching Supabase Auth and user-scoped
+   * Storage namespaces are resolved before destroying the lineage needed to
+   * complete erasure.
    */
   static async deleteUserAccount(userId: string, actorId: string): Promise<boolean> {
     try {
@@ -25,10 +26,11 @@ export class SafeDeleteService {
 
       if (!user) throw new Error("User not found");
 
-      // auth.* is a parallel identity store. Resolve by exact email and remove
-      // the same subject before destroying the application email needed for the
-      // mapping. Failure is fail-closed so erasure is never falsely reported.
+      // Parallel external stores are inspected while the original subject
+      // identity is still available. Fail closed if either store cannot be
+      // enumerated so SafeDelete never reports an unverified partial erasure.
       await eraseMatchingSupabaseAuthIdentity(user.email);
+      const discoveredStorageRefs = await listUserScopedStorageRefs(userId);
 
       const ownsAccount = user.account?.ownerUserId === userId;
       const dependentProfiles = ownsAccount
@@ -44,10 +46,18 @@ export class SafeDeleteService {
       const profiles = [...(user.profile ? [user.profile] : []), ...dependentProfiles];
       const profileIds = profiles.map((profile) => profile.id);
       const orderIds = user.orders.map((order) => order.id);
-      const storageRefs = [
+      const referencedStorageRefs = [
         ...profiles.map((profile) => parseStorageObjectRef(profile.photoUrl)),
         ...user.orders.map((order) => parseStorageObjectRef(order.paymentProofUrl)),
       ].filter((ref): ref is NonNullable<typeof ref> => ref !== null);
+      const storageRefs = Array.from(
+        new Map(
+          [...referencedStorageRefs, ...discoveredStorageRefs].map((ref) => [
+            `${ref.bucket}:${ref.path}`,
+            ref,
+          ]),
+        ).values(),
+      );
       const erasureReceiptId = `erasure_${randomBytes(16).toString("hex")}`;
 
       await prisma.$transaction(async (tx) => {
@@ -163,9 +173,6 @@ export class SafeDeleteService {
           },
         });
 
-        // Remove profile/contact links first. Then remove user-owned contacts
-        // and any profile contacts that became truly orphaned, preserving a
-        // contact only if another unaffected profile still references it.
         const profileContactRows =
           profileIds.length > 0
             ? await tx.profileContact.findMany({
@@ -213,10 +220,6 @@ export class SafeDeleteService {
 
         if (profileIds.length > 0) {
           await tx.digitalPass.deleteMany({ where: { profileId: { in: profileIds } } });
-
-          // Corporate membership rows may be part of business history and are
-          // referenced by fulfillment records, so tombstone their human/medical
-          // projection instead of deleting the row blindly.
           await tx.organizationMember.updateMany({
             where: { profileId: { in: profileIds } },
             data: {
@@ -263,8 +266,6 @@ export class SafeDeleteService {
           await tx.chipClaimToken.deleteMany({ where: { chipId: { in: chipIds } } });
         }
 
-        // Remove payment checkout/event snapshots entirely. Structured provider,
-        // amount, status and timestamps remain as the operational record.
         if (paymentAttemptIds.length > 0) {
           await tx.paymentAttempt.updateMany({
             where: { id: { in: paymentAttemptIds } },
@@ -276,7 +277,6 @@ export class SafeDeleteService {
           });
         }
 
-        // Clear all sensitive medical, vulnerability, identity and location fields.
         for (const profile of profiles) {
           await tx.profile.update({
             where: { id: profile.id },
@@ -330,8 +330,6 @@ export class SafeDeleteService {
           });
         }
 
-        // Keep accounting rows, but remove customer identity, shipping, proof
-        // references and the direct user relation.
         if (orderIds.length > 0) {
           await tx.order.updateMany({
             where: { id: { in: orderIds } },
@@ -363,15 +361,12 @@ export class SafeDeleteService {
             },
           });
 
-          // Issued invoices remain an explicit RETAIN_LEGAL allowlist pending
-          // the formal Block 7 retention policy. Contact channels are removed.
           await tx.invoice.updateMany({
             where: { orderId: { in: orderIds }, status: "issued" },
             data: { buyerEmail: null, buyerPhone: null },
           });
         }
 
-        // Pseudonymize operational projections and remove duplicated delivery PII.
         if (commercialOrderIds.length > 0) {
           await tx.operationCommercialOrder.updateMany({
             where: { id: { in: commercialOrderIds } },
@@ -405,8 +400,6 @@ export class SafeDeleteService {
           });
         }
 
-        // Warranty/return/replacement records can exist long after fulfillment.
-        // Preserve state/traceability but strip every free-text/customer projection.
         if (warrantyIds.length > 0) {
           await tx.operationWarranty.updateMany({
             where: { id: { in: warrantyIds } },
@@ -456,8 +449,6 @@ export class SafeDeleteService {
           });
         }
 
-        // The worker rebuilds from Order using sourceId; the outbox payload is
-        // therefore not allowed to retain a second customer snapshot.
         if (orderIds.length > 0) {
           await tx.commerceOrderSyncOutbox.updateMany({
             where: { sourceId: { in: orderIds } },
@@ -471,8 +462,6 @@ export class SafeDeleteService {
           });
         }
 
-        // Subject-linked audit snapshots are unnecessary after erasure. Keep
-        // only structured action/timestamp/result facts and break actor identity.
         const auditEntityIds = Array.from(
           new Set([
             userId,
@@ -501,8 +490,6 @@ export class SafeDeleteService {
           },
         });
 
-        // Disable every physical identifier that either belongs to the user OR
-        // points at an erased profile. This closes the assignedProfile-only gap.
         if (chipIds.length > 0) {
           await tx.chip.updateMany({
             where: { id: { in: chipIds } },
@@ -517,7 +504,6 @@ export class SafeDeleteService {
           });
         }
 
-        // Invalidate credentials and active NextAuth sessions, then anonymize the user.
         await tx.user.update({
           where: { id: userId },
           data: {
