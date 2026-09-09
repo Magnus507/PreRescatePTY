@@ -16,12 +16,14 @@ describe("parseStorageObjectRef", () => {
 
     expect(parseStorageObjectRef("https://project.supabase.co/storage/v1/object/public/profile-photos/user-1/photo.webp"))
       .toEqual({ bucket: "profile-photos", path: "user-1/photo.webp" });
+    expect(parseStorageObjectRef("/api/image-proxy?bucket=general&path=user-1%2Ffile.webp"))
+      .toEqual({ bucket: "general", path: "user-1/file.webp" });
   });
 
-  it("rejects other buckets, origins and path traversal", () => {
+  it("rejects unknown buckets, foreign origins and path traversal", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
 
-    expect(parseStorageObjectRef("/api/image-proxy?bucket=general&path=user/file.webp")).toBeNull();
+    expect(parseStorageObjectRef("/api/image-proxy?bucket=unknown&path=user/file.webp")).toBeNull();
     expect(parseStorageObjectRef("/api/image-proxy?bucket=payment-proofs&path=../secret.webp")).toBeNull();
     expect(parseStorageObjectRef("https://evil.example/api/image-proxy?bucket=payment-proofs&path=payments/user-1/proof.webp")).toBeNull();
     expect(parseStorageObjectRef("https://other.supabase.co/storage/v1/object/public/payment-proofs/payments/user-1/proof.webp")).toBeNull();
