@@ -53,8 +53,9 @@ describe("PostgreSQL integration: password reset", () => {
     mockBcryptHash.mockResolvedValue("$2a$10$HASHED" as never);
     // Keep this PostgreSQL/route integration test deterministic while the
     // password-policy unit suite separately verifies HIBP k-anonymity,
-    // breached-password rejection and fail-safe network handling.
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 200 })));
+    // breached-password rejection and fail-safe network handling. Each
+    // concurrent request needs its own Response body.
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response("", { status: 200 })));
   });
 
   afterAll(async () => {
