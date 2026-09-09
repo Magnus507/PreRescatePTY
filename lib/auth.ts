@@ -13,6 +13,25 @@ import {
   verifyMfaToken,
 } from "@/domains/users/services/mfa.service";
 
+type StoredSessionState = {
+  status: string;
+  deletedAt: Date | null;
+  sessionVersion: number;
+} | null;
+
+export function isStoredSessionValid(
+  currentUser: StoredSessionState,
+  tokenSessionVersion: unknown
+): boolean {
+  return Boolean(
+    currentUser &&
+    currentUser.status === "active" &&
+    currentUser.deletedAt === null &&
+    typeof tokenSessionVersion === "number" &&
+    currentUser.sessionVersion === tokenSessionVersion
+  );
+}
+
 export async function authorizeCredentials(
   credentials: { email?: string; password?: string; mfaCode?: string } | undefined,
   req?: Parameters<typeof getClientIp>[0]
@@ -41,8 +60,6 @@ export async function authorizeCredentials(
     throw new Error("Credenciales inválidas");
   }
 
-  // An enabled flag without an encrypted secret (or a secret while disabled)
-  // is an unsafe state. Never bypass MFA when configuration is inconsistent.
   if (user.mfaEnabled !== Boolean(user.mfaSecret)) {
     throw new Error("Configuración MFA inconsistente");
   }
@@ -79,8 +96,6 @@ export async function authorizeCredentials(
       if (error instanceof Error && error.message === "INVALID_MFA") {
         throw new Error("Código MFA inválido o ya utilizado");
       }
-      // Fail closed if encryption, replay state, recovery state or the backing
-      // database cannot be verified safely.
       throw new Error("No se pudo verificar MFA");
     }
   }
@@ -152,13 +167,7 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        const sessionIsValid =
-          currentUser !== null &&
-          currentUser.status === "active" &&
-          currentUser.deletedAt === null &&
-          currentUser.sessionVersion === token.sessionVersion;
-
-        if (!sessionIsValid) {
+        if (!isStoredSessionValid(currentUser, token.sessionVersion)) {
           token.revoked = true;
           return token;
         }
