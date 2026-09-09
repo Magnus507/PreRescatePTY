@@ -51,6 +51,12 @@ export interface MockPrismaClient {
   operationPrintOrderItem: MockDelegate
   operationDispatch: MockDelegate
   operationDispatchEvent: MockDelegate
+  operationWarranty: MockDelegate
+  operationWarrantyEvent: MockDelegate
+  operationReturn: MockDelegate
+  operationReturnEvent: MockDelegate
+  operationReplacement: MockDelegate
+  operationReplacementEvent: MockDelegate
   storageCleanupOutbox: MockDelegate
   auditLog: MockDelegate
   notification: MockDelegate
@@ -104,6 +110,12 @@ export const mockPrisma: MockPrismaClient = {
   operationPrintOrderItem: createMockDelegate(),
   operationDispatch: createMockDelegate(),
   operationDispatchEvent: createMockDelegate(),
+  operationWarranty: createMockDelegate(),
+  operationWarrantyEvent: createMockDelegate(),
+  operationReturn: createMockDelegate(),
+  operationReturnEvent: createMockDelegate(),
+  operationReplacement: createMockDelegate(),
+  operationReplacementEvent: createMockDelegate(),
   storageCleanupOutbox: createMockDelegate(),
   auditLog: createMockDelegate(),
   notification: createMockDelegate(),
