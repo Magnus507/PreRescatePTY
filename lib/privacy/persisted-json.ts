@@ -5,6 +5,9 @@ import { redactTelemetryString, sanitizeTelemetry } from "@/lib/security/telemet
  * operational shape needed for audit and traceability. Invalid legacy JSON is
  * treated as an opaque string and redacted conservatively.
  */
+export function redactPersistedJson(value: string): string;
+export function redactPersistedJson(value: null | undefined): null;
+export function redactPersistedJson(value: string | null | undefined): string | null;
 export function redactPersistedJson(value: string | null | undefined): string | null {
   if (!value) return null;
 
