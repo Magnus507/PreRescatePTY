@@ -57,7 +57,6 @@ export async function POST(req: NextRequest) {
     const packageId = typeof (body as { packageId?: unknown }).packageId === "string"
       ? (body as { packageId: string }).packageId
       : null;
-    const userAgent = req.headers.get("user-agent");
 
     let selectedPackage = null;
     if (packageId) {
@@ -117,8 +116,11 @@ export async function POST(req: NextRequest) {
           userId: newUser.id,
           consentType: CONSENT_TYPE.TERMS_AND_PRIVACY,
           textVersion: consentTextVersion,
-          ipAddress: ip,
-          userAgent,
+          // Consent evidence is intentionally minimized. The request IP and
+          // user-agent are used transiently for abuse prevention only and are
+          // not persisted as long-lived identity fingerprints.
+          ipAddress: null,
+          userAgent: null,
           evidenceJson: JSON.stringify({
             acceptedTerms,
             consentTextVersion,
@@ -135,7 +137,11 @@ export async function POST(req: NextRequest) {
           entityType: "user",
           entityId: newUser.id,
           action: "create",
-          newValuesJson: JSON.stringify({ email: emailLower }),
+          // Keep the audit event, not a second copy of the user's identity.
+          newValuesJson: JSON.stringify({
+            accountType: resolvedAccountType,
+            packageSelected: Boolean(selectedPackage?.id),
+          }),
         },
       });
       return newUser;
