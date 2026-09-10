@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 
+const E2E_ADMIN_EMAIL = "block4-e2e-admin@example.test";
+const E2E_ADMIN_PASSWORD = "Block4-E2E-Only-Password-2026!";
+
 test.describe("Block 4 browser foundation", () => {
   test("public emergency profile renders in a real browser", async ({ page }, testInfo) => {
     await page.goto("/e/DEMO-ADMIN-VIP");
@@ -19,16 +22,9 @@ test.describe("Block 4 browser foundation", () => {
   });
 
   test("seeded superadmin signs in through the UI and reaches admin dashboard", async ({ page }, testInfo) => {
-    const email = process.env.E2E_ADMIN_EMAIL;
-    const password = process.env.E2E_ADMIN_PASSWORD;
-
-    if (!email || !password) {
-      throw new Error("E2E_ADMIN_EMAIL/E2E_ADMIN_PASSWORD are required");
-    }
-
     await page.goto("/login");
-    await page.getByLabel(/Correo electrónico/i).fill(email);
-    await page.getByLabel(/Contraseña/i).fill(password);
+    await page.getByLabel(/Correo electrónico/i).fill(E2E_ADMIN_EMAIL);
+    await page.getByLabel(/Contraseña/i).fill(E2E_ADMIN_PASSWORD);
 
     await Promise.all([
       page.waitForURL(/\/admin(?:$|\?)/, { timeout: 30_000 }),
