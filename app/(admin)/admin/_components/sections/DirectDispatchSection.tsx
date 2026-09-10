@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Loader2, PackageCheck, RefreshCw, Truck } from "lucide-react";
+import { Ban, CheckCircle2, Loader2, PackageCheck, RefreshCw, Truck } from "lucide-react";
 import { toast } from "sonner";
 import type { DispatchViewModel } from "@/lib/operations/dispatch-view-model";
 
@@ -80,6 +80,18 @@ export function DirectDispatchSection() {
     } finally {
       setSavingKey(null);
     }
+  };
+
+  const cancelDispatch = async (dispatch: DispatchViewModel) => {
+    const confirmed = window.confirm(
+      `¿Cancelar el despacho ${dispatch.code}? Las unidades reservadas volverán al inventario disponible.`
+    );
+    if (!confirmed) return;
+
+    await postAction(
+      `${dispatch.id}:cancel`,
+      `/api/admin/operations/dispatches/${dispatch.id}/cancel`
+    );
   };
 
   if (loading) {
@@ -169,6 +181,18 @@ export function DirectDispatchSection() {
                     {dispatch.canConfirmDelivery && (
                       <button type="button" disabled={busy} onClick={() => postAction(`${dispatch.id}:delivered`, `/api/admin/operations/dispatches/${dispatch.id}/confirm-delivery`)} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50">
                         Entregado
+                      </button>
+                    )}
+                    {dispatch.canCancel && (
+                      <button
+                        type="button"
+                        data-testid={`dispatch-cancel-${dispatch.id}`}
+                        disabled={busy}
+                        onClick={() => void cancelDispatch(dispatch)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-red-700 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
+                      >
+                        <Ban className="h-3.5 w-3.5" />
+                        Cancelar
                       </button>
                     )}
                   </div>
