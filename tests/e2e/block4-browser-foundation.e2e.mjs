@@ -29,6 +29,7 @@ test.describe("Block 4 browser foundation", () => {
 
   test("seeded superadmin signs in through the UI and reaches admin dashboard", async ({ page }, testInfo) => {
     await page.goto("/login");
+    await expect(page.locator("form")).toHaveAttribute("data-hydrated", "true");
     await page.getByLabel(/Correo electrónico/i).fill(E2E_ADMIN_EMAIL);
     await page.getByLabel(/Contraseña/i).fill(E2E_ADMIN_PASSWORD);
     await page.getByRole("button", { name: /Iniciar sesión seguro/i }).click();
