@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { ACCOUNT_TYPES, ORGANIZATION_TYPES, BUSINESS_RULES } from "@/domains/shared/constants";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
+import { SafeDeleteService } from "@/domains/users/services/safe-delete.service";
 import { bumpUserSessionVersion, requireRole, GENERAL_ADMIN_ROLES } from "@/lib/rbac";
 import { validatePasswordPolicy } from "@/lib/password-policy";
 
@@ -401,69 +402,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
 
       case "delete-user": {
-        const user = await prisma.user.findUnique({
+        const target = await prisma.user.findUnique({
           where: { id: userId },
-          include: { account: true, profile: true }
+          select: { id: true },
         });
+        if (!target) {
+          return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+        }
 
-        if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
-
-        await prisma.$transaction(async (tx) => {
-          if (user.accountId) {
-            await tx.chip.updateMany({
-              where: { OR: [{ ownerUserId: userId }, { accountId: user.accountId }] },
-              data: {
-                ownerUserId: null,
-                accountId: null,
-                assignedProfileId: null,
-                status: "inventory",
-                chipAlias: null
-              }
-            });
-          }
-
-          await tx.appNotification.deleteMany({ where: { userId } });
-          await tx.consent.deleteMany({ where: { userId } });
-          await tx.passwordResetToken.deleteMany({ where: { email: user.email } });
-
-          const orConditions: Array<{ userId: string } | { accountId: string }> = [{ userId }];
-          if (user.accountId) orConditions.push({ accountId: user.accountId });
-          const profiles = await tx.profile.findMany({ where: { OR: orConditions } });
-          const profileIds = profiles.map(p => p.id);
-
-          if (profileIds.length > 0) {
-            await tx.scanEvent.deleteMany({ where: { profileId: { in: profileIds } } });
-            await tx.profileContact.deleteMany({ where: { profileId: { in: profileIds } } });
-            await tx.organizationMember.deleteMany({ where: { profileId: { in: profileIds } } });
-            await tx.profile.deleteMany({ where: { id: { in: profileIds } } });
-          }
-
-          await tx.contact.deleteMany({ where: { userId } });
-          await tx.order.deleteMany({ where: { userId } });
-          await tx.user.delete({ where: { id: userId } });
-
-          if (user.accountId) {
-            const remainingUsers = await tx.user.count({ where: { accountId: user.accountId } });
-            if (remainingUsers === 0) {
-              await tx.organization.deleteMany({ where: { accountId: user.accountId } });
-              await tx.account.delete({ where: { id: user.accountId } });
-            }
-          }
-
-          await tx.auditLog.create({
-            data: {
-              actorUserId: adminId || "system",
-              entityType: "user",
-              entityId: userId,
-              action: "definitive_deletion",
-              newValuesJson: JSON.stringify({ email: user.email, deletedAt: new Date() })
-            }
-          });
-        });
+        // Administrative deletion must use the exact same erasure engine as
+        // self-service deletion. Bypassing SafeDelete used to leave parallel
+        // Auth/Storage/operational copies behind and even wrote the email into
+        // a new AuditLog snapshot.
+        const success = await SafeDeleteService.deleteUserAccount(userId, adminId);
+        if (!success) {
+          return NextResponse.json({ error: "Error al ejecutar el borrado seguro" }, { status: 500 });
+        }
 
         await AccountStateService.invalidateCache(userId);
 
-        return NextResponse.json({ message: "Usuario y todos sus datos vinculados eliminados definitivamente. El hardware ha regresado a inventario." });
+        return NextResponse.json({
+          message: "Usuario eliminado mediante borrado seguro; credenciales, PII vinculada e identificadores fueron revocados o seudonimizados según política."
+        });
       }
 
       default:

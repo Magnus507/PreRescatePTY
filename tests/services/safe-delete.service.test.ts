@@ -19,6 +19,7 @@ vi.mock("@/lib/storage-deletion", () => ({
       ? { bucket: "payment-proofs", path: "payments/user-1/proof.webp" }
       : { bucket: "profile-photos", path: "user-1/profile.webp" };
   }),
+  isDeleteOnErasureStorageRef: vi.fn((ref: { bucket: string }) => ref.bucket !== "payment-proofs"),
   listUserScopedStorageRefs: mockListUserScopedStorageRefs,
   deleteStorageObjects: mockProcessStorageCleanupOutbox,
 }));
@@ -97,12 +98,12 @@ describe("SafeDeleteService.deleteUserAccount", () => {
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
-  it("durably queues referenced and discovered user storage without copying subject IDs into cleanup metadata", async () => {
+  it("durably queues erasable user storage while retaining private payment evidence", async () => {
     mockListUserScopedStorageRefs.mockResolvedValue([
       { bucket: "general", path: "user-1/orphan.webp" },
     ]);
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(true);
-    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(3);
+    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(2);
     expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
@@ -122,6 +123,9 @@ describe("SafeDeleteService.deleteUserAccount", () => {
           accountId: null,
         }),
       }),
+    );
+    expect(mockPrisma.storageCleanupOutbox.upsert).not.toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ bucket: "payment-proofs" }) }),
     );
     expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -430,7 +434,7 @@ describe("SafeDeleteService.deleteUserAccount", () => {
   it("keeps deletion committed and cleanup durably queued when storage is temporarily unavailable after commit", async () => {
     mockProcessStorageCleanupOutbox.mockRejectedValue(new Error("storage unavailable"));
     expect(await SafeDeleteService.deleteUserAccount(USER_ID, USER_ID)).toBe(true);
-    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.storageCleanupOutbox.upsert).toHaveBeenCalledTimes(1);
     expect(mockPrisma.user.update).toHaveBeenCalled();
   });
 

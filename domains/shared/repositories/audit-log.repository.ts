@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { redactPersistedJson } from "@/lib/privacy/persisted-json";
 
 export interface CreateAuditLogData {
   actorUserId: string;
@@ -12,7 +13,9 @@ export interface CreateAuditLogData {
 
 export class AuditLogRepository {
   /**
-   * Record a new audit log entry.
+   * Record an audit fact without turning AuditLog into a secondary PII store.
+   * Payloads are always passed through the persisted-JSON redactor before
+   * writing, even when a caller accidentally supplies identity/medical data.
    */
   static async record(data: CreateAuditLogData) {
     return prisma.auditLog.create({
@@ -22,8 +25,8 @@ export class AuditLogRepository {
         entityType: data.entityType,
         entityId: data.entityId,
         action: data.action,
-        oldValuesJson: data.oldValuesJson || null,
-        newValuesJson: data.newValuesJson || null,
+        oldValuesJson: redactPersistedJson(data.oldValuesJson),
+        newValuesJson: redactPersistedJson(data.newValuesJson),
       },
     });
   }

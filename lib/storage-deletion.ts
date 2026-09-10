@@ -1,8 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
-const DELETABLE_BUCKETS = new Set(["general", "profile-photos", "payment-proofs"]);
+const STORAGE_BUCKETS = new Set(["general", "profile-photos", "payment-proofs"]);
+const DELETE_ON_ERASURE_BUCKETS = new Set(["general", "profile-photos"]);
 
 export type StorageObjectRef = { bucket: string; path: string };
+
+export function isDeleteOnErasureStorageRef(ref: StorageObjectRef) {
+  return DELETE_ON_ERASURE_BUCKETS.has(ref.bucket);
+}
 
 export function parseStorageObjectRef(value: string | null | undefined): StorageObjectRef | null {
   if (!value) return null;
@@ -12,7 +17,7 @@ export function parseStorageObjectRef(value: string | null | undefined): Storage
     if (value.startsWith("/api/image-proxy?") && url.pathname === "/api/image-proxy") {
       const bucket = url.searchParams.get("bucket");
       const path = url.searchParams.get("path");
-      if (bucket && path && DELETABLE_BUCKETS.has(bucket) && !path.includes("..")) {
+      if (bucket && path && STORAGE_BUCKETS.has(bucket) && !path.includes("..")) {
         return { bucket, path };
       }
       return null;
@@ -27,7 +32,7 @@ export function parseStorageObjectRef(value: string | null | undefined): Storage
 
     const [bucket, ...pathParts] = url.pathname.slice(markerIndex + marker.length).split("/");
     const path = decodeURIComponent(pathParts.join("/"));
-    if (!bucket || !path || !DELETABLE_BUCKETS.has(bucket) || path.includes("..")) return null;
+    if (!bucket || !path || !STORAGE_BUCKETS.has(bucket) || path.includes("..")) return null;
     return { bucket, path };
   } catch {
     return null;
@@ -68,11 +73,10 @@ async function listPrefix(
 }
 
 /**
- * Discovers historical user-scoped uploads whose database reference may have
- * been lost. Paths are created by the upload endpoint using the authenticated
- * user id as the first segment. Payment proof legacy paths used
- * `payments/<userId>/...`. Listing is fail-closed so SafeDelete cannot claim
- * completion while an erasable user namespace was not inspected.
+ * Discovers user-scoped assets classified DELETE_ON_ERASURE whose database
+ * reference may already have been lost. Payment proofs are deliberately not
+ * listed here: they are private RETAIN_LEGAL evidence and are removed only by
+ * their retention/hold lifecycle, not by account erasure.
  */
 export async function listUserScopedStorageRefs(userId: string): Promise<StorageObjectRef[]> {
   const normalizedUserId = userId.trim();
@@ -84,7 +88,6 @@ export async function listUserScopedStorageRefs(userId: string): Promise<Storage
   const discovered = await Promise.all([
     listPrefix(supabase, "general", normalizedUserId),
     listPrefix(supabase, "profile-photos", normalizedUserId),
-    listPrefix(supabase, "payment-proofs", `payments/${normalizedUserId}`),
   ]);
   const unique = new Map<string, StorageObjectRef>();
   for (const ref of discovered.flat()) unique.set(`${ref.bucket}:${ref.path}`, ref);
@@ -94,7 +97,7 @@ export async function listUserScopedStorageRefs(userId: string): Promise<Storage
 export async function deleteStorageObjects(refs: StorageObjectRef[]) {
   const grouped = new Map<string, Set<string>>();
   for (const ref of refs) {
-    if (!DELETABLE_BUCKETS.has(ref.bucket) || !ref.path || ref.path.includes("..")) continue;
+    if (!STORAGE_BUCKETS.has(ref.bucket) || !ref.path || ref.path.includes("..")) continue;
     const paths = grouped.get(ref.bucket) ?? new Set<string>();
     paths.add(ref.path);
     grouped.set(ref.bucket, paths);

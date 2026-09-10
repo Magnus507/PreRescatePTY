@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { listUserScopedStorageRefs, parseStorageObjectRef } from "@/lib/storage-deletion";
+import {
+  isDeleteOnErasureStorageRef,
+  listUserScopedStorageRefs,
+  parseStorageObjectRef,
+} from "@/lib/storage-deletion";
 import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
 import { COMMERCE_ORDER_SYNC_PAYLOAD_VERSION } from "@/lib/operations/commerce-order-sync-outbox";
 import { eraseMatchingSupabaseAuthIdentity } from "@/lib/privacy/supabase-auth-erasure";
@@ -49,7 +53,10 @@ export class SafeDeleteService {
       const referencedStorageRefs = [
         ...profiles.map((profile) => parseStorageObjectRef(profile.photoUrl)),
         ...user.orders.map((order) => parseStorageObjectRef(order.paymentProofUrl)),
-      ].filter((ref): ref is NonNullable<typeof ref> => ref !== null);
+      ].filter(
+        (ref): ref is NonNullable<typeof ref> =>
+          ref !== null && isDeleteOnErasureStorageRef(ref),
+      );
       const storageRefs = Array.from(
         new Map(
           [...referencedStorageRefs, ...discoveredStorageRefs].map((ref) => [
@@ -142,7 +149,8 @@ export class SafeDeleteService {
 
         // Enqueue before removing references, in the same transaction. The
         // object key/path is sufficient for cleanup; do not copy subject IDs
-        // into the durable queue.
+        // into the durable queue. RETAIN_LEGAL payment proofs are intentionally
+        // excluded and remain private until their retention/hold lifecycle ends.
         for (const ref of storageRefs) {
           await tx.storageCleanupOutbox.upsert({
             where: { objectKey: `${ref.bucket}:${ref.path}` },
