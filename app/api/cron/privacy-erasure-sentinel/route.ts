@@ -64,7 +64,15 @@ export async function POST(req: NextRequest) {
   });
   const authUserId = authCreated.data.user?.id;
   if (authCreated.error || !authUserId) {
-    return NextResponse.json({ error: "No se pudo crear Auth sentinel" }, { status: 500 });
+    const diagnostic = {
+      name: authCreated.error?.name ?? null,
+      status: authCreated.error?.status ?? null,
+    };
+    console.error("B3_SENTINEL_AUTH_CREATE_ERROR", diagnostic);
+    return NextResponse.json({
+      error: "No se pudo crear Auth sentinel",
+      authError: diagnostic,
+    }, { status: 500 });
   }
 
   const uploads = await Promise.all([
