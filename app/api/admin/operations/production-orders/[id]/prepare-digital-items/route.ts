@@ -41,6 +41,25 @@ export async function POST(
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Serialize preparation against customer/order cancellation. A cancelled
+      // production order must be terminal at the API layer, not only hidden by
+      // the admin UI, otherwise a direct/replayed request can recreate work.
+      const productionLock = await tx.operationProductionOrder.updateMany({
+        where: {
+          id: productionOrderId,
+          status: { notIn: ["completed", "cancelled"] },
+        },
+        data: { updatedAt: new Date() },
+      });
+      if (productionLock.count !== 1) {
+        const current = await tx.operationProductionOrder.findUnique({
+          where: { id: productionOrderId },
+          select: { status: true },
+        });
+        if (!current) return null;
+        throw new Error("TERMINAL_PRODUCTION_ORDER");
+      }
+
       const productionOrder = await tx.operationProductionOrder.findUnique({
         where: { id: productionOrderId },
         include: {
@@ -228,6 +247,12 @@ export async function POST(
 
     return NextResponse.json({ preparation: result }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "TERMINAL_PRODUCTION_ORDER") {
+      return NextResponse.json(
+        { error: "La producción completada o cancelada no admite nuevas preparaciones." },
+        { status: 409 }
+      );
+    }
     console.error("[operations/production-orders/:id/prepare-digital-items] POST error:", error);
     return NextResponse.json({ error: "Error al preparar recursos digitales" }, { status: 500 });
   }
