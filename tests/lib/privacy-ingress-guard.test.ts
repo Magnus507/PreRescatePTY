@@ -11,7 +11,7 @@ describe("Block 3 privacy ingress guards", () => {
 
     expect(register).toMatch(/ipAddress:\s*null/);
     expect(register).toMatch(/userAgent:\s*null/);
-    expect(register).not.toMatch(/newValuesJson:\s*JSON\.stringify\(\{\s*email\s*:/s);
+    expect(register).not.toMatch(/newValuesJson:\s*JSON\.stringify\(\{\s*email\s*:/);
   });
 
   it("forces repository audit snapshots through persisted JSON redaction", () => {
@@ -26,7 +26,7 @@ describe("Block 3 privacy ingress guards", () => {
 
     expect(adminActions).toContain("SafeDeleteService.deleteUserAccount(userId, adminId)");
     expect(adminActions).not.toContain('action: "definitive_deletion"');
-    expect(adminActions).not.toMatch(/newValuesJson:\s*JSON\.stringify\(\{\s*email\s*:/s);
+    expect(adminActions).not.toMatch(/newValuesJson:\s*JSON\.stringify\(\{\s*email\s*:/);
   });
 
   it("cleans a family profile photo before destroying the DB reference", () => {
