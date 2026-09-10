@@ -24,10 +24,10 @@ describe("commerce-order-sync-outbox", () => {
     mockPrisma.$transaction.mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma));
   });
 
-  it("enqueues a durable outbox event with a unique deduplication key", async () => {
+  it("enqueues a durable outbox event with a privacy-minimal v2 payload", async () => {
     mockPrisma.commerceOrderSyncOutbox.create.mockResolvedValue({
       id: "outbox-1",
-      deduplicationKey: "commerce.order.sync_requested:checkout:order-1:v1",
+      deduplicationKey: "commerce.order.sync_requested:checkout:order-1:v2",
     } as never);
 
     const row = (await enqueueCommerceOrderSyncOutbox(mockPrisma as never, {
@@ -35,49 +35,57 @@ describe("commerce-order-sync-outbox", () => {
       sourceId: "order-1",
       sourceCode: "ORD-001",
       orderType: "customer",
-      customerName: "Cliente",
-      contactEmail: "cliente@example.com",
+      customerName: "Cliente Sentinel",
+      contactEmail: "sentinel@example.com",
       paymentStatus: "pending",
       currency: "USD",
       items: [
         {
           productId: "product-1",
           productCode: "PRD-1",
-          productName: "Producto 1",
+          productName: "Producto Sentinel",
           quantity: 1,
           unitPrice: 25,
           unit: "unit",
           finishedGoodId: "fg-1",
           operationalMappingId: "map-1",
           operationalProductCode: "PRD-1",
-          operationalProductName: "Producto 1",
+          operationalProductName: "Producto Sentinel",
           operationalFinishedGoodId: "fg-1",
         },
       ],
     })) as { id: string };
 
-    expect(mockPrisma.commerceOrderSyncOutbox.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          eventType: "commerce.order.sync_requested",
-          sourceType: "checkout",
-          sourceId: "order-1",
-          deduplicationKey: "commerce.order.sync_requested:checkout:order-1:v1",
-          payloadVersion: 1,
-          status: "pending",
-        }),
-      })
-    );
+    expect(mockPrisma.commerceOrderSyncOutbox.create).toHaveBeenCalledTimes(1);
+    const createArg = mockPrisma.commerceOrderSyncOutbox.create.mock.calls[0]?.[0] as {
+      data: { deduplicationKey: string; payloadVersion: number; payloadJson: string; sourceType: string; sourceId: string; eventType: string; status: string };
+    };
+    expect(createArg.data).toEqual(expect.objectContaining({
+      eventType: "commerce.order.sync_requested",
+      sourceType: "checkout",
+      sourceId: "order-1",
+      deduplicationKey: "commerce.order.sync_requested:checkout:order-1:v2",
+      payloadVersion: 2,
+      status: "pending",
+    }));
+    expect(JSON.parse(createArg.data.payloadJson)).toEqual({
+      version: 2,
+      sourceType: "checkout",
+      sourceId: "order-1",
+    });
+    expect(createArg.data.payloadJson).not.toContain("Cliente Sentinel");
+    expect(createArg.data.payloadJson).not.toContain("sentinel@example.com");
+    expect(createArg.data.payloadJson).not.toContain("Producto Sentinel");
     expect(row.id).toBe("outbox-1");
   });
 
-  it("allows legacy package items to be resynced as customer requests", async () => {
+  it("allows legacy package items to be resynced without copying customer or product snapshots", async () => {
     mockPrisma.order.findUnique.mockResolvedValue({
       id: "order-package",
       orderNumber: "PR-2026-000101",
       orderType: "manual",
-      customerName: "Cliente",
-      customerEmail: "cliente@example.com",
+      customerName: "Cliente Sentinel",
+      customerEmail: "sentinel@example.com",
       customerPhone: "61234567",
       customerDocument: null,
       providerReference: null,
@@ -89,7 +97,7 @@ describe("commerce-order-sync-outbox", () => {
       organizationId: null,
       items: [{
         productId: null,
-        productType: "Plan Basico",
+        productType: "Plan Basico Sentinel",
         productName: null,
         productCode: null,
         quantity: 1,
@@ -109,16 +117,28 @@ describe("commerce-order-sync-outbox", () => {
       deduplicationSuffix: "payment-event-1",
     });
 
-    expect(mockPrisma.commerceOrderSyncOutbox.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        sourceType: "customer_request",
-        deduplicationKey: "commerce.order.sync_requested:customer_request:order-package:v1:payment-event-1",
-        payloadJson: expect.stringContaining('"productName":"Plan Basico"'),
-      }),
+    expect(mockPrisma.commerceOrderSyncOutbox.create).toHaveBeenCalledTimes(1);
+    const createArg = mockPrisma.commerceOrderSyncOutbox.create.mock.calls[0]?.[0] as {
+      data: { deduplicationKey: string; payloadVersion: number; payloadJson: string; sourceType: string; sourceId: string };
+    };
+    expect(createArg.data).toEqual(expect.objectContaining({
+      sourceType: "customer_request",
+      sourceId: "order-package",
+      deduplicationKey: "commerce.order.sync_requested:customer_request:order-package:v2:payment-event-1",
+      payloadVersion: 2,
     }));
+    expect(JSON.parse(createArg.data.payloadJson)).toEqual({
+      version: 2,
+      sourceType: "customer_request",
+      sourceId: "order-package",
+    });
+    expect(createArg.data.payloadJson).not.toContain("Cliente Sentinel");
+    expect(createArg.data.payloadJson).not.toContain("sentinel@example.com");
+    expect(createArg.data.payloadJson).not.toContain("61234567");
+    expect(createArg.data.payloadJson).not.toContain("Plan Basico Sentinel");
   });
 
-  it("processes a claimed event and marks it processed", async () => {
+  it("processes a claimed legacy v1 event and marks it processed", async () => {
     mockPrisma.commerceOrderSyncOutbox.findMany.mockResolvedValue([
       {
         id: "outbox-1",

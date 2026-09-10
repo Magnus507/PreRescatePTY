@@ -35,7 +35,7 @@ describe("storage cleanup outbox", () => {
     mocks.updateMany.mockResolvedValue({ count: 0 });
   });
 
-  it("records a durable cleanup item when immediate compensation fails", async () => {
+  it("records only the object reference needed for retry when immediate compensation fails", async () => {
     mocks.deleteObjects.mockRejectedValueOnce(new Error("storage unavailable"));
 
     await expect(
@@ -50,12 +50,13 @@ describe("storage cleanup outbox", () => {
       create: expect.objectContaining({
         bucket: "profile-photos",
         path: "user/photo.webp",
-        actorUserId: "user-1",
+        actorUserId: null,
+        accountId: null,
       }),
     }));
   });
 
-  it("lets only the worker holding the lease finalize cleanup", async () => {
+  it("lets only the worker holding the lease finalize cleanup and scrubs the original path", async () => {
     const now = new Date("2026-09-04T03:30:00.000Z");
     mocks.findMany.mockResolvedValue([{ 
       id: "cleanup-1",
@@ -79,7 +80,17 @@ describe("storage cleanup outbox", () => {
 
     expect(mocks.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({
       where: { id: "cleanup-1", status: "processing", lockedBy: "worker-a" },
-      data: expect.objectContaining({ status: "cleaned", lockedBy: null }),
+      data: expect.objectContaining({
+        status: "cleaned",
+        lockedBy: null,
+        actorUserId: null,
+        accountId: null,
+        bucket: "erased",
+        objectKey: expect.stringMatching(/^erased:/),
+        path: expect.stringMatching(/^erased\//),
+      }),
     }));
+    const finalized = mocks.updateMany.mock.calls.at(-1)?.[0]?.data;
+    expect(JSON.stringify(finalized)).not.toContain("user/photo.webp");
   });
 });

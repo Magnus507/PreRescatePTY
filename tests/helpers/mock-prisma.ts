@@ -39,6 +39,7 @@ export interface MockPrismaClient {
   invoiceLine: MockDelegate
   operationCommercialOrder: MockDelegate
   operationCommercialOrderItem: MockDelegate
+  operationCommercialOrderEvent: MockDelegate
   operationFinishedGood: MockDelegate
   operationFinishedGoodUnit: MockDelegate
   operationFinishedGoodUnitEvent: MockDelegate
@@ -49,6 +50,13 @@ export interface MockPrismaClient {
   operationPrintOrder: MockDelegate
   operationPrintOrderItem: MockDelegate
   operationDispatch: MockDelegate
+  operationDispatchEvent: MockDelegate
+  operationWarranty: MockDelegate
+  operationWarrantyEvent: MockDelegate
+  operationReturn: MockDelegate
+  operationReturnEvent: MockDelegate
+  operationReplacement: MockDelegate
+  operationReplacementEvent: MockDelegate
   storageCleanupOutbox: MockDelegate
   auditLog: MockDelegate
   notification: MockDelegate
@@ -90,6 +98,7 @@ export const mockPrisma: MockPrismaClient = {
   invoiceLine: createMockDelegate(),
   operationCommercialOrder: createMockDelegate(),
   operationCommercialOrderItem: createMockDelegate(),
+  operationCommercialOrderEvent: createMockDelegate(),
   operationFinishedGood: createMockDelegate(),
   operationFinishedGoodUnit: createMockDelegate(),
   operationFinishedGoodUnitEvent: createMockDelegate(),
@@ -100,6 +109,13 @@ export const mockPrisma: MockPrismaClient = {
   operationPrintOrder: createMockDelegate(),
   operationPrintOrderItem: createMockDelegate(),
   operationDispatch: createMockDelegate(),
+  operationDispatchEvent: createMockDelegate(),
+  operationWarranty: createMockDelegate(),
+  operationWarrantyEvent: createMockDelegate(),
+  operationReturn: createMockDelegate(),
+  operationReturnEvent: createMockDelegate(),
+  operationReplacement: createMockDelegate(),
+  operationReplacementEvent: createMockDelegate(),
   storageCleanupOutbox: createMockDelegate(),
   auditLog: createMockDelegate(),
   notification: createMockDelegate(),

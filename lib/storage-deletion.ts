@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const DELETABLE_BUCKETS = new Set(["profile-photos", "payment-proofs"]);
+const DELETABLE_BUCKETS = new Set(["general", "profile-photos", "payment-proofs"]);
 
 export type StorageObjectRef = { bucket: string; path: string };
 
@@ -34,11 +34,64 @@ export function parseStorageObjectRef(value: string | null | undefined): Storage
   }
 }
 
-export async function deleteStorageObjects(refs: StorageObjectRef[]) {
+function createStorageAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceRoleKey) throw new Error("storage_configuration_missing");
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
+async function listPrefix(
+  supabase: ReturnType<typeof createStorageAdminClient>,
+  bucket: string,
+  prefix: string,
+): Promise<StorageObjectRef[]> {
+  const refs: StorageObjectRef[] = [];
+  const limit = 100;
+  for (let offset = 0; offset < 10_000; offset += limit) {
+    const { data, error } = await supabase.storage.from(bucket).list(prefix, {
+      limit,
+      offset,
+      sortBy: { column: "name", order: "asc" },
+    });
+    if (error) throw new Error(`storage_list_failed:${bucket}`);
+    const rows = data ?? [];
+    for (const row of rows) {
+      if (!row.name || row.name === ".emptyFolderPlaceholder") continue;
+      refs.push({ bucket, path: `${prefix}/${row.name}` });
+    }
+    if (rows.length < limit) break;
+  }
+  return refs;
+}
+
+/**
+ * Discovers historical user-scoped uploads whose database reference may have
+ * been lost. Paths are created by the upload endpoint using the authenticated
+ * user id as the first segment. Payment proof legacy paths used
+ * `payments/<userId>/...`. Listing is fail-closed so SafeDelete cannot claim
+ * completion while an erasable user namespace was not inspected.
+ */
+export async function listUserScopedStorageRefs(userId: string): Promise<StorageObjectRef[]> {
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId || normalizedUserId.includes("/") || normalizedUserId.includes("..")) {
+    throw new Error("invalid_storage_subject_id");
+  }
+
+  const supabase = createStorageAdminClient();
+  const discovered = await Promise.all([
+    listPrefix(supabase, "general", normalizedUserId),
+    listPrefix(supabase, "profile-photos", normalizedUserId),
+    listPrefix(supabase, "payment-proofs", `payments/${normalizedUserId}`),
+  ]);
+  const unique = new Map<string, StorageObjectRef>();
+  for (const ref of discovered.flat()) unique.set(`${ref.bucket}:${ref.path}`, ref);
+  return [...unique.values()];
+}
+
+export async function deleteStorageObjects(refs: StorageObjectRef[]) {
   const grouped = new Map<string, Set<string>>();
   for (const ref of refs) {
     if (!DELETABLE_BUCKETS.has(ref.bucket) || !ref.path || ref.path.includes("..")) continue;
@@ -48,9 +101,7 @@ export async function deleteStorageObjects(refs: StorageObjectRef[]) {
   }
 
   if (grouped.size === 0) return;
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const supabase = createStorageAdminClient();
 
   for (const [bucket, paths] of grouped) {
     const { error } = await supabase.storage.from(bucket).remove([...paths]);

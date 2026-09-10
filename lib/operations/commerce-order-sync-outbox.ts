@@ -11,11 +11,12 @@ type StoredOrderOutboxDbClient = Pick<PrismaClient, "order" | "commerceOrderSync
 type DbClient = PrismaClient;
 
 export const COMMERCE_ORDER_SYNC_EVENT_TYPE = "commerce.order.sync_requested";
-export const COMMERCE_ORDER_SYNC_PAYLOAD_VERSION = 1;
+export const COMMERCE_ORDER_SYNC_PAYLOAD_VERSION = 2;
 
-export type CommerceOrderSyncOutboxPayloadV1 = {
+export type CommerceOrderSyncOutboxPayloadV2 = {
   version: typeof COMMERCE_ORDER_SYNC_PAYLOAD_VERSION;
-  syncInput: SyncRealOrderToOperationsInput;
+  sourceType: SyncRealOrderToOperationsInput["sourceType"];
+  sourceId: string;
 };
 
 export type CommerceOrderSyncOutboxRow = {
@@ -83,13 +84,21 @@ export type CommerceOrderSyncBatchSummary = {
 export const COMMERCE_ORDER_SYNC_LEASE_MS = 15 * 60_000;
 export const COMMERCE_ORDER_SYNC_MAX_ATTEMPTS = 8;
 
-export function buildCommerceOrderSyncPayload(
-  syncInput: SyncRealOrderToOperationsInput
-): CommerceOrderSyncOutboxPayloadV1 {
+function buildMinimalPayload(
+  sourceType: SyncRealOrderToOperationsInput["sourceType"] | string,
+  sourceId: string
+): CommerceOrderSyncOutboxPayloadV2 {
   return {
     version: COMMERCE_ORDER_SYNC_PAYLOAD_VERSION,
-    syncInput,
+    sourceType: sourceType as SyncRealOrderToOperationsInput["sourceType"],
+    sourceId,
   };
+}
+
+export function buildCommerceOrderSyncPayload(
+  syncInput: SyncRealOrderToOperationsInput
+): CommerceOrderSyncOutboxPayloadV2 {
+  return buildMinimalPayload(syncInput.sourceType, syncInput.sourceId);
 }
 
 function buildDeduplicationKey(syncInput: SyncRealOrderToOperationsInput, suffix?: string) {
@@ -289,6 +298,8 @@ export async function claimCommerceOrderSyncOutboxBatch(
         lockedAt: now,
         lockedBy: options.workerId,
         attempts: { increment: 1 },
+        payloadVersion: COMMERCE_ORDER_SYNC_PAYLOAD_VERSION,
+        payloadJson: JSON.stringify(buildMinimalPayload(candidate.sourceType, candidate.sourceId)),
       },
     });
 
@@ -335,6 +346,8 @@ export async function recoverStaleCommerceOrderSyncLeases(
         lastErrorMessage: exhausted
           ? "Worker lease expired after maximum attempts; manual reconciliation required"
           : "Worker lease expired and was returned to the retry queue",
+        payloadVersion: COMMERCE_ORDER_SYNC_PAYLOAD_VERSION,
+        payloadJson: JSON.stringify(buildMinimalPayload(row.sourceType, row.sourceId)),
       },
     });
     if (result.count !== 1) continue;
@@ -420,6 +433,8 @@ export async function processCommerceOrderSyncOutboxBatch(
             lockedBy: null,
             lastErrorCode: null,
             lastErrorMessage: null,
+            payloadVersion: COMMERCE_ORDER_SYNC_PAYLOAD_VERSION,
+            payloadJson: JSON.stringify(buildMinimalPayload(event.sourceType, event.sourceId)),
           },
         });
         if (finalized.count !== 1) {
@@ -463,6 +478,8 @@ export async function processCommerceOrderSyncOutboxBatch(
               ? "RETRYABLE_SYNC_ERROR"
               : "PERMANENT_SYNC_ERROR",
           lastErrorMessage: message,
+          payloadVersion: COMMERCE_ORDER_SYNC_PAYLOAD_VERSION,
+          payloadJson: JSON.stringify(buildMinimalPayload(event.sourceType, event.sourceId)),
         },
       });
 

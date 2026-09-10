@@ -33,7 +33,7 @@ describe("PostgreSQL integration: commerce order sync outbox", () => {
     await db.$disconnect();
   });
 
-  it("claims the same outbox row in only one worker", async () => {
+  it("claims the same outbox row in only one worker without persisting customer PII", async () => {
     const product = await db.product.create({
       data: {
         name: `Producto 1 ${RUN_ID}`,
@@ -78,13 +78,16 @@ describe("PostgreSQL integration: commerce order sync outbox", () => {
       },
     });
 
+    const sentinelEmail = `buyer-${RUN_ID}@test.local`;
+    const sentinelPhone = "+507 6000-0000";
     const outbox = await enqueueCommerceOrderSyncOutbox(db, {
       sourceType: "checkout",
       sourceId: `order-sync-${RUN_ID}`,
       sourceCode: `ORD-SYNC-${RUN_ID}`,
       orderType: "customer",
-      customerName: "Buyer",
-      contactEmail: `buyer-${RUN_ID}@test.local`,
+      customerName: "Sentinel Buyer",
+      contactEmail: sentinelEmail,
+      contactPhone: sentinelPhone,
       paymentStatus: "pending",
       currency: "USD",
       items: [{
@@ -101,6 +104,15 @@ describe("PostgreSQL integration: commerce order sync outbox", () => {
       }],
     });
 
+    const queued = await db.commerceOrderSyncOutbox.findUnique({
+      where: { id: outbox.id },
+      select: { payloadJson: true, payloadVersion: true },
+    });
+    expect(queued?.payloadVersion).toBe(2);
+    expect(queued?.payloadJson).not.toContain("Sentinel Buyer");
+    expect(queued?.payloadJson).not.toContain(sentinelEmail);
+    expect(queued?.payloadJson).not.toContain(sentinelPhone);
+
     const [first, second] = await Promise.all([
       processCommerceOrderSyncOutboxBatch(db, { limit: 1, workerId: "worker-a" }),
       processCommerceOrderSyncOutboxBatch(db, { limit: 1, workerId: "worker-b" }),
@@ -108,7 +120,7 @@ describe("PostgreSQL integration: commerce order sync outbox", () => {
 
     const refreshed = await db.commerceOrderSyncOutbox.findUnique({
       where: { id: outbox.id },
-      select: { status: true, attempts: true, lockedBy: true, processedAt: true },
+      select: { status: true, attempts: true, lockedBy: true, processedAt: true, payloadJson: true, payloadVersion: true },
     });
 
     expect(first.claimed + second.claimed).toBe(1);
@@ -118,5 +130,9 @@ describe("PostgreSQL integration: commerce order sync outbox", () => {
     expect(refreshed?.attempts).toBe(1);
     expect(refreshed?.processedAt).not.toBeNull();
     expect(refreshed?.lockedBy).toBeNull();
+    expect(refreshed?.payloadVersion).toBe(2);
+    expect(refreshed?.payloadJson).not.toContain("Sentinel Buyer");
+    expect(refreshed?.payloadJson).not.toContain(sentinelEmail);
+    expect(refreshed?.payloadJson).not.toContain(sentinelPhone);
   });
 });
