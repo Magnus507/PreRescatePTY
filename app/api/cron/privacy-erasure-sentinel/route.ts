@@ -73,7 +73,12 @@ export async function POST(req: NextRequest) {
     supabase.storage.from("payment-proofs").upload(proofPath, PNG_1X1, { contentType: "image/png", upsert: false }),
   ]);
   if (uploads.some((result) => result.error)) {
-    await supabase.auth.admin.deleteUser(authUserId).catch(() => undefined);
+    await Promise.allSettled([
+      supabase.storage.from("general").remove([generalPath]),
+      supabase.storage.from("profile-photos").remove([photoPath]),
+      supabase.storage.from("payment-proofs").remove([proofPath]),
+      supabase.auth.admin.deleteUser(authUserId),
+    ]);
     return NextResponse.json({ error: "No se pudo crear Storage sentinel" }, { status: 500 });
   }
 
