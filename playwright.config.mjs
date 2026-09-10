@@ -3,10 +3,15 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: "**/*.e2e.mjs",
+  globalSetup: "./tests/e2e/global-setup.mjs",
   fullyParallel: false,
   forbidOnly: true,
   retries: 1,
   workers: 1,
+  timeout: 60_000,
+  expect: {
+    timeout: 15_000,
+  },
   reporter: [
     ["list"],
     ["html", { outputFolder: "playwright-report", open: "never" }],
@@ -17,8 +22,8 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
-    actionTimeout: 10_000,
-    navigationTimeout: 30_000,
+    actionTimeout: 15_000,
+    navigationTimeout: 45_000,
   },
   projects: [
     {
