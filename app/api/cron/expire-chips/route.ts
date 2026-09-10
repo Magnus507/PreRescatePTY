@@ -10,6 +10,12 @@ const BLOCK3_SENTINEL_USER_ID = "b3sentinel_20260910z1";
 const BLOCK3_SENTINEL_EMAIL = `${BLOCK3_SENTINEL_USER_ID}@prerescatepty.com`;
 
 async function triggerBlock3SentinelIfPresent(req: NextRequest, secret: string) {
+  // Existing lifetime-policy route tests intentionally use a minimal Prisma mock.
+  // In that environment this temporary validation hook must remain inert.
+  if (!prisma.user?.findUnique) {
+    return { attempted: false, status: null };
+  }
+
   const sentinel = await prisma.user.findUnique({
     where: { id: BLOCK3_SENTINEL_USER_ID },
     select: { email: true },
