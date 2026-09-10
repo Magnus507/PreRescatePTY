@@ -232,6 +232,9 @@ export async function GET() {
                 : null,
             },
           }),
+          // Pedidos consumes raw item fallbacks when normalized commercial fields are absent.
+          // Keep this contract explicit so itemless/legacy orders cannot crash the admin UI.
+          items: order.items,
           reservedUnits,
           dispatch,
           productionOrder,
