@@ -189,7 +189,7 @@ describe("Block 3 privacy erasure sentinel", () => {
         ownerUserId: ids.user,
         assignedProfileId: ids.profile,
         accountId: ids.account,
-        status: "active",
+        status: "activated",
         lastScanLocation: marker.location,
       },
     });
