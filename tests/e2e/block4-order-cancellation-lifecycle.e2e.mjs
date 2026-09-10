@@ -96,7 +96,6 @@ async function cancelFromPedidos(page, orderNumber, reason) {
 
   await card.getByRole("button", { name: /Cancelar \/ ocultar/i }).first().click();
 
-  const modal = page.getByText("Cancelar / ocultar pedido").locator("..").locator("..");
   await expect(page.getByText("Cancelar / ocultar pedido").last()).toBeVisible();
   await page.getByPlaceholder(/Explica por qué se cancela u oculta/i).fill(reason);
   await page.getByPlaceholder(/Escribe ELIMINAR para confirmar/i).fill("ELIMINAR");
