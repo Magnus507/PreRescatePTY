@@ -7,7 +7,7 @@ import { SafeDeleteService } from "@/domains/users/services/safe-delete.service"
 export const dynamic = "force-dynamic";
 
 const SENTINEL_ID = /^b3sentinel_[a-z0-9_-]+$/i;
-const SENTINEL_EMAIL = /@sentinel\.invalid$/i;
+const SENTINEL_EMAIL_DOMAIN = "prerescatepty.com";
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z2QAAAABJRU5ErkJggg==",
   "base64",
@@ -16,6 +16,10 @@ const PNG_1X1 = Buffer.from(
 function authorized(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   return Boolean(secret && req.headers.get("authorization") === `Bearer ${secret}`);
+}
+
+function expectedSentinelEmail(userId: string) {
+  return `${userId}@${SENTINEL_EMAIL_DOMAIN}`.toLowerCase();
 }
 
 export async function POST(req: NextRequest) {
@@ -39,7 +43,12 @@ export async function POST(req: NextRequest) {
       orders: { orderBy: { createdAt: "asc" }, take: 1, select: { id: true } },
     },
   });
-  if (!user || !SENTINEL_EMAIL.test(user.email) || !user.profile || !user.orders[0]) {
+  if (
+    !user ||
+    user.email.trim().toLowerCase() !== expectedSentinelEmail(userId) ||
+    !user.profile ||
+    !user.orders[0]
+  ) {
     return NextResponse.json({ error: "Sentinel incompleto" }, { status: 400 });
   }
 
