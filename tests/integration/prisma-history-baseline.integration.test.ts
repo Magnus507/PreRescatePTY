@@ -4,6 +4,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { createIntegrationPrismaClient, assertIntegrationDatabaseReady } from "./integration-db";
 
 const db = createIntegrationPrismaClient();
+const VERIFIED_BASELINE_LAST_MIGRATION = "20260904170000_harden_storage_cleanup_outbox";
+
 describe("Verified migration history reconciliation", () => {
   afterAll(async () => db.$disconnect());
   it("reconstructs exact checksums without replaying DDL; refuses an existing history", async () => {
@@ -16,7 +18,15 @@ describe("Verified migration history reconciliation", () => {
         await tx.$executeRawUnsafe('ALTER TABLE public._prisma_migrations SET SCHEMA storage');
         await tx.$executeRawUnsafe(sql);
         const actual = await tx.$queryRaw<Array<{ migration_name: string; checksum: string }>>`SELECT migration_name, checksum FROM public._prisma_migrations ORDER BY migration_name`;
-        const expected = readdirSync("prisma/migrations", { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => ({ migration_name: entry.name, checksum: createHash("sha256").update(readFileSync(`prisma/migrations/${entry.name}/migration.sql`)).digest("hex") })).sort((a, b) => a.migration_name.localeCompare(b.migration_name));
+        const expected = readdirSync("prisma/migrations", { withFileTypes: true })
+          .filter(entry => entry.isDirectory() && entry.name <= VERIFIED_BASELINE_LAST_MIGRATION)
+          .map(entry => ({
+            migration_name: entry.name,
+            checksum: createHash("sha256")
+              .update(readFileSync(`prisma/migrations/${entry.name}/migration.sql`))
+              .digest("hex"),
+          }))
+          .sort((a, b) => a.migration_name.localeCompare(b.migration_name));
         expect(actual).toEqual(expected);
         expect(actual).toHaveLength(38);
         throw rollback;
