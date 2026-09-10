@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { ProfileRepository } from "@/domains/profiles/repositories/profile.repository";
 import { profileUpdateSchema } from "@/lib/validations";
+import { cleanupUploadedObjectOrRecordOrphan } from "@/lib/storage-cleanup-outbox";
 
 export const dynamic = "force-dynamic";
 
@@ -56,9 +57,7 @@ export async function PATCH(
   const userId = (session.user as { id: string }).id;
   const { profileId } = await params;
 
-
   // Unrestricted editing of medical profiles ensures data integrity even if the protection service is inactive.
-
   const existing = await getAuthorizedProfile(userId, profileId);
   if (!existing) {
     return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
@@ -98,7 +97,6 @@ export async function PATCH(
     showPrimaryDoctorPublic,
     showPrimaryDoctorPhonePublic,
     showAdditionalNotesPublic,
-    // v2 special assistance
     hasCognitiveImpairment,
     hasWanderingRisk,
     isNonVerbal,
@@ -218,6 +216,13 @@ export async function DELETE(
       { error: "Desasigna los chips antes de eliminar este perfil" },
       { status: 400 }
     );
+  }
+
+  // Resolve the external object before destroying the DB reference. If the
+  // immediate delete fails, the cleanup helper durably records a retry without
+  // preserving user/account lineage in the queue.
+  if (existing.photoUrl) {
+    await cleanupUploadedObjectOrRecordOrphan(existing.photoUrl, { actorUserId: userId });
   }
 
   await prisma.profile.delete({ where: { id: profileId } });
