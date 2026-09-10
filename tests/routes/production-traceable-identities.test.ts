@@ -40,6 +40,9 @@ describe("production traceable identities", () => {
       session: { user: { id: "admin-1", role: "admin" } },
     });
     mockEnsureTraceableIdentity.mockReset();
+    // prepare-digital-items now compare-and-sets the parent production order
+    // before creating digital work so cancelled/completed orders stay terminal.
+    mockPrisma.operationProductionOrder.updateMany.mockResolvedValue({ count: 1 } as never);
     mockPrisma.$transaction.mockImplementation(async (callback: (tx: typeof mockPrisma) => Promise<unknown>) =>
       callback(mockPrisma)
     );
