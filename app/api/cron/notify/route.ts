@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
+import { RESCUE_NOTIFICATION_DELIVERY_POLICY } from "@/lib/notifications/delivery-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +32,8 @@ export async function POST(req: Request) {
     failed: 0,
     deadLettered: 0,
     skipped: 0,
-    deliveryMode: "manual_whatsapp" as const,
-    disabled: true,
+    deliveryMode: RESCUE_NOTIFICATION_DELIVERY_POLICY.mode,
+    disabled: !RESCUE_NOTIFICATION_DELIVERY_POLICY.automatedDeliveryEnabled,
   };
 
   await recordCronSuccess(CRON_MONITOR_KEYS.notify, result);
