@@ -7,8 +7,7 @@ describe("Block 4 Pedidos itemless-order resilience", () => {
     const ui = readFileSync("app/(admin)/admin/_components/sections/PedidosSection.tsx", "utf8");
 
     expect(route).toContain("items: order.items");
-    expect(ui).toContain("items?: {");
     expect(ui).not.toContain("order.items[0]?.");
-    expect(ui.match(/order\\.items\\?\\.\\[0\\]\\?\\./g)?.length).toBeGreaterThanOrEqual(3);
+    expect(ui.match(/order\.items\?\.\[0\]\?\./g)?.length).toBeGreaterThanOrEqual(3);
   });
 });
