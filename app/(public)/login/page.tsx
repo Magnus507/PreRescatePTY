@@ -52,6 +52,11 @@ function LoginContent() {
   const [requiresMfa, setRequiresMfa] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     const errorMsg = searchParams.get("error");
@@ -176,7 +181,7 @@ function LoginContent() {
               <p className="mt-3 text-slate-400 leading-relaxed">Usa tu email y contraseña para entrar.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" data-hydrated={hydrated ? "true" : "false"}>
               {error && (
                 <div className="p-4 rounded-2xl bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-900/10 text-red-600 dark:text-red-400 text-sm font-semibold border border-red-200 dark:border-red-900/40 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
                   <ShieldAlert className="h-5 w-5 shrink-0" />
@@ -199,7 +204,7 @@ function LoginContent() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading || isSuccess}
+                  disabled={!hydrated || loading || isSuccess}
                   className="w-full rounded-[1.75rem] border-2 border-white/10 bg-slate-900/90 px-5 py-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 input-premium"
                   placeholder="nombre@ejemplo.com"
                 />
