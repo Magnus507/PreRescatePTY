@@ -131,6 +131,11 @@ export async function POST(
         const productionMarker = `${BACKORDER_MARKER_PREFIX}:${commercialOrder.id}:${product.productCode}`;
         const existingProductionOrder = await tx.operationProductionOrder.findFirst({
           where: {
+            // A cancelled work order no longer covers outstanding customer
+            // demand. Treating it as reusable here strands a paid backorder:
+            // retries return the cancelled order instead of creating replacement
+            // production, so fulfillment can never reach QA/reservation.
+            status: { not: "cancelled" },
             OR: [
               { notes: { contains: productionMarker } },
               ...(products.length === 1 ? [{ notes: { contains: legacyMarker } }] : []),
