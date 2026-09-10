@@ -128,7 +128,7 @@ interface Order {
   corporateDeliveryStatus?: string | null;
   estimatedDeliveryDate?: string | null;
   deliveryNote?: string | null;
-  items: {
+  items?: {
     id: string;
     productType: string;
     quantity: number;
@@ -1455,7 +1455,7 @@ export function PedidosSection() {
           const expanded = expandedOrderIds.has(order.id);
           const hasReceipt = Boolean(order.paymentProofUrl || order.paymentProofAvailable);
           const isTerminalOrder = isCancelledOrder(order) || isCompletedOrder(order);
-          const commercialQty = order.commercialQuantity || order.items[0]?.quantity || 1;
+          const commercialQty = order.commercialQuantity || order.items?.[0]?.quantity || 1;
           const operationalQty = order.operationalQuantity || commercialQty;
           const stop = (event: React.MouseEvent) => { event.preventDefault(); event.stopPropagation(); };
 
@@ -1480,7 +1480,7 @@ export function PedidosSection() {
                   <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-2 xl:grid-cols-4">
                     <div className="px-2 py-1"><p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Cliente</p><p className="mt-1 text-sm font-black text-slate-900">{order.customerName || "—"}</p><p className="text-xs text-slate-500 break-all">{order.customerEmail || "Sin email"}</p></div>
                     <div className="px-2 py-1"><p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Monto</p><p className="mt-1 text-lg font-black text-primary">{formatMoney(getPositiveMoneyValue(order.total, order.commercialTotal, order.amount))}</p><p className="text-xs text-slate-500">{order.currency || "USD"}</p></div>
-                    <div className="px-2 py-1"><p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Producto</p><p className="mt-1 text-sm font-black text-slate-900">{order.commercialItemName || order.items[0]?.productType || "Combo no especificado"} x{commercialQty}</p><p className="text-xs text-slate-500">{operationalQty} unidades físicas</p></div>
+                    <div className="px-2 py-1"><p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Producto</p><p className="mt-1 text-sm font-black text-slate-900">{order.commercialItemName || order.items?.[0]?.productType || "Combo no especificado"} x{commercialQty}</p><p className="text-xs text-slate-500">{operationalQty} unidades físicas</p></div>
                     <div className="px-2 py-1"><p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Actualizado</p><p className="mt-1 text-sm font-black text-slate-900">{formatDateTimeSafe(order.createdAt)}</p><p className="text-xs text-slate-500">{order.dispatch ? `Despacho ${order.dispatch.code}` : "Sin despacho"}</p></div>
                   </div>
 
@@ -1504,7 +1504,7 @@ export function PedidosSection() {
 
                       <div className="rounded-3xl border border-slate-200 bg-white p-4 space-y-3">
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Item comercial y operativo</p>
-                        <p className="text-sm font-black text-slate-900">{order.commercialItemName || order.items[0]?.productType || "Combo no especificado"} x{commercialQty}</p><p className="text-xs font-semibold text-slate-500">Comercial total: {formatMoney(getPositiveMoneyValue(order.commercialTotal, order.total, order.amount))}</p><p className="text-sm font-black text-slate-900">{order.operationalProductName || "Sticker PreRescatePTY"} x{operationalQty}</p><p className="text-xs font-semibold text-slate-700">{order.operationalProductCode || "PRP-FG-STICKER"}</p>
+                        <p className="text-sm font-black text-slate-900">{order.commercialItemName || order.items?.[0]?.productType || "Combo no especificado"} x{commercialQty}</p><p className="text-xs font-semibold text-slate-500">Comercial total: {formatMoney(getPositiveMoneyValue(order.commercialTotal, order.total, order.amount))}</p><p className="text-sm font-black text-slate-900">{order.operationalProductName || "Sticker PreRescatePTY"} x{operationalQty}</p><p className="text-xs font-semibold text-slate-700">{order.operationalProductCode || "PRP-FG-STICKER"}</p>
                         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3"><p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Unidades reservadas</p>{order.reservedUnits && order.reservedUnits.length > 0 ? <div className="mt-2 space-y-2">{order.reservedUnits.map((unit: NonNullable<Order["reservedUnits"]>[number]) => <div key={unit.id} className="rounded-xl border border-slate-200 bg-white p-3"><p className="font-mono text-sm font-black text-slate-900">{unit.internalLabel || "Sin etiqueta"}</p><p className="text-[10px] font-semibold text-slate-600">{getReservedUnitSummary(unit)}</p></div>)}</div> : <p className="mt-2 text-sm font-semibold text-slate-500">Sin unidades reservadas</p>}</div>
                         {order.productionOrder && <div className="rounded-2xl border border-violet-200 bg-violet-50 p-3"><p className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-500">Producción vinculada</p><p className="mt-1 text-sm font-black text-violet-900">{order.productionOrder.code} · {order.productionOrder.status}</p></div>}
                         {order.dispatch && <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-3"><p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-600">Despacho</p><p className="mt-1 text-sm font-black text-cyan-900">{order.dispatch.code} · {order.dispatch.status}</p></div>}
