@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CRON_MONITOR_KEYS, parseCronRun } from "@/lib/cron-monitoring";
+import { RESCUE_NOTIFICATION_DELIVERY_POLICY } from "@/lib/notifications/delivery-policy";
+import { buildWorkerReadinessChecks } from "@/lib/operations/worker-readiness";
 
 export const dynamic = "force-dynamic";
-
-const FIFTEEN_MINUTES = 15 * 60 * 1000;
-const TWENTY_SIX_HOURS = 26 * 60 * 60 * 1000;
 
 function authorized(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -51,21 +50,22 @@ export async function GET(req: Request) {
       ]);
 
     const values = new Map(configs.map((config) => [config.key, config.value]));
-    const now = Date.now();
     const lastNotify = parseCronRun(values.get(CRON_MONITOR_KEYS.notify));
     const lastCommerce = parseCronRun(values.get(CRON_MONITOR_KEYS.commerceOrderSync));
     const lastExpiry = parseCronRun(values.get(CRON_MONITOR_KEYS.expireChips));
-    const checks = {
-      notificationWorker: Boolean(lastNotify && now - lastNotify.getTime() <= FIFTEEN_MINUTES),
-      commerceWorker: Boolean(lastCommerce && now - lastCommerce.getTime() <= FIFTEEN_MINUTES),
-      expiryWorker: Boolean(lastExpiry && now - lastExpiry.getTime() <= TWENTY_SIX_HOURS),
-      notificationQueueSla: !oldestNotification || now - oldestNotification.createdAt.getTime() <= FIFTEEN_MINUTES,
-      commerceQueueSla: !oldestCommerceEvent || now - oldestCommerceEvent.createdAt.getTime() <= FIFTEEN_MINUTES,
-      storageCleanupSla: !oldestStorageCleanup || now - oldestStorageCleanup.createdAt.getTime() <= TWENTY_SIX_HOURS,
-      notificationDeadLetters: notificationDeadLetters === 0,
-      commerceDeadLetters: commerceDeadLetters === 0,
-      storageDeadLetters: storageDeadLetters === 0,
-    };
+    const checks = buildWorkerReadinessChecks({
+      now: Date.now(),
+      lastNotify,
+      lastCommerce,
+      lastExpiry,
+      oldestNotification: oldestNotification?.createdAt ?? null,
+      oldestCommerceEvent: oldestCommerceEvent?.createdAt ?? null,
+      oldestStorageCleanup: oldestStorageCleanup?.createdAt ?? null,
+      notificationDeadLetters,
+      commerceDeadLetters,
+      storageDeadLetters,
+      automatedNotificationDeliveryEnabled: RESCUE_NOTIFICATION_DELIVERY_POLICY.automatedDeliveryEnabled,
+    });
     const healthy = Object.values(checks).every(Boolean);
 
     return NextResponse.json(
@@ -73,6 +73,7 @@ export async function GET(req: Request) {
         status: healthy ? "ready" : "degraded",
         checks,
         queue: { notificationDeadLetters, commerceDeadLetters, storageDeadLetters },
+        notificationDelivery: RESCUE_NOTIFICATION_DELIVERY_POLICY,
       },
       { status: healthy ? 200 : 503 }
     );
