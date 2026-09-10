@@ -62,7 +62,8 @@ export async function POST(req: NextRequest) {
     password: randomBytes(24).toString("hex"),
     email_confirm: true,
   });
-  if (authCreated.error) {
+  const authUserId = authCreated.data.user?.id;
+  if (authCreated.error || !authUserId) {
     return NextResponse.json({ error: "No se pudo crear Auth sentinel" }, { status: 500 });
   }
 
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
     supabase.storage.from("payment-proofs").upload(proofPath, PNG_1X1, { contentType: "image/png", upsert: false }),
   ]);
   if (uploads.some((result) => result.error)) {
-    await supabase.auth.admin.deleteUser(authCreated.data.user.id).catch(() => undefined);
+    await supabase.auth.admin.deleteUser(authUserId).catch(() => undefined);
     return NextResponse.json({ error: "No se pudo crear Storage sentinel" }, { status: 500 });
   }
 
