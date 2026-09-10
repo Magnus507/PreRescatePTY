@@ -128,7 +128,7 @@ interface Order {
   corporateDeliveryStatus?: string | null;
   estimatedDeliveryDate?: string | null;
   deliveryNote?: string | null;
-  items?: {
+  items: {
     id: string;
     productType: string;
     quantity: number;
