@@ -291,7 +291,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (!policy.ok) {
           return NextResponse.json(
             { error: policy.error, code: policy.reason },
-            { status: passwordPolicy.reason === "breach_check_unavailable" ? 503 : 400 }
+            { status: policy.reason === "breach_check_unavailable" ? 503 : 400 }
           );
         }
         const passwordHash = await bcrypt.hash(password, 12);
