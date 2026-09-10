@@ -1,0 +1,110 @@
+name: Browser E2E
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: browser-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  browser-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: prerescate_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d prerescate_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/prerescate_e2e
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/prerescate_e2e
+      DATABASE_URL_TEST: postgresql://ci:ci@localhost:5432/prerescate_e2e
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXTAUTH_SECRET: block4-e2e-nextauth-secret-placeholder-32-chars
+      ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://ci-test.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ci-only-service-role-key
+      E2E_ADMIN_EMAIL: block4-e2e-admin@example.test
+      E2E_ADMIN_PASSWORD: Block4-E2E-Only-Password-2026!
+      SEED_ADMIN_EMAIL: block4-e2e-admin@example.test
+      SEED_ADMIN_PASSWORD: Block4-E2E-Only-Password-2026!
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install pinned Playwright runner
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Provision Supabase-managed migration prerequisites
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE SCHEMA IF NOT EXISTS storage;
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE TABLE storage.buckets (
+            id text PRIMARY KEY,
+            public boolean NOT NULL DEFAULT false,
+            file_size_limit bigint,
+            allowed_mime_types text[]
+          );
+          INSERT INTO storage.buckets (id) VALUES ('payment-proofs');
+          SQL
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed isolated browser-test data
+        run: npm run db:seed
+
+      - name: Run real-browser E2E
+        run: npx playwright test
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: block4-browser-e2e-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 30
