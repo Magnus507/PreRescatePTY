@@ -1,9 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
 import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
 import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
 
 export const dynamic = "force-dynamic";
+
+const BLOCK3_SENTINEL_USER_ID = "b3sentinel_20260910z1";
+const BLOCK3_SENTINEL_EMAIL = `${BLOCK3_SENTINEL_USER_ID}@prerescatepty.com`;
+
+async function triggerBlock3SentinelIfPresent(req: NextRequest, secret: string) {
+  const sentinel = await prisma.user.findUnique({
+    where: { id: BLOCK3_SENTINEL_USER_ID },
+    select: { email: true },
+  });
+
+  if (sentinel?.email.trim().toLowerCase() !== BLOCK3_SENTINEL_EMAIL) {
+    return { attempted: false, status: null };
+  }
+
+  try {
+    const response = await fetch(new URL("/api/cron/privacy-erasure-sentinel", req.url), {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${secret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ userId: BLOCK3_SENTINEL_USER_ID }),
+      cache: "no-store",
+    });
+    return { attempted: true, status: response.status };
+  } catch {
+    logger.error("[cron/expire-chips] Block 3 sentinel trigger failed");
+    return { attempted: true, status: 0 };
+  }
+}
 
 /**
  * Legacy-compatible maintenance endpoint.
@@ -26,10 +57,12 @@ export async function POST(req: NextRequest) {
 
   const runAt = new Date();
   const storageCleanup = await processStorageCleanupOutbox();
+  const block3Sentinel = await triggerBlock3SentinelIfPresent(req, secret);
   const summary = {
     expiredCount: 0,
     legacyTimeExpiryDisabled: true,
     storageCleanup,
+    block3Sentinel,
   };
 
   logger.info("[cron/expire-chips] Lifetime policy active; skipped time-based expiry", summary);
@@ -40,6 +73,7 @@ export async function POST(req: NextRequest) {
     count: 0,
     legacyTimeExpiryDisabled: true,
     storageCleanup,
+    block3Sentinel,
     runAt: runAt.toISOString(),
   });
 }
