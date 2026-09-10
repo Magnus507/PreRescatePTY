@@ -33,6 +33,7 @@ describe("Verified migration history reconciliation", () => {
       });
     } catch (error) { if (error !== rollback) throw error; }
     await expect(db.$executeRawUnsafe(sql)).rejects.toThrow(/already exists/);
-    expect(await db.$queryRaw<Array<{ count: bigint }>>`SELECT count(*) FROM public._prisma_migrations`).toEqual([{ count: BigInt(38) }]);
+    // The rollback restores the current CI migration history, including Block 3.
+    expect(await db.$queryRaw<Array<{ count: bigint }>>`SELECT count(*) FROM public._prisma_migrations`).toEqual([{ count: BigInt(39) }]);
   });
 });
