@@ -17,6 +17,7 @@ echo "Secrets are never printed. The output contains sensitive data and must be 
 npx --yes supabase db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/roles.sql" --role-only
 npx --yes supabase db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/schema.sql"
 npx --yes supabase db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/data.sql" --use-copy --data-only \
+  -x "public._prisma_migrations" \
   -x "storage.buckets_vectors" \
   -x "storage.vector_indexes"
 
@@ -38,6 +39,7 @@ cat > "$OUT_DIR/manifest.json" <<JSON
   "gitSha": "${GITHUB_SHA:-unknown}",
   "format": "supabase-cli-logical-sql",
   "files": ["roles.sql", "schema.sql", "data.sql", "SHA256SUMS"],
+  "excludedDataTables": ["public._prisma_migrations", "storage.buckets_vectors", "storage.vector_indexes"],
   "storageObjectsIncluded": false
 }
 JSON
