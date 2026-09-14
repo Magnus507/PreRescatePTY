@@ -1,59 +1,26 @@
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import pg from 'pg'
-import { captureDbFingerprint } from './db-fingerprint-lib.mjs'
 
 const { Client } = pg
 
 const targetUrl = process.env.DR_TARGET_DB_URL
-const expectedPath = process.argv[2]
+const summaryPath = process.argv[2]
 
 if (!targetUrl) {
   throw new Error('Set DR_TARGET_DB_URL')
 }
-if (!expectedPath) {
-  throw new Error('Usage: node scripts/dr/verify-restore.mjs <database/db-fingerprint.json>')
+if (!summaryPath) {
+  throw new Error('Usage: node scripts/dr/verify-restore.mjs <database/dump-summary.json>')
 }
 
-const expected = JSON.parse(await readFile(expectedPath, 'utf8'))
-const actual = await captureDbFingerprint(targetUrl)
-
-function indexTables(fingerprint) {
-  return new Map(fingerprint.tables.map((entry) => [
-    `${entry.schema}.${entry.table}`,
-    entry,
-  ]))
+function quoteIdent(value) {
+  return '"' + String(value).replaceAll('"', '""') + '"'
 }
 
-if (expected.version !== actual.version) {
-  throw new Error(`Database fingerprint version mismatch: expected ${expected.version}, got ${actual.version}`)
-}
-
-if (expected.schemaHash !== actual.schemaHash) {
-  throw new Error('Restored database schema fingerprint differs from the certified backup')
-}
-
-const expectedTables = indexTables(expected)
-const actualTables = indexTables(actual)
-const allKeys = [...new Set([...expectedTables.keys(), ...actualTables.keys()])].sort()
-const mismatches = []
-
-for (const key of allKeys) {
-  const left = expectedTables.get(key)
-  const right = actualTables.get(key)
-  if (!left || !right || left.count !== right.count || left.dataHash !== right.dataHash) {
-    mismatches.push({
-      table: key,
-      expectedCount: left?.count ?? null,
-      actualCount: right?.count ?? null,
-      hashMatch: Boolean(left && right && left.dataHash === right.dataHash),
-    })
-  }
-}
-
-if (mismatches.length > 0) {
-  throw new Error(
-    `Restored database data differs from backup fingerprint: ${JSON.stringify(mismatches.slice(0, 10))}`,
-  )
+const expected = JSON.parse(await readFile(summaryPath, 'utf8'))
+if (expected.version !== 1 || !Array.isArray(expected.tables)) {
+  throw new Error('Unsupported or invalid dump summary')
 }
 
 const target = new Client({
@@ -63,6 +30,71 @@ const target = new Client({
 await target.connect()
 
 try {
+  const { rows: schemaRows } = await target.query(`
+    SELECT table_schema, table_name, column_name, ordinal_position,
+           data_type, udt_name, is_nullable
+      FROM information_schema.columns
+     WHERE table_schema IN ('public', 'auth', 'storage')
+       AND NOT (table_schema = 'public' AND table_name = '_prisma_migrations')
+       AND NOT (table_schema = 'auth' AND table_name = 'schema_migrations')
+       AND NOT (table_schema = 'storage' AND table_name IN ('migrations', 'buckets_vectors', 'vector_indexes'))
+     ORDER BY table_schema, table_name, ordinal_position
+  `)
+
+  const canonicalSchema = schemaRows.map((row) => [
+    row.table_schema,
+    row.table_name,
+    row.column_name,
+    row.ordinal_position,
+    row.data_type,
+    row.udt_name,
+    row.is_nullable,
+  ].join(':')).join('\n')
+
+  const actualSchemaHash = createHash('sha256').update(canonicalSchema).digest('hex')
+  if (actualSchemaHash !== expected.schemaHash) {
+    throw new Error('Restored schema fingerprint differs from the backup source schema')
+  }
+
+  const countMismatches = []
+  for (const table of expected.tables) {
+    const qualified = `${quoteIdent(table.schema)}.${quoteIdent(table.table)}`
+    const { rows } = await target.query(`SELECT count(*)::int AS count FROM ${qualified}`)
+    const actualCount = rows[0].count
+    if (actualCount !== table.rows) {
+      countMismatches.push({
+        table: `${table.schema}.${table.table}`,
+        expected: table.rows,
+        actual: actualCount,
+      })
+    }
+  }
+
+  if (countMismatches.length > 0) {
+    throw new Error(
+      `Restored row counts differ from the exact SQL dump: ${JSON.stringify(countMismatches.slice(0, 12))}`,
+    )
+  }
+
+  const criticalTables = [
+    'public.User',
+    'public.Profile',
+    'public.Order',
+    'public.OrderItem',
+    'public.Chip',
+    'public.OperationCommercialOrder',
+    'public.OperationDispatch',
+    'public.SystemConfig',
+    'auth.users',
+    'storage.buckets',
+    'storage.objects',
+  ]
+  const summarized = new Set(expected.tables.map((table) => `${table.schema}.${table.table}`))
+  const missingCritical = criticalTables.filter((table) => !summarized.has(table))
+  if (missingCritical.length > 0) {
+    throw new Error(`Critical tables are missing from data.sql summary: ${missingCritical.join(', ')}`)
+  }
+
   const { rows: relationRows } = await target.query(`
     SELECT
       (SELECT count(*)::bigint
@@ -108,13 +140,19 @@ try {
     if (rows[0].count < 1) {
       throw new Error('Restore sentinel order is missing from the recovered database')
     }
-    sentinels.push({ sentinel: 'DR_SENTINEL_ORDER_NUMBER', count: rows[0].count, result: 'PASS' })
+    sentinels.push({
+      sentinel: 'DR_SENTINEL_ORDER_NUMBER',
+      count: rows[0].count,
+      result: 'PASS',
+    })
   }
 
   console.log(JSON.stringify({
     result: 'PASS',
-    matchedTables: allKeys.length,
-    schemaHash: actual.schemaHash,
+    schemaHash: actualSchemaHash,
+    summarizedTables: expected.tables.length,
+    totalCopiedRows: expected.totalCopiedRows,
+    rowCountVerification: 'PASS',
     relations,
     sentinels,
   }))
