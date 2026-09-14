@@ -48,13 +48,13 @@ Object bytes are sensitive. Never commit `dr-artifacts/`.
 
 `.github/workflows/dr-backup.yml` is the production backup mechanism after its required repository secrets are configured.
 
-Schedule: **03:17 and 15:17 UTC daily**.
+Schedule: **every 6 hours at minute 17 UTC**, plus a weekly long-retention recovery point on Sunday 04:43 UTC.
 
 The workflow also runs once when this backup workflow is first merged to `master`; its `push` trigger is path-limited to the workflow file, so normal application releases do not create extra backups.
 
-Only an AES-256-CBC + PBKDF2 encrypted archive and its checksum are uploaded as a GitHub Actions artifact. Plaintext database and Storage exports are deleted from the runner before upload. Artifact retention is 14 days.
+Only an AES-256-CBC + PBKDF2 encrypted archive and its checksum are uploaded as a GitHub Actions artifact. Plaintext database and Storage exports are deleted from the runner before upload. Recent recovery points are retained 5 days; the weekly tier is retained 30 days.
 
-Selected recovery-point objective (RPO): **12 hours nominal maximum between scheduled backups**, plus any observable scheduler delay. At certification time record the timestamp/age of the latest successful artifact; that is the measured RPO evidence for the run.
+Selected recovery-point objective (RPO): **6 hours nominal maximum between scheduled backups**, plus any observable scheduler delay. At certification time record the timestamp/age of the latest successful artifact; that is the measured RPO evidence for the run.
 
 Required GitHub Actions secrets:
 
