@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import pg from 'pg'
 
 const { Client } = pg
@@ -90,13 +91,5 @@ export async function captureDbFingerprint(connectionString) {
 }
 
 function createStableHash(lines) {
-  // PostgreSQL MD5 is used for row fingerprints; use Node crypto only for the
-  // schema list so the output remains deterministic without exposing schema data.
-  const payload = lines.join('\n')
-  let hash = 0x811c9dc5
-  for (let i = 0; i < payload.length; i += 1) {
-    hash ^= payload.charCodeAt(i)
-    hash = Math.imul(hash, 0x01000193) >>> 0
-  }
-  return hash.toString(16).padStart(8, '0')
+  return createHash('sha256').update(lines.join('\n')).digest('hex')
 }
