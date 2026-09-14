@@ -20,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      DR_SOURCE_DB_URL: ${{ secrets.DR_SOURCE_DB_URL }}
       DR_TARGET_DB_URL: ${{ secrets.DR_TARGET_DB_URL }}
       DR_TARGET_SUPABASE_URL: https://vgaverzjcdbkdwplsekd.supabase.co
       DR_TARGET_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DR_TARGET_SUPABASE_SERVICE_ROLE_KEY }}
@@ -42,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          for name in DR_SOURCE_DB_URL DR_TARGET_DB_URL DR_TARGET_SUPABASE_SERVICE_ROLE_KEY DR_BACKUP_PASSPHRASE; do
+          for name in DR_TARGET_DB_URL DR_TARGET_SUPABASE_SERVICE_ROLE_KEY DR_BACKUP_PASSPHRASE; do
             if [ -z "${!name:-}" ]; then
               echo "::error::Required DR secret is not configured: $name"
               exit 1
@@ -112,13 +111,13 @@ jobs:
         shell: bash
         run: bash scripts/dr/restore-database.sh "$DR_BACKUP_DIR/database"
 
+      - name: Verify database integrity against exact dump
+        shell: bash
+        run: node scripts/dr/verify-restore.mjs "$DR_BACKUP_DIR/database/dump-summary.json" | tee restore-integrity.json
+
       - name: Restore and checksum Storage
         shell: bash
         run: node scripts/dr/restore-storage.mjs "$DR_BACKUP_DIR/storage" | tee storage-restore.json
-
-      - name: Verify database integrity
-        shell: bash
-        run: node scripts/dr/verify-restore.mjs | tee restore-integrity.json
 
       - name: Record measured RTO evidence
         shell: bash
