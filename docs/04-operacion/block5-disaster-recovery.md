@@ -26,13 +26,14 @@ This runbook implements the recovery path required by the GO Comercial map witho
 - `SHA256SUMS`
 - `manifest.json`
 
-The dump follows Supabase's documented migration/restore path. The source connection string is supplied only through `DR_SOURCE_DB_URL`; it is never committed or printed.
+The dump follows Supabase's documented migration/restore path. A non-PII `dump-summary.json` is derived from the exact COPY sections and contains row counts plus a schema fingerprint for restore verification. The source connection string is supplied only through `DR_SOURCE_DB_URL`; it is never committed or printed.
 
 ### Storage
 
 Database backups contain Storage metadata, **not the object bytes**. Therefore:
 
 - `scripts/dr/export-storage.mjs` downloads every object in every bucket, preserves bucket configuration, and records SHA-256 per object.
+- `scripts/dr/verify-storage-snapshot.mjs` re-reads the source after the database dump and fails the backup if any object was added, removed or changed across the backup window.
 - `scripts/dr/restore-storage.mjs` restores the objects into an isolated project and downloads each restored object again to verify its SHA-256.
 
 Production baseline at Block 5 entry:
@@ -77,7 +78,7 @@ The workflow is hard-guarded to the dedicated restore-test project reference and
 3. decrypts only on the ephemeral runner,
 4. restores database data into the pre-provisioned isolated schema,
 5. restores Storage bytes and verifies every object SHA-256,
-6. compares critical source/target row counts and application-schema fingerprint,
+6. compares restored table counts against the exact `data.sql` COPY sections and validates the backup-time schema fingerprint,
 7. verifies critical relations have zero orphans,
 8. confirms the Block 4 order sentinel `PR-2026-000824`,
 9. records measured isolated recovery RTO,
@@ -121,17 +122,15 @@ When database metadata has already restored `storage.objects`, the certification
 After database restore:
 
 ```bash
-export DR_SOURCE_DB_URL='...'
 export DR_TARGET_DB_URL='...'
 export DR_SENTINEL_ORDER_NUMBER='PR-2026-000824'
-node scripts/dr/verify-restore.mjs
+node scripts/dr/verify-restore.mjs dr-artifacts/<BACKUP_ID>/database/dump-summary.json
 ```
 
 The verifier checks:
 
-- exact critical-table row counts,
-- `auth.users` count,
-- public application schema fingerprint,
+- row counts derived from the exact SQL dump, including `auth.users` and Storage metadata,
+- backup-time schema fingerprint across `public`, `auth` and `storage`,
 - critical relationships with zero orphans,
 - optional synthetic sentinels.
 
