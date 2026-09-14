@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+    paths:
+      - .github/workflows/dr-backup.yml
   schedule:
     - cron: "17 3,15 * * *"
   workflow_dispatch:
