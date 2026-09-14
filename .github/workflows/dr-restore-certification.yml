@@ -101,6 +101,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
+      - name: Reset dedicated restore-test data
+        shell: bash
+        run: bash scripts/dr/reset-isolated-target.sh
+
       - name: Start RTO timer
         shell: bash
         run: |
