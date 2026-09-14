@@ -1,51 +1,69 @@
+import { readFile } from 'node:fs/promises'
 import pg from 'pg'
+import { captureDbFingerprint } from './db-fingerprint-lib.mjs'
 
 const { Client } = pg
 
-const sourceUrl = process.env.DR_SOURCE_DB_URL
 const targetUrl = process.env.DR_TARGET_DB_URL
+const expectedPath = process.argv[2]
 
-if (!sourceUrl || !targetUrl) {
-  throw new Error('Set DR_SOURCE_DB_URL and DR_TARGET_DB_URL')
+if (!targetUrl) {
+  throw new Error('Set DR_TARGET_DB_URL')
+}
+if (!expectedPath) {
+  throw new Error('Usage: node scripts/dr/verify-restore.mjs <database/db-fingerprint.json>')
 }
 
-const ssl = { rejectUnauthorized: false }
+const expected = JSON.parse(await readFile(expectedPath, 'utf8'))
+const actual = await captureDbFingerprint(targetUrl)
 
-async function connect(connectionString) {
-  const client = new Client({ connectionString, ssl })
-  await client.connect()
-  return client
+function indexTables(fingerprint) {
+  return new Map(fingerprint.tables.map((entry) => [
+    `${entry.schema}.${entry.table}`,
+    entry,
+  ]))
 }
 
-async function snapshot(client) {
-  const countsQuery = `
-    SELECT
-      (SELECT count(*)::bigint FROM public."User") AS users,
-      (SELECT count(*)::bigint FROM public."Profile") AS profiles,
-      (SELECT count(*)::bigint FROM public."Order") AS orders,
-      (SELECT count(*)::bigint FROM public."OrderItem") AS order_items,
-      (SELECT count(*)::bigint FROM public."Chip") AS chips,
-      (SELECT count(*)::bigint FROM public."OperationCommercialOrder") AS commercial_orders,
-      (SELECT count(*)::bigint FROM public."OperationDispatch") AS dispatches,
-      (SELECT count(*)::bigint FROM public."SystemConfig") AS system_config,
-      (SELECT count(*)::bigint FROM auth.users) AS auth_users
-  `
+if (expected.version !== actual.version) {
+  throw new Error(`Database fingerprint version mismatch: expected ${expected.version}, got ${actual.version}`)
+}
 
-  const schemaQuery = `
-    WITH t AS (
-      SELECT table_name,
-             md5(string_agg(column_name || ':' || data_type || ':' || is_nullable, ',' ORDER BY ordinal_position)) AS sig
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name <> '_prisma_migrations'
-      GROUP BY table_name
-    )
-    SELECT count(*)::bigint AS tables,
-           md5(string_agg(table_name || ':' || sig, ',' ORDER BY table_name)) AS schema_sig
-    FROM t
-  `
+if (expected.schemaHash !== actual.schemaHash) {
+  throw new Error('Restored database schema fingerprint differs from the certified backup')
+}
 
-  const relationQuery = `
+const expectedTables = indexTables(expected)
+const actualTables = indexTables(actual)
+const allKeys = [...new Set([...expectedTables.keys(), ...actualTables.keys()])].sort()
+const mismatches = []
+
+for (const key of allKeys) {
+  const left = expectedTables.get(key)
+  const right = actualTables.get(key)
+  if (!left || !right || left.count !== right.count || left.dataHash !== right.dataHash) {
+    mismatches.push({
+      table: key,
+      expectedCount: left?.count ?? null,
+      actualCount: right?.count ?? null,
+      hashMatch: Boolean(left && right && left.dataHash === right.dataHash),
+    })
+  }
+}
+
+if (mismatches.length > 0) {
+  throw new Error(
+    `Restored database data differs from backup fingerprint: ${JSON.stringify(mismatches.slice(0, 10))}`,
+  )
+}
+
+const target = new Client({
+  connectionString: targetUrl,
+  ssl: { rejectUnauthorized: false },
+})
+await target.connect()
+
+try {
+  const { rows: relationRows } = await target.query(`
     SELECT
       (SELECT count(*)::bigint
        FROM public."Profile" p
@@ -71,91 +89,35 @@ async function snapshot(client) {
        FROM public."OperationCommercialOrder" co
        LEFT JOIN public."OperationDispatch" d ON d.id = co."dispatchId"
        WHERE co."dispatchId" IS NOT NULL AND d.id IS NULL) AS orphan_commercial_dispatch
-  `
+  `)
 
-  const [{ rows: countRows }, { rows: schemaRows }, { rows: relationRows }] = await Promise.all([
-    client.query(countsQuery),
-    client.query(schemaQuery),
-    client.query(relationQuery),
-  ])
-
-  return {
-    counts: countRows[0],
-    schema: schemaRows[0],
-    relations: relationRows[0],
-  }
-}
-
-async function verifySentinels(source, target) {
-  const checks = []
-
-  const cases = [
-    {
-      env: 'DR_SENTINEL_ORDER_NUMBER',
-      sql: 'SELECT count(*)::int AS count FROM public."Order" WHERE "orderNumber" = $1',
-    },
-    {
-      env: 'DR_SENTINEL_CHIP_SERIAL',
-      sql: 'SELECT count(*)::int AS count FROM public."Chip" WHERE "serialPublic" = $1',
-    },
-    {
-      env: 'DR_SENTINEL_USER_EMAIL',
-      sql: 'SELECT count(*)::int AS count FROM public."User" WHERE email = $1',
-    },
-  ]
-
-  for (const check of cases) {
-    const value = process.env[check.env]
-    if (!value) continue
-
-    const [{ rows: sourceRows }, { rows: targetRows }] = await Promise.all([
-      source.query(check.sql, [value]),
-      target.query(check.sql, [value]),
-    ])
-
-    const sourceCount = sourceRows[0].count
-    const targetCount = targetRows[0].count
-    if (sourceCount < 1 || targetCount !== sourceCount) {
-      throw new Error(`Sentinel verification failed for ${check.env}`)
-    }
-    checks.push({ sentinel: check.env, count: targetCount, result: 'PASS' })
-  }
-
-  return checks
-}
-
-const source = await connect(sourceUrl)
-const target = await connect(targetUrl)
-
-try {
-  const [sourceState, targetState] = await Promise.all([snapshot(source), snapshot(target)])
-
-  if (JSON.stringify(sourceState.counts) !== JSON.stringify(targetState.counts)) {
-    throw new Error('Critical table counts differ between source and restore target')
-  }
-
-  if (
-    sourceState.schema.tables !== targetState.schema.tables
-    || sourceState.schema.schema_sig !== targetState.schema.schema_sig
-  ) {
-    throw new Error('Application schema fingerprint differs between source and restore target')
-  }
-
-  for (const [name, count] of Object.entries(targetState.relations)) {
+  const relations = relationRows[0]
+  for (const [name, count] of Object.entries(relations)) {
     if (Number(count) !== 0) {
       throw new Error(`Critical relationship check failed: ${name}=${count}`)
     }
   }
 
-  const sentinels = await verifySentinels(source, target)
+  const sentinels = []
+  const orderNumber = process.env.DR_SENTINEL_ORDER_NUMBER
+  if (orderNumber) {
+    const { rows } = await target.query(
+      'SELECT count(*)::int AS count FROM public."Order" WHERE "orderNumber" = $1',
+      [orderNumber],
+    )
+    if (rows[0].count < 1) {
+      throw new Error('Restore sentinel order is missing from the recovered database')
+    }
+    sentinels.push({ sentinel: 'DR_SENTINEL_ORDER_NUMBER', count: rows[0].count, result: 'PASS' })
+  }
 
   console.log(JSON.stringify({
     result: 'PASS',
-    counts: targetState.counts,
-    schema: targetState.schema,
-    relations: targetState.relations,
+    matchedTables: allKeys.length,
+    schemaHash: actual.schemaHash,
+    relations,
     sentinels,
   }))
 } finally {
-  await Promise.allSettled([source.end(), target.end()])
+  await target.end()
 }
