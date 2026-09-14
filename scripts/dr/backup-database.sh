@@ -21,9 +21,11 @@ npx --yes supabase db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/data.sql" -
   -x "storage.buckets_vectors" \
   -x "storage.vector_indexes"
 
+node scripts/dr/summarize-data-dump.mjs "$OUT_DIR/data.sql" "$OUT_DIR/dump-summary.json"
+
 (
   cd "$OUT_DIR"
-  sha256sum roles.sql schema.sql data.sql > SHA256SUMS
+  sha256sum roles.sql schema.sql data.sql dump-summary.json > SHA256SUMS
 )
 
 finished_epoch="$(date +%s)"
@@ -38,7 +40,7 @@ cat > "$OUT_DIR/manifest.json" <<JSON
   "durationSeconds": $duration_seconds,
   "gitSha": "${GITHUB_SHA:-unknown}",
   "format": "supabase-cli-logical-sql",
-  "files": ["roles.sql", "schema.sql", "data.sql", "SHA256SUMS"],
+  "files": ["roles.sql", "schema.sql", "data.sql", "dump-summary.json", "SHA256SUMS"],
   "excludedDataTables": ["public._prisma_migrations", "storage.buckets_vectors", "storage.vector_indexes"],
   "storageObjectsIncluded": false
 }
