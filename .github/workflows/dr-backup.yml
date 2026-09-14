@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 30
     env:
       DR_SOURCE_DB_URL: ${{ secrets.DR_SOURCE_DB_URL }}
-      DR_SOURCE_SUPABASE_URL: ${{ secrets.DR_SOURCE_SUPABASE_URL }}
+      DR_SOURCE_SUPABASE_URL: https://fikidmfquaxhlayxctsa.supabase.co
       DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY }}
       DR_BACKUP_PASSPHRASE: ${{ secrets.DR_BACKUP_PASSPHRASE }}
 
@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          for name in DR_SOURCE_DB_URL DR_SOURCE_SUPABASE_URL DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY DR_BACKUP_PASSPHRASE; do
+          for name in DR_SOURCE_DB_URL DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY DR_BACKUP_PASSPHRASE; do
             if [ -z "${!name:-}" ]; then
               echo "::error::Required DR secret is not configured: $name"
               exit 1
