@@ -19,7 +19,7 @@ fi
 DB_DIR="${1:?Usage: scripts/dr/restore-database.sh <dr-artifacts/BACKUP_ID/database>}"
 RESTORE_MODE="${DR_RESTORE_MODE:-full}"
 
-for file in roles.sql schema.sql data.sql SHA256SUMS; do
+for file in roles.sql schema.sql data.sql dump-summary.json SHA256SUMS; do
   if [ ! -f "$DB_DIR/$file" ]; then
     echo "Missing backup file: $DB_DIR/$file" >&2
     exit 2
