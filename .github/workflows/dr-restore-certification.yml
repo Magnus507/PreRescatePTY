@@ -64,7 +64,7 @@ jobs:
       - name: Download encrypted backup from triggering run
         uses: actions/download-artifact@v4
         with:
-          name: dr-backup-encrypted
+          name: dr-backup-encrypted-recent
           path: incoming
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
