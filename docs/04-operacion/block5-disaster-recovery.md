@@ -50,6 +50,8 @@ Object bytes are sensitive. Never commit `dr-artifacts/`.
 
 Schedule: **03:17 and 15:17 UTC daily**.
 
+The workflow also runs once when this backup workflow is first merged to `master`; its `push` trigger is path-limited to the workflow file, so normal application releases do not create extra backups.
+
 Only an AES-256-CBC + PBKDF2 encrypted archive and its checksum are uploaded as a GitHub Actions artifact. Plaintext database and Storage exports are deleted from the runner before upload. Artifact retention is 14 days.
 
 Selected recovery-point objective (RPO): **12 hours nominal maximum between scheduled backups**, plus any observable scheduler delay. At certification time record the timestamp/age of the latest successful artifact; that is the measured RPO evidence for the run.
@@ -59,9 +61,29 @@ Required GitHub Actions secrets:
 - `DR_SOURCE_DB_URL`
 - `DR_SOURCE_SUPABASE_URL`
 - `DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY`
+- `DR_TARGET_DB_URL`
+- `DR_TARGET_SUPABASE_URL`
+- `DR_TARGET_SUPABASE_SERVICE_ROLE_KEY`
 - `DR_BACKUP_PASSPHRASE` (24+ characters; use a high-entropy value)
 
 Do not reuse application passwords or JWT/NextAuth secrets as the backup passphrase.
+
+## Automatic isolated certification
+
+`.github/workflows/dr-restore-certification.yml` listens for the successful **first post-merge backup run only**: the triggering backup must itself have been caused by the `master` push. Scheduled backups do not automatically restore over the test environment.
+
+The workflow is hard-guarded to the dedicated restore-test project reference and refuses either production project reference. It:
+
+1. downloads the encrypted backup from the triggering run,
+2. verifies the encrypted artifact checksum,
+3. decrypts only on the ephemeral runner,
+4. restores database data into the pre-provisioned isolated schema,
+5. restores Storage bytes and verifies every object SHA-256,
+6. compares critical source/target row counts and application-schema fingerprint,
+7. verifies critical relations have zero orphans,
+8. confirms the Block 4 order sentinel `PR-2026-000824`,
+9. records measured isolated recovery RTO,
+10. uploads only non-PII restore evidence, then deletes decrypted backup material.
 
 ## Isolated database restore
 
@@ -82,11 +104,11 @@ export DR_RESTORE_MODE=data-only
 bash scripts/dr/restore-database.sh dr-artifacts/<BACKUP_ID>/database
 ```
 
-Never set `DR_CONFIRM_ISOLATED_TARGET=YES` for production.
+The restore script contains a hard stop for the current production project reference in addition to the explicit confirmation flag.
 
 ## Isolated Storage restore
 
-The target must be an isolated project. Empty buckets are preferred.
+The target must be an isolated project.
 
 ```bash
 export DR_TARGET_SUPABASE_URL='...'
@@ -94,7 +116,7 @@ export DR_TARGET_SUPABASE_SERVICE_ROLE_KEY='...'
 node scripts/dr/restore-storage.mjs dr-artifacts/<BACKUP_ID>/storage
 ```
 
-The script fails instead of silently merging into non-empty buckets unless `DR_ALLOW_TARGET_OBJECTS=1` is explicitly set.
+When database metadata has already restored `storage.objects`, the certification workflow explicitly enables overwrite in the isolated target so the real object bytes can be written and checksum-verified. The Storage script also hard-stops if the target URL is production.
 
 ## Integrity verification
 
@@ -115,21 +137,17 @@ The verifier checks:
 - critical relationships with zero orphans,
 - optional synthetic sentinels.
 
-The Block 4 physical-sale order `PR-2026-000824` may be used only as a restore sentinel; the verifier reports counts, not customer PII.
+The Block 4 physical-sale order `PR-2026-000824` is used only as a restore sentinel; the verifier reports counts, not customer PII.
 
 ## RTO measurement
 
-Start the recovery timer immediately before the isolated database restore.
+The isolated recovery timer starts immediately before database restore and stops only after:
 
-Stop it only after all of the following are PASS:
+1. database restore is complete,
+2. Storage bytes are restored and checksum-verified,
+3. critical database integrity and sentinel checks are PASS.
 
-1. database restore command,
-2. `verify-restore.mjs`,
-3. Storage restore and object checksum verification,
-4. a basic application smoke against the recovered dependency set or equivalent restore validation,
-5. application rollback/promote exercise.
-
-Record both component durations and total elapsed time. The measured total is the Block 5 RTO evidence.
+That elapsed time is the measured **data-plane RTO** for the Block 5 recovery test. Application rollback is a separate control with its own elapsed time and smoke evidence; do not hide rollback delay inside the database RTO.
 
 ## Vercel application rollback exercise
 
@@ -145,7 +163,7 @@ Required exercise:
 1. Confirm both deployment IDs are READY.
 2. Point production to the previous known-good READY deployment using Vercel's supported rollback/promote control.
 3. Smoke `https://www.prerescatepty.com` and essential public/auth routes.
-4. Record elapsed rollback time.
+4. Record elapsed rollback/promote time.
 5. Promote `dpl_29dc5jvoWgvJJYZzfZDAccfUPrPd` back to production.
 6. Repeat smoke and confirm production SHA is again `899fc94...`.
 7. Check recent production runtime errors.
@@ -175,7 +193,7 @@ DR-01 can be marked CLOSED only after the certification run captures:
 - Storage object/bucket counts and checksum PASS,
 - restore integrity PASS,
 - selected RPO and latest-backup age,
-- measured database/Storage/total RTO,
+- measured database/Storage data-plane RTO,
 - Vercel rollback/promote elapsed time and smoke PASS,
 - all limitations and owners.
 
