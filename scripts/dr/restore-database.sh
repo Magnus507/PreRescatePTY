@@ -4,6 +4,13 @@ set -Eeuo pipefail
 : "${DR_TARGET_DB_URL:?Set DR_TARGET_DB_URL to the isolated Supabase target connection string}"
 : "${DR_CONFIRM_ISOLATED_TARGET:?Set DR_CONFIRM_ISOLATED_TARGET=YES only after verifying the target is not production}"
 
+PRODUCTION_PROJECT_REF="${DR_PRODUCTION_PROJECT_REF:-fikidmfquaxhlayxctsa}"
+
+if [[ "$DR_TARGET_DB_URL" == *"$PRODUCTION_PROJECT_REF"* ]]; then
+  echo "Refusing restore: target URL resolves to the production Supabase project." >&2
+  exit 2
+fi
+
 if [ "$DR_CONFIRM_ISOLATED_TARGET" != "YES" ]; then
   echo "Refusing restore: DR_CONFIRM_ISOLATED_TARGET must equal YES." >&2
   exit 2
