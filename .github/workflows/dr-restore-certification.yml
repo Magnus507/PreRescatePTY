@@ -22,7 +22,7 @@ jobs:
     env:
       DR_SOURCE_DB_URL: ${{ secrets.DR_SOURCE_DB_URL }}
       DR_TARGET_DB_URL: ${{ secrets.DR_TARGET_DB_URL }}
-      DR_TARGET_SUPABASE_URL: ${{ secrets.DR_TARGET_SUPABASE_URL }}
+      DR_TARGET_SUPABASE_URL: https://vgaverzjcdbkdwplsekd.supabase.co
       DR_TARGET_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DR_TARGET_SUPABASE_SERVICE_ROLE_KEY }}
       DR_BACKUP_PASSPHRASE: ${{ secrets.DR_BACKUP_PASSPHRASE }}
       DR_CONFIRM_ISOLATED_TARGET: "YES"
@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          for name in DR_SOURCE_DB_URL DR_TARGET_DB_URL DR_TARGET_SUPABASE_URL DR_TARGET_SUPABASE_SERVICE_ROLE_KEY DR_BACKUP_PASSPHRASE; do
+          for name in DR_SOURCE_DB_URL DR_TARGET_DB_URL DR_TARGET_SUPABASE_SERVICE_ROLE_KEY DR_BACKUP_PASSPHRASE; do
             if [ -z "${!name:-}" ]; then
               echo "::error::Required DR secret is not configured: $name"
               exit 1
