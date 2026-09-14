@@ -23,6 +23,12 @@ yarn-error.log*
 *.db
 *.db-journal
 
+# Disaster recovery artifacts can contain production PII/secrets
+dr-artifacts/
+dr-backup.tar.gz
+dr-backup.enc
+dr-backup.enc.sha256
+
 # OS
 .DS_Store
 Thumbs.db
