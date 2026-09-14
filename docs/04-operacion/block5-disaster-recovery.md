@@ -56,13 +56,11 @@ Only an AES-256-CBC + PBKDF2 encrypted archive and its checksum are uploaded as 
 
 Selected recovery-point objective (RPO): **6 hours nominal maximum between scheduled backups**, plus any observable scheduler delay. At certification time record the timestamp/age of the latest successful artifact; that is the measured RPO evidence for the run.
 
-Required GitHub Actions secrets:
+Required GitHub Actions secrets (only sensitive values are stored as secrets; project URLs are fixed non-secret configuration):
 
 - `DR_SOURCE_DB_URL`
-- `DR_SOURCE_SUPABASE_URL`
 - `DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY`
 - `DR_TARGET_DB_URL`
-- `DR_TARGET_SUPABASE_URL`
 - `DR_TARGET_SUPABASE_SERVICE_ROLE_KEY`
 - `DR_BACKUP_PASSPHRASE` (24+ characters; use a high-entropy value)
 
