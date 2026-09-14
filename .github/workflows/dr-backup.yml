@@ -7,7 +7,8 @@ on:
     paths:
       - .github/workflows/dr-backup.yml
   schedule:
-    - cron: "17 3,15 * * *"
+    - cron: "17 */6 * * *"
+    - cron: "43 4 * * 0"
   workflow_dispatch:
 
 permissions:
@@ -46,10 +47,19 @@ jobs:
             exit 1
           fi
 
-      - name: Set backup identity
+      - name: Set backup identity and retention
+        id: policy
         shell: bash
         run: |
+          set -Eeuo pipefail
           echo "DR_BACKUP_ID=$(date -u +%Y%m%dT%H%M%SZ)-run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "43 4 * * 0" ]; then
+            echo "retention_days=30" >> "$GITHUB_OUTPUT"
+            echo "tier=weekly" >> "$GITHUB_OUTPUT"
+          else
+            echo "retention_days=5" >> "$GITHUB_OUTPUT"
+            echo "tier=recent" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -83,9 +93,9 @@ jobs:
       - name: Upload encrypted off-site artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dr-backup-encrypted
+          name: dr-backup-encrypted-${{ steps.policy.outputs.tier }}
           path: |
             dr-backup.enc
             dr-backup.enc.sha256
           if-no-files-found: error
-          retention-days: 14
+          retention-days: ${{ steps.policy.outputs.retention_days }}
