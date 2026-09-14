@@ -6,9 +6,13 @@ import { createClient } from '@supabase/supabase-js'
 const targetUrl = process.env.DR_TARGET_SUPABASE_URL
 const targetKey = process.env.DR_TARGET_SUPABASE_SERVICE_ROLE_KEY
 const backupRoot = process.argv[2]
+const productionProjectRef = process.env.DR_PRODUCTION_PROJECT_REF || 'fikidmfquaxhlayxctsa'
 
 if (!targetUrl || !targetKey) {
   throw new Error('Set DR_TARGET_SUPABASE_URL and DR_TARGET_SUPABASE_SERVICE_ROLE_KEY')
+}
+if (new URL(targetUrl).host.includes(productionProjectRef)) {
+  throw new Error('Refusing Storage restore: target URL is the production Supabase project')
 }
 if (!backupRoot) {
   throw new Error('Usage: node scripts/dr/restore-storage.mjs <dr-artifacts/BACKUP_ID/storage>')
