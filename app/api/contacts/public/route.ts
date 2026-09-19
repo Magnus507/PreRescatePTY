@@ -48,25 +48,34 @@ export async function POST(req: Request) {
     const safeEmail = escapeHtml(email).slice(0, 320);
     const safeMessage = escapeHtml(message).slice(0, 5000);
 
-    if (resend) {
-      await resend.emails.send({
-        from: "PreRescatePTY Contactos <contacto@prerescatepty.com>",
-        to: "soporte@prerescatepty.com",
-        replyTo: email,
-        subject: `Nuevo mensaje de contacto de ${safeName}`,
-        html: `
-          <h3>Nuevo mensaje de contacto</h3>
-          <p><strong>Nombre:</strong> ${safeName}</p>
-          <p><strong>Email:</strong> ${safeEmail}</p>
-          <p><strong>Mensaje:</strong></p>
-          <p>${safeMessage.replace(/\n/g, "<br />")}</p>
-        `,
-      });
-    } else {
-      console.warn("RESEND_API_KEY no esta configurada, correo simulado:", {
-        name: safeName,
-        email: safeEmail,
-      });
+    if (!resend) {
+      console.error("CONTACT_DELIVERY_UNAVAILABLE");
+      return NextResponse.json(
+        { error: "El canal de soporte no está disponible temporalmente. Intenta de nuevo más tarde." },
+        { status: 503 }
+      );
+    }
+
+    const delivery = await resend.emails.send({
+      from: "PreRescatePTY Contactos <contacto@prerescatepty.com>",
+      to: "soporte@prerescatepty.com",
+      replyTo: email,
+      subject: `Nuevo mensaje de contacto de ${safeName}`,
+      html: `
+        <h3>Nuevo mensaje de contacto</h3>
+        <p><strong>Nombre:</strong> ${safeName}</p>
+        <p><strong>Email:</strong> ${safeEmail}</p>
+        <p><strong>Mensaje:</strong></p>
+        <p>${safeMessage.replace(/\n/g, "<br />")}</p>
+      `,
+    });
+
+    if (delivery.error || !delivery.data?.id) {
+      console.error("CONTACT_DELIVERY_FAILED");
+      return NextResponse.json(
+        { error: "No pudimos entregar tu mensaje al canal de soporte. Intenta de nuevo más tarde." },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({ success: true, message: "Mensaje enviado correctamente" });
