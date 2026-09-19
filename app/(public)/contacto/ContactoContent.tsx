@@ -70,13 +70,14 @@ export default function ContactoPage() {
                   Un solo formulario, la consulta correcta.
                 </h2>
                 <p className="mt-5 max-w-lg text-[15px] font-medium leading-6 text-slate-400 sm:mt-6 sm:text-base sm:leading-7">
-                  Describe tu caso con suficiente contexto para que podamos orientarte de forma más útil desde la primera respuesta.
+                  Describe tu caso con suficiente contexto para que podamos orientarte de forma más útil desde la primera respuesta. Este formulario no sustituye al 911 ni a los servicios oficiales de emergencia.
                 </p>
 
                 <div className="mt-6 space-y-2.5 sm:mt-9 sm:space-y-3">
                   {[
                     ["Producto y planes", "Dudas sobre PreRescue ID y las opciones disponibles."],
-                    ["Pedidos y soporte", "Consultas relacionadas con una compra o el uso del servicio."],
+                    ["Pedidos y soporte", "Consultas sobre compra, entrega, devoluciones, garantía o uso del servicio."],
+                    ["Seguridad y privacidad", "Indica claramente si perdiste un identificador, sospechas acceso no autorizado o deseas ejercer un derecho sobre tus datos."],
                     ["Empresas e instituciones", "Información para equipos, organizaciones y compras por volumen."],
                   ].map(([title, text]) => (
                     <div key={title} className="rounded-[1.1rem] border border-white/[0.065] bg-white/[0.025] p-4 sm:rounded-2xl">
@@ -113,7 +114,7 @@ export default function ContactoPage() {
                         </span>
                         <div>
                           <p className="text-base font-black text-slate-50 sm:text-lg">Mensaje enviado</p>
-                          <p className="mt-2 text-sm leading-6 text-slate-400">Tu consulta fue recibida. Responderemos tan pronto como sea posible.</p>
+                          <p className="mt-2 text-sm leading-6 text-slate-400">Tu consulta fue aceptada por nuestro canal de soporte. El objetivo para consultas ordinarias es una primera respuesta dentro de 1 día hábil.</p>
                         </div>
                       </div>
                       <div className="mt-6 flex flex-col gap-2.5 sm:mt-7 sm:flex-row sm:gap-3">

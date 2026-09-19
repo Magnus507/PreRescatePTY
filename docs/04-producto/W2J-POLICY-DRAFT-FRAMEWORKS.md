@@ -1,3 +1,14 @@
+> **SUPERSEDED FOR LAUNCH OPERATIONS — 2026-09-19**
+>
+> This file is retained only as historical drafting context. It contains obsolete
+> assumptions (including finite/renewable service language and unresolved shipping
+> choices) and MUST NOT be used as the active commercial policy source.
+>
+> Current public policy source: `app/(public)/legal/*`.
+> Current operational source: `docs/04-operacion/block7-commercial-operations.md`.
+> Any future policy change must update the live public pages, consent version and
+> Block 7/launch runbook together.
+
 # W2J Policy Draft Frameworks
 
 **Phase:** W2J-B — Provisional Commercial Trust Implementation  

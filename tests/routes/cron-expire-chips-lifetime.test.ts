@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 
 const mockHeartbeatUpsert = vi.hoisted(() => vi.fn());
 const mockStorageCleanup = vi.hoisted(() => vi.fn());
+const mockScanRetention = vi.hoisted(() => vi.fn());
 const mockLoggerInfo = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/prisma", () => ({
@@ -10,6 +11,9 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/storage-cleanup-outbox", () => ({
   processStorageCleanupOutbox: mockStorageCleanup,
+}));
+vi.mock("@/lib/privacy/scan-retention", () => ({
+  purgeExpiredScanTelemetry: mockScanRetention,
 }));
 vi.mock("@/lib/logger", () => ({
   logger: { info: mockLoggerInfo },
@@ -21,9 +25,16 @@ describe("legacy expire-chips cron under lifetime policy", () => {
   beforeEach(() => {
     mockHeartbeatUpsert.mockReset();
     mockStorageCleanup.mockReset();
+    mockScanRetention.mockReset();
     mockLoggerInfo.mockReset();
     mockHeartbeatUpsert.mockResolvedValue({});
     mockStorageCleanup.mockResolvedValue({ processed: 0, failed: 0 });
+    mockScanRetention.mockResolvedValue({
+      retentionDays: 365,
+      deletedScanEvents: 0,
+      clearedChipLastScan: 0,
+      clearedProfileLastScan: 0,
+    });
     process.env.CRON_SECRET = "cron-secret";
   });
 
@@ -38,6 +49,8 @@ describe("legacy expire-chips cron under lifetime policy", () => {
     expect(json.count).toBe(0);
     expect(json.legacyTimeExpiryDisabled).toBe(true);
     expect(mockStorageCleanup).toHaveBeenCalledTimes(1);
+    expect(mockScanRetention).toHaveBeenCalledTimes(1);
+    expect(json.scanRetention.retentionDays).toBe(365);
     expect(mockHeartbeatUpsert).toHaveBeenCalledTimes(1);
   });
 
@@ -45,5 +58,6 @@ describe("legacy expire-chips cron under lifetime policy", () => {
     const response = await POST(new NextRequest("http://localhost/api/cron/expire-chips", { method: "POST" }));
     expect(response.status).toBe(401);
     expect(mockStorageCleanup).not.toHaveBeenCalled();
+    expect(mockScanRetention).not.toHaveBeenCalled();
   });
 });

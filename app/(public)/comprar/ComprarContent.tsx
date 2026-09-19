@@ -60,7 +60,7 @@ const commercialInfo = [
   {
     icon: PackageCheck,
     title: "Envíos",
-    text: "Realizamos entregas dentro de Panamá, sujetas a cobertura del transportista. El costo y plazo estimado se informan antes de confirmar el pedido.",
+    text: "Realizamos entregas dentro de Panamá, sujetas a cobertura del transportista. El total mostrado corresponde al producto; cualquier cargo de entrega se informa antes del despacho y requiere aceptación del cliente.",
     href: "/legal/envios",
     label: "Política de envíos",
   },

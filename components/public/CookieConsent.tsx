@@ -243,8 +243,9 @@ export default function CookieConsent() {
                       Cookies necesarias
                     </h3>
                     <p className="text-xs text-[#A0AEC0]">
-                      Esenciales para el funcionamiento del sitio. Incluyen
-                      autenticación, seguridad y diagnóstico técnico.
+                      Esenciales para el funcionamiento y la seguridad del sitio.
+                      Incluyen autenticación, protección contra abuso y diagnóstico
+                      técnico de errores.
                     </p>
                   </div>
                   <div className="flex items-center">
@@ -261,9 +262,10 @@ export default function CookieConsent() {
                       Cookies de análisis
                     </h3>
                     <p className="text-xs text-[#A0AEC0]">
-                      Nos ayudan a entender cómo los visitantes interactúan con
-                      el sitio. Incluyen Vercel Analytics, Speed Insights y
-                      Sentry.
+                      Nos ayudan a entender uso y rendimiento del sitio. Incluyen
+                      Vercel Analytics y Speed Insights. Sentry se utiliza
+                      separadamente para diagnóstico técnico y seguridad, no como
+                      analítica opcional.
                     </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">

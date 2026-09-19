@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Garantía y Reemplazos — PreRescue ID",
-  description: "Información sobre garantía de fábrica y reemplazos de chips PreRescue ID.",
+  description: "Cobertura de garantía física, evaluación y reemplazos de PreRescue ID.",
   canonical: "https://www.prerescatepty.com/legal/garantia",
 };
 
@@ -11,73 +11,88 @@ export default function GarantiaPage() {
   return (
     <LegalPageLayout
       title="Garantía y Reemplazos"
-      description="Cobertura de garantía y procedimientos para chips defectuosos, perdidos o dañados."
-      lastUpdated="Junio 2025"
+      description="Cobertura del producto físico y proceso de postventa."
+      lastUpdated="Septiembre 2026 · versión 1.2"
     >
       <div className="space-y-6 text-[#A0AEC0]">
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Garantía de fábrica</h2>
-          <p>El producto cuenta con garantía de un año por defectos de fabricación desde la fecha de entrega.</p>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">1. Garantía comercial del producto físico</h2>
+          <p>
+            PreRescatePTY ofrece una garantía comercial de 1 año desde la entrega
+            para defectos de fabricación del identificador físico. El servicio digital no vence por tiempo
+            mientras el identificador siga activo. Esta continuidad digital es independiente
+            de la garantía física y no limita garantías legales obligatorias que puedan corresponder.
+          </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Defectos cubiertos</h2>
-          <p>La garantía cubre defectos de fabricación, incluyendo:</p>
-          <ul className="list-disc list-inside space-y-2 mt-2">
-            <li>NFC ilegible por defecto de fabricación</li>
-            <li>Código QR ilegible por defecto de impresión presente desde la entrega</li>
-            <li>Defectos de material o fabricación presentes al recibir el producto</li>
-            <li>Fallo del adhesivo en el primer uso cuando se siguieron las instrucciones de aplicación</li>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">2. Qué puede estar cubierto</h2>
+          <ul className="list-disc list-inside space-y-2">
+            <li>Defectos de fabricación que impidan el uso normal del QR o NFC.</li>
+            <li>Fallas físicas no atribuibles a uso incorrecto, modificación o daño externo.</li>
+            <li>Producto incorrecto o defecto confirmado durante la evaluación de postventa.</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Exclusiones</h2>
-          <p>La garantía no cubre:</p>
-          <ul className="list-disc list-inside space-y-2 mt-2">
-            <li>Pérdida o robo</li>
-            <li>Cortes, perforaciones o rasguños</li>
-            <li>Daños por impacto</li>
-            <li>Exposición a calor extremo, fuego o químicos</li>
-            <li>Exposición a humedad inadecuada</li>
-            <li>Instalación incorrecta</li>
-            <li>Aplicación sobre superficies sucias, húmedas, porosas o no aptas</li>
-            <li>Manipulación o alteración</li>
-            <li>Reprogramación o reimpresión del QR</li>
-            <li>Uso inadecuado</li>
-            <li>Desgaste normal</li>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">3. Exclusiones comerciales</h2>
+          <ul className="list-disc list-inside space-y-2">
+            <li>Pérdida o robo.</li>
+            <li>Daños intencionales, modificación no autorizada o uso contrario a las instrucciones.</li>
+            <li>Desgaste o daño externo que no corresponda a un defecto de fabricación.</li>
           </ul>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Proceso de garantía</h2>
-          <p>
-            En caso de una falla cubierta, evaluaremos el producto y gestionaremos su reemplazo o la solución correspondiente. No promovemos la reparación como única opción.
+          <p className="mt-2">
+            Las exclusiones anteriores no se aplican para eliminar derechos que la
+            legislación obligatoria reconozca al consumidor.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Chips perdidos o dañados (no cubiertos por garantía)</h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">4. Cómo abrir una reclamación</h2>
           <p>
-            Los chips perdidos o dañados por causas no cubiertas por la garantía deben adquirirse al precio vigente del chip adicional o de reemplazo.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Transferencia de perfil</h2>
-          <p>
-            El perfil médico puede transferirse a un chip nuevo después de verificar la identidad del titular y desactivar el chip anterior. El servicio digital no vence por tiempo: permanece disponible mientras el identificador correspondiente esté activo y no haya sido revocado o reemplazado. Esta continuidad del servicio no amplía la garantía física de fábrica indicada anteriormente.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">Contacto</h2>
-          <p>
-            Para solicitar una revisión por garantía o consultar sobre reemplazos, utiliza nuestro{" "}
+            Utiliza el{" "}
             <Link href="/contacto" className="text-[#DA1A21] hover:text-white underline">
               formulario de contacto
-            </Link>
-            .
+            </Link>{" "}
+            e indica el número de pedido o identificador, una descripción del problema
+            y, cuando sea útil, evidencia del defecto. Soporte registra el caso antes
+            de solicitar el envío o devolución física del producto.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">5. Evaluación y resolución</h2>
+          <p>
+            Al recibir la información o el producto, según el caso, el equipo de
+            postventa evalúa la reclamación y registra la decisión. Cuando el defecto
+            esté cubierto se gestiona reparación, reemplazo, devolución de dinero u
+            otra solución apropiada conforme a la naturaleza del defecto y a los
+            derechos aplicables.
+          </p>
+          <p className="mt-2">
+            El objetivo operativo es acusar recibo del caso dentro de 2 días hábiles y
+            comunicar el siguiente paso o la necesidad de evidencia adicional dentro
+            de 5 días hábiles. Los tiempos de transporte se suman cuando sea necesario
+            recibir físicamente el producto.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">6. Reemplazo de un identificador vinculado</h2>
+          <p>
+            Si un identificador debe reemplazarse, el equipo verifica la identidad y
+            titularidad antes de transferir la relación al nuevo dispositivo. El
+            identificador anterior se revoca o desactiva para evitar que continúe
+            exponiendo el perfil.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">7. Producto perdido o daño no cubierto</h2>
+          <p>
+            Cuando no exista cobertura de garantía, el titular puede solicitar una
+            opción de reemplazo al precio y condiciones vigentes. El proceso conserva
+            la regla de revocar el identificador anterior antes de activar el nuevo.
           </p>
         </section>
       </div>
