@@ -94,6 +94,23 @@ describe("POST /api/contacts/public", () => {
     expect(mockSend).not.toHaveBeenCalled();
   });
 
+  it("fails closed when the provider returns a delivery error without throwing", async () => {
+    mockSend.mockResolvedValue({ data: null, error: { message: "recipient rejected" } } as never);
+
+    const res = await POST(
+      contactRequest({
+        name: "Juan Pérez",
+        email: "juan@example.com",
+        message: "Necesito ayuda",
+      })
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(502);
+    expect(json.error).toMatch(/no pudimos entregar/i);
+    expect(JSON.stringify(json)).not.toContain("recipient rejected");
+  });
+
   it("returns a generic error when the provider fails", async () => {
     mockSend.mockRejectedValue(new Error("provider exploded"));
 
