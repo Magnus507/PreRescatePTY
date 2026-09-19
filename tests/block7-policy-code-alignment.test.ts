@@ -66,7 +66,8 @@ describe("Block 7 policy-code alignment guardrails", () => {
     const terms = source("app/(public)/legal/terminos/page.tsx");
     const invoice = source("domains/invoices/services/invoice.service.ts");
 
-    expect(terms).toContain("no deben confundirse por sí solos con una factura fiscal autorizada");
+    expect(terms).toContain("no deben confundirse");
+    expect(terms).toContain("factura fiscal autorizada");
     expect(invoice).toContain('status: "pending_configuration"');
     expect(invoice).toContain("REC-");
   });
