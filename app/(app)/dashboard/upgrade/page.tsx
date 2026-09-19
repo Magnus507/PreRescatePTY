@@ -242,7 +242,7 @@ export default function UpgradePage() {
                 )}
                 <li className="flex items-start gap-2 text-sm font-medium">
                   <Check className="h-4 w-4 text-success mt-0.5 shrink-0" />
-                  <span>Alertas Ilimitadas</span>
+                  <span>Contacto de rescate manual desde el perfil público</span>
                 </li>
                 {pkg.allowsOrganizationModule && (
                   <li className="flex items-start gap-2 text-sm font-medium">
@@ -252,7 +252,7 @@ export default function UpgradePage() {
                 )}
                 <li className="flex items-start gap-2 text-sm font-medium">
                   <Check className="h-4 w-4 text-success mt-0.5 shrink-0" />
-                  <span>Vigencia {pkg.serviceDurationMonths / 12} años</span>
+                  <span>Servicio digital sin vencimiento por tiempo</span>
                 </li>
               </ul>
 
@@ -401,6 +401,11 @@ export default function UpgradePage() {
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Total del pedido</p>
                 <p className="mt-1 text-2xl font-black text-slate-950">${selectedPackage.price}</p>
+                <p className="mt-1 max-w-md text-[11px] font-medium leading-5 text-slate-500">
+                  Este total corresponde al producto. Si la entrega genera un cargo del transportista,
+                  se te informará por el canal de soporte antes del despacho y no se añadirá
+                  automáticamente a este pedido.
+                </p>
               </div>
               <button
                 type="submit"
