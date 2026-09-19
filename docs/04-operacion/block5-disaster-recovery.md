@@ -53,9 +53,9 @@ Schedule: **every 6 hours at minute 17 UTC**, plus a weekly long-retention recov
 
 The workflow also runs once when this backup workflow is first merged to `master`; its `push` trigger is path-limited to the workflow file, so normal application releases do not create extra backups.
 
-Only an AES-256-CBC + PBKDF2 encrypted archive and its checksum are uploaded as a GitHub Actions artifact. Plaintext database and Storage exports are deleted from the runner before upload. Recent recovery points are retained 5 days; the weekly tier is retained 30 days.
+Only an AES-256-CBC + PBKDF2 encrypted archive, its SHA-256 checksum and a passphrase-keyed HMAC are uploaded as a GitHub Actions artifact. The HMAC is verified before decryption so corruption or ciphertext tampering fails closed. Plaintext database and Storage exports are deleted from the runner before upload. Recent recovery points are retained 5 days; the weekly tier is retained 30 days.
 
-Selected recovery-point objective (RPO): **6 hours nominal maximum between scheduled backups**, plus any observable scheduler delay. At certification time record the timestamp/age of the latest successful artifact; that is the measured RPO evidence for the run.
+Selected recovery-point objective (RPO): **6 hours nominal maximum between scheduled backups**, plus any observable scheduler delay. Certification records a conservative recovery-point timestamp from the earliest start of the coherent database/Storage snapshot and measures its age when restore begins; that value is the runtime RPO evidence for the run.
 
 Required GitHub Actions secrets (only sensitive values are stored as secrets; project URLs are fixed non-secret configuration):
 
@@ -63,7 +63,7 @@ Required GitHub Actions secrets (only sensitive values are stored as secrets; pr
 - `DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY`
 - `DR_TARGET_DB_URL`
 - `DR_TARGET_SUPABASE_SERVICE_ROLE_KEY`
-- `DR_BACKUP_PASSPHRASE` (24+ characters; use a high-entropy value)
+- `DR_BACKUP_PASSPHRASE` (32+ characters; use a high-entropy value)
 
 Do not reuse application passwords or JWT/NextAuth secrets as the backup passphrase.
 

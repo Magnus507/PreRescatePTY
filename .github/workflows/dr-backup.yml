@@ -42,8 +42,8 @@ jobs:
               exit 1
             fi
           done
-          if [ "${#DR_BACKUP_PASSPHRASE}" -lt 24 ]; then
-            echo "::error::DR_BACKUP_PASSPHRASE must be at least 24 characters."
+          if [ "${#DR_BACKUP_PASSPHRASE}" -lt 32 ]; then
+            echo "::error::DR_BACKUP_PASSPHRASE must be at least 32 characters."
             exit 1
           fi
 
@@ -91,6 +91,14 @@ jobs:
             -out dr-backup.enc \
             -pass env:DR_BACKUP_PASSPHRASE
           sha256sum dr-backup.enc > dr-backup.enc.sha256
+          node --input-type=module -e '
+            import { createHmac } from "node:crypto";
+            import { readFileSync } from "node:fs";
+            const digest = createHmac("sha256", process.env.DR_BACKUP_PASSPHRASE)
+              .update(readFileSync("dr-backup.enc"))
+              .digest("hex");
+            process.stdout.write(`${digest}  dr-backup.enc\n`);
+          ' > dr-backup.enc.hmac
           rm -rf dr-artifacts dr-backup.tar.gz
 
       - name: Upload encrypted off-site artifact
@@ -100,5 +108,6 @@ jobs:
           path: |
             dr-backup.enc
             dr-backup.enc.sha256
+            dr-backup.enc.hmac
           if-no-files-found: error
           retention-days: ${{ steps.policy.outputs.retention_days }}

@@ -14,9 +14,9 @@ started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "Creating Supabase logical backup in $OUT_DIR"
 echo "Secrets are never printed. The output contains sensitive data and must be encrypted/restricted."
 
-npx --yes supabase db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/roles.sql" --role-only
-npx --yes supabase db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/schema.sql"
-npx --yes supabase db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/data.sql" --use-copy --data-only \
+npx --yes supabase@2.117.0 db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/roles.sql" --role-only
+npx --yes supabase@2.117.0 db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/schema.sql"
+npx --yes supabase@2.117.0 db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/data.sql" --use-copy --data-only \
   -x "public._prisma_migrations" \
   -x "storage.buckets_vectors" \
   -x "storage.vector_indexes"

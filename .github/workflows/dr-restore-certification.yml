@@ -47,6 +47,10 @@ jobs:
               exit 1
             fi
           done
+          if [ "${#DR_BACKUP_PASSPHRASE}" -lt 32 ]; then
+            echo "::error::DR_BACKUP_PASSPHRASE must be at least 32 characters."
+            exit 1
+          fi
           if [[ "$DR_TARGET_DB_URL" != *"$DR_TARGET_PROJECT_REF"* ]]; then
             echo "::error::DR_TARGET_DB_URL is not the dedicated restore-test project."
             exit 1
@@ -74,6 +78,18 @@ jobs:
           set -Eeuo pipefail
           cd incoming
           sha256sum --check dr-backup.enc.sha256
+          node --input-type=module -e '
+            import { createHmac, timingSafeEqual } from "node:crypto";
+            import { readFileSync } from "node:fs";
+            const expectedHex = readFileSync("dr-backup.enc.hmac", "utf8").trim().split(/\s+/)[0];
+            const actualHex = createHmac("sha256", process.env.DR_BACKUP_PASSPHRASE)
+              .update(readFileSync("dr-backup.enc"))
+              .digest("hex");
+            if (!/^[0-9a-f]{64}$/i.test(expectedHex) ||
+                !timingSafeEqual(Buffer.from(expectedHex, "hex"), Buffer.from(actualHex, "hex"))) {
+              throw new Error("Encrypted backup authentication failed");
+            }
+          '
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 \
             -in dr-backup.enc \
             -out dr-backup.tar.gz \
@@ -108,8 +124,27 @@ jobs:
       - name: Start RTO timer
         shell: bash
         run: |
-          echo "DR_RTO_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
-          echo "DR_RTO_STARTED_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+          set -Eeuo pipefail
+          RTO_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          RTO_STARTED_EPOCH="$(date +%s)"
+          RECOVERY_POINT_AT="$(node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const db = JSON.parse(readFileSync(process.argv[1], "utf8"));
+            const storage = JSON.parse(readFileSync(process.argv[2], "utf8"));
+            const earliest = Math.min(Date.parse(db.startedAt), Date.parse(storage.startedAt));
+            if (!Number.isFinite(earliest)) throw new Error("Invalid backup timestamp");
+            process.stdout.write(new Date(earliest).toISOString());
+          ' "$DR_BACKUP_DIR/database/manifest.json" "$DR_BACKUP_DIR/storage/manifest.json")"
+          RECOVERY_POINT_EPOCH="$(date -d "$RECOVERY_POINT_AT" +%s)"
+          RPO_SECONDS="$((RTO_STARTED_EPOCH - RECOVERY_POINT_EPOCH))"
+          if [ "$RPO_SECONDS" -lt 0 ]; then
+            echo "::error::Backup recovery-point timestamp is in the future."
+            exit 1
+          fi
+          echo "DR_RTO_STARTED_AT=$RTO_STARTED_AT" >> "$GITHUB_ENV"
+          echo "DR_RTO_STARTED_EPOCH=$RTO_STARTED_EPOCH" >> "$GITHUB_ENV"
+          echo "DR_RECOVERY_POINT_AT=$RECOVERY_POINT_AT" >> "$GITHUB_ENV"
+          echo "DR_MEASURED_RPO_SECONDS=$RPO_SECONDS" >> "$GITHUB_ENV"
 
       - name: Restore database data
         shell: bash
@@ -139,6 +174,8 @@ jobs:
             "sourceBackupWorkflowRun": "${{ github.event.workflow_run.id }}",
             "sourceHeadSha": "${{ github.event.workflow_run.head_sha }}",
             "restoreTargetProjectRef": "$DR_TARGET_PROJECT_REF",
+            "recoveryPointAt": "$DR_RECOVERY_POINT_AT",
+            "measuredRpoSeconds": $DR_MEASURED_RPO_SECONDS,
             "startedAt": "$DR_RTO_STARTED_AT",
             "finishedAt": "$FINISHED_AT",
             "measuredRtoSeconds": $RTO_SECONDS,
@@ -147,6 +184,7 @@ jobs:
             "integrityVerification": "PASS"
           }
           JSON
+          echo "Measured recovery-point age (RPO evidence): ${DR_MEASURED_RPO_SECONDS}s" >> "$GITHUB_STEP_SUMMARY"
           echo "Measured isolated recovery RTO: ${RTO_SECONDS}s" >> "$GITHUB_STEP_SUMMARY"
           echo "Database restore: PASS" >> "$GITHUB_STEP_SUMMARY"
           echo "Storage checksum restore: PASS" >> "$GITHUB_STEP_SUMMARY"
