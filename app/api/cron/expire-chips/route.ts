@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
 import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
+import { prisma } from "@/lib/prisma";
+import { purgeExpiredScanTelemetry } from "@/lib/privacy/scan-retention";
 
 export const dynamic = "force-dynamic";
 
@@ -25,11 +27,15 @@ export async function POST(req: NextRequest) {
   }
 
   const runAt = new Date();
-  const storageCleanup = await processStorageCleanupOutbox();
+  const [storageCleanup, scanRetention] = await Promise.all([
+    processStorageCleanupOutbox(),
+    purgeExpiredScanTelemetry(prisma, { now: runAt }),
+  ]);
   const summary = {
     expiredCount: 0,
     legacyTimeExpiryDisabled: true,
     storageCleanup,
+    scanRetention,
   };
 
   logger.info("[cron/expire-chips] Lifetime policy active; skipped time-based expiry", summary);
@@ -40,6 +46,7 @@ export async function POST(req: NextRequest) {
     count: 0,
     legacyTimeExpiryDisabled: true,
     storageCleanup,
+    scanRetention,
     runAt: runAt.toISOString(),
   });
 }
