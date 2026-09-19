@@ -11,112 +11,86 @@ export default function EnviosPage() {
   return (
     <LegalPageLayout
       title="Política de Envíos"
-      description="Información sobre entregas, costos y plazos."
-      lastUpdated="Junio 2025"
+      description="Cobertura, costos, despacho y entrega."
+      lastUpdated="Septiembre 2026 · versión 1.2"
     >
       <div className="space-y-6 text-[#A0AEC0]">
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Alcance de entregas
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">1. Cobertura</h2>
           <p>
-            Realizamos entregas dentro de Panamá, sujetas a la cobertura del
-            transportista. El costo y plazo estimado se informan antes de
-            confirmar el pedido.
+            Realizamos entregas dentro de Panamá, sujetas a la cobertura y
+            condiciones del transportista. Actualmente no ofrecemos envíos
+            internacionales ni retiro presencial como modalidad estándar.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Costo de envío
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">2. Precio del producto y costo de entrega</h2>
           <p>
-            El costo de entrega se informará antes de confirmar el pedido. No
-            ofrecemos envío gratuito garantizado.
+            El total mostrado al crear el pedido corresponde al producto. La
+            plataforma no añade automáticamente un cargo de entrega a ese total.
+            Si el transportista genera un costo adicional, PreRescatePTY lo
+            comunicará antes del despacho y solicitará la aceptación del cliente
+            antes de aplicar dicho cargo.
+          </p>
+          <p className="mt-2">
+            Si el cliente no acepta un cargo de entrega adicional antes de que el
+            pedido sea entregado al transportista, podrá solicitar la cancelación
+            conforme a la Política de Reembolsos y Cancelaciones.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Plazos de despacho y entrega
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">3. Plazos operativos</h2>
           <ul className="list-disc list-inside space-y-2">
-            <li>
-              <strong className="text-[#EFF4FF]">Despacho:</strong> 1 a 3 días
-              hábiles después de la confirmación del pago.
-            </li>
-            <li>
-              <strong className="text-[#EFF4FF]">Entrega:</strong> 1 a 5 días
-              hábiles después del despacho, según destino y transportista.
-            </li>
+            <li><strong className="text-[#EFF4FF]">Preparación/despacho:</strong> objetivo de 1 a 3 días hábiles después de confirmar el pago, salvo producto en producción/backorder o incidencia informada al cliente.</li>
+            <li><strong className="text-[#EFF4FF]">Entrega:</strong> referencia de 1 a 5 días hábiles después del despacho, dependiendo de destino y transportista.</li>
           </ul>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Seguimiento
-          </h2>
-          <p>
-            Se entrega número de seguimiento solo cuando el transportista lo
-            proporciona. No garantizamos seguimiento en todos los envíos.
+          <p className="mt-2">
+            Estos plazos son estimados operativos y no constituyen una garantía
+            absoluta frente a eventos del transportista o causas fuera de control
+            razonable.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Dirección de entrega
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">4. Seguimiento y evidencia de entrega</h2>
           <p>
-            El cliente es responsable de proporcionar una dirección correcta y
-            completa al momento del pedido. Verifica que la información sea
-            precisa antes de confirmar.
+            Se proporciona número de seguimiento cuando el transportista lo ofrece.
+            El sistema mantiene el estado operativo del despacho y la confirmación de
+            entrega cuando dicha evidencia está disponible.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Paquetes perdidos o dañados
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">5. Dirección</h2>
           <p>
-            Si un paquete se pierde o llega dañado durante el transporte,
-            revisaremos el caso y, una vez confirmado, enviaremos un reemplazo.
-            El incidente debe verificarse con el cliente y el transportista.
+            El cliente debe proporcionar una dirección, ciudad/área y teléfono de
+            contacto correctos. Antes del despacho, soporte podrá solicitar
+            aclaraciones si los datos no permiten coordinar la entrega.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Retiro presencial
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">6. Pérdida o daño durante transporte</h2>
           <p>
-            Actualmente no ofrecemos retiro presencial. Todos los pedidos se
-            entregan a través de transportistas.
+            Si un paquete se pierde o llega dañado, abre un caso mediante el
+            formulario de contacto. Revisaremos el pedido y la evidencia disponible
+            con el transportista. Cuando el incidente sea confirmado y corresponda a
+            PreRescatePTY o al transporte contratado para la entrega, se gestionará
+            reposición o la solución aplicable sin limitar los derechos obligatorios
+            del consumidor.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Envíos internacionales
-          </h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">7. Contacto</h2>
           <p>
-            Actualmente no realizamos envíos internacionales. Esta política
-            aplica únicamente a entregas dentro de Panamá.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">
-            Contacto
-          </h2>
-          <p>
-            Para consultas sobre envíos, utiliza nuestro{" "}
-            <Link
-              href="/contacto"
-              className="text-[#DA1A21] hover:text-white underline"
-            >
+            Para coordinación de entrega utiliza nuestro{" "}
+            <Link href="/contacto" className="text-[#DA1A21] hover:text-white underline">
               formulario de contacto
-            </Link>
-            .
+            </Link>{" "}
+            e incluye el número de pedido cuando lo tengas.
           </p>
         </section>
       </div>
