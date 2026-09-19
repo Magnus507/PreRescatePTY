@@ -7,6 +7,7 @@ import { enqueueCommerceOrderSyncOutbox } from "@/lib/operations/commerce-order-
 import { parseMoney, serializeMoney } from "@/lib/money";
 import { rateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
+import { CONSENT_TEXT_VERSION, CONSENT_TYPE } from "@/domains/consents/consent.constants";
 
 const ManualOrderSchema = z.object({
   packageId: z.string().trim().min(1),
@@ -17,6 +18,8 @@ const ManualOrderSchema = z.object({
   shippingCity: z.string().trim().min(2, "Ciudad o área de entrega requerida").max(100),
   shippingNotes: z.string().trim().max(500).optional().default(""),
   paymentMethod: z.enum(["yappy", "bank_transfer"]),
+  acceptedTermsAndPrivacy: z.boolean().optional(),
+  consentTextVersion: z.string().trim().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -81,8 +84,58 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const currentLegalConsent = await prisma.consent.findFirst({
+    where: {
+      userId,
+      consentType: CONSENT_TYPE.TERMS_AND_PRIVACY,
+      textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+      revokedAt: null,
+    },
+    select: { id: true },
+  });
+  const needsLegalAcceptance = !currentLegalConsent;
+  if (
+    needsLegalAcceptance &&
+    (data.acceptedTermsAndPrivacy !== true ||
+      data.consentTextVersion !== CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY)
+  ) {
+    return NextResponse.json(
+      {
+        error: "Debes aceptar la versión vigente de los Términos y la Política de Privacidad antes de crear el pedido.",
+        code: "LEGAL_ACCEPTANCE_REQUIRED",
+        consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+      },
+      { status: 428 }
+    );
+  }
+
   const orderNumber = await generateOrderNumber();
   const orderResult = await prisma.$transaction(async (tx) => {
+    if (needsLegalAcceptance) {
+      await tx.consent.create({
+        data: {
+          accountId: user.accountId,
+          userId,
+          consentType: CONSENT_TYPE.TERMS_AND_PRIVACY,
+          textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+          ipAddress: null,
+          userAgent: null,
+          evidenceJson: JSON.stringify({
+            acceptedTermsAndPrivacy: true,
+            consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+            legalDocuments: {
+              terms: "/legal/terminos",
+              privacy: "/legal/privacidad",
+              shipping: "/legal/envios",
+              refunds: "/legal/reembolsos",
+              warranty: "/legal/garantia",
+            },
+            acceptanceContext: "checkout",
+          }),
+        },
+      });
+    }
+
     const createdOrder = await tx.order.create({
       data: {
         userId,
