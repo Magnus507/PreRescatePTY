@@ -43,6 +43,8 @@ interface CheckoutContext {
   phone?: string;
   address?: string;
   city?: string;
+  legalAcceptanceRequired?: boolean;
+  legalTextVersion?: string;
 }
 
 type PaymentMethod = "yappy" | "bank_transfer";
@@ -57,6 +59,9 @@ export default function UpgradePage() {
   const [selectedPackage, setSelectedPackage] = useState<UpgradePackage | null>(null);
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("yappy");
+  const [legalAcceptanceRequired, setLegalAcceptanceRequired] = useState(false);
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
+  const [legalTextVersion, setLegalTextVersion] = useState("");
   const [shippingData, setShippingData] = useState({
     recipientName: "",
     phone: "",
@@ -83,6 +88,8 @@ export default function UpgradePage() {
         setState(stateData);
         setPackages(pkgsData.packages || []);
         if (checkoutData) {
+          setLegalAcceptanceRequired(Boolean(checkoutData.legalAcceptanceRequired));
+          setLegalTextVersion(checkoutData.legalTextVersion || "");
           setShippingData((prev) => ({
             recipientName: prev.recipientName || checkoutData.recipientName || "",
             phone: prev.phone || checkoutData.phone || "",
@@ -129,6 +136,10 @@ export default function UpgradePage() {
   const submitPackageOrder = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedPackage || submittingOrder) return;
+    if (legalAcceptanceRequired && !acceptedLegal) {
+      toast.error("Debes aceptar los Términos y la Política de Privacidad vigentes.");
+      return;
+    }
 
     setSubmittingOrder(true);
     try {
@@ -143,6 +154,8 @@ export default function UpgradePage() {
           shippingCity: shippingData.city.trim(),
           shippingNotes: shippingData.notes.trim(),
           paymentMethod,
+          acceptedTermsAndPrivacy: legalAcceptanceRequired ? acceptedLegal : undefined,
+          consentTextVersion: legalAcceptanceRequired ? legalTextVersion : undefined,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -396,6 +409,28 @@ export default function UpgradePage() {
                 />
               </label>
             </div>
+
+            {legalAcceptanceRequired && (
+              <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={acceptedLegal}
+                  onChange={(e) => setAcceptedLegal(e.target.checked)}
+                  className="mt-1 h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary/20"
+                />
+                <span className="leading-6">
+                  Para continuar con esta compra acepto los{" "}
+                  <Link href="/legal/terminos" target="_blank" className="font-bold text-primary hover:underline">
+                    Términos
+                  </Link>{" "}
+                  y la{" "}
+                  <Link href="/legal/privacidad" target="_blank" className="font-bold text-primary hover:underline">
+                    Política de Privacidad
+                  </Link>{" "}
+                  vigentes. Esta aceptación queda versionada como evidencia mínima de la operación.
+                </span>
+              </label>
+            )}
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <div>
