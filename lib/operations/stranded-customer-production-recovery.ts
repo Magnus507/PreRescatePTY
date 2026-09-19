@@ -238,10 +238,19 @@ export async function recoverStrandedCustomerProducedUnits(
           }
         }
 
-        await reconcileCustomerProducedUnitReservation(tx, {
+        const reconciliation = await reconcileCustomerProducedUnitReservation(tx, {
           commercialOrderId: commercialOrder.id,
           unitId: unit.id,
         });
+
+        // A null reconciliation is an intentional no-op for orders that are no
+        // longer eligible for reservation (for example cancelled, unpaid or
+        // already advanced fulfillment). The produced unit remains valid stock;
+        // report this as skipped instead of a recovery failure that would recur
+        // on every worker cycle.
+        if (reconciliation === null) {
+          return { kind: "skipped", reason: "SOURCE_ORDER_NO_LONGER_ELIGIBLE" };
+        }
 
         const refreshed = await tx.operationFinishedGoodUnit.findUnique({
           where: { id: unit.id },
