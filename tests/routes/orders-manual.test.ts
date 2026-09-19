@@ -34,6 +34,7 @@ vi.mock("@/lib/rateLimit", () => ({
 
 import { POST } from "@/app/api/orders/manual/route";
 import { getServerSession } from "next-auth";
+import { CONSENT_TEXT_VERSION } from "@/domains/consents/consent.constants";
 
 const TEST_USER_ID = "test-user-1";
 const TEST_ACCOUNT_ID = "account-1";
@@ -75,6 +76,7 @@ function setupDefaultMocks() {
     id: TEST_ACCOUNT_ID,
     accountType: "personal",
   } as never);
+  mockPrisma.consent.findFirst.mockResolvedValue({ id: "consent-current" } as never);
   mockPrisma.package.findUnique.mockResolvedValue({
     id: TEST_PACKAGE_ID,
     name: "Plan Básico",
@@ -119,6 +121,8 @@ describe("POST /api/orders/manual", () => {
     mockPrisma.user.findUnique.mockReset();
     mockPrisma.account.findUnique.mockReset();
     mockPrisma.package.findUnique.mockReset();
+    mockPrisma.consent.findFirst.mockReset();
+    mockPrisma.consent.create.mockReset();
     mockPrisma.order.create.mockReset();
     mockPrisma.$transaction.mockReset();
   });
@@ -165,6 +169,38 @@ describe("POST /api/orders/manual", () => {
     );
     expect(json.operationsSyncStatus).toBe("queued");
     expect(json.operationsSyncWarning).toBeNull();
+  });
+
+  it("requires current legal acceptance when the account has no current-version consent", async () => {
+    setupDefaultMocks();
+    mockPrisma.consent.findFirst.mockResolvedValue(null);
+
+    const denied = await POST(createManualOrderRequest(validManualOrderBody()));
+    const deniedJson = await denied.json();
+    expect(denied.status).toBe(428);
+    expect(deniedJson.code).toBe("LEGAL_ACCEPTANCE_REQUIRED");
+    expect(mockPrisma.order.create).not.toHaveBeenCalled();
+
+    mockPrisma.consent.create.mockResolvedValue({ id: "consent-checkout" } as never);
+    const accepted = await POST(
+      createManualOrderRequest(
+        validManualOrderBody({
+          acceptedTermsAndPrivacy: true,
+          consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+        })
+      )
+    );
+
+    expect(accepted.status).toBe(200);
+    expect(mockPrisma.consent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: TEST_USER_ID,
+          consentType: "terms_and_privacy",
+          textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+        }),
+      })
+    );
   });
 
   it("returns an error and does not expose a created order when outbox insertion fails", async () => {
