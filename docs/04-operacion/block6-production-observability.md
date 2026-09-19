@@ -1,6 +1,6 @@
 # Block 6 — Production, observability, deployments and capacity
 
-Status: OPEN while runtime gates and the commercial Vercel plan gate are being closed.
+Status: CLOSED - runtime, deployment, observability, capacity and release-workflow gates accepted on 2026-09-19.
 
 ## Live baseline — 2026-09-19
 
@@ -71,15 +71,92 @@ Minimum core monthly budget if Vercel Pro + current Supabase Free are retained:
 USD 20/month for Vercel before tax/overages. If Supabase is also upgraded to Pro,
 the base core budget becomes USD 45/month before tax/overages.
 
-## Exit gates still to prove
+## Final closure evidence
 
-1. PR CI and Browser E2E green for the Block 6 changes.
-2. Production deployment of the merged SHA READY and public-domain smoke PASS.
-3. No new runtime P1 after deployment.
-4. Worker heartbeat after deployment reports the cancelled historical unit as
-   skipped rather than failed.
-5. Rollback candidate remains available.
-6. Operator confirms Vercel commercial-eligible plan state.
+- Block 6 implementation PR: #83.
+- CI run #672: SUCCESS.
+- Browser E2E run #56: SUCCESS.
+- Final implementation SHA before closure documentation:
+  `7812e4aa4895586d57065b9dba7c8b870650f98c`.
+- Production deployment:
+  `dpl_58CrzBeH3GPWPPbZH42pJNXTyB4k` - READY.
+- Public domain `www.prerescatepty.com` served the exact deployment above.
+- Smoke PASS on landing, login, checkout/public pages and auth session.
+- Runtime error clusters: 0 in the audited seven-day window.
+- Post-deploy worker evidence at 2026-09-19T20:30Z:
+  `customerProductionRecovery.scanned=1`,
+  `skipped=1`, `failed=0`, with no failure payload.
+- Supabase primary recovery scheduler remained active at `*/5`; the observed
+  24-hour audit window contained 288 succeeded executions.
+- Previous READY production deployment remains available as rollback candidate.
 
-Do not start Block 7 until all Block 6 exit gates are closed and the Block 6
-closure dossier is emitted.
+## Accepted capacity decision
+
+Human evidence from the Vercel Billing screen confirmed the team is currently on
+the Hobby plan. The operator explicitly accepts Hobby for development and
+pre-launch only and will not upgrade before official commercial launch.
+
+This is accepted for Block 6 because the Map Master explicitly permits the
+decision to remain on Hobby when current gates fit objectively. Current release
+churn is controlled, runtime is clean, and current Supabase usage is small
+relative to its Free-plan quotas.
+
+This acceptance does **not** authorize commercial operation on Hobby. Before the
+final GO Commercial decision, Block 8 must re-check the hosting plan and require
+a plan eligible for the intended commercial use (or a documented equivalent
+hosting decision) before declaring GO.
+
+Current pre-launch minimum core infrastructure budget:
+- Vercel Hobby: USD 0/month.
+- Supabase Free: USD 0/month.
+- Core hosting/database base total: USD 0/month before domain, email, messaging,
+  payment-provider fees or other third-party services.
+
+Commercial-launch hosting cost is intentionally deferred until the launch
+decision and must be budgeted at the then-current provider price.
+
+## Gate matrix
+
+| Gate | Result |
+| --- | --- |
+| Exact production SHA + READY + smoke | PASS |
+| 0 unexplained repetitive runtime P1 | PASS |
+| Domain / HTTPS / redirect / security headers | PASS |
+| Preview churn policy applied | PASS |
+| Error and critical-operation observability | PASS |
+| Payment / fulfillment / worker traceability | PASS |
+| Build fail-fast + typecheck + strict allow-scripts | PASS |
+| Capacity state and current quotas accepted | PASS |
+| Rollback candidate available | PASS |
+| Vercel plan decision documented | PASS - Hobby accepted pre-launch only |
+
+## Residual state
+
+- P0: 0.
+- P1: 0.
+- P2/P3 material to Block 6: none blocking closure.
+- Launch condition: revalidate Vercel plan immediately before GO Commercial.
+- Known non-blocking 404 noise: missing PWA icon requests and external
+  `/llms.txt` probes; neither is a Block 6 P1.
+
+## Protected / do not reopen without new objective evidence
+
+Do not reopen Block 6 findings solely because:
+- an old pre-Block-6 deployment had different runtime traffic;
+- GitHub scheduled Actions are not exactly five-minute periodic (Supabase
+  `pg_cron` is the primary scheduler);
+- the pre-launch account remains on Hobby by explicit operator decision.
+
+Reopen only on new evidence such as production SHA drift, repeated P1 runtime
+errors, scheduler degradation, uncontrolled deployment churn, capacity
+exhaustion, domain/TLS failure, or a launch attempt without an accepted
+commercial hosting plan.
+
+## Handoff to Block 7
+
+Block 6 is CLOSED. Do not start Block 8. The next block is Block 7:
+commercial operation, legal/privacy policies and support.
+
+First Block 7 action: revalidate current master/production SHA and then inventory
+the actual published policies, retention rules, returns/refunds/shipping support
+processes and launch scope against what the product currently implements.
