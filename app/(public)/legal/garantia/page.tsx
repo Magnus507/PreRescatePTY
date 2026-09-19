@@ -19,10 +19,9 @@ export default function GarantiaPage() {
           <h2 className="text-xl font-black text-[#EFF4FF] mb-3">1. Garantía comercial del producto físico</h2>
           <p>
             PreRescatePTY ofrece una garantía comercial de 1 año desde la entrega
-            para defectos de fabricación del identificador físico. Esta garantía
-            comercial es independiente del servicio digital, que no vence por el paso
-            del tiempo mientras el identificador siga activo, y no limita garantías
-            legales obligatorias que puedan corresponder.
+            para defectos de fabricación del identificador físico. El servicio digital no vence por tiempo
+            mientras el identificador siga activo. Esta continuidad digital es independiente
+            de la garantía física y no limita garantías legales obligatorias que puedan corresponder.
           </p>
         </section>
 
