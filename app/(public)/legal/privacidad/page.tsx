@@ -52,7 +52,7 @@ export default function PrivacidadPage() {
             <li>Prevenir abuso, investigar fallos y mantener la seguridad y disponibilidad del servicio.</li>
           </ul>
           <p className="mt-3">
-            El registro de un escaneo no envía automáticamente SMS, correo ni WhatsApp
+            El registro de un escaneo no realiza entregas automáticas de SMS, correo electrónico ni WhatsApp
             de rescate. El contacto con familiares o responsables se inicia de forma
             deliberada mediante las acciones visibles en el perfil público.
           </p>
