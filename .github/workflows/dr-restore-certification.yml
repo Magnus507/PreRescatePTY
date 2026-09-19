@@ -1,0 +1,205 @@
+name: DR restore certification
+
+on:
+  workflow_run:
+    workflows:
+      - DR encrypted backup
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  restore-certification:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DR_TARGET_DB_URL: ${{ secrets.DR_TARGET_DB_URL }}
+      DR_TARGET_SUPABASE_URL: https://vgaverzjcdbkdwplsekd.supabase.co
+      DR_TARGET_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DR_TARGET_SUPABASE_SERVICE_ROLE_KEY }}
+      DR_BACKUP_PASSPHRASE: ${{ secrets.DR_BACKUP_PASSPHRASE }}
+      DR_CONFIRM_ISOLATED_TARGET: "YES"
+      DR_RESTORE_MODE: data-only
+      DR_ALLOW_TARGET_OBJECTS: "1"
+      DR_PRODUCTION_PROJECT_REF: fikidmfquaxhlayxctsa
+      DR_TARGET_PROJECT_REF: vgaverzjcdbkdwplsekd
+      DR_SENTINEL_ORDER_NUMBER: PR-2026-000824
+
+    steps:
+      - name: Checkout certified master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Validate isolated target and secrets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          for name in DR_TARGET_DB_URL DR_TARGET_SUPABASE_SERVICE_ROLE_KEY DR_BACKUP_PASSPHRASE; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required DR secret is not configured: $name"
+              exit 1
+            fi
+          done
+          if [ "${#DR_BACKUP_PASSPHRASE}" -lt 32 ]; then
+            echo "::error::DR_BACKUP_PASSPHRASE must be at least 32 characters."
+            exit 1
+          fi
+          if [[ "$DR_TARGET_DB_URL" != *"$DR_TARGET_PROJECT_REF"* ]]; then
+            echo "::error::DR_TARGET_DB_URL is not the dedicated restore-test project."
+            exit 1
+          fi
+          if [[ "$DR_TARGET_SUPABASE_URL" != *"$DR_TARGET_PROJECT_REF"* ]]; then
+            echo "::error::DR_TARGET_SUPABASE_URL is not the dedicated restore-test project."
+            exit 1
+          fi
+          if [[ "$DR_TARGET_DB_URL" == *"$DR_PRODUCTION_PROJECT_REF"* || "$DR_TARGET_SUPABASE_URL" == *"$DR_PRODUCTION_PROJECT_REF"* ]]; then
+            echo "::error::Refusing DR certification against production."
+            exit 1
+          fi
+
+      - name: Download encrypted backup from triggering run
+        uses: actions/download-artifact@v4
+        with:
+          name: dr-backup-encrypted-recent
+          path: incoming
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify and decrypt backup
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd incoming
+          sha256sum --check dr-backup.enc.sha256
+          node --input-type=module -e '
+            import { createHmac, timingSafeEqual } from "node:crypto";
+            import { readFileSync } from "node:fs";
+            const expectedHex = readFileSync("dr-backup.enc.hmac", "utf8").trim().split(/\s+/)[0];
+            const actualHex = createHmac("sha256", process.env.DR_BACKUP_PASSPHRASE)
+              .update(readFileSync("dr-backup.enc"))
+              .digest("hex");
+            if (!/^[0-9a-f]{64}$/i.test(expectedHex) ||
+                !timingSafeEqual(Buffer.from(expectedHex, "hex"), Buffer.from(actualHex, "hex"))) {
+              throw new Error("Encrypted backup authentication failed");
+            }
+          '
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 \
+            -in dr-backup.enc \
+            -out dr-backup.tar.gz \
+            -pass env:DR_BACKUP_PASSPHRASE
+          mkdir -p ../dr-artifacts
+          tar -C ../dr-artifacts -xzf dr-backup.tar.gz
+          rm -f dr-backup.tar.gz
+          cd ..
+          BACKUP_DIR="$(find dr-artifacts -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          test -n "$BACKUP_DIR"
+          echo "DR_BACKUP_DIR=$BACKUP_DIR" >> "$GITHUB_ENV"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install PostgreSQL client
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Reset dedicated restore-test data
+        shell: bash
+        run: bash scripts/dr/reset-isolated-target.sh
+
+      - name: Start RTO timer
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          RTO_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          RTO_STARTED_EPOCH="$(date +%s)"
+          RECOVERY_POINT_AT="$(node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const db = JSON.parse(readFileSync(process.argv[1], "utf8"));
+            const storage = JSON.parse(readFileSync(process.argv[2], "utf8"));
+            const earliest = Math.min(Date.parse(db.startedAt), Date.parse(storage.startedAt));
+            if (!Number.isFinite(earliest)) throw new Error("Invalid backup timestamp");
+            process.stdout.write(new Date(earliest).toISOString());
+          ' "$DR_BACKUP_DIR/database/manifest.json" "$DR_BACKUP_DIR/storage/manifest.json")"
+          RECOVERY_POINT_EPOCH="$(date -d "$RECOVERY_POINT_AT" +%s)"
+          RPO_SECONDS="$((RTO_STARTED_EPOCH - RECOVERY_POINT_EPOCH))"
+          if [ "$RPO_SECONDS" -lt 0 ]; then
+            echo "::error::Backup recovery-point timestamp is in the future."
+            exit 1
+          fi
+          echo "DR_RTO_STARTED_AT=$RTO_STARTED_AT" >> "$GITHUB_ENV"
+          echo "DR_RTO_STARTED_EPOCH=$RTO_STARTED_EPOCH" >> "$GITHUB_ENV"
+          echo "DR_RECOVERY_POINT_AT=$RECOVERY_POINT_AT" >> "$GITHUB_ENV"
+          echo "DR_MEASURED_RPO_SECONDS=$RPO_SECONDS" >> "$GITHUB_ENV"
+
+      - name: Restore database data
+        shell: bash
+        run: bash scripts/dr/restore-database.sh "$DR_BACKUP_DIR/database"
+
+      - name: Verify database integrity against exact dump
+        shell: bash
+        run: node scripts/dr/verify-restore.mjs "$DR_BACKUP_DIR/database/dump-summary.json" | tee restore-integrity.json
+
+      - name: Restore and checksum Storage
+        shell: bash
+        run: node scripts/dr/restore-storage.mjs "$DR_BACKUP_DIR/storage" | tee storage-restore.json
+
+      - name: Record measured RTO evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence
+          FINISHED_EPOCH="$(date +%s)"
+          FINISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          RTO_SECONDS="$((FINISHED_EPOCH - DR_RTO_STARTED_EPOCH))"
+          cp "$DR_BACKUP_DIR/database/restore-result.json" evidence/database-restore.json
+          cp storage-restore.json evidence/storage-restore.json
+          cp restore-integrity.json evidence/restore-integrity.json
+          cat > evidence/summary.json <<JSON
+          {
+            "sourceBackupWorkflowRun": "${{ github.event.workflow_run.id }}",
+            "sourceHeadSha": "${{ github.event.workflow_run.head_sha }}",
+            "restoreTargetProjectRef": "$DR_TARGET_PROJECT_REF",
+            "recoveryPointAt": "$DR_RECOVERY_POINT_AT",
+            "measuredRpoSeconds": $DR_MEASURED_RPO_SECONDS,
+            "startedAt": "$DR_RTO_STARTED_AT",
+            "finishedAt": "$FINISHED_AT",
+            "measuredRtoSeconds": $RTO_SECONDS,
+            "databaseRestore": "PASS",
+            "storageRestore": "PASS",
+            "integrityVerification": "PASS"
+          }
+          JSON
+          echo "Measured recovery-point age (RPO evidence): ${DR_MEASURED_RPO_SECONDS}s" >> "$GITHUB_STEP_SUMMARY"
+          echo "Measured isolated recovery RTO: ${RTO_SECONDS}s" >> "$GITHUB_STEP_SUMMARY"
+          echo "Database restore: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "Storage checksum restore: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "Integrity verification: PASS" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove decrypted production backup
+        if: always()
+        shell: bash
+        run: rm -rf dr-artifacts incoming
+
+      - name: Upload non-PII restore evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dr-restore-evidence
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30

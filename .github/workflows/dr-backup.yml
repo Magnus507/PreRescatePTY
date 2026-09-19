@@ -1,0 +1,113 @@
+name: DR encrypted backup
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/dr-backup.yml
+  schedule:
+    - cron: "17 */6 * * *"
+    - cron: "43 4 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dr-encrypted-backup-production
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DR_SOURCE_DB_URL: ${{ secrets.DR_SOURCE_DB_URL }}
+      DR_SOURCE_SUPABASE_URL: https://fikidmfquaxhlayxctsa.supabase.co
+      DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY }}
+      DR_BACKUP_PASSPHRASE: ${{ secrets.DR_BACKUP_PASSPHRASE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate DR secrets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          for name in DR_SOURCE_DB_URL DR_SOURCE_SUPABASE_SERVICE_ROLE_KEY DR_BACKUP_PASSPHRASE; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required DR secret is not configured: $name"
+              exit 1
+            fi
+          done
+          if [ "${#DR_BACKUP_PASSPHRASE}" -lt 32 ]; then
+            echo "::error::DR_BACKUP_PASSPHRASE must be at least 32 characters."
+            exit 1
+          fi
+
+      - name: Set backup identity and retention
+        id: policy
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "DR_BACKUP_ID=$(date -u +%Y%m%dT%H%M%SZ)-run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "43 4 * * 0" ]; then
+            echo "retention_days=30" >> "$GITHUB_OUTPUT"
+            echo "tier=weekly" >> "$GITHUB_OUTPUT"
+          else
+            echo "retention_days=5" >> "$GITHUB_OUTPUT"
+            echo "tier=recent" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Export Storage objects
+        run: node scripts/dr/export-storage.mjs dr-artifacts
+
+      - name: Export consistent database snapshot
+        shell: bash
+        run: bash scripts/dr/backup-database.sh dr-artifacts
+
+      - name: Verify Storage stayed stable across database snapshot
+        run: node scripts/dr/verify-storage-snapshot.mjs "dr-artifacts/$DR_BACKUP_ID/storage"
+
+      - name: Encrypt backup package
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          tar -C dr-artifacts -czf dr-backup.tar.gz "$DR_BACKUP_ID"
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 \
+            -in dr-backup.tar.gz \
+            -out dr-backup.enc \
+            -pass env:DR_BACKUP_PASSPHRASE
+          sha256sum dr-backup.enc > dr-backup.enc.sha256
+          node --input-type=module -e '
+            import { createHmac } from "node:crypto";
+            import { readFileSync } from "node:fs";
+            const digest = createHmac("sha256", process.env.DR_BACKUP_PASSPHRASE)
+              .update(readFileSync("dr-backup.enc"))
+              .digest("hex");
+            process.stdout.write(`${digest}  dr-backup.enc\n`);
+          ' > dr-backup.enc.hmac
+          rm -rf dr-artifacts dr-backup.tar.gz
+
+      - name: Upload encrypted off-site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dr-backup-encrypted-${{ steps.policy.outputs.tier }}
+          path: |
+            dr-backup.enc
+            dr-backup.enc.sha256
+            dr-backup.enc.hmac
+          if-no-files-found: error
+          retention-days: ${{ steps.policy.outputs.retention_days }}
