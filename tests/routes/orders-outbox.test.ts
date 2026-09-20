@@ -49,6 +49,7 @@ describe("POST /api/orders", () => {
     mockPrisma.order.create.mockReset();
     mockPrisma.commerceOrderSyncOutbox.create.mockReset();
     mockPrisma.user.findUnique.mockReset();
+    mockPrisma.consent.findFirst.mockReset();
     mockPrisma.$transaction.mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma));
     vi.mocked(getServerSession).mockResolvedValue(
       createMockSession({ id: "user-1", role: "owner", accountId: "account-1" }) as never
@@ -61,6 +62,7 @@ describe("POST /api/orders", () => {
       accountId: "account-1",
       profile: { id: "profile-1", firstName: "Ana", lastName: "Perez", address: null, city: null },
     } as never);
+    mockPrisma.consent.findFirst.mockResolvedValue({ id: "consent-current" } as never);
     mockResolveStoreProductForOrder.mockResolvedValue({
       id: "product-1",
       name: "Producto 1",
