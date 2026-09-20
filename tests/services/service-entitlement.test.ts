@@ -53,7 +53,7 @@ describe("physical unit annual-access eligibility", () => {
       grantsAnnualAccess: true,
       requiresPaidOrderForAnnualAccess: true,
     } as never);
-    mockPrisma.operationCommercialOrder.findUnique.mockResolvedValue({
+    mockPrisma.order.findUnique.mockResolvedValue({
       paymentStatus: "paid",
     } as never);
 
@@ -63,6 +63,40 @@ describe("physical unit annual-access eligibility", () => {
       eligible: true,
       reason: "paid_physical_unit",
       months: ANNUAL_ACCESS_MONTHS,
+    });
+  });
+
+  it("recognizes a paid operational order when no source Order row owns the reservation", async () => {
+    mockPrisma.operationFinishedGoodUnit.findUnique.mockResolvedValue({
+      id: "unit-ops",
+      productCode: "TAG-STD",
+      reservedOrderId: "operations-order-1",
+    } as never);
+    mockPrisma.operationReplacement.findFirst.mockResolvedValue(null);
+    mockPrisma.productOperationalMapping.findFirst.mockResolvedValue({
+      grantsAnnualAccess: true,
+      requiresPaidOrderForAnnualAccess: true,
+    } as never);
+    mockPrisma.order.findUnique.mockResolvedValue(null);
+    mockPrisma.operationCommercialOrder.findFirst.mockResolvedValue({
+      paymentStatus: "paid",
+    } as never);
+
+    const result = await getPhysicalUnitGrantEligibility(mockPrisma as never, "unit-ops");
+
+    expect(result).toEqual({
+      eligible: true,
+      reason: "paid_physical_unit",
+      months: ANNUAL_ACCESS_MONTHS,
+    });
+    expect(mockPrisma.operationCommercialOrder.findFirst).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { id: "operations-order-1" },
+          { sourceId: "operations-order-1" },
+        ],
+      },
+      select: { paymentStatus: true },
     });
   });
 
