@@ -24,7 +24,7 @@ async function rewindPostBaselineSchema(tx: {
   ] as const;
 
   for (const table of postBaselineTables) {
-    await tx.$executeRawUnsafe(`DROP TABLE IF EXISTS public."${table}" CASCADE`);
+    await tx.$executeRawUnsafe(`DROP TABLE IF EXISTS public."${table}"`);
   }
 
   await tx.$executeRawUnsafe(
