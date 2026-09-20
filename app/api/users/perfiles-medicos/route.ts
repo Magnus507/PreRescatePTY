@@ -255,6 +255,7 @@ export async function POST(req: NextRequest) {
         action: "create_family_profile",
         newValuesJson: JSON.stringify({ firstName, lastName, bloodType: finalBloodType }),
       });
+      await AccountStateService.invalidateCache(userId);
     }
 
     return ApiResponse.success({ profile }, { status: 201 });
