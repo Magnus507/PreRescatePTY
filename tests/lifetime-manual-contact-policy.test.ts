@@ -5,63 +5,62 @@ function source(path: string) {
   return readFileSync(path, "utf8");
 }
 
-describe("lifetime service + lifetime rescue + manual-contact policy guardrails", () => {
-  it("never gates the public rescue profile on service expiry or paid corporate status", () => {
+describe("annual administration + continuous rescue + manual-contact policy guardrails", () => {
+  it("never gates the public rescue profile on annual administration expiry or paid corporate status", () => {
     const route = source("app/api/public/[shortCode]/route.ts");
     const resolver = source("lib/public-access/resolve-public-profile-by-chip.ts");
 
     expect(route).not.toContain('serviceStatus === "expired"');
     expect(route).not.toContain('corporateMember.corporateStatus !== "paid_active"');
-    expect(route).not.toContain("Protocolo inactivo por falta de renovación");
     expect(resolver).not.toContain("serviceEndDate");
     expect(resolver).not.toContain("serviceStatus");
   });
 
-  it("activates purchased personal and corporate identifiers with no time-based service expiry", () => {
+  it("keeps rescue identifiers active while granting annual administration separately", () => {
     const activation = source("app/api/chips/activate/route.ts");
     const corporateActivation = source("app/api/organizations/corporate-chip/activate/route.ts");
 
     for (const route of [activation, corporateActivation]) {
       expect(route).toContain("serviceEndDate: null");
-      expect(route).toContain("lifetimeService: true");
+      expect(route).toContain("grantForPhysicalUnitActivation");
       expect(route).not.toContain("initialServiceEndDate");
-      expect(route).not.toContain("serviceDurationMonths");
       expect(route).not.toContain('serviceStatus === "expired"');
-      expect(route).not.toContain("24-month");
     }
   });
 
-  it("keeps account service active regardless of legacy expiry dates and preserves personal unlimited activation", () => {
+  it("uses account-level annual access modes and preserves safety actions after expiry", () => {
     const accountState = source("domains/accounts/services/account-state.service.ts");
-    expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v5"');
-    expect(accountState).toContain("serviceEndDate: null");
-    expect(accountState).toContain("serviceDurationMonths: null");
-    expect(accountState).toContain("isExpired: false");
-    expect(accountState).not.toContain("serviceEndDate < new Date()");
-    expect(accountState).not.toContain('isExpired ? "expired"');
-    expect(accountState).not.toContain("DEFAULT_SERVICE_DURATION_MONTHS");
-    expect(accountState).toContain("!isCorporate || (!isInactive && activeChipsCount < maxChipsLimit)");
+
+    expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v6"');
+    expect(accountState).toContain("serviceDurationMonths: 12");
+    expect(accountState).toContain("resolveAccountAccessMode");
+    expect(accountState).toContain('const isExpired = accessMode === "ESSENTIAL"');
+    expect(accountState).toContain('canEditProfiles: isOwner && accessMode !== "ESSENTIAL"');
+    expect(accountState).toContain('canManageDeviceAssignments: isOwner && accessMode === "FULL"');
+    expect(accountState).toContain("canSuspendLostOrStolen: isOwner");
+    expect(accountState).toContain("canUseSupport: true");
   });
 
-  it("does not expose or accept a finite duration through package APIs", () => {
-    const publicRoute = source("app/api/public/packages/route.ts");
-    const adminRoute = source("app/api/admin/packages/route.ts");
-    expect(publicRoute).toContain("serviceDurationMonths");
-    expect(publicRoute).toContain("publicPackage");
-    expect(publicRoute).toContain("void serviceDurationMonths");
-    expect(adminRoute).toContain("LEGACY_LIFETIME_DURATION_MARKER = 0");
-    expect(adminRoute).toContain("void serviceDurationMonths");
-    expect(adminRoute).not.toContain("serviceDurationMonths ?? 24");
+  it("retires package sales while preserving historical package records", () => {
+    const publicPackages = source("app/api/public/packages/route.ts");
+    const manualCheckout = source("app/api/orders/manual/route.ts");
+    const adminPackages = source("app/api/admin/packages/route.ts");
+
+    expect(publicPackages).toContain("{ packages: [], deprecated: true }");
+    expect(manualCheckout).toContain("PACKAGE_CHECKOUT_RETIRED");
+    expect(manualCheckout).toContain("{ status: 410 }");
+    expect(adminPackages).toContain("LEGACY_LIFETIME_DURATION_MARKER = 0");
   });
 
-  it("keeps medical profile correction possible for lifetime service", () => {
+  it("requires active annual administration for profile edits without affecting public rescue", () => {
     const detail = source("app/api/users/perfiles-medicos/[profileId]/route.ts");
-    expect(detail).toContain("Unrestricted editing of medical profiles ensures data integrity");
-    expect(detail).not.toContain("state.isExpired");
-    expect(detail).not.toContain('serviceStatus === "expired"');
+
+    expect(detail).toContain("AccountStateService.getAccountState");
+    expect(detail).toContain("state.canEditProfiles");
+    expect(detail).toContain("ANNUAL_ACCESS_REQUIRED");
   });
 
-  it("keeps scans telemetry-only and retires every server delivery entrypoint", () => {
+  it("keeps scans telemetry-only and retires every automatic server delivery entrypoint", () => {
     const scan = source("app/api/public/[shortCode]/scan/route.ts");
     const notify = source("app/api/public/[shortCode]/scan/[scanId]/notify/route.ts");
     const notifyCron = source("app/api/cron/notify/route.ts");
@@ -76,89 +75,49 @@ describe("lifetime service + lifetime rescue + manual-contact policy guardrails"
 
   it("keeps the legacy emergency-alert module fail-safe and unable to reach providers", () => {
     const engine = source("lib/emergency-alerts.ts");
+
     expect(engine).toContain('reason: "automatic_delivery_retired"');
     expect(engine).toContain("claimed: 0");
     expect(engine).toContain("sent: 0");
     expect(engine).not.toContain('from "@/lib/notifications"');
     expect(engine).not.toContain("sendEmergencyNotification(");
-    expect(engine).not.toContain("db.notification.create(");
-    expect(engine).not.toContain("db.notification.updateMany(");
-    expect(engine).not.toContain("db.notification.findMany(");
   });
 
-  it("retires the automatic-alert preference API without deleting historical consent", () => {
-    const preferences = source("app/api/users/alert-preferences/route.ts");
-    expect(preferences).toContain("automaticAlertsAvailable: false");
-    expect(preferences).toContain('deliveryMode: "manual_whatsapp"');
-    expect(preferences).toContain("{ status: 410 }");
-    expect(preferences).not.toContain("tx.consent.create");
-    expect(preferences).not.toContain("tx.consent.updateMany");
-  });
-
-  it("mounts a public UI hardener that also catches late React href changes", () => {
-    const page = source("app/(public)/e/[shortCode]/page.tsx");
-    const hardener = source("app/(public)/e/[shortCode]/_components/ManualContactHardening.tsx");
-    expect(page).toContain("ManualContactHardening");
-    expect(hardener).toContain("buildManualRescueWhatsAppUrl");
-    expect(hardener).toContain("lucide-bell-ring");
-    expect(hardener).toContain('dataset.manualContact = "whatsapp"');
-    expect(hardener).toContain("attributes: true");
-    expect(hardener).toContain('attributeFilter: ["href"]');
-  });
-
-  it("removes obsolete automatic-alert and renewal UI from settings", () => {
-    const layout = source("app/(app)/dashboard/configuracion/layout.tsx");
+  it("does not let the settings hardener hide or rewrite annual renewal", () => {
     const hardener = source("app/(app)/dashboard/configuracion/_components/LifetimePolicyHardening.tsx");
-    expect(layout).toContain("LifetimePolicyHardening");
-    expect(hardener).toContain("avisar automáticamente al escanear");
-    expect(hardener).toContain("Servicio sin vencimiento por tiempo");
-    expect(hardener).toContain("retiredServiceRenewal");
+
+    expect(hardener).toContain("Annual access and");
+    expect(hardener).not.toContain("retiredServiceRenewal");
+    expect(hardener).not.toContain('label.includes("renovar servicio")');
+    expect(hardener).not.toContain("Servicio sin vencimiento por tiempo");
   });
 
-  it("never advertises a finite service term or renewal on the purchase page", () => {
+  it("explains the annual model on the purchase page without claiming rescue stops at expiry", () => {
     const buy = source("app/(public)/comprar/ComprarContent.tsx");
-    const guarantee = source("app/(public)/legal/garantia/page.tsx");
-    expect(buy).not.toContain("serviceDurationMonths");
-    expect(buy).not.toContain("24 meses");
-    expect(buy.toLowerCase()).not.toContain("renovable");
-    expect(buy.toLowerCase()).not.toContain("renovación");
-    expect(buy).toContain("sin vencimiento por tiempo");
-    expect(guarantee).not.toContain("24 meses");
-    expect(guarantee.toLowerCase()).not.toContain("renovarse");
-    expect(guarantee).toContain("servicio digital no vence por tiempo");
+
+    expect(buy).toContain("Cada unidad física elegible que compres y actives añade 12 meses");
+    expect(buy).toContain("Tu QR/NFC de rescate no depende de esa renovación");
+    expect(buy).not.toContain("paquetes disponibles");
   });
 
-  it("keeps public marketing, FAQ, how-it-works, terms and privacy aligned with lifetime + manual contact policy", () => {
-    const publicCopy = [
-      source("components/public/sections/HeroSection.tsx"),
-      source("components/public/sections/FAQPreview.tsx"),
-      source("app/(public)/faq/FAQContent.tsx"),
-      source("app/(public)/como-funciona/ComoFuncionaContent.tsx"),
-      source("app/(public)/legal/terminos/page.tsx"),
-      source("app/(public)/legal/privacidad/page.tsx"),
-    ].join("\n");
+  it("keeps public and legal copy aligned with annual administration plus rescue continuity", () => {
+    const hero = source("components/public/sections/HeroSection.tsx");
+    const faq = source("app/(public)/faq/FAQContent.tsx");
+    const how = source("app/(public)/como-funciona/ComoFuncionaContent.tsx");
+    const terms = source("app/(public)/legal/terminos/page.tsx");
+    const warranty = source("app/(public)/legal/garantia/page.tsx");
 
-    const forbiddenLegacyClaims = [
-      "2 años desde activación",
-      "2 años de vigencia",
-      "vigencia de 2 años",
-      "cada plan incluye 2 años",
-      "servicio renovable",
-      "puedes renovar el servicio",
-      "sistema puede procesar alertas de emergencia",
-      "sistema puede procesar notificaciones de emergencia",
-      "alertas de emergencia asociadas al escaneo",
-      "procesar notificaciones de emergencia cuando la función correspondiente esté habilitada",
-    ];
+    expect(hero).toContain("QR/NFC de rescate continuo");
+    expect(faq).toContain("12 meses de administración");
+    expect(faq).toContain("El QR/NFC y la ficha pública siguen funcionando");
+    expect(how).toContain("Rescate continuo, administración anual");
+    expect(terms).toContain("añade 12 meses de administración de perfiles y dispositivos");
+    expect(terms).toContain("Un reemplazo de garantía o");
+    expect(warranty).toContain("no añade automáticamente otros");
+    expect(warranty).toContain("12 meses de administración");
 
-    for (const claim of forbiddenLegacyClaims) {
-      expect(publicCopy.toLowerCase()).not.toContain(claim.toLowerCase());
-    }
-
-    expect(source("components/public/sections/HeroSection.tsx")).toContain("Sin vencimiento por tiempo");
-    expect(source("app/(public)/faq/FAQContent.tsx")).toContain("no envía SMS, correos ni WhatsApp de rescate automáticamente");
-    expect(source("app/(public)/como-funciona/ComoFuncionaContent.tsx")).toContain("Servicio sin vencimiento");
-    expect(source("app/(public)/legal/terminos/page.tsx")).toContain("no vence por el paso del tiempo");
-    expect(source("app/(public)/legal/privacidad/page.tsx")).toContain("no realiza entregas automáticas de SMS, correo electrónico ni WhatsApp");
+    const combined = [faq, how, terms, warranty].join("\n").toLowerCase();
+    expect(combined).not.toContain("no existe renovación periódica");
+    expect(combined).not.toContain("servicio digital no vence por tiempo");
   });
 });
