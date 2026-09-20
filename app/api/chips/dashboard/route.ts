@@ -171,14 +171,12 @@ export async function PATCH(req: NextRequest) {
 
   let newStatus = chip.status;
   let updateData: Partial<{ status: string; ownerUserId?: string | null }> = {};
-  let auditAction = action;
 
   if (action === "report_lost_or_stolen" && chip.status === "activated") {
     if (!state.canSuspendLostOrStolen) {
       return NextResponse.json({ error: "Acción no permitida" }, { status: 403 });
     }
     newStatus = "suspended";
-    auditAction = "report_lost_or_stolen";
     updateData = { status: newStatus };
   } else if (action === "suspend" && chip.status === "activated") {
     if (state.accessMode !== "FULL") {
