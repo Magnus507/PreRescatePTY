@@ -20,11 +20,13 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 const mockInvalidateCache = vi.hoisted(() => vi.fn())
+const mockGetAccountState = vi.hoisted(() => vi.fn())
 const mockFindById = vi.hoisted(() => vi.fn())
 const mockProfileUpdate = vi.hoisted(() => vi.fn())
 
 vi.mock('@/domains/accounts/services/account-state.service', () => ({
   AccountStateService: {
+    getAccountState: mockGetAccountState,
     invalidateCache: mockInvalidateCache,
   },
 }))
@@ -142,6 +144,8 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
   beforeEach(() => {
     resetAllMocks()
     mockInvalidateCache.mockReset()
+    mockGetAccountState.mockReset()
+    mockGetAccountState.mockResolvedValue({ canEditProfiles: true })
     mockFindById.mockReset()
     mockProfileUpdate.mockReset()
   })
