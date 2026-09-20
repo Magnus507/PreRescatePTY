@@ -4,7 +4,6 @@ export type EnvScope = "build" | "runtime" | "script" | "test" | "platform";
 
 export const ENV_CONTRACT = {
   ADMIN_MFA_ENFORCEMENT_ENABLED: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
-  ANNUAL_RENEWAL_PRICE_USD: { scopes: ["runtime"], example: true, sensitive: false, requiredInProduction: false },
   APP_URL: { scopes: ["script"], example: true, sensitive: false, requiredInProduction: false },
   APPLY_W605G_H5: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
   BOOTSTRAP_ADMIN_USER_ID: { scopes: ["script"], example: false, sensitive: false, requiredInProduction: false },
@@ -100,7 +99,6 @@ const encryptionKey = z.string().superRefine((value, ctx) => {
 });
 
 const optionalIntegrationShape = {
-  ANNUAL_RENEWAL_PRICE_USD: z.string().regex(/^\d{1,6}(?:\.\d{1,2})?$/).optional(),
   NEXT_PUBLIC_APP_URL: optionalUrl,
   NEXT_PUBLIC_SENTRY_DSN: optionalUrl,
   NEXT_PUBLIC_VERCEL_ENV: vercelEnvironment,
