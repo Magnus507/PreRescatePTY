@@ -33,13 +33,17 @@ describe("permanent service + manual-contact policy guardrails", () => {
     const accountState = source("domains/accounts/services/account-state.service.ts");
     const policy = source("domains/accounts/account-policy.ts");
 
-    expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v7"');
+    expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v8"');
     expect(accountState).toContain("serviceEndDate: null");
     expect(accountState).toContain("serviceDurationMonths: null");
     expect(accountState).toContain("isExpired: false");
     expect(accountState).not.toContain("resolveAccountAccessMode");
     expect(accountState).not.toContain("ESSENTIAL");
     expect(accountState).not.toContain("PENDING_ACTIVATION");
+    expect(accountState).toContain('activatedAt: { not: null }');
+    expect(accountState).toContain("hasEverActivatedChip");
+    expect(accountState).toContain("canAddFamilyMember: !isCorporate && isOwner && hasEverActivatedChip");
+    expect(accountState).toContain("canCreateProfiles: !isCorporate && isOwner && hasEverActivatedChip");
     expect(accountState).toContain("canEditProfiles: isOwner");
     expect(accountState).toContain("canManageDeviceAssignments: isOwner");
     expect(accountState).toContain("canReactivateDevices: isOwner");
