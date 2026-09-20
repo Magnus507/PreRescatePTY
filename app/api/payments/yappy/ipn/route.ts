@@ -134,6 +134,11 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   }
+
+  if (!attempt) {
+    return NextResponse.json({ success: false }, { status: 404 });
+  }
+
   const existingEvent = await prisma.paymentEvent.findUnique({ where: { providerEventId } });
   if (existingEvent) {
     return NextResponse.json({ success: true });
