@@ -430,7 +430,8 @@ describe('POST /api/users/perfiles-medicos', () => {
         lastName: 'García',
         bloodType: 'O+',
         phone: '+50760009999',
-      })
+      }),
+      expect.anything()
     )
 
     // Verify userId is null (family profile)
