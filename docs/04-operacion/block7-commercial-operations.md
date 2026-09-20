@@ -77,6 +77,16 @@ Retention:
 
 Owner while pre-launch: PreRescatePTY operator.
 
+Production proof (2026-09-20 UTC):
+- master SHA `a2604b623f40e120e8699902bf5ff9c6a518cf7f`;
+- production deployment `dpl_7VBFjgCnKsRwsVeopYuu6zRPm7a4` reached READY and is aliased to `www.prerescatepty.com`;
+- a real Contact submission persisted as one `SupportMessage`;
+- admin opened the message, which produced audited `support_message.mark-read`;
+- admin marked the case resolved, which produced audited `support_message.resolve`;
+- production state after the controlled test: total=1, unread=0, open=0, resolved=1;
+- operator screenshots confirmed the public success state and the admin inbox/read/resolved UI.
+
+
 ## 4. Incident escalation
 
 ### Compromised account
@@ -262,12 +272,12 @@ This is a launch-compliance task, not a substitute for software testing.
 
 ## 13. Block 7 remaining gates
 
-- [ ] Database-backed Contact → Admin Support inbox flow verified in production.
+- [x] Database-backed Contact → Admin Support inbox flow verified in production.
 - [ ] Fiscal/tax implementation decision documented with appropriate professional input.
 - [ ] Operator accepts/adjusts the published shipping-return-warranty operating rules.
-- [ ] CI + Browser E2E green on Block 7 PR.
-- [ ] Production deploy READY and legal/support smoke passes.
-- [ ] Scan-retention maintenance run verified live.
-- [ ] No Block 7 P0/P1 remains unresolved.
+- [x] CI + Browser E2E green on Block 7 support PR (#86): CI #682 SUCCESS; Browser E2E #66 SUCCESS.
+- [x] Production deploy READY and legal/support smoke passes: `dpl_7VBFjgCnKsRwsVeopYuu6zRPm7a4`.
+- [x] Scan-retention maintenance run verified live. Latest verified maintenance heartbeat at `2026-09-20T03:00:01.567Z` reported `retentionDays=365`, zero expired rows requiring deletion in that run, and the support-retention worker at 730 days.
+- [ ] No Block 7 P0/P1 remains unresolved. This remains blocked only by the fiscal/tax compliance gate until documented.
 
 Do not start Block 8 before Block 7 is formally CLOSED and its closure dossier exists.
