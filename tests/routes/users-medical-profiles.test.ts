@@ -19,6 +19,7 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 const mockGetAccountState = vi.hoisted(() => vi.fn())
+const mockInvalidateCache = vi.hoisted(() => vi.fn())
 const mockFindAllByAccount = vi.hoisted(() => vi.fn())
 const mockProfileCreate = vi.hoisted(() => vi.fn())
 const mockAuditLogRecord = vi.hoisted(() => vi.fn())
@@ -26,6 +27,7 @@ const mockAuditLogRecord = vi.hoisted(() => vi.fn())
 vi.mock('@/domains/accounts/services/account-state.service', () => ({
   AccountStateService: {
     getAccountState: mockGetAccountState,
+    invalidateCache: mockInvalidateCache,
   },
 }))
 
@@ -101,6 +103,7 @@ function createMockAccountState(overrides: Record<string, unknown> = {}) {
     hasCompletedMedicalProfile: true,
     hasEmergencyContact: true,
     hasActivatedChip: true,
+    hasEverActivatedChip: true,
     setupChecklist: {
       medicalProfileComplete: true,
       chipActivated: true,
@@ -481,7 +484,7 @@ describe('POST /api/users/perfiles-medicos', () => {
 
   // ─── Cache invalidation ─────────────────────────────────────────────────
 
-  it('9. POST does not invalidate account-state cache (route does not call it)', async () => {
+  it('9. POST invalidates account-state cache after profile creation', async () => {
     authorizeAsUser()
     setupPostMocks()
 
@@ -489,7 +492,45 @@ describe('POST /api/users/perfiles-medicos', () => {
     const res = await POST(req)
 
     expect(res.status).toBe(201)
-    // The POST route does NOT call AccountStateService.invalidateCache
-    // This test documents that behavior
+    expect(mockInvalidateCache).toHaveBeenCalledWith(TEST_USER_ID)
+  })
+
+  it('10. POST blocks extra profiles before the first device activation', async () => {
+    authorizeAsUser()
+    mockGetAccountState.mockResolvedValue(createMockAccountState({
+      serviceStatus: 'not_activated',
+      hasActivatedChip: false,
+      hasEverActivatedChip: false,
+      canManageFamilyProfiles: false,
+      canAddFamilyMember: false,
+      canCreateProfiles: false,
+      activeChipsCount: 0,
+      familyProfilesCount: 0,
+    }))
+
+    const req = createPostRequest({ firstName: 'Pre', lastName: 'Activation' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(403)
+    expect(json.error).toMatch(/activa tu primer dispositivo/i)
+    expect(mockProfileCreate).not.toHaveBeenCalled()
+  })
+
+  it('11. POST enforces the ten-profile limit after activation', async () => {
+    authorizeAsUser()
+    mockGetAccountState.mockResolvedValue(createMockAccountState({
+      hasEverActivatedChip: true,
+      canCreateProfiles: false,
+      familyProfilesCount: 9,
+    }))
+
+    const req = createPostRequest({ firstName: 'Limit', lastName: 'Reached' })
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(403)
+    expect(json.error).toMatch(/límite de 10 perfiles/i)
+    expect(mockProfileCreate).not.toHaveBeenCalled()
   })
 })
