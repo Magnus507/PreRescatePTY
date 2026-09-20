@@ -8,7 +8,7 @@ import { ACCOUNT_TYPES, USER_ROLES } from "@/domains/shared/constants";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
 import { CONSENT_TEXT_VERSION, CONSENT_TYPE } from "@/domains/consents/consent.constants";
-import { ANNUAL_PLAN_CODE, PERSONAL_PROFILE_LIMIT } from "@/domains/accounts/services/service-entitlement.service";
+import { PERSONAL_PROFILE_LIMIT } from "@/domains/accounts/account-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -94,14 +94,6 @@ export async function POST(req: NextRequest) {
       });
 
       await tx.account.update({ where: { id: account.id }, data: { ownerUserId: newUser.id } });
-      await tx.serviceEntitlement.create({
-        data: {
-          accountId: account.id,
-          planCode: ANNUAL_PLAN_CODE,
-          status: "pending",
-          source: "registration",
-        },
-      });
       await tx.profile.create({
         data: {
           userId: newUser.id,
