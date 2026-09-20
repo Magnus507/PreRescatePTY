@@ -9,7 +9,7 @@ import PublicFooter from "@/components/public/PublicFooter";
 import PageHero from "@/components/public/PageHero";
 
 export default function ContactoPage() {
-  const [formData, setFormData] = useState({ name: "", email: "", message: "" });
+  const [formData, setFormData] = useState({ name: "", email: "", whatsappPhone: "", message: "" });
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const submittingRef = useRef(false);
@@ -29,7 +29,7 @@ export default function ContactoPage() {
       const data = await res.json();
       if (res.ok) {
         toast.success(data.message || "Mensaje enviado exitosamente");
-        setFormData({ name: "", email: "", message: "" });
+        setFormData({ name: "", email: "", whatsappPhone: "", message: "" });
         setSent(true);
       } else {
         toast.error(data.error || "Error al enviar mensaje");
@@ -114,7 +114,7 @@ export default function ContactoPage() {
                         </span>
                         <div>
                           <p className="text-base font-black text-slate-50 sm:text-lg">Mensaje enviado</p>
-                          <p className="mt-2 text-sm leading-6 text-slate-400">Tu consulta fue aceptada por nuestro canal de soporte. El objetivo para consultas ordinarias es una primera respuesta dentro de 1 día hábil.</p>
+                          <p className="mt-2 text-sm leading-6 text-slate-400">Tu consulta quedó registrada en nuestro módulo de soporte. El equipo podrá contactarte por WhatsApp; el objetivo para consultas ordinarias es una primera respuesta dentro de 1 día hábil.</p>
                         </div>
                       </div>
                       <div className="mt-6 flex flex-col gap-2.5 sm:mt-7 sm:flex-row sm:gap-3">
@@ -133,6 +133,11 @@ export default function ContactoPage() {
                         <input required value={formData.email} onChange={(e) => setFormData((f) => ({ ...f, email: e.target.value }))} id="contact-email" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" autoComplete="email" className="min-h-[52px] w-full rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-base font-medium text-slate-100 outline-none transition-all placeholder:text-slate-700 focus:border-sky-300/30 focus:ring-4 focus:ring-sky-300/[0.05] sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm" placeholder="correo@ejemplo.com" />
                       </div>
                       <div className="space-y-2">
+                        <label htmlFor="contact-whatsapp" className="ml-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[10px] sm:tracking-[0.16em]">WhatsApp obligatorio</label>
+                        <input required value={formData.whatsappPhone} onChange={(e) => setFormData((f) => ({ ...f, whatsappPhone: e.target.value }))} id="contact-whatsapp" type="tel" inputMode="tel" autoComplete="tel" className="min-h-[52px] w-full rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-base font-medium text-slate-100 outline-none transition-all placeholder:text-slate-700 focus:border-sky-300/30 focus:ring-4 focus:ring-sky-300/[0.05] sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm" placeholder="+507 6000-0000" />
+                        <p className="px-1 text-[11px] leading-5 text-slate-600">Lo usaremos para responder tu caso directamente por WhatsApp. No se publica en tu perfil.</p>
+                      </div>
+                      <div className="space-y-2">
                         <label htmlFor="contact-msg" className="ml-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[10px] sm:tracking-[0.16em]">Consulta</label>
                         <textarea required value={formData.message} onChange={(e) => setFormData((f) => ({ ...f, message: e.target.value }))} id="contact-msg" rows={5} className="w-full resize-none rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-base font-medium text-slate-100 outline-none transition-all placeholder:text-slate-700 focus:border-sky-300/30 focus:ring-4 focus:ring-sky-300/[0.05] sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm" placeholder="Explícanos tu consulta con el contexto necesario..." />
                       </div>
@@ -145,7 +150,7 @@ export default function ContactoPage() {
 
                   <div className="mt-6 rounded-[1rem] border border-white/[0.055] bg-black/20 p-4 sm:mt-7 sm:rounded-2xl">
                     <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-600 sm:text-[9px] sm:tracking-[0.16em]">Tiempo de respuesta</p>
-                    <p className="mt-1.5 text-xs font-medium leading-5 text-slate-500 sm:mt-2">Responderemos tan pronto como sea posible. Incluye información relevante para reducir intercambios innecesarios.</p>
+                    <p className="mt-1.5 text-xs font-medium leading-5 text-slate-500 sm:mt-2">Responderemos tan pronto como sea posible. Mantén tu WhatsApp disponible e incluye información relevante para reducir intercambios innecesarios.</p>
                   </div>
                 </div>
               </div>
