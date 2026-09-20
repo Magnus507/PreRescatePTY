@@ -1,0 +1,1 @@
+export const PERSONAL_PROFILE_LIMIT = 10;

@@ -76,13 +76,13 @@ export async function POST(
 
       if (!commercialOrder) return null;
 
-      if (commercialOrder.status === "cancelled" && data.eventType !== "REFUNDED") {
+      if (commercialOrder.status === "cancelled" && !["REFUNDED", "CHARGEBACK"].includes(data.eventType)) {
         throw new Error("CANCELLED_COMMERCIAL_ORDER");
       }
 
       if (
         commercialOrder.status === "rejected" &&
-        !["REFUNDED", "CANCELLED"].includes(data.eventType)
+        !["REFUNDED", "CHARGEBACK", "CANCELLED"].includes(data.eventType)
       ) {
         throw new Error("REJECTED_COMMERCIAL_ORDER");
       }
@@ -96,7 +96,7 @@ export async function POST(
       }
 
       if (
-        data.eventType === "REFUNDED" &&
+        ["REFUNDED", "CHARGEBACK"].includes(data.eventType) &&
         commercialOrder.dispatch &&
         !["cancelled", "dispatched", "sent", "shipped", "delivered"].includes(
           commercialOrder.dispatch.status
@@ -148,7 +148,7 @@ export async function POST(
       const reservationOrderId = commercialOrder.sourceId || commercialOrder.id;
       const shouldReleaseReservations =
         ["CANCELLED", "REJECTED"].includes(data.eventType) ||
-        (data.eventType === "REFUNDED" &&
+        (["REFUNDED", "CHARGEBACK"].includes(data.eventType) &&
           (!commercialOrder.dispatch || commercialOrder.dispatch.status === "cancelled"));
 
       let releaseResult = null;
@@ -208,7 +208,7 @@ export async function POST(
       } else if (data.eventType === "CANCELLED") {
         updateData.status = "cancelled";
         updateData.fulfillmentStatus = "pending";
-      } else if (data.eventType === "REFUNDED") {
+      } else if (data.eventType === "REFUNDED" || data.eventType === "CHARGEBACK") {
         updateData.paymentStatus = "refunded";
         if (releaseResult) updateData.fulfillmentStatus = "pending";
       }
@@ -224,6 +224,7 @@ export async function POST(
               where: { id },
               include: commercialOrderInclude,
             });
+
 
       return {
         event,
@@ -245,13 +246,13 @@ export async function POST(
 
     if (message === "CANCELLED_COMMERCIAL_ORDER") {
       return NextResponse.json(
-        { error: "No se pueden registrar eventos sobre pedidos comerciales cancelados salvo REFUNDED" },
+        { error: "No se pueden registrar eventos sobre pedidos comerciales cancelados salvo REFUNDED o CHARGEBACK" },
         { status: 400 }
       );
     }
     if (message === "REJECTED_COMMERCIAL_ORDER") {
       return NextResponse.json(
-        { error: "No se pueden registrar eventos sobre pedidos comerciales rechazados salvo CANCELLED o REFUNDED" },
+        { error: "No se pueden registrar eventos sobre pedidos comerciales rechazados salvo CANCELLED, REFUNDED o CHARGEBACK" },
         { status: 400 }
       );
     }

@@ -143,6 +143,7 @@ model Account {
   organizations        Organization[]
   profiles             Profile[]
   users                User[]
+  supportConversations SupportConversation[]
 }
 
 model Package {
@@ -207,6 +208,10 @@ model User {
   orders                      Order[]
   profile                     Profile?
   account                     Account?                        @relation(fields: [accountId], references: [id])
+  supportConversationsOpened  SupportConversation[]           @relation("SupportConversationOpenedBy")
+  supportConversationsAssigned SupportConversation[]          @relation("SupportConversationAssignedTo")
+  supportConversationMessages SupportConversationMessage[]
+  supportEvents               SupportEvent[]
 
   @@index([isAdmin])
 }
@@ -282,6 +287,7 @@ model Profile {
   account                       Account?             @relation(fields: [accountId], references: [id])
   user                          User?                @relation(fields: [userId], references: [id])
   contacts                      ProfileContact[]
+  supportConversations          SupportConversation[]
 
   @@index([accountId])
   @@index([userId])
@@ -361,6 +367,7 @@ model Chip {
   scanEvents          ScanEvent[]
   digitalBatchItem    OperationDigitalBatchItem?
   finishedGoodUnit    OperationFinishedGoodUnit?
+  supportConversations SupportConversation[]
 
   @@index([accountId])
   @@index([ownerUserId])
@@ -721,6 +728,7 @@ model Order {
   items                   OrderItem[]
   paymentAttempts         PaymentAttempt[]
   invoice                 Invoice?
+  supportConversations    SupportConversation[]
 
   @@index([userId])
   @@index([orderStatus])
@@ -1761,4 +1769,72 @@ model SupportMessage {
   @@index([readAt])
   @@index([resolvedAt])
   @@index([whatsappPhone])
+}
+
+
+model SupportConversation {
+  id                String   @id @default(cuid())
+  accountId         String
+  openedByUserId    String
+  category          String   @default("general")
+  subject           String
+  status            String   @default("open")
+  priority          String?
+  assignedToUserId  String?
+  orderId           String?
+  chipId            String?
+  profileId         String?
+  lastMessageAt     DateTime @default(now())
+  clientLastReadAt  DateTime?
+  supportLastReadAt DateTime?
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  account           Account   @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  openedByUser      User      @relation("SupportConversationOpenedBy", fields: [openedByUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  assignedToUser    User?     @relation("SupportConversationAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  order             Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  chip              Chip?     @relation(fields: [chipId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  profile           Profile?  @relation(fields: [profileId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  messages          SupportConversationMessage[]
+  events            SupportEvent[]
+
+  @@index([accountId, lastMessageAt])
+  @@index([status, lastMessageAt])
+  @@index([openedByUserId])
+  @@index([assignedToUserId])
+}
+
+model SupportConversationMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderType     String
+  senderUserId   String?
+  body           String
+  isInternalNote Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  senderUser     User?               @relation(fields: [senderUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderUserId])
+}
+
+model SupportEvent {
+  id             String   @id @default(cuid())
+  conversationId String
+  actorUserId    String?
+  eventType      String
+  beforeJson     Json?
+  afterJson      Json?
+  reason         String?
+  createdAt      DateTime @default(now())
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  actorUser      User?               @relation(fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([eventType])
 }

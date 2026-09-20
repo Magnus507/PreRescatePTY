@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { buildWhatsAppSupportUrl, formatWhatsAppPhoneForDisplay } from "@/lib/support/whatsapp";
+import { AuthenticatedSupportSection } from "./AuthenticatedSupportSection";
 
 type SupportMessage = {
   id: string;
@@ -157,7 +158,11 @@ export function SupportMessagesSection({ searchQuery }: { searchQuery: string })
   ];
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-8">
+      <AuthenticatedSupportSection searchQuery={searchQuery} />
+      <div className="border-t border-slate-200 pt-7 dark:border-slate-800">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Formulario público / bandeja histórica</p>
+      </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">

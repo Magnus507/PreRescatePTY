@@ -187,6 +187,8 @@ export const orderCreateSchema = z.object({
   providerReference: z.string().optional().nullable(),
   paymentMethod: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase() : v), z.enum(["manual", "yappy", "bank_transfer"])).optional().default("manual"),
   customerDocument: z.string().optional().nullable(),
+  acceptedTermsAndPrivacy: z.boolean().optional(),
+  consentTextVersion: z.string().trim().optional(),
   items: z.array(z.object({
     productType: z.string(),
     quantity: z.coerce.number().finite().int().positive(),

@@ -1,23 +1,14 @@
-import { NextResponse } from 'next/server';
-import { getPublicPackages } from '@/domains/shared/repositories/package.repository';
+import { NextResponse } from "next/server";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
+/**
+ * Legacy compatibility endpoint.
+ * Packages are no longer a sellable concept; the public catalog is device/product based.
+ */
 export async function GET() {
-  try {
-    const packages = await getPublicPackages();
-    const publicPackages = packages.map((pkg) => {
-      const { serviceDurationMonths, ...publicPackage } = pkg;
-      void serviceDurationMonths;
-      return publicPackage;
-    });
-
-    return NextResponse.json({ packages: publicPackages });
-  } catch (error) {
-    console.error('Error fetching public packages:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch packages' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    { packages: [], deprecated: true },
+    { headers: { "Cache-Control": "public, max-age=300" } }
+  );
 }

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { uploadPaymentProof } from "@/lib/payment-proof-upload";
 import { useRouter } from "next/navigation";
 import { type StoreProductLike } from "@/lib/products/group-products-by-store-section";
+import { CONSENT_TEXT_VERSION } from "@/domains/consents/consent.constants";
 
 interface Product extends StoreProductLike {
   id: string;
@@ -56,6 +57,8 @@ interface CreateOrderBody {
   shippingCity: string;
   shippingNotes: string;
   paymentMethod: "yappy" | "bank_transfer";
+  acceptedTermsAndPrivacy: boolean;
+  consentTextVersion: string;
 }
 
 interface CheckoutContext {
@@ -131,6 +134,7 @@ export default function TiendaPage() {
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUploaded, setProofUploaded] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"yappy" | "bank_transfer">("yappy");
+  const [acceptedTermsAndPrivacy, setAcceptedTermsAndPrivacy] = useState(false);
   const [profileOptions, setProfileOptions] = useState<ProfileOption[]>([]);
   const [profileLoading, setProfileLoading] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
@@ -235,6 +239,8 @@ export default function TiendaPage() {
         shippingCity: shippingData.city.trim(),
         shippingNotes: shippingData.notes.trim(),
         paymentMethod,
+        acceptedTermsAndPrivacy,
+        consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
       };
 
       if (selectedProduct.requiresPersonalization) {
@@ -303,6 +309,7 @@ export default function TiendaPage() {
     setSelectedProduct(product);
     setQuantity(options?.resetQuantity === false ? getCatalogQuantity(product.id) : 1);
     setShowCheckout(true);
+    setAcceptedTermsAndPrivacy(false);
     setSelectedProfileId("");
     setProfileOptions([]);
     setProfileLoading(false);
@@ -816,6 +823,26 @@ export default function TiendaPage() {
                 </div>
               </div>
 
+              <label className="flex items-start gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 text-xs font-semibold leading-5 text-slate-600 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={acceptedTermsAndPrivacy}
+                  onChange={(event) => setAcceptedTermsAndPrivacy(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-[#DA1A21]"
+                />
+                <span>
+                  Confirmo que he revisado y acepto los{" "}
+                  <Link href="/legal/terminos" target="_blank" className="font-black text-[#DA1A21] hover:underline">
+                    Términos
+                  </Link>{" "}
+                  y la{" "}
+                  <Link href="/legal/privacidad" target="_blank" className="font-black text-[#DA1A21] hover:underline">
+                    Política de Privacidad
+                  </Link>{" "}
+                  vigentes para esta compra.
+                </span>
+              </label>
+
               {/* Total + submit */}
               <div className="pt-4 space-y-4">
                 <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.25)]">
@@ -827,7 +854,7 @@ export default function TiendaPage() {
 
                 <button
                   type="submit"
-                  disabled={creatingOrder}
+                  disabled={creatingOrder || !acceptedTermsAndPrivacy}
                   className="w-full py-5 bg-[#DA1A21] text-white rounded-full font-black text-xs uppercase tracking-widest shadow-xl shadow-[#DA1A21]/20 hover:bg-[#B9141B] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950"
                 >
                   {creatingOrder ? (

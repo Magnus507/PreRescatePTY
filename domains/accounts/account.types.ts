@@ -30,10 +30,16 @@ export interface AccountState {
   canAccessOrganizationModule: boolean;
   canActivateMoreChips: boolean;
   canAddFamilyMember: boolean;
+  canCreateProfiles: boolean;
+  canEditProfiles: boolean;
+  canManageDeviceAssignments: boolean;
+  canReactivateDevices: boolean;
+  canSuspendLostOrStolen: boolean;
+  canUseSupport: boolean;
 
   // Consumption Stats
   activeChipsCount: number;
-  physicalChipsInTransitCount: number; // New field for logistics tracking
+  physicalChipsInTransitCount: number;
   familyProfilesCount: number;
   contactsCount: number;
   scansCount: number;
@@ -42,6 +48,7 @@ export interface AccountState {
   hasCompletedMedicalProfile: boolean;
   hasEmergencyContact: boolean;
   hasActivatedChip: boolean;
+  hasEverActivatedChip: boolean;
 
   // Checklist
   setupChecklist: SetupChecklist;

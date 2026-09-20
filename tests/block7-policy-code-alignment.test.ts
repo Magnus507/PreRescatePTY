@@ -46,23 +46,30 @@ describe("Block 7 policy-code alignment guardrails", () => {
     expect(admin).toContain("Marcar resuelto");
   });
 
-  it("keeps checkout copy aligned with lifetime/manual-contact policy", () => {
+  it("keeps checkout copy aligned with one-time permanent service and product-only sales", () => {
     const upgrade = source("app/(app)/dashboard/upgrade/page.tsx");
-    expect(upgrade).toContain("Servicio digital sin vencimiento por tiempo");
-    expect(upgrade).toContain("Contacto de rescate manual desde el perfil público");
-    expect(upgrade).not.toContain("Alertas Ilimitadas");
-    expect(upgrade).not.toContain("Vigencia {pkg.serviceDurationMonths");
+    const publicStore = source("app/(public)/comprar/ComprarContent.tsx");
+    const retiredPackages = source("app/api/orders/manual/route.ts");
+
+    expect(upgrade).toContain('redirect("/dashboard/tienda")');
+    expect(publicStore).toContain("Ya no usamos paquetes");
+    expect(publicStore).toContain("un único pago");
+    expect(publicStore).toContain("no tiene mensualidades ni vencimiento por tiempo");
+    expect(retiredPackages).toContain("PACKAGE_CHECKOUT_RETIRED");
+    expect(publicStore.toLowerCase()).not.toContain("renovación anual");
   });
 
   it("requires a current versioned legal consent before purchase when needed", () => {
-    const orderRoute = source("app/api/orders/manual/route.ts");
-    const checkout = source("app/(app)/dashboard/upgrade/page.tsx");
+    const orderRoute = source("app/api/orders/route.ts");
+    const checkout = source("app/(app)/dashboard/tienda/page.tsx");
     const constants = source("domains/consents/consent.constants.ts");
 
     expect(constants).toContain("registration-terms-privacy-2026-09-19-v1.2");
     expect(orderRoute).toContain("LEGAL_ACCEPTANCE_REQUIRED");
     expect(orderRoute).toContain("CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY");
+    expect(orderRoute).toContain("acceptanceContext: \"device_checkout\"");
     expect(checkout).toContain("acceptedTermsAndPrivacy");
+    expect(checkout).toContain("CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY");
     expect(checkout).toContain("Política de Privacidad");
   });
 

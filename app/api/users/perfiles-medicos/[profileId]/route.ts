@@ -57,7 +57,6 @@ export async function PATCH(
   const userId = (session.user as { id: string }).id;
   const { profileId } = await params;
 
-  // Unrestricted editing of medical profiles ensures data integrity even if the protection service is inactive.
   const existing = await getAuthorizedProfile(userId, profileId);
   if (!existing) {
     return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });

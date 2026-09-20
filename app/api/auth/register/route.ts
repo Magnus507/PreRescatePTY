@@ -8,10 +8,10 @@ import { ACCOUNT_TYPES, USER_ROLES } from "@/domains/shared/constants";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
 import { CONSENT_TEXT_VERSION, CONSENT_TYPE } from "@/domains/consents/consent.constants";
+import { PERSONAL_PROFILE_LIMIT } from "@/domains/accounts/account-policy";
 
 export const dynamic = "force-dynamic";
 
-const ACTIVE_ACCOUNT_TYPES = new Set<string>([ACCOUNT_TYPES.PERSONAL, ACCOUNT_TYPES.COMPANY]);
 const REGISTRATION_LEGAL_DOCUMENTS = {
   terms: "/legal/terminos",
   privacy: "/legal/privacidad",
@@ -57,22 +57,14 @@ export async function POST(req: NextRequest) {
     const packageId = typeof (body as { packageId?: unknown }).packageId === "string"
       ? (body as { packageId: string }).packageId
       : null;
-
-    let selectedPackage = null;
     if (packageId) {
-      selectedPackage = await prisma.package.findUnique({ where: { id: packageId } });
-      if (!selectedPackage || !selectedPackage.isActive) {
-        return NextResponse.json({ error: "Package inválido o inactivo" }, { status: 400 });
-      }
-      if (!ACTIVE_ACCOUNT_TYPES.has(selectedPackage.accountType)) {
-        return NextResponse.json({ error: "Package con accountType inválido" }, { status: 400 });
-      }
-      if (body.accountType && accountType !== selectedPackage.accountType) {
-        return NextResponse.json({ error: "accountType no coincide con el Package seleccionado" }, { status: 400 });
-      }
+      return NextResponse.json(
+        { error: "Los paquetes ya no forman parte del alta. Regístrate y compra dispositivos individuales desde la tienda." },
+        { status: 400 }
+      );
     }
 
-    const resolvedAccountType = selectedPackage?.accountType || accountType || ACCOUNT_TYPES.PERSONAL;
+    const resolvedAccountType = accountType || ACCOUNT_TYPES.PERSONAL;
     const existing = await prisma.user.findUnique({ where: { email: emailLower } });
     if (existing) {
       return NextResponse.json({ error: "Este email ya está registrado" }, { status: 409 });
@@ -85,8 +77,9 @@ export async function POST(req: NextRequest) {
           accountType: resolvedAccountType,
           accountName: emailLower,
           status: "active",
-          packageId: selectedPackage?.id || null,
+          packageId: null,
           maxChipsAllocated: 0,
+          maxProfilesAllocated: PERSONAL_PROFILE_LIMIT,
         },
       });
 
@@ -125,7 +118,7 @@ export async function POST(req: NextRequest) {
             acceptedTerms,
             consentTextVersion,
             legalDocuments: REGISTRATION_LEGAL_DOCUMENTS,
-            packageId: selectedPackage?.id || null,
+            packageId: null,
             accountType: resolvedAccountType,
           }),
         },
@@ -140,7 +133,7 @@ export async function POST(req: NextRequest) {
           // Keep the audit event, not a second copy of the user's identity.
           newValuesJson: JSON.stringify({
             accountType: resolvedAccountType,
-            packageSelected: Boolean(selectedPackage?.id),
+            packageSelected: false,
           }),
         },
       });

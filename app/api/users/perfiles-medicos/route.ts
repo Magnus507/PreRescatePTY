@@ -6,6 +6,8 @@ import { ProfileRepository } from "@/domains/profiles/repositories/profile.repos
 import { AuditLogRepository } from "@/domains/shared/repositories/audit-log.repository";
 import { ApiResponse } from "@/lib/api-response";
 import { profileUpdateSchema } from "@/lib/validations";
+import { prisma } from "@/lib/prisma";
+import { PERSONAL_PROFILE_LIMIT } from "@/domains/accounts/account-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -109,10 +111,16 @@ export async function POST(req: NextRequest) {
     if (!state.accountId) {
       return ApiResponse.error("Cuenta no configurada", { status: 400 });
     }
+    const accountId = state.accountId;
 
-    // El límite comercial se aplica a chips/protecciones activas, no a perfiles.
-    // Solo bloqueamos si se supera el límite técnico anti-abuso.
-    // (ya validado en canAddFamilyMember con MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT = 50)
+    if (!state.canCreateProfiles) {
+      return ApiResponse.error(
+        state.hasEverActivatedChip
+          ? `Has alcanzado el límite de ${PERSONAL_PROFILE_LIMIT} perfiles.`
+          : `Activa tu primer dispositivo para desbloquear hasta ${PERSONAL_PROFILE_LIMIT} perfiles.`,
+        { status: 403 }
+      );
+    }
 
     const body = await req.json();
     const validation = profileUpdateSchema.partial().safeParse(body);
@@ -164,8 +172,26 @@ export async function POST(req: NextRequest) {
     // Parse birthDate string to Date (schema now uses DateTime)
     const birthDate = rawBirthDate ? new Date(rawBirthDate) : null;
 
-    const profile = await ProfileRepository.create({
-      accountId: state.accountId,
+    let profile;
+    try {
+      profile = await prisma.$transaction(async (tx) => {
+        // Serialize profile creation per account so concurrent requests cannot
+        // both observe count=9 and create an 11th profile.
+        await tx.account.update({
+          where: { id: accountId },
+          data: { updatedAt: new Date() },
+        });
+        const currentCount = await tx.profile.count({
+          where: {
+            accountId: accountId,
+            profileType: { not: "corporate" },
+          },
+        });
+        if (currentCount >= PERSONAL_PROFILE_LIMIT) {
+          throw new Error("PROFILE_LIMIT_REACHED");
+        }
+        return ProfileRepository.create({
+      accountId,
       firstName,
       lastName,
       displayNamePublic: displayNamePublic ?? undefined,
@@ -207,18 +233,29 @@ export async function POST(req: NextRequest) {
       showCommunicationStatusPublic: showCommunicationStatusPublic ?? undefined,
       showSafeReturnPublic: showSafeReturnPublic ?? undefined,
       showSafeReturnLocationPublic: showSafeReturnLocationPublic ?? undefined,
-    });
+    }, tx);
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "PROFILE_LIMIT_REACHED") {
+        return ApiResponse.error(
+          `Has alcanzado el límite de ${PERSONAL_PROFILE_LIMIT} perfiles.`,
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     // Record audit log
     if (profile) {
       await AuditLogRepository.record({
         actorUserId: userId,
-        accountId: state.accountId,
+        accountId,
         entityType: "profile",
         entityId: profile.id,
         action: "create_family_profile",
         newValuesJson: JSON.stringify({ firstName, lastName, bloodType: finalBloodType }),
       });
+      await AccountStateService.invalidateCache(userId);
     }
 
     return ApiResponse.success({ profile }, { status: 201 });

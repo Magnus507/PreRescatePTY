@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { mockPrisma } from "../helpers/mock-prisma";
 import { resetAllMocks } from "../helpers/reset-mocks";
 import { createMockSession } from "../helpers/mock-auth";
+import { CONSENT_TEXT_VERSION } from "@/domains/consents/consent.constants";
 
 const mockResolveStoreProductForOrder = vi.hoisted(() => vi.fn());
 const mockCalculateStoreOrderFulfillment = vi.hoisted(() => vi.fn());
@@ -49,6 +50,8 @@ describe("POST /api/orders", () => {
     mockPrisma.order.create.mockReset();
     mockPrisma.commerceOrderSyncOutbox.create.mockReset();
     mockPrisma.user.findUnique.mockReset();
+    mockPrisma.consent.findFirst.mockReset();
+    mockPrisma.consent.create.mockReset();
     mockPrisma.$transaction.mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma));
     vi.mocked(getServerSession).mockResolvedValue(
       createMockSession({ id: "user-1", role: "owner", accountId: "account-1" }) as never
@@ -61,6 +64,7 @@ describe("POST /api/orders", () => {
       accountId: "account-1",
       profile: { id: "profile-1", firstName: "Ana", lastName: "Perez", address: null, city: null },
     } as never);
+    mockPrisma.consent.findFirst.mockResolvedValue({ id: "consent-current" } as never);
     mockResolveStoreProductForOrder.mockResolvedValue({
       id: "product-1",
       name: "Producto 1",
@@ -120,6 +124,72 @@ describe("POST /api/orders", () => {
       amount: 25,
     } as never);
     mockPrisma.commerceOrderSyncOutbox.create.mockResolvedValue({ id: "outbox-1" } as never);
+  });
+
+  it("requires the current legal consent before creating a device order when none is stored", async () => {
+    mockPrisma.consent.findFirst.mockResolvedValue(null);
+
+    const req = new NextRequest("http://localhost/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Ana Perez",
+        customerEmail: "cliente@example.com",
+        customerPhone: "6000-0000",
+        shippingAddress: "Calle 50, edificio de prueba",
+        shippingCity: "Panamá",
+        shippingNotes: "Recepción",
+        paymentMethod: "manual",
+        items: [{ productType: "PRD-1", quantity: 1, unitPrice: 25 }],
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(428);
+    expect(json).toMatchObject({
+      code: "LEGAL_ACCEPTANCE_REQUIRED",
+      consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+    });
+    expect(mockPrisma.consent.create).not.toHaveBeenCalled();
+    expect(mockPrisma.order.create).not.toHaveBeenCalled();
+  });
+
+  it("stores versioned legal evidence transactionally when the customer accepts the current terms", async () => {
+    mockPrisma.consent.findFirst.mockResolvedValue(null);
+    mockPrisma.consent.create.mockResolvedValue({ id: "consent-new" } as never);
+
+    const req = new NextRequest("http://localhost/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: "Ana Perez",
+        customerEmail: "cliente@example.com",
+        customerPhone: "6000-0000",
+        shippingAddress: "Calle 50, edificio de prueba",
+        shippingCity: "Panamá",
+        shippingNotes: "Recepción",
+        paymentMethod: "manual",
+        acceptedTermsAndPrivacy: true,
+        consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+        items: [{ productType: "PRD-1", quantity: 1, unitPrice: 25 }],
+      }),
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.consent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        accountId: "account-1",
+        userId: "user-1",
+        consentType: expect.any(String),
+        textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+        evidenceJson: expect.stringContaining('"acceptanceContext":"device_checkout"'),
+      }),
+    });
+    expect(mockPrisma.order.create).toHaveBeenCalledTimes(1);
   });
 
   it("creates the order and persists a durable sync intention in the same transaction", async () => {
