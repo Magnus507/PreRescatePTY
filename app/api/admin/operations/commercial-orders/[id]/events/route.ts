@@ -299,8 +299,16 @@ export async function POST(
       await Promise.all(users.map((user) => AccountStateService.invalidateCache(user.id)));
     }
 
-    const { affectedAccountIds: _affectedAccountIds, ...response } = result;
-    return NextResponse.json(response, { status: 201 });
+    return NextResponse.json(
+      {
+        event: result.event,
+        commercialOrder: result.commercialOrder,
+        releasedUnitCount: result.releasedUnitCount,
+        annualAccessReversalCount: result.annualAccessReversalCount,
+        annualAccessReversalSkippedPartial: result.annualAccessReversalSkippedPartial,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
 
