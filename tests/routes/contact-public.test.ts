@@ -1,21 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { mockPrisma } from "../helpers/mock-prisma";
 import { resetAllMocks } from "../helpers/reset-mocks";
 
-vi.hoisted(() => {
-  process.env.RESEND_API_KEY = "test-resend-key";
-});
-
-const mockSend = vi.hoisted(() => vi.fn());
 const mockRateLimit = vi.hoisted(() => vi.fn());
 const mockGetClientIp = vi.hoisted(() => vi.fn());
 
-vi.mock("resend", () => ({
-  Resend: vi.fn().mockImplementation(() => ({
-    emails: {
-      send: mockSend,
-    },
-  })),
+vi.mock("@/lib/prisma", () => ({
+  prisma: mockPrisma,
 }));
 
 vi.mock("@/lib/rateLimit", () => ({
@@ -38,94 +30,99 @@ function contactRequest(body: Record<string, unknown>) {
 describe("POST /api/contacts/public", () => {
   beforeEach(() => {
     resetAllMocks();
-    mockSend.mockReset();
     mockRateLimit.mockReset();
     mockGetClientIp.mockReset();
+    mockPrisma.supportMessage.create.mockReset();
     mockGetClientIp.mockReturnValue("127.0.0.1");
     mockRateLimit.mockResolvedValue({ allowed: true, remaining: 4, resetAt: Date.now() + 60_000 } as never);
+    mockPrisma.supportMessage.create.mockResolvedValue({ id: "support-1" } as never);
   });
 
-  it("accepts a valid submission and sends a sanitized email", async () => {
-    mockSend.mockResolvedValue({ data: { id: "email-1" }, error: null } as never);
-
+  it("persists a valid support message with normalized Panama WhatsApp", async () => {
     const res = await POST(
       contactRequest({
         name: "Juan Pérez",
-        email: "juan@example.com",
-        message: "Hola\nNecesito ayuda <script>alert(1)</script>",
+        email: "JUAN@example.com",
+        whatsappPhone: "6000-0000",
+        message: "Necesito ayuda con mi pedido.",
       })
     );
     const json = await res.json();
 
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
-    expect(json.message).toMatch(/enviado/i);
-    expect(mockSend).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "soporte@prerescatepty.com",
-        replyTo: "juan@example.com",
-        subject: expect.stringContaining("Juan Pérez"),
-        html: expect.stringContaining("&lt;script&gt;alert(1)&lt;/script&gt;"),
-      })
-    );
+    expect(json.id).toBe("support-1");
+    expect(mockPrisma.supportMessage.create).toHaveBeenCalledWith({
+      data: {
+        name: "Juan Pérez",
+        email: "juan@example.com",
+        whatsappPhone: "50760000000",
+        message: "Necesito ayuda con mi pedido.",
+      },
+      select: { id: true },
+    });
   });
 
-  it("rejects missing required fields", async () => {
-    const res = await POST(contactRequest({ name: "", email: "juan@example.com", message: "" }));
-    const json = await res.json();
-
-    expect(res.status).toBe(400);
-    expect(json.error).toMatch(/obligatorios/i);
-    expect(mockSend).not.toHaveBeenCalled();
-  });
-
-  it("rejects invalid email addresses", async () => {
+  it("rejects missing WhatsApp", async () => {
     const res = await POST(
       contactRequest({
         name: "Juan Pérez",
-        email: "juan-at-example.com",
+        email: "juan@example.com",
         message: "Hola",
       })
     );
     const json = await res.json();
 
     expect(res.status).toBe(400);
-    expect(json.error).toMatch(/email invalido/i);
-    expect(mockSend).not.toHaveBeenCalled();
+    expect(json.error).toMatch(/WhatsApp/i);
+    expect(mockPrisma.supportMessage.create).not.toHaveBeenCalled();
   });
 
-  it("fails closed when the provider returns a delivery error without throwing", async () => {
-    mockSend.mockResolvedValue({ data: null, error: { message: "recipient rejected" } } as never);
-
+  it("rejects invalid email", async () => {
     const res = await POST(
       contactRequest({
         name: "Juan Pérez",
-        email: "juan@example.com",
-        message: "Necesito ayuda",
+        email: "juan-at-example.com",
+        whatsappPhone: "+507 6000-0000",
+        message: "Hola",
       })
     );
     const json = await res.json();
 
-    expect(res.status).toBe(502);
-    expect(json.error).toMatch(/no pudimos entregar/i);
-    expect(JSON.stringify(json)).not.toContain("recipient rejected");
+    expect(res.status).toBe(400);
+    expect(json.error).toMatch(/Email inválido/i);
+    expect(mockPrisma.supportMessage.create).not.toHaveBeenCalled();
   });
 
-  it("returns a generic error when the provider fails", async () => {
-    mockSend.mockRejectedValue(new Error("provider exploded"));
+  it("rejects invalid WhatsApp numbers", async () => {
+    const res = await POST(
+      contactRequest({
+        name: "Juan Pérez",
+        email: "juan@example.com",
+        whatsappPhone: "123",
+        message: "Hola",
+      })
+    );
+    expect(res.status).toBe(400);
+    expect(mockPrisma.supportMessage.create).not.toHaveBeenCalled();
+  });
+
+  it("fails closed if persistence fails", async () => {
+    mockPrisma.supportMessage.create.mockRejectedValue(new Error("database unavailable"));
 
     const res = await POST(
       contactRequest({
         name: "Juan Pérez",
         email: "juan@example.com",
+        whatsappPhone: "+507 6000-0000",
         message: "Necesito ayuda",
       })
     );
     const json = await res.json();
 
     expect(res.status).toBe(500);
-    expect(json.error).toMatch(/error al enviar el mensaje/i);
-    expect(JSON.stringify(json)).not.toContain("provider exploded");
+    expect(json.error).toMatch(/guardar tu mensaje/i);
+    expect(JSON.stringify(json)).not.toContain("database unavailable");
   });
 
   it("returns 429 when rate limit denies the request", async () => {
@@ -135,13 +132,12 @@ describe("POST /api/contacts/public", () => {
       contactRequest({
         name: "Juan Pérez",
         email: "juan@example.com",
+        whatsappPhone: "+507 6000-0000",
         message: "Necesito ayuda",
       })
     );
-    const json = await res.json();
 
     expect(res.status).toBe(429);
-    expect(json.error).toMatch(/demasiados intentos/i);
-    expect(mockSend).not.toHaveBeenCalled();
+    expect(mockPrisma.supportMessage.create).not.toHaveBeenCalled();
   });
 });
