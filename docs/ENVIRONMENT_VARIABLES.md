@@ -166,9 +166,3 @@ script defaults to a dry run; `--apply` is required for the role change. It refu
 to run if an active administrator already exists and never resets user data.
 
 Changing `ENCRYPTION_KEY` is a data migration/rotation operation, not a routine environment edit. Rotate authentication, cron, provider and service credentials through their owning provider and deployment secret store, record the date/owner, and never commit old or new values.
-
-
-## Annual access pricing
-
-`ANNUAL_RENEWAL_PRICE_USD` controls the annual account-administration renewal price in USD. It is not a secret and is optional; when omitted, the application uses `5.00`. Use at most two decimal places.
-
