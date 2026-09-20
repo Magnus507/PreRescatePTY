@@ -87,6 +87,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Este intento ya termino. Inicia uno nuevo" }, { status: 409 });
   }
 
+  // Reuse any still-live pending checkout for this account even when the browser
+  // sends a different request id. This prevents a second click/tab from opening
+  // another payable Yappy session while one is already active.
+  const livePending = await prisma.renewalPayment.findFirst({
+    where: {
+      accountId: user.accountId,
+      provider: "yappy",
+      status: "pending",
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (livePending) {
+    const storedSession = decodeStoredSession(livePending.checkoutSessionJson);
+    if (storedSession) {
+      return NextResponse.json({
+        paymentId: livePending.id,
+        ...storedSession,
+        buttonScriptUrl: getYappyButtonScriptUrl(),
+      });
+    }
+  }
+
   const amount = getAnnualRenewalPrice();
   const providerOrderId = createProviderOrderId();
   const expiresAt = new Date(Date.now() + 5 * 60_000);
