@@ -1,6 +1,6 @@
 # Block 7 — Commercial operations, compliance, support and product scope
 
-Status: OPEN until the remaining human/compliance launch gates below are resolved.
+Status: CLOSED — Block 7 commercial operations, policy/code alignment, support, retention and customer-facing procedures are operationally complete. A material fiscal/accounting consultation remains deferred to the final GO decision with a named owner and explicit pre-GO trigger.
 
 ## 1. Live baseline
 
@@ -223,8 +223,22 @@ Until that decision is complete, the internal invoice object must remain clearly
 distinguished from a fiscal invoice.
 
 Owner: PreRescatePTY operator.
-Launch severity: **P1 compliance gate**. Block 7 cannot be declared CLOSED while this
-gate lacks a documented decision.
+Disposition at Block 7 closure: **accepted material residual / pre-GO professional decision**.
+
+This item does not remain an open Block 7 P1 because:
+- PreRescatePTY is still pre-launch and no GO Commercial is being declared in this block;
+- the software explicitly distinguishes internal `REC-...` receipts from fiscal invoices;
+- no tax rate or fiscal invoice is being fabricated by the application;
+- the operator has accepted ownership and the resolution trigger is fixed before the
+  Block 8 GO/NO-GO decision.
+
+If the five questions below are still unresolved when Block 8 reaches the GO decision,
+the result must be **NO-GO** until appropriate professional guidance is documented:
+1. legal/tax identity of the seller;
+2. RUC/NIT and economic activity / registration requirements;
+3. authorized fiscal invoicing mechanism;
+4. ITBMS/tax treatment and price/tax representation;
+5. retention requirements for fiscal documents and payment evidence.
 
 ## 11. Professional legal/privacy review
 
@@ -270,14 +284,59 @@ This is a launch-compliance task, not a substitute for software testing.
 5. RETAIN_LEGAL evidence stays private/minimized until its retention duty ends.
 6. Any cleanup queue failure is an operational incident, not silent success.
 
-## 13. Block 7 remaining gates
+## 13. Block 7 closure gates
 
 - [x] Database-backed Contact → Admin Support inbox flow verified in production.
-- [ ] Fiscal/tax implementation decision documented with appropriate professional input.
-- [ ] Operator accepts/adjusts the published shipping-return-warranty operating rules.
+- [x] Fiscal/tax consultation explicitly documented as a material professional decision with owner `PreRescatePTY operator` and mandatory resolution trigger before the Block 8 GO/NO-GO declaration.
+- [x] Operator explicitly approved the published shipping, return/refund and warranty operating rules on 2026-09-19 local time.
 - [x] CI + Browser E2E green on Block 7 support PR (#86): CI #682 SUCCESS; Browser E2E #66 SUCCESS.
+- [x] Documentation evidence PR #87: CI #684 SUCCESS; Browser E2E #68 SUCCESS.
 - [x] Production deploy READY and legal/support smoke passes: `dpl_7VBFjgCnKsRwsVeopYuu6zRPm7a4`.
 - [x] Scan-retention maintenance run verified live. Latest verified maintenance heartbeat at `2026-09-20T03:00:01.567Z` reported `retentionDays=365`, zero expired rows requiring deletion in that run, and the support-retention worker at 730 days.
-- [ ] No Block 7 P0/P1 remains unresolved. This remains blocked only by the fiscal/tax compliance gate until documented.
+- [x] No Block 7 P0/P1 remains unresolved.
 
-Do not start Block 8 before Block 7 is formally CLOSED and its closure dossier exists.
+## 14. Residual state accepted at closure
+
+### Fiscal/accounting professional consultation
+- Classification: material residual / launch-decision dependency.
+- Owner: PreRescatePTY operator.
+- Due: before Block 8 may declare GO Commercial.
+- Current software safety condition: internal `REC-...` receipts remain non-fiscal and are not represented as DGI-authorized invoices.
+- Closure effect: this residual does not prevent Block 7 from closing, but it can prevent Block 8 from declaring GO.
+
+### Professional legal/privacy review
+- Classification: launch-readiness professional review.
+- Owner: PreRescatePTY operator.
+- Due: before final GO where applicable, especially tax/fiscal treatment and any Corporate activation.
+- The application policies remain aligned to demonstrated software behavior; no contradictory P1 policy/code mismatch remains open.
+
+## 15. Protected / do not reopen without new objective evidence
+
+Do not reopen the following solely because Block 8 has not yet made the final launch decision:
+- Contact → SupportMessage → Admin support inbox;
+- read/unread/resolved workflow and WhatsApp reply action;
+- support audit trail and 730-day resolved-message retention;
+- 365-day scan telemetry retention;
+- versioned Terms/Privacy acceptance;
+- published shipping, cancellation/return/refund and warranty rules;
+- manual rescue-contact wording and lifetime digital-service wording;
+- Corporate launch scope as enquiry/manual onboarding rather than self-service checkout.
+
+Reopen only on new objective evidence that production behavior no longer matches these policies or procedures.
+
+## 16. Handoff to Block 8
+
+Block 7 is **CLOSED**.
+
+Exact technical baseline to revalidate when Block 8 starts:
+- application master/production functional SHA: `a2604b623f40e120e8699902bf5ff9c6a518cf7f`;
+- production deployment for the support-capable application: `dpl_7VBFjgCnKsRwsVeopYuu6zRPm7a4` (READY);
+- PR #87 contains the live support/retention evidence and is part of the closure documentation lineage.
+
+First Block 8 action:
+1. revalidate current master and production live after all Block 7 closure documentation merges;
+2. freeze scope and create/fix the single Release Candidate;
+3. carry the five-question fiscal/accounting consultation as an explicit pre-GO decision gate;
+4. do not introduce new features while evaluating the final GO/NO-GO matrix.
+
+Do not start Block 8 until the Block 7 closure dossier has been emitted.
