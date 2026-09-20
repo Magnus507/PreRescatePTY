@@ -40,6 +40,7 @@ export const COMMERCIAL_ORDER_EVENT_TYPES = [
   "FULFILLMENT_REQUESTED",
   "CANCELLED",
   "REFUNDED",
+  "CHARGEBACK",
 ] as const;
 
 export type CommercialOrderEventType = (typeof COMMERCIAL_ORDER_EVENT_TYPES)[number];
