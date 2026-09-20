@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
     if (!state.accountId) {
       return ApiResponse.error("Cuenta no configurada", { status: 400 });
     }
+    const accountId = state.accountId;
 
     if (!state.canCreateProfiles) {
       return ApiResponse.error(
@@ -177,12 +178,12 @@ export async function POST(req: NextRequest) {
         // Serialize profile creation per account so concurrent requests cannot
         // both observe count=9 and create an 11th profile.
         await tx.account.update({
-          where: { id: state.accountId as string },
+          where: { id: accountId },
           data: { updatedAt: new Date() },
         });
         const currentCount = await tx.profile.count({
           where: {
-            accountId: state.accountId as string,
+            accountId: accountId,
             profileType: { not: "corporate" },
           },
         });
@@ -190,7 +191,7 @@ export async function POST(req: NextRequest) {
           throw new Error("PROFILE_LIMIT_REACHED");
         }
         return ProfileRepository.create({
-      accountId: state.accountId,
+      accountId,
       firstName,
       lastName,
       displayNamePublic: displayNamePublic ?? undefined,
@@ -248,7 +249,7 @@ export async function POST(req: NextRequest) {
     if (profile) {
       await AuditLogRepository.record({
         actorUserId: userId,
-        accountId: state.accountId,
+        accountId,
         entityType: "profile",
         entityId: profile.id,
         action: "create_family_profile",
