@@ -7,7 +7,7 @@ import { AuditLogRepository } from "@/domains/shared/repositories/audit-log.repo
 import { ApiResponse } from "@/lib/api-response";
 import { profileUpdateSchema } from "@/lib/validations";
 import { prisma } from "@/lib/prisma";
-import { PERSONAL_PROFILE_LIMIT } from "@/domains/accounts/services/service-entitlement.service";
+import { PERSONAL_PROFILE_LIMIT } from "@/domains/accounts/account-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -115,9 +115,7 @@ export async function POST(req: NextRequest) {
 
     if (!state.canCreateProfiles) {
       return ApiResponse.error(
-        state.accessMode === "ESSENTIAL"
-          ? "La administración de perfiles requiere renovar el acceso anual."
-          : `Has alcanzado el límite de ${PERSONAL_PROFILE_LIMIT} perfiles.`,
+        `Has alcanzado el límite de ${PERSONAL_PROFILE_LIMIT} perfiles.`,
         { status: 403 }
       );
     }
