@@ -194,26 +194,30 @@ describe("physical unit annual-access reversals", () => {
         deltaMonths: -12,
         unitId: "unit-1",
         chipId: "chip-1",
-        idempotencyKey: "refund:physical-unit:unit-1:annual-access",
+        idempotencyKey: "reversal:physical-unit:unit-1:annual-access",
       }),
     }));
   });
 
-  it("does not reverse the same chargeback twice", async () => {
+  it("does not reverse the same physical grant twice across refund and chargeback", async () => {
     mockPrisma.account.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.entitlementEvent.findUnique.mockResolvedValue({
-      id: "existing-chargeback-reversal",
-      idempotencyKey: "chargeback:physical-unit:unit-1:annual-access",
+      id: "existing-refund-reversal",
+      type: "refund",
+      idempotencyKey: "reversal:physical-unit:unit-1:annual-access",
     } as never);
 
     const result = await reversePhysicalUnitGrant(mockPrisma as never, {
       accountId: "account-1",
       unitId: "unit-1",
       reversalType: "chargeback",
-      reason: "provider_chargeback",
+      reason: "provider_chargeback_after_refund",
     });
 
     expect(result.applied).toBe(false);
+    expect(mockPrisma.entitlementEvent.findUnique).toHaveBeenCalledWith({
+      where: { idempotencyKey: "reversal:physical-unit:unit-1:annual-access" },
+    });
     expect(mockPrisma.entitlementEvent.findFirst).not.toHaveBeenCalled();
     expect(mockPrisma.serviceEntitlement.update).not.toHaveBeenCalled();
     expect(mockPrisma.entitlementEvent.create).not.toHaveBeenCalled();
