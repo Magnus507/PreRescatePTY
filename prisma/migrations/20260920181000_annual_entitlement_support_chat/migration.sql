@@ -44,7 +44,7 @@ CREATE TABLE "ServiceEntitlement" (
   "source" TEXT NOT NULL DEFAULT 'registration',
   "version" INTEGER NOT NULL DEFAULT 1,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "ServiceEntitlement_accountId_fkey"
     FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -127,7 +127,7 @@ CREATE TABLE "SupportConversation" (
   "resolvedAt" TIMESTAMP(3),
   "closedAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "SupportConversation_accountId_fkey"
     FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "SupportConversation_openedByUserId_fkey"
