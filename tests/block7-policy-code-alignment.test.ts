@@ -46,18 +46,17 @@ describe("Block 7 policy-code alignment guardrails", () => {
     expect(admin).toContain("Marcar resuelto");
   });
 
-  it("keeps checkout copy aligned with annual administration and permanent rescue access", () => {
+  it("keeps checkout copy aligned with one-time permanent service and product-only sales", () => {
     const upgrade = source("app/(app)/dashboard/upgrade/page.tsx");
     const publicStore = source("app/(public)/comprar/ComprarContent.tsx");
     const retiredPackages = source("app/api/orders/manual/route.ts");
 
-    expect(upgrade).toContain("Tus dispositivos, QR/NFC y ficha pública de emergencia continúan funcionando");
-    expect(upgrade).toContain("Renueva la administración de tu cuenta");
-    expect(upgrade).toContain("Hasta 10 perfiles médicos por cuenta personal");
+    expect(upgrade).toContain('redirect("/dashboard/tienda")');
     expect(publicStore).toContain("Ya no usamos paquetes");
-    expect(publicStore).toContain("Cada unidad física elegible que compres y actives añade 12 meses");
+    expect(publicStore).toContain("un único pago");
+    expect(publicStore).toContain("no tiene mensualidades ni vencimiento por tiempo");
     expect(retiredPackages).toContain("PACKAGE_CHECKOUT_RETIRED");
-    expect(upgrade).not.toContain("Servicio digital sin vencimiento por tiempo");
+    expect(publicStore.toLowerCase()).not.toContain("renovación anual");
   });
 
   it("requires a current versioned legal consent before purchase when needed", () => {
