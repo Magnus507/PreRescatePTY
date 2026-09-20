@@ -279,7 +279,11 @@ export async function reversePhysicalUnitGrant(
   const now = input.now ?? new Date();
   await lockAccount(tx, input.accountId);
 
-  const idempotencyKey = `${input.reversalType}:physical-unit:${input.unitId}:annual-access`;
+  // A physical activation grant can be reversed only once, regardless of
+  // whether the financial system reports that reversal as a refund first or
+  // later as a chargeback. Using one canonical key prevents subtracting the
+  // same 12-month grant twice across different reversal event types.
+  const idempotencyKey = `reversal:physical-unit:${input.unitId}:annual-access`;
   const priorReversal = await tx.entitlementEvent.findUnique({ where: { idempotencyKey } });
   if (priorReversal) {
     return { applied: false, event: priorReversal };
