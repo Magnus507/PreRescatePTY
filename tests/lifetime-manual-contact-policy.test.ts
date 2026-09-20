@@ -5,8 +5,8 @@ function source(path: string) {
   return readFileSync(path, "utf8");
 }
 
-describe("annual administration + continuous rescue + manual-contact policy guardrails", () => {
-  it("never gates the public rescue profile on annual administration expiry or paid corporate status", () => {
+describe("permanent service + manual-contact policy guardrails", () => {
+  it("never gates the public rescue profile on time expiry or paid corporate status", () => {
     const route = source("app/api/public/[shortCode]/route.ts");
     const resolver = source("lib/public-access/resolve-public-profile-by-chip.ts");
 
@@ -16,29 +16,35 @@ describe("annual administration + continuous rescue + manual-contact policy guar
     expect(resolver).not.toContain("serviceStatus");
   });
 
-  it("keeps rescue identifiers active while granting annual administration separately", () => {
+  it("activates purchased personal and corporate identifiers with no time-based expiry", () => {
     const activation = source("app/api/chips/activate/route.ts");
     const corporateActivation = source("app/api/organizations/corporate-chip/activate/route.ts");
 
     for (const route of [activation, corporateActivation]) {
       expect(route).toContain("serviceEndDate: null");
-      expect(route).toContain("grantForPhysicalUnitActivation");
+      expect(route).toContain("lifetimeService: true");
+      expect(route).not.toContain("grantForPhysicalUnitActivation");
       expect(route).not.toContain("initialServiceEndDate");
       expect(route).not.toContain('serviceStatus === "expired"');
     }
   });
 
-  it("uses account-level annual access modes and preserves safety actions after expiry", () => {
+  it("keeps account service permanent while enforcing the ten-profile cap", () => {
     const accountState = source("domains/accounts/services/account-state.service.ts");
+    const policy = source("domains/accounts/account-policy.ts");
 
-    expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v6"');
-    expect(accountState).toContain("serviceDurationMonths: 12");
-    expect(accountState).toContain("resolveAccountAccessMode");
-    expect(accountState).toContain('const isExpired = accessMode === "ESSENTIAL"');
-    expect(accountState).toContain('canEditProfiles: isOwner && accessMode !== "ESSENTIAL"');
-    expect(accountState).toContain('canManageDeviceAssignments: isOwner && accessMode === "FULL"');
-    expect(accountState).toContain("canSuspendLostOrStolen: isOwner");
+    expect(accountState).toContain('const ACCOUNT_STATE_CACHE_VERSION = "v7"');
+    expect(accountState).toContain("serviceEndDate: null");
+    expect(accountState).toContain("serviceDurationMonths: null");
+    expect(accountState).toContain("isExpired: false");
+    expect(accountState).not.toContain("resolveAccountAccessMode");
+    expect(accountState).not.toContain("ESSENTIAL");
+    expect(accountState).not.toContain("PENDING_ACTIVATION");
+    expect(accountState).toContain("canEditProfiles: isOwner");
+    expect(accountState).toContain("canManageDeviceAssignments: isOwner");
+    expect(accountState).toContain("canReactivateDevices: isOwner");
     expect(accountState).toContain("canUseSupport: true");
+    expect(policy).toContain("PERSONAL_PROFILE_LIMIT = 10");
   });
 
   it("retires package sales while preserving historical package records", () => {
@@ -52,12 +58,14 @@ describe("annual administration + continuous rescue + manual-contact policy guar
     expect(adminPackages).toContain("LEGACY_LIFETIME_DURATION_MARKER = 0");
   });
 
-  it("requires active annual administration for profile edits without affecting public rescue", () => {
+  it("keeps medical profile editing available without a renewal gate", () => {
     const detail = source("app/api/users/perfiles-medicos/[profileId]/route.ts");
+    const profiles = source("app/api/users/perfiles-medicos/route.ts");
 
-    expect(detail).toContain("AccountStateService.getAccountState");
-    expect(detail).toContain("state.canEditProfiles");
-    expect(detail).toContain("ANNUAL_ACCESS_REQUIRED");
+    expect(detail).not.toContain("ANNUAL_ACCESS_REQUIRED");
+    expect(detail).not.toContain("state.canEditProfiles");
+    expect(profiles).not.toContain("ESSENTIAL");
+    expect(profiles).toContain("PERSONAL_PROFILE_LIMIT");
   });
 
   it("keeps scans telemetry-only and retires every automatic server delivery entrypoint", () => {
@@ -83,41 +91,42 @@ describe("annual administration + continuous rescue + manual-contact policy guar
     expect(engine).not.toContain("sendEmergencyNotification(");
   });
 
-  it("does not let the settings hardener hide or rewrite annual renewal", () => {
+  it("hides legacy renewal controls and rewrites stale expiry copy", () => {
     const hardener = source("app/(app)/dashboard/configuracion/_components/LifetimePolicyHardening.tsx");
 
-    expect(hardener).toContain("Annual access and");
-    expect(hardener).not.toContain("retiredServiceRenewal");
-    expect(hardener).not.toContain('label.includes("renovar servicio")');
-    expect(hardener).not.toContain("Servicio sin vencimiento por tiempo");
+    expect(hardener).toContain("Servicio sin vencimiento");
+    expect(hardener).toContain("retiredServiceRenewal");
+    expect(hardener).toContain('label.includes("renovar servicio")');
   });
 
-  it("explains the annual model on the purchase page without claiming rescue stops at expiry", () => {
+  it("keeps purchase and legal copy aligned with payment-once permanent service", () => {
     const buy = source("app/(public)/comprar/ComprarContent.tsx");
-
-    expect(buy).toContain("Cada unidad física elegible que compres y actives añade 12 meses");
-    expect(buy).toContain("Tu QR/NFC de rescate no depende de esa renovación");
-    expect(buy).not.toContain("paquetes disponibles");
-  });
-
-  it("keeps public and legal copy aligned with annual administration plus rescue continuity", () => {
-    const hero = source("components/public/sections/HeroSection.tsx");
     const faq = source("app/(public)/faq/FAQContent.tsx");
     const how = source("app/(public)/como-funciona/ComoFuncionaContent.tsx");
     const terms = source("app/(public)/legal/terminos/page.tsx");
     const warranty = source("app/(public)/legal/garantia/page.tsx");
 
-    expect(hero).toContain("QR/NFC de rescate continuo");
-    expect(faq).toContain("12 meses de administración");
-    expect(faq).toContain("El QR/NFC y la ficha pública siguen funcionando");
-    expect(how).toContain("Rescate continuo, administración anual");
-    expect(terms).toContain("añade 12 meses de administración de perfiles y dispositivos");
-    expect(terms).toContain("Un reemplazo de garantía o");
-    expect(warranty).toContain("no añade automáticamente otros");
-    expect(warranty).toContain("12 meses de administración");
+    expect(buy).toContain("un único pago");
+    expect(buy).toContain("no tiene mensualidades ni vencimiento por tiempo");
+    expect(faq).toContain("No. El servicio digital se adquiere con un único pago");
+    expect(faq).toContain("No. No existe renovación periódica");
+    expect(how).toContain("Servicio sin vencimiento");
+    expect(terms).toContain("La compra personal es de pago único");
+    expect(warranty).toContain("El servicio digital no vence por tiempo");
 
-    const combined = [faq, how, terms, warranty].join("\n").toLowerCase();
-    expect(combined).not.toContain("no existe renovación periódica");
-    expect(combined).not.toContain("servicio digital no vence por tiempo");
+    const combined = [buy, faq, how, terms, warranty].join("\n").toLowerCase();
+    expect(combined).not.toContain("12 meses de administración");
+    expect(combined).not.toContain("renovación anual");
+  });
+
+  it("contains no annual renewal runtime surface", () => {
+    const schema = source("prisma/schema.prisma");
+    const yappy = source("app/api/payments/yappy/ipn/route.ts");
+
+    expect(schema).not.toContain("ServiceEntitlement");
+    expect(schema).not.toContain("RenewalPayment");
+    expect(schema).not.toContain("grantsAnnualAccess");
+    expect(yappy).not.toContain("renewalPayment");
+    expect(yappy).not.toContain("grantForConfirmedRenewalPayment");
   });
 });
