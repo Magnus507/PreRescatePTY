@@ -38,7 +38,12 @@ describe("Verified migration history reconciliation", () => {
         throw rollback;
       });
     } catch (error) { if (error !== rollback) throw error; }
-    await expect(db.$executeRawUnsafe(sql)).rejects.toThrow(/already exists/);
+    await expect(
+      db.$transaction(async tx => {
+        await tx.$executeRawUnsafe('DROP TABLE IF EXISTS public."SupportMessage"');
+        await tx.$executeRawUnsafe(sql);
+      })
+    ).rejects.toThrow(/already exists/);
     // The rollback restores the current CI migration history, including Block 3.
     const migrationCount = readdirSync("prisma/migrations", { withFileTypes: true }).filter(entry => entry.isDirectory()).length;
     expect(await db.$queryRaw<Array<{ count: bigint }>>`SELECT count(*) FROM public._prisma_migrations`).toEqual([{ count: BigInt(migrationCount) }]);
