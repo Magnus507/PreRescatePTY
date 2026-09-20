@@ -22,6 +22,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ReceiptText,
+  MessageCircle,
 } from "lucide-react";
 import { AccountState } from "@/domains/accounts/account.types";
 import { ScanMonitor } from "./_components/ScanMonitor";
@@ -34,6 +35,7 @@ const consumerNavItems = [
   { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
   { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
   { href: "/dashboard/pedidos", label: "Mis pedidos", icon: ReceiptText },
+  { href: "/dashboard/soporte", label: "Soporte", icon: MessageCircle },
   { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
   { href: "/dashboard/configuracion", label: "Ajustes", icon: Settings },
 ] as const;
@@ -44,6 +46,7 @@ const corporateNavItems = [
   { href: "/dashboard/colaboradores", label: "Colaboradores", icon: UsersRound },
   { href: "/dashboard/solicitudes", label: "Solicitudes", icon: Package },
   { href: "/dashboard/pedidos-corporativos", label: "Pedidos", icon: ShoppingCart },
+  { href: "/dashboard/soporte", label: "Soporte", icon: MessageCircle },
 ] as const;
 
 type NavItem = {
@@ -278,7 +281,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="truncate text-xs font-black text-slate-950 dark:text-white">{session?.user?.email}</p>
                     {state && (
                       <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${state.isInactive ? "text-[#DA1A21]" : "text-emerald-600 dark:text-emerald-400"}`}>
-                        {state.isInactive ? "Cuenta inactiva" : state.isCorporate ? "Cuenta empresa" : state.isFamily ? "Multi-perfil" : "Protección individual"}
+                        {state.isInactive
+                          ? "Cuenta inactiva"
+                          : state.accessMode === "ESSENTIAL"
+                            ? "Administración vencida"
+                            : state.accessMode === "PENDING_ACTIVATION"
+                              ? "Pendiente de activación"
+                              : state.isCorporate
+                                ? "Cuenta empresa"
+                                : "Acceso completo"}
                       </p>
                     )}
                   </div>
@@ -379,6 +390,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
                   { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
                   { href: "/dashboard/pedidos", label: "Mis pedidos", icon: Package },
+                  { href: "/dashboard/soporte", label: "Soporte", icon: MessageCircle },
                   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
                 ].map((item) => (
                   <Link
