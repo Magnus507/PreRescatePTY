@@ -6,6 +6,34 @@ import { createIntegrationPrismaClient, assertIntegrationDatabaseReady } from ".
 const db = createIntegrationPrismaClient();
 const VERIFIED_BASELINE_LAST_MIGRATION = "20260904170000_harden_storage_cleanup_outbox";
 
+async function rewindPostBaselineSchema(tx: {
+  $executeRawUnsafe(query: string): Promise<number>;
+}) {
+  // The verified baseline represents the public schema as of 2026-09-05.
+  // Later migrations are intentionally removed only inside the rollback-only
+  // test transaction so the immutable historical fingerprint remains useful.
+  const postBaselineTables = [
+    "SupportConversationMessage",
+    "SupportEvent",
+    "SupportConversation",
+    "RenewalPaymentEvent",
+    "EntitlementEvent",
+    "ServiceEntitlement",
+    "RenewalPayment",
+    "SupportMessage",
+  ] as const;
+
+  for (const table of postBaselineTables) {
+    await tx.$executeRawUnsafe(`DROP TABLE IF EXISTS public."${table}" CASCADE`);
+  }
+
+  await tx.$executeRawUnsafe(
+    'ALTER TABLE public."ProductOperationalMapping" ' +
+      'DROP COLUMN IF EXISTS "grantsAnnualAccess", ' +
+      'DROP COLUMN IF EXISTS "requiresPaidOrderForAnnualAccess"'
+  );
+}
+
 describe("Verified migration history reconciliation", () => {
   afterAll(async () => db.$disconnect());
   it("reconstructs exact checksums without replaying DDL; refuses an existing history", async () => {
@@ -20,7 +48,7 @@ describe("Verified migration history reconciliation", () => {
         // The verified 2026-09-05 baseline intentionally predates later schema
         // additions. Recreate that historical shape inside this rollback-only
         // transaction before checking the baseline fingerprint.
-        await tx.$executeRawUnsafe('DROP TABLE IF EXISTS public."SupportMessage"');
+        await rewindPostBaselineSchema(tx);
 
         await tx.$executeRawUnsafe(sql);
         const actual = await tx.$queryRaw<Array<{ migration_name: string; checksum: string }>>`SELECT migration_name, checksum FROM public._prisma_migrations ORDER BY migration_name`;
@@ -40,7 +68,7 @@ describe("Verified migration history reconciliation", () => {
     } catch (error) { if (error !== rollback) throw error; }
     await expect(
       db.$transaction(async tx => {
-        await tx.$executeRawUnsafe('DROP TABLE IF EXISTS public."SupportMessage"');
+        await rewindPostBaselineSchema(tx);
         await tx.$executeRawUnsafe(sql);
       })
     ).rejects.toThrow(/already exists/);
