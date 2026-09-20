@@ -1762,3 +1762,138 @@ model SupportMessage {
   @@index([resolvedAt])
   @@index([whatsappPhone])
 }
+
+
+model ServiceEntitlement {
+  id          String   @id @default(cuid())
+  accountId   String   @unique
+  planCode    String   @default("annual_device_access_v1")
+  status      String   @default("pending")
+  startsAt    DateTime?
+  endsAt      DateTime?
+  graceEndsAt DateTime?
+  source      String   @default("registration")
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([endsAt])
+}
+
+model EntitlementEvent {
+  id             String   @id @default(cuid())
+  entitlementId  String
+  accountId      String
+  type           String
+  effectiveAt    DateTime @default(now())
+  deltaMonths    Int      @default(0)
+  previousEnd    DateTime?
+  newEnd         DateTime?
+  paymentId      String?
+  unitId         String?
+  chipId         String?
+  idempotencyKey String   @unique
+  actorUserId    String?
+  reason         String?
+  correlationId  String?
+  metadataJson   Json?
+  createdAt      DateTime @default(now())
+
+  @@index([entitlementId, effectiveAt])
+  @@index([accountId, effectiveAt])
+  @@index([unitId])
+  @@index([paymentId])
+  @@index([type])
+}
+
+model RenewalPayment {
+  id                    String   @id @default(cuid())
+  accountId             String
+  provider              String   @default("yappy")
+  amount                Decimal  @db.Decimal(18, 2)
+  currency              String   @default("USD")
+  status                String   @default("created")
+  requestId             String?
+  idempotencyKey        String   @unique
+  providerTransactionId String?  @unique
+  checkoutSessionJson   String?
+  failureCode           String?
+  confirmedAt           DateTime?
+  expiresAt             DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([accountId, status])
+  @@index([provider, status])
+  @@index([createdAt])
+}
+
+model RenewalPaymentEvent {
+  id                    String   @id @default(cuid())
+  paymentId             String
+  eventType             String
+  payloadHash           String?
+  normalizedPayloadJson Json?
+  signatureVerified     Boolean  @default(false)
+  idempotencyKey        String   @unique
+  receivedAt            DateTime @default(now())
+
+  @@index([paymentId, receivedAt])
+  @@index([eventType])
+}
+
+model SupportConversation {
+  id                String   @id @default(cuid())
+  accountId         String
+  openedByUserId    String
+  category          String   @default("general")
+  subject           String
+  status            String   @default("open")
+  priority          String?
+  assignedToUserId  String?
+  orderId           String?
+  chipId            String?
+  profileId         String?
+  lastMessageAt     DateTime @default(now())
+  clientLastReadAt  DateTime?
+  supportLastReadAt DateTime?
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([accountId, lastMessageAt])
+  @@index([status, lastMessageAt])
+  @@index([openedByUserId])
+  @@index([assignedToUserId])
+}
+
+model SupportConversationMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderType     String
+  senderUserId   String?
+  body           String
+  isInternalNote Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  @@index([conversationId, createdAt])
+  @@index([senderUserId])
+}
+
+model SupportEvent {
+  id             String   @id @default(cuid())
+  conversationId String
+  actorUserId    String?
+  eventType      String
+  beforeJson     Json?
+  afterJson      Json?
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([eventType])
+}
