@@ -76,6 +76,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           requiresCompanyContext: Boolean(body.requiresCompanyContext),
           requiresApproval: Boolean(body.requiresApproval),
           requiresPersonalization: Boolean(body.requiresPersonalization),
+          grantsAnnualAccess: body.grantsAnnualAccess !== false,
+          requiresPaidOrderForAnnualAccess: body.requiresPaidOrderForAnnualAccess !== false,
           sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : 0,
           badgeLabel: typeof body.badgeLabel === "string" ? body.badgeLabel : null,
           badgeColor: typeof body.badgeColor === "string" ? body.badgeColor : null,
@@ -91,6 +93,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
           requiresCompanyContext: Boolean(body.requiresCompanyContext),
           requiresApproval: Boolean(body.requiresApproval),
           requiresPersonalization: Boolean(body.requiresPersonalization),
+          grantsAnnualAccess: body.grantsAnnualAccess === undefined ? undefined : Boolean(body.grantsAnnualAccess),
+          requiresPaidOrderForAnnualAccess:
+            body.requiresPaidOrderForAnnualAccess === undefined
+              ? undefined
+              : Boolean(body.requiresPaidOrderForAnnualAccess),
           sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : undefined,
           badgeLabel: typeof body.badgeLabel === "string" ? body.badgeLabel : null,
           badgeColor: typeof body.badgeColor === "string" ? body.badgeColor : null,
