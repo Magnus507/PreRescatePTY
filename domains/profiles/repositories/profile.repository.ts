@@ -128,8 +128,8 @@ export class ProfileRepository {
     showCommunicationStatusPublic?: boolean;
     showSafeReturnPublic?: boolean;
     showSafeReturnLocationPublic?: boolean;
-  }) {
-    const profile = await prisma.profile.create({
+  }, client: Prisma.TransactionClient | typeof prisma = prisma) {
+    const profile = await client.profile.create({
       data: {
         ...data,
         bloodType: encrypt(data.bloodType || "Pendiente"),
