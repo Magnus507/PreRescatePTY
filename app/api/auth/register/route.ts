@@ -12,7 +12,6 @@ import { ANNUAL_PLAN_CODE, PERSONAL_PROFILE_LIMIT } from "@/domains/accounts/ser
 
 export const dynamic = "force-dynamic";
 
-const ACTIVE_ACCOUNT_TYPES = new Set<string>([ACCOUNT_TYPES.PERSONAL, ACCOUNT_TYPES.COMPANY]);
 const REGISTRATION_LEGAL_DOCUMENTS = {
   terms: "/legal/terminos",
   privacy: "/legal/privacidad",
