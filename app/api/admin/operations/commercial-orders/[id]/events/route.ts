@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
+import { reversePhysicalUnitGrant } from "@/domains/accounts/services/service-entitlement.service";
+import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { releaseEligibleOrderReservations } from "@/lib/operations/release-order-reservations";
 import {
@@ -76,13 +79,13 @@ export async function POST(
 
       if (!commercialOrder) return null;
 
-      if (commercialOrder.status === "cancelled" && data.eventType !== "REFUNDED") {
+      if (commercialOrder.status === "cancelled" && !["REFUNDED", "CHARGEBACK"].includes(data.eventType)) {
         throw new Error("CANCELLED_COMMERCIAL_ORDER");
       }
 
       if (
         commercialOrder.status === "rejected" &&
-        !["REFUNDED", "CANCELLED"].includes(data.eventType)
+        !["REFUNDED", "CHARGEBACK", "CANCELLED"].includes(data.eventType)
       ) {
         throw new Error("REJECTED_COMMERCIAL_ORDER");
       }
@@ -96,7 +99,7 @@ export async function POST(
       }
 
       if (
-        data.eventType === "REFUNDED" &&
+        ["REFUNDED", "CHARGEBACK"].includes(data.eventType) &&
         commercialOrder.dispatch &&
         !["cancelled", "dispatched", "sent", "shipped", "delivered"].includes(
           commercialOrder.dispatch.status
@@ -148,7 +151,7 @@ export async function POST(
       const reservationOrderId = commercialOrder.sourceId || commercialOrder.id;
       const shouldReleaseReservations =
         ["CANCELLED", "REJECTED"].includes(data.eventType) ||
-        (data.eventType === "REFUNDED" &&
+        (["REFUNDED", "CHARGEBACK"].includes(data.eventType) &&
           (!commercialOrder.dispatch || commercialOrder.dispatch.status === "cancelled"));
 
       let releaseResult = null;
@@ -208,7 +211,7 @@ export async function POST(
       } else if (data.eventType === "CANCELLED") {
         updateData.status = "cancelled";
         updateData.fulfillmentStatus = "pending";
-      } else if (data.eventType === "REFUNDED") {
+      } else if (data.eventType === "REFUNDED" || data.eventType === "CHARGEBACK") {
         updateData.paymentStatus = "refunded";
         if (releaseResult) updateData.fulfillmentStatus = "pending";
       }
@@ -225,10 +228,59 @@ export async function POST(
               include: commercialOrderInclude,
             });
 
+      const financialReversal = ["REFUNDED", "CHARGEBACK"].includes(data.eventType);
+      const isFullFinancialReversal =
+        financialReversal &&
+        (data.amount == null || new Prisma.Decimal(data.amount).gte(commercialOrder.totalAmount));
+
+      let annualAccessReversalCount = 0;
+      const affectedAccountIds = new Set<string>();
+
+      if (isFullFinancialReversal) {
+        const units = await tx.operationFinishedGoodUnit.findMany({
+          where: { reservedOrderId: commercialOrder.id },
+          select: { id: true },
+        });
+        const unitIds = units.map((unit) => unit.id);
+
+        if (unitIds.length > 0) {
+          const grants = await tx.entitlementEvent.findMany({
+            where: {
+              unitId: { in: unitIds },
+              type: "activation",
+              deltaMonths: { gt: 0 },
+            },
+            select: {
+              accountId: true,
+              unitId: true,
+            },
+            distinct: ["unitId"],
+          });
+
+          for (const grant of grants) {
+            if (!grant.unitId) continue;
+            const reversal = await reversePhysicalUnitGrant(tx, {
+              accountId: grant.accountId,
+              unitId: grant.unitId,
+              reversalType: data.eventType === "CHARGEBACK" ? "chargeback" : "refund",
+              actorUserId: createdById,
+              reason: `${data.eventType.toLowerCase()}_commercial_order:${commercialOrder.code}`,
+            });
+            if ("applied" in reversal && reversal.applied) {
+              annualAccessReversalCount += 1;
+              affectedAccountIds.add(grant.accountId);
+            }
+          }
+        }
+      }
+
       return {
         event,
         commercialOrder: updatedCommercialOrder,
         releasedUnitCount: releaseResult?.releasedCount || 0,
+        annualAccessReversalCount,
+        annualAccessReversalSkippedPartial: financialReversal && !isFullFinancialReversal,
+        affectedAccountIds: [...affectedAccountIds],
       };
     });
 
@@ -239,19 +291,28 @@ export async function POST(
       );
     }
 
-    return NextResponse.json(result, { status: 201 });
+    if (result.affectedAccountIds.length > 0) {
+      const users = await prisma.user.findMany({
+        where: { accountId: { in: result.affectedAccountIds } },
+        select: { id: true },
+      });
+      await Promise.all(users.map((user) => AccountStateService.invalidateCache(user.id)));
+    }
+
+    const { affectedAccountIds: _affectedAccountIds, ...response } = result;
+    return NextResponse.json(response, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
 
     if (message === "CANCELLED_COMMERCIAL_ORDER") {
       return NextResponse.json(
-        { error: "No se pueden registrar eventos sobre pedidos comerciales cancelados salvo REFUNDED" },
+        { error: "No se pueden registrar eventos sobre pedidos comerciales cancelados salvo REFUNDED o CHARGEBACK" },
         { status: 400 }
       );
     }
     if (message === "REJECTED_COMMERCIAL_ORDER") {
       return NextResponse.json(
-        { error: "No se pueden registrar eventos sobre pedidos comerciales rechazados salvo CANCELLED o REFUNDED" },
+        { error: "No se pueden registrar eventos sobre pedidos comerciales rechazados salvo CANCELLED, REFUNDED o CHARGEBACK" },
         { status: 400 }
       );
     }
