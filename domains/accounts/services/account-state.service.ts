@@ -1,15 +1,16 @@
 import { prisma } from "@/lib/prisma";
-import { Account, Package, Profile, User } from "@prisma/client";
+import { Account, Package, Profile, User, Chip } from "@prisma/client";
 import { AccountState, SetupChecklist } from "../account.types";
 import { ACCOUNT_TYPES, USER_ROLES } from "@/domains/shared/constants";
 import { redis, isRedisConfigured } from "@/lib/redis";
 import { parseMoney } from "@/lib/money";
-import { PERSONAL_PROFILE_LIMIT, resolveAccountAccessMode } from "./service-entitlement.service";
+import { PERSONAL_PROFILE_LIMIT } from "../account-policy";
 
 export { type SetupChecklist };
 
 const CHIP_CAPACITY_STATUSES = ["activated", "suspended"];
-const ACCOUNT_STATE_CACHE_VERSION = "v6";
+const CHIP_SERVICE_STATUSES = ["activated", "suspended"];
+const ACCOUNT_STATE_CACHE_VERSION = "v7";
 
 export const ACCOUNT_STATE_ERRORS = {
   USER_NOT_FOUND: "USER_NOT_FOUND",
@@ -44,9 +45,21 @@ export class AccountStateService {
     };
   }
 
+  /** Permanent service state. Legacy expiry fields are intentionally ignored. */
+  private static calculateServiceStatus(latestChip: Chip | null, isCorporate: boolean, maxChipsLimit: number) {
+    const isInactive = isCorporate && maxChipsLimit === 0;
+    const serviceStatus = isInactive ? "inactive" : (latestChip ? "active" : "not_activated");
+    return {
+      serviceStatus,
+      serviceEndDate: null,
+      isExpired: false,
+      isInactive,
+    };
+  }
+
   /**
-   * Resolves dashboard/account state. Commercial access is account-level and
-   * never controls public QR/NFC rescue resolution.
+   * Resolves dashboard/account state. Consumer access has no time-based
+   * expiration; identifiers remain governed only by their physical lifecycle.
    */
   static async getAccountState(userId: string): Promise<AccountState> {
     const cacheKey = `account_state_${ACCOUNT_STATE_CACHE_VERSION}:${userId}`;
@@ -87,18 +100,16 @@ export class AccountStateService {
     const maxChipsLimit = account?.maxChipsAllocated || 0;
     const maxProfilesLimit = isCorporate ? (account?.maxProfilesAllocated || 1) : PERSONAL_PROFILE_LIMIT;
 
-    const entitlement = account?.id
-      ? await prisma.serviceEntitlement.findUnique({ where: { accountId: account.id } })
-      : null;
-    const accessMode = resolveAccountAccessMode(entitlement);
-    const serviceStatus = accessMode === "PENDING_ACTIVATION"
-      ? "not_activated"
-      : accessMode === "FULL"
-        ? "active"
-        : "expired";
-    const serviceEndDate = entitlement?.endsAt ?? null;
-    const isExpired = accessMode === "ESSENTIAL";
-    const isInactive = isCorporate && maxChipsLimit === 0;
+    const latestChip = account?.id ? await prisma.chip.findFirst({
+      where: { accountId: account.id, status: { in: CHIP_SERVICE_STATUSES } },
+      orderBy: { activatedAt: "desc" },
+    }) : null;
+
+    const { serviceStatus, serviceEndDate, isExpired, isInactive } = this.calculateServiceStatus(
+      latestChip,
+      isCorporate,
+      maxChipsLimit
+    );
 
     const isMedicalComplete = this.isMedicalProfileComplete(profile);
     const setupChecklist: SetupChecklist = {
@@ -121,8 +132,7 @@ export class AccountStateService {
       maxProfilesAllocated: maxProfilesLimit,
       serviceStatus,
       serviceEndDate,
-      serviceDurationMonths: 12,
-      accessMode,
+      serviceDurationMonths: null,
       isExpired,
       isInactive,
       isPersonal,
@@ -130,16 +140,14 @@ export class AccountStateService {
       isCorporate,
       isOrganization: isCorporate,
       isOwner,
-      canManageFamilyProfiles: !isCorporate && isOwner && accessMode !== "ESSENTIAL",
+      canManageFamilyProfiles: !isCorporate && isOwner,
       canAccessOrganizationModule: isCorporate && isOwner,
-      // Activation of a new eligible paid physical unit remains possible even
-      // in ESSENTIAL because the activation itself can restore FULL access.
       canActivateMoreChips: isOwner && (!isCorporate || (!isInactive && activeChipsCount < maxChipsLimit)),
-      canAddFamilyMember: !isCorporate && isOwner && accessMode !== "ESSENTIAL" && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
-      canCreateProfiles: !isCorporate && isOwner && accessMode !== "ESSENTIAL" && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
-      canEditProfiles: isOwner && accessMode !== "ESSENTIAL",
-      canManageDeviceAssignments: isOwner && accessMode === "FULL",
-      canReactivateDevices: isOwner && accessMode === "FULL",
+      canAddFamilyMember: !isCorporate && isOwner && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
+      canCreateProfiles: !isCorporate && isOwner && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
+      canEditProfiles: isOwner,
+      canManageDeviceAssignments: isOwner,
+      canReactivateDevices: isOwner,
       canSuspendLostOrStolen: isOwner,
       canUseSupport: true,
       activeChipsCount,
@@ -168,9 +176,10 @@ export class AccountStateService {
     try {
       await Promise.all([
         redis.del(`account_state_${ACCOUNT_STATE_CACHE_VERSION}:${userId}`),
-        redis.del(`account_state_v5:${userId}`),
-        redis.del(`account_state_v4:${userId}`),
-        redis.del(`account_state_v3:${userId}`),
+        redis.del("account_state_v6:" + userId),
+        redis.del("account_state_v5:" + userId),
+        redis.del("account_state_v4:" + userId),
+        redis.del("account_state_v3:" + userId),
       ]);
     } catch (e) {
       console.error("[AccountStateService] Cache invalidation error:", e);
