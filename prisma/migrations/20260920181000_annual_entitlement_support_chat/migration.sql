@@ -26,6 +26,7 @@ CREATE TABLE "RenewalPayment" (
     FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE
 );
 
+CREATE UNIQUE INDEX "RenewalPayment_requestId_key" ON "RenewalPayment"("requestId");
 CREATE UNIQUE INDEX "RenewalPayment_idempotencyKey_key" ON "RenewalPayment"("idempotencyKey");
 CREATE UNIQUE INDEX "RenewalPayment_providerTransactionId_key" ON "RenewalPayment"("providerTransactionId");
 CREATE INDEX "RenewalPayment_accountId_status_idx" ON "RenewalPayment"("accountId","status");
