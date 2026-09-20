@@ -4,13 +4,13 @@ import { AccountState, SetupChecklist } from "../account.types";
 import { ACCOUNT_TYPES, USER_ROLES } from "@/domains/shared/constants";
 import { redis, isRedisConfigured } from "@/lib/redis";
 import { parseMoney } from "@/lib/money";
+import { PERSONAL_PROFILE_LIMIT, resolveAccountAccessMode } from "./service-entitlement.service";
 
 export { type SetupChecklist };
 
 const CHIP_CAPACITY_STATUSES = ["activated", "suspended"];
 const CHIP_SERVICE_STATUSES = ["activated", "suspended"];
-const MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT = 50;
-const ACCOUNT_STATE_CACHE_VERSION = "v5";
+const ACCOUNT_STATE_CACHE_VERSION = "v6";
 
 export const ACCOUNT_STATE_ERRORS = {
   USER_NOT_FOUND: "USER_NOT_FOUND",
@@ -34,9 +34,8 @@ export class AccountStateService {
   }
 
   private static resolveAccountCategory(account: Account | null, rawAccountType: string) {
-    const maxProfilesLimit = account?.maxProfilesAllocated || 1;
     const isCorporate = rawAccountType === "company" || rawAccountType === "organization" || rawAccountType === "corporate";
-    const isFamily = rawAccountType === "family" || maxProfilesLimit > 1;
+    const isFamily = rawAccountType === "family";
     const isPersonal = !isCorporate && !isFamily;
     return {
       accountType: isCorporate ? ACCOUNT_TYPES.COMPANY : (isFamily ? ACCOUNT_TYPES.FAMILY : ACCOUNT_TYPES.PERSONAL),
@@ -46,22 +45,9 @@ export class AccountStateService {
     };
   }
 
-  /** Lifetime service state. Legacy expiry fields are intentionally ignored. */
-  private static calculateServiceStatus(latestChip: Chip | null, isCorporate: boolean, maxChipsLimit: number) {
-    const isInactive = isCorporate && maxChipsLimit === 0;
-    const serviceStatus = isInactive ? "inactive" : (latestChip ? "active" : "not_activated");
-    return {
-      serviceStatus,
-      serviceEndDate: null,
-      isExpired: false,
-      isInactive,
-    };
-  }
-
   /**
-   * Resolves dashboard/account state. Service has no time-based expiration;
-   * lost, replaced, revoked or otherwise inactive identifiers remain governed
-   * by their physical lifecycle instead.
+   * Resolves dashboard/account state. Commercial access is account-level and
+   * never controls public QR/NFC rescue resolution.
    */
   static async getAccountState(userId: string): Promise<AccountState> {
     const cacheKey = `account_state_${ACCOUNT_STATE_CACHE_VERSION}:${userId}`;
@@ -100,18 +86,20 @@ export class AccountStateService {
     const rawAccountType = account?.accountType || ACCOUNT_TYPES.PERSONAL;
     const { accountType, isCorporate, isFamily, isPersonal } = this.resolveAccountCategory(account, rawAccountType);
     const maxChipsLimit = account?.maxChipsAllocated || 0;
-    const maxProfilesLimit = account?.maxProfilesAllocated || 1;
+    const maxProfilesLimit = isCorporate ? (account?.maxProfilesAllocated || 1) : PERSONAL_PROFILE_LIMIT;
 
-    const latestChip = account?.id ? await prisma.chip.findFirst({
-      where: { accountId: account.id, status: { in: CHIP_SERVICE_STATUSES } },
-      orderBy: { activatedAt: "desc" },
-    }) : null;
-
-    const { serviceStatus, serviceEndDate, isExpired, isInactive } = this.calculateServiceStatus(
-      latestChip,
-      isCorporate,
-      maxChipsLimit
-    );
+    const entitlement = account?.id
+      ? await prisma.serviceEntitlement.findUnique({ where: { accountId: account.id } })
+      : null;
+    const accessMode = resolveAccountAccessMode(entitlement);
+    const serviceStatus = accessMode === "PENDING_ACTIVATION"
+      ? "not_activated"
+      : accessMode === "FULL"
+        ? "active"
+        : "expired";
+    const serviceEndDate = entitlement?.endsAt ?? null;
+    const isExpired = accessMode === "ESSENTIAL";
+    const isInactive = isCorporate && maxChipsLimit === 0;
 
     const isMedicalComplete = this.isMedicalProfileComplete(profile);
     const setupChecklist: SetupChecklist = {
@@ -134,7 +122,8 @@ export class AccountStateService {
       maxProfilesAllocated: maxProfilesLimit,
       serviceStatus,
       serviceEndDate,
-      serviceDurationMonths: null,
+      serviceDurationMonths: 12,
+      accessMode,
       isExpired,
       isInactive,
       isPersonal,
@@ -142,12 +131,18 @@ export class AccountStateService {
       isCorporate,
       isOrganization: isCorporate,
       isOwner,
-      canManageFamilyProfiles: isFamily && isOwner,
+      canManageFamilyProfiles: !isCorporate && isOwner && accessMode !== "ESSENTIAL",
       canAccessOrganizationModule: isCorporate && isOwner,
-      // Personal/family activation is possession-based: every valid purchased
-      // physical unit can be activated without a time-based service limit.
+      // Activation of a new eligible paid physical unit remains possible even
+      // in ESSENTIAL because the activation itself can restore FULL access.
       canActivateMoreChips: isOwner && (!isCorporate || (!isInactive && activeChipsCount < maxChipsLimit)),
-      canAddFamilyMember: isOwner && actualProfilesCount < MAX_PERSONAL_PROFILES_TECHNICAL_LIMIT,
+      canAddFamilyMember: !isCorporate && isOwner && accessMode !== "ESSENTIAL" && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
+      canCreateProfiles: !isCorporate && isOwner && accessMode !== "ESSENTIAL" && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
+      canEditProfiles: isOwner && accessMode !== "ESSENTIAL",
+      canManageDeviceAssignments: isOwner && accessMode === "FULL",
+      canReactivateDevices: isOwner && accessMode === "FULL",
+      canSuspendLostOrStolen: isOwner,
+      canUseSupport: true,
       activeChipsCount,
       physicalChipsInTransitCount: inTransitCount,
       familyProfilesCount: Math.max(0, actualProfilesCount - 1),
@@ -174,6 +169,7 @@ export class AccountStateService {
     try {
       await Promise.all([
         redis.del(`account_state_${ACCOUNT_STATE_CACHE_VERSION}:${userId}`),
+        redis.del(`account_state_v5:${userId}`),
         redis.del(`account_state_v4:${userId}`),
         redis.del(`account_state_v3:${userId}`),
       ]);
