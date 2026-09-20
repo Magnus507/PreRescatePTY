@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { 
   Cpu, ExternalLink, Pause, Play, UserRound, 
@@ -245,6 +246,12 @@ export default function ChipsPage() {
             QR/NFC y la ficha pública siguen funcionando. Puedes reportar un dispositivo perdido o robado,
             pero reasignar, rotar o reactivar dispositivos requiere renovar.
           </p>
+          <Link
+            href="/dashboard/upgrade"
+            className="mt-4 inline-flex rounded-xl bg-amber-900 px-4 py-2.5 text-xs font-black text-white transition hover:bg-amber-950"
+          >
+            Renovar acceso anual
+          </Link>
         </div>
       )}
 
