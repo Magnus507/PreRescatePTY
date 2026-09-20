@@ -16,6 +16,12 @@ describe("Verified migration history reconciliation", () => {
       await db.$transaction(async tx => {
         // Move only disposable CI bookkeeping, preserve it through rollback.
         await tx.$executeRawUnsafe('ALTER TABLE public._prisma_migrations SET SCHEMA storage');
+
+        // The verified 2026-09-05 baseline intentionally predates later schema
+        // additions. Recreate that historical shape inside this rollback-only
+        // transaction before checking the baseline fingerprint.
+        await tx.$executeRawUnsafe('DROP TABLE IF EXISTS public."SupportMessage"');
+
         await tx.$executeRawUnsafe(sql);
         const actual = await tx.$queryRaw<Array<{ migration_name: string; checksum: string }>>`SELECT migration_name, checksum FROM public._prisma_migrations ORDER BY migration_name`;
         const expected = readdirSync("prisma/migrations", { withFileTypes: true })
@@ -32,7 +38,12 @@ describe("Verified migration history reconciliation", () => {
         throw rollback;
       });
     } catch (error) { if (error !== rollback) throw error; }
-    await expect(db.$executeRawUnsafe(sql)).rejects.toThrow(/already exists/);
+    await expect(
+      db.$transaction(async tx => {
+        await tx.$executeRawUnsafe('DROP TABLE IF EXISTS public."SupportMessage"');
+        await tx.$executeRawUnsafe(sql);
+      })
+    ).rejects.toThrow(/already exists/);
     // The rollback restores the current CI migration history, including Block 3.
     const migrationCount = readdirSync("prisma/migrations", { withFileTypes: true }).filter(entry => entry.isDirectory()).length;
     expect(await db.$queryRaw<Array<{ count: bigint }>>`SELECT count(*) FROM public._prisma_migrations`).toEqual([{ count: BigInt(migrationCount) }]);

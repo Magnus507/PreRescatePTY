@@ -63,6 +63,7 @@ export interface MockPrismaClient {
   scanEvent: MockDelegate
   consent: MockDelegate
   contact: MockDelegate
+  supportMessage: MockDelegate
   profileContact: MockDelegate
   organization: MockDelegate
   organizationMember: MockDelegate
@@ -122,6 +123,7 @@ export const mockPrisma: MockPrismaClient = {
   scanEvent: createMockDelegate(),
   consent: createMockDelegate(),
   contact: createMockDelegate(),
+  supportMessage: createMockDelegate(),
   profileContact: createMockDelegate(),
   organization: createMockDelegate(),
   organizationMember: createMockDelegate(),

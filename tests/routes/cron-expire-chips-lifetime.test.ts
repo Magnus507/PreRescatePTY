@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 const mockHeartbeatUpsert = vi.hoisted(() => vi.fn());
 const mockStorageCleanup = vi.hoisted(() => vi.fn());
 const mockScanRetention = vi.hoisted(() => vi.fn());
+const mockSupportRetention = vi.hoisted(() => vi.fn());
 const mockLoggerInfo = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/prisma", () => ({
@@ -14,6 +15,9 @@ vi.mock("@/lib/storage-cleanup-outbox", () => ({
 }));
 vi.mock("@/lib/privacy/scan-retention", () => ({
   purgeExpiredScanTelemetry: mockScanRetention,
+}));
+vi.mock("@/lib/privacy/support-message-retention", () => ({
+  purgeExpiredResolvedSupportMessages: mockSupportRetention,
 }));
 vi.mock("@/lib/logger", () => ({
   logger: { info: mockLoggerInfo },
@@ -26,6 +30,7 @@ describe("legacy expire-chips cron under lifetime policy", () => {
     mockHeartbeatUpsert.mockReset();
     mockStorageCleanup.mockReset();
     mockScanRetention.mockReset();
+    mockSupportRetention.mockReset();
     mockLoggerInfo.mockReset();
     mockHeartbeatUpsert.mockResolvedValue({});
     mockStorageCleanup.mockResolvedValue({ processed: 0, failed: 0 });
@@ -34,6 +39,10 @@ describe("legacy expire-chips cron under lifetime policy", () => {
       deletedScanEvents: 0,
       clearedChipLastScan: 0,
       clearedProfileLastScan: 0,
+    });
+    mockSupportRetention.mockResolvedValue({
+      retentionDays: 730,
+      deletedResolvedMessages: 0,
     });
     process.env.CRON_SECRET = "cron-secret";
   });
@@ -50,7 +59,9 @@ describe("legacy expire-chips cron under lifetime policy", () => {
     expect(json.legacyTimeExpiryDisabled).toBe(true);
     expect(mockStorageCleanup).toHaveBeenCalledTimes(1);
     expect(mockScanRetention).toHaveBeenCalledTimes(1);
+    expect(mockSupportRetention).toHaveBeenCalledTimes(1);
     expect(json.scanRetention.retentionDays).toBe(365);
+    expect(json.supportRetention.retentionDays).toBe(730);
     expect(mockHeartbeatUpsert).toHaveBeenCalledTimes(1);
   });
 
@@ -59,5 +70,6 @@ describe("legacy expire-chips cron under lifetime policy", () => {
     expect(response.status).toBe(401);
     expect(mockStorageCleanup).not.toHaveBeenCalled();
     expect(mockScanRetention).not.toHaveBeenCalled();
+    expect(mockSupportRetention).not.toHaveBeenCalled();
   });
 });

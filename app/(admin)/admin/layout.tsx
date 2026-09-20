@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   LayoutDashboard, Users, Building2, Shield,
   LogOut, Settings, Package, Activity, ChevronRight, Search, Menu, X, Store, Crown,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, MessageSquareText
 } from "lucide-react";
 
 import type { Session } from "next-auth";
@@ -53,6 +53,7 @@ function AdminSidebar({
     { label: "Usuarios", id: "users", icon: Users },
     { label: "Cuentas Corporativas", id: "empresas", icon: Building2 },
     { label: "Centro de Operaciones", id: "inventory", icon: Package },
+    { label: "Mensajes de soporte", id: "support", icon: MessageSquareText },
     { label: "Ajustes Sistema", id: "settings", icon: Settings },
     { label: "Administradores", id: "admins", icon: Shield },
   ].filter(item => !isPrintRole || item.id === 'inventory');

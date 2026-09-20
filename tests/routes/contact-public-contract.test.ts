@@ -14,6 +14,8 @@ describe("Public contact form contract", () => {
     const source = fs.readFileSync(contactContentPath, "utf8");
 
     expect(source).toContain('fetch("/api/contacts/public"');
+    expect(source).toContain("WhatsApp obligatorio");
+    expect(source).toContain("whatsappPhone");
     expect(source).not.toContain("/api/contacts/publics/public");
   });
 });

@@ -4,6 +4,7 @@ import { CRON_MONITOR_KEYS, recordCronSuccess } from "@/lib/cron-monitoring";
 import { processStorageCleanupOutbox } from "@/lib/storage-cleanup-outbox";
 import { prisma } from "@/lib/prisma";
 import { purgeExpiredScanTelemetry } from "@/lib/privacy/scan-retention";
+import { purgeExpiredResolvedSupportMessages } from "@/lib/privacy/support-message-retention";
 
 export const dynamic = "force-dynamic";
 
@@ -27,15 +28,17 @@ export async function POST(req: NextRequest) {
   }
 
   const runAt = new Date();
-  const [storageCleanup, scanRetention] = await Promise.all([
+  const [storageCleanup, scanRetention, supportRetention] = await Promise.all([
     processStorageCleanupOutbox(),
     purgeExpiredScanTelemetry(prisma, { now: runAt }),
+    purgeExpiredResolvedSupportMessages(prisma, { now: runAt }),
   ]);
   const summary = {
     expiredCount: 0,
     legacyTimeExpiryDisabled: true,
     storageCleanup,
     scanRetention,
+    supportRetention,
   };
 
   logger.info("[cron/expire-chips] Lifetime policy active; skipped time-based expiry", summary);
@@ -47,6 +50,7 @@ export async function POST(req: NextRequest) {
     legacyTimeExpiryDisabled: true,
     storageCleanup,
     scanRetention,
+    supportRetention,
     runAt: runAt.toISOString(),
   });
 }
