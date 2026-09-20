@@ -1743,3 +1743,22 @@ model OperationReturnEvent {
   @@index([createdById])
   @@index([createdAt])
 }
+
+model SupportMessage {
+  id               String   @id @default(cuid())
+  name             String
+  email            String
+  whatsappPhone    String
+  message          String
+  readAt           DateTime?
+  readByUserId     String?
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([readAt])
+  @@index([resolvedAt])
+  @@index([whatsappPhone])
+}
