@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
-import { reversePhysicalUnitGrant } from "@/domains/accounts/services/service-entitlement.service";
-import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { releaseEligibleOrderReservations } from "@/lib/operations/release-order-reservations";
 import {
@@ -228,59 +225,11 @@ export async function POST(
               include: commercialOrderInclude,
             });
 
-      const financialReversal = ["REFUNDED", "CHARGEBACK"].includes(data.eventType);
-      const isFullFinancialReversal =
-        financialReversal &&
-        (data.amount == null || new Prisma.Decimal(data.amount).gte(commercialOrder.totalAmount));
-
-      let annualAccessReversalCount = 0;
-      const affectedAccountIds = new Set<string>();
-
-      if (isFullFinancialReversal) {
-        const units = await tx.operationFinishedGoodUnit.findMany({
-          where: { reservedOrderId: reservationOrderId },
-          select: { id: true },
-        });
-        const unitIds = units.map((unit) => unit.id);
-
-        if (unitIds.length > 0) {
-          const grants = await tx.entitlementEvent.findMany({
-            where: {
-              unitId: { in: unitIds },
-              type: "activation",
-              deltaMonths: { gt: 0 },
-            },
-            select: {
-              accountId: true,
-              unitId: true,
-            },
-            distinct: ["unitId"],
-          });
-
-          for (const grant of grants) {
-            if (!grant.unitId) continue;
-            const reversal = await reversePhysicalUnitGrant(tx, {
-              accountId: grant.accountId,
-              unitId: grant.unitId,
-              reversalType: data.eventType === "CHARGEBACK" ? "chargeback" : "refund",
-              actorUserId: createdById,
-              reason: `${data.eventType.toLowerCase()}_commercial_order:${commercialOrder.code}`,
-            });
-            if ("applied" in reversal && reversal.applied) {
-              annualAccessReversalCount += 1;
-              affectedAccountIds.add(grant.accountId);
-            }
-          }
-        }
-      }
 
       return {
         event,
         commercialOrder: updatedCommercialOrder,
         releasedUnitCount: releaseResult?.releasedCount || 0,
-        annualAccessReversalCount,
-        annualAccessReversalSkippedPartial: financialReversal && !isFullFinancialReversal,
-        affectedAccountIds: [...affectedAccountIds],
       };
     });
 
@@ -291,24 +240,7 @@ export async function POST(
       );
     }
 
-    if (result.affectedAccountIds.length > 0) {
-      const users = await prisma.user.findMany({
-        where: { accountId: { in: result.affectedAccountIds } },
-        select: { id: true },
-      });
-      await Promise.all(users.map((user) => AccountStateService.invalidateCache(user.id)));
-    }
-
-    return NextResponse.json(
-      {
-        event: result.event,
-        commercialOrder: result.commercialOrder,
-        releasedUnitCount: result.releasedUnitCount,
-        annualAccessReversalCount: result.annualAccessReversalCount,
-        annualAccessReversalSkippedPartial: result.annualAccessReversalSkippedPartial,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
 
