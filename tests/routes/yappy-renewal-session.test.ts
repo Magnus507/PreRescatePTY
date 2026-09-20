@@ -46,6 +46,7 @@ function setup() {
     status: "active",
   } as never);
   mockPrisma.renewalPayment.findUnique.mockResolvedValue(null);
+  mockPrisma.renewalPayment.findFirst.mockResolvedValue(null);
   mockPrisma.renewalPayment.create.mockResolvedValue({ id: "renewal-1" } as never);
   mockCreateYappyCheckout.mockResolvedValue({
     transactionId: "tx-renewal-1",
@@ -111,6 +112,42 @@ describe("POST /api/payments/yappy/renewal/session", () => {
       paymentId: "renewal-existing",
       transactionId: "tx-existing",
       token: "token-existing",
+    });
+    expect(mockPrisma.renewalPayment.create).not.toHaveBeenCalled();
+    expect(mockCreateYappyCheckout).not.toHaveBeenCalled();
+  });
+
+  it("reuses another live pending session for the same account even with a different click key", async () => {
+    mockPrisma.renewalPayment.findFirst.mockResolvedValue({
+      id: "renewal-live",
+      accountId: "account-1",
+      provider: "yappy",
+      status: "pending",
+      expiresAt: new Date(Date.now() + 60_000),
+      checkoutSessionJson: `encrypted:${JSON.stringify({
+        transactionId: "tx-live",
+        documentName: "doc-live",
+        token: "token-live",
+      })}`,
+    } as never);
+
+    const response = await POST(request("+507 6123-4567", "another-click-key"));
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toMatchObject({
+      paymentId: "renewal-live",
+      transactionId: "tx-live",
+      token: "token-live",
+    });
+    expect(mockPrisma.renewalPayment.findFirst).toHaveBeenCalledWith({
+      where: {
+        accountId: "account-1",
+        provider: "yappy",
+        status: "pending",
+        expiresAt: { gt: expect.any(Date) },
+      },
+      orderBy: { createdAt: "desc" },
     });
     expect(mockPrisma.renewalPayment.create).not.toHaveBeenCalled();
     expect(mockCreateYappyCheckout).not.toHaveBeenCalled();
