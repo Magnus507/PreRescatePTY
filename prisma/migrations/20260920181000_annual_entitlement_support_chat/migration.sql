@@ -1,5 +1,9 @@
 -- Annual account entitlement + authenticated support chat.
 -- Existing accounts with an activated/suspended physical identifier are grandfathered.
+
+ALTER TABLE "ProductOperationalMapping"
+  ADD COLUMN "grantsAnnualAccess" BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN "requiresPaidOrderForAnnualAccess" BOOLEAN NOT NULL DEFAULT true;
 -- Dormant accounts remain pending until an eligible physical activation or renewal payment.
 
 CREATE TABLE "RenewalPayment" (
