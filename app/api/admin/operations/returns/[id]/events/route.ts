@@ -6,7 +6,6 @@ import {
   getFirstValidationMessage,
 } from "../../returns.helpers";
 import { returnInclude } from "../../returns.include";
-import { reversePhysicalUnitGrant } from "@/domains/accounts/services/service-entitlement.service";
 
 export const dynamic = "force-dynamic";
 
@@ -150,38 +149,10 @@ export async function POST(
               include: returnInclude,
             });
 
-      let entitlementReversalApplied = false;
-      if (
-        data.eventType === "COMPLETED" &&
-        operationReturn.unitId &&
-        (updatedReturn?.acceptedQuantity || 0) > 0
-      ) {
-        const originalGrant = await tx.entitlementEvent.findFirst({
-          where: {
-            unitId: operationReturn.unitId,
-            type: "activation",
-            deltaMonths: { gt: 0 },
-          },
-          orderBy: { createdAt: "asc" },
-          select: { accountId: true },
-        });
-        if (originalGrant) {
-          const reversal = await reversePhysicalUnitGrant(tx, {
-            accountId: originalGrant.accountId,
-            unitId: operationReturn.unitId,
-            reversalType: "refund",
-            actorUserId: createdById,
-            reason: `completed_return:${operationReturn.code}`,
-          });
-          entitlementReversalApplied = Boolean("applied" in reversal && reversal.applied);
-        }
-      }
-
       return {
         event,
         return: updatedReturn,
         finishedGoodEventId,
-        entitlementReversalApplied,
       };
     });
 
