@@ -16,22 +16,12 @@ async function rewindPostBaselineSchema(tx: {
     "SupportConversationMessage",
     "SupportEvent",
     "SupportConversation",
-    "RenewalPaymentEvent",
-    "EntitlementEvent",
-    "ServiceEntitlement",
-    "RenewalPayment",
     "SupportMessage",
   ] as const;
 
   for (const table of postBaselineTables) {
     await tx.$executeRawUnsafe(`DROP TABLE IF EXISTS public."${table}"`);
   }
-
-  await tx.$executeRawUnsafe(
-    'ALTER TABLE public."ProductOperationalMapping" ' +
-      'DROP COLUMN IF EXISTS "grantsAnnualAccess", ' +
-      'DROP COLUMN IF EXISTS "requiresPaidOrderForAnnualAccess"'
-  );
 }
 
 describe("Verified migration history reconciliation", () => {
