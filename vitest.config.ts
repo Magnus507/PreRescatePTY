@@ -15,7 +15,6 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html', 'lcov'],
-      all: true,
       include: [
         'lib/encryption.ts',
         'lib/emergency-alerts.ts',

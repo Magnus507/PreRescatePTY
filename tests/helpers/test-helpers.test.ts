@@ -41,9 +41,10 @@ describe('mockPrisma', () => {
   })
 
   it('$transaction callback receives mockPrisma', async () => {
-    const result = await mockPrisma.$transaction(async (tx: Record<string, unknown>) => {
-      return tx
-    })
+    const runTransaction = mockPrisma.$transaction as unknown as (
+      callback: (tx: Record<string, unknown>) => Promise<Record<string, unknown>>
+    ) => Promise<Record<string, unknown>>
+    const result = await runTransaction(async (tx) => tx)
     expect(result).toBeDefined()
   })
 
