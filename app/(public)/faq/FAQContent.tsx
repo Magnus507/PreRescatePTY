@@ -46,11 +46,11 @@ const faqs: FAQ[] = [
 
   // Compra y pagos
   { q: "¿Qué métodos de pago aceptan?", a: "Todos los pedidos se pagan de forma manual mediante las instrucciones de pago disponibles, comprobante y revisión administrativa.", category: "Compra y pagos" },
-  { q: "¿Hay mensualidades?", a: "No. El servicio digital se adquiere con un único pago y no tiene mensualidades ni vencimiento por tiempo.", category: "Compra y pagos" },
-  { q: "¿Cuánto tiempo dura el servicio?", a: "El servicio digital no vence por tiempo. Permanece disponible mientras el identificador correspondiente siga activo y no haya sido revocado, reemplazado o retirado.", category: "Compra y pagos" },
+  { q: "¿Hay mensualidades?", a: "No hay mensualidad obligatoria. Cada unidad física elegible que compras y activas añade 12 meses de administración a la cuenta. Al terminar esa vigencia puedes renovarla; el QR/NFC y la ficha pública de rescate no se desactivan solo por ese vencimiento.", category: "Compra y pagos" },
+  { q: "¿Cuánto tiempo dura el servicio?", a: "La administración de perfiles y dispositivos funciona por períodos de 12 meses acumulables. La consulta pública mediante QR/NFC permanece disponible aunque la administración venza, salvo que el identificador sea suspendido, revocado, reemplazado o retirado por una causa válida.", category: "Compra y pagos" },
 
   // Servicio
-  { q: "¿Tengo que renovar el servicio?", a: "No. No existe renovación periódica del servicio digital por tiempo. Si el chip se pierde, se daña o debe reemplazarse, puede ser necesario adquirir un nuevo identificador físico y transferir el perfil según el procedimiento aplicable.", category: "Servicio" },
+  { q: "¿Tengo que renovar el servicio?", a: "La renovación solo es necesaria para recuperar la administración de perfiles y dispositivos cuando termina la vigencia anual. El QR/NFC y la ficha pública siguen funcionando. También puedes recuperar vigencia activando una nueva unidad física elegible, que añade otros 12 meses.", category: "Servicio" },
   { q: "¿Puedo actualizar mi información?", a: "Sí. Puedes editar tu perfil médico desde tu panel de control mientras tu cuenta y perfil estén disponibles.", category: "Servicio" },
 
   // Uso internacional
@@ -58,7 +58,7 @@ const faqs: FAQ[] = [
 
   // Empresas
   { q: "¿Ofrecen planes empresariales?", a: "Sí. Disponemos de opciones corporativas con panel administrativo para gestionar miembros y chips. Escríbenos para más información.", category: "Empresas" },
-  { q: "¿El servicio corporativo también vence por tiempo?", a: "No. Un identificador corporativo ya activado no deja de mostrar su perfil público de rescate por una fecha de vencimiento comercial. Las nuevas activaciones sí dependen de la capacidad y elegibilidad contratada por la organización.", category: "Empresas" },
+  { q: "¿El servicio corporativo también vence por tiempo?", a: "El perfil público de un identificador corporativo ya activado no se bloquea únicamente por vencer la administración de la cuenta. La gestión, nuevas activaciones, capacidad y renovaciones pueden depender de la configuración y condiciones de la organización.", category: "Empresas" },
 
   // Limitaciones del servicio
   { q: "¿PreRescue ID reemplaza la atención médica?", a: "No. PreRescue ID es una herramienta de identificación de emergencia. No reemplaza la atención médica profesional ni garantiza ningún resultado.", category: "Limitaciones del servicio" },
