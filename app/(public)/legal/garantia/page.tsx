@@ -19,9 +19,11 @@ export default function GarantiaPage() {
           <h2 className="text-xl font-black text-[#EFF4FF] mb-3">1. Garantía comercial del producto físico</h2>
           <p>
             PreRescatePTY ofrece una garantía comercial de 1 año desde la entrega
-            para defectos de fabricación del identificador físico. El servicio digital no vence por tiempo
-            mientras el identificador siga activo. Esta continuidad digital es independiente
-            de la garantía física y no limita garantías legales obligatorias que puedan corresponder.
+            para defectos de fabricación del identificador físico. La vigencia anual
+            de administración de la cuenta es independiente de esa garantía. Aunque
+            la administración venza, el QR/NFC y la ficha pública de rescate de un
+            identificador activo continúan disponibles. Esta regla no limita garantías
+            legales obligatorias que puedan corresponder.
           </p>
         </section>
 
@@ -83,7 +85,9 @@ export default function GarantiaPage() {
             Si un identificador debe reemplazarse, el equipo verifica la identidad y
             titularidad antes de transferir la relación al nuevo dispositivo. El
             identificador anterior se revoca o desactiva para evitar que continúe
-            exponiendo el perfil.
+            exponiendo el perfil. Un reemplazo cubierto por garantía conserva la
+            relación operativa correspondiente, pero no añade automáticamente otros
+            12 meses de administración.
           </p>
         </section>
 
