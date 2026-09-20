@@ -77,7 +77,6 @@ describe("physical unit annual-access eligibility", () => {
       grantsAnnualAccess: true,
       requiresPaidOrderForAnnualAccess: true,
     } as never);
-    mockPrisma.order.findUnique.mockResolvedValue(null);
     mockPrisma.operationCommercialOrder.findFirst.mockResolvedValue({
       paymentStatus: "paid",
     } as never);
@@ -98,6 +97,34 @@ describe("physical unit annual-access eligibility", () => {
       },
       select: { paymentStatus: true },
     });
+  });
+
+  it("does not grant after Operations records a refund even if the source Order still says paid", async () => {
+    mockPrisma.operationFinishedGoodUnit.findUnique.mockResolvedValue({
+      id: "unit-refunded",
+      productCode: "TAG-STD",
+      reservedOrderId: "source-order-1",
+    } as never);
+    mockPrisma.operationReplacement.findFirst.mockResolvedValue(null);
+    mockPrisma.productOperationalMapping.findFirst.mockResolvedValue({
+      grantsAnnualAccess: true,
+      requiresPaidOrderForAnnualAccess: true,
+    } as never);
+    mockPrisma.operationCommercialOrder.findFirst.mockResolvedValue({
+      paymentStatus: "refunded",
+    } as never);
+    mockPrisma.order.findUnique.mockResolvedValue({
+      paymentStatus: "paid",
+    } as never);
+
+    const result = await getPhysicalUnitGrantEligibility(mockPrisma as never, "unit-refunded");
+
+    expect(result).toEqual({
+      eligible: false,
+      reason: "paid_order_required",
+      months: 0,
+    });
+    expect(mockPrisma.order.findUnique).not.toHaveBeenCalled();
   });
 
   it("never grants another year for a warranty replacement", async () => {
