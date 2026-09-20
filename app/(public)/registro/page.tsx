@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -11,11 +11,6 @@ import {
 } from "lucide-react";
 import { CONSENT_TEXT_VERSION } from "@/domains/consents/consent.constants";
 
-type PackageSummary = {
-  id: string;
-  name: string;
-  price: number;
-};
 
 export default function RegistroPage() {
   return (
@@ -27,10 +22,6 @@ export default function RegistroPage() {
 
 function RegistroForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const packageId = searchParams.get("package");
-
-  const [selectedPkg, setSelectedPkg] = useState<PackageSummary | null>(null);
   const [form, setForm] = useState({
     email: "",
     phone: "",
@@ -41,17 +32,6 @@ function RegistroForm() {
   const [loading, setLoading] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
 
-  useEffect(() => {
-    if (packageId) {
-      fetch("/api/public/packages")
-        .then(res => res.json())
-        .then(data => {
-          const pkg = data.packages?.find((p: PackageSummary) => p.id === packageId);
-          if (pkg) setSelectedPkg(pkg);
-        })
-        .catch(err => console.error("Error loading package summary:", err));
-    }
-  }, [packageId]);
 
   function update(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -87,7 +67,6 @@ function RegistroForm() {
           phone: form.phone,
           password: form.password,
           accountType: "personal",
-          packageId: packageId,
           acceptedTerms: true,
           consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
         }),
@@ -108,7 +87,7 @@ function RegistroForm() {
       });
 
       if (signInRes?.ok) {
-        router.push(packageId ? "/comprar" : "/dashboard");
+        router.push("/dashboard/tienda");
         router.refresh();
       } else {
         router.push("/login?email=" + encodeURIComponent(form.email));
@@ -184,20 +163,9 @@ function RegistroForm() {
 
             <div className="mb-10 text-center md:text-left">
               <h1 className="text-3xl font-black tracking-tight mb-2">Crear Cuenta</h1>
-              {selectedPkg ? (
-                <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20 flex items-center justify-between gap-4 group">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#DA1A21]">Kit Seleccionado</p>
-                    <p className="font-black text-white">{selectedPkg.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-black text-[#DA1A21]">${selectedPkg.price}</p>
-                    <p className="text-[10px] font-bold opacity-60">Pago Único</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-slate-300 font-medium">Únete a PreRescate PTY y protege lo que más importa</p>
-              )}
+              <p className="text-slate-300 font-medium">
+                Crea tu cuenta y elige tus dispositivos individuales en la tienda.
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
