@@ -104,11 +104,32 @@ export async function getPhysicalUnitGrantEligibility(
 
   let hasPaidOrder = false;
   if (unit.reservedOrderId) {
-    const order = await tx.operationCommercialOrder.findUnique({
+    // Checkout-origin reservations are owned by the source Order.id, while
+    // native/legacy Operations reservations may be owned by the operational
+    // commercial-order id. Accept either lineage, but always require a paid
+    // status before granting annual access.
+    const sourceOrder = await tx.order.findUnique({
       where: { id: unit.reservedOrderId },
       select: { paymentStatus: true },
     });
-    hasPaidOrder = Boolean(order && ["paid", "succeeded"].includes(order.paymentStatus));
+    hasPaidOrder = Boolean(
+      sourceOrder && ["paid", "succeeded"].includes(sourceOrder.paymentStatus)
+    );
+
+    if (!hasPaidOrder) {
+      const operationalOrder = await tx.operationCommercialOrder.findFirst({
+        where: {
+          OR: [
+            { id: unit.reservedOrderId },
+            { sourceId: unit.reservedOrderId },
+          ],
+        },
+        select: { paymentStatus: true },
+      });
+      hasPaidOrder = Boolean(
+        operationalOrder && ["paid", "succeeded"].includes(operationalOrder.paymentStatus)
+      );
+    }
   }
 
   if (hasPaidOrder) {
