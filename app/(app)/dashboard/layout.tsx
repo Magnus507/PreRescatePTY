@@ -281,15 +281,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="truncate text-xs font-black text-slate-950 dark:text-white">{session?.user?.email}</p>
                     {state && (
                       <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${state.isInactive ? "text-[#DA1A21]" : "text-emerald-600 dark:text-emerald-400"}`}>
-                        {state.isInactive
-                          ? "Cuenta inactiva"
-                          : state.accessMode === "ESSENTIAL"
-                            ? "Administración vencida"
-                            : state.accessMode === "PENDING_ACTIVATION"
-                              ? "Pendiente de activación"
-                              : state.isCorporate
-                                ? "Cuenta empresa"
-                                : "Acceso completo"}
+                        {state.isInactive ? "Cuenta inactiva" : state.isCorporate ? "Cuenta empresa" : state.isFamily ? "Multi-perfil" : "Protección individual"}
                       </p>
                     )}
                   </div>
