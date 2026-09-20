@@ -38,30 +38,42 @@ represent the corporate module as an unattended self-service purchase flow.
 ## 3. Support channel
 
 Primary public intake:
-- `/contacto` → `POST /api/contacts/public`.
+- `/contacto` → `POST /api/contacts/public` → `SupportMessage`.
+- The public form requires name, email, **WhatsApp phone** and message.
+- Panama 8-digit mobile numbers are normalized to country code `507`; international
+  numbers are accepted when they contain 10–15 digits.
 
 Operational behavior:
 - rate limited;
-- validates and HTML-escapes public input;
-- uses Resend outbound delivery;
-- returns a failure to the customer if the delivery provider is missing or rejects
-  the send; it must never report “sent” when no delivery was accepted by the provider.
+- validates field shape and length;
+- persists the message in the application database;
+- stores no request IP/user-agent as part of the support message;
+- never depends on email delivery to accept a normal support case;
+- returns success only after database persistence succeeds.
 
-Current provider evidence:
-- `prerescatepty.com` sending domain is verified in Resend;
-- production sending credentials exist;
-- recent transactional email delivery has succeeded.
+Admin module:
+- `/admin?tab=support`;
+- accessible only to general admin roles (`admin`, `superadmin`);
+- lists unread/open/resolved counters;
+- supports search by name, email, WhatsApp or message;
+- marks messages read/unread;
+- marks cases resolved/reopened;
+- admin state changes are audit logged;
+- “Responder por WhatsApp” opens a prefilled `wa.me` conversation with the customer.
 
-Remaining human gate:
-- independently confirm that the configured support recipient mailbox/forwarder
-  actually receives a Block 7 test message. Outbound provider acceptance alone does
-  not prove an inbox is monitored.
+Resend remains available for transactional application email such as password recovery,
+but it is **not** the system of record for public support intake.
 
 Support targets:
 - ordinary request: first human response target within 1 business day;
 - payment / delivery / return / warranty: acknowledge within 2 business days;
 - suspected account or identifier compromise: treat as urgent and begin triage as
   soon as the operator sees the case.
+
+Retention:
+- unresolved cases remain available while active;
+- resolved messages are automatically purged after 730 days (24-month operational
+  target) by the maintenance worker.
 
 Owner while pre-launch: PreRescatePTY operator.
 
@@ -104,7 +116,7 @@ Owner while pre-launch: PreRescatePTY operator.
 | Orders/dispatch/post-sale PII | While needed for transaction/post-sale/legal record; minimize on erasure | SafeDelete pseudonymization/minimization |
 | Payment proofs | Private RETAIN_LEGAL until applicable duty/hold expires | Block 3 retention classification + manual/legal review |
 | Issued fiscal/commercial records | Minimum legally required record only | SafeDelete retains only permitted minimum |
-| Support correspondence | Active case + operational target up to 24 months after closure unless dispute/legal need | Support mailbox review/purge |
+| Support correspondence | Active case + up to 730 days after resolution unless dispute/legal need | SupportMessage + maintenance purge |
 | Cookie preference | Until browser storage is cleared, choice changes or consent schema changes | Browser local storage |
 
 No category is assigned “forever” merely because deletion automation is inconvenient.
@@ -250,7 +262,7 @@ This is a launch-compliance task, not a substitute for software testing.
 
 ## 13. Block 7 remaining gates
 
-- [ ] Support recipient inbox/forwarder receives a controlled test.
+- [ ] Database-backed Contact → Admin Support inbox flow verified in production.
 - [ ] Fiscal/tax implementation decision documented with appropriate professional input.
 - [ ] Operator accepts/adjusts the published shipping-return-warranty operating rules.
 - [ ] CI + Browser E2E green on Block 7 PR.
