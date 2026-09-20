@@ -1,21 +1,8 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { getClientIp } from "@/lib/request-ip";
-
-let resend: Resend | null = null;
-if (process.env.RESEND_API_KEY) {
-  resend = new Resend(process.env.RESEND_API_KEY);
-}
-
-function escapeHtml(value: unknown) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+import { normalizeWhatsAppPhone } from "@/lib/support/whatsapp";
 
 export async function POST(req: Request) {
   try {
@@ -23,66 +10,54 @@ export async function POST(req: Request) {
     const limiter = await rateLimit("contact", ip, { limit: 5, windowMs: 60_000 * 15 });
     if (!limiter.allowed) {
       return NextResponse.json(
-        { error: "Demasiados intentos. Intenta de nuevo mas tarde." },
+        { error: "Demasiados intentos. Intenta de nuevo más tarde." },
         { status: 429 }
       );
     }
 
     const body = await req.json();
     const name = String(body.name || "").trim();
-    const email = String(body.email || "").trim();
+    const email = String(body.email || "").trim().toLowerCase();
+    const whatsappPhone = normalizeWhatsAppPhone(body.whatsappPhone);
     const message = String(body.message || "").trim();
 
-    if (!name || !email || !message) {
+    if (!name || !email || !whatsappPhone || !message) {
       return NextResponse.json(
-        { error: "Todos los campos son obligatorios" },
+        { error: "Nombre, correo, WhatsApp y mensaje son obligatorios." },
+        { status: 400 }
+      );
+    }
+
+    if (name.length > 200 || email.length > 320 || message.length > 5000) {
+      return NextResponse.json(
+        { error: "Uno de los campos supera el tamaño permitido." },
         { status: 400 }
       );
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "Email invalido" }, { status: 400 });
+      return NextResponse.json({ error: "Email inválido." }, { status: 400 });
     }
 
-    const safeName = escapeHtml(name).slice(0, 200);
-    const safeEmail = escapeHtml(email).slice(0, 320);
-    const safeMessage = escapeHtml(message).slice(0, 5000);
-
-    if (!resend) {
-      console.error("CONTACT_DELIVERY_UNAVAILABLE");
-      return NextResponse.json(
-        { error: "El canal de soporte no está disponible temporalmente. Intenta de nuevo más tarde." },
-        { status: 503 }
-      );
-    }
-
-    const delivery = await resend.emails.send({
-      from: "PreRescatePTY Contactos <contacto@prerescatepty.com>",
-      to: "soporte@prerescatepty.com",
-      replyTo: email,
-      subject: `Nuevo mensaje de contacto de ${safeName}`,
-      html: `
-        <h3>Nuevo mensaje de contacto</h3>
-        <p><strong>Nombre:</strong> ${safeName}</p>
-        <p><strong>Email:</strong> ${safeEmail}</p>
-        <p><strong>Mensaje:</strong></p>
-        <p>${safeMessage.replace(/\n/g, "<br />")}</p>
-      `,
+    const created = await prisma.supportMessage.create({
+      data: {
+        name,
+        email,
+        whatsappPhone,
+        message,
+      },
+      select: { id: true },
     });
 
-    if (delivery.error || !delivery.data?.id) {
-      console.error("CONTACT_DELIVERY_FAILED");
-      return NextResponse.json(
-        { error: "No pudimos entregar tu mensaje al canal de soporte. Intenta de nuevo más tarde." },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.json({ success: true, message: "Mensaje enviado correctamente" });
-  } catch (error) {
-    console.error("Contact Form Error:", error);
+    return NextResponse.json({
+      success: true,
+      id: created.id,
+      message: "Mensaje recibido. El equipo de soporte podrá contactarte por WhatsApp.",
+    });
+  } catch {
+    console.error("CONTACT_PERSISTENCE_FAILED");
     return NextResponse.json(
-      { error: "Error al enviar el mensaje. Por favor intenta mas tarde." },
+      { error: "No pudimos guardar tu mensaje. Intenta de nuevo más tarde." },
       { status: 500 }
     );
   }
