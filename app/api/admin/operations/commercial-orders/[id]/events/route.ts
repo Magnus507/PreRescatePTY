@@ -238,7 +238,7 @@ export async function POST(
 
       if (isFullFinancialReversal) {
         const units = await tx.operationFinishedGoodUnit.findMany({
-          where: { reservedOrderId: commercialOrder.id },
+          where: { reservedOrderId: reservationOrderId },
           select: { id: true },
         });
         const unitIds = units.map((unit) => unit.id);
