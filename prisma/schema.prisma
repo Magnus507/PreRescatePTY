@@ -1816,7 +1816,7 @@ model RenewalPayment {
   amount                Decimal  @db.Decimal(18, 2)
   currency              String   @default("USD")
   status                String   @default("created")
-  requestId             String?
+  requestId             String?  @unique
   idempotencyKey        String   @unique
   providerTransactionId String?  @unique
   checkoutSessionJson   String?
