@@ -12,7 +12,6 @@ import {
 } from "@/domains/chips/chip-lifecycle.constants";
 import { chipActivationSchema } from "@/lib/validations";
 import { activationCodeLookupWhere } from "@/domains/chips/activation-code.service";
-import { grantForPhysicalUnitActivation } from "@/domains/accounts/services/service-entitlement.service";
 
 type CorporateItemWithMember = {
   organizationMember: {
@@ -139,8 +138,8 @@ export async function POST(req: NextRequest) {
         }
         assignedProfileId = corpProfileId;
       } else {
-        // Personal/family activation is possession-based. Commercial account
-        // access is granted separately from the physical rescue identifier.
+        // Personal/family activation is possession-based. Every valid purchased
+        // physical unit receives lifetime service with no time-based renewal.
         let profile;
         if (profileId) {
           profile = await tx.profile.findFirst({ where: { id: profileId, accountId: targetAccountId } });
@@ -214,14 +213,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const annualAccess = await grantForPhysicalUnitActivation(tx, {
-        accountId: targetAccountId,
-        unitId: finishedGoodUnit.id,
-        chipId: chip.id,
-        actorUserId: userId,
-        now,
-      });
-
       await tx.auditLog.create({
         data: {
           actorUserId: userId,
@@ -231,9 +222,8 @@ export async function POST(req: NextRequest) {
           newValuesJson: JSON.stringify({
             shortCode: chip.shortCode,
             activationCodeSuffix: activationCode.slice(-4),
-            accountAnnualAccessGrantApplied: annualAccess.applied,
-            accountAnnualAccessGrantReason: annualAccess.eligibility.reason,
-            accountAnnualAccessEndsAt: annualAccess.entitlement?.endsAt ?? null,
+            serviceEndDate: null,
+            lifetimeService: true,
           }),
         },
       });
