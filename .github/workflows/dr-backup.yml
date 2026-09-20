@@ -9,9 +9,15 @@ on:
   schedule:
     - cron: "17 */6 * * *"
     - cron: "43 4 * * 0"
+  workflow_run:
+    workflows:
+      - Production workers
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -19,7 +25,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  freshness-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_backup: ${{ steps.gate.outputs.should_backup }}
+    steps:
+      - name: Decide whether fallback backup is needed
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [ "${GITHUB_EVENT_NAME}" != "workflow_run" ]; then
+            echo "should_backup=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          latest_created_at="$(
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=dr-backup-encrypted-recent&per_page=100"               --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .created_at // ""'
+          )"
+
+          if [ -z "$latest_created_at" ]; then
+            echo "No current encrypted backup artifact exists; fallback backup required."
+            echo "should_backup=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          latest_epoch="$(date -u -d "$latest_created_at" +%s)"
+          now_epoch="$(date -u +%s)"
+          age_seconds="$((now_epoch - latest_epoch))"
+          max_fallback_age_seconds="$((4 * 60 * 60))"
+
+          echo "Latest encrypted backup artifact age: ${age_seconds}s"
+          if [ "$age_seconds" -ge "$max_fallback_age_seconds" ]; then
+            echo "Fallback threshold reached; backup required."
+            echo "should_backup=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Fresh backup exists; fallback backup skipped."
+            echo "should_backup=false" >> "$GITHUB_OUTPUT"
+          fi
+
   backup:
+    needs: freshness-gate
+    if: needs.freshness-gate.outputs.should_backup == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -30,7 +79,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate DR secrets
         shell: bash
@@ -62,7 +111,7 @@ jobs:
           fi
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
@@ -102,7 +151,7 @@ jobs:
           rm -rf dr-artifacts dr-backup.tar.gz
 
       - name: Upload encrypted off-site artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dr-backup-encrypted-${{ steps.policy.outputs.tier }}
           path: |
