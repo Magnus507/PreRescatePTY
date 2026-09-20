@@ -14,6 +14,7 @@ import {
 import { addMoney, multiplyMoney, parseMoney, moneyToNumber } from "@/lib/money";
 import { orderCreateSchema, validateOrThrow } from "@/lib/validations";
 import { BUSINESS_RULES } from "@/domains/shared/constants";
+import { CONSENT_TEXT_VERSION, CONSENT_TYPE } from "@/domains/consents/consent.constants";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -37,6 +38,17 @@ export async function POST(req: NextRequest) {
   
   if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 400 });
 
+  const currentLegalConsent = await prisma.consent.findFirst({
+    where: {
+      userId,
+      consentType: CONSENT_TYPE.TERMS_AND_PRIVACY,
+      textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+      revokedAt: null,
+    },
+    select: { id: true },
+  });
+  const needsLegalAcceptance = !currentLegalConsent;
+
   try {
     const body = await req.json();
 
@@ -47,6 +59,21 @@ export async function POST(req: NextRequest) {
       ...body,
       customerEmail: user.email,
     });
+
+    if (
+      needsLegalAcceptance &&
+      (validatedData.acceptedTermsAndPrivacy !== true ||
+        validatedData.consentTextVersion !== CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY)
+    ) {
+      return NextResponse.json(
+        {
+          error: "Debes aceptar la versión vigente de los Términos y la Política de Privacidad antes de crear el pedido.",
+          code: "LEGAL_ACCEPTANCE_REQUIRED",
+          consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+        },
+        { status: 428 }
+      );
+    }
 
     type OrderItemWithOptionalRefs = {
       profileId?: string | null;
@@ -168,6 +195,31 @@ export async function POST(req: NextRequest) {
     const { resolvedItems, summary: fulfillmentSummary } = await calculateStoreOrderFulfillment(fulfillmentInput);
 
     const order = await prisma.$transaction(async (tx) => {
+      if (needsLegalAcceptance) {
+        await tx.consent.create({
+          data: {
+            accountId: user.accountId,
+            userId,
+            consentType: CONSENT_TYPE.TERMS_AND_PRIVACY,
+            textVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+            ipAddress: null,
+            userAgent: null,
+            evidenceJson: JSON.stringify({
+              acceptedTermsAndPrivacy: true,
+              consentTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
+              legalDocuments: {
+                terms: "/legal/terminos",
+                privacy: "/legal/privacidad",
+                shipping: "/legal/envios",
+                refunds: "/legal/reembolsos",
+                warranty: "/legal/garantia",
+              },
+              acceptanceContext: "device_checkout",
+            }),
+          },
+        });
+      }
+
       // Delivery data is an immutable order snapshot. Do not mutate the medical
       // profile here: a recipient may be different from the account owner and a
       // one-off delivery address must never silently become profile data.
