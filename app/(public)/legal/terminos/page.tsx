@@ -54,17 +54,11 @@ export default function TerminosPage() {
         <section>
           <h2 className="text-xl font-black text-[#EFF4FF] mb-3">4. Servicio digital y producto físico</h2>
           <p>
-            La compra del identificador físico es independiente de la vigencia de
-            administración de la cuenta. Cada unidad física elegible que sea pagada y
-            activada añade 12 meses de administración de perfiles y dispositivos; las
-            vigencias elegibles pueden acumularse. Al vencer esa administración, la
-            consulta pública mediante QR/NFC y la ficha de rescate permanecen
-            disponibles, salvo suspensión, revocación, reemplazo o retiro válido del
-            identificador. La administración puede recuperarse mediante una renovación
-            pagada o la activación de otra unidad elegible. Un reemplazo de garantía o
-            una transferencia no concede por sí solo otro período anual, y un reembolso
-            o contracargo puede revertir el período que correspondía a la unidad
-            afectada.
+            La compra personal es de pago único. El servicio digital asociado al
+            identificador no vence por el paso del tiempo mientras el identificador
+            permanezca activo y no haya sido revocado, sustituido o desactivado por
+            una causa válida. Esta continuidad digital no extiende la garantía física
+            del producto.
           </p>
         </section>
 
