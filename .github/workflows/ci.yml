@@ -50,13 +50,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Test independent worker observer
         run: python3 scripts/test-worker-readiness.py
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
@@ -66,6 +66,10 @@ jobs:
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+      - name: Report development dependency advisories
+        continue-on-error: true
+        run: npm audit --audit-level=moderate
 
       - name: Validate environment contract
         run: npm run env:check && npm run env:verify:production
