@@ -56,8 +56,14 @@ export async function PATCH(
 
   const userId = (session.user as { id: string }).id;
   const { profileId } = await params;
+  const state = await AccountStateService.getAccountState(userId);
+  if (!state.canEditProfiles) {
+    return NextResponse.json(
+      { error: "La administración de perfiles requiere renovar el acceso anual.", code: "ANNUAL_ACCESS_REQUIRED" },
+      { status: 403 }
+    );
+  }
 
-  // Unrestricted editing of medical profiles ensures data integrity even if the protection service is inactive.
   const existing = await getAuthorizedProfile(userId, profileId);
   if (!existing) {
     return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
@@ -176,6 +182,13 @@ export async function DELETE(
 
   const userId = (session.user as { id: string }).id;
   const { profileId } = await params;
+  const state = await AccountStateService.getAccountState(userId);
+  if (!state.canEditProfiles) {
+    return NextResponse.json(
+      { error: "La administración de perfiles requiere renovar el acceso anual.", code: "ANNUAL_ACCESS_REQUIRED" },
+      { status: 403 }
+    );
+  }
 
   const existing = await getAuthorizedProfile(userId, profileId);
   if (!existing) {
