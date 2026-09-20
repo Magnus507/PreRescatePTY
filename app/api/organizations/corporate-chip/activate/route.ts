@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { AccountStateService } from "@/domains/accounts/services/account-state.service";
 import { markFinishedGoodUnitActivatedWithClient } from "@/lib/operations/activate-finished-good-unit";
 import { requireActiveAccountSession } from "@/lib/rbac";
+import { grantForPhysicalUnitActivation } from "@/domains/accounts/services/service-entitlement.service";
 import {
   ACTIVATABLE_CHIP_STATUSES,
   CHIP_SERVICE_STATUS,
@@ -227,6 +228,14 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      const annualAccess = await grantForPhysicalUnitActivation(tx, {
+        accountId: account.id,
+        unitId: physicalUnitActivation.unitId,
+        chipId: chip.id,
+        actorUserId: userId,
+        now,
+      });
+
       await tx.auditLog.create({
         data: {
           actorUserId: userId,
@@ -240,8 +249,9 @@ export async function POST(req: NextRequest) {
             corporateProfileId: corporateProfile.id,
             organizationMemberId: member.id,
             corporateOrderEmployeeItemId: pendingItem.id,
-            serviceEndDate: null,
-            lifetimeService: true,
+            accountAnnualAccessGrantApplied: annualAccess.applied,
+            accountAnnualAccessGrantReason: annualAccess.eligibility.reason,
+            accountAnnualAccessEndsAt: annualAccess.entitlement?.endsAt ?? null,
           }),
         },
       });
