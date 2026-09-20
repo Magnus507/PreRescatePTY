@@ -33,13 +33,17 @@ describe("Block 7 policy-code alignment guardrails", () => {
     }
   });
 
-  it("fails closed if the support provider cannot accept delivery", () => {
+  it("persists support intake internally and requires WhatsApp", () => {
     const route = source("app/api/contacts/public/route.ts");
-    expect(route).toContain("CONTACT_DELIVERY_UNAVAILABLE");
-    expect(route).toContain("CONTACT_DELIVERY_FAILED");
-    expect(route).toContain("{ status: 503 }");
-    expect(route).toContain("{ status: 502 }");
-    expect(route).not.toContain("correo simulado");
+    const contact = source("app/(public)/contacto/ContactoContent.tsx");
+    const admin = source("app/(admin)/admin/_components/sections/SupportMessagesSection.tsx");
+
+    expect(route).toContain("prisma.supportMessage.create");
+    expect(route).toContain("normalizeWhatsAppPhone");
+    expect(route).not.toContain("resend.emails.send");
+    expect(contact).toContain("WhatsApp obligatorio");
+    expect(admin).toContain("Responder por WhatsApp");
+    expect(admin).toContain("Marcar resuelto");
   });
 
   it("keeps checkout copy aligned with lifetime/manual-contact policy", () => {
