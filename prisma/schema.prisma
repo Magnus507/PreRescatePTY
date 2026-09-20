@@ -116,6 +116,8 @@ model ProductOperationalMapping {
   sortOrder           Int                      @default(0)
   badgeLabel          String?
   badgeColor          String?
+  grantsAnnualAccess  Boolean                  @default(true)
+  requiresPaidOrderForAnnualAccess Boolean       @default(true)
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
   product             Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
