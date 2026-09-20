@@ -86,7 +86,7 @@ export async function GET() {
     return !isCorporateProfile && !hasCorporateOrderItems;
   });
 
-  return NextResponse.json({ chips: personalChips });
+  return NextResponse.json({ chips: personalChips, state });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -103,9 +103,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "chipId y action requeridos" }, { status: 400 });
   }
 
+  const state = await AccountStateService.getAccountState(userId);
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { accountId: true } });
   
-  if (!user || !user.accountId) {
+  if (!user || !user.accountId || !state.accountId) {
     return NextResponse.json({ error: "Cuenta no configurada" }, { status: 400 });
   }
 
@@ -117,8 +118,15 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Chip no encontrado" }, { status: 404 });
   }
 
-  // Assign chip to a profile within the same account
+  // Assignment/rotation is an administrative feature and is blocked in
+  // ESSENTIAL mode.
   if (action === "assign") {
+    if (!state.canManageDeviceAssignments) {
+      return NextResponse.json(
+        { error: "La reasignación de dispositivos requiere renovar el acceso anual.", code: "ANNUAL_ACCESS_REQUIRED" },
+        { status: 403 }
+      );
+    }
     const { profileId } = body;
 
     if (profileId) {
@@ -163,15 +171,38 @@ export async function PATCH(req: NextRequest) {
 
   let newStatus = chip.status;
   let updateData: Partial<{ status: string; ownerUserId?: string | null }> = {};
-  
-  if (action === "suspend" && chip.status === "activated") {
+  let auditAction = action;
+
+  if (action === "report_lost_or_stolen" && chip.status === "activated") {
+    if (!state.canSuspendLostOrStolen) {
+      return NextResponse.json({ error: "Acción no permitida" }, { status: 403 });
+    }
+    newStatus = "suspended";
+    auditAction = "report_lost_or_stolen";
+    updateData = { status: newStatus };
+  } else if (action === "suspend" && chip.status === "activated") {
+    if (state.accessMode !== "FULL") {
+      return NextResponse.json(
+        {
+          error: "La desactivación administrativa requiere renovar. Si perdiste el dispositivo, usa Reportar pérdida o robo.",
+          code: "ANNUAL_ACCESS_REQUIRED",
+        },
+        { status: 403 }
+      );
+    }
     newStatus = "suspended";
     updateData = { status: newStatus };
   } else if (action === "reactivate" && (chip.status === "suspended" || chip.status === "inventory")) {
+    if (!state.canReactivateDevices) {
+      return NextResponse.json(
+        { error: "La reactivación de dispositivos requiere renovar el acceso anual.", code: "ANNUAL_ACCESS_REQUIRED" },
+        { status: 403 }
+      );
+    }
     newStatus = "activated";
     updateData = { status: newStatus };
     if (chip.status === "inventory") {
-      updateData.ownerUserId = userId; // Recuperar la propiedad del chip al reactivarlo de inventory
+      updateData.ownerUserId = userId;
     }
   } else {
     return NextResponse.json({ error: "Acción no permitida" }, { status: 400 });
