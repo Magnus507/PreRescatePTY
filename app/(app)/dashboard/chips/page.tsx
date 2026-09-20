@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { 
   Cpu, ExternalLink, Pause, Play, UserRound, 
@@ -31,14 +30,6 @@ interface ChipAccessory {
   };
 }
 
-interface AccountAccessState {
-  accessMode: "PENDING_ACTIVATION" | "FULL" | "ESSENTIAL";
-  serviceEndDate: string | null;
-  canManageDeviceAssignments: boolean;
-  canReactivateDevices: boolean;
-  canSuspendLostOrStolen: boolean;
-}
-
 interface ChipData {
   id: string;
   serialPublic: string;
@@ -58,7 +49,6 @@ export default function ChipsPage() {
   const [activeTab, setActiveTab] = useState<"list" | "activate">("list");
   const [chips, setChips] = useState<ChipData[]>([]);
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
-  const [accountState, setAccountState] = useState<AccountAccessState | null>(null);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
   
@@ -84,7 +74,6 @@ export default function ChipsPage() {
       const familyData = await familyRes.json();
 
       setChips(chipData.chips || []);
-      setAccountState((chipData.state || familyData.state || null) as AccountAccessState | null);
       
       const own = familyData.ownProfile ? [{ ...familyData.ownProfile, _own: true }] : [];
       const fam = familyData.familyProfiles || [];
@@ -145,9 +134,7 @@ export default function ChipsPage() {
   }
 
   async function toggleChip(chipId: string, currentStatus: string) {
-    const action = currentStatus === "activated"
-      ? (accountState?.accessMode === "ESSENTIAL" ? "report_lost_or_stolen" : "suspend")
-      : "reactivate";
+    const action = currentStatus === "activated" ? "suspend" : "reactivate";
     const res = await fetch("/api/chips/dashboard", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -157,7 +144,7 @@ export default function ChipsPage() {
       setChips((prev) =>
         prev.map((c) =>
           c.id === chipId
-            ? { ...c, status: action === "suspend" || action === "report_lost_or_stolen" ? "suspended" : "activated" }
+            ? { ...c, status: action === "suspend" ? "suspended" : "activated" }
             : c
         )
       );
@@ -238,22 +225,6 @@ export default function ChipsPage() {
           </div>
         </div>
       </section>
-
-      {accountState?.accessMode === "ESSENTIAL" && (
-        <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 text-amber-900">
-          <p className="text-sm font-black">Tu acceso anual de administración venció.</p>
-          <p className="mt-1 text-xs font-semibold leading-5 text-amber-800">
-            QR/NFC y la ficha pública siguen funcionando. Puedes reportar un dispositivo perdido o robado,
-            pero reasignar, rotar o reactivar dispositivos requiere renovar.
-          </p>
-          <Link
-            href="/dashboard/upgrade"
-            className="mt-4 inline-flex rounded-xl bg-amber-900 px-4 py-2.5 text-xs font-black text-white transition hover:bg-amber-950"
-          >
-            Renovar acceso anual
-          </Link>
-        </div>
-      )}
 
       <div className="flex w-full flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-1.5 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.18)] sm:flex-row sm:w-fit">
         <button
@@ -375,7 +346,7 @@ export default function ChipsPage() {
                       <div className="relative w-full">
                         <select
                           value={chip.assignedProfileId ?? ""}
-                          disabled={assigning === chip.id || chip.status === "inventory" || !accountState?.canManageDeviceAssignments}
+                          disabled={assigning === chip.id || chip.status === "inventory"}
                           onChange={(e) => assignProfile(chip.id, e.target.value || null)}
                           className="w-full appearance-none rounded-[1.05rem] border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition-all cursor-pointer focus:outline-none focus:ring-4 focus:ring-[#DA1A21]/10 hover:border-slate-300 disabled:opacity-50"
                         >
@@ -403,22 +374,14 @@ export default function ChipsPage() {
                         </a>
                         <button
                           onClick={() => toggleChip(chip.id, chip.status)}
-                          disabled={chip.status !== "activated" && !accountState?.canReactivateDevices}
-                          title={
-                            chip.status !== "activated" && !accountState?.canReactivateDevices
-                              ? "Renueva el acceso anual para reactivar este dispositivo."
-                              : undefined
-                          }
-                          className={`inline-flex items-center justify-center gap-2 rounded-[1.05rem] px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 ${
+                          className={`inline-flex items-center justify-center gap-2 rounded-[1.05rem] px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none ${
                             chip.status === "activated"
                               ? "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
                               : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
                           }`}
                         >
                           {chip.status === "activated" ? (
-                            accountState?.accessMode === "ESSENTIAL"
-                              ? <><Shield className="h-4 w-4" /> Reportar pérdida/robo</>
-                              : <><Pause className="h-4 w-4" /> Suspender</>
+                            <><Pause className="h-4 w-4" /> Suspender</>
                           ) : (
                             <><Play className="h-4 w-4" /> Reactivar</>
                           )}
