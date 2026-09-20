@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Account, Package, Profile, User, Chip } from "@prisma/client";
+import { Account, Package, Profile, User } from "@prisma/client";
 import { AccountState, SetupChecklist } from "../account.types";
 import { ACCOUNT_TYPES, USER_ROLES } from "@/domains/shared/constants";
 import { redis, isRedisConfigured } from "@/lib/redis";
@@ -9,7 +9,6 @@ import { PERSONAL_PROFILE_LIMIT, resolveAccountAccessMode } from "./service-enti
 export { type SetupChecklist };
 
 const CHIP_CAPACITY_STATUSES = ["activated", "suspended"];
-const CHIP_SERVICE_STATUSES = ["activated", "suspended"];
 const ACCOUNT_STATE_CACHE_VERSION = "v6";
 
 export const ACCOUNT_STATE_ERRORS = {
