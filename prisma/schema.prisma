@@ -1377,6 +1377,7 @@ model OperationFinishedGoodUnit {
   originalReplacements OperationReplacement[]         @relation("OperationReplacementOriginalUnit")
   replacementReplacements OperationReplacement[]      @relation("OperationReplacementReplacementUnit")
   returns              OperationReturn[]              @relation("OperationReturnUnit")
+  entitlementEvents    EntitlementEvent[]
 
   @@index([productCode])
   @@index([productType])
