@@ -23,7 +23,7 @@ CREATE TABLE "RenewalPayment" (
   "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "RenewalPayment_accountId_fkey"
-    FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE
+    FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE UNIQUE INDEX "RenewalPayment_requestId_key" ON "RenewalPayment"("requestId");
@@ -46,7 +46,7 @@ CREATE TABLE "ServiceEntitlement" (
   "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "ServiceEntitlement_accountId_fkey"
-    FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE
+    FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE UNIQUE INDEX "ServiceEntitlement_accountId_key" ON "ServiceEntitlement"("accountId");
@@ -72,17 +72,17 @@ CREATE TABLE "EntitlementEvent" (
   "metadataJson" JSONB,
   "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "EntitlementEvent_entitlementId_fkey"
-    FOREIGN KEY ("entitlementId") REFERENCES "ServiceEntitlement"("id") ON DELETE CASCADE,
+    FOREIGN KEY ("entitlementId") REFERENCES "ServiceEntitlement"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "EntitlementEvent_accountId_fkey"
-    FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE,
+    FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "EntitlementEvent_paymentId_fkey"
-    FOREIGN KEY ("paymentId") REFERENCES "RenewalPayment"("id") ON DELETE SET NULL,
+    FOREIGN KEY ("paymentId") REFERENCES "RenewalPayment"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "EntitlementEvent_unitId_fkey"
-    FOREIGN KEY ("unitId") REFERENCES "OperationFinishedGoodUnit"("id") ON DELETE SET NULL,
+    FOREIGN KEY ("unitId") REFERENCES "OperationFinishedGoodUnit"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "EntitlementEvent_chipId_fkey"
-    FOREIGN KEY ("chipId") REFERENCES "Chip"("id") ON DELETE SET NULL,
+    FOREIGN KEY ("chipId") REFERENCES "Chip"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "EntitlementEvent_actorUserId_fkey"
-    FOREIGN KEY ("actorUserId") REFERENCES "User"("id") ON DELETE SET NULL
+    FOREIGN KEY ("actorUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE UNIQUE INDEX "EntitlementEvent_idempotencyKey_key" ON "EntitlementEvent"("idempotencyKey");
@@ -102,7 +102,7 @@ CREATE TABLE "RenewalPaymentEvent" (
   "idempotencyKey" TEXT NOT NULL,
   "receivedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "RenewalPaymentEvent_paymentId_fkey"
-    FOREIGN KEY ("paymentId") REFERENCES "RenewalPayment"("id") ON DELETE CASCADE
+    FOREIGN KEY ("paymentId") REFERENCES "RenewalPayment"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE UNIQUE INDEX "RenewalPaymentEvent_idempotencyKey_key" ON "RenewalPaymentEvent"("idempotencyKey");
@@ -129,17 +129,17 @@ CREATE TABLE "SupportConversation" (
   "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "SupportConversation_accountId_fkey"
-    FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE,
+    FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "SupportConversation_openedByUserId_fkey"
-    FOREIGN KEY ("openedByUserId") REFERENCES "User"("id") ON DELETE CASCADE,
+    FOREIGN KEY ("openedByUserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "SupportConversation_assignedToUserId_fkey"
-    FOREIGN KEY ("assignedToUserId") REFERENCES "User"("id") ON DELETE SET NULL,
+    FOREIGN KEY ("assignedToUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "SupportConversation_orderId_fkey"
-    FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE SET NULL,
+    FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "SupportConversation_chipId_fkey"
-    FOREIGN KEY ("chipId") REFERENCES "Chip"("id") ON DELETE SET NULL,
+    FOREIGN KEY ("chipId") REFERENCES "Chip"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "SupportConversation_profileId_fkey"
-    FOREIGN KEY ("profileId") REFERENCES "Profile"("id") ON DELETE SET NULL
+    FOREIGN KEY ("profileId") REFERENCES "Profile"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE INDEX "SupportConversation_accountId_lastMessageAt_idx" ON "SupportConversation"("accountId","lastMessageAt");
@@ -158,9 +158,9 @@ CREATE TABLE "SupportConversationMessage" (
   "editedAt" TIMESTAMPTZ,
   "deletedAt" TIMESTAMPTZ,
   CONSTRAINT "SupportConversationMessage_conversationId_fkey"
-    FOREIGN KEY ("conversationId") REFERENCES "SupportConversation"("id") ON DELETE CASCADE,
+    FOREIGN KEY ("conversationId") REFERENCES "SupportConversation"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "SupportConversationMessage_senderUserId_fkey"
-    FOREIGN KEY ("senderUserId") REFERENCES "User"("id") ON DELETE SET NULL
+    FOREIGN KEY ("senderUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE INDEX "SupportConversationMessage_conversationId_createdAt_idx" ON "SupportConversationMessage"("conversationId","createdAt");
@@ -176,9 +176,9 @@ CREATE TABLE "SupportEvent" (
   "reason" TEXT,
   "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "SupportEvent_conversationId_fkey"
-    FOREIGN KEY ("conversationId") REFERENCES "SupportConversation"("id") ON DELETE CASCADE,
+    FOREIGN KEY ("conversationId") REFERENCES "SupportConversation"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "SupportEvent_actorUserId_fkey"
-    FOREIGN KEY ("actorUserId") REFERENCES "User"("id") ON DELETE SET NULL
+    FOREIGN KEY ("actorUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE INDEX "SupportEvent_conversationId_createdAt_idx" ON "SupportEvent"("conversationId","createdAt");
