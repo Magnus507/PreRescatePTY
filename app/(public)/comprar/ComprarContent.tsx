@@ -46,8 +46,8 @@ export default function ComprarContent() {
             Elige tu dispositivo.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base font-medium leading-7 text-slate-600">
-            Ya no usamos paquetes. Cada unidad física elegible que compres y actives añade 12 meses
-            de acceso de administración a tu cuenta. Tu QR/NFC de rescate no depende de esa renovación.
+            Ya no usamos paquetes. Compras cada dispositivo de forma individual con un único pago.
+            El servicio digital no tiene mensualidades ni vencimiento por tiempo mientras el identificador permanezca activo.
           </p>
         </div>
 
