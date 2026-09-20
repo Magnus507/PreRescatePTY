@@ -14,7 +14,8 @@ export interface AccountState {
   maxProfilesAllocated: number;
   serviceStatus: string;
   serviceEndDate: Date | null;
-  serviceDurationMonths: null;
+  serviceDurationMonths: number | null;
+  accessMode: "PENDING_ACTIVATION" | "FULL" | "ESSENTIAL";
   isExpired: boolean;
   isInactive: boolean;
 
@@ -30,6 +31,12 @@ export interface AccountState {
   canAccessOrganizationModule: boolean;
   canActivateMoreChips: boolean;
   canAddFamilyMember: boolean;
+  canCreateProfiles: boolean;
+  canEditProfiles: boolean;
+  canManageDeviceAssignments: boolean;
+  canReactivateDevices: boolean;
+  canSuspendLostOrStolen: boolean;
+  canUseSupport: boolean;
 
   // Consumption Stats
   activeChipsCount: number;
