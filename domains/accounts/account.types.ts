@@ -48,6 +48,7 @@ export interface AccountState {
   hasCompletedMedicalProfile: boolean;
   hasEmergencyContact: boolean;
   hasActivatedChip: boolean;
+  hasEverActivatedChip: boolean;
 
   // Checklist
   setupChecklist: SetupChecklist;
