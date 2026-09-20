@@ -115,7 +115,9 @@ export async function POST(req: NextRequest) {
 
     if (!state.canCreateProfiles) {
       return ApiResponse.error(
-        `Has alcanzado el límite de ${PERSONAL_PROFILE_LIMIT} perfiles.`,
+        state.hasEverActivatedChip
+          ? `Has alcanzado el límite de ${PERSONAL_PROFILE_LIMIT} perfiles.`
+          : `Activa tu primer dispositivo para desbloquear hasta ${PERSONAL_PROFILE_LIMIT} perfiles.`,
         { status: 403 }
       );
     }
