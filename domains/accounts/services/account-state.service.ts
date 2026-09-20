@@ -10,7 +10,7 @@ export { type SetupChecklist };
 
 const CHIP_CAPACITY_STATUSES = ["activated", "suspended"];
 const CHIP_SERVICE_STATUSES = ["activated", "suspended"];
-const ACCOUNT_STATE_CACHE_VERSION = "v7";
+const ACCOUNT_STATE_CACHE_VERSION = "v8";
 
 export const ACCOUNT_STATE_ERRORS = {
   USER_NOT_FOUND: "USER_NOT_FOUND",
@@ -85,20 +85,22 @@ export class AccountStateService {
     }
 
     const { account, profile } = user;
-    const [activeChipsCount, inTransitCount, actualProfilesCount, scansCount, contactsCount] = account?.id
+    const [activeChipsCount, inTransitCount, everActivatedChipsCount, actualProfilesCount, scansCount, contactsCount] = account?.id
       ? await Promise.all([
           prisma.chip.count({ where: { accountId: account.id, status: { in: CHIP_CAPACITY_STATUSES } } }),
           prisma.chip.count({ where: { accountId: account.id, status: "sold", isPhysical: true } }),
+          prisma.chip.count({ where: { accountId: account.id, activatedAt: { not: null } } }),
           prisma.profile.count({ where: { accountId: account.id, profileType: { not: "corporate" } } }),
           prisma.scanEvent.count({ where: { accountId: account.id } }),
           prisma.profileContact.count({ where: { profileId: profile?.id || "not-exists", active: true } }),
         ])
-      : [0, 0, 1, 0, 0];
+      : [0, 0, 0, 1, 0, 0];
 
     const rawAccountType = account?.accountType || ACCOUNT_TYPES.PERSONAL;
     const { accountType, isCorporate, isFamily, isPersonal } = this.resolveAccountCategory(account, rawAccountType);
     const maxChipsLimit = account?.maxChipsAllocated || 0;
     const maxProfilesLimit = isCorporate ? (account?.maxProfilesAllocated || 1) : PERSONAL_PROFILE_LIMIT;
+    const hasEverActivatedChip = everActivatedChipsCount > 0;
 
     const latestChip = account?.id ? await prisma.chip.findFirst({
       where: { accountId: account.id, status: { in: CHIP_SERVICE_STATUSES } },
@@ -140,11 +142,11 @@ export class AccountStateService {
       isCorporate,
       isOrganization: isCorporate,
       isOwner,
-      canManageFamilyProfiles: !isCorporate && isOwner,
+      canManageFamilyProfiles: !isCorporate && isOwner && hasEverActivatedChip,
       canAccessOrganizationModule: isCorporate && isOwner,
       canActivateMoreChips: isOwner && (!isCorporate || (!isInactive && activeChipsCount < maxChipsLimit)),
-      canAddFamilyMember: !isCorporate && isOwner && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
-      canCreateProfiles: !isCorporate && isOwner && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
+      canAddFamilyMember: !isCorporate && isOwner && hasEverActivatedChip && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
+      canCreateProfiles: !isCorporate && isOwner && hasEverActivatedChip && actualProfilesCount < PERSONAL_PROFILE_LIMIT,
       canEditProfiles: isOwner,
       canManageDeviceAssignments: isOwner,
       canReactivateDevices: isOwner,
@@ -158,6 +160,7 @@ export class AccountStateService {
       hasCompletedMedicalProfile: setupChecklist.medicalProfileComplete,
       hasEmergencyContact: setupChecklist.emergencyContactAdded,
       hasActivatedChip: setupChecklist.chipActivated,
+      hasEverActivatedChip,
       setupChecklist,
     };
 
@@ -176,6 +179,7 @@ export class AccountStateService {
     try {
       await Promise.all([
         redis.del(`account_state_${ACCOUNT_STATE_CACHE_VERSION}:${userId}`),
+        redis.del("account_state_v7:" + userId),
         redis.del("account_state_v6:" + userId),
         redis.del("account_state_v5:" + userId),
         redis.del("account_state_v4:" + userId),
