@@ -116,8 +116,6 @@ model ProductOperationalMapping {
   sortOrder           Int                      @default(0)
   badgeLabel          String?
   badgeColor          String?
-  grantsAnnualAccess  Boolean                  @default(true)
-  requiresPaidOrderForAnnualAccess Boolean       @default(true)
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
   product             Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -145,9 +143,6 @@ model Account {
   organizations        Organization[]
   profiles             Profile[]
   users                User[]
-  serviceEntitlement   ServiceEntitlement?
-  entitlementEvents    EntitlementEvent[]
-  renewalPayments      RenewalPayment[]
   supportConversations SupportConversation[]
 }
 
@@ -213,7 +208,6 @@ model User {
   orders                      Order[]
   profile                     Profile?
   account                     Account?                        @relation(fields: [accountId], references: [id])
-  entitlementEvents           EntitlementEvent[]
   supportConversationsOpened  SupportConversation[]           @relation("SupportConversationOpenedBy")
   supportConversationsAssigned SupportConversation[]          @relation("SupportConversationAssignedTo")
   supportConversationMessages SupportConversationMessage[]
@@ -373,7 +367,6 @@ model Chip {
   scanEvents          ScanEvent[]
   digitalBatchItem    OperationDigitalBatchItem?
   finishedGoodUnit    OperationFinishedGoodUnit?
-  entitlementEvents   EntitlementEvent[]
   supportConversations SupportConversation[]
 
   @@index([accountId])
@@ -1377,7 +1370,6 @@ model OperationFinishedGoodUnit {
   originalReplacements OperationReplacement[]         @relation("OperationReplacementOriginalUnit")
   replacementReplacements OperationReplacement[]      @relation("OperationReplacementReplacementUnit")
   returns              OperationReturn[]              @relation("OperationReturnUnit")
-  entitlementEvents    EntitlementEvent[]
 
   @@index([productCode])
   @@index([productType])
@@ -1779,97 +1771,6 @@ model SupportMessage {
   @@index([whatsappPhone])
 }
 
-
-model ServiceEntitlement {
-  id          String   @id @default(cuid())
-  accountId   String   @unique
-  planCode    String   @default("annual_device_access_v1")
-  status      String   @default("pending")
-  startsAt    DateTime?
-  endsAt      DateTime?
-  graceEndsAt DateTime?
-  source      String   @default("registration")
-  version     Int      @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  account     Account            @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  events      EntitlementEvent[]
-
-  @@index([status])
-  @@index([endsAt])
-}
-
-model EntitlementEvent {
-  id             String   @id @default(cuid())
-  entitlementId  String
-  accountId      String
-  type           String
-  effectiveAt    DateTime @default(now())
-  deltaMonths    Int      @default(0)
-  previousEnd    DateTime?
-  newEnd         DateTime?
-  paymentId      String?
-  unitId         String?
-  chipId         String?
-  idempotencyKey String   @unique
-  actorUserId    String?
-  reason         String?
-  correlationId  String?
-  metadataJson   Json?
-  createdAt      DateTime @default(now())
-  entitlement    ServiceEntitlement          @relation(fields: [entitlementId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  account        Account                     @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  payment        RenewalPayment?             @relation(fields: [paymentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  unit           OperationFinishedGoodUnit?  @relation(fields: [unitId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  chip           Chip?                       @relation(fields: [chipId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  actorUser      User?                       @relation(fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-
-  @@index([entitlementId, effectiveAt])
-  @@index([accountId, effectiveAt])
-  @@index([unitId])
-  @@index([paymentId])
-  @@index([type])
-}
-
-model RenewalPayment {
-  id                    String   @id @default(cuid())
-  accountId             String
-  provider              String   @default("yappy")
-  amount                Decimal  @db.Decimal(18, 2)
-  currency              String   @default("USD")
-  status                String   @default("created")
-  requestId             String?  @unique
-  idempotencyKey        String   @unique
-  providerTransactionId String?  @unique
-  checkoutSessionJson   String?
-  failureCode           String?
-  confirmedAt           DateTime?
-  expiresAt             DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  account               Account                @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  entitlementEvents     EntitlementEvent[]
-  events                RenewalPaymentEvent[]
-
-  @@index([accountId, status])
-  @@index([provider, status])
-  @@index([createdAt])
-}
-
-model RenewalPaymentEvent {
-  id                    String   @id @default(cuid())
-  paymentId             String
-  eventType             String
-  payloadHash           String?
-  normalizedPayloadJson Json?
-  signatureVerified     Boolean  @default(false)
-  idempotencyKey        String   @unique
-  receivedAt            DateTime @default(now())
-  payment               RenewalPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([paymentId, receivedAt])
-  @@index([eventType])
-}
 
 model SupportConversation {
   id                String   @id @default(cuid())
