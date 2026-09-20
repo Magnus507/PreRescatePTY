@@ -18,10 +18,10 @@ CREATE TABLE "RenewalPayment" (
   "providerTransactionId" TEXT,
   "checkoutSessionJson" TEXT,
   "failureCode" TEXT,
-  "confirmedAt" TIMESTAMPTZ,
-  "expiresAt" TIMESTAMPTZ,
-  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "confirmedAt" TIMESTAMP(3),
+  "expiresAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "RenewalPayment_accountId_fkey"
     FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -38,13 +38,13 @@ CREATE TABLE "ServiceEntitlement" (
   "accountId" TEXT NOT NULL,
   "planCode" TEXT NOT NULL DEFAULT 'annual_device_access_v1',
   "status" TEXT NOT NULL DEFAULT 'pending',
-  "startsAt" TIMESTAMPTZ,
-  "endsAt" TIMESTAMPTZ,
-  "graceEndsAt" TIMESTAMPTZ,
+  "startsAt" TIMESTAMP(3),
+  "endsAt" TIMESTAMP(3),
+  "graceEndsAt" TIMESTAMP(3),
   "source" TEXT NOT NULL DEFAULT 'registration',
   "version" INTEGER NOT NULL DEFAULT 1,
-  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "ServiceEntitlement_accountId_fkey"
     FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -58,10 +58,10 @@ CREATE TABLE "EntitlementEvent" (
   "entitlementId" TEXT NOT NULL,
   "accountId" TEXT NOT NULL,
   "type" TEXT NOT NULL,
-  "effectiveAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "effectiveAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "deltaMonths" INTEGER NOT NULL DEFAULT 0,
-  "previousEnd" TIMESTAMPTZ,
-  "newEnd" TIMESTAMPTZ,
+  "previousEnd" TIMESTAMP(3),
+  "newEnd" TIMESTAMP(3),
   "paymentId" TEXT,
   "unitId" TEXT,
   "chipId" TEXT,
@@ -70,7 +70,7 @@ CREATE TABLE "EntitlementEvent" (
   "reason" TEXT,
   "correlationId" TEXT,
   "metadataJson" JSONB,
-  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "EntitlementEvent_entitlementId_fkey"
     FOREIGN KEY ("entitlementId") REFERENCES "ServiceEntitlement"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "EntitlementEvent_accountId_fkey"
@@ -100,7 +100,7 @@ CREATE TABLE "RenewalPaymentEvent" (
   "normalizedPayloadJson" JSONB,
   "signatureVerified" BOOLEAN NOT NULL DEFAULT false,
   "idempotencyKey" TEXT NOT NULL,
-  "receivedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "receivedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "RenewalPaymentEvent_paymentId_fkey"
     FOREIGN KEY ("paymentId") REFERENCES "RenewalPayment"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -121,13 +121,13 @@ CREATE TABLE "SupportConversation" (
   "orderId" TEXT,
   "chipId" TEXT,
   "profileId" TEXT,
-  "lastMessageAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "clientLastReadAt" TIMESTAMPTZ,
-  "supportLastReadAt" TIMESTAMPTZ,
-  "resolvedAt" TIMESTAMPTZ,
-  "closedAt" TIMESTAMPTZ,
-  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "lastMessageAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "clientLastReadAt" TIMESTAMP(3),
+  "supportLastReadAt" TIMESTAMP(3),
+  "resolvedAt" TIMESTAMP(3),
+  "closedAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "SupportConversation_accountId_fkey"
     FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "SupportConversation_openedByUserId_fkey"
@@ -154,9 +154,9 @@ CREATE TABLE "SupportConversationMessage" (
   "senderUserId" TEXT,
   "body" TEXT NOT NULL,
   "isInternalNote" BOOLEAN NOT NULL DEFAULT false,
-  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "editedAt" TIMESTAMPTZ,
-  "deletedAt" TIMESTAMPTZ,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "editedAt" TIMESTAMP(3),
+  "deletedAt" TIMESTAMP(3),
   CONSTRAINT "SupportConversationMessage_conversationId_fkey"
     FOREIGN KEY ("conversationId") REFERENCES "SupportConversation"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "SupportConversationMessage_senderUserId_fkey"
@@ -174,7 +174,7 @@ CREATE TABLE "SupportEvent" (
   "beforeJson" JSONB,
   "afterJson" JSONB,
   "reason" TEXT,
-  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "SupportEvent_conversationId_fkey"
     FOREIGN KEY ("conversationId") REFERENCES "SupportConversation"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "SupportEvent_actorUserId_fkey"
