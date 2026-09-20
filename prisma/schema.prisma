@@ -145,6 +145,10 @@ model Account {
   organizations        Organization[]
   profiles             Profile[]
   users                User[]
+  serviceEntitlement   ServiceEntitlement?
+  entitlementEvents    EntitlementEvent[]
+  renewalPayments      RenewalPayment[]
+  supportConversations SupportConversation[]
 }
 
 model Package {
@@ -209,6 +213,11 @@ model User {
   orders                      Order[]
   profile                     Profile?
   account                     Account?                        @relation(fields: [accountId], references: [id])
+  entitlementEvents           EntitlementEvent[]
+  supportConversationsOpened  SupportConversation[]           @relation("SupportConversationOpenedBy")
+  supportConversationsAssigned SupportConversation[]          @relation("SupportConversationAssignedTo")
+  supportConversationMessages SupportConversationMessage[]
+  supportEvents               SupportEvent[]
 
   @@index([isAdmin])
 }
@@ -284,6 +293,7 @@ model Profile {
   account                       Account?             @relation(fields: [accountId], references: [id])
   user                          User?                @relation(fields: [userId], references: [id])
   contacts                      ProfileContact[]
+  supportConversations          SupportConversation[]
 
   @@index([accountId])
   @@index([userId])
@@ -363,6 +373,8 @@ model Chip {
   scanEvents          ScanEvent[]
   digitalBatchItem    OperationDigitalBatchItem?
   finishedGoodUnit    OperationFinishedGoodUnit?
+  entitlementEvents   EntitlementEvent[]
+  supportConversations SupportConversation[]
 
   @@index([accountId])
   @@index([ownerUserId])
@@ -723,6 +735,7 @@ model Order {
   items                   OrderItem[]
   paymentAttempts         PaymentAttempt[]
   invoice                 Invoice?
+  supportConversations    SupportConversation[]
 
   @@index([userId])
   @@index([orderStatus])
@@ -1778,6 +1791,8 @@ model ServiceEntitlement {
   version     Int      @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  account     Account            @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  events      EntitlementEvent[]
 
   @@index([status])
   @@index([endsAt])
@@ -1801,6 +1816,12 @@ model EntitlementEvent {
   correlationId  String?
   metadataJson   Json?
   createdAt      DateTime @default(now())
+  entitlement    ServiceEntitlement          @relation(fields: [entitlementId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  account        Account                     @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  payment        RenewalPayment?             @relation(fields: [paymentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  unit           OperationFinishedGoodUnit?  @relation(fields: [unitId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  chip           Chip?                       @relation(fields: [chipId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  actorUser      User?                       @relation(fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([entitlementId, effectiveAt])
   @@index([accountId, effectiveAt])
@@ -1825,6 +1846,9 @@ model RenewalPayment {
   expiresAt             DateTime?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+  account               Account                @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  entitlementEvents     EntitlementEvent[]
+  events                RenewalPaymentEvent[]
 
   @@index([accountId, status])
   @@index([provider, status])
@@ -1840,6 +1864,7 @@ model RenewalPaymentEvent {
   signatureVerified     Boolean  @default(false)
   idempotencyKey        String   @unique
   receivedAt            DateTime @default(now())
+  payment               RenewalPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([paymentId, receivedAt])
   @@index([eventType])
@@ -1864,6 +1889,14 @@ model SupportConversation {
   closedAt          DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  account           Account   @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  openedByUser      User      @relation("SupportConversationOpenedBy", fields: [openedByUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  assignedToUser    User?     @relation("SupportConversationAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  order             Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  chip              Chip?     @relation(fields: [chipId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  profile           Profile?  @relation(fields: [profileId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  messages          SupportConversationMessage[]
+  events            SupportEvent[]
 
   @@index([accountId, lastMessageAt])
   @@index([status, lastMessageAt])
@@ -1881,6 +1914,8 @@ model SupportConversationMessage {
   createdAt      DateTime @default(now())
   editedAt       DateTime?
   deletedAt      DateTime?
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  senderUser     User?               @relation(fields: [senderUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([conversationId, createdAt])
   @@index([senderUserId])
@@ -1895,6 +1930,8 @@ model SupportEvent {
   afterJson      Json?
   reason         String?
   createdAt      DateTime @default(now())
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  actorUser      User?               @relation(fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([conversationId, createdAt])
   @@index([eventType])
