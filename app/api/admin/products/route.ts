@@ -61,8 +61,6 @@ export async function GET() {
               requiresCompanyContext: mapping.requiresCompanyContext,
               requiresApproval: mapping.requiresApproval,
               requiresPersonalization: mapping.requiresPersonalization,
-              grantsAnnualAccess: mapping.grantsAnnualAccess,
-              requiresPaidOrderForAnnualAccess: mapping.requiresPaidOrderForAnnualAccess,
               badgeLabel: mapping.badgeLabel,
               badgeColor: mapping.badgeColor,
               productCode: mapping.productCode,
