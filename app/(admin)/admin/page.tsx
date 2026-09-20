@@ -14,6 +14,7 @@ import { OrganizationsSection } from "./_components/sections/OrganizationsSectio
 import { OperationsCenterSection } from "./_components/sections/OperationsCenterSection";
 import { AdminsSection } from "./_components/sections/AdminsSection";
 import { SettingsSection } from "./_components/sections/SettingsSection";
+import { SupportMessagesSection } from "./_components/sections/SupportMessagesSection";
 
 import { ChipDetailView } from "./_components/details/ChipDetail";
 import { UserDetailView } from "./_components/details/UserDetail";
@@ -89,6 +90,7 @@ function AdminDashboard() {
     chips: { title: "Identificadores", placeholder: "Buscar por código serial..." },
     empresas: { title: "Cuentas Corporativas", placeholder: "Buscar organización..." },
     inventory: { title: "Centro de Operaciones", placeholder: "Buscar pedido, unidad o despacho..." },
+    support: { title: "Mensajes de soporte", placeholder: "Buscar nombre, correo, WhatsApp o mensaje..." },
     admins: { title: "Administradores", placeholder: "Buscar administradores..." },
     settings: { title: "Ajustes", placeholder: "Buscar ajuste..." },
   };
@@ -279,6 +281,10 @@ function AdminDashboard() {
             />
           )}
 
+          {admin.tab === "support" && (
+            <SupportMessagesSection searchQuery={admin.search.query} />
+          )}
+
           {admin.tab === "admins" && (
             <AdminsSection
               admins={admin.users.adminUsers}
@@ -293,7 +299,7 @@ function AdminDashboard() {
 
           {admin.tab === "settings" && <SettingsSection />}
 
-          {!["dashboard", "chips", "users", "empresas", "inventory", "admins", "pedidos", "tienda", "settings"].includes(admin.tab) && (
+          {!["dashboard", "chips", "users", "empresas", "inventory", "support", "admins", "pedidos", "tienda", "settings"].includes(admin.tab) && (
             <div className="flex flex-col items-center justify-center py-20 text-slate-300">
               <Activity className="h-10 w-10 opacity-20 mb-4" />
               <p className="text-xs font-black uppercase tracking-widest">Módulo en mantenimiento.</p>
