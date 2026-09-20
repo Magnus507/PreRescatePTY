@@ -14,8 +14,7 @@ export interface AccountState {
   maxProfilesAllocated: number;
   serviceStatus: string;
   serviceEndDate: Date | null;
-  serviceDurationMonths: number | null;
-  accessMode: "PENDING_ACTIVATION" | "FULL" | "ESSENTIAL";
+  serviceDurationMonths: null;
   isExpired: boolean;
   isInactive: boolean;
 
@@ -40,7 +39,7 @@ export interface AccountState {
 
   // Consumption Stats
   activeChipsCount: number;
-  physicalChipsInTransitCount: number; // New field for logistics tracking
+  physicalChipsInTransitCount: number;
   familyProfilesCount: number;
   contactsCount: number;
   scansCount: number;
