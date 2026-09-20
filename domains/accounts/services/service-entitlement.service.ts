@@ -106,28 +106,28 @@ export async function getPhysicalUnitGrantEligibility(
   if (unit.reservedOrderId) {
     // Checkout-origin reservations are owned by the source Order.id, while
     // native/legacy Operations reservations may be owned by the operational
-    // commercial-order id. Accept either lineage, but always require a paid
-    // status before granting annual access.
-    const sourceOrder = await tx.order.findUnique({
-      where: { id: unit.reservedOrderId },
+    // commercial-order id. When the operational projection exists it is
+    // authoritative because refund/chargeback state is recorded there; only
+    // fall back to the source Order when no operational row exists.
+    const operationalOrder = await tx.operationCommercialOrder.findFirst({
+      where: {
+        OR: [
+          { id: unit.reservedOrderId },
+          { sourceId: unit.reservedOrderId },
+        ],
+      },
       select: { paymentStatus: true },
     });
-    hasPaidOrder = Boolean(
-      sourceOrder && ["paid", "succeeded"].includes(sourceOrder.paymentStatus)
-    );
 
-    if (!hasPaidOrder) {
-      const operationalOrder = await tx.operationCommercialOrder.findFirst({
-        where: {
-          OR: [
-            { id: unit.reservedOrderId },
-            { sourceId: unit.reservedOrderId },
-          ],
-        },
+    if (operationalOrder) {
+      hasPaidOrder = ["paid", "succeeded"].includes(operationalOrder.paymentStatus);
+    } else {
+      const sourceOrder = await tx.order.findUnique({
+        where: { id: unit.reservedOrderId },
         select: { paymentStatus: true },
       });
       hasPaidOrder = Boolean(
-        operationalOrder && ["paid", "succeeded"].includes(operationalOrder.paymentStatus)
+        sourceOrder && ["paid", "succeeded"].includes(sourceOrder.paymentStatus)
       );
     }
   }
