@@ -4,6 +4,7 @@ import {
   ANNUAL_ACCESS_MONTHS,
   getPhysicalUnitGrantEligibility,
   resolveAccountAccessMode,
+  reversePhysicalUnitGrant,
 } from "@/domains/accounts/services/service-entitlement.service";
 
 describe("service entitlement access modes", () => {
@@ -137,5 +138,100 @@ describe("physical unit annual-access eligibility", () => {
 
     expect(result.eligible).toBe(false);
     expect(result.reason).toBe("product_configured_no_grant");
+  });
+});
+
+
+describe("physical unit annual-access reversals", () => {
+  beforeEach(() => {
+    resetMockPrisma();
+  });
+
+  it("reverses the original 12-month activation grant after a full refund", async () => {
+    const now = new Date("2026-09-20T12:00:00.000Z");
+    mockPrisma.account.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.entitlementEvent.findUnique.mockResolvedValue(null);
+    mockPrisma.entitlementEvent.findFirst.mockResolvedValue({
+      id: "grant-1",
+      accountId: "account-1",
+      unitId: "unit-1",
+      chipId: "chip-1",
+      type: "activation",
+      deltaMonths: 12,
+    } as never);
+    mockPrisma.serviceEntitlement.findUnique.mockResolvedValue({
+      id: "entitlement-1",
+      accountId: "account-1",
+      status: "active",
+      endsAt: new Date("2028-09-20T12:00:00.000Z"),
+    } as never);
+    mockPrisma.serviceEntitlement.update.mockResolvedValue({
+      id: "entitlement-1",
+      status: "active",
+      endsAt: new Date("2027-09-20T12:00:00.000Z"),
+    } as never);
+    mockPrisma.entitlementEvent.create.mockResolvedValue({ id: "reversal-1" } as never);
+
+    const result = await reversePhysicalUnitGrant(mockPrisma as never, {
+      accountId: "account-1",
+      unitId: "unit-1",
+      reversalType: "refund",
+      reason: "full_refund",
+      now,
+    });
+
+    expect(result.applied).toBe(true);
+    expect(mockPrisma.serviceEntitlement.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "entitlement-1" },
+      data: expect.objectContaining({
+        endsAt: new Date("2027-09-20T12:00:00.000Z"),
+        status: "active",
+      }),
+    }));
+    expect(mockPrisma.entitlementEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        type: "refund",
+        deltaMonths: -12,
+        unitId: "unit-1",
+        chipId: "chip-1",
+        idempotencyKey: "refund:physical-unit:unit-1:annual-access",
+      }),
+    }));
+  });
+
+  it("does not reverse the same chargeback twice", async () => {
+    mockPrisma.account.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.entitlementEvent.findUnique.mockResolvedValue({
+      id: "existing-chargeback-reversal",
+      idempotencyKey: "chargeback:physical-unit:unit-1:annual-access",
+    } as never);
+
+    const result = await reversePhysicalUnitGrant(mockPrisma as never, {
+      accountId: "account-1",
+      unitId: "unit-1",
+      reversalType: "chargeback",
+      reason: "provider_chargeback",
+    });
+
+    expect(result.applied).toBe(false);
+    expect(mockPrisma.entitlementEvent.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.serviceEntitlement.update).not.toHaveBeenCalled();
+    expect(mockPrisma.entitlementEvent.create).not.toHaveBeenCalled();
+  });
+
+  it("never removes access when the physical unit did not grant annual time", async () => {
+    mockPrisma.account.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.entitlementEvent.findUnique.mockResolvedValue(null);
+    mockPrisma.entitlementEvent.findFirst.mockResolvedValue(null);
+
+    const result = await reversePhysicalUnitGrant(mockPrisma as never, {
+      accountId: "account-1",
+      unitId: "warranty-replacement-unit",
+      reversalType: "refund",
+      reason: "returned_replacement",
+    });
+
+    expect(result).toEqual({ applied: false, reason: "no_grant_to_reverse" });
+    expect(mockPrisma.serviceEntitlement.update).not.toHaveBeenCalled();
   });
 });
