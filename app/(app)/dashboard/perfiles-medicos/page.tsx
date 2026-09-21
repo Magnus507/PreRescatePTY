@@ -8,7 +8,7 @@ import {
   Plus, Pencil, Trash2, Loader2, Save, X, ChevronLeft,
   UserRound, Phone, AlertCircle,
   ShieldCheck, Activity, PlusCircle, Smartphone, ExternalLink,
-  Brain, Footprints, MessageCircle,
+  Brain, Footprints, MessageCircle, Cat,
 } from "lucide-react";
 import { Camera } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
@@ -229,6 +229,27 @@ export default function FamiliaPage() {
   }
 
   function normalizeProfilePayload(form: typeof addForm) {
+    if (form.petModuleEnabled) {
+      const petName = form.petModuleData?.petName?.trim() || "Mascota";
+      const species = form.petModuleData?.species?.trim() || "Mascota";
+      const internalFirstName = form.firstName?.trim() || (petName.length >= 2 ? petName : "Mascota");
+      const internalLastName = form.lastName?.trim() || (species.length >= 2 ? species : "Animal");
+      return {
+        ...form,
+        firstName: internalFirstName,
+        lastName: internalLastName,
+        displayNamePublic: form.displayNamePublic || petName,
+        sex: null,
+        birthDate: null,
+        bloodType: "Pendiente",
+        allergies: "",
+        chronicConditions: "",
+        medications: "",
+        additionalNotes: "",
+        showAdditionalNotesPublic: false,
+      };
+    }
+
     return {
       ...form,
       sex: form.sex || null,
@@ -298,7 +319,7 @@ export default function FamiliaPage() {
       if (res.ok) {
         setShowAdd(false);
         setAddForm({ ...emptyForm });
-        toast.success("Perfil médico creado con éxito");
+        toast.success(addForm.petModuleEnabled ? "Ficha de mascota creada" : "Perfil médico creado con éxito");
         loadProfiles();
       } else {
         const data = await res.json();
@@ -432,7 +453,7 @@ export default function FamiliaPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-slate-500 animate-pulse font-medium tracking-tight uppercase">Sincronizando expedientes médicos</p>
+        <p className="text-slate-500 animate-pulse font-medium tracking-tight uppercase">Sincronizando perfiles</p>
       </div>
     );
   }
@@ -442,10 +463,10 @@ export default function FamiliaPage() {
       <div className={(showAdd || editProfile) ? "hidden" : "block"}>
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-6">
           <div className="space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-primary">Protección médica</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-primary">Perfiles de protección</p>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-950">Perfiles médicos</h1>
             <p className="max-w-2xl text-sm md:text-base text-slate-600 font-medium leading-relaxed">
-              Gestiona la información de emergencia de tu cuenta y de tus protegidos con una vista clara y cómoda.
+              Gestiona perfiles de personas o mascotas y vincula la información que debe estar disponible al escanear su PreRescue ID.
             </p>
           </div>
           <button
@@ -465,7 +486,7 @@ export default function FamiliaPage() {
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500 mb-1">Perfiles registrados</p>
                 <p className="font-black text-base md:text-lg tracking-tight text-slate-950">
-                  {state.familyProfilesCount + 1} {state.familyProfilesCount + 1 === 1 ? "persona" : "personas"} registradas
+                  {state.familyProfilesCount + 1} {state.familyProfilesCount + 1 === 1 ? "perfil registrado" : "perfiles registrados"}
                 </p>
                 <p className="mt-1 text-xs md:text-sm text-slate-600 font-medium leading-relaxed">
                   La protección se activa al vincular un chip o sticker.
@@ -480,7 +501,7 @@ export default function FamiliaPage() {
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-white text-slate-300 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.18)]">
               <UserRound className="h-10 w-10" />
             </div>
-            <h3 className="text-2xl font-black tracking-tight text-slate-950">Sin configuración médica</h3>
+            <h3 className="text-2xl font-black tracking-tight text-slate-950">Aún no hay perfiles configurados</h3>
             <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-slate-600">
               Aún no se ha detectado un perfil base o adicionales para este registro.
             </p>
@@ -552,7 +573,7 @@ export default function FamiliaPage() {
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <div>
-                <h2 className="text-2xl font-black tracking-tight">Añadir Perfil Médico</h2>
+                <h2 className="text-2xl font-black tracking-tight">Añadir perfil</h2>
                 <p className="text-xs text-muted-foreground font-medium">Completa los datos que podrían ayudar en una emergencia.</p>
               </div>
             </div>
@@ -588,7 +609,7 @@ export default function FamiliaPage() {
             <div className="max-w-5xl mx-auto space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-3xl font-black tracking-tight">Añadir Perfil Médico</h2>
+                  <h2 className="text-3xl font-black tracking-tight">Añadir perfil</h2>
                   <p className="text-sm text-muted-foreground">Completa los datos que podrían ayudar en una emergencia.</p>
                 </div>
                 <button type="button" onClick={() => setShowAdd(false)} className="h-12 px-5 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">
@@ -605,7 +626,7 @@ export default function FamiliaPage() {
                   <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
                   <button type="submit" disabled={addSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
                     {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    Guardar Perfil Médico
+                    Guardar perfil
                   </button>
                 </div>
               </form>
@@ -628,7 +649,7 @@ export default function FamiliaPage() {
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <div>
-                <h2 className="text-2xl font-black tracking-tight">Editar Perfil Médico: {editProfile.firstName}</h2>
+                <h2 className="text-2xl font-black tracking-tight">Editar perfil</h2>
                 <p className="text-xs text-muted-foreground font-medium">Actualiza los datos de {editProfile.firstName}.</p>
               </div>
             </div>
@@ -664,7 +685,7 @@ export default function FamiliaPage() {
             <div className="max-w-5xl mx-auto space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-3xl font-black tracking-tight">Editar Perfil Médico: {editProfile.firstName}</h2>
+                  <h2 className="text-3xl font-black tracking-tight">Editar perfil</h2>
                   <p className="text-sm text-muted-foreground">Actualiza los datos de {editProfile.firstName}.</p>
                 </div>
                 <button type="button" onClick={() => setEditProfile(null)} className="h-12 px-5 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">
@@ -785,9 +806,17 @@ function ProfileCard({
    onStartAddContact,
    onPhotoUpdate
 }: ProfileCardProps) {
-  const initials = profile.firstName && profile.lastName 
-    ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
-    : (isOwn ? "TÚ" : "??");
+  const petContext = hydrateProfileContextModules(profile as unknown as Record<string, unknown>);
+  const isPetProfile = profile.petModuleEnabled === true;
+  const petData = petContext.petModuleData;
+  const cardName = isPetProfile
+    ? (petData.petName || profile.displayNamePublic || "Mascota")
+    : `${profile.firstName || "Sin nombre"} ${profile.lastName || ""}`.trim();
+  const initials = isPetProfile
+    ? (petData.petName?.slice(0, 2).toUpperCase() || "🐾")
+    : profile.firstName && profile.lastName
+      ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
+      : (isOwn ? "TÚ" : "??");
 
   const [uploading, setUploading] = useState(false);
 
@@ -851,7 +880,7 @@ function ProfileCard({
             <button
               type="button"
               onClick={handlePhotoClick}
-              aria-label={`Cambiar foto de ${profile.firstName || "perfil"}`}
+              aria-label={`Cambiar foto de ${cardName || "perfil"}`}
               disabled={uploading}
               className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.5rem] font-black text-xl shadow-inner cursor-pointer md:h-20 md:w-20 md:rounded-[1.75rem] ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-900'}`}
             >
@@ -867,7 +896,7 @@ function ProfileCard({
             <input type="file" id={`profile-photo-input-${profile.id}`} className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
             <div className="min-w-0">
               <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
-                 {isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
+                 {isPetProfile ? 'Ficha de mascota' : isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
               </span>
               <p className="mt-1.5 text-[10px] font-semibold text-slate-400">Toca la foto para cambiarla</p>
             </div>
@@ -879,18 +908,30 @@ function ProfileCard({
                <div className="space-y-3">
                   <div className="space-y-1">
                     <h3 className="text-2xl md:text-3xl font-black tracking-tight leading-tight text-slate-950">
-                      {profile.firstName || "Sin nombre"} {profile.lastName || ""}
+                      {cardName}
                     </h3>
-                    {profile.displayNamePublic && (
+                    {!isPetProfile && profile.displayNamePublic && (
                       <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-600">
                         Alias: {profile.displayNamePublic}
                       </span>
                     )}
+                    {isPetProfile && (
+                      <div className="flex flex-wrap gap-2">
+                        {petData.species && <span className="inline-flex w-fit rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">{petData.species}</span>}
+                        {petData.breed && <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">{petData.breed}</span>}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <div className="px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-black text-slate-700 uppercase flex items-center gap-2">
-                      <Activity className="h-3.5 w-3.5 text-primary" /> {profile.bloodType}
-                    </div>
+                    {isPetProfile ? (
+                      <div className="px-3 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-[11px] font-black text-teal-700 uppercase flex items-center gap-2">
+                        <Cat className="h-3.5 w-3.5" /> {petData.color || "Ficha de mascota"}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-black text-slate-700 uppercase flex items-center gap-2">
+                        <Activity className="h-3.5 w-3.5 text-primary" /> {profile.bloodType}
+                      </div>
+                    )}
                     {profile.assignedChips.length > 0 ? (
                       profile.assignedChips.map((c) => (
                         <div key={c.id} className="px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-black text-emerald-700 uppercase flex items-center gap-2">
@@ -932,7 +973,7 @@ function ProfileCard({
                       <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700">Apoyo activo</span>
                     )}
                     {profile.petModuleEnabled && (
-                      <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700">Mascota activa</span>
+                      <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700">Perfil mascota</span>
                     )}
                     {profile.workModuleEnabled && (
                       <span className="rounded-full border border-slate-300 bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-700">Laboral activo</span>

@@ -493,11 +493,14 @@ function PublicContextModulesBlock({ profile }: { profile: EmergencyProfile }) {
 }
 
 function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
-  const subtitle = profile.isMinor
-    ? "Contactar responsable, tutor o cuidador si hace falta."
-    : profile.vulnerabilityStatus?.hasCognitiveImpairment || profile.vulnerabilityStatus?.hasWanderingRisk
-      ? "Contactar cuidador o responsable."
-      : "Contactos de emergencia registrados.";
+  const isPetProfile = !!profile.contextModules?.pet;
+  const subtitle = isPetProfile
+    ? "Dueño y contactos registrados para ayudar a devolver la mascota."
+    : profile.isMinor
+      ? "Contactar responsable, tutor o cuidador si hace falta."
+      : profile.vulnerabilityStatus?.hasCognitiveImpairment || profile.vulnerabilityStatus?.hasWanderingRisk
+        ? "Contactar cuidador o responsable."
+        : "Contactos de emergencia registrados.";
 
   if (!profile.emergencyContacts.length) {
     return (
@@ -514,7 +517,7 @@ function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
           <Heart className="h-5 w-5 text-emerald-600" />
         </div>
         <div>
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Contactos de rescate</h2>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">{isPetProfile ? "Contactos para devolución" : "Contactos de rescate"}</h2>
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">{subtitle}</p>
         </div>
       </div>
@@ -809,6 +812,172 @@ function PatientMedicalCard({ profile, isParamedic, showAssistanceBadges = true 
   );
 }
 
+
+function petAgeLabel(raw: string | null) {
+  if (!raw) return null;
+  const birthDate = new Date(raw);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  const now = new Date();
+  const totalMonths = Math.max(
+    0,
+    (now.getFullYear() - birthDate.getFullYear()) * 12 + now.getMonth() - birthDate.getMonth()
+  );
+  if (totalMonths < 12) return `${totalMonths} ${totalMonths === 1 ? "mes" : "meses"}`;
+  const years = Math.floor(totalMonths / 12);
+  return `${years} ${years === 1 ? "año" : "años"}`;
+}
+
+function PetRecoveryPage({
+  profile,
+  scanLocation,
+}: {
+  profile: EmergencyProfile;
+  scanLocation: string;
+}) {
+  const pet = profile.contextModules?.pet;
+  if (!pet) return null;
+
+  const petName = moduleText(pet, "petName") || "Mascota";
+  const species = moduleText(pet, "species");
+  const breed = moduleText(pet, "breed");
+  const color = moduleText(pet, "color");
+  const sex = moduleText(pet, "sex");
+  const birthDate = moduleText(pet, "birthDate");
+  const distinctiveMarks = moduleText(pet, "distinctiveMarks");
+  const ownerName = moduleText(pet, "ownerName");
+  const ownerPhone = moduleText(pet, "ownerPhone");
+  const homeArea = moduleText(pet, "homeArea");
+  const returnInstructions = moduleText(pet, "returnInstructions");
+  const veterinarianName = moduleText(pet, "veterinarianName");
+  const veterinarianPhone = moduleText(pet, "veterinarianPhone");
+  const medicalNotes = moduleText(pet, "medicalNotes");
+  const careNotes = moduleText(pet, "careNotes");
+  const age = petAgeLabel(birthDate);
+  const isServiceAnimal = pet.isServiceAnimal === true;
+
+  return (
+    <div className="min-h-screen bg-[linear-gradient(180deg,#ecfeff_0%,#f8fafc_42%,#ffffff_100%)] px-3 py-4 font-sans text-slate-950 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-3xl space-y-4 sm:space-y-6">
+        <section className="overflow-hidden rounded-[2rem] border border-teal-100 bg-white shadow-[0_28px_70px_-40px_rgba(13,148,136,.38)] sm:rounded-[2.5rem]">
+          <div className="h-2 bg-gradient-to-r from-teal-500 via-emerald-400 to-cyan-400" />
+          <div className="p-5 sm:p-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+              {profile.photoUrl ? (
+                <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-[2rem] border-4 border-white bg-teal-50 shadow-xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={profile.photoUrl} alt={`Foto de ${petName}`} className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-[2rem] bg-teal-600 text-white shadow-xl">
+                  <Cat className="h-16 w-16" />
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">
+                  <Cat className="h-4 w-4" />
+                  Mascota identificada con PreRescue ID
+                </div>
+                <h1 className="mt-3 break-words text-4xl font-black tracking-[-0.05em] text-slate-950 sm:text-5xl">{petName}</h1>
+                <p className="mt-2 text-sm font-semibold text-slate-500">
+                  Si encontraste esta mascota, utiliza los contactos e instrucciones de abajo para ayudarla a volver a casa.
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {species && <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-teal-800">{species}</span>}
+                  {breed && <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-700">{breed}</span>}
+                  {sex && <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-700">{sex}</span>}
+                  {age && <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-700">{age}</span>}
+                  {isServiceAnimal && <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-violet-700">Animal de asistencia</span>}
+                </div>
+              </div>
+            </div>
+
+            {(ownerPhone || ownerName) && (
+              <div className="mt-6 rounded-[1.5rem] border border-emerald-200 bg-emerald-50/70 p-4 sm:p-5">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Contacto principal para devolución</p>
+                {ownerName && <p className="mt-1 text-xl font-black text-slate-950">{ownerName}</p>}
+                {ownerPhone && (
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <a href={`tel:${sanitizeTelPhone(ownerPhone)}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-xs font-black uppercase tracking-wider text-white">
+                      <Phone className="h-4 w-4" /> Llamar
+                    </a>
+                    <a href={`https://wa.me/${normalizeWhatsAppPhone(ownerPhone)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-4 text-xs font-black uppercase tracking-wider text-white">
+                      <MessageCircle className="h-4 w-4" /> WhatsApp
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {(returnInstructions || homeArea) && (
+          <section className="rounded-[2rem] border border-teal-200 bg-white p-5 shadow-lg sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white">
+                <Footprints className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black tracking-tight text-slate-950">Cómo ayudarla a volver</h2>
+                <p className="mt-1 text-xs font-bold uppercase tracking-widest text-teal-700">Retorno seguro</p>
+              </div>
+            </div>
+            {returnInstructions && <p className="mt-4 whitespace-pre-wrap rounded-2xl bg-teal-50 p-4 text-sm font-semibold leading-6 text-slate-800">{returnInstructions}</p>}
+            {homeArea && (
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Área donde vive</p>
+                <p className="mt-1 text-sm font-bold text-slate-900">{homeArea}</p>
+              </div>
+            )}
+          </section>
+        )}
+
+        <section className="grid gap-3 sm:grid-cols-2">
+          {(color || distinctiveMarks) && (
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Cómo identificarla</p>
+              {color && <p className="mt-2 text-sm font-bold text-slate-900">Color: {color}</p>}
+              {distinctiveMarks && <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">{distinctiveMarks}</p>}
+            </div>
+          )}
+          {(medicalNotes || careNotes) && (
+            <div className="rounded-[2rem] border border-amber-200 bg-amber-50/55 p-5 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Cuidados importantes</p>
+              {medicalNotes && <p className="mt-2 whitespace-pre-wrap text-sm font-bold leading-6 text-slate-900">{medicalNotes}</p>}
+              {careNotes && <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">{careNotes}</p>}
+            </div>
+          )}
+        </section>
+
+        {(veterinarianName || veterinarianPhone) && (
+          <section className="rounded-[2rem] border border-blue-200 bg-blue-50/50 p-5 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Veterinario / clínica</p>
+            {veterinarianName && <p className="mt-2 text-base font-black text-slate-950">{veterinarianName}</p>}
+            {veterinarianPhone && (
+              <a href={`tel:${sanitizeTelPhone(veterinarianPhone)}`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-black uppercase tracking-wider text-white">
+                <Phone className="h-4 w-4" /> {veterinarianPhone}
+              </a>
+            )}
+          </section>
+        )}
+
+        {scanLocation && (
+          <div className="rounded-[1.5rem] border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs font-semibold leading-5 text-cyan-900">
+            El escaneo registró una ubicación aproximada para ayudar a los contactos a ubicar dónde fue encontrada.
+          </div>
+        )}
+
+        <PublicContactsBlock profile={profile} />
+
+        <div className="pb-4 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-400">PreRescue ID · Perfil de mascota</p>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export default function EmergencyPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -919,7 +1088,9 @@ export default function EmergencyPage() {
   // Recompute WhatsApp URLs when scanLocation or profile updates
   useEffect(() => {
     if (!profile) return;
-    const personName = `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
+    const petName = moduleText(profile.contextModules?.pet, "petName");
+    const personName = petName || `${profile.firstName} ${profile.lastName}`.trim() || profile.displayName;
+    const isPetProfile = !!profile.contextModules?.pet;
     const publicProfileUrl = `${window.location.origin}/e/${shortCode}`;
     const locInfo = formatEmergencyLocation(scanLocation);
     const urls: Record<number, string> = {};
@@ -928,8 +1099,8 @@ export default function EmergencyPage() {
       let message: string;
       if (locInfo.mapsUrl) {
         message = [
-          `Hola ${contact.fullName}, ${personName} podría necesitar ayuda.`,
-          `Su ficha PreRescue ID fue escaneada recientemente.`,
+          isPetProfile ? `Hola ${contact.fullName}, encontré a ${personName}.` : `Hola ${contact.fullName}, ${personName} podría necesitar ayuda.`,
+          isPetProfile ? `Su ficha PreRescue ID de mascota fue escaneada recientemente.` : `Su ficha PreRescue ID fue escaneada recientemente.`,
           ``,
           `Ubicación aproximada:`,
           locInfo.mapsUrl,
@@ -941,8 +1112,8 @@ export default function EmergencyPage() {
         ].join("\n");
       } else if (scanLocation) {
         message = [
-          `Hola ${contact.fullName}, ${personName} podría necesitar ayuda.`,
-          `Su ficha PreRescue ID fue escaneada recientemente.`,
+          isPetProfile ? `Hola ${contact.fullName}, encontré a ${personName}.` : `Hola ${contact.fullName}, ${personName} podría necesitar ayuda.`,
+          isPetProfile ? `Su ficha PreRescue ID de mascota fue escaneada recientemente.` : `Su ficha PreRescue ID fue escaneada recientemente.`,
           ``,
           `Ubicación aproximada:`,
           scanLocation,
@@ -954,8 +1125,8 @@ export default function EmergencyPage() {
         ].join("\n");
       } else {
         message = [
-          `Hola ${contact.fullName}, ${personName} podría necesitar ayuda.`,
-          `Su ficha PreRescue ID fue escaneada recientemente.`,
+          isPetProfile ? `Hola ${contact.fullName}, encontré a ${personName}.` : `Hola ${contact.fullName}, ${personName} podría necesitar ayuda.`,
+          isPetProfile ? `Su ficha PreRescue ID de mascota fue escaneada recientemente.` : `Su ficha PreRescue ID fue escaneada recientemente.`,
           ``,
           `No se pudo obtener ubicación exacta.`,
           ``,
@@ -1132,6 +1303,15 @@ export default function EmergencyPage() {
           <Link href="/" className="group relative inline-flex items-center justify-center gap-2 w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-xl overflow-hidden transition-all hover:bg-black active:scale-95 shadow-xl">Volver al Inicio <ArrowLeft className="h-6 w-6" /></Link>
         </div>
       </div>
+    );
+  }
+
+  if (profile.contextModules?.pet) {
+    return (
+      <PetRecoveryPage
+        profile={profile}
+        scanLocation={scanLocation}
+      />
     );
   }
 
