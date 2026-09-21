@@ -84,7 +84,7 @@ export default function PlansPreview() {
       });
   }, [shouldLoad]);
 
-  const displayPackages = packages.slice(0, 3);
+  const displayPackages = packages.filter((pkg) => pkg.accountType !== "company").slice(0, 3);
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-[#03060c] py-20 text-white md:py-32">
@@ -185,14 +185,14 @@ export default function PlansPreview() {
                       </ul>
 
                       <Link
-                        href={pkg.accountType === "company" ? `/contacto?subject=Me%20interesa%20el%20${encodeURIComponent(pkg.name)}` : `/registro?package=${pkg.id}`}
+                        href={`/registro?package=${pkg.id}`}
                         className={`mt-6 flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl px-5 text-sm font-extrabold transition-all duration-300 sm:mt-auto sm:min-h-12 ${
                           pkg.recommended
                             ? "bg-[#DA1A21] text-white shadow-[0_18px_42px_-18px_rgba(218,26,33,.75)] active:bg-[#ef2d35] sm:hover:bg-[#ef2d35]"
                             : "border border-white/[0.09] bg-white/[0.055] text-slate-100 active:bg-white/[0.09] sm:hover:border-sky-300/20 sm:hover:bg-white/[0.09]"
                         }`}
                       >
-                        {pkg.accountType === "company" ? "Solicitar información" : "Elegir este plan"}
+                        Elegir este plan
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </div>
