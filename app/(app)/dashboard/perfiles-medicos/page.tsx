@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { Camera } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
+import {
+  EMPTY_PROFILE_CONTEXT_MODULES,
+  hydrateProfileContextModules,
+} from "@/lib/profile-context-modules";
 
 interface AssignedChip {
   id: string;
@@ -69,6 +73,16 @@ interface FamilyProfile {
   showCommunicationStatusPublic: boolean;
   showSafeReturnPublic: boolean;
   showSafeReturnLocationPublic?: boolean;
+  minorModuleEnabled?: boolean;
+  minorModuleData?: string | null;
+  elderModuleEnabled?: boolean;
+  elderModuleData?: string | null;
+  specialNeedsModuleEnabled?: boolean;
+  specialNeedsModuleData?: string | null;
+  petModuleEnabled?: boolean;
+  petModuleData?: string | null;
+  workModuleEnabled?: boolean;
+  workModuleData?: string | null;
   safeReturnLocationName?: string | null;
   safeReturnAddress?: string | null;
   safeReturnLat?: number | null;
@@ -122,6 +136,7 @@ const emptyForm = {
   showCommunicationStatusPublic: false,
   showSafeReturnPublic: false,
   showSafeReturnLocationPublic: false,
+  ...EMPTY_PROFILE_CONTEXT_MODULES,
 };
 
 const emptyContactForm = {
@@ -264,6 +279,7 @@ export default function FamiliaPage() {
       showCommunicationStatusPublic: !!profile.showCommunicationStatusPublic,
       showSafeReturnPublic: !!profile.showSafeReturnPublic,
       showSafeReturnLocationPublic: !!profile.showSafeReturnLocationPublic,
+      ...hydrateProfileContextModules(profile as unknown as Record<string, unknown>),
     });
     setEditError("");
   }
@@ -544,7 +560,7 @@ export default function FamiliaPage() {
               {addError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{addError}</p>}
               <MedicalProfileForm
                 form={addForm}
-                onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val }))}
+                onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val } as typeof prev))}
               />
               <div className="mt-2 rounded-[1.35rem] border border-border/70 bg-background/95 p-3 shadow-[0_16px_38px_-22px_rgba(15,23,42,0.34)] backdrop-blur-md">
                 <div className="flex gap-3">
@@ -583,7 +599,7 @@ export default function FamiliaPage() {
                 {addError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{addError}</p>}
                 <MedicalProfileForm
                   form={addForm}
-                  onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val }))}
+                  onChange={(field, val) => setAddForm(prev => ({ ...prev, [field]: val } as typeof prev))}
                 />
                 <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-border/50">
                   <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
@@ -620,7 +636,7 @@ export default function FamiliaPage() {
               {editError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{editError}</p>}
               <MedicalProfileForm
                 form={editForm}
-                onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val }))}
+                onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val } as typeof prev))}
               />
               <div className="mt-2 rounded-[1.35rem] border border-border/70 bg-background/95 p-3 shadow-[0_16px_38px_-22px_rgba(15,23,42,0.34)] backdrop-blur-md">
                 <div className="flex gap-3">
@@ -659,7 +675,7 @@ export default function FamiliaPage() {
                 {editError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{editError}</p>}
                 <MedicalProfileForm
                   form={editForm}
-                  onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val }))}
+                  onChange={(field, val) => setEditForm(prev => ({ ...prev, [field]: val } as typeof prev))}
                 />
                 <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-border/50">
                   <button type="button" onClick={() => setEditProfile(null)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
@@ -785,26 +801,42 @@ function ProfileCard({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", "profile");
-    formData.append("bucket", "profile-photos");
-    formData.append("profileId", profile.id);
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Usa una foto JPG, PNG o WebP. En iPhone, selecciona la foto desde Fotos para que iOS la prepare en un formato compatible.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La foto debe pesar menos de 5 MB.");
+      e.target.value = "";
+      return;
+    }
 
+    setUploading(true);
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: {
+          "Content-Type": file.type,
+          "X-PreRescate-Upload": "raw-profile-photo",
+          "X-Profile-Id": profile.id,
+          "X-File-Name": encodeURIComponent(file.name || "profile-photo"),
+        },
+        body: file,
+      });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        toast.success("Foto subida");
+        toast.success("Foto actualizada");
         onPhotoUpdate?.();
       } else {
-        toast.error("Error al subir la foto");
+        toast.error(data.error || "No se pudo subir la foto");
       }
     } catch {
       console.error("Error uploading profile photo");
-      toast.error("Error en la conexión");
+      toast.error("No se pudo conectar para subir la foto");
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -813,8 +845,11 @@ function ProfileCard({
       <div className="p-4 md:p-7 flex flex-col gap-5 md:gap-7">
          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
            <div className="flex flex-row items-center gap-3 md:gap-4 shrink-0">
-            <div
+            <button
+              type="button"
               onClick={handlePhotoClick}
+              aria-label={`Cambiar foto de ${profile.firstName || "perfil"}`}
+              disabled={uploading}
               className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.5rem] font-black text-xl shadow-inner cursor-pointer md:h-20 md:w-20 md:rounded-[1.75rem] ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-900'}`}
             >
                {profile.photoUrl ? (
@@ -822,13 +857,11 @@ function ProfileCard({
                ) : (
                  <div className="w-full h-full flex items-center justify-center">{initials}</div>
                )}
-               {isOwn && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
-                   {uploading ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <Camera className="h-5 w-5 text-white" />}
-                 </div>
-               )}
-            </div>
-            <input type="file" id={`profile-photo-input-${profile.id}`} className="hidden" accept="image/*" onChange={handleFileChange} />
+               <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                 {uploading ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <Camera className="h-5 w-5 text-white" />}
+               </div>
+            </button>
+            <input type="file" id={`profile-photo-input-${profile.id}`} className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
                {isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
             </span>
