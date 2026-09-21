@@ -125,20 +125,45 @@ function triggerBlobDownload(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+const PUBLIC_QR_ORIGIN = "https://www.prerescatepty.com";
+
+function normalizeQrPayload(value: string | null | undefined) {
+  const raw = value?.trim();
+  if (!raw) return null;
+
+  try {
+    const url = new URL(raw, PUBLIC_QR_ORIGIN);
+    url.searchParams.delete("source");
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
+
 function getDigitalItemQrTarget(item: DigitalItem) {
-  if (item.qrUrl) return item.qrUrl;
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://www.prerescatepty.com";
-  if (item.shortCode) return `${origin}/e/${item.shortCode}`;
-  if (item.nfcUrl) {
+  // nfcUrl is the canonical public destination stored for the physical unit.
+  // qrUrl is an IMAGE endpoint (/api/public/qr?data=...), not the payload that
+  // should be encoded again. Re-encoding qrUrl makes the printed QR point to
+  // the QR generator instead of the unit's /e/<shortCode> page.
+  const canonicalNfc = normalizeQrPayload(item.nfcUrl);
+  if (canonicalNfc) return canonicalNfc;
+
+  if (item.qrUrl) {
     try {
-      const url = new URL(item.nfcUrl, origin);
-      url.searchParams.delete("source");
-      return url.toString();
+      const qrImageUrl = new URL(item.qrUrl, PUBLIC_QR_ORIGIN);
+      const encodedPayload = qrImageUrl.searchParams.get("data");
+      const decodedPayload = normalizeQrPayload(encodedPayload);
+      if (decodedPayload) return decodedPayload;
     } catch {
-      return item.nfcUrl;
+      // Fall through to the shortCode/activation fallback.
     }
   }
-  return item.activationUrl || null;
+
+  if (item.shortCode) {
+    return `${PUBLIC_QR_ORIGIN}/e/${encodeURIComponent(item.shortCode)}`;
+  }
+
+  return normalizeQrPayload(item.activationUrl);
 }
 
 async function fetchQrPng(targetUrl: string) {
@@ -315,15 +340,6 @@ async function renderActivationCardPng(item: DigitalItem, preparedQr?: Blob) {
 function escapeCsv(value: string | null | undefined) {
   const normalized = value ?? "";
   return `"${normalized.replace(/"/g, '""')}"`;
-}
-
-function buildActivationText(item: DigitalItem, targetUrl: string | null) {
-  return [
-    `IDENTIFICADOR: ${item.internalLabel}`,
-    `CODIGO DE ACTIVACION: ${item.activationCode || "PENDIENTE"}`,
-    `URL PUBLICA: ${targetUrl || "PENDIENTE"}`,
-    "",
-  ].join("\n");
 }
 
 function buildCodesCsv(items: DigitalItem[]) {
@@ -522,32 +538,31 @@ export default function DirectProductionSection() {
       for (const item of items) {
         const safeLabel = sanitizeFilename(item.internalLabel);
         const target = getDigitalItemQrTarget(item);
-        let qrBlob: Blob | undefined;
 
-        if (target) {
-          qrBlob = await fetchQrPng(target);
-          files.push({ name: `qr/${safeLabel}-QR.png`, blob: qrBlob });
-          const stickerBlob = await renderStickerPng(target, qrBlob);
-          files.push({ name: `stickers/${safeLabel}.png`, blob: stickerBlob });
+        if (!target) {
+          throw new Error(`QR no disponible para ${item.internalLabel}`);
         }
 
-        if (item.activationCode) {
-          const activationCard = await renderActivationCardPng(item, qrBlob);
-          files.push({ name: `codigos/${safeLabel}-CODIGO.png`, blob: activationCard });
+        // Generate one QR from the real public URL and reuse that exact image
+        // in both production artworks so the sticker and activation card for a
+        // unit can never diverge.
+        const qrBlob = await fetchQrPng(target);
+        const stickerBlob = await renderStickerPng(target, qrBlob);
+        files.push({ name: `stickers/${safeLabel}-STICKER.png`, blob: stickerBlob });
+
+        if (!item.activationCode) {
+          throw new Error(`Código de activación no disponible para ${item.internalLabel}`);
         }
 
-        const codeBlob = new Blob([buildActivationText(item, target)], { type: "text/plain;charset=utf-8" });
-        files.push({ name: `codigos/${safeLabel}-CODIGO.txt`, blob: codeBlob });
+        const activationCard = await renderActivationCardPng(item, qrBlob);
+        files.push({ name: `codigos/${safeLabel}-CODIGO.png`, blob: activationCard });
       }
 
-      files.push({
-        name: `codigos/${sanitizeFilename(detail.code)}-codigos.csv`,
-        blob: buildCodesCsv(items),
-      });
-
+      // The production ZIP intentionally contains only final printable artwork:
+      // one sticker and one activation card per unit. No raw QR, TXT or CSV.
       const zip = await createStoredZip(files);
       triggerBlobDownload(zip, `${sanitizeFilename(detail.code)}-produccion.zip`);
-      toast.success("Lote de producción descargado");
+      toast.success("Lote listo: solo stickers y tarjetas de activación");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo generar el ZIP");
     } finally {
