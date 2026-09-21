@@ -489,7 +489,7 @@ const adminStyles = `
 
     .admin-control-center::before,
     .admin-control-center::after {
-      inset-top: 4.5rem;
+      top: 4.5rem;
     }
 
     .admin-control-center main [class*="rounded-[2rem]"],
