@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { syncOperationsProductToStore } from "@/lib/operations/sync-operations-product-to-store";
+import { cleanupUploadedObjectOrRecordOrphan } from "@/lib/storage-cleanup-outbox";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,22 @@ export async function POST(
       return NextResponse.json({ error: "Producto sin código operativo" }, { status: 400 });
     }
 
+    const requestedImage =
+      typeof body.imageUrl === "string" && body.imageUrl.trim()
+        ? body.imageUrl.trim()
+        : undefined;
+    const previousStoreProduct = await prisma.productOperationalMapping.findFirst({
+      where: {
+        OR: [{ finishedGoodId: finishedGood.id }, { productCode: finishedGood.code }],
+      },
+      select: {
+        product: {
+          select: { id: true, image: true },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
     const result = await syncOperationsProductToStore({
       finishedGoodId: finishedGood.id,
       operationsProductCode: finishedGood.code,
@@ -40,8 +57,26 @@ export async function POST(
       description: typeof body.description === "string" ? body.description : null,
       category: typeof body.category === "string" ? body.category : null,
       isActive: action === "publish",
-      image: typeof body.imageUrl === "string" ? body.imageUrl : null,
+      image: requestedImage,
     });
+
+    const previousImage = previousStoreProduct?.product.image || null;
+    if (requestedImage && previousImage && previousImage !== requestedImage) {
+      const otherReferences = await prisma.product.count({
+        where: {
+          id: { not: result.storeProductId },
+          image: previousImage,
+        },
+      });
+      if (otherReferences === 0) {
+        await cleanupUploadedObjectOrRecordOrphan(previousImage, {
+          actorUserId: auth.session.user.id,
+          accountId: auth.session.user.accountId || null,
+        }).catch((cleanupError) => {
+          console.error("[finished-goods/publish-to-store] old image cleanup error:", cleanupError);
+        });
+      }
+    }
 
     const storeProduct = await prisma.product.findUnique({
       where: { id: result.storeProductId },

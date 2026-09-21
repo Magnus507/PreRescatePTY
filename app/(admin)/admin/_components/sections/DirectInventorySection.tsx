@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Boxes, Eye, Loader2, Plus, RefreshCw, Store, Trash2, X } from "lucide-react";
+import { Boxes, Eye, ImageIcon, Loader2, Pencil, Plus, RefreshCw, Store, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 type FinishedGood = {
@@ -51,6 +51,7 @@ type StoreProduct = {
   name: string;
   description: string | null;
   price: number;
+  image: string | null;
   isActive: boolean;
   operationalMappingMeta?: {
     finishedGoodId?: string | null;
@@ -64,6 +65,11 @@ function getStoreProduct(products: StoreProduct[], item: FinishedGood) {
     || products.find((product) => product.operationalMappingMeta?.productCode === item.code)
     || products.find((product) => product.description?.includes(`[operationsProductCode:${item.code}]`))
     || null;
+}
+
+function stripOperationsMarker(description: string | null | undefined) {
+  if (!description) return "";
+  return description.replace(/\n?\[operationsProductCode:[^\]]+\]/g, "").trim();
 }
 
 function inventoryStatusLabel(status: string) {
@@ -91,7 +97,11 @@ export default function DirectInventorySection() {
   const [unitsLoading, setUnitsLoading] = useState(false);
   const [discardingId, setDiscardingId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+  const [storeEditorProduct, setStoreEditorProduct] = useState<FinishedGood | null>(null);
+  const [storeForm, setStoreForm] = useState({ price: "", description: "", imageUrl: "" });
+  const [imageUploading, setImageUploading] = useState(false);
 
   const copyToClipboard = useCallback(async (value: string | null | undefined, label: string) => {
     if (!value) return toast.error(`${label} no disponible`);
@@ -190,23 +200,66 @@ export default function DirectInventorySection() {
     }
   };
 
-  const publishProduct = async (item: FinishedGood) => {
+  const openStoreEditor = (item: FinishedGood) => {
     const existing = getStoreProduct(storeProducts, item);
-    const value = window.prompt("Precio de venta", existing?.price ? String(existing.price) : "");
-    if (value === null) return;
-    const price = Number(value);
+    setStoreEditorProduct(item);
+    setStoreForm({
+      price: existing?.price ? String(existing.price) : "",
+      description: stripOperationsMarker(existing?.description),
+      imageUrl: existing?.image || "",
+    });
+  };
+
+  const uploadProductImage = async (file: File) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      return toast.error("Usa una imagen JPG, PNG o WebP");
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return toast.error("La imagen debe pesar menos de 5 MB");
+    }
+
+    setImageUploading(true);
+    try {
+      const payload = new FormData();
+      payload.set("file", file);
+      payload.set("bucket", "general");
+      payload.set("type", "product");
+      const res = await fetch("/api/upload", { method: "POST", body: payload });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) throw new Error(data.error || "No se pudo subir la imagen");
+      setStoreForm((value) => ({ ...value, imageUrl: data.url }));
+      toast.success("Imagen del producto cargada");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al cargar imagen");
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const publishProduct = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!storeEditorProduct) return;
+
+    const price = Number(storeForm.price);
     if (!Number.isFinite(price) || price <= 0) return toast.error("Precio inválido");
 
+    const item = storeEditorProduct;
     setPublishingId(item.id);
     try {
       const res = await fetch(`/api/admin/operations/finished-goods/${item.id}/publish-to-store`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "publish", price }),
+        body: JSON.stringify({
+          action: "publish",
+          price,
+          description: storeForm.description.trim() || null,
+          ...(storeForm.imageUrl ? { imageUrl: storeForm.imageUrl } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo publicar");
-      toast.success("Publicado en Tienda");
+      toast.success("Producto e imagen actualizados en Tienda");
+      setStoreEditorProduct(null);
       await loadData({ silent: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al publicar");
@@ -231,6 +284,32 @@ export default function DirectInventorySection() {
       toast.error(error instanceof Error ? error.message : "Error al ocultar");
     } finally {
       setPublishingId(null);
+    }
+  };
+
+  const deleteProduct = async (item: FinishedGood) => {
+    const confirmed = window.confirm(
+      `¿Eliminar "${item.name}"? Esta acción solo se permitirá si el producto no tiene producción, inventario, pedidos ni historial asociado.`
+    );
+    if (!confirmed) return;
+
+    setDeletingId(item.id);
+    try {
+      const res = await fetch(`/api/admin/operations/finished-goods/${item.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo eliminar el producto");
+      toast.success("Producto eliminado");
+      if (unitsProduct?.id === item.id) {
+        setUnitsProduct(null);
+        setUnits([]);
+        setSelectedUnitId(null);
+      }
+      if (storeEditorProduct?.id === item.id) setStoreEditorProduct(null);
+      await loadData({ silent: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al eliminar producto");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -324,7 +403,7 @@ export default function DirectInventorySection() {
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex flex-wrap justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => loadUnits(item)}
@@ -333,24 +412,43 @@ export default function DirectInventorySection() {
                           <Eye className="h-3.5 w-3.5" /> Unidades
                         </button>
                         {published ? (
-                          <button
-                            type="button"
-                            onClick={() => unpublishProduct(item)}
-                            disabled={publishingId === item.id}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                          >
-                            Ocultar
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openStoreEditor(item)}
+                              disabled={publishingId === item.id}
+                              className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-emerald-700 disabled:opacity-50"
+                            >
+                              <Pencil className="h-3.5 w-3.5" /> Tienda
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => unpublishProduct(item)}
+                              disabled={publishingId === item.id}
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                            >
+                              Ocultar
+                            </button>
+                          </>
                         ) : (
                           <button
                             type="button"
-                            onClick={() => publishProduct(item)}
+                            onClick={() => openStoreEditor(item)}
                             disabled={publishingId === item.id}
                             className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-white disabled:opacity-50"
                           >
                             <Store className="h-3.5 w-3.5" /> Publicar
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => void deleteProduct(item)}
+                          disabled={deletingId === item.id}
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-red-700 disabled:opacity-50"
+                          title="Eliminar producto creado por error"
+                        >
+                          {deletingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Eliminar
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -386,6 +484,85 @@ export default function DirectInventorySection() {
               <button type="button" onClick={() => setShowCreate(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
               <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Crear
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {storeEditorProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+          <form onSubmit={publishProduct} className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-2xl dark:bg-slate-950">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Tienda del cliente</p>
+                <h3 className="mt-1 text-xl font-black text-slate-950 dark:text-white">{storeEditorProduct.name}</h3>
+                <p className="mt-1 font-mono text-[10px] font-bold text-primary">{storeEditorProduct.code}</p>
+              </div>
+              <button type="button" onClick={() => setStoreEditorProduct(null)} className="rounded-xl border border-slate-200 p-2 text-slate-400 dark:border-slate-700"><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="mt-5 grid gap-5 md:grid-cols-[minmax(0,1fr)_240px]">
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Precio de venta</span>
+                  <input
+                    required
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={storeForm.price}
+                    onChange={(event) => setStoreForm((value) => ({ ...value, price: event.target.value }))}
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold dark:border-slate-700 dark:bg-slate-900"
+                    placeholder="25.00"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Descripción para el cliente</span>
+                  <textarea
+                    rows={4}
+                    value={storeForm.description}
+                    onChange={(event) => setStoreForm((value) => ({ ...value, description: event.target.value }))}
+                    className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900"
+                    placeholder="Describe qué recibe el cliente y para qué sirve."
+                  />
+                </label>
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition hover:border-primary/40 hover:bg-primary/5 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                  {imageUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {imageUploading ? "Subiendo imagen" : storeForm.imageUrl ? "Cambiar imagen" : "Subir imagen del producto"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={imageUploading}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadProductImage(file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                <p className="text-[10px] font-semibold leading-relaxed text-slate-400">
+                  JPG, PNG o WebP · máximo 5 MB. La imagen se optimiza automáticamente y se mostrará en la tienda del cliente.
+                </p>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+                {storeForm.imageUrl ? (
+                  <img src={storeForm.imageUrl} alt={storeEditorProduct.name} className="aspect-square h-full w-full object-contain p-4" />
+                ) : (
+                  <div className="flex aspect-square flex-col items-center justify-center gap-3 p-5 text-center text-slate-400">
+                    <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-950"><ImageIcon className="h-8 w-8" /></div>
+                    <p className="text-xs font-bold">Sin imagen todavía</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => setStoreEditorProduct(null)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
+              <button type="submit" disabled={publishingId === storeEditorProduct.id || imageUploading} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50">
+                {publishingId === storeEditorProduct.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />} Guardar y publicar
               </button>
             </div>
           </form>
