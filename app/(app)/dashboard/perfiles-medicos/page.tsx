@@ -862,9 +862,12 @@ function ProfileCard({
                </div>
             </button>
             <input type="file" id={`profile-photo-input-${profile.id}`} className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
-            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
-               {isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
-            </span>
+            <div className="min-w-0">
+              <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
+                 {isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
+              </span>
+              <p className="mt-1.5 text-[10px] font-semibold text-slate-400">Toca la foto para cambiarla</p>
+            </div>
            </div>
          </div>
 
@@ -916,6 +919,21 @@ function ProfileCard({
                         <Footprints className="h-3.5 w-3.5" /> Retorno seguro
                       </div>
                     )}
+                    {profile.minorModuleEnabled && (
+                      <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-blue-700">Menor activo</span>
+                    )}
+                    {profile.elderModuleEnabled && (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700">Anciano activo</span>
+                    )}
+                    {profile.specialNeedsModuleEnabled && (
+                      <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700">Especial activo</span>
+                    )}
+                    {profile.petModuleEnabled && (
+                      <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700">Mascota activa</span>
+                    )}
+                    {profile.workModuleEnabled && (
+                      <span className="rounded-full border border-slate-300 bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-700">Laboral activo</span>
+                    )}
                   </div>
                </div>
 
@@ -961,18 +979,22 @@ function ProfileCard({
                </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-               <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
-                  <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Teléfono</p>
-                  <p className="text-sm font-medium text-slate-800">{profile.phone || "No indicado"}</p>
+            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+               <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Teléfono</p>
+                  <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{profile.phone || "No indicado"}</p>
                </div>
-               <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
-                  <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Alergias</p>
-                  <p className="line-clamp-2 text-sm font-medium leading-relaxed text-slate-800">{profile.allergies || "No indicado"}</p>
+               <div className="rounded-[1rem] border border-red-100 bg-red-50/55 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-red-600">Alergias</p>
+                  <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{profile.allergies || "No indicado"}</p>
                </div>
-               <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
-                  <p className="mb-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Condiciones</p>
-                  <p className="line-clamp-2 text-sm font-medium leading-relaxed text-slate-800">{profile.chronicConditions || "No indicado"}</p>
+               <div className="rounded-[1rem] border border-amber-100 bg-amber-50/55 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-700">Condiciones</p>
+                  <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{profile.chronicConditions || "No indicado"}</p>
+               </div>
+               <div className="rounded-[1rem] border border-blue-100 bg-blue-50/55 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Medicamentos</p>
+                  <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{profile.medications || "No indicado"}</p>
                </div>
             </div>
          </div>
