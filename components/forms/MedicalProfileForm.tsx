@@ -185,11 +185,16 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     };
     update(map[tab], enabled);
 
-    if (tab === "elder" && enabled) {
-      update("showVulnerabilityStatusPublic", true);
+    if (tab === "elder") {
+      update("showVulnerabilityStatusPublic", enabled);
+      if (!enabled) {
+        update("showSafeReturnPublic", false);
+      } else if ((form.safeReturnInstructions || "").trim()) {
+        update("showSafeReturnPublic", true);
+      }
     }
-    if (tab === "special" && enabled) {
-      update("showCommunicationStatusPublic", true);
+    if (tab === "special") {
+      update("showCommunicationStatusPublic", enabled);
     }
   };
 
