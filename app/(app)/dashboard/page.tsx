@@ -153,13 +153,13 @@ export default function DashboardPage() {
   const previewProfiles = allProfiles.slice(0, 2);
 
   return (
-    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-4 sm:space-y-6 md:space-y-8 animate-in fade-in duration-700">
       <section className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-12">
-          <div className="group relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.26)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-40px_rgba(15,23,42,0.28)] focus-within:shadow-[0_28px_70px_-40px_rgba(15,23,42,0.28)] sm:p-6 md:p-8 motion-reduce:transition-none dark:border-slate-200/80 dark:bg-white">
+          <div className="group relative overflow-hidden rounded-[1.65rem] border border-slate-200 bg-white p-4 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.26)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-40px_rgba(15,23,42,0.28)] focus-within:shadow-[0_28px_70px_-40px_rgba(15,23,42,0.28)] sm:rounded-[2rem] sm:p-6 md:p-8 motion-reduce:transition-none dark:border-slate-200/80 dark:bg-white">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(218,26,33,0.06),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.05),transparent_32%)]" />
             <div className="relative grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
-              <div className="space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.18)]">
                     <span className="h-2 w-2 rounded-full bg-[#DA1A21]" />
@@ -179,50 +179,50 @@ export default function DashboardPage() {
 
                 <div className="space-y-3">
                   <p className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500">Dashboard cliente</p>
-                  <h1 className="max-w-xl text-4xl font-black leading-[1.02] tracking-tight text-slate-950 sm:text-5xl md:text-6xl">
+                  <h1 className="max-w-xl text-[2.15rem] font-black leading-[0.98] tracking-[-0.045em] text-slate-950 min-[390px]:text-[2.35rem] sm:text-5xl sm:leading-[1.02] md:text-6xl">
                     {state.isInactive ? "Activa tu protección" : "Tu protección está lista"}
                   </h1>
-                  <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                  <p className="max-w-2xl text-[13px] leading-6 text-slate-600 sm:text-base sm:leading-7">
                     Gestiona perfiles, dispositivos y acceso público desde una experiencia clara, ligera y premium.
                   </p>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.25)]">
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Estado</p>
-                    <p className="mt-2 text-sm font-black text-slate-950">{state.isInactive ? "Lista para activar" : "Cuenta activa"}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">Visión general de tu protección.</p>
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="rounded-[1rem] sm:rounded-[1.2rem] border border-slate-200 bg-slate-50 p-2.5 sm:p-4 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.25)]">
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-slate-500 sm:text-[10px] sm:tracking-[0.22em]">Estado</p>
+                    <p className="mt-1.5 text-[11px] font-black leading-tight text-slate-950 sm:mt-2 sm:text-sm">{state.isInactive ? "Lista para activar" : "Cuenta activa"}</p>
+                    <p className="mt-1 hidden text-xs leading-5 text-slate-500 sm:block">Visión general de tu protección.</p>
                   </div>
-                  <div className="rounded-[1.2rem] border border-slate-200 bg-white p-4 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.25)]">
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Chips activos</p>
-                    <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{activeChips}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">Seguimiento de tus dispositivos vinculados.</p>
+                  <div className="rounded-[1rem] sm:rounded-[1.2rem] border border-slate-200 bg-white p-2.5 sm:p-4 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.25)]">
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-slate-500 sm:text-[10px] sm:tracking-[0.22em]">Chips activos</p>
+                    <p className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:mt-2 sm:text-3xl">{activeChips}</p>
+                    <p className="mt-1 hidden text-xs leading-5 text-slate-500 sm:block">Seguimiento de tus dispositivos vinculados.</p>
                   </div>
-                  <div className="rounded-[1.2rem] border border-slate-200 bg-white p-4 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.25)]">
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Perfil público</p>
-                    <p className="mt-2 text-sm font-black text-slate-950">{hasActiveChip ? "Disponible" : "Pendiente"}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">Estado visible para emergencias.</p>
+                  <div className="rounded-[1rem] sm:rounded-[1.2rem] border border-slate-200 bg-white p-2.5 sm:p-4 shadow-[0_16px_34px_-28px_rgba(15,23,42,0.25)]">
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-slate-500 sm:text-[10px] sm:tracking-[0.22em]">Perfil público</p>
+                    <p className="mt-1.5 text-[11px] font-black leading-tight text-slate-950 sm:mt-2 sm:text-sm">{hasActiveChip ? "Disponible" : "Pendiente"}</p>
+                    <p className="mt-1 hidden text-xs leading-5 text-slate-500 sm:block">Estado visible para emergencias.</p>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2.5 pt-1 sm:flex-row sm:gap-3">
+                <div className="grid grid-cols-2 gap-2.5 pt-1 sm:flex sm:flex-row sm:gap-3">
                   <Link
                     href={primaryCtaHref}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] bg-[#DA1A21] px-5 py-3.25 text-sm font-black text-white shadow-[0_18px_36px_-18px_rgba(218,26,33,0.35)] transition-all duration-200 ease-out hover:-translate-y-px hover:bg-[#B9141B] hover:shadow-[0_22px_40px_-20px_rgba(218,26,33,0.45)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] bg-[#DA1A21] px-3 py-3 text-[12px] font-black text-white sm:px-5 sm:py-3.25 sm:text-sm shadow-[0_18px_36px_-18px_rgba(218,26,33,0.35)] transition-all duration-200 ease-out hover:-translate-y-px hover:bg-[#B9141B] hover:shadow-[0_22px_40px_-20px_rgba(218,26,33,0.45)] active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none sm:w-auto"
                   >
                     {primaryCtaLabel}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                   <Link
                     href="/dashboard/perfiles-medicos"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] border border-slate-200 bg-white px-5 py-3.25 text-sm font-black text-slate-800 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.18)] transition-all duration-200 ease-out hover:-translate-y-px hover:border-slate-300 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none sm:w-auto"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] border border-slate-200 bg-white px-3 py-3 text-[12px] font-black text-slate-800 sm:px-5 sm:py-3.25 sm:text-sm shadow-[0_14px_30px_-24px_rgba(15,23,42,0.18)] transition-all duration-200 ease-out hover:-translate-y-px hover:border-slate-300 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none sm:w-auto"
                   >
                     Ver perfiles
                   </Link>
                 </div>
               </div>
 
-              <div className="rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fafbfc_100%)] p-4 shadow-[0_18px_42px_-28px_rgba(15,23,42,0.22)] sm:p-5">
+              <div className="rounded-[1.3rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fafbfc_100%)] p-3.5 shadow-[0_18px_42px_-28px_rgba(15,23,42,0.22)] sm:rounded-[1.5rem] sm:p-5">
                 <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4">
                   <div className="space-y-1">
                     <p className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-600">
@@ -230,7 +230,7 @@ export default function DashboardPage() {
                     </p>
                     <h2 className="text-xl font-black tracking-tight text-slate-950 sm:text-2xl">Perfiles médicos</h2>
                   </div>
-                  <Link href="/dashboard/perfiles-medicos" className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-700 transition-all duration-200 hover:border-slate-300 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none">
+                  <Link href="/dashboard/perfiles-medicos" className="rounded-full border border-slate-200 bg-white px-2.5 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-slate-700 sm:px-3 sm:text-xs sm:tracking-[0.18em] transition-all duration-200 hover:border-slate-300 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none">
                     Gestionar
                   </Link>
                 </div>
@@ -241,7 +241,7 @@ export default function DashboardPage() {
                     const hasChip = (profile.assignedChips?.length || 0) > 0;
                     const initials = `${profile.firstName?.[0] || ""}${profile.lastName?.[0] || ""}`.trim().toUpperCase() || "PR";
                     return (
-                      <div key={profile.id} className="flex items-center gap-3 rounded-[1.15rem] border border-slate-200 bg-white p-3.5 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.2)] transition-all duration-200 ease-out hover:-translate-y-px hover:border-slate-300 hover:shadow-[0_18px_36px_-26px_rgba(15,23,42,0.22)]">
+                      <div key={profile.id} className="flex items-center gap-2.5 rounded-[1rem] border border-slate-200 bg-white p-3 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.2)] sm:gap-3 sm:rounded-[1.15rem] sm:p-3.5 transition-all duration-200 ease-out hover:-translate-y-px hover:border-slate-300 hover:shadow-[0_18px_36px_-26px_rgba(15,23,42,0.22)]">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-slate-950 text-sm font-black text-white shadow-[0_12px_24px_-18px_rgba(15,23,42,0.4)]">
                           {initials}
                         </div>
@@ -301,7 +301,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/dashboard/pedidos"
-            className="inline-flex items-center justify-center gap-2 rounded-[1.05rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-black text-slate-800 transition-all duration-200 ease-out hover:-translate-y-px hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-offset-slate-950"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-[1.05rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-black text-slate-800 lg:w-auto transition-all duration-200 ease-out hover:-translate-y-px hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-offset-slate-950"
           >
             Ver pedidos
           </Link>
