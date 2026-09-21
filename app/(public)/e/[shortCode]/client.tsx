@@ -829,18 +829,10 @@ function petAgeLabel(raw: string | null) {
 
 function PetRecoveryPage({
   profile,
-  scanId,
   scanLocation,
-  manualAlertStatus,
-  manualAlertMessage,
-  notifyEmergencyContacts,
 }: {
   profile: EmergencyProfile;
-  scanId: string | null;
   scanLocation: string;
-  manualAlertStatus: "idle" | "sending" | "sent" | "error";
-  manualAlertMessage: string;
-  notifyEmergencyContacts: () => void;
 }) {
   const pet = profile.contextModules?.pet;
   if (!pet) return null;
@@ -974,21 +966,6 @@ function PetRecoveryPage({
           <div className="rounded-[1.5rem] border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs font-semibold leading-5 text-cyan-900">
             El escaneo registró una ubicación aproximada para ayudar a los contactos a ubicar dónde fue encontrada.
           </div>
-        )}
-
-        {scanId && (
-          <section className="rounded-[2rem] border border-red-100 bg-white p-5 shadow-sm">
-            <button
-              type="button"
-              onClick={notifyEmergencyContacts}
-              disabled={manualAlertStatus === "sending" || manualAlertStatus === "sent"}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-5 text-sm font-black text-white disabled:opacity-60"
-            >
-              {manualAlertStatus === "sending" ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellRing className="h-4 w-4" />}
-              {manualAlertStatus === "sent" ? "Aviso enviado" : "Avisar que encontré esta mascota"}
-            </button>
-            {manualAlertMessage && <p className="mt-3 text-center text-xs font-semibold text-slate-600">{manualAlertMessage}</p>}
-          </section>
         )}
 
         <PublicContactsBlock profile={profile} />
@@ -1333,11 +1310,7 @@ export default function EmergencyPage() {
     return (
       <PetRecoveryPage
         profile={profile}
-        scanId={scanId}
         scanLocation={scanLocation}
-        manualAlertStatus={manualAlertStatus}
-        manualAlertMessage={manualAlertMessage}
-        notifyEmergencyContacts={notifyEmergencyContacts}
       />
     );
   }
