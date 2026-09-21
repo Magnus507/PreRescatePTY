@@ -121,6 +121,12 @@ export async function POST(req: NextRequest) {
     }
 
     const safeBody = validation.data;
+    if (safeBody.petModuleEnabled) {
+      const pet = safeBody.petModuleData;
+      if (!pet?.petName?.trim() || !pet?.species?.trim()) {
+        return ApiResponse.error("Completa el nombre y la especie de la mascota", { status: 400 });
+      }
+    }
     const { 
       firstName, lastName, displayNamePublic, birthDate: rawBirthDate, sex, bloodType, phone,
       allergies, chronicConditions, medications, additionalNotes,
