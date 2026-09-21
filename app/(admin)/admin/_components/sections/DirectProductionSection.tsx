@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, ClipboardCheck, Copy, ExternalLink, Factory, Loader2, PackageCheck, Plus, Printer, RefreshCw, X } from "lucide-react";
+import { Check, ClipboardCheck, Copy, Download, ExternalLink, Factory, Loader2, PackageCheck, Plus, Printer, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { buildProductionQcChecklist } from "@/lib/operations/production-qc-checklist";
 
@@ -81,6 +81,215 @@ function getUnit(item: DigitalItem) {
     || null;
 }
 
+const STICKER_TEMPLATE_PATH = "/sticker-official.png";
+const STICKER_REFERENCE = {
+  width: 2048,
+  height: 1365,
+  qrX: 1434,
+  qrY: 506,
+  qrSize: 440,
+} as const;
+
+function sanitizeFilename(value: string) {
+  return value.trim().replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-");
+}
+
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function getDigitalItemQrTarget(item: DigitalItem) {
+  if (item.qrUrl) return item.qrUrl;
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://www.prerescatepty.com";
+  if (item.shortCode) return `${origin}/e/${item.shortCode}`;
+  if (item.nfcUrl) {
+    try {
+      const url = new URL(item.nfcUrl, origin);
+      url.searchParams.delete("source");
+      return url.toString();
+    } catch {
+      return item.nfcUrl;
+    }
+  }
+  return item.activationUrl || null;
+}
+
+async function fetchQrPng(targetUrl: string) {
+  const response = await fetch(`/api/public/qr?data=${encodeURIComponent(targetUrl)}`, { cache: "no-store" });
+  if (!response.ok) throw new Error("No se pudo generar el QR");
+  return response.blob();
+}
+
+function loadBrowserImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo cargar la plantilla del sticker"));
+    image.src = src;
+  });
+}
+
+async function renderStickerPng(targetUrl: string, preparedQr?: Blob) {
+  const qrBlob = preparedQr || await fetchQrPng(targetUrl);
+  const qrObjectUrl = URL.createObjectURL(qrBlob);
+
+  try {
+    const [template, qrImage] = await Promise.all([
+      loadBrowserImage(STICKER_TEMPLATE_PATH),
+      loadBrowserImage(qrObjectUrl),
+    ]);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = template.naturalWidth || template.width;
+    canvas.height = template.naturalHeight || template.height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("No se pudo preparar el sticker");
+
+    context.drawImage(template, 0, 0, canvas.width, canvas.height);
+
+    const scaleX = canvas.width / STICKER_REFERENCE.width;
+    const scaleY = canvas.height / STICKER_REFERENCE.height;
+    const qrSize = Math.round(STICKER_REFERENCE.qrSize * Math.min(scaleX, scaleY));
+    const qrX = Math.round(STICKER_REFERENCE.qrX * scaleX);
+    const qrY = Math.round(STICKER_REFERENCE.qrY * scaleY);
+
+    context.imageSmoothingEnabled = false;
+    context.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+    const output = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!output) throw new Error("No se pudo exportar el sticker");
+    return output;
+  } finally {
+    URL.revokeObjectURL(qrObjectUrl);
+  }
+}
+
+function escapeCsv(value: string | null | undefined) {
+  const normalized = value ?? "";
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function buildActivationText(item: DigitalItem, targetUrl: string | null) {
+  return [
+    `IDENTIFICADOR: ${item.internalLabel}`,
+    `CODIGO DE ACTIVACION: ${item.activationCode || "PENDIENTE"}`,
+    `URL PUBLICA: ${targetUrl || "PENDIENTE"}`,
+    "",
+  ].join("\n");
+}
+
+function buildCodesCsv(items: DigitalItem[]) {
+  const header = ["IDENTIFICADOR", "CODIGO_ACTIVACION", "URL_PUBLICA"];
+  const rows = items.map((item) => {
+    const target = getDigitalItemQrTarget(item);
+    return [
+      escapeCsv(item.internalLabel),
+      escapeCsv(item.activationCode || "PENDIENTE"),
+      escapeCsv(target || "PENDIENTE"),
+    ].join(",");
+  });
+  return new Blob([[header.join(","), ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
+}
+
+function crc32(bytes: Uint8Array) {
+  let crc = 0xffffffff;
+  for (let index = 0; index < bytes.length; index += 1) {
+    crc ^= bytes[index];
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function asBlobPart(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
+async function createStoredZip(files: Array<{ name: string; blob: Blob }>) {
+  const encoder = new TextEncoder();
+  const entries: Array<{
+    nameBytes: Uint8Array;
+    data: Uint8Array;
+    crc: number;
+    offset: number;
+  }> = [];
+  const chunks: BlobPart[] = [];
+  let offset = 0;
+
+  for (const file of files) {
+    const nameBytes = encoder.encode(file.name);
+    const data = new Uint8Array(await file.blob.arrayBuffer());
+    const checksum = crc32(data);
+    const localHeader = new Uint8Array(30);
+    const view = new DataView(localHeader.buffer);
+    view.setUint32(0, 0x04034b50, true);
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 0x0800, true);
+    view.setUint16(8, 0, true);
+    view.setUint16(10, 0, true);
+    view.setUint16(12, 0, true);
+    view.setUint32(14, checksum, true);
+    view.setUint32(18, data.byteLength, true);
+    view.setUint32(22, data.byteLength, true);
+    view.setUint16(26, nameBytes.byteLength, true);
+    view.setUint16(28, 0, true);
+
+    entries.push({ nameBytes, data, crc: checksum, offset });
+    chunks.push(asBlobPart(localHeader), asBlobPart(nameBytes), asBlobPart(data));
+    offset += localHeader.byteLength + nameBytes.byteLength + data.byteLength;
+  }
+
+  const centralDirectoryOffset = offset;
+
+  for (const entry of entries) {
+    const centralHeader = new Uint8Array(46);
+    const view = new DataView(centralHeader.buffer);
+    view.setUint32(0, 0x02014b50, true);
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 20, true);
+    view.setUint16(8, 0x0800, true);
+    view.setUint16(10, 0, true);
+    view.setUint16(12, 0, true);
+    view.setUint16(14, 0, true);
+    view.setUint32(16, entry.crc, true);
+    view.setUint32(20, entry.data.byteLength, true);
+    view.setUint32(24, entry.data.byteLength, true);
+    view.setUint16(28, entry.nameBytes.byteLength, true);
+    view.setUint16(30, 0, true);
+    view.setUint16(32, 0, true);
+    view.setUint16(34, 0, true);
+    view.setUint16(36, 0, true);
+    view.setUint32(38, 0, true);
+    view.setUint32(42, entry.offset, true);
+
+    chunks.push(asBlobPart(centralHeader), asBlobPart(entry.nameBytes));
+    offset += centralHeader.byteLength + entry.nameBytes.byteLength;
+  }
+
+  const centralDirectorySize = offset - centralDirectoryOffset;
+  const end = new Uint8Array(22);
+  const endView = new DataView(end.buffer);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(4, 0, true);
+  endView.setUint16(6, 0, true);
+  endView.setUint16(8, entries.length, true);
+  endView.setUint16(10, entries.length, true);
+  endView.setUint32(12, centralDirectorySize, true);
+  endView.setUint32(16, centralDirectoryOffset, true);
+  endView.setUint16(20, 0, true);
+  chunks.push(asBlobPart(end));
+
+  return new Blob(chunks, { type: "application/zip" });
+}
+
 export default function DirectProductionSection() {
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
   const [products, setProducts] = useState<FinishedGood[]>([]);
@@ -90,6 +299,7 @@ export default function DirectProductionSection() {
   const [detail, setDetail] = useState<ProductionOrder | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionKey, setActionKey] = useState<string | null>(null);
+  const [downloadKey, setDownloadKey] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [finishedGoodId, setFinishedGoodId] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -105,6 +315,91 @@ export default function DirectProductionSection() {
       toast.error(`No se pudo copiar ${label}`);
     }
   }, []);
+
+  const downloadQrPng = useCallback(async (item: DigitalItem) => {
+    const target = getDigitalItemQrTarget(item);
+    if (!target) return toast.error("QR no disponible para esta unidad");
+    const key = `qr-${item.id}`;
+    setDownloadKey(key);
+    try {
+      const blob = await fetchQrPng(target);
+      triggerBlobDownload(blob, `${sanitizeFilename(item.internalLabel)}-QR.png`);
+      toast.success("QR descargado");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo descargar el QR");
+    } finally {
+      setDownloadKey(null);
+    }
+  }, []);
+
+  const downloadStickerPng = useCallback(async (item: DigitalItem) => {
+    const target = getDigitalItemQrTarget(item);
+    if (!target) return toast.error("QR no disponible para esta unidad");
+    const key = `sticker-${item.id}`;
+    setDownloadKey(key);
+    try {
+      const sticker = await renderStickerPng(target);
+      triggerBlobDownload(sticker, `${sanitizeFilename(item.internalLabel)}.png`);
+      toast.success("Sticker listo para producción");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo generar el sticker");
+    } finally {
+      setDownloadKey(null);
+    }
+  }, []);
+
+  const downloadActivationCode = useCallback((item: DigitalItem) => {
+    if (!item.activationCode) return toast.error("Código de activación no disponible");
+    const target = getDigitalItemQrTarget(item);
+    const blob = new Blob([buildActivationText(item, target)], { type: "text/plain;charset=utf-8" });
+    triggerBlobDownload(blob, `${sanitizeFilename(item.internalLabel)}-CODIGO.txt`);
+    toast.success("Código descargado");
+  }, []);
+
+  const downloadCodesCsv = useCallback(() => {
+    const items = detail?.digitalItems || [];
+    if (items.length === 0 || !detail) return toast.error("No hay unidades para descargar");
+    triggerBlobDownload(buildCodesCsv(items), `${sanitizeFilename(detail.code)}-codigos.csv`);
+    toast.success("Listado de códigos descargado");
+  }, [detail]);
+
+  const downloadBatchAssets = useCallback(async () => {
+    const items = detail?.digitalItems || [];
+    if (items.length === 0 || !detail) return toast.error("No hay unidades para descargar");
+
+    setDownloadKey("batch");
+    try {
+      const files: Array<{ name: string; blob: Blob }> = [];
+
+      for (const item of items) {
+        const safeLabel = sanitizeFilename(item.internalLabel);
+        const target = getDigitalItemQrTarget(item);
+
+        if (target) {
+          const qrBlob = await fetchQrPng(target);
+          files.push({ name: `qr/${safeLabel}-QR.png`, blob: qrBlob });
+          const stickerBlob = await renderStickerPng(target, qrBlob);
+          files.push({ name: `stickers/${safeLabel}.png`, blob: stickerBlob });
+        }
+
+        const codeBlob = new Blob([buildActivationText(item, target)], { type: "text/plain;charset=utf-8" });
+        files.push({ name: `codigos/${safeLabel}-CODIGO.txt`, blob: codeBlob });
+      }
+
+      files.push({
+        name: `codigos/${sanitizeFilename(detail.code)}-codigos.csv`,
+        blob: buildCodesCsv(items),
+      });
+
+      const zip = await createStoredZip(files);
+      triggerBlobDownload(zip, `${sanitizeFilename(detail.code)}-produccion.zip`);
+      toast.success("Lote de producción descargado");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo generar el ZIP");
+    } finally {
+      setDownloadKey(null);
+    }
+  }, [detail]);
 
   const loadDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
@@ -292,6 +587,16 @@ export default function DirectProductionSection() {
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div><p className="font-mono text-xs font-black text-primary">{detail.code}</p><h4 className="mt-1 text-xl font-black text-slate-950">{detail.title}</h4></div>
                 <div className="flex flex-wrap gap-2">
+                  {Boolean(detail.digitalItems?.length) && (
+                    <>
+                      <button type="button" onClick={downloadCodesCsv} disabled={Boolean(downloadKey)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-700 disabled:opacity-50">
+                        <Download className="h-4 w-4" /> Códigos CSV
+                      </button>
+                      <button type="button" onClick={() => void downloadBatchAssets()} disabled={Boolean(downloadKey)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50">
+                        {downloadKey === "batch" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Descargar lote ZIP
+                      </button>
+                    </>
+                  )}
                   {(!detail.digitalItems || detail.digitalItems.length === 0) && !["completed", "cancelled"].includes(detail.status) && (
                     <button type="button" onClick={() => runAction("prepare", `/api/admin/operations/production-orders/${detail.id}/prepare-digital-items`, "Unidades digitales creadas", { quantity: detail.plannedQuantity })} disabled={Boolean(actionKey)} className="rounded-xl bg-violet-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50">Generar unidades</button>
                   )}
@@ -331,6 +636,9 @@ export default function DirectProductionSection() {
                         <div className="flex flex-wrap gap-2">
                           {item.nfcUrl && <button type="button" onClick={() => copyToClipboard(item.nfcUrl, "URL NFC")} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-700"><Copy className="h-3.5 w-3.5" /> NFC</button>}
                           {item.qrUrl && <a href={item.qrUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-700"><ExternalLink className="h-3.5 w-3.5" /> QR</a>}
+                          {getDigitalItemQrTarget(item) && <button type="button" onClick={() => void downloadQrPng(item)} disabled={Boolean(downloadKey)} className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-sky-700 disabled:opacity-50">{downloadKey === `qr-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} QR PNG</button>}
+                          {getDigitalItemQrTarget(item) && <button type="button" onClick={() => void downloadStickerPng(item)} disabled={Boolean(downloadKey)} className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-violet-700 disabled:opacity-50">{downloadKey === `sticker-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Sticker</button>}
+                          {item.activationCode && <button type="button" onClick={() => downloadActivationCode(item)} disabled={Boolean(downloadKey)} className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-amber-700 disabled:opacity-50"><Download className="h-3.5 w-3.5" /> Código</button>}
                           {!item.nfcProgrammed && <button type="button" onClick={() => runAction(`nfc-${item.id}`, `/api/admin/operations/production-orders/${detail.id}/unit-preparation/${item.id}/nfc-programmed`, "NFC marcado")} disabled={Boolean(actionKey)} className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-sky-700 disabled:opacity-50">NFC listo</button>}
                           {!item.qrPrepared && <button type="button" onClick={() => runAction(`qr-${item.id}`, `/api/admin/operations/production-orders/${detail.id}/unit-preparation/${item.id}/qr-prepared`, "QR marcado")} disabled={Boolean(actionKey)} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-emerald-700 disabled:opacity-50">QR listo</button>}
                           {item.status === "printed" && <button type="button" onClick={() => runAction(`assembly-${item.id}`, `/api/admin/operations/production-orders/${detail.id}/unit-assembly/${item.id}/assembled`, "Unidad ensamblada")} disabled={Boolean(actionKey)} className="rounded-lg bg-violet-600 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-white disabled:opacity-50">Ensamblar</button>}
