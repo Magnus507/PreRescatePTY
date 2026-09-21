@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
   Baby,
@@ -12,6 +13,8 @@ import {
   Info,
   Pill,
   ShieldAlert,
+  ShieldCheck,
+  Sparkles,
   Stethoscope,
   UserRound,
 } from "lucide-react";
@@ -98,7 +101,8 @@ interface ProfileFormProps {
   disabled?: boolean;
 }
 
-type OptionalTab = "minor" | "elder" | "special" | "pet" | "work";
+type OptionalTab = "minor" | "elder" | "special" | "pet" | "work" | "insurance";
+type TabTone = "blue" | "amber" | "violet" | "teal" | "slate" | "emerald";
 
 const OPTIONAL_TABS: Array<{
   id: OptionalTab;
@@ -106,6 +110,7 @@ const OPTIONAL_TABS: Array<{
   shortLabel: string;
   description: string;
   icon: React.ElementType;
+  tone: TabTone;
 }> = [
   {
     id: "minor",
@@ -113,6 +118,7 @@ const OPTIONAL_TABS: Array<{
     shortLabel: "Menores",
     description: "Responsable, escuela, pediatra e instrucciones de entrega segura.",
     icon: Baby,
+    tone: "blue",
   },
   {
     id: "elder",
@@ -120,13 +126,15 @@ const OPTIONAL_TABS: Array<{
     shortLabel: "Ancianos",
     description: "Cuidador, movilidad, memoria y apoyo de retorno seguro.",
     icon: Crown,
+    tone: "amber",
   },
   {
     id: "special",
-    label: "Niños especiales",
-    shortLabel: "Especial",
-    description: "Comunicación, sensibilidad, regulación y apoyos de emergencia.",
+    label: "Necesidades de apoyo",
+    shortLabel: "Apoyo",
+    description: "Comunicación, regulación sensorial, movilidad y apoyos de emergencia.",
     icon: HeartHandshake,
+    tone: "violet",
   },
   {
     id: "pet",
@@ -134,6 +142,7 @@ const OPTIONAL_TABS: Array<{
     shortLabel: "Mascotas",
     description: "Mascota o animal de asistencia, veterinario y cuidados importantes.",
     icon: Cat,
+    tone: "teal",
   },
   {
     id: "work",
@@ -141,11 +150,65 @@ const OPTIONAL_TABS: Array<{
     shortLabel: "Laboral",
     description: "Lugar de trabajo, contacto responsable y notas de seguridad.",
     icon: BriefcaseBusiness,
+    tone: "slate",
+  },
+  {
+    id: "insurance",
+    label: "Seguro privado",
+    shortLabel: "Seguro",
+    description: "Aseguradora, hospital preferido, médico tratante y contactos de asistencia.",
+    icon: ShieldCheck,
+    tone: "emerald",
   },
 ];
 
+const TAB_TONE_STYLES: Record<TabTone, {
+  panel: string;
+  icon: string;
+  eyebrow: string;
+  glow: string;
+}> = {
+  blue: {
+    panel: "border-blue-200 bg-blue-50/45",
+    icon: "bg-blue-600 text-white",
+    eyebrow: "text-blue-700",
+    glow: "bg-blue-400/20",
+  },
+  amber: {
+    panel: "border-amber-200 bg-amber-50/50",
+    icon: "bg-amber-500 text-white",
+    eyebrow: "text-amber-700",
+    glow: "bg-amber-400/20",
+  },
+  violet: {
+    panel: "border-violet-200 bg-violet-50/50",
+    icon: "bg-violet-600 text-white",
+    eyebrow: "text-violet-700",
+    glow: "bg-violet-400/20",
+  },
+  teal: {
+    panel: "border-teal-200 bg-teal-50/50",
+    icon: "bg-teal-600 text-white",
+    eyebrow: "text-teal-700",
+    glow: "bg-teal-400/20",
+  },
+  slate: {
+    panel: "border-slate-200 bg-slate-50/80",
+    icon: "bg-slate-800 text-white",
+    eyebrow: "text-slate-700",
+    glow: "bg-slate-400/20",
+  },
+  emerald: {
+    panel: "border-emerald-200 bg-emerald-50/50",
+    icon: "bg-emerald-600 text-white",
+    eyebrow: "text-emerald-700",
+    glow: "bg-emerald-400/20",
+  },
+};
+
 export function MedicalProfileForm({ form, onChange, disabled = false }: ProfileFormProps) {
   const [activeTab, setActiveTab] = useState<OptionalTab>("minor");
+  const reduceMotion = useReducedMotion();
 
   const update = (field: string, value: ProfileFormValue) => onChange(field, value);
 
@@ -166,6 +229,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     special: form.specialNeedsModuleEnabled === true,
     pet: form.petModuleEnabled === true,
     work: form.workModuleEnabled === true,
+    insurance: form.isInsured === true,
   } satisfies Record<OptionalTab, boolean>;
 
   const enabledCount = Object.values(moduleEnabled).filter(Boolean).length;
@@ -176,7 +240,18 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   const workData = form.workModuleData ?? EMPTY_WORK_MODULE;
 
   const setModuleEnabled = (tab: OptionalTab, enabled: boolean) => {
-    const map: Record<OptionalTab, string> = {
+    if (tab === "insurance") {
+      update("isInsured", enabled);
+      if (!enabled) {
+        update("showInsuranceProviderPublic", false);
+        update("showPreferredHospitalPublic", false);
+        update("showPrimaryDoctorPublic", false);
+        update("showPrimaryDoctorPhonePublic", false);
+      }
+      return;
+    }
+
+    const map: Record<Exclude<OptionalTab, "insurance">, string> = {
       minor: "minorModuleEnabled",
       elder: "elderModuleEnabled",
       special: "specialNeedsModuleEnabled",
@@ -311,30 +386,38 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[1.65rem] border border-slate-200 bg-white shadow-[0_24px_64px_-46px_rgba(15,23,42,.34)]">
-        <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
+      <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-800/80 bg-[#07111f] shadow-[0_32px_90px_-46px_rgba(2,8,23,.7)]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[size:28px_28px] [mask-image:linear-gradient(to_bottom,black,transparent_70%)]" />
+        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-[#DA1A21]/20 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 top-4 h-52 w-52 rounded-full bg-blue-500/15 blur-3xl" />
+
+        <div className="relative border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">Módulos opcionales</p>
-              <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-slate-950 sm:text-2xl">Activa solo lo que aplique</h2>
-              <p className="mt-1 text-xs font-medium leading-5 text-slate-500 sm:text-sm">
-                Todos vienen desactivados. Al activar uno, sus datos pasan a formar parte de la ficha médica.
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-white/70 backdrop-blur">
+                <Sparkles className="h-3.5 w-3.5 text-red-400" />
+                Módulos personalizados
+              </div>
+              <h2 className="mt-3 text-[1.45rem] font-black tracking-[-0.04em] text-white sm:text-2xl">
+                Activa solo lo que aplica a este perfil
+              </h2>
+              <p className="mt-1.5 max-w-2xl text-xs font-medium leading-5 text-slate-300 sm:text-sm">
+                La información básica siempre permanece primero. Estos módulos aparecen únicamente cuando los activas.
               </p>
             </div>
-            <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black text-slate-600">
-              {enabledCount}/5 activos
-            </span>
+            <div className="shrink-0 rounded-[1rem] border border-white/10 bg-white/[0.07] px-3 py-2 text-center backdrop-blur">
+              <p className="text-lg font-black leading-none text-white">{enabledCount}</p>
+              <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">de 6 activos</p>
+            </div>
           </div>
-        </div>
 
-        <div className="border-b border-slate-100 bg-slate-50/70 px-2 py-2 sm:px-4">
-          <div role="tablist" aria-label="Módulos opcionales del perfil" className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-5 flex gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {OPTIONAL_TABS.map((tab) => {
               const Icon = tab.icon;
               const selected = activeTab === tab.id;
               const enabled = moduleEnabled[tab.id];
               return (
-                <button
+                <motion.button
                   key={tab.id}
                   type="button"
                   role="tab"
@@ -342,144 +425,149 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                   aria-controls={`profile-module-${tab.id}`}
                   id={`profile-tab-${tab.id}`}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`relative flex min-h-11 shrink-0 items-center gap-2 rounded-[1rem] border px-3 py-2 text-[11px] font-black transition active:scale-[.985] sm:px-4 sm:text-xs ${
+                  whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+                  className={`relative isolate flex min-h-12 shrink-0 items-center gap-2.5 overflow-hidden rounded-[1rem] border px-3.5 py-2.5 text-[11px] font-black transition-colors sm:px-4 sm:text-xs ${
                     selected
-                      ? "border-slate-900 bg-slate-950 text-white shadow-[0_12px_26px_-18px_rgba(15,23,42,.65)]"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      ? "border-white/20 text-slate-950"
+                      : "border-white/10 bg-white/[0.045] text-slate-300 hover:bg-white/[0.08] hover:text-white"
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span>{tab.shortLabel}</span>
-                  <span className={`h-2 w-2 rounded-full ${enabled ? "bg-emerald-400" : selected ? "bg-white/35" : "bg-slate-300"}`} />
-                </button>
+                  {selected && (
+                    <motion.span
+                      layoutId="medical-profile-active-tab"
+                      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 430, damping: 38 }}
+                      className="absolute inset-0 -z-10 rounded-[.95rem] bg-white shadow-[0_14px_30px_-18px_rgba(255,255,255,.7)]"
+                    />
+                  )}
+                  <Icon className={`h-4 w-4 ${selected ? "text-[#DA1A21]" : "text-current"}`} />
+                  <span className="whitespace-nowrap">{tab.shortLabel}</span>
+                  <span className={`h-2 w-2 rounded-full transition ${
+                    enabled ? "bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,.12)]" : selected ? "bg-slate-300" : "bg-white/20"
+                  }`} />
+                </motion.button>
               );
             })}
           </div>
         </div>
 
-        {OPTIONAL_TABS.map((tab) => {
-          if (activeTab !== tab.id) return null;
-          const Icon = tab.icon;
-          const enabled = moduleEnabled[tab.id];
-          return (
-            <div
-              key={tab.id}
-              id={`profile-module-${tab.id}`}
-              role="tabpanel"
-              aria-labelledby={`profile-tab-${tab.id}`}
-              tabIndex={0}
-              className="p-4 outline-none sm:p-6"
-            >
-              <div className={`rounded-[1.35rem] border p-4 sm:p-5 ${enabled ? "border-emerald-200 bg-emerald-50/35" : "border-slate-200 bg-slate-50/65"}`}>
-                <div className="flex items-start gap-3">
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] ${enabled ? "bg-emerald-600 text-white" : "bg-white text-slate-500 shadow-sm"}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h3 className="text-base font-black tracking-tight text-slate-950 sm:text-lg">{tab.label}</h3>
-                        <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{tab.description}</p>
+        <div className="relative bg-white">
+          <AnimatePresence mode="wait" initial={false}>
+            {OPTIONAL_TABS.map((tab) => {
+              if (activeTab !== tab.id) return null;
+              const Icon = tab.icon;
+              const enabled = moduleEnabled[tab.id];
+              const tone = TAB_TONE_STYLES[tab.tone];
+
+              return (
+                <motion.div
+                  key={tab.id}
+                  id={`profile-module-${tab.id}`}
+                  role="tabpanel"
+                  aria-labelledby={`profile-tab-${tab.id}`}
+                  tabIndex={0}
+                  initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+                  transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: "easeOut" }}
+                  className="relative p-4 outline-none sm:p-6"
+                >
+                  <div className={`pointer-events-none absolute right-2 top-2 h-28 w-28 rounded-full blur-3xl ${tone.glow}`} />
+                  <div className={`relative overflow-hidden rounded-[1.4rem] border p-4 sm:p-5 ${enabled ? tone.panel : "border-slate-200 bg-slate-50/70"}`}>
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
+                    <div className="flex items-start gap-3">
+                      <motion.div
+                        animate={reduceMotion ? undefined : { scale: enabled ? [1, 1.05, 1] : 1 }}
+                        transition={{ duration: 0.32 }}
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] shadow-[0_12px_30px_-22px_rgba(15,23,42,.55)] ${
+                          enabled ? tone.icon : "bg-white text-slate-500"
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </motion.div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className={`text-[9px] font-black uppercase tracking-[0.16em] ${enabled ? tone.eyebrow : "text-slate-400"}`}>
+                              {enabled ? "Módulo activo" : "Módulo opcional"}
+                            </p>
+                            <h3 className="mt-1 text-base font-black tracking-[-0.02em] text-slate-950 sm:text-lg">{tab.label}</h3>
+                            <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{tab.description}</p>
+                          </div>
+                          <ModuleActivation
+                            label={`Activar ${tab.label}`}
+                            checked={enabled}
+                            onChange={(checked) => setModuleEnabled(tab.id, checked)}
+                          />
+                        </div>
                       </div>
-                      <ModuleActivation
-                        label={`Activar ${tab.label}`}
-                        checked={enabled}
-                        onChange={(checked) => setModuleEnabled(tab.id, checked)}
-                      />
                     </div>
+
+                    {!enabled ? (
+                      <motion.div
+                        initial={reduceMotion ? false : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mt-4 rounded-[1rem] border border-dashed border-slate-300 bg-white/80 px-4 py-3 text-xs font-medium leading-5 text-slate-500"
+                      >
+                        Está desactivado. Actívalo para completar esta información y permitir que forme parte de la ficha cuando corresponda.
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={reduceMotion ? { duration: 0 } : { duration: 0.2, delay: 0.04 }}
+                        className="mt-5"
+                      >
+                        {tab.id === "minor" && (
+                          <MinorFields
+                            data={minorData}
+                            onChange={(key, value) => updateModuleField("minorModuleData", minorData as unknown as Record<string, unknown>, key as string, value)}
+                          />
+                        )}
+                        {tab.id === "elder" && (
+                          <ElderFields
+                            data={elderData}
+                            onChange={(key, value) => updateModuleField("elderModuleData", elderData as unknown as Record<string, unknown>, key as string, value)}
+                            legacy={{
+                              hasCognitiveImpairment: form.hasCognitiveImpairment ?? false,
+                              hasWanderingRisk: form.hasWanderingRisk ?? false,
+                              safeReturnInstructions: form.safeReturnInstructions || "",
+                            }}
+                            onLegacyChange={update}
+                          />
+                        )}
+                        {tab.id === "special" && (
+                          <SpecialNeedsFields
+                            data={specialNeedsData}
+                            onChange={(key, value) => updateModuleField("specialNeedsModuleData", specialNeedsData as unknown as Record<string, unknown>, key as string, value)}
+                            isNonVerbal={form.isNonVerbal ?? false}
+                            communicationAssistance={form.communicationAssistance || ""}
+                            onLegacyChange={update}
+                          />
+                        )}
+                        {tab.id === "pet" && (
+                          <PetFields
+                            data={petData}
+                            onChange={(key, value) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, key as string, value)}
+                          />
+                        )}
+                        {tab.id === "work" && (
+                          <WorkFields
+                            data={workData}
+                            onChange={(key, value) => updateModuleField("workModuleData", workData as unknown as Record<string, unknown>, key as string, value)}
+                          />
+                        )}
+                        {tab.id === "insurance" && (
+                          <InsuranceFields form={form} onChange={update} />
+                        )}
+                      </motion.div>
+                    )}
                   </div>
-                </div>
-
-                {!enabled ? (
-                  <div className="mt-4 rounded-[1rem] border border-dashed border-slate-300 bg-white/70 px-4 py-3 text-xs font-medium leading-5 text-slate-500">
-                    Este módulo está desactivado y no agrega información a la ficha. Actívalo si corresponde a este perfil.
-                  </div>
-                ) : (
-                  <div className="mt-5">
-                    {tab.id === "minor" && (
-                      <MinorFields
-                        data={minorData}
-                        onChange={(key, value) => updateModuleField("minorModuleData", minorData as unknown as Record<string, unknown>, key as string, value)}
-                      />
-                    )}
-                    {tab.id === "elder" && (
-                      <ElderFields
-                        data={elderData}
-                        onChange={(key, value) => updateModuleField("elderModuleData", elderData as unknown as Record<string, unknown>, key as string, value)}
-                        legacy={{
-                          hasCognitiveImpairment: form.hasCognitiveImpairment ?? false,
-                          hasWanderingRisk: form.hasWanderingRisk ?? false,
-                          safeReturnInstructions: form.safeReturnInstructions || "",
-                        }}
-                        onLegacyChange={update}
-                      />
-                    )}
-                    {tab.id === "special" && (
-                      <SpecialNeedsFields
-                        data={specialNeedsData}
-                        onChange={(key, value) => updateModuleField("specialNeedsModuleData", specialNeedsData as unknown as Record<string, unknown>, key as string, value)}
-                        isNonVerbal={form.isNonVerbal ?? false}
-                        communicationAssistance={form.communicationAssistance || ""}
-                        onLegacyChange={update}
-                      />
-                    )}
-                    {tab.id === "pet" && (
-                      <PetFields
-                        data={petData}
-                        onChange={(key, value) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, key as string, value)}
-                      />
-                    )}
-                    {tab.id === "work" && (
-                      <WorkFields
-                        data={workData}
-                        onChange={(key, value) => updateModuleField("workModuleData", workData as unknown as Record<string, unknown>, key as string, value)}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </section>
-
-      <details className="group overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 sm:p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[.95rem] bg-emerald-50 text-emerald-700">
-              <Stethoscope className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-950 sm:text-base">Seguro y médico tratante</h3>
-              <p className="text-[11px] font-medium text-slate-500">Información complementaria opcional.</p>
-            </div>
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-[.12em] text-slate-400 group-open:text-[#DA1A21]">Abrir</span>
-        </summary>
-        <div className="space-y-4 border-t border-slate-100 p-4 sm:p-5">
-          <CompactCheck label="Cuenta con seguro médico" checked={form.isInsured} onChange={(v) => update("isInsured", v)} />
-          {form.isInsured && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Aseguradora" value={form.insuranceProvider || ""} onChange={(v) => update("insuranceProvider", v)} placeholder="Ej: ASSA" />
-              <Field label="Número de póliza" value={form.insurancePolicyNumber || ""} onChange={(v) => update("insurancePolicyNumber", v)} placeholder="Privado" />
-              <Field label="Hospital preferido" value={form.preferredHospital || ""} onChange={(v) => update("preferredHospital", v)} placeholder="Ej: Hospital Nacional" />
-              <Field label="Teléfono de emergencia del seguro" value={form.insuranceEmergencyPhone || ""} onChange={(v) => update("insuranceEmergencyPhone", v)} placeholder="+507..." />
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Médico tratante" value={form.primaryDoctorName || ""} onChange={(v) => update("primaryDoctorName", v)} placeholder="Opcional" />
-            <Field label="Teléfono del médico" value={form.primaryDoctorPhone || ""} onChange={(v) => update("primaryDoctorPhone", v)} placeholder="+507..." />
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <CompactCheck label="Mostrar aseguradora públicamente" checked={form.showInsuranceProviderPublic} onChange={(v) => update("showInsuranceProviderPublic", v)} />
-            <CompactCheck label="Mostrar hospital preferido" checked={form.showPreferredHospitalPublic} onChange={(v) => update("showPreferredHospitalPublic", v)} />
-            <CompactCheck label="Mostrar médico tratante" checked={form.showPrimaryDoctorPublic} onChange={(v) => update("showPrimaryDoctorPublic", v)} />
-            <CompactCheck label="Mostrar teléfono del médico" checked={form.showPrimaryDoctorPhonePublic} onChange={(v) => update("showPrimaryDoctorPhonePublic", v)} />
-          </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
-      </details>
+      </section>
 
       <div className="flex items-start gap-2 rounded-[1.1rem] border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs font-medium leading-5 text-blue-800">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
@@ -624,17 +712,79 @@ function WorkFields({ data, onChange }: { data: WorkModuleData; onChange: (key: 
   );
 }
 
+function InsuranceFields({
+  form,
+  onChange,
+}: {
+  form: ProfileFormProps["form"];
+  onChange: (field: string, value: ProfileFormValue) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Aseguradora" value={form.insuranceProvider || ""} onChange={(v) => onChange("insuranceProvider", v)} placeholder="Ej: ASSA, MAPFRE, Blue Cross" />
+        <Field label="Número de póliza" value={form.insurancePolicyNumber || ""} onChange={(v) => onChange("insurancePolicyNumber", v)} placeholder="Dato privado" />
+        <Field label="Hospital preferido" value={form.preferredHospital || ""} onChange={(v) => onChange("preferredHospital", v)} placeholder="Ej: Hospital Nacional" />
+        <Field label="Teléfono de asistencia del seguro" value={form.insuranceEmergencyPhone || ""} onChange={(v) => onChange("insuranceEmergencyPhone", v)} placeholder="+507..." />
+        <Field label="Médico tratante" value={form.primaryDoctorName || ""} onChange={(v) => onChange("primaryDoctorName", v)} placeholder="Opcional" />
+        <Field label="Teléfono del médico" value={form.primaryDoctorPhone || ""} onChange={(v) => onChange("primaryDoctorPhone", v)} placeholder="+507..." />
+      </div>
+
+      <div className="rounded-[1.1rem] border border-emerald-200 bg-white/80 p-3.5">
+        <div className="mb-3 flex items-start gap-2.5">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+            <ShieldCheck className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-xs font-black text-slate-900">Qué puede aparecer en la ficha pública</p>
+            <p className="mt-0.5 text-[11px] font-medium leading-5 text-slate-500">
+              Tú eliges qué mostrar. El número de póliza permanece privado y no se publica.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <CompactCheck label="Mostrar aseguradora" checked={form.showInsuranceProviderPublic} onChange={(v) => onChange("showInsuranceProviderPublic", v)} />
+          <CompactCheck label="Mostrar hospital preferido" checked={form.showPreferredHospitalPublic} onChange={(v) => onChange("showPreferredHospitalPublic", v)} />
+          <CompactCheck label="Mostrar médico tratante" checked={form.showPrimaryDoctorPublic} onChange={(v) => onChange("showPrimaryDoctorPublic", v)} />
+          <CompactCheck label="Mostrar teléfono del médico" checked={form.showPrimaryDoctorPhonePublic} onChange={(v) => onChange("showPrimaryDoctorPhonePublic", v)} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModuleActivation({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   const id = React.useId();
+  const reduceMotion = useReducedMotion();
+
   return (
-    <label htmlFor={id} className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-full border px-3 py-2 transition ${
-      checked ? "border-emerald-300 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-700"
-    }`}>
+    <label
+      htmlFor={id}
+      className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-full border px-3 py-2 shadow-sm transition-colors ${
+        checked
+          ? "border-emerald-300 bg-emerald-600 text-white shadow-emerald-500/20"
+          : "border-slate-200 bg-white text-slate-700"
+      }`}
+    >
       <span className="text-[10px] font-black uppercase tracking-[.09em]">{checked ? "Activado" : "Activar"}</span>
-      <span className={`relative h-5 w-9 rounded-full transition ${checked ? "bg-white/30" : "bg-slate-200"}`}>
-        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-[1.125rem]" : "translate-x-0.5"}`} />
+      <span className={`relative h-6 w-11 rounded-full transition-colors ${checked ? "bg-white/25" : "bg-slate-200"}`}>
+        <motion.span
+          aria-hidden="true"
+          animate={{ x: checked ? 21 : 3 }}
+          transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 32 }}
+          className={`absolute top-1 h-4 w-4 rounded-full shadow-[0_3px_10px_rgba(15,23,42,.22)] ${
+            checked ? "bg-white" : "bg-slate-500"
+          }`}
+        />
       </span>
-      <input id={id} type="checkbox" className="sr-only" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-label={label} />
+      <input
+        id={id}
+        type="checkbox"
+        className="sr-only"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        aria-label={label}
+      />
     </label>
   );
 }
