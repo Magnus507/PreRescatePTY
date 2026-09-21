@@ -461,16 +461,17 @@ export default function DirectProductionSection() {
       for (const item of items) {
         const safeLabel = sanitizeFilename(item.internalLabel);
         const target = getDigitalItemQrTarget(item);
+        let qrBlob: Blob | undefined;
 
         if (target) {
-          const qrBlob = await fetchQrPng(target);
+          qrBlob = await fetchQrPng(target);
           files.push({ name: `qr/${safeLabel}-QR.png`, blob: qrBlob });
           const stickerBlob = await renderStickerPng(target, qrBlob);
           files.push({ name: `stickers/${safeLabel}.png`, blob: stickerBlob });
         }
 
         if (item.activationCode) {
-          const activationCard = await renderActivationCardPng(item, target ? await fetchQrPng(target) : undefined);
+          const activationCard = await renderActivationCardPng(item, qrBlob);
           files.push({ name: `codigos/${safeLabel}-CODIGO.png`, blob: activationCard });
         }
 
