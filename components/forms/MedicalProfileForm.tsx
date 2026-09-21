@@ -3,17 +3,13 @@
 import React, { useMemo, useState } from "react";
 import {
   Activity,
-  AlertCircle,
   Baby,
   BriefcaseBusiness,
-  Brain,
-  Building2,
   Cat,
   Crown,
   FileText,
   HeartHandshake,
   Info,
-  MessageCircle,
   Pill,
   ShieldAlert,
   Stethoscope,
@@ -187,10 +183,10 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     }
   };
 
-  const updateModuleField = <T extends Record<string, unknown>>(
+  const updateModuleField = (
     moduleField: string,
-    data: T,
-    key: keyof T,
+    data: Record<string, unknown>,
+    key: string,
     value: string | boolean,
   ) => {
     update(moduleField, { ...data, [key]: value } as ProfileFormValue);
