@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Cpu,
   UsersRound,
-  Building2,
   ChevronRight,
   Settings,
   LogOut,
@@ -34,16 +33,7 @@ const consumerNavItems = [
   { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
   { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
   { href: "/dashboard/pedidos", label: "Mis pedidos", icon: ReceiptText },
-  { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
   { href: "/dashboard/configuracion", label: "Ajustes", icon: Settings },
-] as const;
-
-const corporateNavItems = [
-  { href: "/dashboard/empresa", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/empresa-perfil", label: "Perfil Empresarial", icon: Building2 },
-  { href: "/dashboard/colaboradores", label: "Colaboradores", icon: UsersRound },
-  { href: "/dashboard/solicitudes", label: "Solicitudes", icon: Package },
-  { href: "/dashboard/pedidos-corporativos", label: "Pedidos", icon: ShoppingCart },
 ] as const;
 
 type NavItem = {
@@ -57,13 +47,7 @@ function getMobilePageTitle(pathname: string) {
   if (pathname.startsWith("/dashboard/chips")) return "Mis dispositivos";
   if (pathname.startsWith("/dashboard/tienda")) return "Tienda";
   if (pathname.startsWith("/dashboard/pedidos")) return "Mis pedidos";
-  if (pathname.startsWith("/dashboard/empresas")) return "Empresa";
   if (pathname.startsWith("/dashboard/configuracion")) return "Ajustes";
-  if (pathname.startsWith("/dashboard/empresa-perfil")) return "Perfil empresarial";
-  if (pathname.startsWith("/dashboard/colaboradores")) return "Colaboradores";
-  if (pathname.startsWith("/dashboard/solicitudes")) return "Solicitudes";
-  if (pathname.startsWith("/dashboard/pedidos-corporativos")) return "Pedidos corporativos";
-  if (pathname.startsWith("/dashboard/empresa")) return "Dashboard empresa";
   return "Inicio";
 }
 
@@ -180,6 +164,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [pathname]);
 
   useEffect(() => {
+    const corporatePrefixes = [
+      "/dashboard/empresas",
+      "/dashboard/empresa",
+      "/dashboard/empresa-perfil",
+      "/dashboard/colaboradores",
+      "/dashboard/solicitudes",
+      "/dashboard/pedidos-corporativos",
+    ];
+    if (corporatePrefixes.some((prefix) => pathname.startsWith(prefix))) {
+      router.replace("/dashboard");
+    }
+  }, [pathname, router]);
+
+  useEffect(() => {
     setActivateMode(window.location.search.includes("activate=true"));
   }, [pathname]);
 
@@ -211,15 +209,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return null;
   }
 
-  const isCorporate = state?.isOrganization === true;
-  const mobileLinks = isCorporate
-    ? corporateNavItems
-    : [
-        { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
-        { href: "/dashboard/perfiles-medicos", label: "Perfiles", icon: UsersRound },
-        { href: "/dashboard/chips", label: "Dispositivos", icon: Cpu },
-        { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
-      ];
+  const mobileLinks = [
+    { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
+    { href: "/dashboard/perfiles-medicos", label: "Perfiles", icon: UsersRound },
+    { href: "/dashboard/chips", label: "Dispositivos", icon: Cpu },
+    { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
+  ];
   const mobilePageTitle = getMobilePageTitle(pathname);
 
   return (
@@ -251,37 +246,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex-1 overflow-y-auto py-6 pr-1 custom-scrollbar">
-            {isCorporate ? (
-              <div className="space-y-5">
-                <div className="rounded-[1.35rem] border border-indigo-500/15 bg-[linear-gradient(180deg,rgba(79,70,229,0.08)_0%,rgba(79,70,229,0.03)_100%)] p-4 shadow-[0_18px_36px_-30px_rgba(79,70,229,0.45)] dark:border-indigo-400/20 dark:bg-[linear-gradient(180deg,rgba(79,70,229,0.18)_0%,rgba(79,70,229,0.06)_100%)]">
-                  <div className={`flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-3"}`}>
-                    <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] bg-indigo-600 text-white shadow-[0_16px_30px_-24px_rgba(79,70,229,0.6)]">
-                      <Building2 className="h-5 w-5" />
-                    </div>
-                    {!isSidebarCollapsed && (
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500/90 dark:text-indigo-200">Cuenta corporativa</p>
-                        <p className="truncate text-sm font-black tracking-tight text-indigo-950 dark:text-indigo-100">Gestión industrial</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  {!isSidebarCollapsed && <p className="px-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">Gestión corporativa</p>}
-                  {corporateNavItems.map((item) => (
-                    <ShellNavLink key={item.href} {...item} pathname={pathname} activateMode={activateMode} collapsed={isSidebarCollapsed} />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {!isSidebarCollapsed && <p className="px-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">Navegación</p>}
-                {consumerNavItems.map((item) => (
-                  <ShellNavLink key={item.href} {...item} pathname={pathname} activateMode={activateMode} collapsed={isSidebarCollapsed} />
-                ))}
-              </div>
-            )}
+            <div className="space-y-2">
+              {!isSidebarCollapsed && <p className="px-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">Navegación</p>}
+              {consumerNavItems.map((item) => (
+                <ShellNavLink key={item.href} {...item} pathname={pathname} activateMode={activateMode} collapsed={isSidebarCollapsed} />
+              ))}
+            </div>
           </div>
 
           <div className="mt-5 space-y-3 border-t border-slate-200/80 pt-5 dark:border-[#1a2333]">
@@ -295,7 +265,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="truncate text-xs font-black text-slate-950 dark:text-white">{session?.user?.email}</p>
                     {state && (
                       <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${state.isInactive ? "text-[#DA1A21]" : "text-emerald-600 dark:text-emerald-400"}`}>
-                        {state.isInactive ? "Cuenta inactiva" : state.isCorporate ? "Cuenta empresa" : state.isFamily ? "Multi-perfil" : "Protección individual"}
+                        {state.isInactive ? "Cuenta inactiva" : state.isFamily ? "Multi-perfil" : "Protección individual"}
                       </p>
                     )}
                   </div>
@@ -303,12 +273,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             </div>
 
-            {!isCorporate && (
-              <div className={`grid gap-2 ${isSidebarCollapsed ? "grid-cols-1" : "grid-cols-2"}`}>
-                <ShellQuickAction href="/dashboard/pedidos" label="Pedidos" icon={Package} variant="primary" />
-                {!isSidebarCollapsed && <ShellQuickAction href="/dashboard/tienda" label="Tienda" icon={ShoppingCart} variant="secondary" />}
-              </div>
-            )}
+            <div className={`grid gap-2 ${isSidebarCollapsed ? "grid-cols-1" : "grid-cols-2"}`}>
+              <ShellQuickAction href="/dashboard/pedidos" label="Pedidos" icon={Package} variant="primary" />
+              {!isSidebarCollapsed && <ShellQuickAction href="/dashboard/tienda" label="Tienda" icon={ShoppingCart} variant="secondary" />}
+            </div>
 
             <div className={`grid gap-2 ${isSidebarCollapsed ? "grid-cols-1" : "grid-cols-2"}`}>
               <ShellQuickAction href="/" label="Inicio" icon={Home} variant="secondary" />
@@ -352,22 +320,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               );
             })}
 
-            {!isCorporate && (
-              <button
-                type="button"
-                onClick={() => setIsMoreMenuOpen(true)}
-                className={`flex min-h-11 min-w-[4.75rem] flex-1 flex-col items-center justify-center gap-1 rounded-[1rem] px-2.5 py-2 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none ${
-                  isMoreMenuOpen
-                    ? "bg-[linear-gradient(135deg,rgba(218,26,33,0.15)_0%,rgba(218,26,33,0.08)_100%)] text-[#DA1A21]"
-                    : "text-slate-500 dark:text-slate-400"
-                }`}
-                aria-label="Abrir más opciones"
-                aria-expanded={isMoreMenuOpen}
-              >
-                <Menu className="h-6 w-6" />
-                <span className="text-[9px] font-black uppercase tracking-[0.22em] leading-none">Más</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsMoreMenuOpen(true)}
+              className={`flex min-h-11 min-w-[4.75rem] flex-1 flex-col items-center justify-center gap-1 rounded-[1rem] px-2.5 py-2 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transition-none ${
+                isMoreMenuOpen
+                  ? "bg-[linear-gradient(135deg,rgba(218,26,33,0.15)_0%,rgba(218,26,33,0.08)_100%)] text-[#DA1A21]"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+              aria-label="Abrir más opciones"
+              aria-expanded={isMoreMenuOpen}
+            >
+              <Menu className="h-6 w-6" />
+              <span className="text-[9px] font-black uppercase tracking-[0.22em] leading-none">Más</span>
+            </button>
           </div>
         </nav>
 
@@ -393,18 +359,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
 
               <div className="grid grid-cols-1 gap-2">
-                {(isCorporate
-                  ? corporateNavItems
-                  : [
-                      { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
-                      { href: "/dashboard/perfiles-medicos", label: "Perfiles médicos", icon: UsersRound },
-                      { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
-                      { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
-                      { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
-                      { href: "/dashboard/pedidos", label: "Mis pedidos", icon: Package },
-                      { href: "/dashboard/configuracion", label: "Ajustes", icon: Settings },
-                    ]
-                ).map((item) => (
+                {[
+                  { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
+                  { href: "/dashboard/perfiles-medicos", label: "Perfiles médicos", icon: UsersRound },
+                  { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
+                  { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
+                  { href: "/dashboard/pedidos", label: "Mis pedidos", icon: Package },
+                  { href: "/dashboard/configuracion", label: "Ajustes", icon: Settings },
+                ].map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
