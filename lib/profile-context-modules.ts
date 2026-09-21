@@ -30,8 +30,16 @@ export type PetModuleData = {
   species: string;
   breed: string;
   color: string;
+  sex: string;
+  birthDate: string;
+  distinctiveMarks: string;
+  ownerName: string;
+  ownerPhone: string;
+  homeArea: string;
+  returnInstructions: string;
   veterinarianName: string;
   veterinarianPhone: string;
+  medicalNotes: string;
   careNotes: string;
   isServiceAnimal: boolean;
 };
@@ -90,8 +98,16 @@ export const EMPTY_PET_MODULE: PetModuleData = {
   species: "",
   breed: "",
   color: "",
+  sex: "",
+  birthDate: "",
+  distinctiveMarks: "",
+  ownerName: "",
+  ownerPhone: "",
+  homeArea: "",
+  returnInstructions: "",
   veterinarianName: "",
   veterinarianPhone: "",
+  medicalNotes: "",
   careNotes: "",
   isServiceAnimal: false,
 };
