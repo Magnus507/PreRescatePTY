@@ -3,14 +3,14 @@ import ParaQuienEsContent from "./ParaQuienEsContent";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "¿Para Quién es PreRescue ID? — Familias, Personas y Empresas",
+    absolute: "¿Para Quién es PreRescue ID? — Familias y Personas",
   },
   description:
-    "Identificación médica para familias, niños, adultos mayores, personas con condiciones médicas, viajeros, conductores y organizaciones.",
+    "Identificación médica para familias, niños, adultos mayores, personas con condiciones médicas, viajeros y conductores.",
   openGraph: {
-    title: "¿Para Quién es PreRescue ID? — Familias, Personas y Empresas",
+    title: "¿Para Quién es PreRescue ID? — Familias y Personas",
     description:
-      "Identificación médica para familias, niños, adultos mayores, personas con condiciones médicas, viajeros, conductores y organizaciones.",
+      "Identificación médica para familias, niños, adultos mayores, personas con condiciones médicas, viajeros y conductores.",
     url: "https://www.prerescatepty.com/para-quien-es",
     type: "website",
     locale: "es_PA",
@@ -25,9 +25,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "¿Para Quién es PreRescue ID? — Familias, Personas y Empresas",
+    title: "¿Para Quién es PreRescue ID? — Familias y Personas",
     description:
-      "Identificación médica para familias, niños, adultos mayores, personas con condiciones médicas, viajeros, conductores y organizaciones.",
+      "Identificación médica para familias, niños, adultos mayores, personas con condiciones médicas, viajeros y conductores.",
     images: ["/og/pre-rescue-social-card.png"],
   },
 };

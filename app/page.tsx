@@ -10,7 +10,6 @@ import WhoIsForSection from "@/components/public/sections/WhoIsForSection";
 import DemoSection from "@/components/public/sections/DemoSection";
 import PrivacySection from "@/components/public/sections/PrivacySection";
 import PlansPreview from "@/components/public/sections/PlansPreview";
-import CorporatePreview from "@/components/public/sections/CorporatePreview";
 import FAQPreview from "@/components/public/sections/FAQPreview";
 import FinalCTA from "@/components/public/sections/FinalCTA";
 
@@ -58,7 +57,6 @@ export default function Home() {
         <DemoSection />
         <PrivacySection />
         <PlansPreview />
-        <CorporatePreview />
         <FAQPreview />
         <FinalCTA />
       </main>

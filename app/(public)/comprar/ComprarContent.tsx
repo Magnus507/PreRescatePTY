@@ -13,7 +13,6 @@ import {
   QrCode,
   ShieldCheck,
   Sparkles,
-  UsersRound,
 } from "lucide-react";
 import PublicNavbar from "@/components/public/PublicNavbar";
 import PublicFooter from "@/components/public/PublicFooter";
@@ -180,7 +179,6 @@ export default function ComprarContent() {
   }, []);
 
   const personalPackages = packages.filter((p) => p.accountType === "personal");
-  const companyPackages = packages.filter((p) => p.accountType === "company");
 
   return (
     <div className="min-h-screen bg-[#02050a] font-sans text-white antialiased">
@@ -230,36 +228,6 @@ export default function ComprarContent() {
               </div>
             )}
 
-            {companyPackages.length > 0 && (
-              <div className="mt-16 sm:mt-24">
-                <div className="mb-9 grid items-end gap-5 sm:mb-12 sm:gap-7 lg:grid-cols-[1fr_.72fr]">
-                  <div>
-                    <p className="mb-4 text-[9px] font-black uppercase tracking-[0.18em] text-indigo-300/80 sm:text-[10px] sm:tracking-[0.2em]">Organizaciones</p>
-                    <h3 className="max-w-[11ch] text-[clamp(2.35rem,10vw,3.1rem)] font-black leading-[0.94] tracking-[-0.045em] text-slate-50 sm:text-[clamp(2.7rem,5vw,4.8rem)] sm:leading-[0.91]">Cobertura para más de una persona.</h3>
-                  </div>
-                  <p className="text-[15px] font-medium leading-6 text-slate-400 sm:text-base sm:leading-7">Opciones pensadas para organizaciones que necesitan gestionar miembros y dispositivos.</p>
-                </div>
-
-                <div className="mx-auto grid max-w-6xl gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {companyPackages.map((pkg, index) => (
-                    <motion.div key={pkg.id} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.42, delay: index * 0.05 }} className="rounded-[1.5rem] border border-white/[0.07] bg-white/[0.026] p-5 sm:rounded-[1.8rem] sm:p-7">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-300/12 bg-indigo-300/[0.05] sm:h-11 sm:w-11 sm:rounded-2xl"><UsersRound className="h-[18px] w-[18px] text-indigo-300 sm:h-5 sm:w-5" /></span>
-                        {pkg.recommended && <span className="rounded-full border border-rose-300/15 bg-rose-300/[0.06] px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-rose-200">Recomendado</span>}
-                      </div>
-                      <h4 className="mt-5 text-xl font-black text-slate-50 sm:mt-7">{pkg.name}</h4>
-                      <div className="mt-3 flex items-end gap-2 sm:mt-4"><span className="text-4xl font-black tracking-[-0.05em] text-white">${pkg.price}</span><span className="pb-1 text-xs text-slate-600">pago único</span></div>
-                      <div className="mt-5 space-y-2.5 sm:mt-7 sm:space-y-3">
-                        {[`${pkg.maxChips} chips`, `${pkg.maxProfiles} perfiles`, "Panel administrativo", "Servicio sin vencimiento por tiempo"].map((feature) => (
-                          <div key={feature} className="flex items-center gap-2.5 text-[13px] font-semibold text-slate-400 sm:text-sm"><Check className="h-4 w-4 shrink-0 text-emerald-300" />{feature}</div>
-                        ))}
-                      </div>
-                      <Link href={`/contacto?subject=${encodeURIComponent("Me interesa " + pkg.name)}`} className="group mt-6 flex min-h-[52px] w-full touch-manipulation items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.045] px-5 text-sm font-bold text-slate-100 transition-all active:bg-white/[0.075] sm:mt-8 sm:min-h-12 sm:hover:border-indigo-300/20 sm:hover:bg-white/[0.075]">Solicitar información <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Link>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </section>
 

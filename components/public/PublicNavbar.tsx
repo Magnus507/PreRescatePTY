@@ -10,7 +10,6 @@ const NAV_LINKS = [
   { href: "/como-funciona", label: "Cómo funciona" },
   { href: "/para-quien-es", label: "Para quién es" },
   { href: "/comprar", label: "Planes" },
-  { href: "/empresas", label: "Empresas" },
   { href: "/faq", label: "FAQ" },
   { href: "/demo", label: "Demo" },
   { href: "/contacto", label: "Contacto" },

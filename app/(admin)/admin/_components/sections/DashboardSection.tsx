@@ -1,5 +1,5 @@
-import { Activity, Clock, Cpu, RefreshCw, Users, Zap, ShieldCheck, ChevronRight, Building2, AlertCircle, Package, ShoppingCart, CheckCircle2, Eye, ArrowRight, TrendingUp } from "lucide-react";
-import { UserAdmin, AdminStats, ScanEvent, OrganizationAdmin } from "../../_types/admin";
+import { Activity, Clock, Cpu, RefreshCw, Users, Zap, ShieldCheck, ChevronRight, AlertCircle, Package, ShoppingCart, CheckCircle2, Eye, ArrowRight, TrendingUp } from "lucide-react";
+import { UserAdmin, AdminStats, ScanEvent } from "../../_types/admin";
 import { AdminTab } from "../../_hooks/useAdminManager";
 
 // ─── Reusable Components ────────────────────────────────────────────────────
@@ -122,14 +122,11 @@ interface DashboardSectionProps {
   stats: AdminStats | null;
   recentScans?: ScanEvent[];
   recentUsers: UserAdmin[];
-  recentOrgs?: OrganizationAdmin[];
   loading: boolean;
   loadData: () => void;
   setSelectedUser: (u: UserAdmin | null) => void;
-  setSelectedOrg?: (org: OrganizationAdmin | null) => void;
   loadUsers: () => void;
   loadChipDetail?: (id: string) => void;
-  loadOrgDetail?: (id: string) => void;
   setTab: (t: AdminTab) => void;
 }
 
@@ -156,12 +153,10 @@ export function DashboardSection({
 
   const eco = stats.ecosystem;
   const comm = stats.commerce;
-  const corp = stats.corporate;
   const mov = stats.movement;
   const p = stats.productivity;
 
-  // Combined attention count: payments under review + pending corporate requests
-  const pendingAttention = comm.paymentsUnderReview + corp.pendingRequests;
+  const pendingAttention = comm.paymentsUnderReview;
 
   return (
     <div className="space-y-7 animate-in fade-in duration-500">
@@ -203,7 +198,7 @@ export function DashboardSection({
             bgColor="bg-amber-50"
             tab="pedidos"
             ctaLabel="Ir a Pedidos"
-            subtitle="Pagos y solicitudes pendientes"
+            subtitle="Pagos pendientes de revisión"
             setTab={setTab}
           />
           <AlertCard
@@ -234,15 +229,13 @@ export function DashboardSection({
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
           <Users className="h-4 w-4" /> Salud del Ecosistema
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiCard label="Usuarios totales" value={stats.totalUsers} icon={Users} color="text-indigo-600" bgColor="bg-indigo-50"
             sublabel={`${eco.usersActive} activos / ${eco.usersBlocked} bloqueados`} />
           <KpiCard label="Perfiles registrados" value={stats.totalProfiles} icon={ShieldCheck} color="text-purple-600" bgColor="bg-purple-50"
-            sublabel={`${eco.profilesCorporate} corporativos`} />
+            sublabel={`${eco.profilesWithoutChip} sin chip`} />
           <KpiCard label="Chips activos" value={stats.chipsByStatus.activated} icon={Cpu} color="text-emerald-600" bgColor="bg-emerald-50"
-            sublabel={`${eco.profilesWithoutChip} perfiles sin chip`} />
-          <KpiCard label="Empresas registradas" value={eco.organizationsTotal} icon={Building2} color="text-blue-600" bgColor="bg-blue-50"
-            sublabel={`${corp.organizationsActive} activas`} />
+            sublabel={`${stats.chipsByStatus.inventory} en inventario`} />
         </div>
       </div>
 
@@ -269,19 +262,6 @@ export function DashboardSection({
         </div>
       </div>
 
-      {/* ─── E. Corporativo ──────────────────────────────────────────── */}
-      <div>
-        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
-          <Building2 className="h-4 w-4" /> Corporativo
-        </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard label="Empresas registradas" value={corp.organizationsTotal} icon={Building2} color="text-blue-600" bgColor="bg-blue-50" />
-          <KpiCard label="Empresas activas" value={corp.organizationsActive} icon={CheckCircle2} color="text-emerald-600" bgColor="bg-emerald-50" />
-          <KpiCard label="Solicitudes pendientes" value={corp.pendingRequests} icon={AlertCircle} color="text-amber-600" bgColor="bg-amber-50" />
-          <KpiCard label="Colaboradores activos" value={corp.activeMembers} icon={Users} color="text-violet-600" bgColor="bg-violet-50" />
-        </div>
-      </div>
-
       {/* ─── F. Movimiento ───────────────────────────────────────────── */}
       <div>
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
@@ -299,10 +279,9 @@ export function DashboardSection({
       {/* ─── G. Accesos Directos ─────────────────────────────────────── */}
       <div>
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5">Accesos Directos</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <QuickLink label="Pedidos" icon={ShoppingCart} tab="pedidos" setTab={setTab} />
           <QuickLink label="Inventario" icon={Package} tab="inventory" setTab={setTab} />
-          <QuickLink label="Empresas" icon={Building2} tab="empresas" setTab={setTab} />
           <QuickLink label="Productos" icon={Zap} tab="tienda" setTab={setTab} />
           <QuickLink label="Usuarios" icon={Users} tab="users" setTab={setTab} />
         </div>
