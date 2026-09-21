@@ -232,10 +232,12 @@ export default function FamiliaPage() {
     if (form.petModuleEnabled) {
       const petName = form.petModuleData?.petName?.trim() || "Mascota";
       const species = form.petModuleData?.species?.trim() || "Mascota";
+      const internalFirstName = form.firstName?.trim() || (petName.length >= 2 ? petName : "Mascota");
+      const internalLastName = form.lastName?.trim() || (species.length >= 2 ? species : "Animal");
       return {
         ...form,
-        firstName: form.firstName?.trim() || petName,
-        lastName: form.lastName?.trim() || species,
+        firstName: internalFirstName,
+        lastName: internalLastName,
         displayNamePublic: form.displayNamePublic || petName,
         sex: null,
         birthDate: null,
