@@ -7,7 +7,6 @@ import {
   Baby,
   Bike,
   Brain,
-  Building2,
   Check,
   Eye,
   Heart,
@@ -90,17 +89,6 @@ const audiences = [
     note: "El dispositivo que realiza el escaneo necesita conexión a internet para cargar el perfil.",
     glow: "orange" as const,
   },
-  {
-    id: "empresas",
-    icon: Building2,
-    title: "Empresas e instituciones",
-    desc: "Las cuentas corporativas permiten gestionar miembros, perfiles y asignación de chips desde un panel administrativo.",
-    cta: "Solicitar información",
-    href: "/contacto",
-    secondaryCta: "Ver empresas",
-    secondaryHref: "/empresas",
-    glow: "purple" as const,
-  },
 ];
 
 const privacyPoints = [
@@ -116,8 +104,8 @@ export default function ParaQuienEsContent() {
       <main id="main-content">
         <PageHero
           eyebrow="Una identificación. Distintas necesidades."
-          title="Diseñado para personas, familias"
-          titleAccent="y equipos."
+          title="Diseñado para personas"
+          titleAccent="y familias."
           description="PreRescue ID permite adaptar el perfil de emergencia a distintas situaciones. Tú decides qué información estará disponible al escanear cada identificación."
           primaryCTA={{ href: "/comprar", label: "Ver planes" }}
           secondaryCTA={{ href: "/demo", label: "Ver demo" }}
