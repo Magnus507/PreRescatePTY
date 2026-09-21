@@ -480,7 +480,51 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
 
   // ─── PATCH side effects ─────────────────────────────────────────────────
 
-  it('15. PATCH calls ProfileRepository.update with the expected profileId and validated payload', async () => {
+  it('15. PATCH persists enabled context modules as encrypted-repository JSON payloads', async () => {
+    authorizeAsUser()
+    setupAuthorizedProfile()
+    mockProfileUpdate.mockResolvedValue(createUpdatedProfile({ firstName: 'Family' }) as never)
+
+    const req = createPatchRequest({
+      minorModuleEnabled: true,
+      minorModuleData: {
+        guardianName: 'María Pérez',
+        guardianPhone: '+50760000000',
+        schoolName: 'Escuela Central',
+        pickupNotes: 'Entregar únicamente a la madre.',
+      },
+      workModuleEnabled: true,
+      workModuleData: {
+        employerName: 'Empresa Demo',
+        role: 'Operador',
+        supervisorPhone: '+50761111111',
+        safetyNotes: 'Usa casco en planta.',
+      },
+    })
+
+    const res = await PATCH(req, routeParams())
+
+    expect(res.status).toBe(200)
+    expect(mockProfileUpdate).toHaveBeenCalledWith(
+      TEST_PROFILE_ID,
+      expect.objectContaining({
+        minorModuleEnabled: true,
+        workModuleEnabled: true,
+        minorModuleData: expect.any(String),
+        workModuleData: expect.any(String),
+      })
+    )
+
+    const payload = mockProfileUpdate.mock.calls.at(-1)?.[1] as Record<string, unknown>
+    expect(JSON.parse(String(payload.minorModuleData))).toEqual(
+      expect.objectContaining({ guardianName: 'María Pérez', schoolName: 'Escuela Central' })
+    )
+    expect(JSON.parse(String(payload.workModuleData))).toEqual(
+      expect.objectContaining({ employerName: 'Empresa Demo', role: 'Operador' })
+    )
+  })
+
+  it('16. PATCH calls ProfileRepository.update with the expected profileId and validated payload', async () => {
     authorizeAsUser()
     setupAuthorizedProfile()
 
@@ -497,7 +541,7 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
     )
   })
 
-  it('16. PATCH invalidates AccountStateService cache with the authenticated userId', async () => {
+  it('17. PATCH invalidates AccountStateService cache with the authenticated userId', async () => {
     authorizeAsUser()
     setupAuthorizedProfile()
 
@@ -508,7 +552,7 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
     expect(mockInvalidateCache).toHaveBeenCalledWith(TEST_USER_ID)
   })
 
-  it('17. PATCH returns the updated profile in the response', async () => {
+  it('18. PATCH returns the updated profile in the response', async () => {
     authorizeAsUser()
     setupAuthorizedProfile()
     const updatedProfile = createMockProfile({
@@ -532,7 +576,7 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
 
   // ─── DELETE ownership ───────────────────────────────────────────────────
 
-  it('18. DELETE returns 404 when the profile does not belong to the authenticated user\'s account', async () => {
+  it('19. DELETE returns 404 when the profile does not belong to the authenticated user\'s account', async () => {
     authorizeAsUser()
     mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
     mockPrisma.profile.findFirst.mockResolvedValue(null as never)
@@ -548,7 +592,7 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
 
   // ─── DELETE guard: own profile ──────────────────────────────────────────
 
-  it('19. DELETE returns 400 when trying to delete own profile', async () => {
+  it('20. DELETE returns 400 when trying to delete own profile', async () => {
     authorizeAsUser()
     // The profile has userId === session.user.id (own profile)
     const ownProfile = createDeletableProfile({ userId: TEST_USER_ID })
@@ -566,7 +610,7 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
 
   // ─── DELETE guard: corporate profile ────────────────────────────────────
 
-  it('20. DELETE returns 400 when profileType is corporate', async () => {
+  it('21. DELETE returns 400 when profileType is corporate', async () => {
     authorizeAsUser()
     const corpProfile = createDeletableProfile({ profileType: 'corporate' })
     mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
@@ -583,7 +627,7 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
 
   // ─── DELETE guard: org member link ──────────────────────────────────────
 
-  it('21. DELETE returns 400 when an OrganizationMember references the profile as corporateProfileId', async () => {
+  it('22. DELETE returns 400 when an OrganizationMember references the profile as corporateProfileId', async () => {
     authorizeAsUser()
     const profile = createDeletableProfile()
     mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
@@ -602,7 +646,7 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
 
   // ─── DELETE guard: assigned chips ───────────────────────────────────────
 
-  it('22. DELETE returns 400 when one or more non-inventory chips are assigned to the profile', async () => {
+  it('23. DELETE returns 400 when one or more non-inventory chips are assigned to the profile', async () => {
     authorizeAsUser()
     const profile = createDeletableProfile()
     mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)
@@ -622,7 +666,7 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
 
   // ─── DELETE happy path ──────────────────────────────────────────────────
 
-  it('23. DELETE succeeds for an eligible family profile', async () => {
+  it('24. DELETE succeeds for an eligible family profile', async () => {
     authorizeAsUser()
     const profile = createDeletableProfile()
     mockPrisma.user.findUnique.mockResolvedValue({ accountId: TEST_ACCOUNT_ID } as never)

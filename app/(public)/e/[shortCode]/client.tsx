@@ -9,7 +9,8 @@ import {
   Heart, Phone, AlertTriangle, Droplets, Pill, 
   Activity, User, MessageCircle, Loader2, Calendar,
   ShieldCheck, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick,
-  Brain, Footprints, Baby, Eye, BellRing, Tag, Barcode
+  Brain, Footprints, Baby, Eye, BellRing, Tag, Barcode,
+  Cat, BriefcaseBusiness, HeartHandshake
 } from "lucide-react";
 import { IndustrialProfileView } from "./_components/IndustrialProfileView";
 import { formatEmergencyLocation } from "@/domains/shared/services/emergency-location";
@@ -60,6 +61,13 @@ interface EmergencyProfile {
     primaryDoctorPhone: string | null;
     emergencyInstructions: string | null;
   };
+  contextModules?: {
+    minor?: Record<string, unknown> | null;
+    elder?: Record<string, unknown> | null;
+    specialNeeds?: Record<string, unknown> | null;
+    pet?: Record<string, unknown> | null;
+    work?: Record<string, unknown> | null;
+  } | null;
 }
 
 // ChipMetadata not currently used in this view — remove to satisfy lint
@@ -327,6 +335,159 @@ function PublicSafeReturnBlock({ profile }: { profile: EmergencyProfile }) {
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+function moduleText(module: Record<string, unknown> | null | undefined, key: string) {
+  const value = module?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function PublicContextModulesBlock({ profile }: { profile: EmergencyProfile }) {
+  const modules = profile.contextModules;
+  if (!modules) return null;
+
+  const cards: Array<{
+    key: string;
+    title: string;
+    subtitle: string;
+    icon: ReactNode;
+    tone: string;
+    rows: Array<{ label: string; value: string | null }>;
+  }> = [];
+
+  if (modules.minor) {
+    cards.push({
+      key: "minor",
+      title: "Niño menor",
+      subtitle: "Responsables y apoyo cotidiano",
+      icon: <Baby className="h-5 w-5" />,
+      tone: "border-blue-200 bg-blue-50/70 text-blue-700",
+      rows: [
+        { label: "Responsable / tutor", value: moduleText(modules.minor, "guardianName") },
+        { label: "Teléfono tutor", value: moduleText(modules.minor, "guardianPhone") },
+        { label: "Escuela / guardería", value: moduleText(modules.minor, "schoolName") },
+        { label: "Pediatra", value: moduleText(modules.minor, "pediatricianName") },
+        { label: "Entrega segura", value: moduleText(modules.minor, "pickupNotes") },
+      ],
+    });
+  }
+
+  if (modules.elder) {
+    cards.push({
+      key: "elder",
+      title: "Adulto mayor",
+      subtitle: "Cuidados y acompañamiento",
+      icon: <Crown className="h-5 w-5" />,
+      tone: "border-amber-200 bg-amber-50/70 text-amber-800",
+      rows: [
+        { label: "Cuidador", value: moduleText(modules.elder, "caregiverName") },
+        { label: "Teléfono cuidador", value: moduleText(modules.elder, "caregiverPhone") },
+        { label: "Movilidad", value: moduleText(modules.elder, "mobilitySupport") },
+        { label: "Apoyo de memoria", value: moduleText(modules.elder, "memorySupport") },
+        { label: "Cuidados importantes", value: moduleText(modules.elder, "dailyCareNotes") },
+      ],
+    });
+  }
+
+  if (modules.specialNeeds) {
+    cards.push({
+      key: "special",
+      title: "Necesidades especiales",
+      subtitle: "Comunicación y regulación",
+      icon: <HeartHandshake className="h-5 w-5" />,
+      tone: "border-violet-200 bg-violet-50/70 text-violet-700",
+      rows: [
+        { label: "Condición / apoyo", value: moduleText(modules.specialNeeds, "conditionSummary") },
+        { label: "Comunicación", value: moduleText(modules.specialNeeds, "communicationMethod") },
+        { label: "Sensibilidades", value: moduleText(modules.specialNeeds, "sensoryTriggers") },
+        { label: "Qué ayuda a calmar", value: moduleText(modules.specialNeeds, "calmingStrategies") },
+        { label: "Apoyo de movilidad", value: moduleText(modules.specialNeeds, "mobilitySupport") },
+        { label: "Notas de emergencia", value: moduleText(modules.specialNeeds, "emergencyNotes") },
+      ],
+    });
+  }
+
+  if (modules.pet) {
+    const serviceAnimal = modules.pet.isServiceAnimal === true ? "Sí" : null;
+    cards.push({
+      key: "pet",
+      title: "Mascota / animal de asistencia",
+      subtitle: "Información asociada al perfil",
+      icon: <Cat className="h-5 w-5" />,
+      tone: "border-teal-200 bg-teal-50/70 text-teal-700",
+      rows: [
+        { label: "Nombre", value: moduleText(modules.pet, "petName") },
+        { label: "Especie", value: moduleText(modules.pet, "species") },
+        { label: "Raza", value: moduleText(modules.pet, "breed") },
+        { label: "Animal de asistencia", value: serviceAnimal },
+        { label: "Veterinario", value: moduleText(modules.pet, "veterinarianName") },
+        { label: "Teléfono veterinario", value: moduleText(modules.pet, "veterinarianPhone") },
+        { label: "Cuidados", value: moduleText(modules.pet, "careNotes") },
+      ],
+    });
+  }
+
+  if (modules.work) {
+    cards.push({
+      key: "work",
+      title: "Información laboral",
+      subtitle: "Contexto útil durante una emergencia",
+      icon: <BriefcaseBusiness className="h-5 w-5" />,
+      tone: "border-slate-200 bg-slate-50/80 text-slate-700",
+      rows: [
+        { label: "Empresa", value: moduleText(modules.work, "employerName") },
+        { label: "Cargo / función", value: moduleText(modules.work, "role") },
+        { label: "Lugar de trabajo", value: moduleText(modules.work, "workSite") },
+        { label: "Responsable", value: moduleText(modules.work, "supervisorName") },
+        { label: "Teléfono laboral", value: moduleText(modules.work, "supervisorPhone") },
+        { label: "Notas de seguridad", value: moduleText(modules.work, "safetyNotes") },
+      ],
+    });
+  }
+
+  const visibleCards = cards
+    .map((card) => ({ ...card, rows: card.rows.filter((row) => row.value) }))
+    .filter((card) => card.rows.length > 0);
+
+  if (!visibleCards.length) return null;
+
+  return (
+    <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-lg md:rounded-[2.5rem] md:p-6">
+      <div className="mb-4 flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
+          <User className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-xl font-black uppercase tracking-tight text-slate-900 md:text-2xl">Información especial activa</h2>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            Solo aparecen los módulos activados por el titular del perfil.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {visibleCards.map((card) => (
+          <article key={card.key} className={`rounded-[1.4rem] border p-4 ${card.tone}`}>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 shadow-sm">{card.icon}</div>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">{card.title}</h3>
+                <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">{card.subtitle}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {card.rows.map((row) => (
+                <div key={row.label} className="rounded-xl border border-white/80 bg-white/75 px-3 py-2.5">
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-60">{row.label}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm font-bold leading-5 text-slate-900">{row.value}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -1178,6 +1339,7 @@ export default function EmergencyPage() {
               </div>
             </div>
 
+            <PublicContextModulesBlock profile={profile} />
             <PublicCognitiveBlock profile={profile} />
             <PublicAssistanceBlock profile={profile} />
             <PublicSafeReturnBlock profile={profile} />
@@ -1251,6 +1413,7 @@ export default function EmergencyPage() {
               </div>
             </div>
 
+            <PublicContextModulesBlock profile={profile} />
             <PublicCognitiveBlock profile={profile} />
             <PublicAssistanceBlock profile={profile} />
             <PublicSafeReturnBlock profile={profile} />

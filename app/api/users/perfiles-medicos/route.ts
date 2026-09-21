@@ -153,6 +153,16 @@ export async function POST(req: NextRequest) {
       showCommunicationStatusPublic,
       showSafeReturnPublic,
       showSafeReturnLocationPublic,
+      minorModuleEnabled,
+      minorModuleData,
+      elderModuleEnabled,
+      elderModuleData,
+      specialNeedsModuleEnabled,
+      specialNeedsModuleData,
+      petModuleEnabled,
+      petModuleData,
+      workModuleEnabled,
+      workModuleData,
     } = safeBody;
 
     if (!firstName || !lastName) {
@@ -207,6 +217,16 @@ export async function POST(req: NextRequest) {
       showCommunicationStatusPublic: showCommunicationStatusPublic ?? undefined,
       showSafeReturnPublic: showSafeReturnPublic ?? undefined,
       showSafeReturnLocationPublic: showSafeReturnLocationPublic ?? undefined,
+      minorModuleEnabled: minorModuleEnabled ?? undefined,
+      minorModuleData: minorModuleData ? JSON.stringify(minorModuleData) : undefined,
+      elderModuleEnabled: elderModuleEnabled ?? undefined,
+      elderModuleData: elderModuleData ? JSON.stringify(elderModuleData) : undefined,
+      specialNeedsModuleEnabled: specialNeedsModuleEnabled ?? undefined,
+      specialNeedsModuleData: specialNeedsModuleData ? JSON.stringify(specialNeedsModuleData) : undefined,
+      petModuleEnabled: petModuleEnabled ?? undefined,
+      petModuleData: petModuleData ? JSON.stringify(petModuleData) : undefined,
+      workModuleEnabled: workModuleEnabled ?? undefined,
+      workModuleData: workModuleData ? JSON.stringify(workModuleData) : undefined,
     });
 
     // Record audit log
