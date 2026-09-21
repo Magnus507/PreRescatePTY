@@ -112,6 +112,16 @@ export async function PATCH(
     showCommunicationStatusPublic,
     showSafeReturnPublic,
     showSafeReturnLocationPublic,
+    minorModuleEnabled,
+    minorModuleData,
+    elderModuleEnabled,
+    elderModuleData,
+    specialNeedsModuleEnabled,
+    specialNeedsModuleData,
+    petModuleEnabled,
+    petModuleData,
+    workModuleEnabled,
+    workModuleData,
   } = safeBody;
 
   const birthDate = rawBirthDate ? new Date(rawBirthDate) : undefined;
@@ -158,6 +168,16 @@ export async function PATCH(
     ...(showCommunicationStatusPublic !== undefined && { showCommunicationStatusPublic }),
     ...(showSafeReturnPublic !== undefined && { showSafeReturnPublic }),
     ...(showSafeReturnLocationPublic !== undefined && { showSafeReturnLocationPublic }),
+    ...(minorModuleEnabled !== undefined && { minorModuleEnabled }),
+    ...(minorModuleData !== undefined && { minorModuleData: JSON.stringify(minorModuleData ?? {}) }),
+    ...(elderModuleEnabled !== undefined && { elderModuleEnabled }),
+    ...(elderModuleData !== undefined && { elderModuleData: JSON.stringify(elderModuleData ?? {}) }),
+    ...(specialNeedsModuleEnabled !== undefined && { specialNeedsModuleEnabled }),
+    ...(specialNeedsModuleData !== undefined && { specialNeedsModuleData: JSON.stringify(specialNeedsModuleData ?? {}) }),
+    ...(petModuleEnabled !== undefined && { petModuleEnabled }),
+    ...(petModuleData !== undefined && { petModuleData: JSON.stringify(petModuleData ?? {}) }),
+    ...(workModuleEnabled !== undefined && { workModuleEnabled }),
+    ...(workModuleData !== undefined && { workModuleData: JSON.stringify(workModuleData ?? {}) }),
   });
 
   await AccountStateService.invalidateCache(userId);
