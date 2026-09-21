@@ -445,7 +445,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">PreRescue ID</p>
-                  <h1 className="truncate text-[15px] font-black tracking-[-0.025em] text-slate-950 dark:text-white">{mobilePageTitle}</h1>
+                  <p className="truncate text-[15px] font-black tracking-[-0.025em] text-slate-950 dark:text-white">{mobilePageTitle}</p>
                 </div>
               </div>
 
