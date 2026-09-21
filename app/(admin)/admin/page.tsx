@@ -10,7 +10,6 @@ import { useAdminManager } from "./_hooks/useAdminManager";
 import { DashboardSection } from "./_components/sections/DashboardSection";
 import { ChipsSection } from "./_components/sections/ChipsSection";
 import { UsersSection } from "./_components/sections/UsersSection";
-import { OrganizationsSection } from "./_components/sections/OrganizationsSection";
 import { OperationsCenterSection } from "./_components/sections/OperationsCenterSection";
 import { AdminsSection } from "./_components/sections/AdminsSection";
 import { SettingsSection } from "./_components/sections/SettingsSection";
@@ -18,9 +17,7 @@ import { SupportMessagesSection } from "./_components/sections/SupportMessagesSe
 
 import { ChipDetailView } from "./_components/details/ChipDetail";
 import { UserDetailView } from "./_components/details/UserDetail";
-import { OrgDetailView } from "./_components/details/OrgDetail";
 
-import { OrgCreateModal } from "./_components/modals/OrgCreateModal";
 import { ComboSelectorModal } from "./_components/modals/ComboSelectorModal";
 
 function formatDate(d: string) {
@@ -88,7 +85,6 @@ function AdminDashboard() {
     dashboard: { title: "Dashboard", placeholder: "Buscar..." },
     users: { title: "Usuarios", placeholder: "Buscar por nombre o correo..." },
     chips: { title: "Identificadores", placeholder: "Buscar por código serial..." },
-    empresas: { title: "Cuentas Corporativas", placeholder: "Buscar organización..." },
     inventory: { title: "Centro de Operaciones", placeholder: "Buscar pedido, unidad o despacho..." },
     support: { title: "Mensajes de soporte", placeholder: "Buscar nombre, correo, WhatsApp o mensaje..." },
     admins: { title: "Administradores", placeholder: "Buscar administradores..." },
@@ -96,6 +92,10 @@ function AdminDashboard() {
   };
 
   useEffect(() => {
+    if (admin.tab === "empresas") {
+      setTab("dashboard");
+      return;
+    }
     if (isPrintRole && admin.tab !== "inventory") {
       setTab("inventory");
     }
@@ -114,7 +114,6 @@ function AdminDashboard() {
     ? "w-full px-6 py-8"
     : "max-w-7xl mx-auto px-6 py-8";
 
-  const [showOrgModal, setShowOrgModal] = useState(false);
   const [showComboModal, setShowComboModal] = useState(false);
 
   if (admin.chips.selectedChip) {
@@ -162,24 +161,6 @@ function AdminDashboard() {
     );
   }
 
-  if (admin.orgs.selectedOrg) {
-    const org = admin.orgs.selectedOrg;
-    return (
-      <OrgDetailView
-        org={org}
-        onBack={() => admin.orgs.setSelectedOrg(null)}
-        onAction={admin.users.handleAdminAction}
-        onAddUser={() => {}}
-        onDeleteOrg={admin.orgs.deleteOrg}
-        onDeleteMember={(userId: string) => admin.users.handleAdminAction(userId, "delete-user", {})}
-        onLoadChip={admin.chips.loadChipDetail}
-        onUpdateOrg={admin.orgs.updateOrganization}
-        formatDate={formatDate}
-        statusColor={statusColor}
-      />
-    );
-  }
-
   const handleDeleteUser = async (userId: string, email: string) => {
     const ok = confirm(`¿Estás seguro de eliminar permanentemente a ${email}? Esta acción no se puede deshacer.`);
     if (!ok) return;
@@ -217,14 +198,11 @@ function AdminDashboard() {
               stats={admin.stats.stats}
               recentScans={admin.stats.recentScans}
               recentUsers={admin.stats.recentUsers}
-              recentOrgs={admin.stats.recentOrgs}
               loading={admin.stats.loading}
               loadData={admin.stats.loadStats}
               loadChipDetail={admin.chips.loadChipDetail}
               setSelectedUser={admin.users.setSelectedUser}
-              setSelectedOrg={admin.orgs.setSelectedOrg}
               loadUsers={admin.users.loadUsers}
-              loadOrgDetail={admin.orgs.loadOrgDetail}
               setTab={admin.setTab}
             />
           )}
@@ -262,18 +240,6 @@ function AdminDashboard() {
             />
           )}
 
-          {admin.tab === "empresas" && (
-            <OrganizationsSection
-              organizations={admin.orgs.organizations}
-              loading={admin.orgs.loading}
-              setShowOrgModal={setShowOrgModal}
-              loadOrgDetail={admin.orgs.loadOrgDetail}
-              setAccountFilter={admin.filters.setAccount}
-              setTab={admin.setTab}
-              handleDeleteOrg={admin.orgs.deleteOrg}
-            />
-          )}
-
           {isOperationsTab && (
             <OperationsCenterSection
               role={role}
@@ -299,7 +265,7 @@ function AdminDashboard() {
 
           {admin.tab === "settings" && <SettingsSection />}
 
-          {!["dashboard", "chips", "users", "empresas", "inventory", "support", "admins", "pedidos", "tienda", "settings"].includes(admin.tab) && (
+          {!["dashboard", "chips", "users", "inventory", "support", "admins", "pedidos", "tienda", "settings"].includes(admin.tab) && (
             <div className="flex flex-col items-center justify-center py-20 text-slate-300">
               <Activity className="h-10 w-10 opacity-20 mb-4" />
               <p className="text-xs font-black uppercase tracking-widest">Módulo en mantenimiento.</p>
@@ -308,12 +274,6 @@ function AdminDashboard() {
         </div>
       </div>
 
-      <OrgCreateModal
-        isOpen={showOrgModal}
-        onClose={() => setShowOrgModal(false)}
-        onSubmit={admin.orgs.createOrg}
-        loading={admin.orgs.creating}
-      />
     </div>
   );
 }
