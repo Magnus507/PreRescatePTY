@@ -40,7 +40,7 @@ export async function POST(
       description: typeof body.description === "string" ? body.description : null,
       category: typeof body.category === "string" ? body.category : null,
       isActive: action === "publish",
-      image: typeof body.imageUrl === "string" ? body.imageUrl : null,
+      image: typeof body.imageUrl === "string" ? body.imageUrl : undefined,
     });
 
     const storeProduct = await prisma.product.findUnique({
