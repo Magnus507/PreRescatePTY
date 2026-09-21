@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CONSENT_TEXT_VERSION, CONSENT_TYPE } from "@/domains/consents/consent.constants";
+import { ProfileRepository } from "@/domains/profiles/repositories/profile.repository";
 
 function clean(value: string | null | undefined) {
   return typeof value === "string" ? value.trim() : "";
@@ -14,23 +15,15 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const [user, currentLegalConsent] = await Promise.all([
+  const [user, profile, currentLegalConsent] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
         email: true,
         phone: true,
-        profile: {
-          select: {
-            firstName: true,
-            lastName: true,
-            phone: true,
-            address: true,
-            city: true,
-          },
-        },
       },
     }),
+    ProfileRepository.findByUserId(session.user.id),
     prisma.consent.findFirst({
       where: {
         userId: session.user.id,
@@ -47,16 +40,16 @@ export async function GET() {
     return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
   }
 
-  const recipientName = [clean(user.profile?.firstName), clean(user.profile?.lastName)]
+  const recipientName = [clean(profile?.firstName), clean(profile?.lastName)]
     .filter(Boolean)
     .join(" ");
 
   return NextResponse.json(
     {
       recipientName,
-      phone: clean(user.phone) || clean(user.profile?.phone),
-      address: clean(user.profile?.address),
-      city: clean(user.profile?.city),
+      phone: clean(user.phone) || clean(profile?.phone),
+      address: clean(profile?.address),
+      city: clean(profile?.city),
       email: clean(user.email),
       legalAcceptanceRequired: !currentLegalConsent,
       legalTextVersion: CONSENT_TEXT_VERSION.TERMS_AND_PRIVACY,
