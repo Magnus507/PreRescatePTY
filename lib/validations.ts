@@ -64,6 +64,53 @@ export const resetPasswordSchema = z.object({
 // PROFILE SCHEMAS
 // ──────────────────────────────────────────────
 
+const minorModuleSchema = z.object({
+  guardianName: z.string().max(120).optional().default(""),
+  guardianPhone: z.string().max(30).optional().default(""),
+  schoolName: z.string().max(150).optional().default(""),
+  schoolPhone: z.string().max(30).optional().default(""),
+  pediatricianName: z.string().max(120).optional().default(""),
+  pediatricianPhone: z.string().max(30).optional().default(""),
+  pickupNotes: z.string().max(800).optional().default(""),
+});
+
+const elderModuleSchema = z.object({
+  caregiverName: z.string().max(120).optional().default(""),
+  caregiverPhone: z.string().max(30).optional().default(""),
+  mobilitySupport: z.string().max(500).optional().default(""),
+  memorySupport: z.string().max(500).optional().default(""),
+  dailyCareNotes: z.string().max(1000).optional().default(""),
+});
+
+const specialNeedsModuleSchema = z.object({
+  conditionSummary: z.string().max(800).optional().default(""),
+  communicationMethod: z.string().max(600).optional().default(""),
+  sensoryTriggers: z.string().max(800).optional().default(""),
+  calmingStrategies: z.string().max(800).optional().default(""),
+  mobilitySupport: z.string().max(500).optional().default(""),
+  emergencyNotes: z.string().max(1000).optional().default(""),
+});
+
+const petModuleSchema = z.object({
+  petName: z.string().max(120).optional().default(""),
+  species: z.string().max(80).optional().default(""),
+  breed: z.string().max(120).optional().default(""),
+  color: z.string().max(80).optional().default(""),
+  veterinarianName: z.string().max(120).optional().default(""),
+  veterinarianPhone: z.string().max(30).optional().default(""),
+  careNotes: z.string().max(1000).optional().default(""),
+  isServiceAnimal: z.boolean().optional().default(false),
+});
+
+const workModuleSchema = z.object({
+  employerName: z.string().max(160).optional().default(""),
+  role: z.string().max(120).optional().default(""),
+  workSite: z.string().max(200).optional().default(""),
+  supervisorName: z.string().max(120).optional().default(""),
+  supervisorPhone: z.string().max(30).optional().default(""),
+  safetyNotes: z.string().max(1000).optional().default(""),
+});
+
 export const profileUpdateSchema = z.object({
   firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres").max(100),
   lastName: z.string().min(2, "El apellido debe tener al menos 2 caracteres").max(100),
@@ -124,6 +171,19 @@ export const profileUpdateSchema = z.object({
   nationalId: z.string().max(50).optional().nullable(),
   address: z.string().max(500).optional().nullable(),
   city: z.string().max(100).optional().nullable(),
+
+  // Optional context modules — disabled by default and only exposed publicly
+  // when the corresponding module is enabled.
+  minorModuleEnabled: z.boolean().optional(),
+  minorModuleData: minorModuleSchema.optional().nullable(),
+  elderModuleEnabled: z.boolean().optional(),
+  elderModuleData: elderModuleSchema.optional().nullable(),
+  specialNeedsModuleEnabled: z.boolean().optional(),
+  specialNeedsModuleData: specialNeedsModuleSchema.optional().nullable(),
+  petModuleEnabled: z.boolean().optional(),
+  petModuleData: petModuleSchema.optional().nullable(),
+  workModuleEnabled: z.boolean().optional(),
+  workModuleData: workModuleSchema.optional().nullable(),
 });
 
 export const familyProfileCreateSchema = profileUpdateSchema.extend({
