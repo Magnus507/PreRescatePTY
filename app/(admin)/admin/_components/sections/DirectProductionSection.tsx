@@ -82,7 +82,7 @@ function getUnit(item: DigitalItem) {
 }
 
 const STICKER_TEMPLATE_PATH = "/sticker-official.png";
-const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base-v2.webp", "/activation-code-card-base.svg"] as const;
+const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base-v2.webp"] as const;
 const ACTIVATION_CARD_REFERENCE = {
   width: 1559,
   height: 1009,
