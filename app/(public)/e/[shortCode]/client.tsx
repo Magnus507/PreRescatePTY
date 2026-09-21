@@ -546,7 +546,7 @@ function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
                   <p className="mt-3 text-sm font-semibold text-slate-700 break-words">{contact.phone}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 md:min-w-[220px]">
+              <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 md:min-w-[220px]">
                 <a href={`tel:${sanitizeTelPhone(contact.phone)}`} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-emerald-700 transition-all">
                   <Phone className="h-4 w-4" />
                   Llamar
@@ -856,29 +856,29 @@ function PetRecoveryPage({
   const isServiceAnimal = pet.isServiceAnimal === true;
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#ecfeff_0%,#f8fafc_42%,#ffffff_100%)] px-3 py-4 font-sans text-slate-950 sm:px-6 sm:py-8">
-      <main className="mx-auto w-full max-w-3xl space-y-4 sm:space-y-6">
-        <section className="overflow-hidden rounded-[2rem] border border-teal-100 bg-white shadow-[0_28px_70px_-40px_rgba(13,148,136,.38)] sm:rounded-[2.5rem]">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#ecfeff_0%,#f8fafc_42%,#ffffff_100%)] px-2.5 py-3 font-sans text-slate-950 min-[390px]:px-3 min-[390px]:py-4 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-3xl space-y-3.5 sm:space-y-6">
+        <section className="overflow-hidden rounded-[1.6rem] border border-teal-100 bg-white shadow-[0_28px_70px_-40px_rgba(13,148,136,.38)] sm:rounded-[2.5rem]">
           <div className="h-2 bg-gradient-to-r from-teal-500 via-emerald-400 to-cyan-400" />
-          <div className="p-5 sm:p-8">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <div className="p-4 min-[390px]:p-5 sm:p-8">
+            <div className="flex flex-col gap-4 min-[520px]:flex-row min-[520px]:items-center sm:gap-5">
               {profile.photoUrl ? (
-                <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-[2rem] border-4 border-white bg-teal-50 shadow-xl">
+                <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-[1.6rem] border-4 border-white bg-teal-50 shadow-xl min-[390px]:h-32 min-[390px]:w-32 min-[390px]:rounded-[2rem]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={profile.photoUrl} alt={`Foto de ${petName}`} className="h-full w-full object-cover" />
                 </div>
               ) : (
-                <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-[2rem] bg-teal-600 text-white shadow-xl">
-                  <Cat className="h-16 w-16" />
+                <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-[1.6rem] bg-teal-600 text-white shadow-xl min-[390px]:h-32 min-[390px]:w-32 min-[390px]:rounded-[2rem]">
+                  <Cat className="h-14 w-14 min-[390px]:h-16 min-[390px]:w-16" />
                 </div>
               )}
 
               <div className="min-w-0 flex-1">
-                <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">
+                <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-teal-700 min-[390px]:px-3 min-[390px]:text-[10px] min-[390px]:tracking-[0.18em]">
                   <Cat className="h-4 w-4" />
-                  Mascota identificada con PreRescue ID
+                  Mascota · PreRescue ID
                 </div>
-                <h1 className="mt-3 break-words text-4xl font-black tracking-[-0.05em] text-slate-950 sm:text-5xl">{petName}</h1>
+                <h1 className="mt-3 break-words text-[2.15rem] font-black leading-[.95] tracking-[-0.05em] text-slate-950 min-[390px]:text-4xl sm:text-5xl">{petName}</h1>
                 <p className="mt-2 text-sm font-semibold text-slate-500">
                   Si encontraste esta mascota, utiliza los contactos e instrucciones de abajo para ayudarla a volver a casa.
                 </p>
@@ -894,11 +894,11 @@ function PetRecoveryPage({
             </div>
 
             {(ownerPhone || ownerName) && (
-              <div className="mt-6 rounded-[1.5rem] border border-emerald-200 bg-emerald-50/70 p-4 sm:p-5">
+              <div className="mt-5 rounded-[1.35rem] border border-emerald-200 bg-emerald-50/70 p-3.5 min-[390px]:p-4 sm:mt-6 sm:p-5">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Contacto principal para devolución</p>
                 {ownerName && <p className="mt-1 text-xl font-black text-slate-950">{ownerName}</p>}
                 {ownerPhone && (
-                  <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="mt-4 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
                     <a href={`tel:${sanitizeTelPhone(ownerPhone)}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 text-xs font-black uppercase tracking-wider text-white">
                       <Phone className="h-4 w-4" /> Llamar
                     </a>
@@ -913,7 +913,7 @@ function PetRecoveryPage({
         </section>
 
         {(returnInstructions || homeArea) && (
-          <section className="rounded-[2rem] border border-teal-200 bg-white p-5 shadow-lg sm:p-6">
+          <section className="rounded-[1.6rem] border border-teal-200 bg-white p-4 shadow-lg sm:rounded-[2rem] sm:p-6">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white">
                 <Footprints className="h-5 w-5" />
@@ -935,14 +935,14 @@ function PetRecoveryPage({
 
         <section className="grid gap-3 sm:grid-cols-2">
           {(color || distinctiveMarks) && (
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-5">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Cómo identificarla</p>
               {color && <p className="mt-2 text-sm font-bold text-slate-900">Color: {color}</p>}
               {distinctiveMarks && <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">{distinctiveMarks}</p>}
             </div>
           )}
           {(medicalNotes || careNotes) && (
-            <div className="rounded-[2rem] border border-amber-200 bg-amber-50/55 p-5 shadow-sm">
+            <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50/55 p-4 shadow-sm sm:rounded-[2rem] sm:p-5">
               <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Cuidados importantes</p>
               {medicalNotes && <p className="mt-2 whitespace-pre-wrap text-sm font-bold leading-6 text-slate-900">{medicalNotes}</p>}
               {careNotes && <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">{careNotes}</p>}
@@ -951,7 +951,7 @@ function PetRecoveryPage({
         </section>
 
         {(veterinarianName || veterinarianPhone) && (
-          <section className="rounded-[2rem] border border-blue-200 bg-blue-50/50 p-5 shadow-sm">
+          <section className="rounded-[1.6rem] border border-blue-200 bg-blue-50/50 p-4 shadow-sm sm:rounded-[2rem] sm:p-5">
             <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Veterinario / clínica</p>
             {veterinarianName && <p className="mt-2 text-base font-black text-slate-950">{veterinarianName}</p>}
             {veterinarianPhone && (
@@ -963,7 +963,7 @@ function PetRecoveryPage({
         )}
 
         {scanLocation && (
-          <div className="rounded-[1.5rem] border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs font-semibold leading-5 text-cyan-900">
+          <div className="rounded-[1.35rem] border border-cyan-200 bg-cyan-50 px-3.5 py-3 text-xs font-semibold leading-5 text-cyan-900 sm:px-4">
             El escaneo registró una ubicación aproximada para ayudar a los contactos a ubicar dónde fue encontrada.
           </div>
         )}

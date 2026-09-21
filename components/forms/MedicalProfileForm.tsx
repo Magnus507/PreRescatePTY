@@ -311,22 +311,22 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   };
 
   return (
-    <div className={`space-y-5 ${disabled ? "pointer-events-none opacity-60" : ""}`}>
+    <div className={`space-y-4 sm:space-y-5 ${disabled ? "pointer-events-none opacity-60" : ""}`}>
       <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-[0_22px_56px_-44px_rgba(15,23,42,.32)]">
         <div className="px-3.5 pt-3.5 sm:px-5 sm:pt-5">
-          <div className="flex items-center justify-between gap-3 rounded-[1.15rem] border border-slate-800 bg-slate-950 px-3.5 py-3 text-white shadow-[0_14px_34px_-26px_rgba(15,23,42,.8)]">
+          <div className="flex flex-col gap-3 rounded-[1.15rem] border border-slate-800 bg-slate-950 px-3.5 py-3 text-white shadow-[0_14px_34px_-26px_rgba(15,23,42,.8)] min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[.9rem] bg-white/[0.08] text-white ring-1 ring-white/10">
                 {isPetProfile ? <Cat className="h-[18px] w-[18px]" /> : <UserRound className="h-[18px] w-[18px]" />}
               </div>
               <div className="min-w-0">
                 <h2 className="text-[1.05rem] font-black tracking-[-0.025em] text-white sm:text-lg">{isPetProfile ? "Ficha de mascota" : "Información básica"}</h2>
-                <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-400 sm:text-[11px]">
+                <p className="mt-0.5 text-[10px] font-semibold leading-4 text-slate-400 sm:text-[11px]">
                   {isPetProfile ? "Identificación y datos esenciales para ayudarla a volver a casa" : "Datos esenciales de emergencia · siempre van primero"}
                 </p>
               </div>
             </div>
-            <span className="shrink-0 rounded-full border border-[#DA1A21]/30 bg-[#DA1A21]/12 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-red-300 sm:text-[9px]">
+            <span className="w-fit shrink-0 rounded-full border border-[#DA1A21]/30 bg-[#DA1A21]/12 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-red-300 sm:text-[9px]">
               {isPetProfile ? "Modo mascota" : "Siempre visible"}
             </span>
           </div>
@@ -335,7 +335,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
         <div className="space-y-4 p-3.5 pt-4 sm:p-5 [&_input]:min-h-11 [&_select]:min-h-11 [&_textarea]:min-h-[4.75rem] [&_textarea]:py-2.5">
           {isPetProfile && (
             <div className="space-y-4">
-              <div className="rounded-[1.15rem] border border-teal-200 bg-teal-50/70 p-3.5">
+              <div className="rounded-[1.15rem] border border-teal-200 bg-teal-50/70 p-3 sm:p-3.5">
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[.9rem] bg-teal-600 text-white">
                     <Cat className="h-5 w-5" />
@@ -349,7 +349,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <Field
                   label="Nombre de la mascota *"
                   value={petData.petName}
@@ -378,7 +378,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <SelectField
                   label="Sexo"
                   value={petData.sex}
@@ -390,7 +390,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                   ]}
                 />
                 <div className="rounded-[1.05rem] border border-slate-200 bg-slate-50/70 p-3">
-                  <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Fecha de nacimiento</p>
                     {petAge !== null && (
                       <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black text-slate-700">
@@ -416,14 +416,14 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
           )}
 
           <div className={isPetProfile ? "hidden" : "space-y-4"}>
-          <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2">
             <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required placeholder="Juan" />
             <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required placeholder="Pérez" />
             <Field label="Alias público" value={form.displayNamePublic} onChange={(v) => update("displayNamePublic", v)} placeholder="Ej: Juan P." />
             <Field label="Teléfono de contacto" value={form.phone || ""} onChange={(v) => update("phone", v)} placeholder="+507 0000-0000" />
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 gap-2.5 min-[430px]:grid-cols-2">
             <SelectField
               label="Tipo de sangre *"
               value={form.bloodType}
@@ -507,8 +507,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
         <div className="pointer-events-none absolute -right-20 top-0 h-60 w-60 rounded-full bg-sky-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-slate-950/25 to-transparent" />
 
-        <div className="relative border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6">
-          <div className="flex items-start justify-between gap-3">
+        <div className="relative border-b border-white/10 px-3.5 py-4 sm:px-6 sm:py-6">
+          <div className="flex flex-col gap-3 min-[430px]:flex-row min-[430px]:items-start min-[430px]:justify-between">
             <div className="min-w-0">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-white/70 backdrop-blur">
                 <Sparkles className="h-3.5 w-3.5 text-red-400" />
@@ -521,13 +521,13 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 {isPetProfile ? "Completa los datos de contacto, retorno y cuidados. Desactiva Mascotas para volver al perfil humano." : "La información básica siempre permanece primero. Estos módulos aparecen únicamente cuando los activas."}
               </p>
             </div>
-            <div className="shrink-0 rounded-[1rem] border border-white/10 bg-white/[0.07] px-3 py-2 text-center backdrop-blur">
+            <div className="w-fit shrink-0 rounded-[1rem] border border-white/10 bg-white/[0.07] px-3 py-2 text-center backdrop-blur">
               <p className="text-lg font-black leading-none text-white">{isPetProfile ? 1 : enabledCount}</p>
               <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">{isPetProfile ? "modo mascota" : "de 6 activos"}</p>
             </div>
           </div>
 
-          <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-5 flex gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-4 grid grid-cols-2 gap-2 pb-1 sm:mt-5 sm:flex sm:overflow-x-auto sm:pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {(isPetProfile ? OPTIONAL_TABS.filter((tab) => tab.id === "pet") : OPTIONAL_TABS).map((tab) => {
               const Icon = tab.icon;
               const selected = activeTab === tab.id;
@@ -542,7 +542,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                   id={`profile-tab-${tab.id}`}
                   onClick={() => setActiveTab(tab.id)}
                   whileTap={reduceMotion ? undefined : { scale: 0.97 }}
-                  className={`relative isolate flex min-h-12 shrink-0 items-center gap-2.5 overflow-hidden rounded-[1rem] border px-3.5 py-2.5 text-[11px] font-black transition-colors sm:px-4 sm:text-xs ${
+                  className={`relative isolate flex min-h-12 min-w-0 items-center justify-between gap-2 overflow-hidden rounded-[1rem] border px-3 py-2.5 text-[11px] font-black transition-colors sm:shrink-0 sm:justify-start sm:px-4 sm:text-xs ${
                     selected
                       ? "border-white/20 text-slate-950"
                       : "border-white/10 bg-white/[0.045] text-slate-300 hover:bg-white/[0.08] hover:text-white"
@@ -585,10 +585,10 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                   animate={{ opacity: 1, y: 0 }}
                   exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
                   transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: "easeOut" }}
-                  className="relative p-4 outline-none sm:p-6"
+                  className="relative p-3 outline-none sm:p-6"
                 >
                   <div className={`pointer-events-none absolute right-2 top-2 h-28 w-28 rounded-full blur-3xl ${tone.glow}`} />
-                  <div className={`relative overflow-hidden rounded-[1.4rem] border p-4 sm:p-5 ${enabled ? tone.panel : "border-slate-200 bg-slate-50/70"}`}>
+                  <div className={`relative overflow-hidden rounded-[1.3rem] border p-3.5 sm:rounded-[1.4rem] sm:p-5 ${enabled ? tone.panel : "border-slate-200 bg-slate-50/70"}`}>
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
                     <div className="flex items-start gap-3">
                       <motion.div

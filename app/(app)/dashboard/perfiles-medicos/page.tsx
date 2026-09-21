@@ -459,28 +459,28 @@ export default function FamiliaPage() {
   }
 
   return (
-    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700 pb-12">
+    <div className="space-y-5 pb-10 animate-in fade-in duration-700 md:space-y-8 md:pb-12">
       <div className={(showAdd || editProfile) ? "hidden" : "block"}>
-        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-6">
-          <div className="space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-primary">Perfiles de protección</p>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-950">Perfiles médicos</h1>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-6">
+          <div className="space-y-2.5">
+            <p className="text-[9px] font-black uppercase tracking-[0.26em] text-primary sm:text-[10px] sm:tracking-[0.32em]">Perfiles de protección</p>
+            <h1 className="text-[2rem] font-black leading-none tracking-[-0.04em] text-slate-950 sm:text-3xl md:text-4xl">Perfiles médicos</h1>
             <p className="max-w-2xl text-sm md:text-base text-slate-600 font-medium leading-relaxed">
               Gestiona perfiles de personas o mascotas y vincula la información que debe estar disponible al escanear su PreRescue ID.
             </p>
           </div>
           <button
             onClick={() => { setShowAdd(true); setAddError(""); setAddForm({ ...emptyForm }); }}
-            className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-[1.1rem] bg-primary px-5 py-4 text-sm font-black text-white shadow-[0_16px_34px_-18px_rgba(218,26,33,0.32)] transition-all hover:-translate-y-px hover:bg-[#B9141B] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[1.05rem] bg-primary px-5 py-3 text-sm font-black text-white shadow-[0_16px_34px_-18px_rgba(218,26,33,0.32)] transition-all hover:-translate-y-px hover:bg-[#B9141B] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white motion-reduce:transition-none md:w-auto md:py-3.5"
           >
             <Plus className="h-4 w-4" /> Añadir perfil
           </button>
         </div>
 
         {state && (
-          <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.18)] md:p-5">
+          <div className="mt-4 rounded-[1.35rem] border border-slate-200 bg-white p-3.5 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.18)] sm:mt-6 sm:rounded-[1.5rem] sm:p-4 md:p-5">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] bg-slate-950 text-white shadow-[0_14px_28px_-18px_rgba(15,23,42,0.28)]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[.95rem] bg-slate-950 text-white shadow-[0_14px_28px_-18px_rgba(15,23,42,0.28)] sm:h-12 sm:w-12 sm:rounded-[1rem]">
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <div className="min-w-0">
@@ -514,7 +514,7 @@ export default function FamiliaPage() {
             </button>
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-1 gap-5 md:gap-6">
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:mt-6 md:gap-6">
             {ownProfile && (
               <ProfileCard
                 key={ownProfile.id}
@@ -564,7 +564,7 @@ export default function FamiliaPage() {
         <>
           {/* Mobile: inline form (no modal, no overlay) */}
           <div className="block md:hidden animate-in fade-in slide-in-from-left-4 duration-500">
-            <div className="flex items-center gap-3 mb-6">
+            <div className="mb-4 flex items-start gap-3 sm:mb-6 sm:items-center">
               <button
                 type="button"
                 onClick={() => { setShowAdd(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
@@ -573,11 +573,11 @@ export default function FamiliaPage() {
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <div>
-                <h2 className="text-2xl font-black tracking-tight">Añadir perfil</h2>
+                <h2 className="text-xl font-black tracking-tight sm:text-2xl">Añadir perfil</h2>
                 <p className="text-xs text-muted-foreground font-medium">Completa los datos que podrían ayudar en una emergencia.</p>
               </div>
             </div>
-            <form onSubmit={handleAdd} className="space-y-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+            <form onSubmit={handleAdd} className="space-y-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:space-y-6">
               {addError && <p className="text-sm text-destructive bg-destructive/10 rounded-2xl px-4 py-3 font-semibold">{addError}</p>}
               <MedicalProfileForm
                 form={addForm}
@@ -873,8 +873,8 @@ function ProfileCard({
   };
 
   return (
-      <div className={`group overflow-hidden rounded-[2rem] border bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-34px_rgba(15,23,42,0.22)] focus-within:shadow-[0_24px_50px_-34px_rgba(15,23,42,0.22)] ${contactsExpanded ? 'ring-2 ring-primary/15' : 'border-slate-200'} ${isOwn ? 'shadow-[0_18px_40px_-30px_rgba(15,23,42,0.18)]' : 'shadow-[0_16px_34px_-28px_rgba(15,23,42,0.16)]'}`}>
-      <div className="p-4 md:p-7 flex flex-col gap-5 md:gap-7">
+      <div className={`group overflow-hidden rounded-[1.5rem] border bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-34px_rgba(15,23,42,0.22)] focus-within:shadow-[0_24px_50px_-34px_rgba(15,23,42,0.22)] sm:rounded-[2rem] ${contactsExpanded ? 'ring-2 ring-primary/15' : 'border-slate-200'} ${isOwn ? 'shadow-[0_18px_40px_-30px_rgba(15,23,42,0.18)]' : 'shadow-[0_16px_34px_-28px_rgba(15,23,42,0.16)]'}`}>
+      <div className="flex flex-col gap-4 p-3.5 sm:p-4 md:gap-7 md:p-7">
          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
            <div className="flex flex-row items-center gap-3 md:gap-4 shrink-0">
             <button
@@ -907,7 +907,7 @@ function ProfileCard({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                <div className="space-y-3">
                   <div className="space-y-1">
-                    <h3 className="text-2xl md:text-3xl font-black tracking-tight leading-tight text-slate-950">
+                    <h3 className="text-[1.65rem] font-black leading-tight tracking-[-0.035em] text-slate-950 sm:text-2xl md:text-3xl">
                       {cardName}
                     </h3>
                     {!isPetProfile && profile.displayNamePublic && (
