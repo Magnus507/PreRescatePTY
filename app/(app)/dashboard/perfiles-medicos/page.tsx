@@ -814,17 +814,17 @@ function ProfileCard({
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("type", "profile");
-      formData.append("profileId", profile.id);
-
-      // Do not set Content-Type manually. The browser adds the multipart boundary.
-      // The server also recovers the boundary from the payload if a proxy/browser
-      // strips or malforms the header.
+      // Profile photos use a raw binary request on purpose. This avoids multipart
+      // boundary parsing entirely, which is unreliable in some Safari/Vercel paths.
       const res = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": file.type,
+          "X-PreRescate-Upload": "raw-profile-photo",
+          "X-Profile-Id": profile.id,
+          "X-File-Name": encodeURIComponent(file.name || "profile-photo"),
+        },
+        body: file,
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
