@@ -842,28 +842,36 @@ export default function EmergencyPage() {
             <div className="relative px-4 pb-5 pt-5 text-center sm:px-8 sm:pb-8 sm:pt-7">
               <div className="pointer-events-none absolute left-1/2 top-[-5rem] h-48 w-48 -translate-x-1/2 rounded-full bg-red-100/45 blur-3xl" />
 
-              <div className="relative mx-auto mb-3 flex h-[4.25rem] w-full max-w-[18rem] items-center justify-center sm:mb-4 sm:h-20 sm:max-w-[20rem]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logo.png"
-                  alt="PreRescue ID"
-                  className="max-h-full w-full object-contain drop-shadow-[0_10px_18px_rgba(15,23,42,0.10)]"
-                  onError={(event) => {
-                    if (!event.currentTarget.src.endsWith("/logo.jpeg")) {
-                      event.currentTarget.src = "/logo.jpeg";
-                    }
-                  }}
-                />
-              </div>
+              <div className="relative mx-auto mb-5 flex w-full max-w-[22rem] items-center justify-center gap-3 sm:mb-6 sm:gap-4">
+                <div className="flex h-[5.25rem] w-[5.25rem] flex-none items-center justify-center overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_14px_30px_-20px_rgba(15,23,42,0.55)] sm:h-24 sm:w-24 sm:rounded-[1.5rem]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logo.png"
+                    alt=""
+                    aria-hidden="true"
+                    className="h-[4.6rem] w-[4.6rem] object-contain sm:h-[5.25rem] sm:w-[5.25rem]"
+                    onError={(event) => {
+                      if (!event.currentTarget.src.endsWith("/logo.jpeg")) {
+                        event.currentTarget.src = "/logo.jpeg";
+                      }
+                    }}
+                  />
+                </div>
 
-              <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-[1.2rem] border border-slate-200/80 bg-white shadow-[0_12px_28px_-18px_rgba(15,23,42,0.5)] sm:h-16 sm:w-16 sm:rounded-[1.35rem]">
-                <div className="absolute inset-2 rounded-[0.9rem] bg-gradient-to-br from-red-50 to-slate-50" />
-                <ShieldCheck className="relative h-7 w-7 text-[#10203f] sm:h-8 sm:w-8" />
+                <div className="min-w-0 text-left">
+                  <div
+                    className="whitespace-nowrap text-[clamp(1.6rem,7.2vw,2.15rem)] font-black italic leading-none tracking-[-0.065em]"
+                    aria-label="PreRescue ID"
+                  >
+                    <span className="text-[#e22127]">Pre</span>
+                    <span className="text-[#081a3a]">Rescue</span>
+                    <span className="ml-1 text-[#e22127]">ID</span>
+                  </div>
+                  <p className="mt-2 whitespace-nowrap text-[8px] font-black uppercase tracking-[0.16em] text-slate-400 sm:text-[9px]">
+                    Tu información, <span className="text-[#e22127]">salva vidas.</span>
+                  </p>
+                </div>
               </div>
-
-              <p className="mt-3 text-[9px] font-black uppercase tracking-[0.26em] text-slate-400 sm:mt-4 sm:text-[10px]">
-                PreRescatePTY / PreRescue ID
-              </p>
 
               <h1 className="mx-auto mt-3 max-w-[12ch] text-[clamp(2rem,8.4vw,3.65rem)] font-black uppercase italic leading-[0.9] tracking-[-0.055em] text-[#081a3a]">
                 Este producto requiere activación
