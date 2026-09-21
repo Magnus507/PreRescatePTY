@@ -82,19 +82,23 @@ function getUnit(item: DigitalItem) {
 }
 
 const STICKER_TEMPLATE_PATH = "/sticker-official.png";
-const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base-v2.webp", "/activation-code-card-base.svg"] as const;
+const ACTIVATION_CARD_BASE64_PARTS = Array.from(
+  { length: 10 },
+  (_, index) => `/activation-card-base-v2/part-${String(index).padStart(2, "0")}.txt`,
+);
+const ACTIVATION_CARD_FALLBACK_PATH = "/activation-code-card-base.svg";
 const ACTIVATION_CARD_REFERENCE = {
   width: 1559,
   height: 1009,
   exportScale: 1,
-  activationCodeX: 1067,
-  activationCodeY: 389,
-  activationCodeMaxWidth: 590,
-  identifierX: 1067,
-  identifierY: 596,
-  identifierMaxWidth: 590,
-  qrX: 216,
-  qrY: 309,
+  activationCodeX: 1084,
+  activationCodeY: 393,
+  activationCodeMaxWidth: 560,
+  identifierX: 1084,
+  identifierY: 605,
+  identifierMaxWidth: 560,
+  qrX: 221,
+  qrY: 307,
   qrSize: 304,
 } as const;
 
@@ -152,19 +156,29 @@ function loadBrowserImage(src: string, label = "la imagen") {
   });
 }
 
-async function loadFirstAvailableImage(sources: readonly string[], label: string) {
-  let lastError: unknown = null;
-
-  for (const src of sources) {
-    try {
-      return await loadBrowserImage(src, label);
-    } catch (error) {
-      lastError = error;
+async function loadActivationCardTemplate() {
+  try {
+    const responses = await Promise.all(
+      ACTIVATION_CARD_BASE64_PARTS.map((src) => fetch(src, { cache: "no-store" })),
+    );
+    if (responses.some((response) => !response.ok)) {
+      throw new Error("Plantilla base incompleta");
     }
-  }
 
-  if (lastError instanceof Error) throw lastError;
-  throw new Error(`No se pudo cargar ${label}`);
+    const parts = await Promise.all(responses.map((response) => response.text()));
+    const base64 = parts.join("").replace(/\s+/g, "");
+    if (!base64) throw new Error("Plantilla base vacía");
+
+    return await loadBrowserImage(
+      `data:image/webp;base64,${base64}`,
+      "la plantilla de la tarjeta de activación",
+    );
+  } catch {
+    return loadBrowserImage(
+      ACTIVATION_CARD_FALLBACK_PATH,
+      "la plantilla de la tarjeta de activación",
+    );
+  }
 }
 
 async function renderStickerPng(targetUrl: string, preparedQr?: Blob) {
@@ -210,10 +224,7 @@ async function renderActivationCardPng(item: DigitalItem, preparedQr?: Blob) {
   const qrObjectUrl = qrBlob ? URL.createObjectURL(qrBlob) : null;
 
   try {
-    const template = await loadFirstAvailableImage(
-      ACTIVATION_CARD_TEMPLATE_PATHS,
-      "la plantilla de la tarjeta de activación",
-    );
+    const template = await loadActivationCardTemplate();
     const qrImage = qrObjectUrl ? await loadBrowserImage(qrObjectUrl, "el QR") : null;
 
     const canvas = document.createElement("canvas");
@@ -236,7 +247,7 @@ async function renderActivationCardPng(item: DigitalItem, preparedQr?: Blob) {
     context.fillStyle = "#ffffff";
     context.shadowColor = "rgba(0, 0, 0, 0.65)";
     context.shadowBlur = 3;
-    context.font = '800 39px Arial, Helvetica, sans-serif';
+    context.font = '800 34px Arial, Helvetica, sans-serif';
     context.fillText(
       item.activationCode,
       ACTIVATION_CARD_REFERENCE.activationCodeX,
@@ -244,7 +255,7 @@ async function renderActivationCardPng(item: DigitalItem, preparedQr?: Blob) {
       ACTIVATION_CARD_REFERENCE.activationCodeMaxWidth,
     );
 
-    context.font = '700 27px Arial, Helvetica, sans-serif';
+    context.font = '700 25px Arial, Helvetica, sans-serif';
     context.fillText(
       item.internalLabel,
       ACTIVATION_CARD_REFERENCE.identifierX,
