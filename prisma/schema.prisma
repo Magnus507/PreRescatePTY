@@ -274,6 +274,19 @@ model Profile {
   safeReturnContactName         String?
   safeReturnContactPhone        String?
   showSafeReturnLocationPublic  Boolean              @default(false)
+
+  // Optional context modules. Disabled by default; encrypted JSON payloads live in *ModuleData.
+  minorModuleEnabled            Boolean              @default(false)
+  minorModuleData               String?
+  elderModuleEnabled            Boolean              @default(false)
+  elderModuleData               String?
+  specialNeedsModuleEnabled     Boolean              @default(false)
+  specialNeedsModuleData        String?
+  petModuleEnabled              Boolean              @default(false)
+  petModuleData                 String?
+  workModuleEnabled             Boolean              @default(false)
+  workModuleData                String?
+
   assignedChips                 Chip[]
   digitalPass                   DigitalPass?
   orderItems                    OrderItem[]          @relation("OrderItemProfile")
