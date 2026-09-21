@@ -15,7 +15,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
-  Stethoscope,
   UserRound,
 } from "lucide-react";
 import { BLOOD_TYPES } from "@/lib/constants";
@@ -209,6 +208,7 @@ const TAB_TONE_STYLES: Record<TabTone, {
 export function MedicalProfileForm({ form, onChange, disabled = false }: ProfileFormProps) {
   const [activeTab, setActiveTab] = useState<OptionalTab>("minor");
   const reduceMotion = useReducedMotion();
+  const activeTabLayoutId = React.useId();
 
   const update = (field: string, value: ProfileFormValue) => onChange(field, value);
 
@@ -434,7 +434,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 >
                   {selected && (
                     <motion.span
-                      layoutId="medical-profile-active-tab"
+                      layoutId={`medical-profile-active-tab-${activeTabLayoutId}`}
                       transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 430, damping: 38 }}
                       className="absolute inset-0 -z-10 rounded-[.95rem] bg-white shadow-[0_14px_30px_-18px_rgba(255,255,255,.7)]"
                     />
