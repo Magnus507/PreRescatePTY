@@ -127,31 +127,46 @@ export default function ConfiguracionPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingPhoto(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", "profile");
-    formData.append("bucket", "profile-photos");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Usa una foto JPG, PNG o WebP.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La foto debe pesar menos de 5 MB.");
+      e.target.value = "";
+      return;
+    }
 
+    setUploadingPhoto(true);
     try {
-      const res = await fetch("/api/upload", {
+      const bytes = await file.arrayBuffer();
+      if (bytes.byteLength <= 0) {
+        toast.error("La foto seleccionada llegó vacía. Vuelve a elegirla desde Fotos.");
+        return;
+      }
+
+      const res = await fetch("/api/users/profile/photo", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: bytes,
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const data = await res.json();
         setPhotoUrl(data.url);
         toast.success("Foto actualizada correctamente");
       } else {
-        const errorData = await res.json();
-        toast.error(errorData.error || "Error al subir la foto");
+        toast.error(data.error || "Error al subir la foto");
       }
     } catch (err) {
       console.error(err);
       toast.error("Error en la conexión con el servidor de carga");
     } finally {
       setUploadingPhoto(false);
+      e.target.value = "";
     }
   }
 
@@ -295,7 +310,7 @@ export default function ConfiguracionPage() {
                     </div>
                     <label className="absolute -bottom-2 -right-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg transition-all hover:scale-110 active:scale-95 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
                       <Upload className="h-5 w-5" />
-                      <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+                      <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
                     </label>
                   </div>
                   <div className="max-w-xl space-y-2 text-center md:text-left">
@@ -303,7 +318,7 @@ export default function ConfiguracionPage() {
                     <p className="text-sm leading-6 text-slate-600">
                       Sube una foto clara de tu rostro. Esto ayuda al personal de emergencia a identificarte rápidamente en caso de crisis.
                     </p>
-                    <p className="pt-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">WebP optimizado • máx. 2MB</p>
+                    <p className="pt-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">JPG, PNG o WebP • máx. 5MB</p>
                   </div>
                 </div>
               </Section>
