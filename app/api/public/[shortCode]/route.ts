@@ -97,7 +97,11 @@ export async function GET(
         unsupported_context: { status: 400, body: { error: "Contexto no soportado", status: "unsupported_context" } },
       };
       const mapped = responseMap[resolution.reason];
-      return publicJson(req, mapped.body, { status: mapped.status });
+      const body =
+        resolution.reason === "chip_not_active" && resolution.chip?.internalLabel
+          ? { ...mapped.body, internalLabel: resolution.chip.internalLabel }
+          : mapped.body;
+      return publicJson(req, body, { status: mapped.status });
     }
 
     const { profile } = resolution;
