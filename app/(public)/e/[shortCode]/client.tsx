@@ -842,12 +842,26 @@ export default function EmergencyPage() {
             <div className="relative px-4 pb-5 pt-5 text-center sm:px-8 sm:pb-8 sm:pt-7">
               <div className="pointer-events-none absolute left-1/2 top-[-5rem] h-48 w-48 -translate-x-1/2 rounded-full bg-red-100/45 blur-3xl" />
 
-              <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_12px_28px_-18px_rgba(15,23,42,0.5)] sm:h-20 sm:w-20 sm:rounded-[1.6rem]">
-                <div className="absolute inset-2 rounded-[1rem] bg-gradient-to-br from-red-50 to-slate-50" />
-                <ShieldCheck className="relative h-8 w-8 text-[#10203f] sm:h-10 sm:w-10" />
+              <div className="relative mx-auto mb-3 flex h-[4.25rem] w-full max-w-[18rem] items-center justify-center sm:mb-4 sm:h-20 sm:max-w-[20rem]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo.png"
+                  alt="PreRescue ID"
+                  className="max-h-full w-full object-contain drop-shadow-[0_10px_18px_rgba(15,23,42,0.10)]"
+                  onError={(event) => {
+                    if (!event.currentTarget.src.endsWith("/logo.jpeg")) {
+                      event.currentTarget.src = "/logo.jpeg";
+                    }
+                  }}
+                />
               </div>
 
-              <p className="mt-4 text-[9px] font-black uppercase tracking-[0.26em] text-slate-400 sm:text-[10px]">
+              <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-[1.2rem] border border-slate-200/80 bg-white shadow-[0_12px_28px_-18px_rgba(15,23,42,0.5)] sm:h-16 sm:w-16 sm:rounded-[1.35rem]">
+                <div className="absolute inset-2 rounded-[0.9rem] bg-gradient-to-br from-red-50 to-slate-50" />
+                <ShieldCheck className="relative h-7 w-7 text-[#10203f] sm:h-8 sm:w-8" />
+              </div>
+
+              <p className="mt-3 text-[9px] font-black uppercase tracking-[0.26em] text-slate-400 sm:mt-4 sm:text-[10px]">
                 PreRescatePTY / PreRescue ID
               </p>
 
