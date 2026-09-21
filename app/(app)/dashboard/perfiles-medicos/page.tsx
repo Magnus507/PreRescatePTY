@@ -8,7 +8,7 @@ import {
   Plus, Pencil, Trash2, Loader2, Save, X, ChevronLeft,
   UserRound, Phone, AlertCircle,
   ShieldCheck, Activity, PlusCircle, Smartphone, ExternalLink,
-  Brain, Footprints, MessageCircle,
+  Brain, Footprints, MessageCircle, Cat,
 } from "lucide-react";
 import { Camera } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
@@ -229,6 +229,25 @@ export default function FamiliaPage() {
   }
 
   function normalizeProfilePayload(form: typeof addForm) {
+    if (form.petModuleEnabled) {
+      const petName = form.petModuleData?.petName?.trim() || "Mascota";
+      const species = form.petModuleData?.species?.trim() || "Mascota";
+      return {
+        ...form,
+        firstName: form.firstName?.trim() || petName,
+        lastName: form.lastName?.trim() || species,
+        displayNamePublic: form.displayNamePublic || petName,
+        sex: null,
+        birthDate: null,
+        bloodType: "Pendiente",
+        allergies: "",
+        chronicConditions: "",
+        medications: "",
+        additionalNotes: "",
+        showAdditionalNotesPublic: false,
+      };
+    }
+
     return {
       ...form,
       sex: form.sex || null,
@@ -298,7 +317,7 @@ export default function FamiliaPage() {
       if (res.ok) {
         setShowAdd(false);
         setAddForm({ ...emptyForm });
-        toast.success("Perfil médico creado con éxito");
+        toast.success(addForm.petModuleEnabled ? "Ficha de mascota creada" : "Perfil médico creado con éxito");
         loadProfiles();
       } else {
         const data = await res.json();
@@ -785,9 +804,17 @@ function ProfileCard({
    onStartAddContact,
    onPhotoUpdate
 }: ProfileCardProps) {
-  const initials = profile.firstName && profile.lastName 
-    ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
-    : (isOwn ? "TÚ" : "??");
+  const petContext = hydrateProfileContextModules(profile as unknown as Record<string, unknown>);
+  const isPetProfile = profile.petModuleEnabled === true;
+  const petData = petContext.petModuleData;
+  const cardName = isPetProfile
+    ? (petData.petName || profile.displayNamePublic || "Mascota")
+    : `${profile.firstName || "Sin nombre"} ${profile.lastName || ""}`.trim();
+  const initials = isPetProfile
+    ? (petData.petName?.slice(0, 2).toUpperCase() || "🐾")
+    : profile.firstName && profile.lastName
+      ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
+      : (isOwn ? "TÚ" : "??");
 
   const [uploading, setUploading] = useState(false);
 
@@ -851,7 +878,7 @@ function ProfileCard({
             <button
               type="button"
               onClick={handlePhotoClick}
-              aria-label={`Cambiar foto de ${profile.firstName || "perfil"}`}
+              aria-label={`Cambiar foto de ${cardName || "perfil"}`}
               disabled={uploading}
               className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.5rem] font-black text-xl shadow-inner cursor-pointer md:h-20 md:w-20 md:rounded-[1.75rem] ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-900'}`}
             >
@@ -867,7 +894,7 @@ function ProfileCard({
             <input type="file" id={`profile-photo-input-${profile.id}`} className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
             <div className="min-w-0">
               <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
-                 {isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
+                 {isPetProfile ? 'Ficha de mascota' : isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
               </span>
               <p className="mt-1.5 text-[10px] font-semibold text-slate-400">Toca la foto para cambiarla</p>
             </div>
@@ -879,18 +906,30 @@ function ProfileCard({
                <div className="space-y-3">
                   <div className="space-y-1">
                     <h3 className="text-2xl md:text-3xl font-black tracking-tight leading-tight text-slate-950">
-                      {profile.firstName || "Sin nombre"} {profile.lastName || ""}
+                      {cardName}
                     </h3>
-                    {profile.displayNamePublic && (
+                    {!isPetProfile && profile.displayNamePublic && (
                       <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-600">
                         Alias: {profile.displayNamePublic}
                       </span>
                     )}
+                    {isPetProfile && (
+                      <div className="flex flex-wrap gap-2">
+                        {petData.species && <span className="inline-flex w-fit rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">{petData.species}</span>}
+                        {petData.breed && <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">{petData.breed}</span>}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <div className="px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-black text-slate-700 uppercase flex items-center gap-2">
-                      <Activity className="h-3.5 w-3.5 text-primary" /> {profile.bloodType}
-                    </div>
+                    {isPetProfile ? (
+                      <div className="px-3 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-[11px] font-black text-teal-700 uppercase flex items-center gap-2">
+                        <Cat className="h-3.5 w-3.5" /> {petData.color || "Ficha de mascota"}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-black text-slate-700 uppercase flex items-center gap-2">
+                        <Activity className="h-3.5 w-3.5 text-primary" /> {profile.bloodType}
+                      </div>
+                    )}
                     {profile.assignedChips.length > 0 ? (
                       profile.assignedChips.map((c) => (
                         <div key={c.id} className="px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-black text-emerald-700 uppercase flex items-center gap-2">
@@ -932,7 +971,7 @@ function ProfileCard({
                       <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700">Apoyo activo</span>
                     )}
                     {profile.petModuleEnabled && (
-                      <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700">Mascota activa</span>
+                      <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700">Perfil mascota</span>
                     )}
                     {profile.workModuleEnabled && (
                       <span className="rounded-full border border-slate-300 bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-700">Laboral activo</span>
