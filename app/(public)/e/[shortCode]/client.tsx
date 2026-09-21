@@ -517,7 +517,7 @@ function PublicContactsBlock({ profile }: { profile: EmergencyProfile }) {
           <Heart className="h-5 w-5 text-emerald-600" />
         </div>
         <div>
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">Contactos de rescate</h2>
+          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900">{isPetProfile ? "Contactos para devolución" : "Contactos de rescate"}</h2>
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">{subtitle}</p>
         </div>
       </div>
