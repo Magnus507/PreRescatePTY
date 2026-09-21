@@ -5,7 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Users, Building2, Shield,
+  LayoutDashboard, Users, Shield,
   LogOut, Settings, Package, Activity, ChevronRight, Search, Menu, X, Store, Crown,
   PanelLeftClose, PanelLeftOpen, MessageSquareText
 } from "lucide-react";
@@ -51,7 +51,6 @@ function AdminSidebar({
   const nav: AdminNavItem[] = [
     { label: "Dashboard", id: "dashboard", icon: LayoutDashboard },
     { label: "Usuarios", id: "users", icon: Users },
-    { label: "Cuentas Corporativas", id: "empresas", icon: Building2 },
     { label: "Centro de Operaciones", id: "inventory", icon: Package },
     { label: "Mensajes de soporte", id: "support", icon: MessageSquareText },
     { label: "Ajustes Sistema", id: "settings", icon: Settings },
