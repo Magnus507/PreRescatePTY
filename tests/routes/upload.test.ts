@@ -104,6 +104,20 @@ function createUploadRequest(
 /**
  * Sets up default mocks for a successful upload scenario.
  */
+function createRawProfileUploadRequest(profileId = 'target-profile-id'): NextRequest {
+  const buffer = createMinimalJpegBuffer()
+  return new NextRequest('http://localhost/api/upload', {
+    method: 'POST',
+    headers: {
+      'content-type': 'image/jpeg',
+      'x-prerescate-upload': 'raw-profile-photo',
+      'x-profile-id': profileId,
+      'x-file-name': 'profile.jpg',
+    },
+    body: new Uint8Array(buffer),
+  })
+}
+
 function setupDefaultMocks() {
   vi.mocked(getServerSession).mockResolvedValue(
     createMockSession({ id: TEST_USER_ID, role: 'owner' }) as never
@@ -299,7 +313,33 @@ describe('POST /api/upload', () => {
     )
   })
 
-  it('11. compensates the storage upload when the profile database update fails', async () => {
+  it('11. accepts raw profile-photo uploads without multipart parsing and updates the owned profile', async () => {
+    setupDefaultMocks()
+    mockOptimizeAndUploadImage.mockResolvedValue('/api/image-proxy?bucket=profile-photos&path=raw-profile.webp')
+    mockPrisma.user.findUnique.mockResolvedValue({ accountId: 'test-account' } as never)
+    mockPrisma.profile.findUnique.mockResolvedValue({ accountId: 'test-account', photoUrl: null } as never)
+    mockPrisma.profile.update.mockResolvedValue({} as never)
+
+    const res = await POST(createRawProfileUploadRequest())
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.url).toMatch(/api\/image-proxy/)
+    expect(mockOptimizeAndUploadImage).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      'profile-photos',
+      expect.stringContaining(`${TEST_USER_ID}/profile_`),
+      expect.objectContaining({ width: 400, height: 400, quality: 80 })
+    )
+    expect(mockPrisma.profile.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'target-profile-id' },
+        data: expect.objectContaining({ photoUrl: expect.any(String) }),
+      })
+    )
+  })
+
+  it('12. compensates the storage upload when the profile database update fails', async () => {
     setupDefaultMocks()
     mockOptimizeAndUploadImage.mockResolvedValue('/api/image-proxy?bucket=profile-photos&path=profile.webp')
     mockPrisma.user.findUnique.mockResolvedValue({ accountId: 'test-account' } as never)
