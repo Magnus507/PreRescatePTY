@@ -107,10 +107,11 @@ function triggerBlobDownload(blob: Blob, filename: string) {
 
 function getDigitalItemQrTarget(item: DigitalItem) {
   if (item.qrUrl) return item.qrUrl;
-  if (item.shortCode) return `${window.location.origin}/e/${item.shortCode}`;
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://www.prerescatepty.com";
+  if (item.shortCode) return `${origin}/e/${item.shortCode}`;
   if (item.nfcUrl) {
     try {
-      const url = new URL(item.nfcUrl, window.location.origin);
+      const url = new URL(item.nfcUrl, origin);
       url.searchParams.delete("source");
       return url.toString();
     } catch {
