@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { uploadPaymentProof } from "@/lib/payment-proof-upload";
 import { useRouter } from "next/navigation";
 import { type StoreProductLike } from "@/lib/products/group-products-by-store-section";
+import { resolveImageSrc } from "@/lib/resolve-image-src";
 
 interface Product extends StoreProductLike {
   id: string;
@@ -20,6 +21,8 @@ interface Product extends StoreProductLike {
   price: number;
   currency?: string;
   category: string;
+  image?: string | null;
+  imageUrl?: string | null;
   operationsProductCode?: string | null;
   isPublished?: boolean;
   isVisible?: boolean;
@@ -456,6 +459,7 @@ export default function TiendaPage() {
                 const stock = getStockValue(p);
                 const total = getProductTotal(p, cardQuantity);
                 const productPrice = normalizePrice(p.price);
+                const productImage = resolveImageSrc(p.imageUrl || p.image, "general");
 
                 return (
                   <div
@@ -467,6 +471,23 @@ export default function TiendaPage() {
                     }`}
                   >
                     <div className="rounded-[2rem] bg-gradient-to-b from-white to-slate-50/80 p-5 sm:p-6 dark:from-slate-950 dark:to-slate-950">
+                      <div className="mb-5 overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        {productImage ? (
+                          <img
+                            src={productImage}
+                            alt={p.name}
+                            loading="lazy"
+                            className="aspect-[16/9] h-auto w-full object-contain p-4 sm:p-5"
+                          />
+                        ) : (
+                          <div className="flex aspect-[16/9] items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
+                            <div className="flex flex-col items-center gap-2 text-slate-400">
+                              <Package className="h-9 w-9" />
+                              <span className="text-[9px] font-black uppercase tracking-widest">Imagen próximamente</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#DA1A21]">
