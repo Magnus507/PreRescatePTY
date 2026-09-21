@@ -82,7 +82,11 @@ function getUnit(item: DigitalItem) {
 }
 
 const STICKER_TEMPLATE_PATH = "/sticker-official.png";
-const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base-v2.webp", "/activation-code-card-base.svg"] as const;
+const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base.svg"] as const;
+const ACTIVATION_CARD_TEMPLATE_PARTS = Array.from(
+  { length: 10 },
+  (_, index) => `/activation-code-card-base-v2.part-${String(index).padStart(2, "0")}.txt`,
+);
 const ACTIVATION_CARD_REFERENCE = {
   width: 1559,
   height: 1009,
@@ -167,6 +171,43 @@ async function loadFirstAvailableImage(sources: readonly string[], label: string
   throw new Error(`No se pudo cargar ${label}`);
 }
 
+async function loadChunkedActivationCardImage(label: string) {
+  const responses = await Promise.all(
+    ACTIVATION_CARD_TEMPLATE_PARTS.map((src) => fetch(src, { cache: "no-store" })),
+  );
+
+  const failed = responses.find((response) => !response.ok);
+  if (failed) throw new Error(`No se pudo cargar ${label}`);
+
+  const parts = await Promise.all(responses.map((response) => response.text()));
+  const base64 = parts.map((part) => part.trim()).join("");
+  if (!base64.startsWith("UklGR")) throw new Error(`No se pudo cargar ${label}`);
+
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  const objectUrl = URL.createObjectURL(new Blob([bytes], { type: "image/webp" }));
+  try {
+    return await loadBrowserImage(objectUrl, label);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function loadActivationCardTemplate() {
+  try {
+    return await loadChunkedActivationCardImage("la plantilla de la tarjeta de activación");
+  } catch {
+    return loadFirstAvailableImage(
+      ACTIVATION_CARD_TEMPLATE_PATHS,
+      "la plantilla de la tarjeta de activación",
+    );
+  }
+}
+
 async function renderStickerPng(targetUrl: string, preparedQr?: Blob) {
   const qrBlob = preparedQr || await fetchQrPng(targetUrl);
   const qrObjectUrl = URL.createObjectURL(qrBlob);
@@ -210,10 +251,7 @@ async function renderActivationCardPng(item: DigitalItem, preparedQr?: Blob) {
   const qrObjectUrl = qrBlob ? URL.createObjectURL(qrBlob) : null;
 
   try {
-    const template = await loadFirstAvailableImage(
-      ACTIVATION_CARD_TEMPLATE_PATHS,
-      "la plantilla de la tarjeta de activación",
-    );
+    const template = await loadActivationCardTemplate();
     const qrImage = qrObjectUrl ? await loadBrowserImage(qrObjectUrl, "el QR") : null;
 
     const canvas = document.createElement("canvas");
