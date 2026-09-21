@@ -284,31 +284,35 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 
   return (
     <div className={`space-y-5 ${disabled ? "pointer-events-none opacity-60" : ""}`}>
-      <section className="overflow-hidden rounded-[1.65rem] border border-slate-200 bg-white shadow-[0_24px_64px_-46px_rgba(15,23,42,.35)]">
-        <div className="border-b border-slate-100 bg-[radial-gradient(circle_at_top_right,rgba(218,26,33,.07),transparent_35%),linear-gradient(180deg,#fff,#fbfcfe)] px-4 py-4 sm:px-6 sm:py-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-slate-950 text-white shadow-[0_12px_30px_-22px_rgba(15,23,42,.6)]">
-              <UserRound className="h-5 w-5" />
+      <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-[0_22px_56px_-44px_rgba(15,23,42,.32)]">
+        <div className="px-3.5 pt-3.5 sm:px-5 sm:pt-5">
+          <div className="flex items-center justify-between gap-3 rounded-[1.15rem] border border-slate-800 bg-slate-950 px-3.5 py-3 text-white shadow-[0_14px_34px_-26px_rgba(15,23,42,.8)]">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[.9rem] bg-white/[0.08] text-white ring-1 ring-white/10">
+                <UserRound className="h-[18px] w-[18px]" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-[1.05rem] font-black tracking-[-0.025em] text-white sm:text-lg">Información básica</h2>
+                <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-400 sm:text-[11px]">
+                  Datos esenciales de emergencia · siempre van primero
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-[0.24em] text-[#DA1A21]">Siempre visible</p>
-              <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-slate-950 sm:text-2xl">Información básica</h2>
-              <p className="mt-1 max-w-2xl text-xs font-medium leading-5 text-slate-500 sm:text-sm">
-                Lo esencial de la ficha médica va primero. Nombre, sangre, alergias, condiciones y medicamentos deben poder leerse de un vistazo.
-              </p>
-            </div>
+            <span className="shrink-0 rounded-full border border-[#DA1A21]/30 bg-[#DA1A21]/12 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-red-300 sm:text-[9px]">
+              Siempre visible
+            </span>
           </div>
         </div>
 
-        <div className="space-y-5 p-4 sm:p-6">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-4 p-3.5 pt-4 sm:p-5 [&_input]:min-h-11 [&_select]:min-h-11 [&_textarea]:min-h-[4.75rem] [&_textarea]:py-2.5">
+          <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
             <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required placeholder="Juan" />
             <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required placeholder="Pérez" />
             <Field label="Alias público" value={form.displayNamePublic} onChange={(v) => update("displayNamePublic", v)} placeholder="Ej: Juan P." />
             <Field label="Teléfono de contacto" value={form.phone || ""} onChange={(v) => update("phone", v)} placeholder="+507 0000-0000" />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2.5">
             <SelectField
               label="Tipo de sangre *"
               value={form.bloodType}
@@ -329,7 +333,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             />
           </div>
 
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50/70 p-3.5">
+          <div className="rounded-[1.05rem] border border-slate-200 bg-slate-50/70 p-3">
             <div className="mb-2 flex items-center justify-between gap-3">
               <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Fecha de nacimiento</p>
               {age !== null && (
@@ -343,7 +347,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 
           <Field label="Cédula / identificación" value={form.nationalId || ""} onChange={(v) => update("nationalId", v)} placeholder="Opcional" />
 
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
             <TextAreaField
               icon={<Activity className="h-4 w-4" />}
               label="Alergias"
@@ -386,10 +390,10 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
         </div>
       </section>
 
-      <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-800/80 bg-[#07111f] shadow-[0_32px_90px_-46px_rgba(2,8,23,.7)]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[size:28px_28px] [mask-image:linear-gradient(to_bottom,black,transparent_70%)]" />
-        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-[#DA1A21]/20 blur-3xl" />
-        <div className="pointer-events-none absolute -right-16 top-4 h-52 w-52 rounded-full bg-blue-500/15 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-800/80 bg-[#0A1422] shadow-[0_32px_90px_-46px_rgba(2,8,23,.7)]">
+        <div className="pointer-events-none absolute -left-24 -top-28 h-64 w-64 rounded-full bg-[#DA1A21]/14 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 top-0 h-60 w-60 rounded-full bg-sky-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-slate-950/25 to-transparent" />
 
         <div className="relative border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6">
           <div className="flex items-start justify-between gap-3">
