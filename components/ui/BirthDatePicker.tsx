@@ -64,44 +64,47 @@ export function BirthDatePicker({ value, onChange, label }: BirthDatePickerProps
       <label className="text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground ml-1">
         {label}
       </label>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-[minmax(0,.85fr)_minmax(0,1.35fr)] gap-2.5 sm:grid-cols-[minmax(0,.8fr)_minmax(0,1.35fr)_minmax(0,1fr)] sm:gap-3">
         {/* Day */}
-        <div className="relative group">
+        <div className="min-w-0 space-y-1">
+          <span className="ml-1 block text-[9px] font-black uppercase tracking-[0.13em] text-slate-400 sm:hidden">Día</span>
           <select
+            aria-label="Día de nacimiento"
             value={day}
             onChange={(e) => handleUpdate("day", e.target.value)}
-            className="w-full rounded-2xl border border-input bg-background px-4 py-4 text-base font-bold focus:ring-4 focus:ring-primary/10 appearance-none transition-all hover:bg-slate-50 cursor-pointer shadow-sm outline-none"
+            className="min-h-12 w-full appearance-none rounded-[1rem] border border-input bg-background px-3 py-3 text-base font-bold shadow-sm outline-none transition focus:ring-4 focus:ring-primary/10 sm:px-3.5"
           >
             <option value="" disabled>Día</option>
             {days.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30 text-[9px] font-black group-hover:opacity-100 transition-opacity">DÍ</div>
         </div>
 
         {/* Month */}
-        <div className="relative group">
+        <div className="min-w-0 space-y-1">
+          <span className="ml-1 block text-[9px] font-black uppercase tracking-[0.13em] text-slate-400 sm:hidden">Mes</span>
           <select
+            aria-label="Mes de nacimiento"
             value={month}
             onChange={(e) => handleUpdate("month", e.target.value)}
-            className="w-full rounded-2xl border border-input bg-background px-4 py-4 text-base font-bold focus:ring-4 focus:ring-primary/10 appearance-none transition-all hover:bg-slate-50 cursor-pointer shadow-sm outline-none"
+            className="min-h-12 w-full appearance-none rounded-[1rem] border border-input bg-background px-3 py-3 text-base font-bold shadow-sm outline-none transition focus:ring-4 focus:ring-primary/10 sm:px-3.5"
           >
             <option value="" disabled>Mes</option>
             {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30 text-[9px] font-black group-hover:opacity-100 transition-opacity">ME</div>
         </div>
 
         {/* Year */}
-        <div className="relative group">
+        <div className="col-span-2 min-w-0 space-y-1 sm:col-span-1">
+          <span className="ml-1 block text-[9px] font-black uppercase tracking-[0.13em] text-slate-400 sm:hidden">Año</span>
           <select
+            aria-label="Año de nacimiento"
             value={year}
             onChange={(e) => handleUpdate("year", e.target.value)}
-            className="w-full rounded-2xl border border-input bg-background px-4 py-4 text-base font-bold focus:ring-4 focus:ring-primary/10 appearance-none transition-all hover:bg-slate-50 cursor-pointer shadow-sm outline-none"
+            className="min-h-12 w-full appearance-none rounded-[1rem] border border-input bg-background px-3 py-3 text-base font-bold shadow-sm outline-none transition focus:ring-4 focus:ring-primary/10 sm:px-3.5"
           >
             <option value="" disabled>Año</option>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30 text-[9px] font-black group-hover:opacity-100 transition-opacity">AÑ</div>
         </div>
       </div>
     </div>
