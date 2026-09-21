@@ -371,13 +371,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </nav>
 
-        {!isCorporate && isMoreMenuOpen && (
+        {isMoreMenuOpen && (
           <>
             <div className="lg:hidden fixed inset-0 z-[68] bg-slate-950/50 backdrop-blur-sm" onClick={() => setIsMoreMenuOpen(false)} />
 
             <div className="lg:hidden fixed inset-x-0 bottom-0 z-[70] max-h-[75vh] overflow-y-auto rounded-t-[1.6rem] border-t border-slate-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-2xl dark:border-[#1a2333] dark:bg-[#0f1419]">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Menú</p>
+              <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/15" />
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">PreRescue ID</p>
+                  <p className="mt-0.5 truncate text-sm font-black text-slate-950 dark:text-white">{session?.user?.email}</p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setIsMoreMenuOpen(false)}
@@ -389,15 +393,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
 
               <div className="grid grid-cols-1 gap-2">
-                {[
-                  { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
-                  { href: "/dashboard/perfiles-medicos", label: "Perfiles médicos", icon: UsersRound },
-                  { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
-                  { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
-                  { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
-                  { href: "/dashboard/pedidos", label: "Mis pedidos", icon: Package },
-                  { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
-                ].map((item) => (
+                {(isCorporate
+                  ? corporateNavItems
+                  : [
+                      { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
+                      { href: "/dashboard/perfiles-medicos", label: "Perfiles médicos", icon: UsersRound },
+                      { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
+                      { href: "/dashboard/empresas", label: "Empresa", icon: Building2 },
+                      { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
+                      { href: "/dashboard/pedidos", label: "Mis pedidos", icon: Package },
+                      { href: "/dashboard/configuracion", label: "Ajustes", icon: Settings },
+                    ]
+                ).map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
