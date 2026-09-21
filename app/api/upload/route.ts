@@ -27,19 +27,34 @@ function detectImageMagicBytes(buffer: Buffer): string | null {
 
 async function parseMultipartFormData(req: NextRequest): Promise<FormData> {
   const contentType = req.headers.get("content-type") || "";
-  if (/multipart\/form-data\s*;[^;]*boundary=/i.test(contentType)) return req.formData();
-  if (!contentType.toLowerCase().includes("multipart/form-data")) throw new Error("INVALID_MULTIPART_CONTENT_TYPE");
+  if (!contentType.toLowerCase().includes("multipart/form-data")) {
+    throw new Error("INVALID_MULTIPART_CONTENT_TYPE");
+  }
 
+  // Always rebuild the multipart request from its raw body. Some browsers/proxies
+  // can deliver a malformed or empty boundary parameter even though the payload
+  // itself contains a valid boundary. Calling req.formData() directly in that case
+  // throws "no boundary found" before we get a chance to recover.
   const body = await req.arrayBuffer();
   const bodyBuffer = Buffer.from(body);
-  const firstLineEnd = bodyBuffer.indexOf(Buffer.from("\r\n"));
-  if (firstLineEnd <= 2) throw new Error("MULTIPART_BOUNDARY_NOT_FOUND");
 
-  const firstLine = bodyBuffer.subarray(0, firstLineEnd).toString("utf8");
-  if (!firstLine.startsWith("--") || firstLine.length > 200) throw new Error("MULTIPART_BOUNDARY_NOT_FOUND");
+  const headerBoundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  let boundary = String(headerBoundaryMatch?.[1] || headerBoundaryMatch?.[2] || "").trim();
 
-  const boundary = firstLine.slice(2);
-  if (!/^[0-9A-Za-z'()+_,\-.\/:=?]{1,180}$/.test(boundary)) throw new Error("INVALID_MULTIPART_BOUNDARY");
+  if (!boundary) {
+    const firstLineEnd = bodyBuffer.indexOf(Buffer.from("\r\n"));
+    if (firstLineEnd <= 2) throw new Error("MULTIPART_BOUNDARY_NOT_FOUND");
+
+    const firstLine = bodyBuffer.subarray(0, firstLineEnd).toString("utf8");
+    if (!firstLine.startsWith("--") || firstLine.length > 200) {
+      throw new Error("MULTIPART_BOUNDARY_NOT_FOUND");
+    }
+    boundary = firstLine.slice(2);
+  }
+
+  if (!/^[0-9A-Za-z'()+_,\-.\/:=?]{1,180}$/.test(boundary)) {
+    throw new Error("INVALID_MULTIPART_BOUNDARY");
+  }
 
   const headers = new Headers(req.headers);
   headers.set("content-type", `multipart/form-data; boundary=${boundary}`);
