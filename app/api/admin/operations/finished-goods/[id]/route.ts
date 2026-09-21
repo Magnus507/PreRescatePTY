@@ -287,7 +287,7 @@ export async function DELETE(
 
     if (result.imageToCleanup) {
       await cleanupUploadedObjectOrRecordOrphan(result.imageToCleanup, {
-        actorUserId: auth.session.user.id || null,
+        actorUserId: auth.session.user.id,
         accountId: auth.session.user.accountId || null,
       }).catch((error) => {
         console.error("[operations/finished-goods/:id] image cleanup error:", error);
