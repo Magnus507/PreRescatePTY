@@ -451,7 +451,7 @@ export default function FamiliaPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-slate-500 animate-pulse font-medium tracking-tight uppercase">Sincronizando expedientes médicos</p>
+        <p className="text-slate-500 animate-pulse font-medium tracking-tight uppercase">Sincronizando perfiles</p>
       </div>
     );
   }
@@ -499,7 +499,7 @@ export default function FamiliaPage() {
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-white text-slate-300 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.18)]">
               <UserRound className="h-10 w-10" />
             </div>
-            <h3 className="text-2xl font-black tracking-tight text-slate-950">Sin configuración médica</h3>
+            <h3 className="text-2xl font-black tracking-tight text-slate-950">Aún no hay perfiles configurados</h3>
             <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-slate-600">
               Aún no se ha detectado un perfil base o adicionales para este registro.
             </p>
@@ -571,7 +571,7 @@ export default function FamiliaPage() {
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <div>
-                <h2 className="text-2xl font-black tracking-tight">Añadir Perfil Médico</h2>
+                <h2 className="text-2xl font-black tracking-tight">Añadir perfil</h2>
                 <p className="text-xs text-muted-foreground font-medium">Completa los datos que podrían ayudar en una emergencia.</p>
               </div>
             </div>
@@ -607,7 +607,7 @@ export default function FamiliaPage() {
             <div className="max-w-5xl mx-auto space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-3xl font-black tracking-tight">Añadir Perfil Médico</h2>
+                  <h2 className="text-3xl font-black tracking-tight">Añadir perfil</h2>
                   <p className="text-sm text-muted-foreground">Completa los datos que podrían ayudar en una emergencia.</p>
                 </div>
                 <button type="button" onClick={() => setShowAdd(false)} className="h-12 px-5 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">
@@ -624,7 +624,7 @@ export default function FamiliaPage() {
                   <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-6 py-4 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">Cancelar</button>
                   <button type="submit" disabled={addSaving} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all">
                     {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    Guardar Perfil Médico
+                    Guardar perfil
                   </button>
                 </div>
               </form>
@@ -647,7 +647,7 @@ export default function FamiliaPage() {
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <div>
-                <h2 className="text-2xl font-black tracking-tight">Editar Perfil Médico: {editProfile.firstName}</h2>
+                <h2 className="text-2xl font-black tracking-tight">Editar perfil</h2>
                 <p className="text-xs text-muted-foreground font-medium">Actualiza los datos de {editProfile.firstName}.</p>
               </div>
             </div>
@@ -683,7 +683,7 @@ export default function FamiliaPage() {
             <div className="max-w-5xl mx-auto space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-3xl font-black tracking-tight">Editar Perfil Médico: {editProfile.firstName}</h2>
+                  <h2 className="text-3xl font-black tracking-tight">Editar perfil</h2>
                   <p className="text-sm text-muted-foreground">Actualiza los datos de {editProfile.firstName}.</p>
                 </div>
                 <button type="button" onClick={() => setEditProfile(null)} className="h-12 px-5 rounded-2xl border border-border font-black text-sm hover:bg-accent transition-all">
