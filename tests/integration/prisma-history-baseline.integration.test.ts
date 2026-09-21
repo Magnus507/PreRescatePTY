@@ -21,6 +21,19 @@ describe("Verified migration history reconciliation", () => {
         // additions. Recreate that historical shape inside this rollback-only
         // transaction before checking the baseline fingerprint.
         await tx.$executeRawUnsafe('DROP TABLE IF EXISTS public."SupportMessage"');
+        await tx.$executeRawUnsafe(`
+          ALTER TABLE public."Profile"
+            DROP COLUMN IF EXISTS "minorModuleEnabled",
+            DROP COLUMN IF EXISTS "minorModuleData",
+            DROP COLUMN IF EXISTS "elderModuleEnabled",
+            DROP COLUMN IF EXISTS "elderModuleData",
+            DROP COLUMN IF EXISTS "specialNeedsModuleEnabled",
+            DROP COLUMN IF EXISTS "specialNeedsModuleData",
+            DROP COLUMN IF EXISTS "petModuleEnabled",
+            DROP COLUMN IF EXISTS "petModuleData",
+            DROP COLUMN IF EXISTS "workModuleEnabled",
+            DROP COLUMN IF EXISTS "workModuleData"
+        `);
 
         await tx.$executeRawUnsafe(sql);
         const actual = await tx.$queryRaw<Array<{ migration_name: string; checksum: string }>>`SELECT migration_name, checksum FROM public._prisma_migrations ORDER BY migration_name`;
@@ -41,6 +54,19 @@ describe("Verified migration history reconciliation", () => {
     await expect(
       db.$transaction(async tx => {
         await tx.$executeRawUnsafe('DROP TABLE IF EXISTS public."SupportMessage"');
+        await tx.$executeRawUnsafe(`
+          ALTER TABLE public."Profile"
+            DROP COLUMN IF EXISTS "minorModuleEnabled",
+            DROP COLUMN IF EXISTS "minorModuleData",
+            DROP COLUMN IF EXISTS "elderModuleEnabled",
+            DROP COLUMN IF EXISTS "elderModuleData",
+            DROP COLUMN IF EXISTS "specialNeedsModuleEnabled",
+            DROP COLUMN IF EXISTS "specialNeedsModuleData",
+            DROP COLUMN IF EXISTS "petModuleEnabled",
+            DROP COLUMN IF EXISTS "petModuleData",
+            DROP COLUMN IF EXISTS "workModuleEnabled",
+            DROP COLUMN IF EXISTS "workModuleData"
+        `);
         await tx.$executeRawUnsafe(sql);
       })
     ).rejects.toThrow(/already exists/);
