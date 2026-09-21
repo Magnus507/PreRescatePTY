@@ -1,63 +1,137 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1170" viewBox="0 0 2048 1170">
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="994" viewBox="0 0 1536 994">
   <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#f8fafc"/>
-      <stop offset="1" stop-color="#eef2f7"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0d12"/>
+      <stop offset=".52" stop-color="#080b10"/>
+      <stop offset="1" stop-color="#11151b"/>
     </linearGradient>
-    <linearGradient id="navy" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#07111f"/>
-      <stop offset="1" stop-color="#0b203d"/>
+    <radialGradient id="glow" cx=".38" cy=".42" r=".8">
+      <stop offset="0" stop-color="#20252c" stop-opacity=".48"/>
+      <stop offset=".65" stop-color="#0e1116" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#05070a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="redEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff3038"/>
+      <stop offset=".55" stop-color="#d9000c"/>
+      <stop offset="1" stop-color="#7d0008"/>
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="20" stdDeviation="28" flood-color="#020617" flood-opacity=".12"/>
+    <linearGradient id="blueEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f67c9"/>
+      <stop offset=".55" stop-color="#083a76"/>
+      <stop offset="1" stop-color="#041a37"/>
+    </linearGradient>
+    <linearGradient id="logoBlue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a7fe0"/>
+      <stop offset=".55" stop-color="#1251a6"/>
+      <stop offset="1" stop-color="#082c63"/>
+    </linearGradient>
+    <linearGradient id="logoRed" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff3c44"/>
+      <stop offset=".5" stop-color="#ef101b"/>
+      <stop offset="1" stop-color="#8c0008"/>
+    </linearGradient>
+    <pattern id="hex" width="38" height="33" patternUnits="userSpaceOnUse">
+      <path d="M9.5 1h19L38 16.5 28.5 32h-19L0 16.5Z" fill="none" stroke="#2361a7" stroke-opacity=".33" stroke-width="1.2"/>
+    </pattern>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity=".85"/>
     </filter>
   </defs>
 
-  <rect width="2048" height="1170" fill="#eef2f7"/>
-  <rect x="54" y="54" width="1940" height="1062" rx="64" fill="url(#bg)" stroke="#d7dee8" stroke-width="4" filter="url(#shadow)"/>
+  <rect width="1536" height="994" fill="url(#bg)"/>
+  <rect width="1536" height="994" fill="url(#glow)"/>
 
-  <rect x="54" y="54" width="520" height="1062" rx="64" fill="url(#navy)"/>
-  <path d="M54 118h520" stroke="#ef3340" stroke-width="10" opacity=".95"/>
-  <circle cx="470" cy="190" r="150" fill="#ef3340" opacity=".08"/>
-  <circle cx="130" cy="930" r="190" fill="#ffffff" opacity=".035"/>
+  <!-- blue/red premium corner rails -->
+  <path d="M0 994V780L250 994Z" fill="url(#blueEdge)" opacity=".98"/>
+  <path d="M0 994V827L181 994Z" fill="url(#redEdge)" opacity=".96"/>
+  <path d="M1536 0H1135L1536 294Z" fill="url(#blueEdge)" opacity=".98"/>
+  <path d="M1536 0H1267L1536 198Z" fill="url(#redEdge)" opacity=".96"/>
+  <path d="M0 919 77 994H0Z" fill="url(#hex)" opacity=".75"/>
+  <path d="M1406 0h130v150L1330 0Z" fill="url(#hex)" opacity=".85"/>
 
-  <g transform="translate(112 150)">
-    <text x="0" y="72" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="800" fill="#ffffff" letter-spacing="2">PRE</text>
-    <rect x="118" y="13" width="250" height="78" rx="20" fill="#ffffff"/>
-    <text x="143" y="70" font-family="Arial, Helvetica, sans-serif" font-size="47" font-weight="900" fill="#0b203d" letter-spacing="1">RESCUE</text>
-    <text x="382" y="72" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="900" fill="#ef3340" letter-spacing="2">ID</text>
+  <!-- logo -->
+  <g transform="translate(98 47)" filter="url(#shadow)">
+    <circle cx="96" cy="72" r="67" fill="#090b0f" stroke="#1464ba" stroke-width="7"/>
+    <circle cx="96" cy="72" r="57" fill="none" stroke="#e7131f" stroke-width="5" stroke-dasharray="150 60"/>
+    <g transform="translate(49 25)">
+      <path d="M47 0 60 27 89 14 76 43 103 55 76 67 89 96 60 83 47 110 34 83 5 96 18 67-9 55 18 43 5 14 34 27Z" fill="url(#logoRed)"/>
+      <rect x="42" y="25" width="10" height="63" rx="5" fill="#fff"/>
+      <circle cx="47" cy="20" r="7" fill="#fff"/>
+      <path d="M47 41c22 7 22 18 0 25s-22 18 0 25" fill="none" stroke="#fff" stroke-width="4"/>
+    </g>
+    <circle cx="165" cy="36" r="6" fill="#1d69c5"/>
+    <path d="M171 17c13 4 22 13 26 26M173 2c22 6 38 22 44 44" fill="none" stroke="#1d69c5" stroke-width="7" stroke-linecap="round"/>
   </g>
 
-  <text x="112" y="340" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#dbe7f5" letter-spacing="4">IDENTIFICACIÓN DE EMERGENCIA</text>
-  <text x="112" y="430" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="800" fill="#ffffff">Activa.</text>
-  <text x="112" y="500" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="800" fill="#ffffff">Protege.</text>
-  <text x="112" y="570" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="800" fill="#ffffff">Responde.</text>
+  <text x="330" y="144" font-family="Arial, Helvetica, sans-serif" font-size="82" font-style="italic" font-weight="900" fill="url(#logoRed)" filter="url(#shadow)">Pre</text>
+  <text x="463" y="144" font-family="Arial, Helvetica, sans-serif" font-size="82" font-style="italic" font-weight="900" fill="url(#logoBlue)" filter="url(#shadow)">Rescue</text>
+  <text x="758" y="144" font-family="Arial, Helvetica, sans-serif" font-size="82" font-style="italic" font-weight="900" fill="url(#logoRed)" filter="url(#shadow)">ID</text>
+  <path d="M333 166h175l18-14 12 27 12-45 13 58 13-38 14 13h254" fill="none" stroke="#e51521" stroke-width="3"/>
+  <text x="385" y="210" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" letter-spacing="8" fill="#fff">TU INFORMACIÓN,</text>
+  <text x="642" y="210" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="800" letter-spacing="8" fill="#ef2732">SALVA VIDAS.</text>
 
-  <g transform="translate(112 868)">
-    <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" fill="#ffffff">www.prerescatepty.com</text>
-    <text x="0" y="58" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" fill="#ffffff">+507 6751-6171</text>
-    <text x="0" y="128" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="600" fill="#93a7bd" letter-spacing="2">PRE RESCATE PTY · PANAMÁ</text>
+  <!-- left QR frame -->
+  <g>
+    <path d="M164 314v-41c0-15 12-27 27-27h42M551 314v-41c0-15-12-27-27-27h-42M164 608v41c0 15 12 27 27 27h42M551 608v41c0 15-12 27-27 27h-42" fill="none" stroke="#ef1722" stroke-width="7" stroke-linecap="round"/>
+    <rect x="191" y="285" width="360" height="332" rx="18" fill="#050607" stroke="#fff" stroke-width="7"/>
   </g>
 
-  <g transform="translate(654 140)">
-    <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" fill="#ef3340" letter-spacing="5">TARJETA DE ACTIVACIÓN</text>
-    <text x="0" y="72" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="900" fill="#0b203d">Código de activación</text>
-    <text x="0" y="120" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="500" fill="#667085">Usa este código una sola vez para vincular tu producto PreRescue ID.</text>
+  <!-- vertical divider -->
+  <line x1="665" y1="292" x2="665" y2="690" stroke="#b61019" stroke-width="2"/>
 
-    <rect x="0" y="182" width="808" height="230" rx="34" fill="#ffffff" stroke="#d7dee8" stroke-width="4"/>
-    <text x="40" y="238" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="800" fill="#98a2b3" letter-spacing="4">CÓDIGO</text>
-    <line x1="40" y1="350" x2="768" y2="350" stroke="#edf0f4" stroke-width="3"/>
+  <!-- right labels and empty fields -->
+  <text x="754" y="326" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="900" letter-spacing="5" fill="#fff">CÓDIGO DE ACTIVACIÓN</text>
+  <rect x="754" y="343" width="626" height="92" rx="14" fill="#080b0f" fill-opacity=".6" stroke="#fff" stroke-width="4"/>
+  <text x="754" y="462" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="500" letter-spacing="1.3" fill="#c4c7cc">Se genera automáticamente.</text>
 
-    <rect x="866" y="182" width="390" height="390" rx="38" fill="#ffffff" stroke="#d7dee8" stroke-width="4"/>
-    <rect x="906" y="222" width="310" height="310" rx="22" fill="#f8fafc" stroke="#e6eaf0" stroke-width="3" stroke-dasharray="14 14"/>
-    <text x="1061" y="552" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="800" fill="#98a2b3" letter-spacing="3">QR DEL PRODUCTO</text>
+  <text x="754" y="534" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="900" letter-spacing="5" fill="#fff">NÚMERO DE PEDIDO</text>
+  <rect x="754" y="550" width="626" height="92" rx="14" fill="#080b0f" fill-opacity=".6" stroke="#fff" stroke-width="4"/>
+  <text x="754" y="670" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="500" letter-spacing="1.3" fill="#c4c7cc">Se genera automáticamente.</text>
 
-    <text x="0" y="535" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="800" fill="#98a2b3" letter-spacing="4">IDENTIFICADOR DE PRODUCCIÓN</text>
-    <rect x="0" y="574" width="1256" height="154" rx="30" fill="#ffffff" stroke="#d7dee8" stroke-width="4"/>
-
-    <rect x="0" y="784" width="1256" height="1" fill="#dfe4ea"/>
-    <text x="0" y="848" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="800" fill="#0b203d">Conserva esta tarjeta.</text>
-    <text x="0" y="894" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="500" fill="#667085">El código de activación es distinto al QR público y no debe compartirse.</text>
-    <text x="0" y="950" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="600" fill="#98a2b3">Soporte: +507 6751-6171 · www.prerescatepty.com</text>
+  <!-- QR copy -->
+  <g transform="translate(198 653)">
+    <rect x="0" y="1" width="41" height="74" rx="5" fill="none" stroke="#fff" stroke-width="3"/>
+    <rect x="9" y="8" width="23" height="4" rx="2" fill="#fff"/>
+    <circle cx="20.5" cy="68" r="3" fill="#fff"/>
+    <text x="76" y="24" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="900" letter-spacing="4" fill="#fff">ESCANEA ESTE QR</text>
+    <text x="76" y="54" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="600" letter-spacing="4" fill="#c5c7cc">ACCEDE A MI INFORMACIÓN</text>
+    <text x="76" y="79" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="600" letter-spacing="4" fill="#c5c7cc">MÉDICA DE EMERGENCIA</text>
   </g>
+
+  <!-- bottom value icons -->
+  <g transform="translate(214 775)">
+    <circle cx="40" cy="32" r="31" fill="#bd0009" stroke="#ff2a34" stroke-width="3" filter="url(#softGlow)"/>
+    <rect x="28" y="30" width="24" height="21" rx="4" fill="#fff"/>
+    <path d="M32 30v-6a8 8 0 0 1 16 0v6" fill="none" stroke="#fff" stroke-width="4"/>
+    <text x="95" y="24" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="900" letter-spacing="2" fill="#fff">ACCESO SEGURO</text>
+    <text x="95" y="50" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" letter-spacing="2" fill="#e5e7eb">CUANDO MÁS IMPORTA</text>
+  </g>
+
+  <line x1="573" y1="770" x2="573" y2="844" stroke="#d2131d" stroke-width="2"/>
+
+  <g transform="translate(626 775)">
+    <circle cx="40" cy="32" r="31" fill="#bd0009" stroke="#ff2a34" stroke-width="3" filter="url(#softGlow)"/>
+    <path d="M18 33h14l6-12 7 25 8-18 5 5h9" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+    <text x="95" y="24" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="900" letter-spacing="2" fill="#fff">INFORMACIÓN VITAL</text>
+    <text x="95" y="50" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" letter-spacing="2" fill="#e5e7eb">AL ALCANCE</text>
+  </g>
+
+  <line x1="986" y1="770" x2="986" y2="844" stroke="#d2131d" stroke-width="2"/>
+
+  <g transform="translate(1038 775)">
+    <circle cx="40" cy="32" r="31" fill="#bd0009" stroke="#ff2a34" stroke-width="3" filter="url(#softGlow)"/>
+    <circle cx="29" cy="27" r="7" fill="#fff"/><circle cx="49" cy="27" r="7" fill="#fff"/><circle cx="40" cy="17" r="7" fill="#fff"/>
+    <path d="M18 49c2-11 10-16 20-16s18 5 22 16" fill="#fff"/>
+    <text x="95" y="24" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="900" letter-spacing="2" fill="#fff">APOYA EN</text>
+    <text x="95" y="50" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" letter-spacing="2" fill="#e5e7eb">SITUACIONES CRÍTICAS</text>
+  </g>
+
+  <!-- footer pulse -->
+  <path d="M424 885h423l14-22 12 39 13-57 14 48 12-21 12 13h433" fill="none" stroke="#e41520" stroke-width="3"/>
+  <text x="613" y="940" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="800" letter-spacing="7" fill="#fff">TU INFORMACIÓN,</text>
+  <text x="901" y="940" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="900" letter-spacing="7" fill="#ef2732">SALVA VIDAS.</text>
 </svg>
