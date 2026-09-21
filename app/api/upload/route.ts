@@ -58,19 +58,44 @@ export async function POST(req: NextRequest) {
     const limiter = await rateLimit("upload", `${userId}:${ip}`, { limit: 20, windowMs: 60_000 * 15 });
     if (!limiter.allowed) return NextResponse.json({ error: "Demasiadas cargas. Intenta más tarde." }, { status: 429 });
 
-    const formData = await parseMultipartFormData(req);
-    const file = formData.get("file");
-    const type = String(formData.get("type") || "");
-    bucketName = type === "profile" ? "profile-photos" : String(formData.get("bucket") || "general");
+    const rawProfileUpload = req.headers.get("x-prerescate-upload") === "raw-profile-photo";
 
-    if (!(file instanceof File) || file.size <= 0) return NextResponse.json({ error: "No se proporcionó ningún archivo" }, { status: 400 });
+    let type = "";
+    let targetProfileId = "";
+    let fileType = "";
+    let fileSize = 0;
+    let buffer: Buffer;
+
+    if (rawProfileUpload) {
+      type = "profile";
+      bucketName = "profile-photos";
+      targetProfileId = String(req.headers.get("x-profile-id") || "").trim();
+      fileType = String(req.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+      buffer = Buffer.from(await req.arrayBuffer());
+      fileSize = buffer.length;
+    } else {
+      const formData = await parseMultipartFormData(req);
+      const file = formData.get("file");
+      type = String(formData.get("type") || "");
+      bucketName = type === "profile" ? "profile-photos" : String(formData.get("bucket") || "general");
+      targetProfileId = String(formData.get("profileId") || "").trim();
+
+      if (!(file instanceof File) || file.size <= 0) {
+        return NextResponse.json({ error: "No se proporcionó ningún archivo" }, { status: 400 });
+      }
+
+      fileType = file.type;
+      fileSize = file.size;
+      buffer = Buffer.from(await file.arrayBuffer());
+    }
+
+    if (fileSize <= 0) return NextResponse.json({ error: "No se proporcionó ningún archivo" }, { status: 400 });
     if (!ALLOWED_BUCKETS.has(bucketName)) return NextResponse.json({ error: "Destino de carga inválido" }, { status: 400 });
-    if (!ALLOWED_IMAGE_TYPES.has(file.type)) return NextResponse.json({ error: "Solo se permiten imágenes JPG, PNG o WebP" }, { status: 400 });
-    if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: "El archivo supera el límite de 5MB" }, { status: 400 });
+    if (!ALLOWED_IMAGE_TYPES.has(fileType)) return NextResponse.json({ error: "Solo se permiten imágenes JPG, PNG o WebP" }, { status: 400 });
+    if (fileSize > MAX_UPLOAD_BYTES) return NextResponse.json({ error: "El archivo supera el límite de 5MB" }, { status: 400 });
 
-    const buffer = Buffer.from(await file.arrayBuffer());
     const detectedMime = detectImageMagicBytes(buffer);
-    if (!detectedMime || detectedMime !== file.type) {
+    if (!detectedMime || detectedMime !== fileType) {
       return NextResponse.json({ error: "El contenido no corresponde a una imagen permitida" }, { status: 400 });
     }
 
@@ -85,7 +110,6 @@ export async function POST(req: NextRequest) {
     const publicUrl = await optimizeAndUploadImage(buffer, bucketName, path, options);
 
     if (type === "profile") {
-      const targetProfileId = String(formData.get("profileId") || "").trim();
       try {
         if (targetProfileId) {
           const [user, profile] = await Promise.all([
