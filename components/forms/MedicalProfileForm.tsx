@@ -139,7 +139,7 @@ const OPTIONAL_TABS: Array<{
     id: "pet",
     label: "Mascotas",
     shortLabel: "Mascotas",
-    description: "Mascota o animal de asistencia, veterinario y cuidados importantes.",
+    description: "Convierte este perfil en una ficha de mascota para identificación, contacto y retorno seguro.",
     icon: Cat,
     tone: "teal",
   },
@@ -238,6 +238,18 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   const specialNeedsData = form.specialNeedsModuleData ?? EMPTY_SPECIAL_NEEDS_MODULE;
   const petData = form.petModuleData ?? EMPTY_PET_MODULE;
   const workData = form.workModuleData ?? EMPTY_WORK_MODULE;
+  const isPetProfile = form.petModuleEnabled === true;
+
+  const petAge = useMemo(() => {
+    if (!petData.birthDate) return null;
+    const birthDate = new Date(petData.birthDate);
+    if (Number.isNaN(birthDate.getTime())) return null;
+    const now = new Date();
+    let years = now.getFullYear() - birthDate.getFullYear();
+    const monthDelta = now.getMonth() - birthDate.getMonth();
+    if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < birthDate.getDate())) years -= 1;
+    return Math.max(0, years);
+  }, [petData.birthDate]);
 
   const setModuleEnabled = (tab: OptionalTab, enabled: boolean) => {
     if (tab === "insurance") {
@@ -259,6 +271,22 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       work: "workModuleEnabled",
     };
     update(map[tab], enabled);
+
+    if (tab === "pet" && enabled) {
+      setActiveTab("pet");
+      update("minorModuleEnabled", false);
+      update("elderModuleEnabled", false);
+      update("specialNeedsModuleEnabled", false);
+      update("workModuleEnabled", false);
+      update("isInsured", false);
+      update("showVulnerabilityStatusPublic", false);
+      update("showCommunicationStatusPublic", false);
+      update("showSafeReturnPublic", false);
+      update("showInsuranceProviderPublic", false);
+      update("showPreferredHospitalPublic", false);
+      update("showPrimaryDoctorPublic", false);
+      update("showPrimaryDoctorPhonePublic", false);
+    }
 
     if (tab === "elder") {
       update("showVulnerabilityStatusPublic", enabled);
@@ -289,22 +317,105 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
           <div className="flex items-center justify-between gap-3 rounded-[1.15rem] border border-slate-800 bg-slate-950 px-3.5 py-3 text-white shadow-[0_14px_34px_-26px_rgba(15,23,42,.8)]">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[.9rem] bg-white/[0.08] text-white ring-1 ring-white/10">
-                <UserRound className="h-[18px] w-[18px]" />
+                {isPetProfile ? <Cat className="h-[18px] w-[18px]" /> : <UserRound className="h-[18px] w-[18px]" />}
               </div>
               <div className="min-w-0">
-                <h2 className="text-[1.05rem] font-black tracking-[-0.025em] text-white sm:text-lg">Información básica</h2>
+                <h2 className="text-[1.05rem] font-black tracking-[-0.025em] text-white sm:text-lg">{isPetProfile ? "Ficha de mascota" : "Información básica"}</h2>
                 <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-400 sm:text-[11px]">
-                  Datos esenciales de emergencia · siempre van primero
+                  {isPetProfile ? "Identificación y datos esenciales para ayudarla a volver a casa" : "Datos esenciales de emergencia · siempre van primero"}
                 </p>
               </div>
             </div>
             <span className="shrink-0 rounded-full border border-[#DA1A21]/30 bg-[#DA1A21]/12 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-red-300 sm:text-[9px]">
-              Siempre visible
+              {isPetProfile ? "Modo mascota" : "Siempre visible"}
             </span>
           </div>
         </div>
 
         <div className="space-y-4 p-3.5 pt-4 sm:p-5 [&_input]:min-h-11 [&_select]:min-h-11 [&_textarea]:min-h-[4.75rem] [&_textarea]:py-2.5">
+          {isPetProfile && (
+            <div className="space-y-4">
+              <div className="rounded-[1.15rem] border border-teal-200 bg-teal-50/70 p-3.5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[.9rem] bg-teal-600 text-white">
+                    <Cat className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">Perfil convertido a mascota</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                      La ficha pública priorizará identificación, dueño, retorno seguro y cuidados de la mascota. Los datos médicos humanos dejan de mostrarse mientras este modo esté activo.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
+                <Field
+                  label="Nombre de la mascota *"
+                  value={petData.petName}
+                  onChange={(v) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, "petName", v)}
+                  required
+                  placeholder="Ej: Luna"
+                />
+                <Field
+                  label="Especie *"
+                  value={petData.species}
+                  onChange={(v) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, "species", v)}
+                  required
+                  placeholder="Perro, gato..."
+                />
+                <Field
+                  label="Raza"
+                  value={petData.breed}
+                  onChange={(v) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, "breed", v)}
+                  placeholder="Ej: Labrador"
+                />
+                <Field
+                  label="Color"
+                  value={petData.color}
+                  onChange={(v) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, "color", v)}
+                  placeholder="Ej: Negro con pecho blanco"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
+                <SelectField
+                  label="Sexo"
+                  value={petData.sex}
+                  onChange={(v) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, "sex", v)}
+                  options={[
+                    { value: "", label: "No definido" },
+                    { value: "Macho", label: "Macho" },
+                    { value: "Hembra", label: "Hembra" },
+                  ]}
+                />
+                <div className="rounded-[1.05rem] border border-slate-200 bg-slate-50/70 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Fecha de nacimiento</p>
+                    {petAge !== null && (
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black text-slate-700">
+                        {petAge} {petAge === 1 ? "año" : "años"}
+                      </span>
+                    )}
+                  </div>
+                  <BirthDatePicker
+                    label=""
+                    value={petData.birthDate}
+                    onChange={(v) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, "birthDate", v)}
+                  />
+                </div>
+              </div>
+
+              <PlainTextArea
+                label="Señas particulares"
+                value={petData.distinctiveMarks}
+                onChange={(v) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, "distinctiveMarks", v)}
+                placeholder="Manchas, cicatrices, collar habitual u otra característica que ayude a identificarla."
+              />
+            </div>
+          )}
+
+          <div className={isPetProfile ? "hidden" : "space-y-4"}>
           <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
             <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required placeholder="Juan" />
             <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required placeholder="Pérez" />
@@ -387,6 +498,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             checked={form.showAdditionalNotesPublic}
             onChange={(v) => update("showAdditionalNotesPublic", v)}
           />
+          </div>
         </div>
       </section>
 
@@ -403,20 +515,20 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 Módulos personalizados
               </div>
               <h2 className="mt-3 text-[1.45rem] font-black tracking-[-0.04em] text-white sm:text-2xl">
-                Activa solo lo que aplica a este perfil
+                {isPetProfile ? "Este perfil está en modo mascota" : "Activa solo lo que aplica a este perfil"}
               </h2>
               <p className="mt-1.5 max-w-2xl text-xs font-medium leading-5 text-slate-300 sm:text-sm">
-                La información básica siempre permanece primero. Estos módulos aparecen únicamente cuando los activas.
+                {isPetProfile ? "Completa los datos de contacto, retorno y cuidados. Desactiva Mascotas para volver al perfil humano." : "La información básica siempre permanece primero. Estos módulos aparecen únicamente cuando los activas."}
               </p>
             </div>
             <div className="shrink-0 rounded-[1rem] border border-white/10 bg-white/[0.07] px-3 py-2 text-center backdrop-blur">
-              <p className="text-lg font-black leading-none text-white">{enabledCount}</p>
-              <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">de 6 activos</p>
+              <p className="text-lg font-black leading-none text-white">{isPetProfile ? 1 : enabledCount}</p>
+              <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">{isPetProfile ? "modo mascota" : "de 6 activos"}</p>
             </div>
           </div>
 
           <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-5 flex gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {OPTIONAL_TABS.map((tab) => {
+            {(isPetProfile ? OPTIONAL_TABS.filter((tab) => tab.id === "pet") : OPTIONAL_TABS).map((tab) => {
               const Icon = tab.icon;
               const selected = activeTab === tab.id;
               const enabled = moduleEnabled[tab.id];
@@ -687,16 +799,38 @@ function SpecialNeedsFields({
 function PetFields({ data, onChange }: { data: PetModuleData; onChange: (key: keyof PetModuleData, value: string | boolean) => void }) {
   return (
     <div className="space-y-4">
+      <div className="rounded-[1.1rem] border border-teal-200 bg-teal-50/65 p-3.5">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">Contacto y devolución</p>
+        <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+          Esta información aparecerá en la ficha pública para que quien encuentre la mascota pueda devolverla de forma segura.
+        </p>
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Nombre de la mascota" value={data.petName} onChange={(v) => onChange("petName", v)} placeholder="Ej: Luna" />
-        <Field label="Especie" value={data.species} onChange={(v) => onChange("species", v)} placeholder="Perro, gato..." />
-        <Field label="Raza" value={data.breed} onChange={(v) => onChange("breed", v)} placeholder="Opcional" />
-        <Field label="Color / identificación" value={data.color} onChange={(v) => onChange("color", v)} placeholder="Opcional" />
-        <Field label="Veterinario" value={data.veterinarianName} onChange={(v) => onChange("veterinarianName", v)} placeholder="Nombre o clínica" />
+        <Field label="Nombre del dueño / responsable" value={data.ownerName} onChange={(v) => onChange("ownerName", v)} placeholder="Nombre completo" />
+        <Field label="Teléfono del dueño" value={data.ownerPhone} onChange={(v) => onChange("ownerPhone", v)} placeholder="+507..." />
+        <Field label="Área donde vive" value={data.homeArea} onChange={(v) => onChange("homeArea", v)} placeholder="Barrio, corregimiento o referencia" />
+        <Field label="Veterinario / clínica" value={data.veterinarianName} onChange={(v) => onChange("veterinarianName", v)} placeholder="Nombre o clínica" />
         <Field label="Teléfono veterinario" value={data.veterinarianPhone} onChange={(v) => onChange("veterinarianPhone", v)} placeholder="+507..." />
       </div>
+      <PlainTextArea
+        label="Cómo devolverla"
+        value={data.returnInstructions}
+        onChange={(v) => onChange("returnInstructions", v)}
+        placeholder="Ej: llamar primero, no soltarla, esperar al dueño en un lugar seguro..."
+      />
+      <PlainTextArea
+        label="Condiciones médicas / medicamentos"
+        value={data.medicalNotes}
+        onChange={(v) => onChange("medicalNotes", v)}
+        placeholder="Alergias, enfermedades, medicación o información veterinaria importante."
+      />
+      <PlainTextArea
+        label="Cuidados y comportamiento"
+        value={data.careNotes}
+        onChange={(v) => onChange("careNotes", v)}
+        placeholder="Alimentación, temperamento, miedos, instrucciones para manipularla o cualquier cuidado especial."
+      />
       <CompactCheck label="Es animal de asistencia / servicio" checked={data.isServiceAnimal} onChange={(v) => onChange("isServiceAnimal", v)} />
-      <PlainTextArea label="Cuidados importantes" value={data.careNotes} onChange={(v) => onChange("careNotes", v)} placeholder="Medicamentos, alimentación o instrucciones de cuidado." />
     </div>
   );
 }
