@@ -925,6 +925,7 @@ export default function EmergencyPage() {
                 </p>
                 <a
                   href="tel:+50767516171"
+                  aria-label="Llamar a soporte técnico de PreRescatePTY"
                   className="mt-1.5 inline-flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 transition-colors hover:text-[#d91c22]"
                 >
                   <Phone className="h-3 w-3" />
