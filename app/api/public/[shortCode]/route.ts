@@ -20,6 +20,20 @@ function getAllowedOrigin(origin: string | null): string | null {
   return ALLOWED_PUBLIC_ORIGINS.has(origin) ? origin : null;
 }
 
+function parseEncryptedModule(raw: string | null | undefined): Record<string, unknown> | null {
+  if (!raw) return null;
+  const decrypted = decrypt(raw);
+  if (!decrypted.trim()) return null;
+  try {
+    const parsed = JSON.parse(decrypted) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function publicJson(
   req: NextRequest,
   body: unknown,
@@ -187,6 +201,12 @@ export async function GET(
     const decryptedSafeReturnContactName = decrypt(profile.safeReturnContactName || "");
     const decryptedSafeReturnContactPhone = decrypt(profile.safeReturnContactPhone || "");
 
+    const minorModule = profile.minorModuleEnabled ? parseEncryptedModule(profile.minorModuleData) : null;
+    const elderModule = profile.elderModuleEnabled ? parseEncryptedModule(profile.elderModuleData) : null;
+    const specialNeedsModule = profile.specialNeedsModuleEnabled ? parseEncryptedModule(profile.specialNeedsModuleData) : null;
+    const petModule = profile.petModuleEnabled ? parseEncryptedModule(profile.petModuleData) : null;
+    const workModule = profile.workModuleEnabled ? parseEncryptedModule(profile.workModuleData) : null;
+
     // Build public-safe response (NO email, NO birthdate, NO internal IDs)
     const publicProfile = {
       firstName: profile.firstName,
@@ -227,6 +247,16 @@ export async function GET(
         primaryDoctorPhone: profile.showPrimaryDoctorPhonePublic ? (decryptedPrimaryDoctorPhone || null) : null,
         emergencyInstructions: profile.showAdditionalNotesPublic ? (decryptedAdditionalNotes || null) : null,
       },
+
+      ...(profile.profileType !== "corporate" && {
+        contextModules: {
+          minor: minorModule,
+          elder: elderModule,
+          specialNeeds: specialNeedsModule,
+          pet: petModule,
+          work: workModule,
+        },
+      }),
 
       // v2 — Vulnerability status (only shown based on privacy toggles)
       // Corporate profiles are excluded from these fields
