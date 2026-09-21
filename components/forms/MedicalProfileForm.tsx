@@ -417,8 +417,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 
           <div className={isPetProfile ? "hidden" : "space-y-4"}>
           <div className="grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2">
-            <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required placeholder="Juan" />
-            <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required placeholder="Pérez" />
+            <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required={!isPetProfile} placeholder="Juan" />
+            <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required={!isPetProfile} placeholder="Pérez" />
             <Field label="Alias público" value={form.displayNamePublic} onChange={(v) => update("displayNamePublic", v)} placeholder="Ej: Juan P." />
             <Field label="Teléfono de contacto" value={form.phone || ""} onChange={(v) => update("phone", v)} placeholder="+507 0000-0000" />
           </div>
@@ -429,7 +429,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
               value={form.bloodType}
               onChange={(v) => update("bloodType", v)}
               options={BLOOD_TYPES.map((value) => ({ value, label: value }))}
-              required
+              required={!isPetProfile}
             />
             <SelectField
               label="Sexo"
