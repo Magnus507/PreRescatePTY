@@ -9,7 +9,7 @@ import {
   Heart, Phone, AlertTriangle, Droplets, Pill, 
   Activity, User, MessageCircle, Loader2, Calendar,
   ShieldCheck, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick,
-  Brain, Footprints, Baby, Eye, BellRing
+  Brain, Footprints, Baby, Eye, BellRing, Tag, Barcode
 } from "lucide-react";
 import { IndustrialProfileView } from "./_components/IndustrialProfileView";
 import { formatEmergencyLocation } from "@/domains/shared/services/emergency-location";
@@ -823,48 +823,117 @@ export default function EmergencyPage() {
 
   if (isUnactivated) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
-        <div className="max-w-xl w-full">
-          <div className="bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden relative">
-            <div className="h-3 bg-red-600 w-full" />
-            <div className="p-6 md:p-10 lg:p-14 text-center">
-              <div className="bg-slate-50 h-20 w-20 md:h-28 md:w-28 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 md:mb-10 border border-slate-100 shadow-xl shadow-slate-100/50">
-                <ShieldCheck className="h-12 w-12 text-slate-700" />
+      <div
+        className="relative min-h-[100svh] overflow-hidden bg-[#f6f8fb] px-3 py-4 font-sans text-slate-950 sm:px-6 sm:py-8"
+        style={{
+          paddingTop: "max(1rem, env(safe-area-inset-top))",
+          paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+        }}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(239,68,68,0.10),transparent_25%),radial-gradient(circle_at_88%_14%,rgba(59,130,246,0.08),transparent_27%),radial-gradient(circle_at_80%_88%,rgba(37,99,235,0.08),transparent_24%)]" />
+        <div className="pointer-events-none absolute -left-28 top-10 h-64 w-64 rounded-full bg-red-100/50 blur-3xl" />
+        <div className="pointer-events-none absolute -right-24 bottom-10 h-72 w-72 rounded-full bg-blue-100/60 blur-3xl" />
+        <Activity className="pointer-events-none absolute -right-20 top-10 h-72 w-72 rotate-12 text-slate-900/[0.025]" />
+
+        <div className="relative mx-auto flex min-h-[calc(100svh-2rem)] w-full max-w-[31rem] items-center">
+          <section className="relative w-full overflow-hidden rounded-[2rem] border border-white/90 bg-white/[0.94] shadow-[0_30px_80px_-36px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:rounded-[2.75rem]">
+            <div className="h-1.5 w-full bg-gradient-to-r from-[#f13a3d] via-[#df2026] to-[#c91219]" />
+
+            <div className="relative px-4 pb-5 pt-5 text-center sm:px-8 sm:pb-8 sm:pt-7">
+              <div className="pointer-events-none absolute left-1/2 top-[-5rem] h-48 w-48 -translate-x-1/2 rounded-full bg-red-100/45 blur-3xl" />
+
+              <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_12px_28px_-18px_rgba(15,23,42,0.5)] sm:h-20 sm:w-20 sm:rounded-[1.6rem]">
+                <div className="absolute inset-2 rounded-[1rem] bg-gradient-to-br from-red-50 to-slate-50" />
+                <ShieldCheck className="relative h-8 w-8 text-[#10203f] sm:h-10 sm:w-10" />
               </div>
-              <div className="space-y-4 mb-8 md:mb-12">
-                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">PreRescatePTY / PreRescueID</p>
-                <h1 className="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter italic leading-none">Este producto requiere activación</h1>
-              </div>
-              <div className="space-y-6">
-                <div className="grid gap-3 max-w-md mx-auto text-left">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Etiqueta interna</p>
-                    <p className="mt-1 text-base font-black text-slate-900 break-words">{shortCode}</p>
+
+              <p className="mt-4 text-[9px] font-black uppercase tracking-[0.26em] text-slate-400 sm:text-[10px]">
+                PreRescatePTY / PreRescue ID
+              </p>
+
+              <h1 className="mx-auto mt-3 max-w-[12ch] text-[clamp(2rem,8.4vw,3.65rem)] font-black uppercase italic leading-[0.9] tracking-[-0.055em] text-[#081a3a]">
+                Este producto requiere activación
+              </h1>
+
+              <div className="mx-auto mt-6 grid max-w-md gap-2.5 text-left sm:mt-7">
+                <div className="group flex items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/85 px-3 py-3 shadow-[0_8px_24px_-22px_rgba(15,23,42,0.55)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-4">
+                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-[#10203f]">
+                    <Tag className="h-5 w-5" />
                   </div>
-                  {productionLabel && (
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Identificador de producción</p>
-                      <p className="mt-1 break-words font-mono text-base font-black text-slate-900">{productionLabel}</p>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 sm:text-[10px]">
+                      Etiqueta interna
+                    </p>
+                    <p className="mt-0.5 break-all font-mono text-[13px] font-black tracking-[-0.025em] text-slate-950 sm:text-sm">
+                      {shortCode}
+                    </p>
+                  </div>
+                </div>
+
+                {productionLabel && (
+                  <div className="group flex items-center gap-3 rounded-2xl border border-slate-200/90 bg-white px-3 py-3 shadow-[0_8px_24px_-22px_rgba(15,23,42,0.55)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-4">
+                    <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-[#10203f]">
+                      <Barcode className="h-5 w-5" />
                     </div>
-                  )}
-                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</p>
-                    <p className="mt-1 text-base font-black text-slate-900">Pendiente de activación</p>
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 sm:text-[10px]">
+                        Identificador de producción
+                      </p>
+                      <p className="mt-0.5 break-all font-mono text-[13px] font-black tracking-[-0.035em] text-slate-950 sm:text-sm">
+                        {productionLabel}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50/60 px-3 py-3 shadow-[0_8px_24px_-22px_rgba(218,26,33,0.65)] sm:px-4">
+                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl border border-red-100 bg-white">
+                    <span className="h-3 w-3 rounded-full bg-[#e32127] shadow-[0_0_0_5px_rgba(227,33,39,0.10)] animate-pulse" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 sm:text-[10px]">
+                      Estado
+                    </p>
+                    <p className="mt-0.5 text-sm font-black text-slate-950 sm:text-base">
+                      Pendiente de activación
+                    </p>
                   </div>
                 </div>
-                <p className="text-slate-500 text-lg font-medium leading-relaxed max-w-sm mx-auto">Este código pertenece a un producto PreRescatePTY. Para mostrar información médica o contactos de emergencia, debe activarse por su usuario final.</p>
-                <p className="text-slate-400 text-sm font-semibold leading-relaxed max-w-md mx-auto">No se muestran datos personales antes de la activación.</p>
-                <div className="grid grid-cols-1 gap-4">
-                  <Link href="/activar" className="group relative inline-flex items-center justify-center gap-3 w-full py-6 bg-red-600 text-white rounded-[2rem] font-black text-2xl transition-all hover:bg-black active:scale-95 shadow-2xl shadow-red-200">Activar producto <ShieldCheck className="h-7 w-7" /></Link>
-                </div>
+              </div>
+
+              <p className="mx-auto mt-5 max-w-sm text-[14px] font-medium leading-6 text-slate-600 sm:mt-6 sm:text-[15px]">
+                Este código pertenece a un producto PreRescatePTY. Para mostrar información médica o contactos de emergencia, debe activarse por su usuario final.
+              </p>
+
+              <div className="mx-auto mt-3 inline-flex max-w-sm items-center justify-center gap-2 rounded-full border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-[11px] font-semibold text-slate-500">
+                <ShieldCheck className="h-3.5 w-3.5 flex-none text-[#10203f]" />
+                <span>No se muestran datos personales antes de la activación.</span>
+              </div>
+
+              <Link
+                href="/activar"
+                className="group relative mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-br from-[#ef2b2f] to-[#d5151b] px-5 py-4 text-base font-black text-white shadow-[0_16px_34px_-18px_rgba(218,26,33,0.9)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-18px_rgba(218,26,33,0.95)] active:translate-y-0 active:scale-[0.985] sm:text-lg"
+              >
+                <span className="absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/20 blur-sm transition-transform duration-700 group-hover:translate-x-[430%]" />
+                <span className="relative">Activar producto</span>
+                <ShieldCheck className="relative h-5 w-5" />
+              </Link>
+
+              <div className="mt-5 border-t border-slate-100 pt-4 text-center">
+                <p className="text-[9px] font-black uppercase tracking-[0.34em] text-slate-400">
+                  PreRescate Panamá
+                </p>
+                <a
+                  href="tel:+50767516171"
+                  aria-label="Llamar a soporte técnico de PreRescatePTY"
+                  className="mt-1.5 inline-flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 transition-colors hover:text-[#d91c22]"
+                >
+                  <Phone className="h-3 w-3" />
+                  Soporte técnico: +507 6751-6171
+                </a>
               </div>
             </div>
-            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none rotate-12"><Activity className="h-64 w-64" /></div>
-          </div>
-          <div className="mt-12 text-center">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-2">PreRescate Panamá</p>
-            <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Soporte Técnico: +507 66XX-XXXX</p>
-          </div>
+          </section>
         </div>
       </div>
     );
