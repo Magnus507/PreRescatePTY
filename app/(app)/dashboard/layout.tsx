@@ -52,6 +52,21 @@ type NavItem = {
   icon: ElementType;
 };
 
+function getMobilePageTitle(pathname: string) {
+  if (pathname.startsWith("/dashboard/perfiles-medicos")) return "Perfiles médicos";
+  if (pathname.startsWith("/dashboard/chips")) return "Mis dispositivos";
+  if (pathname.startsWith("/dashboard/tienda")) return "Tienda";
+  if (pathname.startsWith("/dashboard/pedidos")) return "Mis pedidos";
+  if (pathname.startsWith("/dashboard/empresas")) return "Empresa";
+  if (pathname.startsWith("/dashboard/configuracion")) return "Ajustes";
+  if (pathname.startsWith("/dashboard/empresa-perfil")) return "Perfil empresarial";
+  if (pathname.startsWith("/dashboard/colaboradores")) return "Colaboradores";
+  if (pathname.startsWith("/dashboard/solicitudes")) return "Solicitudes";
+  if (pathname.startsWith("/dashboard/pedidos-corporativos")) return "Pedidos corporativos";
+  if (pathname.startsWith("/dashboard/empresa")) return "Dashboard empresa";
+  return "Inicio";
+}
+
 function isItemActive(pathname: string, href: string, activateMode: boolean) {
   const normalizedHref = href.split("?")[0];
   return href.includes("?") ? pathname === normalizedHref && activateMode : pathname === href;
@@ -200,10 +215,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const mobileLinks = isCorporate
     ? corporateNavItems
     : [
-        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
+        { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
+        { href: "/dashboard/perfiles-medicos", label: "Perfiles", icon: UsersRound },
+        { href: "/dashboard/chips", label: "Dispositivos", icon: Cpu },
         { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
       ];
+  const mobilePageTitle = getMobilePageTitle(pathname);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(218,26,33,0.04),transparent_24%),linear-gradient(180deg,#ffffff_0%,#f7f9fc_100%)] selection:bg-[#DA1A21] selection:text-white dark:bg-[radial-gradient(circle_at_top,rgba(218,26,33,0.08),transparent_18%),linear-gradient(180deg,#050812_0%,#0a1120_100%)]">
@@ -311,7 +328,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] border-t border-slate-200/80 bg-white/92 px-3 py-2 backdrop-blur-xl shadow-[0_-10px_30px_-24px_rgba(15,23,42,0.45)] dark:border-[#1a2333] dark:bg-[#0f1419]/92 safe-area-bottom">
+        <nav aria-label="Navegación móvil del panel" className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] border-t border-slate-200/80 bg-white/92 px-3 py-2 backdrop-blur-xl shadow-[0_-10px_30px_-24px_rgba(15,23,42,0.45)] dark:border-[#1a2333] dark:bg-[#0f1419]/92 safe-area-bottom">
           <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
             {mobileLinks.map((item) => {
               const active = pathname === item.href;
@@ -328,8 +345,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   }`}
                 >
                   <item.icon className={`h-6 w-6 ${active ? "scale-105" : "opacity-90"}`} />
-                  <span className="text-[9px] font-black uppercase tracking-[0.22em] leading-none">
-                    {item.label === "Mis dispositivos" ? "Dispositivos" : item.label.split(" ")[0]}
+                  <span className="text-[9px] font-black tracking-[0.08em] leading-none">
+                    {item.label}
                   </span>
                 </Link>
               );
@@ -411,8 +428,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </>
         )}
 
-        <main className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,rgba(248,250,252,0.82)_0%,rgba(248,250,252,0.45)_100%)] dark:bg-[linear-gradient(180deg,rgba(5,8,18,0.36)_0%,rgba(5,8,18,0.16)_100%)]">
-          <div className="w-full max-w-none px-4 py-5 pb-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:pb-[calc(env(safe-area-inset-bottom)+5.75rem)] md:px-6 md:py-8 md:pb-12 lg:px-8 lg:py-10 xl:px-10 xl:py-12">
+        <main className="flex-1 overflow-y-auto overscroll-y-contain bg-[linear-gradient(180deg,rgba(248,250,252,0.82)_0%,rgba(248,250,252,0.45)_100%)] dark:bg-[linear-gradient(180deg,rgba(5,8,18,0.36)_0%,rgba(5,8,18,0.16)_100%)]">
+          <header className="client-mobile-topbar sticky top-0 z-[55] lg:hidden">
+            <div className="flex items-center justify-between gap-3 px-3 pb-2 pt-[max(.55rem,env(safe-area-inset-top))] sm:px-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-10 w-10 flex-none items-center justify-center overflow-hidden rounded-[1rem] border border-white/80 bg-white/90 shadow-[0_12px_30px_-20px_rgba(15,23,42,.3)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo.png" alt="" aria-hidden="true" className="h-8 w-8 object-contain" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">PreRescue ID</p>
+                  <h1 className="truncate text-[15px] font-black tracking-[-0.025em] text-slate-950 dark:text-white">{mobilePageTitle}</h1>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsMoreMenuOpen(true)}
+                className="flex h-11 min-w-11 items-center justify-center gap-2 rounded-[1rem] border border-slate-200/80 bg-white/90 px-3 text-slate-700 shadow-[0_12px_28px_-22px_rgba(15,23,42,.3)] backdrop-blur-xl transition active:scale-[0.98] dark:border-white/10 dark:bg-[#101826]/90 dark:text-slate-100"
+                aria-label="Abrir menú del panel"
+                aria-expanded={isMoreMenuOpen}
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#DA1A21]/10 text-[11px] font-black text-[#DA1A21]">
+                  {session?.user?.email?.[0]?.toUpperCase() ?? "U"}
+                </span>
+                <Menu className="h-4 w-4" />
+              </button>
+            </div>
+          </header>
+
+          <div className="w-full max-w-none px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] sm:px-5 sm:pb-[calc(env(safe-area-inset-bottom)+6.25rem)] md:px-6 md:py-8 md:pb-12 lg:px-8 lg:py-10 xl:px-10 xl:py-12">
             {children}
           </div>
         </main>
