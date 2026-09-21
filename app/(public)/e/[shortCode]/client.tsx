@@ -656,6 +656,7 @@ export default function EmergencyPage() {
   const normalizedSource = source === "nfc" ? "nfc" : "qr";
   const [profile, setProfile] = useState<EmergencyProfile | null>(null);
   const [isUnactivated, setIsUnactivated] = useState(false);
+  const [productionLabel, setProductionLabel] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'unknown' | 'paramedic' | 'citizen' | 'special'>('unknown');
@@ -722,6 +723,7 @@ export default function EmergencyPage() {
 
         if (data.status === "unactivated" || data.status === "inactive") {
           setIsUnactivated(true);
+          setProductionLabel(typeof data.internalLabel === "string" ? data.internalLabel : null);
         } else if (!res.ok) {
           setError(data.error || "Perfil no disponible");
         } else {
@@ -839,6 +841,12 @@ export default function EmergencyPage() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Etiqueta interna</p>
                     <p className="mt-1 text-base font-black text-slate-900 break-words">{shortCode}</p>
                   </div>
+                  {productionLabel && (
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Identificador de producción</p>
+                      <p className="mt-1 break-words font-mono text-base font-black text-slate-900">{productionLabel}</p>
+                    </div>
+                  )}
                   <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</p>
                     <p className="mt-1 text-base font-black text-slate-900">Pendiente de activación</p>
