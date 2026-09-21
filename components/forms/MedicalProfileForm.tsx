@@ -17,12 +17,17 @@ import {
 } from "lucide-react";
 import { BLOOD_TYPES } from "@/lib/constants";
 import { BirthDatePicker } from "@/components/ui/BirthDatePicker";
-import type {
-  ElderModuleData,
-  MinorModuleData,
-  PetModuleData,
-  SpecialNeedsModuleData,
-  WorkModuleData,
+import {
+  EMPTY_ELDER_MODULE,
+  EMPTY_MINOR_MODULE,
+  EMPTY_PET_MODULE,
+  EMPTY_SPECIAL_NEEDS_MODULE,
+  EMPTY_WORK_MODULE,
+  type ElderModuleData,
+  type MinorModuleData,
+  type PetModuleData,
+  type SpecialNeedsModuleData,
+  type WorkModuleData,
 } from "@/lib/profile-context-modules";
 
 type ProfileFormValue =
@@ -79,15 +84,15 @@ interface ProfileFormProps {
     city?: string;
 
     minorModuleEnabled?: boolean;
-    minorModuleData: MinorModuleData;
+    minorModuleData?: MinorModuleData;
     elderModuleEnabled?: boolean;
-    elderModuleData: ElderModuleData;
+    elderModuleData?: ElderModuleData;
     specialNeedsModuleEnabled?: boolean;
-    specialNeedsModuleData: SpecialNeedsModuleData;
+    specialNeedsModuleData?: SpecialNeedsModuleData;
     petModuleEnabled?: boolean;
-    petModuleData: PetModuleData;
+    petModuleData?: PetModuleData;
     workModuleEnabled?: boolean;
-    workModuleData: WorkModuleData;
+    workModuleData?: WorkModuleData;
   };
   onChange: (field: string, value: ProfileFormValue) => void;
   disabled?: boolean;
@@ -164,6 +169,11 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   } satisfies Record<OptionalTab, boolean>;
 
   const enabledCount = Object.values(moduleEnabled).filter(Boolean).length;
+  const minorData = form.minorModuleData ?? EMPTY_MINOR_MODULE;
+  const elderData = form.elderModuleData ?? EMPTY_ELDER_MODULE;
+  const specialNeedsData = form.specialNeedsModuleData ?? EMPTY_SPECIAL_NEEDS_MODULE;
+  const petData = form.petModuleData ?? EMPTY_PET_MODULE;
+  const workData = form.workModuleData ?? EMPTY_WORK_MODULE;
 
   const setModuleEnabled = (tab: OptionalTab, enabled: boolean) => {
     const map: Record<OptionalTab, string> = {
@@ -383,14 +393,14 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                   <div className="mt-5">
                     {tab.id === "minor" && (
                       <MinorFields
-                        data={form.minorModuleData}
-                        onChange={(key, value) => updateModuleField("minorModuleData", form.minorModuleData as unknown as Record<string, unknown>, key as string, value)}
+                        data={minorData}
+                        onChange={(key, value) => updateModuleField("minorModuleData", minorData as unknown as Record<string, unknown>, key as string, value)}
                       />
                     )}
                     {tab.id === "elder" && (
                       <ElderFields
-                        data={form.elderModuleData}
-                        onChange={(key, value) => updateModuleField("elderModuleData", form.elderModuleData as unknown as Record<string, unknown>, key as string, value)}
+                        data={elderData}
+                        onChange={(key, value) => updateModuleField("elderModuleData", elderData as unknown as Record<string, unknown>, key as string, value)}
                         legacy={{
                           hasCognitiveImpairment: form.hasCognitiveImpairment ?? false,
                           hasWanderingRisk: form.hasWanderingRisk ?? false,
@@ -401,8 +411,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                     )}
                     {tab.id === "special" && (
                       <SpecialNeedsFields
-                        data={form.specialNeedsModuleData}
-                        onChange={(key, value) => updateModuleField("specialNeedsModuleData", form.specialNeedsModuleData as unknown as Record<string, unknown>, key as string, value)}
+                        data={specialNeedsData}
+                        onChange={(key, value) => updateModuleField("specialNeedsModuleData", specialNeedsData as unknown as Record<string, unknown>, key as string, value)}
                         isNonVerbal={form.isNonVerbal ?? false}
                         communicationAssistance={form.communicationAssistance || ""}
                         onLegacyChange={update}
@@ -410,14 +420,14 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                     )}
                     {tab.id === "pet" && (
                       <PetFields
-                        data={form.petModuleData}
-                        onChange={(key, value) => updateModuleField("petModuleData", form.petModuleData as unknown as Record<string, unknown>, key as string, value)}
+                        data={petData}
+                        onChange={(key, value) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, key as string, value)}
                       />
                     )}
                     {tab.id === "work" && (
                       <WorkFields
-                        data={form.workModuleData}
-                        onChange={(key, value) => updateModuleField("workModuleData", form.workModuleData as unknown as Record<string, unknown>, key as string, value)}
+                        data={workData}
+                        onChange={(key, value) => updateModuleField("workModuleData", workData as unknown as Record<string, unknown>, key as string, value)}
                       />
                     )}
                   </div>
