@@ -181,11 +181,6 @@ export default function ParaQuienEsContent() {
                           {aud.cta}
                           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                         </Link>
-                        {aud.secondaryCta && aud.secondaryHref && (
-                          <Link href={aud.secondaryHref} className="inline-flex min-h-11 touch-manipulation items-center text-[13px] font-bold text-slate-500 transition-colors active:text-slate-200 sm:min-h-0 sm:text-sm sm:hover:text-slate-200">
-                            {aud.secondaryCta}
-                          </Link>
-                        )}
                       </div>
                     </div>
                   </GlowCard>
