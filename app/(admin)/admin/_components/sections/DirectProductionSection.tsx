@@ -82,11 +82,11 @@ function getUnit(item: DigitalItem) {
 }
 
 const STICKER_TEMPLATE_PATH = "/sticker-official.png";
-const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base-v2.webp", "/activation-code-card-base.svg"] as const;
+const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base.svg"] as const;
 const ACTIVATION_CARD_REFERENCE = {
   width: 1559,
   height: 1009,
-  exportScale: 1,
+  exportScale: 2,
   activationCodeX: 1067,
   activationCodeY: 389,
   activationCodeMaxWidth: 590,
