@@ -82,6 +82,22 @@ function getUnit(item: DigitalItem) {
 }
 
 const STICKER_TEMPLATE_PATH = "/sticker-official.png";
+const ACTIVATION_CARD_TEMPLATE_PATH = "/activation-code-card-base.svg";
+const ACTIVATION_CARD_REFERENCE = {
+  width: 2048,
+  height: 1170,
+  exportScale: 2,
+  activationCodeX: 1058,
+  activationCodeY: 462,
+  activationCodeMaxWidth: 700,
+  identifierX: 1282,
+  identifierY: 810,
+  identifierMaxWidth: 1130,
+  qrX: 1560,
+  qrY: 362,
+  qrSize: 310,
+} as const;
+
 const STICKER_REFERENCE = {
   width: 2048,
   height: 1365,
@@ -168,6 +184,70 @@ async function renderStickerPng(targetUrl: string, preparedQr?: Blob) {
     return output;
   } finally {
     URL.revokeObjectURL(qrObjectUrl);
+  }
+}
+
+async function renderActivationCardPng(item: DigitalItem, preparedQr?: Blob) {
+  if (!item.activationCode) throw new Error("Código de activación no disponible");
+
+  const target = getDigitalItemQrTarget(item);
+  const qrBlob = target ? (preparedQr || await fetchQrPng(target)) : null;
+  const qrObjectUrl = qrBlob ? URL.createObjectURL(qrBlob) : null;
+
+  try {
+    const template = await loadBrowserImage(ACTIVATION_CARD_TEMPLATE_PATH);
+    const qrImage = qrObjectUrl ? await loadBrowserImage(qrObjectUrl) : null;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = ACTIVATION_CARD_REFERENCE.width * ACTIVATION_CARD_REFERENCE.exportScale;
+    canvas.height = ACTIVATION_CARD_REFERENCE.height * ACTIVATION_CARD_REFERENCE.exportScale;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("No se pudo preparar la tarjeta de activación");
+
+    context.scale(ACTIVATION_CARD_REFERENCE.exportScale, ACTIVATION_CARD_REFERENCE.exportScale);
+    context.drawImage(
+      template,
+      0,
+      0,
+      ACTIVATION_CARD_REFERENCE.width,
+      ACTIVATION_CARD_REFERENCE.height,
+    );
+
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillStyle = "#0b203d";
+    context.font = '900 62px "Courier New", ui-monospace, monospace';
+    context.fillText(
+      item.activationCode,
+      ACTIVATION_CARD_REFERENCE.activationCodeX,
+      ACTIVATION_CARD_REFERENCE.activationCodeY,
+      ACTIVATION_CARD_REFERENCE.activationCodeMaxWidth,
+    );
+
+    context.font = '800 38px "Courier New", ui-monospace, monospace';
+    context.fillText(
+      item.internalLabel,
+      ACTIVATION_CARD_REFERENCE.identifierX,
+      ACTIVATION_CARD_REFERENCE.identifierY,
+      ACTIVATION_CARD_REFERENCE.identifierMaxWidth,
+    );
+
+    if (qrImage) {
+      context.imageSmoothingEnabled = false;
+      context.drawImage(
+        qrImage,
+        ACTIVATION_CARD_REFERENCE.qrX,
+        ACTIVATION_CARD_REFERENCE.qrY,
+        ACTIVATION_CARD_REFERENCE.qrSize,
+        ACTIVATION_CARD_REFERENCE.qrSize,
+      );
+    }
+
+    const output = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!output) throw new Error("No se pudo exportar la tarjeta de activación");
+    return output;
+  } finally {
+    if (qrObjectUrl) URL.revokeObjectURL(qrObjectUrl);
   }
 }
 
@@ -348,12 +428,19 @@ export default function DirectProductionSection() {
     }
   }, []);
 
-  const downloadActivationCode = useCallback((item: DigitalItem) => {
+  const downloadActivationCode = useCallback(async (item: DigitalItem) => {
     if (!item.activationCode) return toast.error("Código de activación no disponible");
-    const target = getDigitalItemQrTarget(item);
-    const blob = new Blob([buildActivationText(item, target)], { type: "text/plain;charset=utf-8" });
-    triggerBlobDownload(blob, `${sanitizeFilename(item.internalLabel)}-CODIGO.txt`);
-    toast.success("Código descargado");
+    const key = `code-${item.id}`;
+    setDownloadKey(key);
+    try {
+      const card = await renderActivationCardPng(item);
+      triggerBlobDownload(card, `${sanitizeFilename(item.internalLabel)}-CODIGO.png`);
+      toast.success("Tarjeta de activación descargada");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo generar la tarjeta de activación");
+    } finally {
+      setDownloadKey(null);
+    }
   }, []);
 
   const downloadCodesCsv = useCallback(() => {
@@ -374,12 +461,18 @@ export default function DirectProductionSection() {
       for (const item of items) {
         const safeLabel = sanitizeFilename(item.internalLabel);
         const target = getDigitalItemQrTarget(item);
+        let qrBlob: Blob | undefined;
 
         if (target) {
-          const qrBlob = await fetchQrPng(target);
+          qrBlob = await fetchQrPng(target);
           files.push({ name: `qr/${safeLabel}-QR.png`, blob: qrBlob });
           const stickerBlob = await renderStickerPng(target, qrBlob);
           files.push({ name: `stickers/${safeLabel}.png`, blob: stickerBlob });
+        }
+
+        if (item.activationCode) {
+          const activationCard = await renderActivationCardPng(item, qrBlob);
+          files.push({ name: `codigos/${safeLabel}-CODIGO.png`, blob: activationCard });
         }
 
         const codeBlob = new Blob([buildActivationText(item, target)], { type: "text/plain;charset=utf-8" });
@@ -638,7 +731,7 @@ export default function DirectProductionSection() {
                           {item.qrUrl && <a href={item.qrUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-700"><ExternalLink className="h-3.5 w-3.5" /> QR</a>}
                           {getDigitalItemQrTarget(item) && <button type="button" onClick={() => void downloadQrPng(item)} disabled={Boolean(downloadKey)} className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-sky-700 disabled:opacity-50">{downloadKey === `qr-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} QR PNG</button>}
                           {getDigitalItemQrTarget(item) && <button type="button" onClick={() => void downloadStickerPng(item)} disabled={Boolean(downloadKey)} className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-violet-700 disabled:opacity-50">{downloadKey === `sticker-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Sticker</button>}
-                          {item.activationCode && <button type="button" onClick={() => downloadActivationCode(item)} disabled={Boolean(downloadKey)} className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-amber-700 disabled:opacity-50"><Download className="h-3.5 w-3.5" /> Código</button>}
+                          {item.activationCode && <button type="button" onClick={() => void downloadActivationCode(item)} disabled={Boolean(downloadKey)} className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-amber-700 disabled:opacity-50">{downloadKey === `code-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Código</button>}
                           {!item.nfcProgrammed && <button type="button" onClick={() => runAction(`nfc-${item.id}`, `/api/admin/operations/production-orders/${detail.id}/unit-preparation/${item.id}/nfc-programmed`, "NFC marcado")} disabled={Boolean(actionKey)} className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-sky-700 disabled:opacity-50">NFC listo</button>}
                           {!item.qrPrepared && <button type="button" onClick={() => runAction(`qr-${item.id}`, `/api/admin/operations/production-orders/${detail.id}/unit-preparation/${item.id}/qr-prepared`, "QR marcado")} disabled={Boolean(actionKey)} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-emerald-700 disabled:opacity-50">QR listo</button>}
                           {item.status === "printed" && <button type="button" onClick={() => runAction(`assembly-${item.id}`, `/api/admin/operations/production-orders/${detail.id}/unit-assembly/${item.id}/assembled`, "Unidad ensamblada")} disabled={Boolean(actionKey)} className="rounded-lg bg-violet-600 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-white disabled:opacity-50">Ensamblar</button>}
