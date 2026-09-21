@@ -33,6 +33,11 @@ export class ProfileRepository {
       safeReturnAddress: decrypt(profile.safeReturnAddress || ""),
       safeReturnContactName: decrypt(profile.safeReturnContactName || ""),
       safeReturnContactPhone: decrypt(profile.safeReturnContactPhone || ""),
+      minorModuleData: decrypt(profile.minorModuleData || ""),
+      elderModuleData: decrypt(profile.elderModuleData || ""),
+      specialNeedsModuleData: decrypt(profile.specialNeedsModuleData || ""),
+      petModuleData: decrypt(profile.petModuleData || ""),
+      workModuleData: decrypt(profile.workModuleData || ""),
     };
   }
 
@@ -128,6 +133,16 @@ export class ProfileRepository {
     showCommunicationStatusPublic?: boolean;
     showSafeReturnPublic?: boolean;
     showSafeReturnLocationPublic?: boolean;
+    minorModuleEnabled?: boolean;
+    minorModuleData?: string;
+    elderModuleEnabled?: boolean;
+    elderModuleData?: string;
+    specialNeedsModuleEnabled?: boolean;
+    specialNeedsModuleData?: string;
+    petModuleEnabled?: boolean;
+    petModuleData?: string;
+    workModuleEnabled?: boolean;
+    workModuleData?: string;
   }) {
     const profile = await prisma.profile.create({
       data: {
@@ -153,6 +168,16 @@ export class ProfileRepository {
         safeReturnLng: data.safeReturnLng,
         safeReturnContactName: encrypt(data.safeReturnContactName || ""),
         safeReturnContactPhone: encrypt(data.safeReturnContactPhone || ""),
+        minorModuleEnabled: data.minorModuleEnabled ?? false,
+        minorModuleData: encrypt(data.minorModuleData || "{}"),
+        elderModuleEnabled: data.elderModuleEnabled ?? false,
+        elderModuleData: encrypt(data.elderModuleData || "{}"),
+        specialNeedsModuleEnabled: data.specialNeedsModuleEnabled ?? false,
+        specialNeedsModuleData: encrypt(data.specialNeedsModuleData || "{}"),
+        petModuleEnabled: data.petModuleEnabled ?? false,
+        petModuleData: encrypt(data.petModuleData || "{}"),
+        workModuleEnabled: data.workModuleEnabled ?? false,
+        workModuleData: encrypt(data.workModuleData || "{}"),
         showSafeReturnLocationPublic: data.showSafeReturnLocationPublic ?? false,
         isInsured: data.isInsured ?? false,
         showInsuranceProviderPublic: data.showInsuranceProviderPublic ?? false,
@@ -233,6 +258,11 @@ export class ProfileRepository {
     if (data.safeReturnLng !== undefined) updateData.safeReturnLng = data.safeReturnLng;
     if (data.safeReturnContactName !== undefined) updateData.safeReturnContactName = encrypt(data.safeReturnContactName || "");
     if (data.safeReturnContactPhone !== undefined) updateData.safeReturnContactPhone = encrypt(data.safeReturnContactPhone || "");
+    if (data.minorModuleData !== undefined) updateData.minorModuleData = encrypt(data.minorModuleData || "{}");
+    if (data.elderModuleData !== undefined) updateData.elderModuleData = encrypt(data.elderModuleData || "{}");
+    if (data.specialNeedsModuleData !== undefined) updateData.specialNeedsModuleData = encrypt(data.specialNeedsModuleData || "{}");
+    if (data.petModuleData !== undefined) updateData.petModuleData = encrypt(data.petModuleData || "{}");
+    if (data.workModuleData !== undefined) updateData.workModuleData = encrypt(data.workModuleData || "{}");
     if (data.showSafeReturnLocationPublic !== undefined) updateData.showSafeReturnLocationPublic = data.showSafeReturnLocationPublic;
 
     const profile = await prisma.profile.update({
@@ -272,6 +302,16 @@ export class ProfileRepository {
       safeReturnLng: data.safeReturnLng,
       safeReturnContactName: encrypt(data.safeReturnContactName || ""),
       safeReturnContactPhone: encrypt(data.safeReturnContactPhone || ""),
+      minorModuleEnabled: data.minorModuleEnabled ?? false,
+      minorModuleData: encrypt(data.minorModuleData || "{}"),
+      elderModuleEnabled: data.elderModuleEnabled ?? false,
+      elderModuleData: encrypt(data.elderModuleData || "{}"),
+      specialNeedsModuleEnabled: data.specialNeedsModuleEnabled ?? false,
+      specialNeedsModuleData: encrypt(data.specialNeedsModuleData || "{}"),
+      petModuleEnabled: data.petModuleEnabled ?? false,
+      petModuleData: encrypt(data.petModuleData || "{}"),
+      workModuleEnabled: data.workModuleEnabled ?? false,
+      workModuleData: encrypt(data.workModuleData || "{}"),
       showSafeReturnLocationPublic: data.showSafeReturnLocationPublic ?? false,
       isInsured: data.isInsured ?? false,
       showInsuranceProviderPublic: data.showInsuranceProviderPublic ?? false,
@@ -320,6 +360,11 @@ export class ProfileRepository {
     if (data.safeReturnLng !== undefined) updateData.safeReturnLng = data.safeReturnLng;
     if (data.safeReturnContactName !== undefined) updateData.safeReturnContactName = encrypt(data.safeReturnContactName || "");
     if (data.safeReturnContactPhone !== undefined) updateData.safeReturnContactPhone = encrypt(data.safeReturnContactPhone || "");
+    if (data.minorModuleData !== undefined) updateData.minorModuleData = encrypt(data.minorModuleData || "{}");
+    if (data.elderModuleData !== undefined) updateData.elderModuleData = encrypt(data.elderModuleData || "{}");
+    if (data.specialNeedsModuleData !== undefined) updateData.specialNeedsModuleData = encrypt(data.specialNeedsModuleData || "{}");
+    if (data.petModuleData !== undefined) updateData.petModuleData = encrypt(data.petModuleData || "{}");
+    if (data.workModuleData !== undefined) updateData.workModuleData = encrypt(data.workModuleData || "{}");
     if (data.showSafeReturnLocationPublic !== undefined) updateData.showSafeReturnLocationPublic = data.showSafeReturnLocationPublic;
 
     const profile = await prisma.profile.upsert({
