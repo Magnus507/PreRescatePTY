@@ -461,10 +461,10 @@ export default function FamiliaPage() {
       <div className={(showAdd || editProfile) ? "hidden" : "block"}>
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-6">
           <div className="space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-primary">Protección médica</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-primary">Perfiles de protección</p>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-950">Perfiles médicos</h1>
             <p className="max-w-2xl text-sm md:text-base text-slate-600 font-medium leading-relaxed">
-              Gestiona la información de emergencia de tu cuenta y de tus protegidos con una vista clara y cómoda.
+              Gestiona perfiles de personas o mascotas y vincula la información que debe estar disponible al escanear su PreRescue ID.
             </p>
           </div>
           <button
@@ -484,7 +484,7 @@ export default function FamiliaPage() {
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500 mb-1">Perfiles registrados</p>
                 <p className="font-black text-base md:text-lg tracking-tight text-slate-950">
-                  {state.familyProfilesCount + 1} {state.familyProfilesCount + 1 === 1 ? "persona" : "personas"} registradas
+                  {state.familyProfilesCount + 1} {state.familyProfilesCount + 1 === 1 ? "perfil registrado" : "perfiles registrados"}
                 </p>
                 <p className="mt-1 text-xs md:text-sm text-slate-600 font-medium leading-relaxed">
                   La protección se activa al vincular un chip o sticker.
