@@ -814,17 +814,18 @@ function ProfileCard({
 
     setUploading(true);
     try {
-      // Profile photos use a raw binary request on purpose. This avoids multipart
-      // boundary parsing entirely, which is unreliable in some Safari/Vercel paths.
-      const res = await fetch("/api/upload", {
+      const bytes = await file.arrayBuffer();
+      if (bytes.byteLength <= 0) {
+        toast.error("La foto seleccionada llegó vacía. Vuelve a elegirla desde Fotos.");
+        return;
+      }
+
+      const res = await fetch(`/api/users/profile/photo?profileId=${encodeURIComponent(profile.id)}`, {
         method: "POST",
         headers: {
-          "Content-Type": file.type,
-          "X-PreRescate-Upload": "raw-profile-photo",
-          "X-Profile-Id": profile.id,
-          "X-File-Name": encodeURIComponent(file.name || "profile-photo"),
+          "Content-Type": file.type || "application/octet-stream",
         },
-        body: file,
+        body: bytes,
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
