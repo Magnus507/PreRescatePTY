@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Baby, Bike, Brain, Building2, Heart, Shield, Stethoscope, Users } from "lucide-react";
+import { ArrowRight, Baby, Bike, Brain, Heart, Shield, Stethoscope, Users } from "lucide-react";
 import { GlowCard } from "@/components/ui/spotlight-card";
 
 const audiences = [
@@ -13,7 +13,6 @@ const audiences = [
   { icon: Shield, label: "Autismo / no verbal", desc: "Información e indicaciones configurables", glow: "blue" as const },
   { icon: Stethoscope, label: "Alergias y condiciones", desc: "Datos médicos relevantes a la vista", glow: "red" as const },
   { icon: Bike, label: "Motociclistas", desc: "Identificación visible en casco o pertenencias", glow: "orange" as const },
-  { icon: Building2, label: "Empresas", desc: "Gestión centralizada para equipos", glow: "purple" as const },
 ];
 
 export default function WhoIsForSection() {
@@ -41,7 +40,7 @@ export default function WhoIsForSection() {
             className="lg:pb-2"
           >
             <p className="text-[15px] font-medium leading-6 text-slate-400 sm:text-lg sm:leading-7">
-              PreRescue ID puede adaptarse a personas, familias, usuarios con necesidades específicas y organizaciones.
+              PreRescue ID puede adaptarse a personas, familias y usuarios con necesidades específicas.
             </p>
             <Link href="/para-quien-es" className="group mt-4 inline-flex min-h-11 touch-manipulation items-center gap-2 text-sm font-bold text-sky-200 transition-colors active:text-white sm:mt-5 sm:hover:text-white">
               Explorar todos los casos
