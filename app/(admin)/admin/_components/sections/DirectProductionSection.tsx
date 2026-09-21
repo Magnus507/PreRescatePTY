@@ -82,19 +82,19 @@ function getUnit(item: DigitalItem) {
 }
 
 const STICKER_TEMPLATE_PATH = "/sticker-official.png";
-const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base.webp", "/activation-code-card-base.svg"] as const;
+const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base-v2.webp", "/activation-code-card-base.svg"] as const;
 const ACTIVATION_CARD_REFERENCE = {
-  width: 1536,
-  height: 994,
-  exportScale: 2,
-  activationCodeX: 1068,
-  activationCodeY: 387,
-  activationCodeMaxWidth: 570,
-  identifierX: 1068,
-  identifierY: 595,
-  identifierMaxWidth: 570,
+  width: 1559,
+  height: 1009,
+  exportScale: 1,
+  activationCodeX: 1067,
+  activationCodeY: 389,
+  activationCodeMaxWidth: 590,
+  identifierX: 1067,
+  identifierY: 596,
+  identifierMaxWidth: 590,
   qrX: 216,
-  qrY: 301,
+  qrY: 309,
   qrSize: 304,
 } as const;
 
@@ -236,7 +236,7 @@ async function renderActivationCardPng(item: DigitalItem, preparedQr?: Blob) {
     context.fillStyle = "#ffffff";
     context.shadowColor = "rgba(0, 0, 0, 0.65)";
     context.shadowBlur = 3;
-    context.font = '900 42px "Courier New", ui-monospace, monospace';
+    context.font = '800 39px Arial, Helvetica, sans-serif';
     context.fillText(
       item.activationCode,
       ACTIVATION_CARD_REFERENCE.activationCodeX,
@@ -244,7 +244,7 @@ async function renderActivationCardPng(item: DigitalItem, preparedQr?: Blob) {
       ACTIVATION_CARD_REFERENCE.activationCodeMaxWidth,
     );
 
-    context.font = '800 30px "Courier New", ui-monospace, monospace';
+    context.font = '700 27px Arial, Helvetica, sans-serif';
     context.fillText(
       item.internalLabel,
       ACTIVATION_CARD_REFERENCE.identifierX,
