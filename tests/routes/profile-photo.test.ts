@@ -54,10 +54,14 @@ function jpegBytes() {
 function request(body: Uint8Array, profileId?: string) {
   const url = new URL("http://localhost/api/users/profile/photo");
   if (profileId) url.searchParams.set("profileId", profileId);
+
+  const copy = new Uint8Array(body.byteLength);
+  copy.set(body);
+
   return new NextRequest(url, {
     method: "POST",
     headers: { "content-type": "image/jpeg" },
-    body,
+    body: copy.buffer,
   });
 }
 
