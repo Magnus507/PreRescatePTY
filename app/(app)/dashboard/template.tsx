@@ -371,15 +371,30 @@ const clientDashboardStyles = `
 
   /* Floating navigation dock: 2080, but still practical */
   @media (max-width: 1023px) {
+    body:has(.client-dashboard-mobile-theme) main {
+      scroll-padding-top: 4.5rem;
+      scroll-padding-bottom: calc(env(safe-area-inset-bottom) + 7.5rem);
+      overscroll-behavior-y: contain;
+    }
+
+    .client-mobile-topbar {
+      background:
+        linear-gradient(180deg, rgba(247,250,255,.94), rgba(240,246,253,.84));
+      border-bottom: 1px solid rgba(91,125,161,.13);
+      box-shadow: 0 16px 34px -30px rgba(18,44,74,.46);
+      backdrop-filter: blur(24px) saturate(155%);
+      -webkit-backdrop-filter: blur(24px) saturate(155%);
+    }
+
     body:has(.client-dashboard-mobile-theme) nav[class*="fixed"][class*="bottom-0"][class*="z-[60]"] {
       left: 50% !important;
       right: auto !important;
       bottom: calc(env(safe-area-inset-bottom) + .6rem) !important;
       width: calc(100% - 1rem) !important;
       max-width: 34rem;
-      min-height: 4.7rem;
+      min-height: 4.5rem;
       transform: translateX(-50%);
-      padding: .46rem !important;
+      padding: .38rem !important;
       border: 1px solid transparent !important;
       border-radius: 1.72rem !important;
       background:
@@ -432,8 +447,8 @@ const clientDashboardStyles = `
     body:has(.client-dashboard-mobile-theme) nav[class*="fixed"][class*="bottom-0"][class*="z-[60]"] :is(a,button) {
       position: relative;
       min-width: 0 !important;
-      min-height: 3.72rem !important;
-      padding: .48rem .28rem !important;
+      min-height: 3.6rem !important;
+      padding: .42rem .18rem !important;
       border: 1px solid transparent;
       border-radius: 1.2rem !important;
       color: #91a4bd !important;
@@ -480,8 +495,8 @@ const clientDashboardStyles = `
     }
 
     body:has(.client-dashboard-mobile-theme) nav[class*="fixed"][class*="bottom-0"][class*="z-[60]"] span {
-      font-size: .61rem !important;
-      letter-spacing: .045em !important;
+      font-size: .56rem !important;
+      letter-spacing: .02em !important;
       text-transform: none !important;
       line-height: 1.05 !important;
     }
@@ -512,9 +527,20 @@ const clientDashboardStyles = `
     }
 
     .client-dashboard-mobile-theme [class*="p-8"] { padding: 1.15rem !important; }
+    .client-dashboard-mobile-theme [class*="p-7"] { padding: 1.08rem !important; }
     .client-dashboard-mobile-theme [class*="p-6"] { padding: 1.05rem !important; }
     .client-dashboard-mobile-theme [class*="p-5"] { padding: 1rem !important; }
+    .client-dashboard-mobile-theme [class*="px-6"][class*="py-8"] {
+      padding-left: 1.05rem !important;
+      padding-right: 1.05rem !important;
+      padding-top: 1.2rem !important;
+      padding-bottom: 1.2rem !important;
+    }
     .client-dashboard-mobile-theme [class*="gap-6"] { gap: 1.05rem !important; }
+
+    .client-dashboard-mobile-theme [class*="space-y-10"] > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 1.5rem !important;
+    }
 
     .client-dashboard-mobile-theme [class*="space-y-8"] > :not([hidden]) ~ :not([hidden]) {
       margin-top: 1.35rem !important;
@@ -566,17 +592,17 @@ const clientDashboardStyles = `
 
     .client-dashboard-mobile-theme > div > section:nth-of-type(2) > div {
       border-radius: 1.62rem !important;
-      min-height: 13.2rem;
+      min-height: 10.75rem;
       transform-origin: 50% 100%;
     }
 
     .client-dashboard-mobile-theme > div > section:nth-of-type(2) > div:nth-child(1),
     .client-dashboard-mobile-theme > div > section:nth-of-type(2) > div:nth-child(2) {
-      padding-right: 5.4rem !important;
+      padding-right: 4.55rem !important;
     }
 
     .client-dashboard-mobile-theme > div > section:nth-of-type(2) > div:nth-child(3) {
-      min-height: 11.4rem;
+      min-height: 9.75rem;
     }
 
     .client-dashboard-mobile-theme > div > section:nth-of-type(2) > div:nth-child(1)::after {
@@ -627,6 +653,17 @@ const clientDashboardStyles = `
     }
   }
 
+  @media (hover: none) and (pointer: coarse) {
+    .client-dashboard-mobile-theme [class*="hover:-translate-y"],
+    .client-dashboard-mobile-theme [class*="group"][class*="transition"] {
+      transform: none;
+    }
+
+    .client-dashboard-mobile-theme :is(button,a):active {
+      transform: scale(.985);
+    }
+  }
+
   /* Progressive scroll-linked depth: supported browsers get it, others remain static */
   @supports (animation-timeline: view()) {
     .client-dashboard-mobile-theme > div > section:nth-of-type(2) > div {
@@ -665,7 +702,12 @@ const clientDashboardStyles = `
     }
 
     body:has(.client-dashboard-mobile-theme) nav[class*="fixed"][class*="bottom-0"][class*="z-[60]"] span {
-      font-size: .56rem !important;
+      font-size: .52rem !important;
+    }
+
+    .client-mobile-topbar > div {
+      padding-left: .68rem !important;
+      padding-right: .68rem !important;
     }
 
     .client-dashboard-mobile-theme > div > section:nth-of-type(2) > div:nth-child(1),
