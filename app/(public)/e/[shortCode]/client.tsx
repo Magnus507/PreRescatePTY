@@ -394,7 +394,7 @@ function PublicContextModulesBlock({ profile }: { profile: EmergencyProfile }) {
   if (modules.specialNeeds) {
     cards.push({
       key: "special",
-      title: "Necesidades especiales",
+      title: "Necesidades de apoyo",
       subtitle: "Comunicación y regulación",
       icon: <HeartHandshake className="h-5 w-5" />,
       tone: "border-violet-200 bg-violet-50/70 text-violet-700",

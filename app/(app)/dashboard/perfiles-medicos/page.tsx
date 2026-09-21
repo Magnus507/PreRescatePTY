@@ -926,7 +926,7 @@ function ProfileCard({
                       <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700">Anciano activo</span>
                     )}
                     {profile.specialNeedsModuleEnabled && (
-                      <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700">Especial activo</span>
+                      <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700">Apoyo activo</span>
                     )}
                     {profile.petModuleEnabled && (
                       <span className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700">Mascota activa</span>
