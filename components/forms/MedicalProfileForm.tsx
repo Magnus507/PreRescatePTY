@@ -687,7 +687,10 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 
       <div className="flex items-start gap-2 rounded-[1.1rem] border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs font-medium leading-5 text-blue-800">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>Los contactos de emergencia se administran desde la tarjeta del perfil. Los módulos opcionales complementan la ficha; no reemplazan la información médica básica.</span>
+        <span>{isPetProfile
+          ? "Los contactos se administran desde la tarjeta del perfil y también aparecen en la ficha pública de la mascota para facilitar su devolución."
+          : "Los contactos de emergencia se administran desde la tarjeta del perfil. Los módulos opcionales complementan la ficha médica."
+        }</span>
       </div>
     </div>
   );
