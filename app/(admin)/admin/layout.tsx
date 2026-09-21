@@ -59,8 +59,8 @@ function AdminSidebar({
   ].filter(item => !isPrintRole || item.id === 'inventory');
 
   return (
-    <aside className={`h-full bg-white dark:bg-[#0f1419] flex flex-col z-40 transition-all duration-300 ${collapsed ? "w-[84px]" : "w-80"}`}>
-      <div className={`${collapsed ? "p-4 gap-3 flex-col" : "p-10"} flex items-center justify-between`}>
+    <aside className={`h-full bg-white dark:bg-[#0f1419] flex flex-col z-40 transition-all duration-300 ${collapsed ? "w-[76px]" : "w-72"}`}>
+      <div className={`${collapsed ? "p-3 gap-2.5 flex-col" : "px-6 py-7"} flex items-center justify-between`}>
         <div className={`flex items-center font-black tracking-tighter text-slate-900 dark:text-white animate-in fade-in duration-500 ${collapsed ? "flex-col gap-2 text-xs text-center" : "gap-4 text-3xl"}`}>
           <div className={`h-12 w-12 ${branding.color} rounded-[1.25rem] flex items-center justify-center shadow-2xl -rotate-6 group shrink-0`}>
             <branding.icon className="h-6 w-6 text-white group-hover:scale-110 group-hover:rotate-6 transition-all duration-500" />
@@ -91,7 +91,7 @@ function AdminSidebar({
         )}
       </div>
 
-      <nav className={`flex-1 overflow-y-auto ${collapsed ? "px-2 space-y-1" : "px-4 space-y-1.5"}`}>
+      <nav className={`flex-1 overflow-y-auto ${collapsed ? "px-2 space-y-1" : "px-3.5 space-y-1"}`}>
         {nav.map((item) => {
           const isActive = currentTab === item.id;
           const isFuture = 'isFuture' in item;
@@ -103,7 +103,7 @@ function AdminSidebar({
               onClick={closeMobileMenu}
               title={collapsed ? item.label : undefined}
               aria-label={item.label}
-              className={`flex items-center group rounded-2xl text-[11px] uppercase tracking-[0.2em] font-black transition-all duration-500 ${collapsed ? "justify-center px-3 py-4" : "justify-between px-5 py-4"} ${isActive
+              className={`flex items-center group rounded-2xl text-[11px] uppercase tracking-[0.2em] font-black transition-all duration-500 ${collapsed ? "justify-center px-2.5 py-3.5" : "justify-between px-4 py-3.5"} ${isActive
                   ? "bg-gradient-to-r from-primary to-primary/80 text-white shadow-xl shadow-primary/20 translate-x-1"
                   : isFuture
                     ? "text-primary/60 hover:bg-primary/5 hover:text-primary border border-dashed border-primary/20"
@@ -125,7 +125,7 @@ function AdminSidebar({
         })}
       </nav>
 
-      <div className={`${collapsed ? "p-3" : "p-6"} mt-auto border-t border-slate-100 dark:border-[#1a2333] space-y-4`}>
+      <div className={`${collapsed ? "p-3" : "p-5"} mt-auto border-t border-slate-100 dark:border-[#1a2333] space-y-4`}>
         <div className="flex items-center gap-3 px-2">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/20 dark:to-primary/10 flex items-center justify-center text-primary font-black border border-primary/20 dark:border-primary/20 uppercase">
             {session.user?.email?.[0]}
@@ -177,7 +177,7 @@ function GlobalSearchBar() {
         type="text"
         placeholder="Búsqueda rápida..."
         autoComplete="off"
-        className="bg-slate-100 dark:bg-[#1a2333] border-none rounded-2xl pl-10 pr-4 py-2 text-xs font-bold focus:ring-2 focus:ring-primary/20 w-64 transition-all hover:bg-slate-200/50 dark:hover:bg-[#2a3a4f] text-slate-900 dark:text-white"
+        className="bg-slate-100 dark:bg-[#1a2333] border-none rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-primary/20 w-80 transition-all hover:bg-slate-200/50 dark:hover:bg-[#2a3a4f] text-slate-900 dark:text-white"
       />
     </form>
   );
@@ -238,8 +238,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#050812] font-sans selection:bg-primary selection:text-white flex flex-col">
       {/* Unified Global Header */}
-      <header className="sticky top-0 z-[100] h-20 bg-white/70 dark:bg-[#0f1419]/70 backdrop-blur-2xl border-b border-slate-200/60 dark:border-[#1a2333]/60 px-6 sm:px-10 flex items-center justify-between transition-all duration-300">
-        <div className="flex items-center gap-8">
+      <header className="sticky top-0 z-[100] h-[72px] bg-white/70 dark:bg-[#0f1419]/70 backdrop-blur-2xl border-b border-slate-200/60 dark:border-[#1a2333]/60 px-5 lg:px-7 xl:px-8 flex items-center justify-between transition-all duration-300">
+        <div className="flex items-center gap-6">
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
@@ -267,7 +267,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Suspense>
         </div>
 
-        <div className="flex items-center gap-4 sm:gap-6">
+        <div className="flex items-center gap-3 sm:gap-5">
           {/* User Profile Info */}
           <div className="hidden sm:flex items-center gap-4 pr-4 border-r border-slate-200 dark:border-[#1a2333]">
             <div className="flex flex-col text-right">
@@ -319,7 +319,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Mobile Sidebar Drawer */}
         <div className={`
-          fixed inset-y-0 left-0 z-[120] w-80 bg-white dark:bg-[#0f1419] shadow-2xl shadow-slate-900/40 transition-transform duration-500 md:hidden
+          fixed inset-y-0 left-0 z-[120] w-72 bg-white dark:bg-[#0f1419] shadow-2xl shadow-slate-900/40 transition-transform duration-500 md:hidden
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
         `}>
           <Suspense fallback={<div className="w-full h-full bg-white dark:bg-slate-900" />}>
@@ -333,7 +333,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Desktop Sidebar */}
-        <div className={`${sidebarCollapsed ? "md:w-[84px]" : "md:w-80"} hidden md:flex border-r border-slate-200 dark:border-[#1a2333] transition-all duration-300`}>
+        <div className={`${sidebarCollapsed ? "md:w-[76px]" : "md:w-72"} hidden md:flex border-r border-slate-200 dark:border-[#1a2333] transition-all duration-300`}>
           <Suspense fallback={<div className="w-full bg-white dark:bg-[#0f1419]" />}>
             <AdminSidebar 
               session={session as Session} 
@@ -347,13 +347,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Content Area */}
         <main className="flex-1 overflow-x-hidden relative">
-          <div className={`${sidebarCollapsed ? "max-w-none" : "max-w-[1700px]"} mx-auto w-full p-6 sm:p-10 lg:p-12 transition-all duration-300`}>
+          <div className="mx-auto w-full max-w-[1900px] px-5 py-6 lg:px-7 lg:py-7 xl:px-8 xl:py-8 transition-all duration-300">
             {children}
           </div>
         </main>
       </div>
 
-      <footer className="h-12 border-t border-slate-200/50 dark:border-[#1a2333]/50 bg-white/30 dark:bg-[#0f1419]/30 px-10 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+      <footer className="h-10 border-t border-slate-200/50 dark:border-[#1a2333]/50 bg-white/30 dark:bg-[#0f1419]/30 px-10 flex items-center justify-between text-[10px] text-slate-400 font-medium">
         <div className="flex gap-4 uppercase tracking-widest">
           <span>© 2026 PreRescate PTY</span>
         </div>

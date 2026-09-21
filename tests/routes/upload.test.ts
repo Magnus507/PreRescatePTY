@@ -118,6 +118,19 @@ function createRawProfileUploadRequest(profileId = 'target-profile-id'): NextReq
   })
 }
 
+async function createMalformedBoundaryUploadRequest(): Promise<NextRequest> {
+  const valid = createUploadRequest()
+  const body = await valid.arrayBuffer()
+
+  return new NextRequest('http://localhost/api/upload', {
+    method: 'POST',
+    headers: {
+      'content-type': 'multipart/form-data; boundary=',
+    },
+    body: new Uint8Array(body),
+  })
+}
+
 function setupDefaultMocks() {
   vi.mocked(getServerSession).mockResolvedValue(
     createMockSession({ id: TEST_USER_ID, role: 'owner' }) as never
@@ -339,7 +352,20 @@ describe('POST /api/upload', () => {
     )
   })
 
-  it('12. compensates the storage upload when the profile database update fails', async () => {
+  it('12. recovers multipart uploads when the boundary header is empty but the payload boundary is valid', async () => {
+    setupDefaultMocks()
+    mockOptimizeAndUploadImage.mockResolvedValue('/api/image-proxy?bucket=general&path=recovered.webp')
+
+    const req = await createMalformedBoundaryUploadRequest()
+    const res = await POST(req)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.url).toMatch(/api\/image-proxy/)
+    expect(mockOptimizeAndUploadImage).toHaveBeenCalled()
+  })
+
+  it('13. compensates the storage upload when the profile database update fails', async () => {
     setupDefaultMocks()
     mockOptimizeAndUploadImage.mockResolvedValue('/api/image-proxy?bucket=profile-photos&path=profile.webp')
     mockPrisma.user.findUnique.mockResolvedValue({ accountId: 'test-account' } as never)

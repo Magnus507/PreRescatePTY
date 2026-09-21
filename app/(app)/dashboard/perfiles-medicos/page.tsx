@@ -814,15 +814,17 @@ function ProfileCard({
 
     setUploading(true);
     try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "profile");
+      formData.append("profileId", profile.id);
+
+      // Do not set Content-Type manually. The browser adds the multipart boundary.
+      // The server also recovers the boundary from the payload if a proxy/browser
+      // strips or malforms the header.
       const res = await fetch("/api/upload", {
         method: "POST",
-        headers: {
-          "Content-Type": file.type,
-          "X-PreRescate-Upload": "raw-profile-photo",
-          "X-Profile-Id": profile.id,
-          "X-File-Name": encodeURIComponent(file.name || "profile-photo"),
-        },
-        body: file,
+        body: formData,
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {

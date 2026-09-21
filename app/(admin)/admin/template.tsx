@@ -34,7 +34,7 @@ const adminStyles = `
 
   .admin-control-center {
     position: relative;
-    min-height: calc(100vh - 5rem);
+    min-height: calc(100vh - 4.5rem);
     isolation: isolate;
     color-scheme: dark;
     background: transparent;
@@ -43,7 +43,7 @@ const adminStyles = `
   .admin-control-center::before {
     content: "";
     position: fixed;
-    inset: 5rem 0 0;
+    inset: 4.5rem 0 0;
     z-index: -3;
     pointer-events: none;
     background:
@@ -56,15 +56,13 @@ const adminStyles = `
   .admin-control-center::after {
     content: "";
     position: fixed;
-    inset: 5rem 0 0;
+    inset: 4.5rem 0 0;
     z-index: -2;
     pointer-events: none;
-    opacity: .075;
-    background-image:
-      linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
-    background-size: 72px 72px;
-    mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,.55) 58%, transparent 92%);
+    background:
+      radial-gradient(55% 48% at 52% -8%, rgba(125,211,252,.055), transparent 72%),
+      linear-gradient(90deg, rgba(255,255,255,.012), transparent 24%, transparent 76%, rgba(255,255,255,.01));
+    mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,.68) 70%, transparent 100%);
   }
 
   /* Global shell */
@@ -112,8 +110,8 @@ const adminStyles = `
     border: 1px solid transparent;
     position: relative;
     overflow: hidden;
-    min-height: 3.35rem;
-    border-radius: 1rem !important;
+    min-height: 3rem;
+    border-radius: .9rem !important;
     isolation: isolate;
   }
 
@@ -456,6 +454,27 @@ const adminStyles = `
   }
 
   /* Responsive admin */
+  @media (min-width: 1024px) {
+    .admin-control-center main [class*="rounded-[2rem]"],
+    .admin-control-center main [class*="rounded-[2.5rem]"] {
+      border-radius: 1.4rem !important;
+    }
+
+    .admin-control-center table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      background: rgba(8, 14, 24, .96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .admin-control-center table :is(th, td) {
+      padding-top: .78rem;
+      padding-bottom: .78rem;
+    }
+  }
+
   @media (max-width: 1279px) {
     .admin-control-center main table {
       font-size: .88rem;
@@ -470,7 +489,7 @@ const adminStyles = `
 
     .admin-control-center::before,
     .admin-control-center::after {
-      inset-top: 5rem;
+      top: 4.5rem;
     }
 
     .admin-control-center main [class*="rounded-[2rem]"],
