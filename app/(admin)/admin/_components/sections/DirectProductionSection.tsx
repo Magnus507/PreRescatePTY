@@ -82,7 +82,7 @@ function getUnit(item: DigitalItem) {
 }
 
 const STICKER_TEMPLATE_PATH = "/sticker-official.png";
-const ACTIVATION_CARD_TEMPLATE_PATH = "/activation-code-card-base.webp";
+const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base.webp", "/activation-code-card-base.svg"] as const;
 const ACTIVATION_CARD_REFERENCE = {
   width: 1536,
   height: 994,
@@ -143,13 +143,28 @@ async function fetchQrPng(targetUrl: string) {
   return response.blob();
 }
 
-function loadBrowserImage(src: string) {
+function loadBrowserImage(src: string, label = "la imagen") {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("No se pudo cargar la plantilla del sticker"));
+    image.onerror = () => reject(new Error(`No se pudo cargar ${label}`));
     image.src = src;
   });
+}
+
+async function loadFirstAvailableImage(sources: readonly string[], label: string) {
+  let lastError: unknown = null;
+
+  for (const src of sources) {
+    try {
+      return await loadBrowserImage(src, label);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError instanceof Error) throw lastError;
+  throw new Error(`No se pudo cargar ${label}`);
 }
 
 async function renderStickerPng(targetUrl: string, preparedQr?: Blob) {
@@ -158,8 +173,8 @@ async function renderStickerPng(targetUrl: string, preparedQr?: Blob) {
 
   try {
     const [template, qrImage] = await Promise.all([
-      loadBrowserImage(STICKER_TEMPLATE_PATH),
-      loadBrowserImage(qrObjectUrl),
+      loadBrowserImage(STICKER_TEMPLATE_PATH, "la plantilla del sticker"),
+      loadBrowserImage(qrObjectUrl, "el QR"),
     ]);
 
     const canvas = document.createElement("canvas");
@@ -195,8 +210,11 @@ async function renderActivationCardPng(item: DigitalItem, preparedQr?: Blob) {
   const qrObjectUrl = qrBlob ? URL.createObjectURL(qrBlob) : null;
 
   try {
-    const template = await loadBrowserImage(ACTIVATION_CARD_TEMPLATE_PATH);
-    const qrImage = qrObjectUrl ? await loadBrowserImage(qrObjectUrl) : null;
+    const template = await loadFirstAvailableImage(
+      ACTIVATION_CARD_TEMPLATE_PATHS,
+      "la plantilla de la tarjeta de activación",
+    );
+    const qrImage = qrObjectUrl ? await loadBrowserImage(qrObjectUrl, "el QR") : null;
 
     const canvas = document.createElement("canvas");
     canvas.width = ACTIVATION_CARD_REFERENCE.width * ACTIVATION_CARD_REFERENCE.exportScale;
