@@ -11,7 +11,7 @@ function AlertCard({ label, value, icon: Icon, color, bgColor, tab, ctaLabel, su
   return (
     <div
       onClick={() => setTab(tab)}
-      className={`relative p-6 rounded-[2rem] border transition-all duration-300 cursor-pointer group overflow-hidden ${
+      className={`relative p-5 rounded-[1.4rem] border transition-all duration-300 cursor-pointer group overflow-hidden ${
         hasAlert
           ? `border-${color.replace("text-", "")}/20 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl`
           : "border-emerald-200/50 bg-emerald-50/50 dark:bg-emerald-950/20"
@@ -55,7 +55,7 @@ function KpiCard({ label, value, icon: Icon, color, bgColor, sublabel }: {
   label: string; value: number; icon: React.ElementType; color: string; bgColor: string; sublabel?: string;
 }) {
   return (
-    <div className="p-5 rounded-[1.5rem] border border-border bg-white dark:bg-slate-900 shadow-sm">
+    <div className="p-4 rounded-[1.2rem] border border-border bg-white dark:bg-slate-900 shadow-sm">
       <div className="flex items-center gap-3 mb-3">
         <div className={`h-8 w-8 rounded-xl ${bgColor} flex items-center justify-center`}>
           <Icon className={`h-4 w-4 ${color}`} />
@@ -73,7 +73,7 @@ function HardwareBar({ totalChips, activated, inventory, sold, suspended }: {
 }) {
   const safeTotal = totalChips || 1;
   return (
-    <div className="p-8 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-border shadow-sm">
+    <div className="p-6 rounded-[1.5rem] bg-white dark:bg-slate-900 border border-border shadow-sm">
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Distribución de Hardware</p>
@@ -164,9 +164,9 @@ export function DashboardSection({
   const pendingAttention = comm.paymentsUnderReview + corp.pendingRequests;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
+    <div className="space-y-7 animate-in fade-in duration-500">
       {/* ─── Header ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tighter">
             <span className="text-[#dc2626]">Pre</span>{" "}
@@ -194,7 +194,7 @@ export function DashboardSection({
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
           <AlertCircle className="h-4 w-4" /> Centro de Alertas
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <AlertCard
             label="Pagos por revisar"
             value={pendingAttention}
@@ -234,7 +234,7 @@ export function DashboardSection({
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
           <Users className="h-4 w-4" /> Salud del Ecosistema
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard label="Usuarios totales" value={stats.totalUsers} icon={Users} color="text-indigo-600" bgColor="bg-indigo-50"
             sublabel={`${eco.usersActive} activos / ${eco.usersBlocked} bloqueados`} />
           <KpiCard label="Perfiles registrados" value={stats.totalProfiles} icon={ShieldCheck} color="text-purple-600" bgColor="bg-purple-50"
@@ -260,7 +260,7 @@ export function DashboardSection({
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
           <Activity className="h-4 w-4" /> Operación Comercial
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard label="Pendientes" value={p.pendingOrders} icon={Clock} color="text-amber-600" bgColor="bg-amber-50" />
           <KpiCard label="En revisión" value={comm.paymentsUnderReview} icon={Eye} color="text-blue-600" bgColor="bg-blue-50" />
           <KpiCard label="En producción" value={comm.ordersProcessing} icon={Package} color="text-violet-600" bgColor="bg-violet-50" />
@@ -274,7 +274,7 @@ export function DashboardSection({
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
           <Building2 className="h-4 w-4" /> Corporativo
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard label="Empresas registradas" value={corp.organizationsTotal} icon={Building2} color="text-blue-600" bgColor="bg-blue-50" />
           <KpiCard label="Empresas activas" value={corp.organizationsActive} icon={CheckCircle2} color="text-emerald-600" bgColor="bg-emerald-50" />
           <KpiCard label="Solicitudes pendientes" value={corp.pendingRequests} icon={AlertCircle} color="text-amber-600" bgColor="bg-amber-50" />
@@ -288,7 +288,7 @@ export function DashboardSection({
           <TrendingUp className="h-4 w-4" /> Movimiento
           <span className="text-[9px] font-medium text-slate-300 ml-2">(sin monetización aún — FASE 2)</span>
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard label="Pedidos hoy" value={comm.ordersToday} icon={ShoppingCart} color="text-indigo-600" bgColor="bg-indigo-50" />
           <KpiCard label="Pedidos este mes" value={comm.ordersThisMonth} icon={Package} color="text-purple-600" bgColor="bg-purple-50" />
           <KpiCard label="Usuarios nuevos hoy" value={mov.newUsersToday} icon={Users} color="text-emerald-600" bgColor="bg-emerald-50" />
@@ -310,7 +310,7 @@ export function DashboardSection({
 
       {/* ─── H. Nuevos Miembros Recientes ────────────────────────────── */}
       {recentUsers && recentUsers.length > 0 && (
-        <div className="p-8 rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 shadow-sm">
+        <div className="p-6 rounded-[1.5rem] border border-border bg-white dark:bg-slate-900 shadow-sm">
           <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center justify-between">
             <span>Nuevos Miembros</span>
             <span className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
