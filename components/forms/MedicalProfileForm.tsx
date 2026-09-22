@@ -304,7 +304,8 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       update("minorModuleEnabled", false);
       update("elderModuleEnabled", false);
       update("specialNeedsModuleEnabled", false);
-      update("workModuleEnabled", false);\n      update("safeReturnModuleEnabled", false);
+      update("workModuleEnabled", false);
+      update("safeReturnModuleEnabled", false);
       update("isInsured", false);
       update("showVulnerabilityStatusPublic", false);
       update("showCommunicationStatusPublic", false);
@@ -362,17 +363,17 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
           <div className="flex flex-col gap-3 rounded-[1.15rem] border border-slate-800 bg-slate-950 px-3.5 py-3 text-white shadow-[0_14px_34px_-26px_rgba(15,23,42,.8)] min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[.9rem] bg-white/[0.08] text-white ring-1 ring-white/10">
-                {isPetProfile ? <Cat className="h-[18px] w-[18px]" /> : <UserRound className="h-[18px] w-[18px]" />}
+                {isPetProfile ? <Cat className="h-[18px] w-[18px]" /> : isSafeReturnProfile ? <KeyRound className="h-[18px] w-[18px]" /> : <UserRound className="h-[18px] w-[18px]" />}
               </div>
               <div className="min-w-0">
-                <h2 className="text-[1.05rem] font-black tracking-[-0.025em] text-white sm:text-lg">{isPetProfile ? "Ficha de mascota" : "Información básica"}</h2>
+                <h2 className="text-[1.05rem] font-black tracking-[-0.025em] text-white sm:text-lg">{isPetProfile ? "Ficha de mascota" : isSafeReturnProfile ? "Perfil de retorno seguro" : "Información básica"}</h2>
                 <p className="mt-0.5 text-[10px] font-semibold leading-4 text-slate-400 sm:text-[11px]">
-                  {isPetProfile ? "Identificación y datos esenciales para ayudarla a volver a casa" : "Datos esenciales de emergencia · siempre van primero"}
+                  {isPetProfile ? "Identificación y datos esenciales para ayudarla a volver a casa" : isSafeReturnProfile ? "Identifica el objeto y facilita que pueda regresar a su propietario" : "Datos esenciales de emergencia · siempre van primero"}
                 </p>
               </div>
             </div>
             <span className="w-fit shrink-0 rounded-full border border-[#DA1A21]/30 bg-[#DA1A21]/12 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-red-300 sm:text-[9px]">
-              {isPetProfile ? "Modo mascota" : "Siempre visible"}
+              {isPetProfile ? "Modo mascota" : isSafeReturnProfile ? "Retorno seguro" : "Siempre visible"}
             </span>
           </div>
         </div>
@@ -460,10 +461,43 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             </div>
           )}
 
-          <div className={isPetProfile ? "hidden" : "space-y-4"}>
+          {isSafeReturnProfile && (
+            <div className="space-y-3">
+              <div className="rounded-[1.15rem] border border-sky-200 bg-sky-50/70 p-3 sm:p-3.5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[.9rem] bg-sky-600 text-white">
+                    <KeyRound className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-700">Perfil convertido a retorno seguro</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                      La ficha pública mostrará únicamente la información necesaria para identificar y devolver el objeto.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <Field
+                  label="Objeto / identificación *"
+                  value={safeReturnData.itemName}
+                  onChange={(v) => updateModuleField("safeReturnModuleData", safeReturnData as unknown as Record<string, unknown>, "itemName", v)}
+                  required
+                  placeholder="Ej: Llaves del carro"
+                />
+                <Field
+                  label="Descripción breve"
+                  value={safeReturnData.itemDescription}
+                  onChange={(v) => updateModuleField("safeReturnModuleData", safeReturnData as unknown as Record<string, unknown>, "itemDescription", v)}
+                  placeholder="Ej: Llavero negro con control Toyota"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className={isConvertedProfile ? "hidden" : "space-y-4"}>
           <div className="grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2 xl:grid-cols-4">
-            <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required={!isPetProfile} placeholder="Juan" />
-            <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required={!isPetProfile} placeholder="Pérez" />
+            <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required={!isConvertedProfile} placeholder="Juan" />
+            <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required={!isConvertedProfile} placeholder="Pérez" />
             <Field label="Alias público" value={form.displayNamePublic} onChange={(v) => update("displayNamePublic", v)} placeholder="Ej: Juan P." />
             <Field label="Teléfono de contacto" value={form.phone || ""} onChange={(v) => update("phone", v)} placeholder="+507 0000-0000" />
           </div>
@@ -474,7 +508,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
               value={form.bloodType}
               onChange={(v) => update("bloodType", v)}
               options={BLOOD_TYPES.map((value) => ({ value, label: value }))}
-              required={!isPetProfile}
+              required={!isConvertedProfile}
             />
             <SelectField
               label="Sexo"
@@ -530,7 +564,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             />
           </div>
 
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50/55 p-3 sm:p-4">
+          <div className="rounded-[1.2rem] border border-slate-300/80 bg-slate-100/70 p-3 sm:p-4">
             <TextAreaField
               icon={<FileText className="h-4 w-4" />}
               label="Notas críticas e instrucciones generales"
@@ -543,6 +577,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
               <VisibilityChoice
                 label="Visibilidad de estas notas"
                 isPublic={form.showAdditionalNotesPublic}
+                tone="slate"
                 onChange={(v) => update("showAdditionalNotesPublic", v)}
               />
             </div>
@@ -564,20 +599,20 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 Módulos personalizados
               </div>
               <h2 className="mt-3 text-[1.45rem] font-black tracking-[-0.04em] text-white sm:text-2xl">
-                {isPetProfile ? "Este perfil está en modo mascota" : "Activa solo lo que aplica a este perfil"}
+                {isPetProfile ? "Este perfil está en modo mascota" : isSafeReturnProfile ? "Este perfil está en modo retorno seguro" : "Activa solo lo que aplica a este perfil"}
               </h2>
               <p className="mt-1.5 max-w-2xl text-xs font-medium leading-5 text-slate-300 sm:text-sm">
-                {isPetProfile ? "Completa los datos de contacto, retorno y cuidados. Desactiva Mascotas para volver al perfil humano." : "La información básica siempre permanece primero. Estos módulos aparecen únicamente cuando los activas."}
+                {isPetProfile ? "Completa los datos de contacto, retorno y cuidados. Desactiva Mascotas para volver al perfil humano." : isSafeReturnProfile ? "Completa el contacto y las instrucciones de devolución. Desactiva Retorno seguro para volver al perfil médico." : "La información básica siempre permanece primero. Estos módulos aparecen únicamente cuando los activas."}
               </p>
             </div>
             <div className="w-fit shrink-0 rounded-[1rem] border border-white/10 bg-white/[0.07] px-3 py-2 text-center backdrop-blur">
-              <p className="text-lg font-black leading-none text-white">{isPetProfile ? 1 : enabledCount}</p>
-              <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">{isPetProfile ? "modo mascota" : "de 6 activos"}</p>
+              <p className="text-lg font-black leading-none text-white">{isConvertedProfile ? 1 : enabledCount}</p>
+              <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">{isPetProfile ? "modo mascota" : isSafeReturnProfile ? "retorno seguro" : "de 7 activos"}</p>
             </div>
           </div>
 
-          <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-4 grid grid-cols-2 gap-2 pb-1 sm:mt-5 sm:flex sm:overflow-x-auto sm:pb-1.5 lg:grid lg:grid-cols-6 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {(isPetProfile ? OPTIONAL_TABS.filter((tab) => tab.id === "pet") : OPTIONAL_TABS).map((tab) => {
+          <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-4 grid grid-cols-2 gap-2 pb-1 sm:mt-5 sm:flex sm:overflow-x-auto sm:pb-1.5 lg:grid lg:grid-cols-7 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {(isPetProfile ? OPTIONAL_TABS.filter((tab) => tab.id === "pet") : isSafeReturnProfile ? OPTIONAL_TABS.filter((tab) => tab.id === "safeReturn") : OPTIONAL_TABS).map((tab) => {
               const Icon = tab.icon;
               const selected = activeTab === tab.id;
               const enabled = moduleEnabled[tab.id];
@@ -715,6 +750,12 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                             onChange={(key, value) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, key as string, value)}
                           />
                         )}
+                        {tab.id === "safeReturn" && (
+                          <SafeReturnFields
+                            data={safeReturnData}
+                            onChange={(key, value) => updateModuleField("safeReturnModuleData", safeReturnData as unknown as Record<string, unknown>, key as string, value)}
+                          />
+                        )}
                         {tab.id === "work" && (
                           <WorkFields
                             data={workData}
@@ -738,7 +779,9 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>{isPetProfile
           ? "Los contactos se administran desde la tarjeta del perfil y también aparecen en la ficha pública de la mascota para facilitar su devolución."
-          : "Los contactos de emergencia se administran desde la tarjeta del perfil. Los módulos opcionales complementan la ficha médica."
+          : isSafeReturnProfile
+            ? "El teléfono configurado en Retorno seguro será el contacto principal visible para devolver el objeto."
+            : "Los contactos de emergencia se administran desde la tarjeta del perfil. Los módulos opcionales complementan la ficha médica."
         }</span>
       </div>
     </div>
