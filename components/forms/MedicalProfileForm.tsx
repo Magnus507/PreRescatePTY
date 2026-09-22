@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
@@ -265,6 +265,11 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   const isPetProfile = form.petModuleEnabled === true;
   const isSafeReturnProfile = form.safeReturnModuleEnabled === true;
   const isConvertedProfile = isPetProfile || isSafeReturnProfile;
+
+  useEffect(() => {
+    if (isPetProfile) setActiveTab("pet");
+    else if (isSafeReturnProfile) setActiveTab("safeReturn");
+  }, [isPetProfile, isSafeReturnProfile]);
 
   const petAge = useMemo(() => {
     if (!petData.birthDate) return null;
