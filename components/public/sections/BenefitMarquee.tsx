@@ -10,7 +10,7 @@ const items = [
   { icon: Heart, label: "Contactos de emergencia" },
   { icon: Users, label: "Perfiles para familias" },
   { icon: Globe, label: "Consulta desde el navegador" },
-  { icon: CreditCard, label: "Planes sin mensualidad recurrente" },
+  { icon: CreditCard, label: "Pago único · sin mensualidad" },
 ];
 
 export default function BenefitMarquee() {
