@@ -10,7 +10,7 @@ import {
   Activity, User, MessageCircle, Loader2, Calendar,
   ShieldCheck, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick,
   Brain, Footprints, Baby, Eye, BellRing, Tag, Barcode,
-  Cat, BriefcaseBusiness, HeartHandshake
+  Cat, BriefcaseBusiness, HeartHandshake, KeyRound, MapPin, RotateCcw
 } from "lucide-react";
 import { IndustrialProfileView } from "./_components/IndustrialProfileView";
 import { formatEmergencyLocation } from "@/domains/shared/services/emergency-location";
@@ -66,6 +66,7 @@ interface EmergencyProfile {
     elder?: Record<string, unknown> | null;
     specialNeeds?: Record<string, unknown> | null;
     pet?: Record<string, unknown> | null;
+    safeReturnItem?: Record<string, unknown> | null;
     work?: Record<string, unknown> | null;
   } | null;
 }
@@ -425,6 +426,24 @@ function PublicContextModulesBlock({ profile }: { profile: EmergencyProfile }) {
         { label: "Veterinario", value: moduleText(modules.pet, "veterinarianName") },
         { label: "Teléfono veterinario", value: moduleText(modules.pet, "veterinarianPhone") },
         { label: "Cuidados", value: moduleText(modules.pet, "careNotes") },
+      ],
+    });
+  }
+
+  if (modules.safeReturnItem) {
+    cards.push({
+      key: "safe-return-item",
+      title: "Retorno seguro",
+      subtitle: "Información de devolución",
+      icon: <KeyRound className="h-5 w-5" />,
+      tone: "border-sky-200 bg-sky-50/70 text-sky-700",
+      rows: [
+        { label: "Objeto", value: moduleText(modules.safeReturnItem, "itemName") },
+        { label: "Descripción", value: moduleText(modules.safeReturnItem, "itemDescription") },
+        { label: "Propietario", value: moduleText(modules.safeReturnItem, "ownerName") },
+        { label: "Teléfono", value: moduleText(modules.safeReturnItem, "ownerPhone") },
+        { label: "Área", value: moduleText(modules.safeReturnItem, "area") },
+        { label: "Devolución", value: moduleText(modules.safeReturnItem, "returnInstructions") },
       ],
     });
   }
@@ -825,6 +844,115 @@ function petAgeLabel(raw: string | null) {
   if (totalMonths < 12) return `${totalMonths} ${totalMonths === 1 ? "mes" : "meses"}`;
   const years = Math.floor(totalMonths / 12);
   return `${years} ${years === 1 ? "año" : "años"}`;
+}
+
+function SafeReturnRecoveryPage({ profile }: { profile: EmergencyProfile }) {
+  const item = profile.contextModules?.safeReturnItem;
+  if (!item) return null;
+
+  const itemName = moduleText(item, "itemName") || "Objeto encontrado";
+  const itemDescription = moduleText(item, "itemDescription");
+  const ownerName = moduleText(item, "ownerName");
+  const ownerPhone = moduleText(item, "ownerPhone");
+  const alternateContactName = moduleText(item, "alternateContactName");
+  const alternateContactPhone = moduleText(item, "alternateContactPhone");
+  const area = moduleText(item, "area");
+  const returnInstructions = moduleText(item, "returnInstructions");
+
+  const primaryWhatsApp = ownerPhone ? normalizeWhatsAppPhone(ownerPhone) : "";
+  const alternateWhatsApp = alternateContactPhone ? normalizeWhatsAppPhone(alternateContactPhone) : "";
+
+  return (
+    <div className="min-h-screen bg-[linear-gradient(180deg,#eff8ff_0%,#f8fafc_45%,#ffffff_100%)] px-2.5 py-3 font-sans text-slate-950 min-[390px]:px-3 min-[390px]:py-4 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-3xl space-y-3.5 sm:space-y-5">
+        <section className="overflow-hidden rounded-[1.65rem] border border-sky-100 bg-white shadow-[0_28px_70px_-40px_rgba(2,132,199,.35)] sm:rounded-[2.5rem]">
+          <div className="h-2 bg-gradient-to-r from-sky-600 via-cyan-500 to-blue-500" />
+          <div className="p-4 min-[390px]:p-5 sm:p-8">
+            <div className="flex flex-col gap-4 min-[520px]:flex-row min-[520px]:items-center sm:gap-5">
+              {profile.photoUrl ? (
+                <div className="h-28 w-28 shrink-0 overflow-hidden rounded-[1.6rem] border-4 border-white bg-sky-50 shadow-xl min-[390px]:h-32 min-[390px]:w-32 min-[390px]:rounded-[2rem]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={profile.photoUrl} alt={`Imagen de ${itemName}`} className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-[1.6rem] bg-sky-600 text-white shadow-xl min-[390px]:h-32 min-[390px]:w-32 min-[390px]:rounded-[2rem]">
+                  <KeyRound className="h-14 w-14 min-[390px]:h-16 min-[390px]:w-16" />
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-sky-700">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Retorno seguro · PreRescue ID
+                </div>
+                <h1 className="mt-3 break-words text-[2.1rem] font-black leading-[.95] tracking-[-0.05em] text-slate-950 min-[390px]:text-4xl sm:text-5xl">{itemName}</h1>
+                {itemDescription && <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-600 sm:text-base">{itemDescription}</p>}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {(ownerName || ownerPhone) && (
+          <section className="rounded-[1.5rem] border border-emerald-100 bg-white p-4 shadow-lg sm:rounded-[2rem] sm:p-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Contacto principal</p>
+            {ownerName && <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">{ownerName}</h2>}
+            {ownerPhone && <p className="mt-1 text-sm font-bold text-slate-600">{ownerPhone}</p>}
+            {ownerPhone && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <a href={`tel:${sanitizeTelPhone(ownerPhone)}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 py-3 text-xs font-black uppercase tracking-wider text-white">
+                  <Phone className="h-4 w-4" /> Llamar
+                </a>
+                <a href={`https://wa.me/${primaryWhatsApp}`} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-3 py-3 text-xs font-black uppercase tracking-wider text-white">
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                </a>
+              </div>
+            )}
+          </section>
+        )}
+
+        {(returnInstructions || area) && (
+          <section className="rounded-[1.5rem] border border-sky-100 bg-white p-4 shadow-lg sm:rounded-[2rem] sm:p-6">
+            {returnInstructions && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-700">Cómo devolverlo</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-800">{returnInstructions}</p>
+              </div>
+            )}
+            {area && (
+              <div className={`flex items-start gap-2 ${returnInstructions ? "mt-4 border-t border-sky-100 pt-4" : ""}`}>
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Área / referencia</p>
+                  <p className="mt-1 text-sm font-bold text-slate-700">{area}</p>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {(alternateContactName || alternateContactPhone) && (
+          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-5">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Contacto alterno</p>
+            {alternateContactName && <p className="mt-1 text-base font-black text-slate-900">{alternateContactName}</p>}
+            {alternateContactPhone && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <a href={`tel:${sanitizeTelPhone(alternateContactPhone)}`} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-black uppercase text-slate-800">
+                  <Phone className="h-4 w-4" /> Llamar
+                </a>
+                <a href={`https://wa.me/${alternateWhatsApp}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-black uppercase text-emerald-700">
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                </a>
+              </div>
+            )}
+          </section>
+        )}
+
+        <div className="flex items-center justify-center gap-2 pb-2 text-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+          <ShieldCheck className="h-3.5 w-3.5" /> PreRescatePTY · Retorno seguro
+        </div>
+      </main>
+    </div>
+  );
 }
 
 function PetRecoveryPage({
@@ -1304,6 +1432,10 @@ export default function EmergencyPage() {
         </div>
       </div>
     );
+  }
+
+  if (profile.contextModules?.safeReturnItem) {
+    return <SafeReturnRecoveryPage profile={profile} />;
   }
 
   if (profile.contextModules?.pet) {
