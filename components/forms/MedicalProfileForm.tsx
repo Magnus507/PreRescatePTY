@@ -930,6 +930,26 @@ function PetFields({ data, onChange }: { data: PetModuleData; onChange: (key: ke
   );
 }
 
+function SafeReturnFields({ data, onChange }: { data: SafeReturnModuleData; onChange: (key: keyof SafeReturnModuleData, value: string) => void }) {
+  return (
+    <div className="space-y-3.5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Nombre del propietario" value={data.ownerName} onChange={(v) => onChange("ownerName", v)} placeholder="Nombre o alias" />
+        <Field label="Teléfono de contacto *" value={data.ownerPhone} onChange={(v) => onChange("ownerPhone", v)} placeholder="+507..." required />
+        <Field label="Contacto alterno" value={data.alternateContactName} onChange={(v) => onChange("alternateContactName", v)} placeholder="Opcional" />
+        <Field label="Teléfono alterno" value={data.alternateContactPhone} onChange={(v) => onChange("alternateContactPhone", v)} placeholder="+507..." />
+        <Field label="Área / referencia" value={data.area} onChange={(v) => onChange("area", v)} placeholder="Opcional" />
+      </div>
+      <PlainTextArea
+        label="Instrucciones de devolución"
+        value={data.returnInstructions}
+        onChange={(v) => onChange("returnInstructions", v)}
+        placeholder="Ej: llamar o escribir antes de coordinar la entrega."
+      />
+    </div>
+  );
+}
+
 function WorkFields({ data, onChange }: { data: WorkModuleData; onChange: (key: keyof WorkModuleData, value: string) => void }) {
   return (
     <div className="space-y-4">
@@ -953,34 +973,34 @@ function InsuranceFields({
   onChange: (field: string, value: ProfileFormValue) => void;
 }) {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="space-y-2 rounded-[1.05rem] border border-emerald-200 bg-emerald-50/45 p-3">
         <Field label="Aseguradora" value={form.insuranceProvider || ""} onChange={(v) => onChange("insuranceProvider", v)} placeholder="Ej: ASSA, MAPFRE, Blue Cross" />
-        <Field label="Número de póliza" value={form.insurancePolicyNumber || ""} onChange={(v) => onChange("insurancePolicyNumber", v)} placeholder="Dato privado" />
-        <Field label="Hospital preferido" value={form.preferredHospital || ""} onChange={(v) => onChange("preferredHospital", v)} placeholder="Ej: Hospital Nacional" />
-        <Field label="Teléfono de asistencia del seguro" value={form.insuranceEmergencyPhone || ""} onChange={(v) => onChange("insuranceEmergencyPhone", v)} placeholder="+507..." />
-        <Field label="Médico tratante" value={form.primaryDoctorName || ""} onChange={(v) => onChange("primaryDoctorName", v)} placeholder="Opcional" />
-        <Field label="Teléfono del médico" value={form.primaryDoctorPhone || ""} onChange={(v) => onChange("primaryDoctorPhone", v)} placeholder="+507..." />
+        <VisibilityChoice label="Visibilidad de aseguradora" isPublic={form.showInsuranceProviderPublic} tone="emerald" onChange={(v) => onChange("showInsuranceProviderPublic", v)} />
       </div>
 
-      <div className="rounded-[1.1rem] border border-emerald-200 bg-white/80 p-3.5">
-        <div className="mb-3 flex items-start gap-2.5">
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-            <ShieldCheck className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="text-xs font-black text-slate-900">Qué puede aparecer en la ficha pública</p>
-            <p className="mt-0.5 text-[11px] font-medium leading-5 text-slate-500">
-              Tú eliges qué mostrar. El número de póliza permanece privado y no se publica.
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <VisibilityChoice label="Aseguradora" isPublic={form.showInsuranceProviderPublic} onChange={(v) => onChange("showInsuranceProviderPublic", v)} />
-          <VisibilityChoice label="Hospital preferido" isPublic={form.showPreferredHospitalPublic} onChange={(v) => onChange("showPreferredHospitalPublic", v)} />
-          <VisibilityChoice label="Médico tratante" isPublic={form.showPrimaryDoctorPublic} onChange={(v) => onChange("showPrimaryDoctorPublic", v)} />
-          <VisibilityChoice label="Teléfono del médico" isPublic={form.showPrimaryDoctorPhonePublic} onChange={(v) => onChange("showPrimaryDoctorPhonePublic", v)} />
-        </div>
+      <div className="rounded-[1.05rem] border border-slate-200 bg-slate-50/70 p-3">
+        <Field label="Número de póliza" value={form.insurancePolicyNumber || ""} onChange={(v) => onChange("insurancePolicyNumber", v)} placeholder="Dato privado" />
+        <p className="mt-2 px-1 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Siempre privado</p>
+      </div>
+
+      <div className="space-y-2 rounded-[1.05rem] border border-emerald-200 bg-emerald-50/45 p-3">
+        <Field label="Hospital preferido" value={form.preferredHospital || ""} onChange={(v) => onChange("preferredHospital", v)} placeholder="Ej: Hospital Nacional" />
+        <VisibilityChoice label="Visibilidad del hospital" isPublic={form.showPreferredHospitalPublic} tone="emerald" onChange={(v) => onChange("showPreferredHospitalPublic", v)} />
+      </div>
+
+      <div className="rounded-[1.05rem] border border-emerald-100 bg-emerald-50/30 p-3">
+        <Field label="Teléfono de asistencia del seguro" value={form.insuranceEmergencyPhone || ""} onChange={(v) => onChange("insuranceEmergencyPhone", v)} placeholder="+507..." />
+      </div>
+
+      <div className="space-y-2 rounded-[1.05rem] border border-emerald-200 bg-emerald-50/45 p-3">
+        <Field label="Médico tratante" value={form.primaryDoctorName || ""} onChange={(v) => onChange("primaryDoctorName", v)} placeholder="Opcional" />
+        <VisibilityChoice label="Visibilidad del médico" isPublic={form.showPrimaryDoctorPublic} tone="emerald" onChange={(v) => onChange("showPrimaryDoctorPublic", v)} />
+      </div>
+
+      <div className="space-y-2 rounded-[1.05rem] border border-emerald-200 bg-emerald-50/45 p-3">
+        <Field label="Teléfono del médico" value={form.primaryDoctorPhone || ""} onChange={(v) => onChange("primaryDoctorPhone", v)} placeholder="+507..." />
+        <VisibilityChoice label="Visibilidad del teléfono" isPublic={form.showPrimaryDoctorPhonePublic} tone="emerald" onChange={(v) => onChange("showPrimaryDoctorPhonePublic", v)} />
       </div>
     </div>
   );
@@ -993,31 +1013,24 @@ function ModuleActivation({ label, checked, onChange }: { label: string; checked
   return (
     <label
       htmlFor={id}
-      className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-full border px-3 py-2 shadow-sm transition-colors ${
+      className={`flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-full border px-2.5 py-1.5 shadow-sm transition-colors ${
         checked
           ? "border-emerald-300 bg-emerald-600 text-white shadow-emerald-500/20"
           : "border-slate-200 bg-white text-slate-700"
       }`}
     >
-      <span className="text-[10px] font-black uppercase tracking-[.09em]">{checked ? "Activado" : "Activar"}</span>
-      <span className={`relative h-6 w-11 rounded-full transition-colors ${checked ? "bg-white/25" : "bg-slate-200"}`}>
+      <span className="text-[9px] font-black uppercase tracking-[.08em]">{checked ? "Activado" : "Activar"}</span>
+      <span className={`relative h-5 w-9 rounded-full transition-colors ${checked ? "bg-white/25" : "bg-slate-200"}`}>
         <motion.span
           aria-hidden="true"
-          animate={{ x: checked ? 21 : 3 }}
+          animate={{ x: checked ? 17 : 3 }}
           transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 32 }}
-          className={`absolute top-1 h-4 w-4 rounded-full shadow-[0_3px_10px_rgba(15,23,42,.22)] ${
+          className={`absolute top-1 h-3 w-3 rounded-full shadow-[0_3px_10px_rgba(15,23,42,.22)] ${
             checked ? "bg-white" : "bg-slate-500"
           }`}
         />
       </span>
-      <input
-        id={id}
-        type="checkbox"
-        className="sr-only"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        aria-label={label}
-      />
+      <input id={id} type="checkbox" className="sr-only" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-label={label} />
     </label>
   );
 }
@@ -1026,27 +1039,15 @@ function BinaryChoice({ label, checked, onChange }: { label: string; checked: bo
   const groupId = React.useId();
 
   return (
-    <div className="flex min-h-12 flex-col gap-2 rounded-[1rem] border border-slate-200 bg-white p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-      <span id={groupId} className="px-1 text-xs font-bold leading-5 text-slate-700">{label}</span>
-      <div role="group" aria-labelledby={groupId} className="grid shrink-0 grid-cols-2 rounded-full bg-slate-100 p-1 shadow-inner">
-        <button
-          type="button"
-          aria-pressed={!checked}
-          onClick={() => onChange(false)}
-          className={`min-w-14 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] transition-all duration-200 ${
-            !checked ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
+    <div className="flex min-h-10 flex-col gap-1.5 rounded-[.9rem] border border-slate-200 bg-white/85 p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+      <span id={groupId} className="px-0.5 text-[11px] font-bold leading-4 text-slate-700">{label}</span>
+      <div role="group" aria-labelledby={groupId} className="grid shrink-0 grid-cols-2 rounded-full bg-slate-100 p-0.5 shadow-inner">
+        <button type="button" aria-pressed={!checked} onClick={() => onChange(false)}
+          className={`min-w-12 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${!checked ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
           No
         </button>
-        <button
-          type="button"
-          aria-pressed={checked}
-          onClick={() => onChange(true)}
-          className={`min-w-14 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] transition-all duration-200 ${
-            checked ? "bg-slate-950 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
+        <button type="button" aria-pressed={checked} onClick={() => onChange(true)}
+          className={`min-w-12 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${checked ? "bg-slate-950 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
           Sí
         </button>
       </div>
@@ -1054,35 +1055,44 @@ function BinaryChoice({ label, checked, onChange }: { label: string; checked: bo
   );
 }
 
-function VisibilityChoice({ label, isPublic, onChange }: { label: string; isPublic: boolean; onChange: (value: boolean) => void }) {
+type VisibilityTone = "slate" | "emerald" | "amber" | "violet" | "teal" | "sky";
+
+function VisibilityChoice({
+  label,
+  isPublic,
+  onChange,
+  tone = "slate",
+}: {
+  label: string;
+  isPublic: boolean;
+  onChange: (value: boolean) => void;
+  tone?: VisibilityTone;
+}) {
   const groupId = React.useId();
+  const palette: Record<VisibilityTone, { shell: string; track: string; active: string }> = {
+    slate: { shell: "border-slate-300 bg-slate-100/85", track: "bg-slate-200/80", active: "bg-slate-800 text-white" },
+    emerald: { shell: "border-emerald-200 bg-emerald-50/80", track: "bg-emerald-100/80", active: "bg-emerald-600 text-white" },
+    amber: { shell: "border-amber-200 bg-amber-50/80", track: "bg-amber-100/80", active: "bg-amber-600 text-white" },
+    violet: { shell: "border-violet-200 bg-violet-50/80", track: "bg-violet-100/80", active: "bg-violet-600 text-white" },
+    teal: { shell: "border-teal-200 bg-teal-50/80", track: "bg-teal-100/80", active: "bg-teal-600 text-white" },
+    sky: { shell: "border-sky-200 bg-sky-50/80", track: "bg-sky-100/80", active: "bg-sky-600 text-white" },
+  };
+  const colors = palette[tone];
 
   return (
-    <div className="flex min-h-12 flex-col gap-2 rounded-[1rem] border border-slate-200 bg-white p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-      <div className="min-w-0 px-1">
-        <span id={groupId} className="block text-xs font-bold leading-5 text-slate-800">{label}</span>
-        <span className="block text-[10px] font-semibold text-slate-400">{isPublic ? "Visible en la ficha pública" : "Solo queda en tu perfil"}</span>
+    <div className={`flex min-h-10 flex-col gap-1.5 rounded-[.9rem] border p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2 ${colors.shell}`}>
+      <div className="min-w-0 px-0.5">
+        <span id={groupId} className="block text-[11px] font-bold leading-4 text-slate-800">{label}</span>
+        <span className="block text-[9px] font-semibold leading-4 text-slate-500">{isPublic ? "Visible en ficha pública" : "Solo en tu perfil"}</span>
       </div>
-      <div role="group" aria-labelledby={groupId} className="grid shrink-0 grid-cols-2 rounded-full bg-slate-100 p-1 shadow-inner">
-        <button
-          type="button"
-          aria-pressed={!isPublic}
-          onClick={() => onChange(false)}
-          className={`inline-flex min-w-[5.8rem] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${
-            !isPublic ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
-          <EyeOff className="h-3.5 w-3.5" /> Privado
+      <div role="group" aria-labelledby={groupId} className={`grid shrink-0 grid-cols-2 rounded-full p-0.5 shadow-inner ${colors.track}`}>
+        <button type="button" aria-pressed={!isPublic} onClick={() => onChange(false)}
+          className={`inline-flex min-w-[4.8rem] items-center justify-center gap-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-[.06em] transition-all duration-200 ${!isPublic ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+          <EyeOff className="h-3 w-3" /> Privado
         </button>
-        <button
-          type="button"
-          aria-pressed={isPublic}
-          onClick={() => onChange(true)}
-          className={`inline-flex min-w-[5.8rem] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${
-            isPublic ? "bg-[#DA1A21] text-white shadow-[0_8px_18px_-12px_rgba(218,26,33,.8)]" : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
-          <Eye className="h-3.5 w-3.5" /> Público
+        <button type="button" aria-pressed={isPublic} onClick={() => onChange(true)}
+          className={`inline-flex min-w-[4.8rem] items-center justify-center gap-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-[.06em] transition-all duration-200 ${isPublic ? colors.active : "text-slate-500 hover:text-slate-700"}`}>
+          <Eye className="h-3 w-3" /> Público
         </button>
       </div>
     </div>
