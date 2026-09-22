@@ -25,7 +25,7 @@ import {
 
 const trustItems = [
   { icon: QrCode, label: "QR + NFC" },
-  { icon: Battery, label: "Sticker sin batería" },
+  { icon: Battery, label: "NFC sin batería" },
   { icon: Smartphone, label: "Sin instalar app" },
   { icon: ShieldCheck, label: "Sin vencimiento por tiempo" },
 ];
@@ -184,7 +184,7 @@ export default function HeroSection() {
                 className="mt-4 flex items-start gap-2 text-[10px] leading-[18px] text-slate-500 sm:mt-5 sm:text-[11px] sm:leading-5"
               >
                 <Wifi className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                El teléfono que consulta el perfil necesita internet. El sticker no necesita batería ni conexión propia.
+                El teléfono que consulta el perfil necesita internet. El identificador con NFC pasivo no necesita batería ni conexión propia.
               </motion.div>
             </motion.div>
 
