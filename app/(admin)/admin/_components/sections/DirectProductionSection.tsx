@@ -103,11 +103,11 @@ const ACTIVATION_CARD_REFERENCE = {
 } as const;
 
 const STICKER_REFERENCE = {
-  width: 2048,
-  height: 1365,
-  qrX: 1434,
-  qrY: 506,
-  qrSize: 440,
+  width: 1774,
+  height: 887,
+  qrX: 1232,
+  qrY: 327,
+  qrSize: 400,
 } as const;
 
 function sanitizeFilename(value: string) {
