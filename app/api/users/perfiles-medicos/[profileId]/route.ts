@@ -184,6 +184,8 @@ export async function PATCH(
     ...(petModuleData !== undefined && { petModuleData: JSON.stringify(petModuleData ?? {}) }),
     ...(workModuleEnabled !== undefined && { workModuleEnabled }),
     ...(workModuleData !== undefined && { workModuleData: JSON.stringify(workModuleData ?? {}) }),
+    ...(safeReturnModuleEnabled !== undefined && { safeReturnModuleEnabled }),
+    ...(safeReturnModuleData !== undefined && { safeReturnModuleData: JSON.stringify(safeReturnModuleData ?? {}) }),
   });
 
   await AccountStateService.invalidateCache(userId);
