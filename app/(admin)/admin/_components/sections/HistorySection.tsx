@@ -327,6 +327,14 @@ export function HistorySection() {
       ? detail.order.effectiveStatus
       : data?.summary.currentStatus;
 
+  const backToHistoryList = () => {
+    setDetail(null);
+    setDetailLoading(false);
+    setData(null);
+    setPage(0);
+    setSubmitted({ search: search.trim(), entityType, entityId: "" });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
@@ -381,6 +389,19 @@ export function HistorySection() {
           </button>
         </div>
       </div>
+
+      {data?.subject ? (
+        <div className="flex">
+          <button
+            type="button"
+            onClick={backToHistoryList}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-primary/30 hover:text-primary dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <span aria-hidden="true">←</span>
+            Volver al historial
+          </button>
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
