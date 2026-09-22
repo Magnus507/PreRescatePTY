@@ -11,7 +11,6 @@ const footerColumns = [
       { href: "/como-funciona", label: "Cómo funciona" },
       { href: "/para-quien-es", label: "Para quién es" },
       { href: "/comprar", label: "Productos" },
-      { href: "/demo", label: "Demo" },
       { href: "/proyecto", label: "Proyecto · Próximamente" },
       { href: "/faq", label: "Preguntas frecuentes" },
     ],
@@ -80,14 +79,6 @@ export default function PublicFooter() {
                 <span className="leading-4">Privacidad configurable</span>
               </div>
             </div>
-
-            <Link
-              href="/demo"
-              className="group mt-5 inline-flex min-h-11 touch-manipulation items-center gap-2 text-sm font-bold text-sky-200 transition-colors active:text-white sm:mt-7 sm:hover:text-white"
-            >
-              Ver perfil de demostración
-              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </Link>
           </div>
 
           <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-4 sm:gap-x-7 sm:gap-y-10">
