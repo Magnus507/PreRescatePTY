@@ -939,7 +939,7 @@ function ProfileCard({
                     <h3 className="text-[1.65rem] font-black leading-tight tracking-[-0.035em] text-slate-950 sm:text-2xl md:text-3xl">
                       {cardName}
                     </h3>
-                    {!isPetProfile && profile.displayNamePublic && (
+                    {!isPetProfile && !isSafeReturnProfile && profile.displayNamePublic && (
                       <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-600">
                         Alias: {profile.displayNamePublic}
                       </span>
@@ -1065,24 +1065,45 @@ function ProfileCard({
                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-               <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5">
+            {isSafeReturnProfile ? (
+              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+                <div className="rounded-[1rem] border border-sky-100 bg-sky-50/60 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-sky-700">Propietario</p>
+                  <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{safeReturnData.ownerName || "No indicado"}</p>
+                </div>
+                <div className="rounded-[1rem] border border-emerald-100 bg-emerald-50/55 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Contacto</p>
+                  <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{safeReturnData.ownerPhone || "No indicado"}</p>
+                </div>
+                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Área</p>
+                  <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{safeReturnData.area || "No indicada"}</p>
+                </div>
+                <div className="rounded-[1rem] border border-blue-100 bg-blue-50/55 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Devolución</p>
+                  <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{safeReturnData.returnInstructions || "Contactar al propietario"}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5">
                   <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Teléfono</p>
                   <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{profile.phone || "No indicado"}</p>
-               </div>
-               <div className="rounded-[1rem] border border-red-100 bg-red-50/55 p-3.5">
+                </div>
+                <div className="rounded-[1rem] border border-red-100 bg-red-50/55 p-3.5">
                   <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-red-600">Alergias</p>
                   <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{profile.allergies || "No indicado"}</p>
-               </div>
-               <div className="rounded-[1rem] border border-amber-100 bg-amber-50/55 p-3.5">
+                </div>
+                <div className="rounded-[1rem] border border-amber-100 bg-amber-50/55 p-3.5">
                   <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-700">Condiciones</p>
                   <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{profile.chronicConditions || "No indicado"}</p>
-               </div>
-               <div className="rounded-[1rem] border border-blue-100 bg-blue-50/55 p-3.5">
+                </div>
+                <div className="rounded-[1rem] border border-blue-100 bg-blue-50/55 p-3.5">
                   <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Medicamentos</p>
                   <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{profile.medications || "No indicado"}</p>
-               </div>
-            </div>
+                </div>
+              </div>
+            )}
          </div>
       </div>
 
