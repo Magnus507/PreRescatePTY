@@ -286,6 +286,8 @@ model Profile {
   petModuleData                 String?
   workModuleEnabled             Boolean              @default(false)
   workModuleData                String?
+  safeReturnModuleEnabled       Boolean              @default(false)
+  safeReturnModuleData          String?
 
   assignedChips                 Chip[]
   digitalPass                   DigitalPass?
