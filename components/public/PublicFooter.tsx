@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Cookie, Heart, QrCode, ShieldCheck } from "lucide-react";
+import { Cookie, Heart, QrCode, ShieldCheck } from "lucide-react";
 
 const footerColumns = [
   {
