@@ -75,14 +75,9 @@ export default function PlansPreview() {
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-[#03060c] py-20 text-white md:py-32">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(48% 52% at 50% 24%, rgba(37,99,235,.12), transparent 62%), radial-gradient(30% 42% at 78% 78%, rgba(218,26,33,.07), transparent 66%)",
-        }}
-      />
+      <div aria-hidden="true" className="emergency-grid absolute inset-0 opacity-45" />
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/45 to-transparent shadow-[0_0_30px_rgba(239,45,53,.35)]" />
+      <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(40%_45%_at_82%_18%,rgba(218,26,33,.10),transparent_70%),radial-gradient(35%_45%_at_12%_82%,rgba(37,99,235,.10),transparent_72%)]" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -91,7 +86,7 @@ export default function PlansPreview() {
           transition={{ duration: 0.5 }}
           className="mx-auto mb-10 max-w-3xl text-center sm:mb-14"
         >
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-sky-300/15 bg-sky-300/[0.055] px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-sky-200 sm:mb-5 sm:text-[10px] sm:tracking-[0.18em]">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-rose-300/18 bg-rose-300/[0.06] px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-rose-100 shadow-[0_0_30px_-18px_rgba(239,45,53,.9)] sm:mb-5 sm:text-[10px] sm:tracking-[0.18em]">
             <ShoppingBag className="h-3.5 w-3.5" />
             Catálogo PreRescue ID
           </div>
@@ -133,7 +128,7 @@ export default function PlansPreview() {
                 >
                   <GlowCard customSize glowColor={index === 0 ? "red" : "blue"} className="h-full p-4 sm:min-h-[390px] sm:p-5">
                     <div className="flex h-full flex-col">
-                      <div className="relative aspect-square overflow-hidden rounded-[1.25rem] border border-white/[0.07] bg-gradient-to-br from-[#0c1730] to-[#040711]">
+                      <div className="relative aspect-square overflow-hidden rounded-[1.25rem] border border-white/[0.08] bg-[#06090f] before:absolute before:inset-0 before:bg-[repeating-linear-gradient(-55deg,transparent_0_22px,rgba(255,255,255,.025)_22px_23px)]">
                         <Image
                           src={imageSrc}
                           alt={product.name}
@@ -160,7 +155,7 @@ export default function PlansPreview() {
 
                       <Link
                         href="/comprar"
-                        className="group mt-5 flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.05] px-4 text-sm font-extrabold text-slate-100 transition-all active:bg-white/[0.09] sm:mt-auto sm:hover:border-sky-300/20 sm:hover:bg-white/[0.08]"
+                        className="group mt-5 flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] px-4 text-sm font-extrabold text-slate-100 transition-all active:bg-white/[0.09] sm:mt-auto sm:hover:border-rose-300/25 sm:hover:bg-rose-300/[0.06]"
                       >
                         Ver producto <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </Link>
