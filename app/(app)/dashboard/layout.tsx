@@ -11,7 +11,7 @@ import {
   UsersRound,
   ChevronRight,
   Settings,
-  LogOut
+  LogOut,
   ShoppingCart,
   Package,
   Loader2,
