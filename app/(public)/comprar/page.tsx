@@ -3,18 +3,17 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import ComprarContent from "./ComprarContent";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Planes y Precios — PreRescue ID",
+    absolute: "Productos y Precios — PreRescue ID",
   },
   description:
-    "Consulta los planes disponibles de identificación médica con QR y NFC. Pago único y perfiles configurables.",
+    "Consulta los productos publicados de PreRescue ID y sus precios vigentes. Pago único y servicio digital sin vencimiento por tiempo.",
   openGraph: {
-    title: "Planes y Precios — PreRescue ID",
+    title: "Productos y Precios — PreRescue ID",
     description:
-      "Consulta los planes disponibles de identificación médica con QR y NFC. Pago único y perfiles configurables.",
+      "Consulta los productos publicados de PreRescue ID y sus precios vigentes.",
     url: "https://www.prerescatepty.com/comprar",
     type: "website",
     locale: "es_PA",
@@ -23,15 +22,15 @@ export const metadata: Metadata = {
         url: "/og/pre-rescue-social-card.png",
         width: 1200,
         height: 630,
-        alt: "PreRescue ID — Identificación médica con QR y NFC",
+        alt: "PreRescue ID — Identificación de emergencia con QR y NFC",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Planes y Precios — PreRescue ID",
+    title: "Productos y Precios — PreRescue ID",
     description:
-      "Consulta los planes disponibles de identificación médica con QR y NFC. Pago único y perfiles configurables.",
+      "Consulta los productos publicados de PreRescue ID y sus precios vigentes.",
     images: ["/og/pre-rescue-social-card.png"],
   },
 };
@@ -42,19 +41,7 @@ export default async function ComprarPage() {
   const session = await getServerSession(authOptions);
 
   if (session?.user?.id) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        account: {
-          select: { packageId: true },
-        },
-      },
-    });
-
-    const packageId = user?.account?.packageId;
-    redirect(packageId
-      ? `/dashboard/upgrade?packageId=${encodeURIComponent(packageId)}`
-      : "/dashboard/upgrade");
+    redirect("/dashboard/tienda");
   }
 
   return <ComprarContent />;
