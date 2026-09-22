@@ -106,7 +106,7 @@ export default function PublicFooter() {
 
         <div className="mt-10 rounded-[1.25rem] border border-white/[0.06] bg-white/[0.022] p-4 sm:mt-14 sm:rounded-[1.5rem] sm:p-5">
           <p className="text-center text-[10px] font-medium leading-5 text-slate-500 sm:text-[11px]">
-            PreRescue ID es un sistema de identificación médica de emergencia. No reemplaza al 911 ni a los servicios médicos profesionales. En una emergencia, contacte a los servicios correspondientes.
+            PreRescue ID es un sistema de identificación de emergencia y retorno seguro. No reemplaza al 911, a los servicios médicos profesionales ni a los canales oficiales de emergencia. En una emergencia, contacte a los servicios correspondientes.
           </p>
         </div>
 
