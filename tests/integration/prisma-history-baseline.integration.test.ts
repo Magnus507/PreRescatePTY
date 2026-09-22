@@ -32,7 +32,9 @@ describe("Verified migration history reconciliation", () => {
             DROP COLUMN IF EXISTS "petModuleEnabled",
             DROP COLUMN IF EXISTS "petModuleData",
             DROP COLUMN IF EXISTS "workModuleEnabled",
-            DROP COLUMN IF EXISTS "workModuleData"
+            DROP COLUMN IF EXISTS "workModuleData",
+            DROP COLUMN IF EXISTS "safeReturnModuleEnabled",
+            DROP COLUMN IF EXISTS "safeReturnModuleData"
         `);
 
         await tx.$executeRawUnsafe(sql);
@@ -65,7 +67,9 @@ describe("Verified migration history reconciliation", () => {
             DROP COLUMN IF EXISTS "petModuleEnabled",
             DROP COLUMN IF EXISTS "petModuleData",
             DROP COLUMN IF EXISTS "workModuleEnabled",
-            DROP COLUMN IF EXISTS "workModuleData"
+            DROP COLUMN IF EXISTS "workModuleData",
+            DROP COLUMN IF EXISTS "safeReturnModuleEnabled",
+            DROP COLUMN IF EXISTS "safeReturnModuleData"
         `);
         await tx.$executeRawUnsafe(sql);
       })
