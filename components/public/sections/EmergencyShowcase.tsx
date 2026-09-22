@@ -10,7 +10,6 @@ const experiences = [
     title: "Emergencia médica",
     description: "Una identificación visible para conectar QR + NFC con la información pública del perfil de emergencia.",
     image: "/media/medical-tags.webp",
-    logo: "/media/logo-medical.webp",
     icon: HeartPulse,
     href: "/como-funciona",
     accent: "rose",
@@ -19,7 +18,6 @@ const experiences = [
     title: "Mascotas y retorno seguro",
     description: "Una identificación pensada para facilitar el contacto y ayudar a reunir a una mascota con su familia.",
     image: "/media/pet-tags.webp",
-    logo: "/media/logo-pets.webp",
     icon: PawPrint,
     href: "/para-quien-es#mascotas",
     accent: "sky",
@@ -95,8 +93,8 @@ export default function EmergencyShowcase() {
                   className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.025]"
                 />
                 <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#05070d] via-transparent to-transparent" />
-                <div className="absolute left-4 top-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/[0.11] bg-black/55 p-1 backdrop-blur-xl sm:h-16 sm:w-16">
-                  <Image src={item.logo} alt="" width={64} height={64} className="h-full w-full object-contain" aria-hidden />
+                <div className="absolute left-4 top-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.11] bg-black/60 backdrop-blur-xl sm:h-14 sm:w-14">
+                  <item.icon className={`h-5 w-5 sm:h-6 sm:w-6 ${item.accent === "rose" ? "text-rose-300" : "text-sky-300"}`} />
                 </div>
               </div>
 
