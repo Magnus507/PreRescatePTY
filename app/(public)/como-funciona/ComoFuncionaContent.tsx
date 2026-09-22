@@ -72,7 +72,7 @@ export default function ComoFuncionaContent() {
           titleAccent="en cuatro pasos."
           description="Configura la información que deseas mostrar y permite que una persona consulte tu perfil mediante QR o NFC desde un navegador compatible."
           primaryCTA={{ href: "/comprar", label: "Ver productos" }}
-          secondaryCTA={{ href: "/demo", label: "Ver demo" }}
+          secondaryCTA={{ href: "/para-quien-es", label: "Para quién es" }}
         />
 
         <section className="border-y border-white/[0.055] bg-[#03060c] py-3.5 sm:py-5">
@@ -201,7 +201,7 @@ export default function ComoFuncionaContent() {
               <p className="mx-auto mt-5 max-w-2xl text-[15px] font-medium leading-6 text-slate-400 sm:mt-7 sm:text-lg sm:leading-8">Crea tu perfil, decide qué información será visible y conecta tu identificación física con QR + NFC.</p>
               <div className="mt-7 flex flex-col justify-center gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
                 <Link href="/comprar" className="group inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-6 text-sm font-extrabold text-white transition-all active:scale-[0.985] sm:min-h-14 sm:px-7 sm:hover:-translate-y-0.5 sm:hover:bg-[#ef2d35]">Ver productos <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Link>
-                <Link href="/demo" className="inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl border border-white/[0.1] bg-white/[0.045] px-6 text-sm font-bold text-slate-100 transition-all active:bg-white/[0.08] sm:min-h-14 sm:px-7 sm:hover:border-sky-300/25 sm:hover:bg-white/[0.08]"><ScanLine className="h-4 w-4 text-sky-300" /> Ver demo</Link>
+                <Link href="/para-quien-es" className="inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl border border-white/[0.1] bg-white/[0.045] px-6 text-sm font-bold text-slate-100 transition-all active:bg-white/[0.08] sm:min-h-14 sm:px-7 sm:hover:border-sky-300/25 sm:hover:bg-white/[0.08]"><ShieldCheck className="h-4 w-4 text-sky-300" /> Para quién es</Link>
               </div>
             </div>
           </div>
