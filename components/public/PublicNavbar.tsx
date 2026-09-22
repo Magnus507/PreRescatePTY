@@ -11,7 +11,6 @@ const NAV_LINKS = [
   { href: "/para-quien-es", label: "Para quién es" },
   { href: "/comprar", label: "Productos" },
   { href: "/faq", label: "FAQ" },
-  { href: "/demo", label: "Demo" },
   { href: "/proyecto", label: "Proyecto" },
   { href: "/contacto", label: "Contacto" },
 ];
