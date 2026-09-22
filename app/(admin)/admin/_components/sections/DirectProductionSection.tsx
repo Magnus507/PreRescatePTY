@@ -82,6 +82,10 @@ function getUnit(item: DigitalItem) {
 }
 
 const STICKER_TEMPLATE_PATH = "/sticker-official.png";
+const STICKER_TEMPLATE_PARTS = Array.from(
+  { length: 16 },
+  (_, index) => `/sticker-official-v2.part-${String(index).padStart(2, "0")}.txt`,
+);
 const ACTIVATION_CARD_TEMPLATE_PATHS = ["/activation-code-card-base.svg"] as const;
 const ACTIVATION_CARD_TEMPLATE_PARTS = Array.from(
   { length: 10 },
@@ -103,11 +107,11 @@ const ACTIVATION_CARD_REFERENCE = {
 } as const;
 
 const STICKER_REFERENCE = {
-  width: 2048,
-  height: 1365,
-  qrX: 1434,
-  qrY: 506,
-  qrSize: 440,
+  width: 1774,
+  height: 887,
+  qrX: 1232,
+  qrY: 327,
+  qrSize: 400,
 } as const;
 
 function sanitizeFilename(value: string) {
@@ -196,6 +200,40 @@ async function loadFirstAvailableImage(sources: readonly string[], label: string
   throw new Error(`No se pudo cargar ${label}`);
 }
 
+async function loadChunkedStickerImage(label: string) {
+  const responses = await Promise.all(
+    STICKER_TEMPLATE_PARTS.map((src) => fetch(src, { cache: "no-store" })),
+  );
+
+  const failed = responses.find((response) => !response.ok);
+  if (failed) throw new Error(`No se pudo cargar ${label}`);
+
+  const parts = await Promise.all(responses.map((response) => response.text()));
+  const base64 = parts.map((part) => part.trim()).join("");
+  if (!base64.startsWith("iVBORw0KGgo")) throw new Error(`No se pudo cargar ${label}`);
+
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  const objectUrl = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+  try {
+    return await loadBrowserImage(objectUrl, label);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function loadStickerTemplate() {
+  try {
+    return await loadChunkedStickerImage("la plantilla del sticker");
+  } catch {
+    return loadBrowserImage(STICKER_TEMPLATE_PATH, "la plantilla del sticker");
+  }
+}
+
 async function loadChunkedActivationCardImage(label: string) {
   const responses = await Promise.all(
     ACTIVATION_CARD_TEMPLATE_PARTS.map((src) => fetch(src, { cache: "no-store" })),
@@ -239,7 +277,7 @@ async function renderStickerPng(targetUrl: string, preparedQr?: Blob) {
 
   try {
     const [template, qrImage] = await Promise.all([
-      loadBrowserImage(STICKER_TEMPLATE_PATH, "la plantilla del sticker"),
+      loadStickerTemplate(),
       loadBrowserImage(qrObjectUrl, "el QR"),
     ]);
 
