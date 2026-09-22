@@ -195,7 +195,7 @@ export default function ComprarContent() {
           titleAccent="mejor encaja contigo."
           description="Los productos y precios se cargan directamente desde el catálogo operativo publicado. El servicio digital no vence por tiempo."
           primaryCTA={{ href: "#catalogo", label: "Ver productos" }}
-          secondaryCTA={{ href: "/demo", label: "Ver demo" }}
+          secondaryCTA={{ href: "/como-funciona", label: "Cómo funciona" }}
         />
 
         <section className="border-y border-white/[0.055] bg-[#03060c] py-3.5 sm:py-5">
