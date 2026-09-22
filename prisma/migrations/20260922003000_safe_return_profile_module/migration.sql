@@ -1,0 +1,3 @@
+ALTER TABLE "Profile"
+  ADD COLUMN IF NOT EXISTS "safeReturnModuleEnabled" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "safeReturnModuleData" TEXT;
