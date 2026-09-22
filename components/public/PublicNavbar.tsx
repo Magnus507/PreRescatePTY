@@ -9,9 +9,10 @@ import { ArrowRight, ChevronDown, LayoutDashboard, LogOut, Menu, User, X } from 
 const NAV_LINKS = [
   { href: "/como-funciona", label: "Cómo funciona" },
   { href: "/para-quien-es", label: "Para quién es" },
-  { href: "/comprar", label: "Planes" },
+  { href: "/comprar", label: "Productos" },
   { href: "/faq", label: "FAQ" },
   { href: "/demo", label: "Demo" },
+  { href: "/proyecto", label: "Proyecto" },
   { href: "/contacto", label: "Contacto" },
 ];
 
