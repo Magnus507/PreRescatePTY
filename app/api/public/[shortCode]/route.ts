@@ -207,6 +207,7 @@ export async function GET(
     const petModule = profile.petModuleEnabled ? parseEncryptedModule(profile.petModuleData) : null;
     const safeReturnModule = profile.safeReturnModuleEnabled ? parseEncryptedModule(profile.safeReturnModuleData) : null;
     const workModule = profile.workModuleEnabled ? parseEncryptedModule(profile.workModuleData) : null;
+    const isSafeReturnItemProfile = Boolean(safeReturnModule);
 
     // Build public-safe response (NO email, NO birthdate, NO internal IDs)
     const publicProfile = {
@@ -217,10 +218,10 @@ export async function GET(
       age: calculatedAge,
       isMinor, // Always computed, never stored
       profileType: profile.profileType,
-      bloodType: decryptedBloodType,
-      allergies: decryptedAllergies || "No reportadas",
-      chronicConditions: decryptedConditions || "No reportadas",
-      medications: decrypt(profile.medications || "") || "No reportados",
+      bloodType: isSafeReturnItemProfile ? "No aplica" : decryptedBloodType,
+      allergies: isSafeReturnItemProfile ? "No aplica" : (decryptedAllergies || "No reportadas"),
+      chronicConditions: isSafeReturnItemProfile ? "No aplica" : (decryptedConditions || "No reportadas"),
+      medications: isSafeReturnItemProfile ? "No aplica" : (decrypt(profile.medications || "") || "No reportados"),
       photoUrl: profile.photoUrl || null,
       isVerifiedAdmin: isDemo,
 
@@ -241,7 +242,13 @@ export async function GET(
         phone: pc.contact.phone,
       })),
 
-      publicMedicalExtras: {
+      publicMedicalExtras: isSafeReturnItemProfile ? {
+        insuranceProvider: null,
+        preferredHospital: null,
+        primaryDoctorName: null,
+        primaryDoctorPhone: null,
+        emergencyInstructions: null,
+      } : {
         insuranceProvider: profile.showInsuranceProviderPublic ? (decryptedInsuranceProvider || null) : null,
         preferredHospital: profile.showPreferredHospitalPublic ? (decryptedPreferredHospital || null) : null,
         primaryDoctorName: profile.showPrimaryDoctorPublic ? (decryptedPrimaryDoctorName || null) : null,
@@ -263,13 +270,13 @@ export async function GET(
       // v2 — Vulnerability status (only shown based on privacy toggles)
       // Corporate profiles are excluded from these fields
       ...(profile.profileType !== "corporate" && {
-        vulnerabilityStatus: profile.showVulnerabilityStatusPublic ? {
+        vulnerabilityStatus: !isSafeReturnItemProfile && profile.showVulnerabilityStatusPublic ? {
           hasCognitiveImpairment: profile.hasCognitiveImpairment,
           hasWanderingRisk: profile.hasWanderingRisk,
           isNonVerbal: profile.showCommunicationStatusPublic ? profile.isNonVerbal : null,
           communicationAssistance: profile.showCommunicationStatusPublic ? (decryptedCommunicationAssistance || null) : null,
         } : null,
-        safeReturn: profile.showSafeReturnPublic ? {
+        safeReturn: !isSafeReturnItemProfile && profile.showSafeReturnPublic ? {
           instructions: decryptedSafeReturnInstructions || null,
           ...(profile.showSafeReturnLocationPublic ? {
             locationName: decryptedSafeReturnLocationName || null,
