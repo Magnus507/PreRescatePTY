@@ -118,19 +118,9 @@ export default function TerminosPage() {
           </p>
         </section>
 
-        <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">9. Soluciones para organizaciones</h2>
-          <p>
-            Las opciones corporativas que aparecen públicamente se ofrecen mediante
-            solicitud de información y coordinación con PreRescatePTY. La página
-            pública no constituye un checkout corporativo automático. La incorporación
-            de miembros y el tratamiento de datos de una organización están sujetos a
-            la configuración, permisos y acuerdos aplicables al caso.
-          </p>
-        </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">10. Documentos de compra y facturación</h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">9. Documentos de compra y facturación</h2>
           <p>
             Los estados, constancias o comprobantes internos mostrados por la
             plataforma sirven para la operación del pedido y no deben confundirse por
@@ -141,7 +131,7 @@ export default function TerminosPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">11. Disponibilidad y cambios</h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">10. Disponibilidad y cambios</h2>
           <p>
             Podemos realizar mantenimiento, correcciones de seguridad y cambios
             razonables en el servicio. Los cambios materiales de estos Términos o de
@@ -152,7 +142,7 @@ export default function TerminosPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">12. Contacto</h2>
+          <h2 className="text-xl font-black text-[#EFF4FF] mb-3">11. Contacto</h2>
           <p>
             Para soporte, incidentes, privacidad o asuntos comerciales utiliza el{" "}
             <Link href="/contacto" className="text-[#DA1A21] hover:text-white underline">

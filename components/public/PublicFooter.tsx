@@ -10,8 +10,9 @@ const footerColumns = [
     links: [
       { href: "/como-funciona", label: "Cómo funciona" },
       { href: "/para-quien-es", label: "Para quién es" },
-      { href: "/comprar", label: "Planes" },
+      { href: "/comprar", label: "Productos" },
       { href: "/demo", label: "Demo" },
+      { href: "/proyecto", label: "Proyecto · Próximamente" },
       { href: "/faq", label: "Preguntas frecuentes" },
     ],
   },

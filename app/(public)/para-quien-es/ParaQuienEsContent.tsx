@@ -12,6 +12,7 @@ import {
   Heart,
   Lock,
   MessageCircle,
+  PawPrint,
   Shield,
   Stethoscope,
   Users,
@@ -27,7 +28,7 @@ const audiences = [
     icon: Users,
     title: "Familias",
     desc: "Administra distintos perfiles médicos desde una sola cuenta. Cada miembro puede tener su propia identificación, información y contactos de emergencia.",
-    cta: "Ver planes familiares",
+    cta: "Ver productos",
     href: "/comprar",
     glow: "blue" as const,
   },
@@ -46,7 +47,7 @@ const audiences = [
     icon: Heart,
     title: "Adultos mayores",
     desc: "Permite mostrar información médica relevante, medicamentos, contactos e instrucciones útiles cuando la persona necesita ayuda para comunicarse.",
-    cta: "Ver planes",
+    cta: "Ver productos",
     href: "/comprar",
     glow: "red" as const,
   },
@@ -65,7 +66,7 @@ const audiences = [
     icon: MessageCircle,
     title: "Comunicación asistida",
     desc: "Las instrucciones de comunicación pueden ayudar a quien brinda apoyo a comprender necesidades específicas y contactar a una persona autorizada.",
-    cta: "Ver planes",
+    cta: "Ver productos",
     href: "/comprar",
     glow: "blue" as const,
   },
@@ -74,16 +75,26 @@ const audiences = [
     icon: Stethoscope,
     title: "Alergias y condiciones médicas",
     desc: "Permite mostrar información autorizada como alergias, tipo de sangre, condiciones relevantes y medicamentos actuales.",
-    cta: "Ver planes",
+    cta: "Ver productos",
     href: "/comprar",
     disclaimer: "PreRescue ID no reemplaza la valoración ni la atención de profesionales de la salud.",
     glow: "red" as const,
   },
   {
+    id: "mascotas",
+    icon: PawPrint,
+    title: "Mascotas",
+    desc: "El identificador para mascotas puede mostrar información del animal, contacto del responsable e instrucciones útiles para facilitar un retorno seguro.",
+    cta: "Ver productos",
+    href: "/comprar",
+    note: "El perfil público de mascota se orienta a identificación y devolución, no a presentar una ficha médica humana.",
+    glow: "green" as const,
+  },
+  {
     id: "en-movimiento",
     icon: Bike,
     title: "Personas en movimiento",
-    desc: "Tu perfil puede consultarse desde cualquier lugar con acceso a internet. El sticker no necesita batería ni una aplicación instalada.",
+    desc: "Tu perfil puede consultarse desde cualquier lugar con acceso a internet. El identificador físico no necesita una aplicación instalada.",
     cta: "Probar el demo",
     href: "/demo",
     note: "El dispositivo que realiza el escaneo necesita conexión a internet para cargar el perfil.",
@@ -104,10 +115,10 @@ export default function ParaQuienEsContent() {
       <main id="main-content">
         <PageHero
           eyebrow="Una identificación. Distintas necesidades."
-          title="Diseñado para personas"
-          titleAccent="y familias."
-          description="PreRescue ID permite adaptar el perfil de emergencia a distintas situaciones. Tú decides qué información estará disponible al escanear cada identificación."
-          primaryCTA={{ href: "/comprar", label: "Ver planes" }}
+          title="Diseñado para personas,"
+          titleAccent="familias y mascotas."
+          description="PreRescue ID permite adaptar la experiencia a perfiles médicos, retorno seguro y mascotas. La información visible depende del tipo de perfil y su configuración."
+          primaryCTA={{ href: "/comprar", label: "Ver productos" }}
           secondaryCTA={{ href: "/demo", label: "Ver demo" }}
         />
 
@@ -245,7 +256,7 @@ export default function ParaQuienEsContent() {
               </p>
               <div className="mt-7 flex flex-col justify-center gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
                 <Link href="/comprar" className="group inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-6 text-sm font-extrabold text-white transition-all active:scale-[0.985] sm:min-h-14 sm:px-7 sm:hover:-translate-y-0.5 sm:hover:bg-[#ef2d35]">
-                  Ver planes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  Ver productos <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
                 <Link href="/demo" className="inline-flex min-h-[52px] touch-manipulation items-center justify-center rounded-2xl border border-white/[0.1] bg-white/[0.045] px-6 text-sm font-bold text-slate-100 transition-all active:bg-white/[0.08] sm:min-h-14 sm:px-7 sm:hover:border-sky-300/25 sm:hover:bg-white/[0.08]">
                   Ver demo

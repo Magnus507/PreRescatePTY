@@ -48,10 +48,10 @@ export default function ContactoPage() {
       <PublicNavbar />
       <main id="main-content">
         <PageHero
-          eyebrow="Soporte y negocios"
+          eyebrow="Soporte"
           title="Cuéntanos qué"
           titleAccent="necesitas."
-          description="Utiliza el formulario para consultas sobre producto, pedidos, soporte o soluciones para organizaciones."
+          description="Utiliza el formulario para consultas sobre productos, pedidos, soporte, seguridad o privacidad."
         />
 
         <section className="relative overflow-hidden bg-[#03060c] py-20 md:py-32">
@@ -75,10 +75,9 @@ export default function ContactoPage() {
 
                 <div className="mt-6 space-y-2.5 sm:mt-9 sm:space-y-3">
                   {[
-                    ["Producto y planes", "Dudas sobre PreRescue ID y las opciones disponibles."],
+                    ["Productos", "Dudas sobre PreRescue ID y las opciones disponibles."],
                     ["Pedidos y soporte", "Consultas sobre compra, entrega, devoluciones, garantía o uso del servicio."],
                     ["Seguridad y privacidad", "Indica claramente si perdiste un identificador, sospechas acceso no autorizado o deseas ejercer un derecho sobre tus datos."],
-                    ["Empresas e instituciones", "Información para equipos, organizaciones y compras por volumen."],
                   ].map(([title, text]) => (
                     <div key={title} className="rounded-[1.1rem] border border-white/[0.065] bg-white/[0.025] p-4 sm:rounded-2xl">
                       <div className="flex items-start gap-3">

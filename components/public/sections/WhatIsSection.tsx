@@ -28,7 +28,7 @@ const features = [
   },
   {
     icon: Battery,
-    title: "El sticker no usa batería",
+    title: "El identificador no usa batería",
     description: "El identificador físico no necesita cargarse ni conectarse a una red. El teléfono que consulta sí necesita internet.",
     glowColor: "red" as const,
     accent: "text-rose-300",
@@ -67,7 +67,7 @@ export default function WhatIsSection() {
             className="lg:pb-2"
           >
             <p className="max-w-xl text-[15px] font-medium leading-6 text-slate-400 sm:text-lg sm:leading-8">
-              El objetivo es simple: que información médica relevante y contactos de emergencia puedan consultarse rápidamente mediante un sticker con QR y NFC, sin depender de una aplicación instalada.
+              El objetivo es simple: que información relevante y contactos autorizados puedan consultarse rápidamente mediante una identificación física vinculada al perfil público, sin depender de una aplicación instalada.
             </p>
           </motion.div>
         </div>
@@ -146,7 +146,7 @@ export default function WhatIsSection() {
         >
           <span className="flex items-center gap-2"><Wifi className="h-4 w-4 shrink-0 text-sky-300" /> El teléfono que consulta necesita internet</span>
           <span className="hidden h-1 w-1 rounded-full bg-white/20 sm:block" />
-          <span className="flex items-center gap-2"><Battery className="h-4 w-4 shrink-0 text-emerald-300" /> El sticker no necesita batería</span>
+          <span className="flex items-center gap-2"><Battery className="h-4 w-4 shrink-0 text-emerald-300" /> El identificador no necesita batería</span>
         </motion.div>
       </div>
     </section>

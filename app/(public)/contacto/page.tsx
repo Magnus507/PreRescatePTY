@@ -6,11 +6,11 @@ export const metadata: Metadata = {
     absolute: "Contacto — PreRescue ID Panamá",
   },
   description:
-    "Contáctanos para consultas sobre planes, soporte general e información corporativa de PreRescue ID.",
+    "Contáctanos para consultas sobre productos, pedidos, soporte y privacidad de PreRescue ID.",
   openGraph: {
     title: "Contacto — PreRescue ID Panamá",
     description:
-      "Contáctanos para consultas sobre planes, soporte general e información corporativa de PreRescue ID.",
+      "Contáctanos para consultas sobre productos, pedidos, soporte y privacidad de PreRescue ID.",
     url: "https://www.prerescatepty.com/contacto",
     type: "website",
     locale: "es_PA",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Contacto — PreRescue ID Panamá",
     description:
-      "Contáctanos para consultas sobre planes, soporte general e información corporativa de PreRescue ID.",
+      "Contáctanos para consultas sobre productos, pedidos, soporte y privacidad de PreRescue ID.",
     images: ["/og/pre-rescue-social-card.png"],
   },
 };

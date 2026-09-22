@@ -71,14 +71,14 @@ export default function ComoFuncionaContent() {
           title="Del identificador físico al perfil digital"
           titleAccent="en cuatro pasos."
           description="Configura la información que deseas mostrar y permite que una persona consulte tu perfil mediante QR o NFC desde un navegador compatible."
-          primaryCTA={{ href: "/comprar", label: "Ver planes" }}
+          primaryCTA={{ href: "/comprar", label: "Ver productos" }}
           secondaryCTA={{ href: "/demo", label: "Ver demo" }}
         />
 
         <section className="border-y border-white/[0.055] bg-[#03060c] py-3.5 sm:py-5">
           <div className="mx-auto flex max-w-5xl snap-x snap-mandatory items-center gap-2.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:justify-center sm:gap-x-7 sm:gap-y-3 sm:px-6">
             <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><Wifi className="h-3.5 w-3.5 text-sky-300" /> El teléfono necesita internet</span>
-            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><Battery className="h-3.5 w-3.5 text-emerald-300" /> El sticker no usa batería</span>
+            <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><Battery className="h-3.5 w-3.5 text-emerald-300" /> El identificador no usa batería</span>
             <span className="flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border border-white/[0.055] bg-white/[0.02] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:text-[10px] sm:tracking-[0.14em]"><Globe2 className="h-3.5 w-3.5 text-indigo-300" /> Consulta desde navegador</span>
           </div>
         </section>
@@ -139,7 +139,7 @@ export default function ComoFuncionaContent() {
                     <span className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600 sm:text-[9px] sm:tracking-[0.18em]">Método 02</span>
                   </div>
                   <h3 className="text-[1.7rem] font-black tracking-[-0.04em] text-slate-50 sm:text-3xl">Chip NFC</h3>
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">Un teléfono compatible con NFC puede leer el chip al acercarlo. El sticker no necesita batería ni conexión propia.</p>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400 sm:mt-4 sm:text-base sm:leading-7">Un teléfono compatible con NFC puede leer el chip al acercarlo. El identificador con NFC pasivo no necesita batería ni conexión propia.</p>
                   <div className="mt-5 flex items-center gap-2 text-xs font-bold text-emerald-300 sm:mt-8"><Check className="h-4 w-4" /> NFC pasivo</div>
                 </div>
               </motion.div>
@@ -200,7 +200,7 @@ export default function ComoFuncionaContent() {
               <h2 className="text-[clamp(2.4rem,11vw,3.2rem)] font-black leading-[0.92] tracking-[-0.05em] text-slate-50 sm:text-[clamp(2.8rem,6vw,5.6rem)] sm:leading-[0.88]">Configúralo antes de necesitarlo.</h2>
               <p className="mx-auto mt-5 max-w-2xl text-[15px] font-medium leading-6 text-slate-400 sm:mt-7 sm:text-lg sm:leading-8">Crea tu perfil, decide qué información será visible y conecta tu identificación física con QR + NFC.</p>
               <div className="mt-7 flex flex-col justify-center gap-2.5 sm:mt-9 sm:flex-row sm:gap-3">
-                <Link href="/comprar" className="group inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-6 text-sm font-extrabold text-white transition-all active:scale-[0.985] sm:min-h-14 sm:px-7 sm:hover:-translate-y-0.5 sm:hover:bg-[#ef2d35]">Ver planes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Link>
+                <Link href="/comprar" className="group inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-6 text-sm font-extrabold text-white transition-all active:scale-[0.985] sm:min-h-14 sm:px-7 sm:hover:-translate-y-0.5 sm:hover:bg-[#ef2d35]">Ver productos <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Link>
                 <Link href="/demo" className="inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl border border-white/[0.1] bg-white/[0.045] px-6 text-sm font-bold text-slate-100 transition-all active:bg-white/[0.08] sm:min-h-14 sm:px-7 sm:hover:border-sky-300/25 sm:hover:bg-white/[0.08]"><ScanLine className="h-4 w-4 text-sky-300" /> Ver demo</Link>
               </div>
             </div>
