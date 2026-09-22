@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, ScanLine } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 
 interface PageHeroProps {
@@ -24,7 +24,7 @@ export default function PageHero({
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="relative isolate overflow-hidden bg-[#02050a] pb-14 pt-28 text-white sm:pb-20 sm:pt-32 md:pb-28 md:pt-40">
+    <section className="emergency-canvas relative isolate overflow-hidden bg-[#020307] pb-14 pt-28 text-white sm:pb-20 sm:pt-32 md:pb-28 md:pt-40">
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-20"
@@ -64,11 +64,11 @@ export default function PageHero({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45 }}
-          className="mb-5 inline-flex max-w-[calc(100vw-2rem)] items-center justify-center gap-2 rounded-full border border-sky-300/15 bg-sky-300/[0.055] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-sky-100 shadow-[0_0_30px_-15px_rgba(56,189,248,.9)] backdrop-blur-xl sm:mb-7 sm:px-4 sm:py-2 sm:text-[10px] sm:tracking-[0.2em]"
+          className="mb-5 inline-flex max-w-[calc(100vw-2rem)] items-center justify-center gap-2 rounded-full border border-rose-300/18 bg-rose-300/[0.06] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-rose-100 shadow-[0_0_30px_-15px_rgba(239,45,53,.9)] backdrop-blur-xl sm:mb-7 sm:px-4 sm:py-2 sm:text-[10px] sm:tracking-[0.2em]"
         >
           <span className="relative flex h-2 w-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-300 opacity-40" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-300" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4550] opacity-40" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#ff4550]" />
           </span>
           <span className="truncate">{eyebrow}</span>
         </motion.div>
@@ -81,7 +81,7 @@ export default function PageHero({
         >
           {title}
           {titleAccent && (
-            <span className="mt-1.5 block bg-gradient-to-r from-[#8ce9ff] via-[#4f9cff] to-[#c5d4ff] bg-clip-text text-transparent sm:mt-2">
+            <span className="mt-1.5 block bg-gradient-to-r from-[#ff3038] via-[#ff5960] to-[#7ab8ff] bg-clip-text text-transparent sm:mt-2">
               {titleAccent}
             </span>
           )}
@@ -117,7 +117,7 @@ export default function PageHero({
                 href={secondaryCTA.href}
                 className="group inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl border border-white/[0.09] bg-white/[0.045] px-5 py-3 text-sm font-bold text-slate-100 backdrop-blur-xl transition-all active:bg-white/[0.08] sm:min-h-14 sm:px-7 sm:py-3.5 sm:hover:-translate-y-0.5 sm:hover:border-sky-300/25 sm:hover:bg-white/[0.08]"
               >
-                <ScanLine className="h-4 w-4 text-sky-300" />
+                <ShieldCheck className="h-4 w-4 text-sky-300" />
                 {secondaryCTA.label}
               </Link>
             )}
