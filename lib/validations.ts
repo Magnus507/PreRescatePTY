@@ -119,6 +119,17 @@ const workModuleSchema = z.object({
   safetyNotes: z.string().max(1000).optional().default(""),
 });
 
+const safeReturnModuleSchema = z.object({
+  itemName: z.string().max(160).optional().default(""),
+  itemDescription: z.string().max(700).optional().default(""),
+  ownerName: z.string().max(120).optional().default(""),
+  ownerPhone: z.string().max(30).optional().default(""),
+  alternateContactName: z.string().max(120).optional().default(""),
+  alternateContactPhone: z.string().max(30).optional().default(""),
+  area: z.string().max(200).optional().default(""),
+  returnInstructions: z.string().max(1200).optional().default(""),
+});
+
 export const profileUpdateSchema = z.object({
   firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres").max(100),
   lastName: z.string().min(2, "El apellido debe tener al menos 2 caracteres").max(100),
@@ -192,6 +203,8 @@ export const profileUpdateSchema = z.object({
   petModuleData: petModuleSchema.optional().nullable(),
   workModuleEnabled: z.boolean().optional(),
   workModuleData: workModuleSchema.optional().nullable(),
+  safeReturnModuleEnabled: z.boolean().optional(),
+  safeReturnModuleData: safeReturnModuleSchema.optional().nullable(),
 });
 
 export const familyProfileCreateSchema = profileUpdateSchema.extend({
