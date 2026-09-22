@@ -66,7 +66,7 @@ export default function PublicFooter() {
             </Link>
 
             <p className="mt-4 max-w-md text-[13px] font-medium leading-6 text-slate-400 sm:mt-5 sm:text-sm">
-              Identificación médica de emergencia con QR + NFC, conectada a un perfil público configurable y accesible desde el navegador.
+              Identificación de emergencia y retorno seguro con QR + NFC, conectada a perfiles públicos configurables y accesibles desde el navegador.
             </p>
 
             <div className="mt-5 grid max-w-md grid-cols-2 gap-2 sm:mt-7">
