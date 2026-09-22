@@ -18,7 +18,7 @@ const trustItems = [
   { icon: QrCode, label: "QR + NFC" },
   { icon: Battery, label: "Sin batería" },
   { icon: Smartphone, label: "Sin instalar app" },
-  { icon: ShieldCheck, label: "Pago único" },
+  { icon: ShieldCheck, label: "Sin vencimiento por tiempo" },
 ];
 
 export default function HeroSection() {
