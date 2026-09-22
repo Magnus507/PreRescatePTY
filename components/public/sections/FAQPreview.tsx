@@ -6,8 +6,8 @@ import { ArrowRight, ChevronDown, CircleHelp } from "lucide-react";
 
 const faqs = [
   { q: "¿Necesito instalar una aplicación?", a: "No. El perfil se abre en el navegador del celular. No requiere instalar ninguna aplicación." },
-  { q: "¿El sticker necesita batería?", a: "No. El sticker no tiene batería. El chip NFC se activa con la energía del dispositivo compatible que lo escanea." },
-  { q: "¿Se necesita internet?", a: "El dispositivo que escanea necesita conexión a internet para cargar el perfil médico. El sticker no necesita batería ni conexión propia." },
+  { q: "¿El identificador necesita batería?", a: "Los identificadores con NFC pasivo no necesitan batería propia. La lectura depende de un dispositivo compatible." },
+  { q: "¿Se necesita internet?", a: "El dispositivo que escanea necesita conexión a internet para cargar el perfil público. El identificador físico no necesita conexión propia." },
   { q: "¿Qué información se muestra?", a: "El perfil puede mostrar datos médicos y contactos de emergencia según la información disponible y la configuración de visibilidad del perfil." },
   { q: "¿Cómo se contacta a mi familia?", a: "El perfil ofrece WhatsApp o llamada. WhatsApp abre un mensaje preescrito y la persona que está asistiendo debe pulsar Enviar; escanear el chip por sí solo no envía alertas automáticas." },
 ];
@@ -33,7 +33,7 @@ export default function FAQPreview() {
               Lo importante, sin letra pequeña.
             </h2>
             <p className="mt-5 max-w-md text-[15px] font-medium leading-6 text-slate-400 sm:mt-6 sm:text-base sm:leading-7">
-              Respuestas rápidas sobre el funcionamiento de PreRescue ID, el sticker y la consulta del perfil.
+              Respuestas rápidas sobre el funcionamiento de PreRescue ID, los identificadores físicos y la consulta del perfil.
             </p>
             <Link href="/faq" className="group mt-6 inline-flex min-h-11 touch-manipulation items-center gap-2 text-sm font-bold text-sky-200 transition-colors active:text-white sm:mt-8 sm:hover:text-white">
               Ver todas las preguntas
