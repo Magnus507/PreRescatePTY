@@ -7,7 +7,7 @@ import BenefitMarquee from "@/components/public/sections/BenefitMarquee";
 import WhatIsSection from "@/components/public/sections/WhatIsSection";
 import HowItWorksSection from "@/components/public/sections/HowItWorksSection";
 import WhoIsForSection from "@/components/public/sections/WhoIsForSection";
-import DemoSection from "@/components/public/sections/DemoSection";
+import EmergencyShowcase from "@/components/public/sections/EmergencyShowcase";
 import PrivacySection from "@/components/public/sections/PrivacySection";
 import PlansPreview from "@/components/public/sections/PlansPreview";
 import FAQPreview from "@/components/public/sections/FAQPreview";
@@ -54,7 +54,7 @@ export default function Home() {
         <WhatIsSection />
         <HowItWorksSection />
         <WhoIsForSection />
-        <DemoSection />
+        <EmergencyShowcase />
         <PrivacySection />
         <PlansPreview />
         <FAQPreview />

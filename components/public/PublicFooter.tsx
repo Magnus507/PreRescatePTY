@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Cookie, Heart, QrCode, ShieldCheck } from "lucide-react";
+import { Cookie, Heart, QrCode, ShieldCheck } from "lucide-react";
 
 const footerColumns = [
   {
@@ -11,7 +11,6 @@ const footerColumns = [
       { href: "/como-funciona", label: "Cómo funciona" },
       { href: "/para-quien-es", label: "Para quién es" },
       { href: "/comprar", label: "Productos" },
-      { href: "/demo", label: "Demo" },
       { href: "/proyecto", label: "Proyecto · Próximamente" },
       { href: "/faq", label: "Preguntas frecuentes" },
     ],
@@ -44,14 +43,8 @@ const footerColumns = [
 export default function PublicFooter() {
   return (
     <footer className="relative overflow-hidden border-t border-white/[0.055] bg-[#02050a] text-slate-100">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(38% 56% at 8% 20%, rgba(37,99,235,.085), transparent 66%), radial-gradient(34% 46% at 92% 92%, rgba(218,26,33,.055), transparent 68%)",
-        }}
-      />
+      <div aria-hidden="true" className="emergency-grid absolute inset-0 opacity-30" />
+      <div aria-hidden="true" className="absolute bottom-0 left-0 h-48 w-full bg-[linear-gradient(180deg,transparent,rgba(218,26,33,.035))]" />
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/35 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 md:py-20 lg:px-8">
@@ -67,7 +60,7 @@ export default function PublicFooter() {
             </Link>
 
             <p className="mt-4 max-w-md text-[13px] font-medium leading-6 text-slate-400 sm:mt-5 sm:text-sm">
-              Identificación médica de emergencia con QR + NFC, conectada a un perfil público configurable y accesible desde el navegador.
+              Identificación de emergencia y retorno seguro con QR + NFC, conectada a perfiles públicos configurables y accesibles desde el navegador.
             </p>
 
             <div className="mt-5 grid max-w-md grid-cols-2 gap-2 sm:mt-7">
@@ -80,14 +73,6 @@ export default function PublicFooter() {
                 <span className="leading-4">Privacidad configurable</span>
               </div>
             </div>
-
-            <Link
-              href="/demo"
-              className="group mt-5 inline-flex min-h-11 touch-manipulation items-center gap-2 text-sm font-bold text-sky-200 transition-colors active:text-white sm:mt-7 sm:hover:text-white"
-            >
-              Ver perfil de demostración
-              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </Link>
           </div>
 
           <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-4 sm:gap-x-7 sm:gap-y-10">
@@ -115,7 +100,7 @@ export default function PublicFooter() {
 
         <div className="mt-10 rounded-[1.25rem] border border-white/[0.06] bg-white/[0.022] p-4 sm:mt-14 sm:rounded-[1.5rem] sm:p-5">
           <p className="text-center text-[10px] font-medium leading-5 text-slate-500 sm:text-[11px]">
-            PreRescue ID es un sistema de identificación médica de emergencia. No reemplaza al 911 ni a los servicios médicos profesionales. En una emergencia, contacte a los servicios correspondientes.
+            PreRescue ID es un sistema de identificación de emergencia y retorno seguro. No reemplaza al 911, a los servicios médicos profesionales ni a los canales oficiales de emergencia. En una emergencia, contacte a los servicios correspondientes.
           </p>
         </div>
 

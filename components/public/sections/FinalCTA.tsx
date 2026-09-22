@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, HeartPulse, ScanLine } from "lucide-react";
+import { ArrowRight, HeartPulse, ShieldCheck } from "lucide-react";
 
 export default function FinalCTA() {
   return (
@@ -45,11 +45,11 @@ export default function FinalCTA() {
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
-              href="/demo"
+              href="/como-funciona"
               className="inline-flex min-h-[52px] touch-manipulation items-center justify-center gap-2 rounded-2xl border border-white/[0.1] bg-white/[0.045] px-6 text-sm font-bold text-slate-100 transition-all active:bg-white/[0.08] sm:min-h-14 sm:px-7 sm:hover:-translate-y-0.5 sm:hover:border-sky-300/25 sm:hover:bg-white/[0.08]"
             >
-              <ScanLine className="h-4 w-4 text-sky-300" />
-              Probar demo
+              <ShieldCheck className="h-4 w-4 text-sky-300" />
+              Cómo funciona
             </Link>
           </div>
         </div>

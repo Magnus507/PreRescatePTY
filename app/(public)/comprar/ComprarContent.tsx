@@ -96,7 +96,7 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
     >
       <GlowCard customSize glowColor={index === 0 ? "red" : "blue"} className="h-full p-5 sm:min-h-[510px] sm:p-6">
         <div className="flex h-full flex-col">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-[1.35rem] border border-white/[0.07] bg-gradient-to-br from-[#0c1730] to-[#040711]">
+          <div className="emergency-product-frame relative aspect-[4/3] overflow-hidden rounded-[1.35rem] border border-white/[0.09] bg-[#06090f] before:absolute before:inset-0 before:bg-[repeating-linear-gradient(-55deg,transparent_0_22px,rgba(255,255,255,.025)_22px_23px)]">
             <Image
               src={imageSrc}
               alt={product.name}
@@ -195,10 +195,10 @@ export default function ComprarContent() {
           titleAccent="mejor encaja contigo."
           description="Los productos y precios se cargan directamente desde el catálogo operativo publicado. El servicio digital no vence por tiempo."
           primaryCTA={{ href: "#catalogo", label: "Ver productos" }}
-          secondaryCTA={{ href: "/demo", label: "Ver demo" }}
+          secondaryCTA={{ href: "/como-funciona", label: "Cómo funciona" }}
         />
 
-        <section className="border-y border-white/[0.055] bg-[#03060c] py-3.5 sm:py-5">
+        <section className="emergency-alert-strip border-y border-rose-300/[0.10] bg-[#05070b] py-3.5 sm:py-5">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-7 gap-y-3 px-4 sm:px-6">
             <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
               <CreditCard className="h-3.5 w-3.5 text-emerald-300" /> Pago único
@@ -213,17 +213,11 @@ export default function ComprarContent() {
         </section>
 
         <section id="catalogo" className="relative scroll-mt-20 overflow-hidden bg-[#03060c] py-20 md:py-32">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(52% 56% at 50% 20%, rgba(37,99,235,.12), transparent 64%), radial-gradient(30% 42% at 86% 78%, rgba(218,26,33,.06), transparent 68%)",
-            }}
-          />
+          <div aria-hidden="true" className="emergency-grid absolute inset-0 opacity-45" />
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/45 to-transparent shadow-[0_0_30px_rgba(239,45,53,.35)]" />
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-14">
-              <p className="mb-4 text-[9px] font-black uppercase tracking-[0.18em] text-sky-300/80 sm:text-[10px]">
+              <p className="mb-4 text-[9px] font-black uppercase tracking-[0.18em] text-rose-300/85 sm:text-[10px]">
                 Productos publicados
               </p>
               <h2 className="text-[clamp(2.35rem,10vw,3.1rem)] font-black leading-[0.94] tracking-[-0.045em] text-slate-50 sm:text-[clamp(2.7rem,5vw,5rem)] sm:leading-[0.92]">

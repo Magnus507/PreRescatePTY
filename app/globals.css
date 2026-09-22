@@ -464,3 +464,77 @@
     display: none;
   }
 }
+
+/* PreRescue public emergency visual system */
+.emergency-canvas {
+  background-color: #020307;
+  background-image:
+    radial-gradient(circle at 72% 28%, rgba(21, 87, 190, 0.12), transparent 34%),
+    radial-gradient(circle at 12% 68%, rgba(218, 26, 33, 0.10), transparent 34%);
+}
+
+.emergency-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(218,26,33,.025) 0 1px, transparent 1px 18px);
+  background-size: 72px 72px, 72px 72px, 26px 26px;
+  mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,.82) 68%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,.82) 68%, transparent 100%);
+}
+
+.emergency-product-frame {
+  box-shadow:
+    0 45px 120px -55px rgba(0, 0, 0, .98),
+    0 0 0 1px rgba(255,255,255,.025) inset,
+    0 0 75px -46px rgba(218, 26, 33, .55),
+    0 0 95px -52px rgba(37, 99, 235, .48);
+}
+
+.emergency-product-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(110deg, rgba(255,255,255,.08), transparent 24%, transparent 72%, rgba(218,26,33,.07));
+  opacity: .75;
+  z-index: 2;
+}
+
+.emergency-button {
+  box-shadow:
+    0 18px 48px -18px rgba(218,26,33,.92),
+    0 0 0 1px rgba(255,255,255,.08) inset;
+}
+
+.emergency-button:hover {
+  box-shadow:
+    0 24px 60px -18px rgba(218,26,33,.95),
+    0 0 28px -8px rgba(239,45,53,.55),
+    0 0 0 1px rgba(255,255,255,.12) inset;
+}
+
+.emergency-alert-strip {
+  position: relative;
+  overflow: hidden;
+}
+
+.emergency-alert-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    -55deg,
+    transparent 0 18px,
+    rgba(218,26,33,.055) 18px 20px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emergency-button,
+  .emergency-product-frame {
+    transition: none !important;
+  }
+}
