@@ -10,6 +10,8 @@ import {
   Crown,
   FileText,
   HeartHandshake,
+  Eye,
+  EyeOff,
   Info,
   Pill,
   ShieldAlert,
@@ -311,7 +313,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   };
 
   return (
-    <div className={`space-y-4 sm:space-y-5 ${disabled ? "pointer-events-none opacity-60" : ""}`}>
+    <div className={`space-y-4 sm:space-y-5 lg:space-y-6 ${disabled ? "pointer-events-none opacity-60" : ""}`}>
       <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-[0_22px_56px_-44px_rgba(15,23,42,.32)]">
         <div className="px-3.5 pt-3.5 sm:px-5 sm:pt-5">
           <div className="flex flex-col gap-3 rounded-[1.15rem] border border-slate-800 bg-slate-950 px-3.5 py-3 text-white shadow-[0_14px_34px_-26px_rgba(15,23,42,.8)] min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
@@ -416,7 +418,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
           )}
 
           <div className={isPetProfile ? "hidden" : "space-y-4"}>
-          <div className="grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2 xl:grid-cols-4">
             <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required={!isPetProfile} placeholder="Juan" />
             <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required={!isPetProfile} placeholder="Pérez" />
             <Field label="Alias público" value={form.displayNamePublic} onChange={(v) => update("displayNamePublic", v)} placeholder="Ej: Juan P." />
@@ -485,19 +487,23 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             />
           </div>
 
-          <TextAreaField
-            icon={<FileText className="h-4 w-4" />}
-            label="Notas críticas e instrucciones generales"
-            value={form.additionalNotes}
-            onChange={(v) => update("additionalNotes", v)}
-            placeholder="Indicaciones generales que ayuden durante una emergencia."
-            tone="slate"
-          />
-          <CompactCheck
-            label="Mostrar estas notas en la ficha pública"
-            checked={form.showAdditionalNotesPublic}
-            onChange={(v) => update("showAdditionalNotesPublic", v)}
-          />
+          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50/55 p-3 sm:p-4">
+            <TextAreaField
+              icon={<FileText className="h-4 w-4" />}
+              label="Notas críticas e instrucciones generales"
+              value={form.additionalNotes}
+              onChange={(v) => update("additionalNotes", v)}
+              placeholder="Indicaciones generales que ayuden durante una emergencia."
+              tone="slate"
+            />
+            <div className="mt-3 border-t border-slate-200/80 pt-3">
+              <VisibilityChoice
+                label="Visibilidad de estas notas"
+                isPublic={form.showAdditionalNotesPublic}
+                onChange={(v) => update("showAdditionalNotesPublic", v)}
+              />
+            </div>
+          </div>
           </div>
         </div>
       </section>
@@ -527,7 +533,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             </div>
           </div>
 
-          <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-4 grid grid-cols-2 gap-2 pb-1 sm:mt-5 sm:flex sm:overflow-x-auto sm:pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-4 grid grid-cols-2 gap-2 pb-1 sm:mt-5 sm:flex sm:overflow-x-auto sm:pb-1.5 lg:grid lg:grid-cols-6 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {(isPetProfile ? OPTIONAL_TABS.filter((tab) => tab.id === "pet") : OPTIONAL_TABS).map((tab) => {
               const Icon = tab.icon;
               const selected = activeTab === tab.id;
@@ -738,8 +744,8 @@ function ElderFields({
       <div className="rounded-[1.1rem] border border-amber-200 bg-amber-50/70 p-3.5">
         <p className="mb-3 text-[10px] font-black uppercase tracking-[.14em] text-amber-700">Apoyo cognitivo y retorno</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <CompactCheck label="Deterioro cognitivo reportado" checked={legacy.hasCognitiveImpairment} onChange={(v) => onLegacyChange("hasCognitiveImpairment", v)} />
-          <CompactCheck label="Riesgo de desorientación" checked={legacy.hasWanderingRisk} onChange={(v) => onLegacyChange("hasWanderingRisk", v)} />
+          <BinaryChoice label="Deterioro cognitivo reportado" checked={legacy.hasCognitiveImpairment} onChange={(v) => onLegacyChange("hasCognitiveImpairment", v)} />
+          <BinaryChoice label="Riesgo de desorientación" checked={legacy.hasWanderingRisk} onChange={(v) => onLegacyChange("hasWanderingRisk", v)} />
         </div>
         <div className="mt-3">
           <PlainTextArea
@@ -782,7 +788,7 @@ function SpecialNeedsFields({
       <PlainTextArea label="Notas de emergencia" value={data.emergencyNotes} onChange={(v) => onChange("emergencyNotes", v)} placeholder="Indicaciones concretas para quien preste ayuda." />
 
       <div className="rounded-[1.1rem] border border-violet-200 bg-violet-50/65 p-3.5">
-        <CompactCheck label="Persona no verbal / comunicación asistida" checked={isNonVerbal} onChange={(v) => onLegacyChange("isNonVerbal", v)} />
+        <BinaryChoice label="Persona no verbal / comunicación asistida" checked={isNonVerbal} onChange={(v) => onLegacyChange("isNonVerbal", v)} />
         <div className="mt-3">
           <PlainTextArea
             label="Cómo comunicarse"
@@ -833,7 +839,7 @@ function PetFields({ data, onChange }: { data: PetModuleData; onChange: (key: ke
         onChange={(v) => onChange("careNotes", v)}
         placeholder="Alimentación, temperamento, miedos, instrucciones para manipularla o cualquier cuidado especial."
       />
-      <CompactCheck label="Es animal de asistencia / servicio" checked={data.isServiceAnimal} onChange={(v) => onChange("isServiceAnimal", v)} />
+      <BinaryChoice label="Animal de asistencia / servicio" checked={data.isServiceAnimal} onChange={(v) => onChange("isServiceAnimal", v)} />
     </div>
   );
 }
@@ -884,10 +890,10 @@ function InsuranceFields({
           </div>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <CompactCheck label="Mostrar aseguradora" checked={form.showInsuranceProviderPublic} onChange={(v) => onChange("showInsuranceProviderPublic", v)} />
-          <CompactCheck label="Mostrar hospital preferido" checked={form.showPreferredHospitalPublic} onChange={(v) => onChange("showPreferredHospitalPublic", v)} />
-          <CompactCheck label="Mostrar médico tratante" checked={form.showPrimaryDoctorPublic} onChange={(v) => onChange("showPrimaryDoctorPublic", v)} />
-          <CompactCheck label="Mostrar teléfono del médico" checked={form.showPrimaryDoctorPhonePublic} onChange={(v) => onChange("showPrimaryDoctorPhonePublic", v)} />
+          <VisibilityChoice label="Aseguradora" isPublic={form.showInsuranceProviderPublic} onChange={(v) => onChange("showInsuranceProviderPublic", v)} />
+          <VisibilityChoice label="Hospital preferido" isPublic={form.showPreferredHospitalPublic} onChange={(v) => onChange("showPreferredHospitalPublic", v)} />
+          <VisibilityChoice label="Médico tratante" isPublic={form.showPrimaryDoctorPublic} onChange={(v) => onChange("showPrimaryDoctorPublic", v)} />
+          <VisibilityChoice label="Teléfono del médico" isPublic={form.showPrimaryDoctorPhonePublic} onChange={(v) => onChange("showPrimaryDoctorPhonePublic", v)} />
         </div>
       </div>
     </div>
@@ -930,13 +936,70 @@ function ModuleActivation({ label, checked, onChange }: { label: string; checked
   );
 }
 
-function CompactCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-  const id = React.useId();
+function BinaryChoice({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  const groupId = React.useId();
+
   return (
-    <label htmlFor={id} className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-[1rem] border border-slate-200 bg-white px-3.5 py-2.5">
-      <span className="text-xs font-bold leading-5 text-slate-700">{label}</span>
-      <input id={id} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 accent-[#DA1A21]" />
-    </label>
+    <div className="flex min-h-12 flex-col gap-2 rounded-[1rem] border border-slate-200 bg-white p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <span id={groupId} className="px-1 text-xs font-bold leading-5 text-slate-700">{label}</span>
+      <div role="group" aria-labelledby={groupId} className="grid shrink-0 grid-cols-2 rounded-full bg-slate-100 p-1 shadow-inner">
+        <button
+          type="button"
+          aria-pressed={!checked}
+          onClick={() => onChange(false)}
+          className={`min-w-14 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] transition-all duration-200 ${
+            !checked ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          No
+        </button>
+        <button
+          type="button"
+          aria-pressed={checked}
+          onClick={() => onChange(true)}
+          className={`min-w-14 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] transition-all duration-200 ${
+            checked ? "bg-slate-950 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          Sí
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function VisibilityChoice({ label, isPublic, onChange }: { label: string; isPublic: boolean; onChange: (value: boolean) => void }) {
+  const groupId = React.useId();
+
+  return (
+    <div className="flex min-h-12 flex-col gap-2 rounded-[1rem] border border-slate-200 bg-white p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <div className="min-w-0 px-1">
+        <span id={groupId} className="block text-xs font-bold leading-5 text-slate-800">{label}</span>
+        <span className="block text-[10px] font-semibold text-slate-400">{isPublic ? "Visible en la ficha pública" : "Solo queda en tu perfil"}</span>
+      </div>
+      <div role="group" aria-labelledby={groupId} className="grid shrink-0 grid-cols-2 rounded-full bg-slate-100 p-1 shadow-inner">
+        <button
+          type="button"
+          aria-pressed={!isPublic}
+          onClick={() => onChange(false)}
+          className={`inline-flex min-w-[5.8rem] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${
+            !isPublic ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <EyeOff className="h-3.5 w-3.5" /> Privado
+        </button>
+        <button
+          type="button"
+          aria-pressed={isPublic}
+          onClick={() => onChange(true)}
+          className={`inline-flex min-w-[5.8rem] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${
+            isPublic ? "bg-[#DA1A21] text-white shadow-[0_8px_18px_-12px_rgba(218,26,33,.8)]" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Eye className="h-3.5 w-3.5" /> Público
+        </button>
+      </div>
+    </div>
   );
 }
 

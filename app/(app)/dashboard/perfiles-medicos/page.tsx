@@ -606,7 +606,7 @@ export default function FamiliaPage() {
           </div>
 
           <div className="hidden md:block animate-in fade-in slide-in-from-left-4 duration-500">
-            <div className="max-w-5xl mx-auto space-y-6">
+            <div className="max-w-6xl mx-auto space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-3xl font-black tracking-tight">Añadir perfil</h2>
@@ -682,7 +682,7 @@ export default function FamiliaPage() {
           </div>
 
           <div className="hidden md:block animate-in fade-in slide-in-from-left-4 duration-500">
-            <div className="max-w-5xl mx-auto space-y-6">
+            <div className="max-w-6xl mx-auto space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-3xl font-black tracking-tight">Editar perfil</h2>
