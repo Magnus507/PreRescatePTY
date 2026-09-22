@@ -205,6 +205,7 @@ export async function GET(
     const elderModule = profile.elderModuleEnabled ? parseEncryptedModule(profile.elderModuleData) : null;
     const specialNeedsModule = profile.specialNeedsModuleEnabled ? parseEncryptedModule(profile.specialNeedsModuleData) : null;
     const petModule = profile.petModuleEnabled ? parseEncryptedModule(profile.petModuleData) : null;
+    const safeReturnModule = profile.safeReturnModuleEnabled ? parseEncryptedModule(profile.safeReturnModuleData) : null;
     const workModule = profile.workModuleEnabled ? parseEncryptedModule(profile.workModuleData) : null;
 
     // Build public-safe response (NO email, NO birthdate, NO internal IDs)
@@ -254,6 +255,7 @@ export async function GET(
           elder: elderModule,
           specialNeeds: specialNeedsModule,
           pet: petModule,
+          safeReturnItem: safeReturnModule,
           work: workModule,
         },
       }),
