@@ -60,7 +60,8 @@ export default function CommunityBand() {
             alt="Personas, personal de apoyo, familia y mascota caminando entre montañas"
             width={7680}
             height={2560}
-            sizes="(max-width: 768px) 100vw, (max-width: 1536px) 92vw, 1280px"\n            quality={92}
+            sizes="(max-width: 768px) 100vw, (max-width: 1536px) 92vw, 1280px"
+            quality={92}
             className="h-auto w-full"
           />
         </div>
