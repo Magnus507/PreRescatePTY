@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
@@ -8,6 +8,7 @@ import {
   BriefcaseBusiness,
   Cat,
   Crown,
+  KeyRound,
   FileText,
   HeartHandshake,
   Eye,
@@ -25,11 +26,13 @@ import {
   EMPTY_ELDER_MODULE,
   EMPTY_MINOR_MODULE,
   EMPTY_PET_MODULE,
+  EMPTY_SAFE_RETURN_MODULE,
   EMPTY_SPECIAL_NEEDS_MODULE,
   EMPTY_WORK_MODULE,
   type ElderModuleData,
   type MinorModuleData,
   type PetModuleData,
+  type SafeReturnModuleData,
   type SpecialNeedsModuleData,
   type WorkModuleData,
 } from "@/lib/profile-context-modules";
@@ -41,6 +44,7 @@ type ProfileFormValue =
   | ElderModuleData
   | SpecialNeedsModuleData
   | PetModuleData
+  | SafeReturnModuleData
   | WorkModuleData;
 
 interface ProfileFormProps {
@@ -97,13 +101,15 @@ interface ProfileFormProps {
     petModuleData?: PetModuleData;
     workModuleEnabled?: boolean;
     workModuleData?: WorkModuleData;
+    safeReturnModuleEnabled?: boolean;
+    safeReturnModuleData?: SafeReturnModuleData;
   };
   onChange: (field: string, value: ProfileFormValue) => void;
   disabled?: boolean;
 }
 
-type OptionalTab = "minor" | "elder" | "special" | "pet" | "work" | "insurance";
-type TabTone = "blue" | "amber" | "violet" | "teal" | "slate" | "emerald";
+type OptionalTab = "minor" | "elder" | "special" | "pet" | "safeReturn" | "work" | "insurance";
+type TabTone = "blue" | "amber" | "violet" | "teal" | "sky" | "slate" | "emerald";
 
 const OPTIONAL_TABS: Array<{
   id: OptionalTab;
@@ -144,6 +150,14 @@ const OPTIONAL_TABS: Array<{
     description: "Convierte este perfil en una ficha de mascota para identificación, contacto y retorno seguro.",
     icon: Cat,
     tone: "teal",
+  },
+  {
+    id: "safeReturn",
+    label: "Retorno seguro",
+    shortLabel: "Retorno",
+    description: "Objeto, contacto y devolución.",
+    icon: KeyRound,
+    tone: "sky",
   },
   {
     id: "work",
@@ -193,6 +207,12 @@ const TAB_TONE_STYLES: Record<TabTone, {
     eyebrow: "text-teal-700",
     glow: "bg-teal-400/20",
   },
+  sky: {
+    panel: "border-sky-200 bg-sky-50/55",
+    icon: "bg-sky-600 text-white",
+    eyebrow: "text-sky-700",
+    glow: "bg-sky-400/20",
+  },
   slate: {
     panel: "border-slate-200 bg-slate-50/80",
     icon: "bg-slate-800 text-white",
@@ -230,6 +250,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     elder: form.elderModuleEnabled === true,
     special: form.specialNeedsModuleEnabled === true,
     pet: form.petModuleEnabled === true,
+    safeReturn: form.safeReturnModuleEnabled === true,
     work: form.workModuleEnabled === true,
     insurance: form.isInsured === true,
   } satisfies Record<OptionalTab, boolean>;
@@ -239,8 +260,16 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   const elderData = form.elderModuleData ?? EMPTY_ELDER_MODULE;
   const specialNeedsData = form.specialNeedsModuleData ?? EMPTY_SPECIAL_NEEDS_MODULE;
   const petData = form.petModuleData ?? EMPTY_PET_MODULE;
+  const safeReturnData = form.safeReturnModuleData ?? EMPTY_SAFE_RETURN_MODULE;
   const workData = form.workModuleData ?? EMPTY_WORK_MODULE;
   const isPetProfile = form.petModuleEnabled === true;
+  const isSafeReturnProfile = form.safeReturnModuleEnabled === true;
+  const isConvertedProfile = isPetProfile || isSafeReturnProfile;
+
+  useEffect(() => {
+    if (isPetProfile) setActiveTab("pet");
+    else if (isSafeReturnProfile) setActiveTab("safeReturn");
+  }, [isPetProfile, isSafeReturnProfile]);
 
   const petAge = useMemo(() => {
     if (!petData.birthDate) return null;
@@ -270,6 +299,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       elder: "elderModuleEnabled",
       special: "specialNeedsModuleEnabled",
       pet: "petModuleEnabled",
+      safeReturn: "safeReturnModuleEnabled",
       work: "workModuleEnabled",
     };
     update(map[tab], enabled);
@@ -280,6 +310,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       update("elderModuleEnabled", false);
       update("specialNeedsModuleEnabled", false);
       update("workModuleEnabled", false);
+      update("safeReturnModuleEnabled", false);
       update("isInsured", false);
       update("showVulnerabilityStatusPublic", false);
       update("showCommunicationStatusPublic", false);
@@ -288,6 +319,24 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       update("showPreferredHospitalPublic", false);
       update("showPrimaryDoctorPublic", false);
       update("showPrimaryDoctorPhonePublic", false);
+    }
+
+    if (tab === "safeReturn" && enabled) {
+      setActiveTab("safeReturn");
+      update("minorModuleEnabled", false);
+      update("elderModuleEnabled", false);
+      update("specialNeedsModuleEnabled", false);
+      update("petModuleEnabled", false);
+      update("workModuleEnabled", false);
+      update("isInsured", false);
+      update("showVulnerabilityStatusPublic", false);
+      update("showCommunicationStatusPublic", false);
+      update("showSafeReturnPublic", false);
+      update("showInsuranceProviderPublic", false);
+      update("showPreferredHospitalPublic", false);
+      update("showPrimaryDoctorPublic", false);
+      update("showPrimaryDoctorPhonePublic", false);
+      update("showAdditionalNotesPublic", false);
     }
 
     if (tab === "elder") {
@@ -319,17 +368,17 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
           <div className="flex flex-col gap-3 rounded-[1.15rem] border border-slate-800 bg-slate-950 px-3.5 py-3 text-white shadow-[0_14px_34px_-26px_rgba(15,23,42,.8)] min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[.9rem] bg-white/[0.08] text-white ring-1 ring-white/10">
-                {isPetProfile ? <Cat className="h-[18px] w-[18px]" /> : <UserRound className="h-[18px] w-[18px]" />}
+                {isPetProfile ? <Cat className="h-[18px] w-[18px]" /> : isSafeReturnProfile ? <KeyRound className="h-[18px] w-[18px]" /> : <UserRound className="h-[18px] w-[18px]" />}
               </div>
               <div className="min-w-0">
-                <h2 className="text-[1.05rem] font-black tracking-[-0.025em] text-white sm:text-lg">{isPetProfile ? "Ficha de mascota" : "Información básica"}</h2>
+                <h2 className="text-[1.05rem] font-black tracking-[-0.025em] text-white sm:text-lg">{isPetProfile ? "Ficha de mascota" : isSafeReturnProfile ? "Perfil de retorno seguro" : "Información básica"}</h2>
                 <p className="mt-0.5 text-[10px] font-semibold leading-4 text-slate-400 sm:text-[11px]">
-                  {isPetProfile ? "Identificación y datos esenciales para ayudarla a volver a casa" : "Datos esenciales de emergencia · siempre van primero"}
+                  {isPetProfile ? "Identificación y datos esenciales para ayudarla a volver a casa" : isSafeReturnProfile ? "Identifica el objeto y facilita que pueda regresar a su propietario" : "Datos esenciales de emergencia · siempre van primero"}
                 </p>
               </div>
             </div>
             <span className="w-fit shrink-0 rounded-full border border-[#DA1A21]/30 bg-[#DA1A21]/12 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-red-300 sm:text-[9px]">
-              {isPetProfile ? "Modo mascota" : "Siempre visible"}
+              {isPetProfile ? "Modo mascota" : isSafeReturnProfile ? "Retorno seguro" : "Siempre visible"}
             </span>
           </div>
         </div>
@@ -417,10 +466,34 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             </div>
           )}
 
-          <div className={isPetProfile ? "hidden" : "space-y-4"}>
+          {isSafeReturnProfile && (
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-sky-700">
+                <KeyRound className="h-4 w-4" />
+                Retorno seguro activo
+              </div>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <Field
+                  label="Objeto / identificación *"
+                  value={safeReturnData.itemName}
+                  onChange={(v) => updateModuleField("safeReturnModuleData", safeReturnData as unknown as Record<string, unknown>, "itemName", v)}
+                  required
+                  placeholder="Ej: Llaves del carro"
+                />
+                <Field
+                  label="Descripción breve"
+                  value={safeReturnData.itemDescription}
+                  onChange={(v) => updateModuleField("safeReturnModuleData", safeReturnData as unknown as Record<string, unknown>, "itemDescription", v)}
+                  placeholder="Ej: Llavero negro con control Toyota"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className={isConvertedProfile ? "hidden" : "space-y-4"}>
           <div className="grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2 xl:grid-cols-4">
-            <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required={!isPetProfile} placeholder="Juan" />
-            <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required={!isPetProfile} placeholder="Pérez" />
+            <Field label="Nombre *" value={form.firstName} onChange={(v) => update("firstName", v)} required={!isConvertedProfile} placeholder="Juan" />
+            <Field label="Apellido *" value={form.lastName} onChange={(v) => update("lastName", v)} required={!isConvertedProfile} placeholder="Pérez" />
             <Field label="Alias público" value={form.displayNamePublic} onChange={(v) => update("displayNamePublic", v)} placeholder="Ej: Juan P." />
             <Field label="Teléfono de contacto" value={form.phone || ""} onChange={(v) => update("phone", v)} placeholder="+507 0000-0000" />
           </div>
@@ -431,7 +504,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
               value={form.bloodType}
               onChange={(v) => update("bloodType", v)}
               options={BLOOD_TYPES.map((value) => ({ value, label: value }))}
-              required={!isPetProfile}
+              required={!isConvertedProfile}
             />
             <SelectField
               label="Sexo"
@@ -487,7 +560,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
             />
           </div>
 
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50/55 p-3 sm:p-4">
+          <div className="rounded-[1.2rem] border border-slate-300/80 bg-slate-100/70 p-3 sm:p-4">
             <TextAreaField
               icon={<FileText className="h-4 w-4" />}
               label="Notas críticas e instrucciones generales"
@@ -500,6 +573,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
               <VisibilityChoice
                 label="Visibilidad de estas notas"
                 isPublic={form.showAdditionalNotesPublic}
+                tone="slate"
                 onChange={(v) => update("showAdditionalNotesPublic", v)}
               />
             </div>
@@ -521,20 +595,20 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                 Módulos personalizados
               </div>
               <h2 className="mt-3 text-[1.45rem] font-black tracking-[-0.04em] text-white sm:text-2xl">
-                {isPetProfile ? "Este perfil está en modo mascota" : "Activa solo lo que aplica a este perfil"}
+                {isPetProfile ? "Este perfil está en modo mascota" : isSafeReturnProfile ? "Este perfil está en modo retorno seguro" : "Activa solo lo que aplica a este perfil"}
               </h2>
               <p className="mt-1.5 max-w-2xl text-xs font-medium leading-5 text-slate-300 sm:text-sm">
-                {isPetProfile ? "Completa los datos de contacto, retorno y cuidados. Desactiva Mascotas para volver al perfil humano." : "La información básica siempre permanece primero. Estos módulos aparecen únicamente cuando los activas."}
+                {isPetProfile ? "Completa los datos de contacto, retorno y cuidados. Desactiva Mascotas para volver al perfil humano." : isSafeReturnProfile ? "Completa el contacto y las instrucciones de devolución. Desactiva Retorno seguro para volver al perfil médico." : "La información básica siempre permanece primero. Estos módulos aparecen únicamente cuando los activas."}
               </p>
             </div>
             <div className="w-fit shrink-0 rounded-[1rem] border border-white/10 bg-white/[0.07] px-3 py-2 text-center backdrop-blur">
-              <p className="text-lg font-black leading-none text-white">{isPetProfile ? 1 : enabledCount}</p>
-              <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">{isPetProfile ? "modo mascota" : "de 6 activos"}</p>
+              <p className="text-lg font-black leading-none text-white">{isConvertedProfile ? 1 : enabledCount}</p>
+              <p className="mt-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">{isPetProfile ? "modo mascota" : isSafeReturnProfile ? "retorno seguro" : "de 7 activos"}</p>
             </div>
           </div>
 
-          <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-4 grid grid-cols-2 gap-2 pb-1 sm:mt-5 sm:flex sm:overflow-x-auto sm:pb-1.5 lg:grid lg:grid-cols-6 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {(isPetProfile ? OPTIONAL_TABS.filter((tab) => tab.id === "pet") : OPTIONAL_TABS).map((tab) => {
+          <div role="tablist" aria-label="Módulos opcionales del perfil" className="mt-4 grid grid-cols-2 gap-2 pb-1 sm:mt-5 sm:flex sm:overflow-x-auto sm:pb-1.5 lg:grid lg:grid-cols-7 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {(isPetProfile ? OPTIONAL_TABS.filter((tab) => tab.id === "pet") : isSafeReturnProfile ? OPTIONAL_TABS.filter((tab) => tab.id === "safeReturn") : OPTIONAL_TABS).map((tab) => {
               const Icon = tab.icon;
               const selected = activeTab === tab.id;
               const enabled = moduleEnabled[tab.id];
@@ -672,6 +746,12 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
                             onChange={(key, value) => updateModuleField("petModuleData", petData as unknown as Record<string, unknown>, key as string, value)}
                           />
                         )}
+                        {tab.id === "safeReturn" && (
+                          <SafeReturnFields
+                            data={safeReturnData}
+                            onChange={(key, value) => updateModuleField("safeReturnModuleData", safeReturnData as unknown as Record<string, unknown>, key as string, value)}
+                          />
+                        )}
                         {tab.id === "work" && (
                           <WorkFields
                             data={workData}
@@ -695,7 +775,9 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>{isPetProfile
           ? "Los contactos se administran desde la tarjeta del perfil y también aparecen en la ficha pública de la mascota para facilitar su devolución."
-          : "Los contactos de emergencia se administran desde la tarjeta del perfil. Los módulos opcionales complementan la ficha médica."
+          : isSafeReturnProfile
+            ? "Configura aquí el contacto que verá quien encuentre el objeto."
+            : "Los contactos de emergencia se administran desde la tarjeta del perfil. Los módulos opcionales complementan la ficha médica."
         }</span>
       </div>
     </div>
@@ -844,6 +926,26 @@ function PetFields({ data, onChange }: { data: PetModuleData; onChange: (key: ke
   );
 }
 
+function SafeReturnFields({ data, onChange }: { data: SafeReturnModuleData; onChange: (key: keyof SafeReturnModuleData, value: string) => void }) {
+  return (
+    <div className="space-y-3.5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Nombre del propietario" value={data.ownerName} onChange={(v) => onChange("ownerName", v)} placeholder="Nombre o alias" />
+        <Field label="Teléfono de contacto *" value={data.ownerPhone} onChange={(v) => onChange("ownerPhone", v)} placeholder="+507..." required />
+        <Field label="Contacto alterno" value={data.alternateContactName} onChange={(v) => onChange("alternateContactName", v)} placeholder="Opcional" />
+        <Field label="Teléfono alterno" value={data.alternateContactPhone} onChange={(v) => onChange("alternateContactPhone", v)} placeholder="+507..." />
+        <Field label="Área / referencia" value={data.area} onChange={(v) => onChange("area", v)} placeholder="Opcional" />
+      </div>
+      <PlainTextArea
+        label="Instrucciones de devolución"
+        value={data.returnInstructions}
+        onChange={(v) => onChange("returnInstructions", v)}
+        placeholder="Ej: llamar o escribir antes de coordinar la entrega."
+      />
+    </div>
+  );
+}
+
 function WorkFields({ data, onChange }: { data: WorkModuleData; onChange: (key: keyof WorkModuleData, value: string) => void }) {
   return (
     <div className="space-y-4">
@@ -867,34 +969,34 @@ function InsuranceFields({
   onChange: (field: string, value: ProfileFormValue) => void;
 }) {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="space-y-2 rounded-[1.05rem] border border-emerald-200 bg-emerald-50/45 p-3">
         <Field label="Aseguradora" value={form.insuranceProvider || ""} onChange={(v) => onChange("insuranceProvider", v)} placeholder="Ej: ASSA, MAPFRE, Blue Cross" />
-        <Field label="Número de póliza" value={form.insurancePolicyNumber || ""} onChange={(v) => onChange("insurancePolicyNumber", v)} placeholder="Dato privado" />
-        <Field label="Hospital preferido" value={form.preferredHospital || ""} onChange={(v) => onChange("preferredHospital", v)} placeholder="Ej: Hospital Nacional" />
-        <Field label="Teléfono de asistencia del seguro" value={form.insuranceEmergencyPhone || ""} onChange={(v) => onChange("insuranceEmergencyPhone", v)} placeholder="+507..." />
-        <Field label="Médico tratante" value={form.primaryDoctorName || ""} onChange={(v) => onChange("primaryDoctorName", v)} placeholder="Opcional" />
-        <Field label="Teléfono del médico" value={form.primaryDoctorPhone || ""} onChange={(v) => onChange("primaryDoctorPhone", v)} placeholder="+507..." />
+        <VisibilityChoice label="Visibilidad de aseguradora" isPublic={form.showInsuranceProviderPublic} tone="emerald" onChange={(v) => onChange("showInsuranceProviderPublic", v)} />
       </div>
 
-      <div className="rounded-[1.1rem] border border-emerald-200 bg-white/80 p-3.5">
-        <div className="mb-3 flex items-start gap-2.5">
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-            <ShieldCheck className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="text-xs font-black text-slate-900">Qué puede aparecer en la ficha pública</p>
-            <p className="mt-0.5 text-[11px] font-medium leading-5 text-slate-500">
-              Tú eliges qué mostrar. El número de póliza permanece privado y no se publica.
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <VisibilityChoice label="Aseguradora" isPublic={form.showInsuranceProviderPublic} onChange={(v) => onChange("showInsuranceProviderPublic", v)} />
-          <VisibilityChoice label="Hospital preferido" isPublic={form.showPreferredHospitalPublic} onChange={(v) => onChange("showPreferredHospitalPublic", v)} />
-          <VisibilityChoice label="Médico tratante" isPublic={form.showPrimaryDoctorPublic} onChange={(v) => onChange("showPrimaryDoctorPublic", v)} />
-          <VisibilityChoice label="Teléfono del médico" isPublic={form.showPrimaryDoctorPhonePublic} onChange={(v) => onChange("showPrimaryDoctorPhonePublic", v)} />
-        </div>
+      <div className="rounded-[1.05rem] border border-slate-200 bg-slate-50/70 p-3">
+        <Field label="Número de póliza" value={form.insurancePolicyNumber || ""} onChange={(v) => onChange("insurancePolicyNumber", v)} placeholder="Dato privado" />
+        <p className="mt-2 px-1 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Siempre privado</p>
+      </div>
+
+      <div className="space-y-2 rounded-[1.05rem] border border-emerald-200 bg-emerald-50/45 p-3">
+        <Field label="Hospital preferido" value={form.preferredHospital || ""} onChange={(v) => onChange("preferredHospital", v)} placeholder="Ej: Hospital Nacional" />
+        <VisibilityChoice label="Visibilidad del hospital" isPublic={form.showPreferredHospitalPublic} tone="emerald" onChange={(v) => onChange("showPreferredHospitalPublic", v)} />
+      </div>
+
+      <div className="rounded-[1.05rem] border border-emerald-100 bg-emerald-50/30 p-3">
+        <Field label="Teléfono de asistencia del seguro" value={form.insuranceEmergencyPhone || ""} onChange={(v) => onChange("insuranceEmergencyPhone", v)} placeholder="+507..." />
+      </div>
+
+      <div className="space-y-2 rounded-[1.05rem] border border-emerald-200 bg-emerald-50/45 p-3">
+        <Field label="Médico tratante" value={form.primaryDoctorName || ""} onChange={(v) => onChange("primaryDoctorName", v)} placeholder="Opcional" />
+        <VisibilityChoice label="Visibilidad del médico" isPublic={form.showPrimaryDoctorPublic} tone="emerald" onChange={(v) => onChange("showPrimaryDoctorPublic", v)} />
+      </div>
+
+      <div className="space-y-2 rounded-[1.05rem] border border-emerald-200 bg-emerald-50/45 p-3">
+        <Field label="Teléfono del médico" value={form.primaryDoctorPhone || ""} onChange={(v) => onChange("primaryDoctorPhone", v)} placeholder="+507..." />
+        <VisibilityChoice label="Visibilidad del teléfono" isPublic={form.showPrimaryDoctorPhonePublic} tone="emerald" onChange={(v) => onChange("showPrimaryDoctorPhonePublic", v)} />
       </div>
     </div>
   );
@@ -907,31 +1009,24 @@ function ModuleActivation({ label, checked, onChange }: { label: string; checked
   return (
     <label
       htmlFor={id}
-      className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-full border px-3 py-2 shadow-sm transition-colors ${
+      className={`flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-full border px-2.5 py-1.5 shadow-sm transition-colors ${
         checked
           ? "border-emerald-300 bg-emerald-600 text-white shadow-emerald-500/20"
           : "border-slate-200 bg-white text-slate-700"
       }`}
     >
-      <span className="text-[10px] font-black uppercase tracking-[.09em]">{checked ? "Activado" : "Activar"}</span>
-      <span className={`relative h-6 w-11 rounded-full transition-colors ${checked ? "bg-white/25" : "bg-slate-200"}`}>
+      <span className="text-[9px] font-black uppercase tracking-[.08em]">{checked ? "Activado" : "Activar"}</span>
+      <span className={`relative h-5 w-9 rounded-full transition-colors ${checked ? "bg-white/25" : "bg-slate-200"}`}>
         <motion.span
           aria-hidden="true"
-          animate={{ x: checked ? 21 : 3 }}
+          animate={{ x: checked ? 17 : 3 }}
           transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 32 }}
-          className={`absolute top-1 h-4 w-4 rounded-full shadow-[0_3px_10px_rgba(15,23,42,.22)] ${
+          className={`absolute top-1 h-3 w-3 rounded-full shadow-[0_3px_10px_rgba(15,23,42,.22)] ${
             checked ? "bg-white" : "bg-slate-500"
           }`}
         />
       </span>
-      <input
-        id={id}
-        type="checkbox"
-        className="sr-only"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        aria-label={label}
-      />
+      <input id={id} type="checkbox" className="sr-only" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-label={label} />
     </label>
   );
 }
@@ -940,27 +1035,15 @@ function BinaryChoice({ label, checked, onChange }: { label: string; checked: bo
   const groupId = React.useId();
 
   return (
-    <div className="flex min-h-12 flex-col gap-2 rounded-[1rem] border border-slate-200 bg-white p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-      <span id={groupId} className="px-1 text-xs font-bold leading-5 text-slate-700">{label}</span>
-      <div role="group" aria-labelledby={groupId} className="grid shrink-0 grid-cols-2 rounded-full bg-slate-100 p-1 shadow-inner">
-        <button
-          type="button"
-          aria-pressed={!checked}
-          onClick={() => onChange(false)}
-          className={`min-w-14 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] transition-all duration-200 ${
-            !checked ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
+    <div className="flex min-h-10 flex-col gap-1.5 rounded-[.9rem] border border-slate-200 bg-white/85 p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+      <span id={groupId} className="px-0.5 text-[11px] font-bold leading-4 text-slate-700">{label}</span>
+      <div role="group" aria-labelledby={groupId} className="grid shrink-0 grid-cols-2 rounded-full bg-slate-100 p-0.5 shadow-inner">
+        <button type="button" aria-pressed={!checked} onClick={() => onChange(false)}
+          className={`min-w-12 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${!checked ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
           No
         </button>
-        <button
-          type="button"
-          aria-pressed={checked}
-          onClick={() => onChange(true)}
-          className={`min-w-14 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] transition-all duration-200 ${
-            checked ? "bg-slate-950 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
+        <button type="button" aria-pressed={checked} onClick={() => onChange(true)}
+          className={`min-w-12 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${checked ? "bg-slate-950 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
           Sí
         </button>
       </div>
@@ -968,35 +1051,44 @@ function BinaryChoice({ label, checked, onChange }: { label: string; checked: bo
   );
 }
 
-function VisibilityChoice({ label, isPublic, onChange }: { label: string; isPublic: boolean; onChange: (value: boolean) => void }) {
+type VisibilityTone = "slate" | "emerald" | "amber" | "violet" | "teal" | "sky";
+
+function VisibilityChoice({
+  label,
+  isPublic,
+  onChange,
+  tone = "slate",
+}: {
+  label: string;
+  isPublic: boolean;
+  onChange: (value: boolean) => void;
+  tone?: VisibilityTone;
+}) {
   const groupId = React.useId();
+  const palette: Record<VisibilityTone, { shell: string; track: string; active: string }> = {
+    slate: { shell: "border-slate-300 bg-slate-100/85", track: "bg-slate-200/80", active: "bg-slate-800 text-white" },
+    emerald: { shell: "border-emerald-200 bg-emerald-50/80", track: "bg-emerald-100/80", active: "bg-emerald-600 text-white" },
+    amber: { shell: "border-amber-200 bg-amber-50/80", track: "bg-amber-100/80", active: "bg-amber-600 text-white" },
+    violet: { shell: "border-violet-200 bg-violet-50/80", track: "bg-violet-100/80", active: "bg-violet-600 text-white" },
+    teal: { shell: "border-teal-200 bg-teal-50/80", track: "bg-teal-100/80", active: "bg-teal-600 text-white" },
+    sky: { shell: "border-sky-200 bg-sky-50/80", track: "bg-sky-100/80", active: "bg-sky-600 text-white" },
+  };
+  const colors = palette[tone];
 
   return (
-    <div className="flex min-h-12 flex-col gap-2 rounded-[1rem] border border-slate-200 bg-white p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-      <div className="min-w-0 px-1">
-        <span id={groupId} className="block text-xs font-bold leading-5 text-slate-800">{label}</span>
-        <span className="block text-[10px] font-semibold text-slate-400">{isPublic ? "Visible en la ficha pública" : "Solo queda en tu perfil"}</span>
+    <div className={`flex min-h-10 flex-col gap-1.5 rounded-[.9rem] border p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2 ${colors.shell}`}>
+      <div className="min-w-0 px-0.5">
+        <span id={groupId} className="block text-[11px] font-bold leading-4 text-slate-800">{label}</span>
+        <span className="block text-[9px] font-semibold leading-4 text-slate-500">{isPublic ? "Visible en ficha pública" : "Solo en tu perfil"}</span>
       </div>
-      <div role="group" aria-labelledby={groupId} className="grid shrink-0 grid-cols-2 rounded-full bg-slate-100 p-1 shadow-inner">
-        <button
-          type="button"
-          aria-pressed={!isPublic}
-          onClick={() => onChange(false)}
-          className={`inline-flex min-w-[5.8rem] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${
-            !isPublic ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
-          <EyeOff className="h-3.5 w-3.5" /> Privado
+      <div role="group" aria-labelledby={groupId} className={`grid shrink-0 grid-cols-2 rounded-full p-0.5 shadow-inner ${colors.track}`}>
+        <button type="button" aria-pressed={!isPublic} onClick={() => onChange(false)}
+          className={`inline-flex min-w-[4.8rem] items-center justify-center gap-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-[.06em] transition-all duration-200 ${!isPublic ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+          <EyeOff className="h-3 w-3" /> Privado
         </button>
-        <button
-          type="button"
-          aria-pressed={isPublic}
-          onClick={() => onChange(true)}
-          className={`inline-flex min-w-[5.8rem] items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[.07em] transition-all duration-200 ${
-            isPublic ? "bg-[#DA1A21] text-white shadow-[0_8px_18px_-12px_rgba(218,26,33,.8)]" : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
-          <Eye className="h-3.5 w-3.5" /> Público
+        <button type="button" aria-pressed={isPublic} onClick={() => onChange(true)}
+          className={`inline-flex min-w-[4.8rem] items-center justify-center gap-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-[.06em] transition-all duration-200 ${isPublic ? colors.active : "text-slate-500 hover:text-slate-700"}`}>
+          <Eye className="h-3 w-3" /> Público
         </button>
       </div>
     </div>

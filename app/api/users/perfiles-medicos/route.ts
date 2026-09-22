@@ -127,6 +127,12 @@ export async function POST(req: NextRequest) {
         return ApiResponse.error("Completa el nombre y la especie de la mascota", { status: 400 });
       }
     }
+    if (safeBody.safeReturnModuleEnabled) {
+      const safeReturnItem = safeBody.safeReturnModuleData;
+      if (!safeReturnItem?.itemName?.trim() || !safeReturnItem?.ownerPhone?.trim()) {
+        return ApiResponse.error("Completa el nombre del objeto y un teléfono de contacto", { status: 400 });
+      }
+    }
     const { 
       firstName, lastName, displayNamePublic, birthDate: rawBirthDate, sex, bloodType, phone,
       allergies, chronicConditions, medications, additionalNotes,
@@ -169,6 +175,8 @@ export async function POST(req: NextRequest) {
       petModuleData,
       workModuleEnabled,
       workModuleData,
+      safeReturnModuleEnabled,
+      safeReturnModuleData,
     } = safeBody;
 
     if (!firstName || !lastName) {
@@ -233,6 +241,8 @@ export async function POST(req: NextRequest) {
       petModuleData: petModuleData ? JSON.stringify(petModuleData) : undefined,
       workModuleEnabled: workModuleEnabled ?? undefined,
       workModuleData: workModuleData ? JSON.stringify(workModuleData) : undefined,
+      safeReturnModuleEnabled: safeReturnModuleEnabled ?? undefined,
+      safeReturnModuleData: safeReturnModuleData ? JSON.stringify(safeReturnModuleData) : undefined,
     });
 
     // Record audit log

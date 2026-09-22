@@ -8,7 +8,7 @@ import {
   Plus, Pencil, Trash2, Loader2, Save, X, ChevronLeft,
   UserRound, Phone, AlertCircle,
   ShieldCheck, Activity, PlusCircle, Smartphone, ExternalLink,
-  Brain, Footprints, MessageCircle, Cat,
+  Brain, Footprints, MessageCircle, Cat, KeyRound,
 } from "lucide-react";
 import { Camera } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
@@ -83,6 +83,8 @@ interface FamilyProfile {
   petModuleData?: string | null;
   workModuleEnabled?: boolean;
   workModuleData?: string | null;
+  safeReturnModuleEnabled?: boolean;
+  safeReturnModuleData?: string | null;
   safeReturnLocationName?: string | null;
   safeReturnAddress?: string | null;
   safeReturnLat?: number | null;
@@ -250,6 +252,27 @@ export default function FamiliaPage() {
       };
     }
 
+    if (form.safeReturnModuleEnabled) {
+      const itemName = form.safeReturnModuleData?.itemName?.trim() || "Objeto";
+      const ownerName = form.safeReturnModuleData?.ownerName?.trim() || "Propietario";
+      const internalFirstName = form.firstName?.trim() || (itemName.length >= 2 ? itemName : "Objeto");
+      const internalLastName = form.lastName?.trim() || (ownerName.length >= 2 ? ownerName : "Encontrado");
+      return {
+        ...form,
+        firstName: internalFirstName,
+        lastName: internalLastName,
+        displayNamePublic: itemName,
+        sex: null,
+        birthDate: null,
+        bloodType: "Pendiente",
+        allergies: "",
+        chronicConditions: "",
+        medications: "",
+        additionalNotes: "",
+        showAdditionalNotesPublic: false,
+      };
+    }
+
     return {
       ...form,
       sex: form.sex || null,
@@ -319,7 +342,7 @@ export default function FamiliaPage() {
       if (res.ok) {
         setShowAdd(false);
         setAddForm({ ...emptyForm });
-        toast.success(addForm.petModuleEnabled ? "Ficha de mascota creada" : "Perfil médico creado con éxito");
+        toast.success(addForm.petModuleEnabled ? "Ficha de mascota creada" : addForm.safeReturnModuleEnabled ? "Perfil de retorno seguro creado" : "Perfil médico creado con éxito");
         loadProfiles();
       } else {
         const data = await res.json();
@@ -808,15 +831,21 @@ function ProfileCard({
 }: ProfileCardProps) {
   const petContext = hydrateProfileContextModules(profile as unknown as Record<string, unknown>);
   const isPetProfile = profile.petModuleEnabled === true;
+  const isSafeReturnProfile = profile.safeReturnModuleEnabled === true;
   const petData = petContext.petModuleData;
+  const safeReturnData = petContext.safeReturnModuleData;
   const cardName = isPetProfile
     ? (petData.petName || profile.displayNamePublic || "Mascota")
-    : `${profile.firstName || "Sin nombre"} ${profile.lastName || ""}`.trim();
+    : isSafeReturnProfile
+      ? (safeReturnData.itemName || profile.displayNamePublic || "Retorno seguro")
+      : `${profile.firstName || "Sin nombre"} ${profile.lastName || ""}`.trim();
   const initials = isPetProfile
     ? (petData.petName?.slice(0, 2).toUpperCase() || "🐾")
-    : profile.firstName && profile.lastName
-      ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
-      : (isOwn ? "TÚ" : "??");
+    : isSafeReturnProfile
+      ? "↩"
+      : profile.firstName && profile.lastName
+        ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
+        : (isOwn ? "TÚ" : "??");
 
   const [uploading, setUploading] = useState(false);
 
@@ -896,7 +925,7 @@ function ProfileCard({
             <input type="file" id={`profile-photo-input-${profile.id}`} className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
             <div className="min-w-0">
               <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
-                 {isPetProfile ? 'Ficha de mascota' : isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
+                 {isPetProfile ? 'Ficha de mascota' : isSafeReturnProfile ? 'Retorno seguro' : isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
               </span>
               <p className="mt-1.5 text-[10px] font-semibold text-slate-400">Toca la foto para cambiarla</p>
             </div>
@@ -910,7 +939,7 @@ function ProfileCard({
                     <h3 className="text-[1.65rem] font-black leading-tight tracking-[-0.035em] text-slate-950 sm:text-2xl md:text-3xl">
                       {cardName}
                     </h3>
-                    {!isPetProfile && profile.displayNamePublic && (
+                    {!isPetProfile && !isSafeReturnProfile && profile.displayNamePublic && (
                       <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-600">
                         Alias: {profile.displayNamePublic}
                       </span>
@@ -921,11 +950,21 @@ function ProfileCard({
                         {petData.breed && <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">{petData.breed}</span>}
                       </div>
                     )}
+                    {isSafeReturnProfile && (
+                      <div className="flex flex-wrap gap-2">
+                        {safeReturnData.area && <span className="inline-flex w-fit rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-sky-700">{safeReturnData.area}</span>}
+                        <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">Objeto identificable</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {isPetProfile ? (
                       <div className="px-3 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-[11px] font-black text-teal-700 uppercase flex items-center gap-2">
                         <Cat className="h-3.5 w-3.5" /> {petData.color || "Ficha de mascota"}
+                      </div>
+                    ) : isSafeReturnProfile ? (
+                      <div className="px-3 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-[11px] font-black text-sky-700 uppercase flex items-center gap-2">
+                        <KeyRound className="h-3.5 w-3.5" /> Retorno seguro
                       </div>
                     ) : (
                       <div className="px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-black text-slate-700 uppercase flex items-center gap-2">
@@ -978,6 +1017,9 @@ function ProfileCard({
                     {profile.workModuleEnabled && (
                       <span className="rounded-full border border-slate-300 bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-700">Laboral activo</span>
                     )}
+                    {profile.safeReturnModuleEnabled && (
+                      <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-sky-700">Retorno seguro</span>
+                    )}
                   </div>
                </div>
 
@@ -1023,24 +1065,45 @@ function ProfileCard({
                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-               <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5">
+            {isSafeReturnProfile ? (
+              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+                <div className="rounded-[1rem] border border-sky-100 bg-sky-50/60 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-sky-700">Propietario</p>
+                  <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{safeReturnData.ownerName || "No indicado"}</p>
+                </div>
+                <div className="rounded-[1rem] border border-emerald-100 bg-emerald-50/55 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Contacto</p>
+                  <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{safeReturnData.ownerPhone || "No indicado"}</p>
+                </div>
+                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Área</p>
+                  <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{safeReturnData.area || "No indicada"}</p>
+                </div>
+                <div className="rounded-[1rem] border border-blue-100 bg-blue-50/55 p-3.5">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Devolución</p>
+                  <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{safeReturnData.returnInstructions || "Contactar al propietario"}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5">
                   <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Teléfono</p>
                   <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">{profile.phone || "No indicado"}</p>
-               </div>
-               <div className="rounded-[1rem] border border-red-100 bg-red-50/55 p-3.5">
+                </div>
+                <div className="rounded-[1rem] border border-red-100 bg-red-50/55 p-3.5">
                   <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-red-600">Alergias</p>
                   <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{profile.allergies || "No indicado"}</p>
-               </div>
-               <div className="rounded-[1rem] border border-amber-100 bg-amber-50/55 p-3.5">
+                </div>
+                <div className="rounded-[1rem] border border-amber-100 bg-amber-50/55 p-3.5">
                   <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-700">Condiciones</p>
                   <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{profile.chronicConditions || "No indicado"}</p>
-               </div>
-               <div className="rounded-[1rem] border border-blue-100 bg-blue-50/55 p-3.5">
+                </div>
+                <div className="rounded-[1rem] border border-blue-100 bg-blue-50/55 p-3.5">
                   <p className="mb-1 text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Medicamentos</p>
                   <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-800 sm:text-sm">{profile.medications || "No indicado"}</p>
-               </div>
-            </div>
+                </div>
+              </div>
+            )}
          </div>
       </div>
 

@@ -500,6 +500,14 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
         supervisorPhone: '+50761111111',
         safetyNotes: 'Usa casco en planta.',
       },
+      safeReturnModuleEnabled: true,
+      safeReturnModuleData: {
+        itemName: 'Llaves del carro',
+        ownerName: 'Gean',
+        ownerPhone: '+50760001111',
+        area: 'Colón',
+        returnInstructions: 'Llamar antes de coordinar la entrega.',
+      },
     })
 
     const res = await PATCH(req, routeParams())
@@ -510,8 +518,10 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
       expect.objectContaining({
         minorModuleEnabled: true,
         workModuleEnabled: true,
+        safeReturnModuleEnabled: true,
         minorModuleData: expect.any(String),
         workModuleData: expect.any(String),
+        safeReturnModuleData: expect.any(String),
       })
     )
 
@@ -521,6 +531,9 @@ describe('GET/PATCH/DELETE /api/users/perfiles-medicos/[profileId]', () => {
     )
     expect(JSON.parse(String(payload.workModuleData))).toEqual(
       expect.objectContaining({ employerName: 'Empresa Demo', role: 'Operador' })
+    )
+    expect(JSON.parse(String(payload.safeReturnModuleData))).toEqual(
+      expect.objectContaining({ itemName: 'Llaves del carro', ownerPhone: '+50760001111' })
     )
   })
 

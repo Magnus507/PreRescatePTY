@@ -76,6 +76,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Completa el nombre y la especie de la mascota" }, { status: 400 });
     }
   }
+  if (safeBody.safeReturnModuleEnabled) {
+    const safeReturnItem = safeBody.safeReturnModuleData;
+    if (!safeReturnItem?.itemName?.trim() || !safeReturnItem?.ownerPhone?.trim()) {
+      return NextResponse.json({ error: "Completa el nombre del objeto y un teléfono de contacto" }, { status: 400 });
+    }
+  }
   const {
     firstName,
     lastName,
@@ -128,6 +134,8 @@ export async function PATCH(
     petModuleData,
     workModuleEnabled,
     workModuleData,
+    safeReturnModuleEnabled,
+    safeReturnModuleData,
   } = safeBody;
 
   const birthDate = rawBirthDate ? new Date(rawBirthDate) : undefined;
@@ -184,6 +192,8 @@ export async function PATCH(
     ...(petModuleData !== undefined && { petModuleData: JSON.stringify(petModuleData ?? {}) }),
     ...(workModuleEnabled !== undefined && { workModuleEnabled }),
     ...(workModuleData !== undefined && { workModuleData: JSON.stringify(workModuleData ?? {}) }),
+    ...(safeReturnModuleEnabled !== undefined && { safeReturnModuleEnabled }),
+    ...(safeReturnModuleData !== undefined && { safeReturnModuleData: JSON.stringify(safeReturnModuleData ?? {}) }),
   });
 
   await AccountStateService.invalidateCache(userId);
