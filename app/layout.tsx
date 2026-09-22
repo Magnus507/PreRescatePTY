@@ -30,13 +30,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.prerescatepty.com"),
   title: {
-    default: "PreRescue ID — Identificación Médica de Emergencia con QR y NFC",
+    default: "PreRescue ID — Identificación de Emergencia y Retorno Seguro",
     template: "%s | PreRescue ID",
   },
   description:
-    "Identificación médica de emergencia con QR y NFC. Consulta información autorizada sin instalar una aplicación. Pago único y servicio digital sin vencimiento por tiempo.",
+    "Identificadores con QR y NFC para perfiles de emergencia, mascotas y retorno seguro. Pago único y servicio digital sin vencimiento por tiempo.",
   keywords: [
-    "identificación médica", "emergencia", "NFC", "QR", "Panamá",
+    "identificación de emergencia", "retorno seguro", "mascotas", "NFC", "QR", "Panamá",
     "perfil médico", "alergias", "tipo de sangre", "seguridad",
   ],
   icons: {
@@ -44,9 +44,9 @@ export const metadata: Metadata = {
     apple: "/logo.png",
   },
   openGraph: {
-    title: "PreRescue ID — Identificación Médica de Emergencia con QR y NFC",
+    title: "PreRescue ID — Identificación de Emergencia y Retorno Seguro",
     description:
-      "Identificación médica de emergencia con QR y NFC. Consulta información autorizada sin instalar una aplicación.",
+      "Identificadores con QR y NFC para perfiles de emergencia, mascotas y retorno seguro, sin instalar una aplicación.",
     type: "website",
     locale: "es_PA",
     siteName: "PreRescue ID",
@@ -56,15 +56,15 @@ export const metadata: Metadata = {
         url: "/og/pre-rescue-social-card.png",
         width: 1200,
         height: 630,
-        alt: "PreRescue ID — Identificación médica con QR y NFC",
+        alt: "PreRescue ID — Identificación de emergencia y retorno seguro",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "PreRescue ID — Identificación Médica de Emergencia con QR y NFC",
+    title: "PreRescue ID — Identificación de Emergencia y Retorno Seguro",
     description:
-      "Identificación médica de emergencia con QR y NFC. Sin aplicación. Sin batería.",
+      "Identificación de emergencia y retorno seguro con QR y NFC. Sin aplicación.",
     images: ["/og/pre-rescue-social-card.png"],
   },
 };
