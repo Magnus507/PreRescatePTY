@@ -25,26 +25,11 @@ export default function PageHero({
 
   return (
     <section className="emergency-canvas relative isolate overflow-hidden bg-[#020307] pb-14 pt-28 text-white sm:pb-20 sm:pt-32 md:pb-28 md:pt-40">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-20"
-        style={{
-          background:
-            "radial-gradient(58% 60% at 50% 4%, rgba(37,99,235,.18), transparent 62%), radial-gradient(34% 52% at 15% 70%, rgba(6,182,212,.08), transparent 67%), radial-gradient(28% 42% at 86% 78%, rgba(218,26,33,.08), transparent 68%)",
-        }}
-      />
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-20 opacity-[0.10] sm:opacity-[0.14]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px)",
-          backgroundSize: "68px 68px",
-          maskImage: "linear-gradient(to bottom, black, transparent 84%)",
-        }}
-      />
-      <div aria-hidden="true" className="absolute inset-x-0 top-0 -z-10 h-32 bg-gradient-to-b from-[#02050a] to-transparent sm:h-44" />
-      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-t from-[#02050a] to-transparent sm:h-44" />
+      <div aria-hidden="true" className="emergency-grid absolute inset-0 -z-20 opacity-75" />
+      <div aria-hidden="true" className="absolute inset-0 -z-20 bg-[radial-gradient(42%_55%_at_50%_0%,rgba(218,26,33,.14),transparent_65%),radial-gradient(35%_48%_at_88%_74%,rgba(37,99,235,.12),transparent_72%)]" />
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 -z-10 h-32 bg-gradient-to-b from-[#020307] to-transparent sm:h-44" />
+      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-t from-[#020307] to-transparent sm:h-44" />
+      <div aria-hidden="true" className="absolute left-1/2 top-[58%] -z-10 hidden h-px w-[86%] -translate-x-1/2 bg-gradient-to-r from-transparent via-rose-400/25 to-transparent shadow-[0_0_22px_rgba(239,45,53,.35)] md:block" />
 
       <motion.div
         aria-hidden="true"
