@@ -4,14 +4,9 @@ import PublicFooter from "@/components/public/PublicFooter";
 import MobileStickyCTA from "@/components/public/MobileStickyCTA";
 import HeroSection from "@/components/public/sections/HeroSection";
 import BenefitMarquee from "@/components/public/sections/BenefitMarquee";
-import WhatIsSection from "@/components/public/sections/WhatIsSection";
-import HowItWorksSection from "@/components/public/sections/HowItWorksSection";
-import WhoIsForSection from "@/components/public/sections/WhoIsForSection";
-import EmergencyShowcase from "@/components/public/sections/EmergencyShowcase";
-import PrivacySection from "@/components/public/sections/PrivacySection";
 import PlansPreview from "@/components/public/sections/PlansPreview";
-import FAQPreview from "@/components/public/sections/FAQPreview";
-import FinalCTA from "@/components/public/sections/FinalCTA";
+import CommunityBand from "@/components/public/sections/CommunityBand";
+import EmergencyTimeline from "@/components/ui/emergency-timeline";
 
 export const metadata: Metadata = {
   title: {
@@ -46,19 +41,14 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="min-h-screen font-sans antialiased">
+    <div className="min-h-screen bg-[#fbfcff] font-sans antialiased">
       <PublicNavbar />
       <main id="main-content">
         <HeroSection />
         <BenefitMarquee />
-        <WhatIsSection />
-        <HowItWorksSection />
-        <WhoIsForSection />
-        <EmergencyShowcase />
-        <PrivacySection />
+        <EmergencyTimeline />
         <PlansPreview />
-        <FAQPreview />
-        <FinalCTA />
+        <CommunityBand />
       </main>
       <PublicFooter />
       <MobileStickyCTA />
