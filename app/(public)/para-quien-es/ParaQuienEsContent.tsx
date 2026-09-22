@@ -95,8 +95,8 @@ const audiences = [
     icon: Bike,
     title: "Personas en movimiento",
     desc: "Tu perfil puede consultarse desde cualquier lugar con acceso a internet. El identificador físico no necesita una aplicación instalada.",
-    cta: "Probar el demo",
-    href: "/demo",
+    cta: "Conocer cómo funciona",
+    href: "/como-funciona",
     note: "El dispositivo que realiza el escaneo necesita conexión a internet para cargar el perfil.",
     glow: "orange" as const,
   },
@@ -119,7 +119,7 @@ export default function ParaQuienEsContent() {
           titleAccent="familias y mascotas."
           description="PreRescue ID permite adaptar la experiencia a perfiles médicos, retorno seguro y mascotas. La información visible depende del tipo de perfil y su configuración."
           primaryCTA={{ href: "/comprar", label: "Ver productos" }}
-          secondaryCTA={{ href: "/demo", label: "Cómo funciona" }}
+          secondaryCTA={{ href: "/como-funciona", label: "Cómo funciona" }}
         />
 
         <section className="sticky top-14 z-30 border-y border-white/[0.055] bg-[#03060c]/92 py-2.5 backdrop-blur-xl sm:top-16 sm:py-4 sm:backdrop-blur-2xl md:top-20">
@@ -259,7 +259,7 @@ export default function ParaQuienEsContent() {
                   Ver productos <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Link>
                 <Link href="/como-funciona" className="inline-flex min-h-[52px] touch-manipulation items-center justify-center rounded-2xl border border-white/[0.1] bg-white/[0.045] px-6 text-sm font-bold text-slate-100 transition-all active:bg-white/[0.08] sm:min-h-14 sm:px-7 sm:hover:border-sky-300/25 sm:hover:bg-white/[0.08]">
-                  Ver demo
+                  Cómo funciona
                 </Link>
               </div>
             </div>
