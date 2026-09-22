@@ -155,7 +155,7 @@ const OPTIONAL_TABS: Array<{
     id: "safeReturn",
     label: "Retorno seguro",
     shortLabel: "Retorno",
-    description: "Convierte este perfil en una ficha para devolver un objeto encontrado a su propietario.",
+    description: "Objeto, contacto y devolución.",
     icon: KeyRound,
     tone: "sky",
   },
@@ -468,18 +468,9 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
 
           {isSafeReturnProfile && (
             <div className="space-y-3">
-              <div className="rounded-[1.15rem] border border-sky-200 bg-sky-50/70 p-3 sm:p-3.5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[.9rem] bg-sky-600 text-white">
-                    <KeyRound className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-700">Perfil convertido a retorno seguro</p>
-                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
-                      La ficha pública mostrará únicamente la información necesaria para identificar y devolver el objeto.
-                    </p>
-                  </div>
-                </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-sky-700">
+                <KeyRound className="h-4 w-4" />
+                Retorno seguro activo
               </div>
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <Field
@@ -785,7 +776,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
         <span>{isPetProfile
           ? "Los contactos se administran desde la tarjeta del perfil y también aparecen en la ficha pública de la mascota para facilitar su devolución."
           : isSafeReturnProfile
-            ? "El teléfono configurado en Retorno seguro será el contacto principal visible para devolver el objeto."
+            ? "Configura aquí el contacto que verá quien encuentre el objeto."
             : "Los contactos de emergencia se administran desde la tarjeta del perfil. Los módulos opcionales complementan la ficha médica."
         }</span>
       </div>
