@@ -452,9 +452,47 @@ describe('POST /api/users/perfiles-medicos', () => {
     expect(json.profile.firstName).toBe('New')
   })
 
+  it('8. POST persists a safe-return profile payload', async () => {
+    authorizeAsUser()
+    setupPostMocks()
+
+    const req = createPostRequest({
+      firstName: 'Llaves',
+      lastName: 'Objeto',
+      bloodType: 'Pendiente',
+      safeReturnModuleEnabled: true,
+      safeReturnModuleData: {
+        itemName: 'Llaves del carro',
+        itemDescription: 'Llavero negro',
+        ownerName: 'Gean',
+        ownerPhone: '+50760001111',
+        area: 'Colón',
+        returnInstructions: 'Contactar antes de entregar.',
+      },
+    })
+    const res = await POST(req)
+
+    expect(res.status).toBe(201)
+    expect(mockProfileCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        safeReturnModuleEnabled: true,
+        safeReturnModuleData: expect.any(String),
+      })
+    )
+
+    const payload = mockProfileCreate.mock.calls.at(-1)?.[0] as Record<string, unknown>
+    expect(JSON.parse(String(payload.safeReturnModuleData))).toEqual(
+      expect.objectContaining({
+        itemName: 'Llaves del carro',
+        ownerPhone: '+50760001111',
+        returnInstructions: 'Contactar antes de entregar.',
+      })
+    )
+  })
+
   // ─── Audit log ──────────────────────────────────────────────────────────
 
-  it('8. POST creates an audit log with the expected action and target identifiers', async () => {
+  it('9. POST creates an audit log with the expected action and target identifiers', async () => {
     authorizeAsUser()
     setupPostMocks()
 
@@ -474,7 +512,7 @@ describe('POST /api/users/perfiles-medicos', () => {
 
   // ─── Cache invalidation ─────────────────────────────────────────────────
 
-  it('9. POST does not invalidate account-state cache (route does not call it)', async () => {
+  it('10. POST does not invalidate account-state cache (route does not call it)', async () => {
     authorizeAsUser()
     setupPostMocks()
 
