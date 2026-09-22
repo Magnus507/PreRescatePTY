@@ -144,7 +144,7 @@ export default function HeroSection() {
           <div className="emergency-product-frame relative overflow-hidden rounded-[1.55rem] border border-white/[0.13] bg-[#06080d] p-2 shadow-[0_42px_130px_-55px_rgba(0,0,0,.98)] sm:rounded-[2.2rem] sm:p-3">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[1.15rem] border border-white/[0.07] bg-[#080b12] sm:rounded-[1.75rem]">
               <Image
-                src="/media/sticker-emergency.avif"
+                src="/media/sticker-emergency.webp"
                 alt="Sticker PreRescue ID de emergencia con QR y NFC"
                 fill
                 priority
