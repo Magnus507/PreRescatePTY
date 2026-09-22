@@ -53,6 +53,17 @@ export type WorkModuleData = {
   safetyNotes: string;
 };
 
+export type SafeReturnModuleData = {
+  itemName: string;
+  itemDescription: string;
+  ownerName: string;
+  ownerPhone: string;
+  alternateContactName: string;
+  alternateContactPhone: string;
+  area: string;
+  returnInstructions: string;
+};
+
 export type ProfileContextModules = {
   minorModuleEnabled: boolean;
   minorModuleData: MinorModuleData;
@@ -64,6 +75,8 @@ export type ProfileContextModules = {
   petModuleData: PetModuleData;
   workModuleEnabled: boolean;
   workModuleData: WorkModuleData;
+  safeReturnModuleEnabled: boolean;
+  safeReturnModuleData: SafeReturnModuleData;
 };
 
 export const EMPTY_MINOR_MODULE: MinorModuleData = {
@@ -121,6 +134,17 @@ export const EMPTY_WORK_MODULE: WorkModuleData = {
   safetyNotes: "",
 };
 
+export const EMPTY_SAFE_RETURN_MODULE: SafeReturnModuleData = {
+  itemName: "",
+  itemDescription: "",
+  ownerName: "",
+  ownerPhone: "",
+  alternateContactName: "",
+  alternateContactPhone: "",
+  area: "",
+  returnInstructions: "",
+};
+
 export const EMPTY_PROFILE_CONTEXT_MODULES: ProfileContextModules = {
   minorModuleEnabled: false,
   minorModuleData: { ...EMPTY_MINOR_MODULE },
@@ -132,6 +156,8 @@ export const EMPTY_PROFILE_CONTEXT_MODULES: ProfileContextModules = {
   petModuleData: { ...EMPTY_PET_MODULE },
   workModuleEnabled: false,
   workModuleData: { ...EMPTY_WORK_MODULE },
+  safeReturnModuleEnabled: false,
+  safeReturnModuleData: { ...EMPTY_SAFE_RETURN_MODULE },
 };
 
 function parseObject<T extends Record<string, unknown>>(raw: unknown, fallback: T): T {
@@ -165,6 +191,8 @@ export function hydrateProfileContextModules(profile: Record<string, unknown>): 
     petModuleData: parseObject(profile.petModuleData, EMPTY_PET_MODULE),
     workModuleEnabled: profile.workModuleEnabled === true,
     workModuleData: parseObject(profile.workModuleData, EMPTY_WORK_MODULE),
+    safeReturnModuleEnabled: profile.safeReturnModuleEnabled === true,
+    safeReturnModuleData: parseObject(profile.safeReturnModuleData, EMPTY_SAFE_RETURN_MODULE),
   };
 }
 
