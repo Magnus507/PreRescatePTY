@@ -213,14 +213,8 @@ export default function ComprarContent() {
         </section>
 
         <section id="catalogo" className="relative scroll-mt-20 overflow-hidden bg-[#03060c] py-20 md:py-32">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(52% 56% at 50% 20%, rgba(37,99,235,.12), transparent 64%), radial-gradient(30% 42% at 86% 78%, rgba(218,26,33,.06), transparent 68%)",
-            }}
-          />
+          <div aria-hidden="true" className="emergency-grid absolute inset-0 opacity-45" />
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/45 to-transparent shadow-[0_0_30px_rgba(239,45,53,.35)]" />
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-14">
               <p className="mb-4 text-[9px] font-black uppercase tracking-[0.18em] text-rose-300/85 sm:text-[10px]">
