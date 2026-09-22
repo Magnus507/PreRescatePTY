@@ -4,115 +4,187 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 
-type FigureKind = "adult" | "elder" | "child" | "helper" | "pet";
+type WalkerKind = "man" | "woman" | "elder" | "medic" | "child" | "traveler" | "pet";
 
-const figures: Array<{ kind: FigureKind; shirt: string; pants: string; skin: string; delay: number }> = [
-  { kind: "adult", shirt: "#df2530", pants: "#173a69", skin: "#e7b38e", delay: 0 },
-  { kind: "elder", shirt: "#214f82", pants: "#162c49", skin: "#c88f68", delay: 0.2 },
-  { kind: "child", shirt: "#62b8e9", pants: "#2b4468", skin: "#efc39e", delay: 0.45 },
-  { kind: "helper", shirt: "#f16f67", pants: "#213d63", skin: "#b97b55", delay: 0.1 },
-  { kind: "adult", shirt: "#183c69", pants: "#10253f", skin: "#d39a73", delay: 0.35 },
-  { kind: "pet", shirt: "#c88752", pants: "#9f683e", skin: "#c88752", delay: 0.55 },
-  { kind: "child", shirt: "#ed3d46", pants: "#26446b", skin: "#9c6546", delay: 0.25 },
-  { kind: "adult", shirt: "#74b6df", pants: "#1b3558", skin: "#efc39e", delay: 0.65 },
+type Walker = {
+  kind: WalkerKind;
+  shirt: string;
+  pants: string;
+  skin: string;
+  accent: string;
+  delay: number;
+};
+
+const walkers: Walker[] = [
+  { kind: "man", shirt: "#2f73c8", pants: "#17365f", skin: "#e9b48f", accent: "#d92d37", delay: 0 },
+  { kind: "woman", shirt: "#f8fafc", pants: "#244a78", skin: "#d69a72", accent: "#d92d37", delay: 0.18 },
+  { kind: "elder", shirt: "#173b68", pants: "#b99b77", skin: "#efc29c", accent: "#5f89b5", delay: 0.34 },
+  { kind: "medic", shirt: "#df2e38", pants: "#17345a", skin: "#d9986d", accent: "#ffffff", delay: 0.09 },
+  { kind: "child", shirt: "#d92d37", pants: "#2c4e77", skin: "#efbd94", accent: "#2f73c8", delay: 0.48 },
+  { kind: "pet", shirt: "#d89b5f", pants: "#9f693f", skin: "#d89b5f", accent: "#d92d37", delay: 0.58 },
+  { kind: "traveler", shirt: "#f3f6fa", pants: "#1d3e68", skin: "#b87550", accent: "#153b67", delay: 0.28 },
+  { kind: "man", shirt: "#d9333d", pants: "#143256", skin: "#c7845c", accent: "#2f73c8", delay: 0.62 },
 ];
 
-function PersonFigure({
+function Backpack({ accent = "#173b68" }: { accent?: string }) {
+  return (
+    <g>
+      <path d="M21 77c-9 3-13 13-13 28v42c0 10 7 17 16 17h14V83c-5-5-10-7-17-6Z" fill={accent} opacity=".98" />
+      <path d="M18 91c8 2 15 8 19 16" fill="none" stroke="#0f2a49" strokeWidth="5" strokeLinecap="round" />
+      <path d="M12 120h20" stroke="#cf3340" strokeWidth="4" strokeLinecap="round" opacity=".95" />
+    </g>
+  );
+}
+
+function WalkerFigure({
   kind,
   shirt,
   pants,
   skin,
-}: {
-  kind: Exclude<FigureKind, "pet">;
-  shirt: string;
-  pants: string;
-  skin: string;
-}) {
-  const isChild = kind === "child";
-  const isElder = kind === "elder";
-  const isHelper = kind === "helper";
+  accent,
+}: Omit<Walker, "delay">) {
+  const child = kind === "child";
+  const elder = kind === "elder";
+  const woman = kind === "woman";
+  const medic = kind === "medic";
+  const traveler = kind === "traveler";
+
+  if (kind === "pet") return <PetFigure />;
 
   return (
-    <svg viewBox="0 0 110 190" className="h-full w-full overflow-visible">
-      <ellipse cx="55" cy="178" rx="34" ry="7" fill="#7f93a8" opacity=".18" />
-      <circle cx="55" cy={isChild ? 43 : 34} r={isChild ? 18 : 19} fill={skin} />
-      <path
-        d={isChild ? "M37 39c4-18 31-23 38-2-10-7-25-8-38 2Z" : "M36 29c3-20 34-26 40-3-9-6-26-7-40 3Z"}
-        fill={isElder ? "#f2f2f2" : "#182438"}
-      />
-      {isElder ? (
+    <svg viewBox="0 0 130 220" className="h-full w-full overflow-visible">
+      <ellipse cx="64" cy="207" rx="42" ry="6" fill="#5a7591" opacity=".16" />
+
+      <Backpack accent={traveler ? "#19385f" : kind === "man" ? "#173b68" : "#21496f"} />
+
+      {woman ? (
+        <path d="M48 29c-15 5-22 23-17 42 11 8 25 7 34 0-8-9-9-27 4-35-6-8-13-10-21-7Z" fill="#14263e" />
+      ) : (
+        <path
+          d={elder ? "M43 29c6-15 31-17 39-2-7-3-13-1-19 3-7-3-13-4-20-1Z" : "M42 27c5-16 32-18 42-2-10-5-18-2-25 2-5-2-11-2-17 0Z"}
+          fill={elder ? "#eef2f5" : "#14263e"}
+        />
+      )}
+
+      {woman ? <path d="M79 33c14 7 21 18 18 34-6-8-12-11-20-12Z" fill="#14263e" /> : null}
+      {child ? <path d="M38 24h46c0-10-7-18-22-18-14 0-22 7-24 18Z" fill="#2f73c8" /> : null}
+
+      <circle cx="64" cy={child ? 39 : 37} r={child ? 17 : 19} fill={skin} />
+      <circle cx="72" cy={child ? 37 : 35} r="1.9" fill="#172233" />
+      <path d="M77 44q6 3 11-1" fill="none" stroke="#8d5d42" strokeWidth="2" strokeLinecap="round" />
+
+      {elder ? (
         <>
-          <circle cx="49" cy="33" r="7" fill="none" stroke="#334155" strokeWidth="2" />
-          <circle cx="67" cy="33" r="7" fill="none" stroke="#334155" strokeWidth="2" />
-          <path d="M56 33h4" stroke="#334155" strokeWidth="2" />
+          <path d="M48 50c8 8 24 9 32 0-4 14-27 16-32 0Z" fill="#eef2f5" />
+          <circle cx="56" cy="37" r="7" fill="none" stroke="#38506b" strokeWidth="2" />
+          <circle cx="73" cy="37" r="7" fill="none" stroke="#38506b" strokeWidth="2" />
+          <path d="M63 37h3" stroke="#38506b" strokeWidth="2" />
         </>
       ) : null}
-      <rect
-        x={isChild ? 36 : 32}
-        y={isChild ? 63 : 56}
-        width={isChild ? 38 : 46}
-        height={isChild ? 54 : 70}
-        rx={isChild ? 16 : 20}
+
+      {woman ? <path d="M48 50q16 11 31 0" fill="none" stroke="#bb6f52" strokeWidth="1.5" strokeLinecap="round" /> : null}
+
+      <path
+        d={
+          child
+            ? "M43 59c13-8 31-7 42 2 8 17 9 39 3 61H39c-7-21-6-46 4-63Z"
+            : "M38 60c17-11 38-10 51 2 10 22 10 49 3 74H34c-8-25-6-54 4-76Z"
+        }
         fill={shirt}
       />
-      {isHelper ? (
-        <path d="M44 66h22v8H44zM51 59h8v22h-8z" fill="#fff" opacity=".92" />
+
+      {medic ? (
+        <>
+          <rect x="58" y="73" width="14" height="31" rx="3" fill="#fff" />
+          <rect x="50" y="81" width="30" height="14" rx="3" fill="#fff" />
+        </>
       ) : null}
-      <path
-        d={isChild ? "M39 78c-10 11-12 27-10 41" : "M34 73c-12 14-13 38-8 57"}
-        stroke={skin}
-        strokeWidth={isChild ? 8 : 10}
-        strokeLinecap="round"
-      />
-      <path
-        d={isChild ? "M72 79c9 12 11 27 8 40" : "M77 72c12 15 13 38 9 56"}
-        stroke={skin}
-        strokeWidth={isChild ? 8 : 10}
-        strokeLinecap="round"
-      />
-      <path
-        d={isChild ? "M45 116l-8 47" : "M44 122l-10 50"}
-        stroke={pants}
-        strokeWidth={isChild ? 13 : 15}
-        strokeLinecap="round"
-      />
-      <path
-        d={isChild ? "M64 116l10 47" : "M66 122l11 50"}
-        stroke={pants}
-        strokeWidth={isChild ? 13 : 15}
-        strokeLinecap="round"
-      />
-      <path d="M25 174h23M63 174h24" stroke="#10253f" strokeWidth="9" strokeLinecap="round" />
-      {isElder ? (
-        <path d="M89 97v72M85 169h10" stroke="#805c3e" strokeWidth="4" strokeLinecap="round" />
+
+      {woman ? (
+        <>
+          <path d="M44 63c8 5 15 7 24 7 9 0 16-2 21-7" fill="none" stroke="#d9e4ee" strokeWidth="6" strokeLinecap="round" />
+          <path d="M50 57v17M79 57v17" stroke="#d9e4ee" strokeWidth="4" strokeLinecap="round" />
+        </>
       ) : null}
+
+      {traveler ? (
+        <path d="M43 72h42" stroke="#c9d7e6" strokeWidth="5" strokeLinecap="round" />
+      ) : null}
+
+      <path
+        d={child ? "M43 76c-12 10-17 30-15 48" : "M39 78c-14 14-18 38-14 58"}
+        fill="none"
+        stroke={skin}
+        strokeWidth={child ? 8 : 10}
+        strokeLinecap="round"
+      />
+      <path
+        d={child ? "M84 78c9 12 14 27 14 43" : "M88 79c13 12 19 31 18 48"}
+        fill="none"
+        stroke={skin}
+        strokeWidth={child ? 8 : 10}
+        strokeLinecap="round"
+      />
+
+      <path
+        d={child ? "M47 119 34 177" : "M48 133 31 190"}
+        fill="none"
+        stroke={pants}
+        strokeWidth={child ? 13 : 16}
+        strokeLinecap="round"
+      />
+      <path
+        d={child ? "M79 119 96 170" : "M78 133 103 182"}
+        fill="none"
+        stroke={pants}
+        strokeWidth={child ? 13 : 16}
+        strokeLinecap="round"
+      />
+
+      <path d={child ? "M23 183h29" : "M18 197h35"} stroke="#10253f" strokeWidth="10" strokeLinecap="round" />
+      <path d={child ? "M88 177h28" : "M96 188h27"} stroke="#10253f" strokeWidth="10" strokeLinecap="round" />
+
+      {elder ? (
+        <>
+          <path d="M106 116v83" stroke="#8a684d" strokeWidth="4" strokeLinecap="round" />
+          <path d="M101 199h10" stroke="#8a684d" strokeWidth="4" strokeLinecap="round" />
+        </>
+      ) : null}
+
+      {child ? (
+        <path d="M52 12c12 2 23 1 33 7" fill="none" stroke="#2f73c8" strokeWidth="4" strokeLinecap="round" />
+      ) : null}
+
+      <path d="M36 84c6 4 12 6 18 7" fill="none" stroke={accent} strokeWidth="4" strokeLinecap="round" opacity=".85" />
     </svg>
   );
 }
 
 function PetFigure() {
   return (
-    <svg viewBox="0 0 140 115" className="h-full w-full overflow-visible">
-      <ellipse cx="68" cy="105" rx="42" ry="6" fill="#7f93a8" opacity=".18" />
-      <ellipse cx="66" cy="65" rx="38" ry="26" fill="#d99b63" />
-      <circle cx="105" cy="49" r="21" fill="#c88752" />
-      <path d="m91 33-8-19 20 12ZM114 32l17-17-2 24Z" fill="#9f683e" />
-      <circle cx="112" cy="48" r="3" fill="#101828" />
-      <path d="M119 56q8 4 12-1" fill="none" stroke="#101828" strokeWidth="3" strokeLinecap="round" />
-      <path d="M41 82v24M65 84v21M91 81v24" stroke="#9f683e" strokeWidth="9" strokeLinecap="round" />
-      <path d="M29 61Q10 49 14 31" fill="none" stroke="#9f683e" strokeWidth="8" strokeLinecap="round" />
-      <rect x="91" y="62" width="27" height="7" rx="3.5" fill="#df2530" />
-      <circle cx="104" cy="69" r="5" fill="#f6c84d" />
+    <svg viewBox="0 0 170 130" className="h-full w-full overflow-visible">
+      <ellipse cx="80" cy="118" rx="51" ry="7" fill="#5a7591" opacity=".16" />
+      <ellipse cx="77" cy="73" rx="43" ry="30" fill="#d89b5f" />
+      <circle cx="127" cy="58" r="26" fill="#c98952" />
+      <path d="m109 39-12-24 27 16ZM137 38l22-19-5 30Z" fill="#9c633c" />
+      <circle cx="136" cy="56" r="3.1" fill="#11243a" />
+      <path d="M145 67q10 5 15-1" fill="none" stroke="#11243a" strokeWidth="3" strokeLinecap="round" />
+      <path d="M54 95v25M81 98v21M111 93v26" stroke="#9c633c" strokeWidth="10" strokeLinecap="round" />
+      <path d="M35 73Q10 61 16 39" fill="none" stroke="#9c633c" strokeWidth="9" strokeLinecap="round" />
+      <path d="M99 70h43" stroke="#d92d37" strokeWidth="9" strokeLinecap="round" />
+      <rect x="113" y="64" width="25" height="22" rx="5" fill="#d92d37" />
+      <path d="M125 67v16M117 75h16" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
+      <path d="M127 73q12 9 23 3" fill="none" stroke="#d92d37" strokeWidth="5" strokeLinecap="round" />
     </svg>
   );
 }
 
-function MovingFigure({
-  figure,
+function MovingWalker({
+  walker,
   index,
   reducedMotion,
 }: {
-  figure: (typeof figures)[number];
+  walker: Walker;
   index: number;
   reducedMotion: boolean | null;
 }) {
@@ -123,39 +195,36 @@ function MovingFigure({
         reducedMotion
           ? undefined
           : {
-              y: [0, index % 2 === 0 ? -5 : -3, 0],
-              rotate: [0, index % 2 === 0 ? 0.6 : -0.6, 0],
+              y: [0, index % 2 === 0 ? -4 : -7, 0],
+              rotate: [0, index % 2 === 0 ? 0.45 : -0.45, 0],
             }
       }
       transition={{
-        duration: 2.6 + (index % 3) * 0.3,
+        duration: 2.8 + (index % 4) * 0.22,
         repeat: Infinity,
         ease: "easeInOut",
-        delay: figure.delay,
+        delay: walker.delay,
       }}
       className={
-        figure.kind === "pet"
-          ? "h-[94px] w-[116px] shrink-0 sm:h-[118px] sm:w-[142px]"
-          : "h-[148px] w-[88px] shrink-0 sm:h-[184px] sm:w-[108px]"
+        walker.kind === "pet"
+          ? "h-[112px] w-[146px] shrink-0 sm:h-[142px] sm:w-[184px]"
+          : "h-[172px] w-[102px] shrink-0 sm:h-[208px] sm:w-[122px]"
       }
     >
-      {figure.kind === "pet" ? (
-        <PetFigure />
-      ) : (
-        <PersonFigure
-          kind={figure.kind}
-          shirt={figure.shirt}
-          pants={figure.pants}
-          skin={figure.skin}
-        />
-      )}
+      <WalkerFigure
+        kind={walker.kind}
+        shirt={walker.shirt}
+        pants={walker.pants}
+        skin={walker.skin}
+        accent={walker.accent}
+      />
     </motion.div>
   );
 }
 
 export default function CommunityBand() {
   const reducedMotion = useReducedMotion();
-  const repeated = [...figures, ...figures];
+  const repeated = [...walkers, ...walkers];
 
   return (
     <section className="relative overflow-hidden bg-[#fffaf8] px-4 py-14 text-slate-950 sm:px-6 sm:py-18 lg:px-8 lg:py-20">
@@ -199,22 +268,22 @@ export default function CommunityBand() {
           </div>
         </div>
 
-        <div className="relative mt-2 min-h-[330px] overflow-hidden border-t border-slate-100 bg-[linear-gradient(180deg,#f7fbff_0%,#eaf5ff_35%,#fdf4ee_73%,#fffaf7_100%)] sm:min-h-[390px]">
+        <div className="relative mt-2 min-h-[350px] overflow-hidden border-t border-slate-100 bg-[linear-gradient(180deg,#f8fcff_0%,#eaf5ff_35%,#fef4ee_73%,#fffaf7_100%)] sm:min-h-[410px]">
           <svg
             aria-hidden="true"
-            viewBox="0 0 1400 390"
+            viewBox="0 0 1400 410"
             preserveAspectRatio="none"
             className="absolute inset-0 h-full w-full"
           >
-            <path d="M0 217 157 113l123 82 157-128 149 145 166-110 176 114 144-90 178 112 150-77v229H0Z" fill="#dceaf4" opacity=".86" />
-            <path d="M0 254 144 179l107 67 155-99 139 99 126-74 154 90 116-54 168 76 191-70v176H0Z" fill="#c8dce8" opacity=".88" />
-            <path d="M0 306c171-72 328-65 496-5 173 61 343 70 512 6 151-57 263-56 392-10v93H0Z" fill="#f5d8cf" opacity=".88" />
-            <path d="M0 333c214-53 397-43 582 3 209 52 432 55 818-16v70H0Z" fill="#ffffff" />
-            <g fill="#ffffff" opacity=".86">
-              <path d="m116 141 41-28 33 22-19 6-12 14-16-13-13 8Z" />
-              <path d="m391 97 46-30 37 35-21-8-17 14-20-16-13 11Z" />
-              <path d="m709 133 43-31 38 25-18 3-20 15-20-17-14 10Z" />
-              <path d="m1046 151 26-25 32 20-15 1-15 12-13-12-10 8Z" />
+            <path d="M0 220 145 126l116 74 175-137 146 150 165-115 175 116 149-95 175 118 150-80v253H0Z" fill="#dceaf4" opacity=".9" />
+            <path d="M0 260 138 185l111 68 159-102 139 102 131-78 152 91 121-57 162 81 187-72v192H0Z" fill="#c8dce8" opacity=".92" />
+            <path d="M0 316c176-74 337-67 500-5 176 67 343 72 507 7 154-60 263-58 393-12v104H0Z" fill="#f5d8cf" opacity=".9" />
+            <path d="M0 347c220-54 398-45 584 3 214 55 436 57 816-17v77H0Z" fill="#ffffff" />
+            <g fill="#ffffff" opacity=".9">
+              <path d="m113 154 32-25 34 23-16 5-14 13-14-11-12 7Z" />
+              <path d="m387 95 49-32 39 37-22-8-18 16-21-17-14 11Z" />
+              <path d="m706 134 45-32 39 26-18 3-21 16-20-17-15 10Z" />
+              <path d="m1049 152 28-26 33 21-15 2-16 12-13-13-11 8Z" />
             </g>
           </svg>
 
@@ -231,24 +300,24 @@ export default function CommunityBand() {
             className="absolute right-[8%] top-[13%] h-11 w-24 rounded-full bg-white/70 before:absolute before:-left-5 before:bottom-0 before:h-8 before:w-14 before:rounded-full before:bg-white/70 after:absolute after:right-[-24px] after:bottom-1 after:h-9 after:w-16 after:rounded-full after:bg-white/70"
           />
 
-          <div className="absolute inset-x-0 bottom-[38px] h-px bg-gradient-to-r from-transparent via-slate-400/55 to-transparent" />
+          <div className="absolute inset-x-0 bottom-[38px] h-px bg-gradient-to-r from-transparent via-slate-400/45 to-transparent" />
 
           <motion.div
-            className="absolute bottom-[31px] left-0 flex w-max items-end gap-5 px-4 sm:gap-8 sm:px-8"
+            className="absolute bottom-[28px] left-0 flex w-max items-end gap-6 px-5 sm:gap-9 sm:px-8"
             animate={reducedMotion ? undefined : { x: ["0%", "-50%"] }}
-            transition={{ duration: 34, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: 36, repeat: Infinity, ease: "linear" }}
           >
-            {repeated.map((figure, index) => (
-              <MovingFigure
-                key={`${figure.kind}-${index}`}
-                figure={figure}
+            {repeated.map((walker, index) => (
+              <MovingWalker
+                key={`${walker.kind}-${index}`}
+                walker={walker}
                 index={index}
                 reducedMotion={reducedMotion}
               />
             ))}
           </motion.div>
 
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-white/80 bg-white/75 px-4 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 shadow-sm backdrop-blur">
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-white/80 bg-white/78 px-4 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 shadow-sm backdrop-blur">
             Pequeños detalles. Gran impacto.
           </div>
         </div>
