@@ -16,9 +16,9 @@ interface FAQ {
 
 const faqs: FAQ[] = [
   // Producto
-  { q: "¿Qué es PreRescue ID?", a: "Es un sistema de identificación médica de emergencia. Un sticker con NFC y código QR que permite consultar información configurada para el perfil público al escanearlo.", category: "Producto" },
+  { q: "¿Qué es PreRescue ID?", a: "Es un sistema de identificación de emergencia y retorno seguro. Sus identificadores físicos pueden vincularse a un perfil público configurable para consultar la información autorizada al escanearlos.", category: "Producto" },
   { q: "¿Qué información se muestra al escanear?", a: "El perfil puede mostrar datos como nombre, tipo de sangre, alergias, condiciones médicas, medicamentos y contactos de emergencia, según la información disponible y la configuración de visibilidad aplicable.", category: "Producto" },
-  { q: "¿El sticker necesita batería?", a: "No. El sticker no tiene batería. El chip NFC se activa con la energía del dispositivo compatible que lo escanea.", category: "Producto" },
+  { q: "¿El identificador físico necesita batería?", a: "Los identificadores con NFC pasivo no necesitan batería propia. La lectura depende de un dispositivo compatible.", category: "Producto" },
 
   // QR y NFC
   { q: "¿Cómo funciona el código QR?", a: "Un dispositivo con cámara y navegador compatible puede escanear el código QR y abrir el enlace del perfil de emergencia.", category: "QR y NFC" },
@@ -26,7 +26,7 @@ const faqs: FAQ[] = [
   { q: "¿Qué celulares son compatibles?", a: "La mayoría de los smartphones actuales soportan NFC. Para el código QR se necesita una cámara o lector compatible y acceso a un navegador.", category: "QR y NFC" },
 
   // Internet y dispositivos
-  { q: "¿Se necesita internet?", a: "El dispositivo que escanea necesita conexión a internet para cargar el perfil médico. El sticker no necesita batería ni conexión.", category: "Internet y dispositivos" },
+  { q: "¿Se necesita internet?", a: "El dispositivo que escanea necesita conexión a internet para cargar el perfil público. El identificador físico no necesita conexión propia.", category: "Internet y dispositivos" },
   { q: "¿Funciona fuera de Panamá?", a: "Sí. El perfil se carga desde internet, por lo que funciona en cualquier país con conexión.", category: "Internet y dispositivos" },
   { q: "¿Necesito instalar una aplicación?", a: "No. El perfil se abre en el navegador del celular. No requiere instalar ninguna aplicación.", category: "Internet y dispositivos" },
 
@@ -56,13 +56,9 @@ const faqs: FAQ[] = [
   // Uso internacional
   { q: "¿Funciona en otros países?", a: "Sí. El perfil se carga desde internet, por lo que funciona en cualquier país con conexión a internet.", category: "Uso internacional" },
 
-  // Empresas
-  { q: "¿Ofrecen planes empresariales?", a: "Sí. Disponemos de opciones corporativas con panel administrativo para gestionar miembros y chips. Escríbenos para más información.", category: "Empresas" },
-  { q: "¿El servicio corporativo también vence por tiempo?", a: "No. Un identificador corporativo ya activado no deja de mostrar su perfil público de rescate por una fecha de vencimiento comercial. Las nuevas activaciones sí dependen de la capacidad y elegibilidad contratada por la organización.", category: "Empresas" },
-
   // Limitaciones del servicio
   { q: "¿PreRescue ID reemplaza la atención médica?", a: "No. PreRescue ID es una herramienta de identificación de emergencia. No reemplaza la atención médica profesional ni garantiza ningún resultado.", category: "Limitaciones del servicio" },
-  { q: "¿Qué pasa si el respondedor no tiene internet?", a: "Sin conexión a internet, el perfil no se puede cargar. El sticker no almacena información médica localmente.", category: "Limitaciones del servicio" },
+  { q: "¿Qué pasa si el respondedor no tiene internet?", a: "Sin conexión a internet, el perfil público no se puede cargar. El identificador físico no almacena la ficha completa localmente.", category: "Limitaciones del servicio" },
 
   // Envíos
   { q: "¿Realizan entregas en Panamá?", a: "Sí, realizamos entregas dentro de Panamá, sujetas a la cobertura del transportista. El costo y plazo estimado se informan antes de confirmar el pedido.", category: "Envíos" },
@@ -94,7 +90,6 @@ const categories = [
   "Compra y pagos",
   "Servicio",
   "Uso internacional",
-  "Empresas",
   "Limitaciones del servicio",
   "Envíos",
   "Devoluciones",
