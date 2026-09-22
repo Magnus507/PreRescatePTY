@@ -43,14 +43,8 @@ const footerColumns = [
 export default function PublicFooter() {
   return (
     <footer className="relative overflow-hidden border-t border-white/[0.055] bg-[#02050a] text-slate-100">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(38% 56% at 8% 20%, rgba(37,99,235,.085), transparent 66%), radial-gradient(34% 46% at 92% 92%, rgba(218,26,33,.055), transparent 68%)",
-        }}
-      />
+      <div aria-hidden="true" className="emergency-grid absolute inset-0 opacity-30" />
+      <div aria-hidden="true" className="absolute bottom-0 left-0 h-48 w-full bg-[linear-gradient(180deg,transparent,rgba(218,26,33,.035))]" />
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/35 to-transparent" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 md:py-20 lg:px-8">
