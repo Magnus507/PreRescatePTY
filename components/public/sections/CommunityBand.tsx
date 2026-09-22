@@ -56,11 +56,12 @@ export default function CommunityBand() {
 
         <div className="relative mt-2 overflow-hidden border-t border-slate-100 bg-[#eef6fd]">
           <Image
-            src="/media/community-official.webp"
+            src="/media/community-official-8k.png"
             alt="Personas, personal de apoyo, familia y mascota caminando entre montañas"
-            width={1400}
-            height={467}
-            sizes="(max-width: 768px) 100vw, 1280px"
+            width={7680}
+            height={2560}
+            sizes="(max-width: 768px) 100vw, (max-width: 1536px) 92vw, 1280px"
+            quality={92}
             className="h-auto w-full"
           />
         </div>
