@@ -8,6 +8,7 @@ import {
   BriefcaseBusiness,
   Cat,
   Crown,
+  KeyRound,
   FileText,
   HeartHandshake,
   Eye,
@@ -25,11 +26,13 @@ import {
   EMPTY_ELDER_MODULE,
   EMPTY_MINOR_MODULE,
   EMPTY_PET_MODULE,
+  EMPTY_SAFE_RETURN_MODULE,
   EMPTY_SPECIAL_NEEDS_MODULE,
   EMPTY_WORK_MODULE,
   type ElderModuleData,
   type MinorModuleData,
   type PetModuleData,
+  type SafeReturnModuleData,
   type SpecialNeedsModuleData,
   type WorkModuleData,
 } from "@/lib/profile-context-modules";
@@ -41,6 +44,7 @@ type ProfileFormValue =
   | ElderModuleData
   | SpecialNeedsModuleData
   | PetModuleData
+  | SafeReturnModuleData
   | WorkModuleData;
 
 interface ProfileFormProps {
@@ -97,13 +101,15 @@ interface ProfileFormProps {
     petModuleData?: PetModuleData;
     workModuleEnabled?: boolean;
     workModuleData?: WorkModuleData;
+    safeReturnModuleEnabled?: boolean;
+    safeReturnModuleData?: SafeReturnModuleData;
   };
   onChange: (field: string, value: ProfileFormValue) => void;
   disabled?: boolean;
 }
 
-type OptionalTab = "minor" | "elder" | "special" | "pet" | "work" | "insurance";
-type TabTone = "blue" | "amber" | "violet" | "teal" | "slate" | "emerald";
+type OptionalTab = "minor" | "elder" | "special" | "pet" | "safeReturn" | "work" | "insurance";
+type TabTone = "blue" | "amber" | "violet" | "teal" | "sky" | "slate" | "emerald";
 
 const OPTIONAL_TABS: Array<{
   id: OptionalTab;
@@ -144,6 +150,14 @@ const OPTIONAL_TABS: Array<{
     description: "Convierte este perfil en una ficha de mascota para identificación, contacto y retorno seguro.",
     icon: Cat,
     tone: "teal",
+  },
+  {
+    id: "safeReturn",
+    label: "Retorno seguro",
+    shortLabel: "Retorno",
+    description: "Convierte este perfil en una ficha para devolver un objeto encontrado a su propietario.",
+    icon: KeyRound,
+    tone: "sky",
   },
   {
     id: "work",
@@ -193,6 +207,12 @@ const TAB_TONE_STYLES: Record<TabTone, {
     eyebrow: "text-teal-700",
     glow: "bg-teal-400/20",
   },
+  sky: {
+    panel: "border-sky-200 bg-sky-50/55",
+    icon: "bg-sky-600 text-white",
+    eyebrow: "text-sky-700",
+    glow: "bg-sky-400/20",
+  },
   slate: {
     panel: "border-slate-200 bg-slate-50/80",
     icon: "bg-slate-800 text-white",
@@ -230,6 +250,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
     elder: form.elderModuleEnabled === true,
     special: form.specialNeedsModuleEnabled === true,
     pet: form.petModuleEnabled === true,
+    safeReturn: form.safeReturnModuleEnabled === true,
     work: form.workModuleEnabled === true,
     insurance: form.isInsured === true,
   } satisfies Record<OptionalTab, boolean>;
@@ -239,8 +260,11 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
   const elderData = form.elderModuleData ?? EMPTY_ELDER_MODULE;
   const specialNeedsData = form.specialNeedsModuleData ?? EMPTY_SPECIAL_NEEDS_MODULE;
   const petData = form.petModuleData ?? EMPTY_PET_MODULE;
+  const safeReturnData = form.safeReturnModuleData ?? EMPTY_SAFE_RETURN_MODULE;
   const workData = form.workModuleData ?? EMPTY_WORK_MODULE;
   const isPetProfile = form.petModuleEnabled === true;
+  const isSafeReturnProfile = form.safeReturnModuleEnabled === true;
+  const isConvertedProfile = isPetProfile || isSafeReturnProfile;
 
   const petAge = useMemo(() => {
     if (!petData.birthDate) return null;
@@ -270,6 +294,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       elder: "elderModuleEnabled",
       special: "specialNeedsModuleEnabled",
       pet: "petModuleEnabled",
+      safeReturn: "safeReturnModuleEnabled",
       work: "workModuleEnabled",
     };
     update(map[tab], enabled);
@@ -279,6 +304,23 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       update("minorModuleEnabled", false);
       update("elderModuleEnabled", false);
       update("specialNeedsModuleEnabled", false);
+      update("workModuleEnabled", false);\n      update("safeReturnModuleEnabled", false);
+      update("isInsured", false);
+      update("showVulnerabilityStatusPublic", false);
+      update("showCommunicationStatusPublic", false);
+      update("showSafeReturnPublic", false);
+      update("showInsuranceProviderPublic", false);
+      update("showPreferredHospitalPublic", false);
+      update("showPrimaryDoctorPublic", false);
+      update("showPrimaryDoctorPhonePublic", false);
+    }
+
+    if (tab === "safeReturn" && enabled) {
+      setActiveTab("safeReturn");
+      update("minorModuleEnabled", false);
+      update("elderModuleEnabled", false);
+      update("specialNeedsModuleEnabled", false);
+      update("petModuleEnabled", false);
       update("workModuleEnabled", false);
       update("isInsured", false);
       update("showVulnerabilityStatusPublic", false);
@@ -288,6 +330,7 @@ export function MedicalProfileForm({ form, onChange, disabled = false }: Profile
       update("showPreferredHospitalPublic", false);
       update("showPrimaryDoctorPublic", false);
       update("showPrimaryDoctorPhonePublic", false);
+      update("showAdditionalNotesPublic", false);
     }
 
     if (tab === "elder") {
