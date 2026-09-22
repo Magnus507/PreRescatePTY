@@ -8,7 +8,6 @@ import {
   Battery,
   HeartPulse,
   MousePointer2,
-  PawPrint,
   QrCode,
   ShieldCheck,
   Smartphone,
@@ -216,8 +215,6 @@ function IllustratedWorld() {
 }
 
 export default function HeroSection() {
-  const reduceMotion = useReducedMotion();
-
   return (
     <section className="relative isolate min-h-[100svh] overflow-hidden bg-[#fffdfb] text-slate-950">
       <div
