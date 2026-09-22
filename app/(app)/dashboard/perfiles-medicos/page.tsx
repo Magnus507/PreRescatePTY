@@ -8,7 +8,7 @@ import {
   Plus, Pencil, Trash2, Loader2, Save, X, ChevronLeft,
   UserRound, Phone, AlertCircle,
   ShieldCheck, Activity, PlusCircle, Smartphone, ExternalLink,
-  Brain, Footprints, MessageCircle, Cat,
+  Brain, Footprints, MessageCircle, Cat, KeyRound,
 } from "lucide-react";
 import { Camera } from "lucide-react";
 import { MedicalProfileForm } from "@/components/forms/MedicalProfileForm";
@@ -83,6 +83,8 @@ interface FamilyProfile {
   petModuleData?: string | null;
   workModuleEnabled?: boolean;
   workModuleData?: string | null;
+  safeReturnModuleEnabled?: boolean;
+  safeReturnModuleData?: string | null;
   safeReturnLocationName?: string | null;
   safeReturnAddress?: string | null;
   safeReturnLat?: number | null;
@@ -250,6 +252,27 @@ export default function FamiliaPage() {
       };
     }
 
+    if (form.safeReturnModuleEnabled) {
+      const itemName = form.safeReturnModuleData?.itemName?.trim() || "Objeto";
+      const ownerName = form.safeReturnModuleData?.ownerName?.trim() || "Propietario";
+      const internalFirstName = form.firstName?.trim() || (itemName.length >= 2 ? itemName : "Objeto");
+      const internalLastName = form.lastName?.trim() || (ownerName.length >= 2 ? ownerName : "Encontrado");
+      return {
+        ...form,
+        firstName: internalFirstName,
+        lastName: internalLastName,
+        displayNamePublic: itemName,
+        sex: null,
+        birthDate: null,
+        bloodType: "Pendiente",
+        allergies: "",
+        chronicConditions: "",
+        medications: "",
+        additionalNotes: "",
+        showAdditionalNotesPublic: false,
+      };
+    }
+
     return {
       ...form,
       sex: form.sex || null,
@@ -319,7 +342,7 @@ export default function FamiliaPage() {
       if (res.ok) {
         setShowAdd(false);
         setAddForm({ ...emptyForm });
-        toast.success(addForm.petModuleEnabled ? "Ficha de mascota creada" : "Perfil médico creado con éxito");
+        toast.success(addForm.petModuleEnabled ? "Ficha de mascota creada" : addForm.safeReturnModuleEnabled ? "Perfil de retorno seguro creado" : "Perfil médico creado con éxito");
         loadProfiles();
       } else {
         const data = await res.json();
@@ -808,15 +831,21 @@ function ProfileCard({
 }: ProfileCardProps) {
   const petContext = hydrateProfileContextModules(profile as unknown as Record<string, unknown>);
   const isPetProfile = profile.petModuleEnabled === true;
+  const isSafeReturnProfile = profile.safeReturnModuleEnabled === true;
   const petData = petContext.petModuleData;
+  const safeReturnData = petContext.safeReturnModuleData;
   const cardName = isPetProfile
     ? (petData.petName || profile.displayNamePublic || "Mascota")
-    : `${profile.firstName || "Sin nombre"} ${profile.lastName || ""}`.trim();
+    : isSafeReturnProfile
+      ? (safeReturnData.itemName || profile.displayNamePublic || "Retorno seguro")
+      : `${profile.firstName || "Sin nombre"} ${profile.lastName || ""}`.trim();
   const initials = isPetProfile
     ? (petData.petName?.slice(0, 2).toUpperCase() || "🐾")
-    : profile.firstName && profile.lastName
-      ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
-      : (isOwn ? "TÚ" : "??");
+    : isSafeReturnProfile
+      ? "↩"
+      : profile.firstName && profile.lastName
+        ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
+        : (isOwn ? "TÚ" : "??");
 
   const [uploading, setUploading] = useState(false);
 
@@ -896,7 +925,7 @@ function ProfileCard({
             <input type="file" id={`profile-photo-input-${profile.id}`} className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} />
             <div className="min-w-0">
               <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOwn ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'}`}>
-                 {isPetProfile ? 'Ficha de mascota' : isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
+                 {isPetProfile ? 'Ficha de mascota' : isSafeReturnProfile ? 'Retorno seguro' : isOwn ? 'Tú — Principal' : 'Perfil Adicional'}
               </span>
               <p className="mt-1.5 text-[10px] font-semibold text-slate-400">Toca la foto para cambiarla</p>
             </div>
@@ -921,11 +950,21 @@ function ProfileCard({
                         {petData.breed && <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">{petData.breed}</span>}
                       </div>
                     )}
+                    {isSafeReturnProfile && (
+                      <div className="flex flex-wrap gap-2">
+                        {safeReturnData.area && <span className="inline-flex w-fit rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-sky-700">{safeReturnData.area}</span>}
+                        <span className="inline-flex w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">Objeto identificable</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {isPetProfile ? (
                       <div className="px-3 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-[11px] font-black text-teal-700 uppercase flex items-center gap-2">
                         <Cat className="h-3.5 w-3.5" /> {petData.color || "Ficha de mascota"}
+                      </div>
+                    ) : isSafeReturnProfile ? (
+                      <div className="px-3 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-[11px] font-black text-sky-700 uppercase flex items-center gap-2">
+                        <KeyRound className="h-3.5 w-3.5" /> Retorno seguro
                       </div>
                     ) : (
                       <div className="px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-black text-slate-700 uppercase flex items-center gap-2">
@@ -977,6 +1016,9 @@ function ProfileCard({
                     )}
                     {profile.workModuleEnabled && (
                       <span className="rounded-full border border-slate-300 bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-700">Laboral activo</span>
+                    )}
+                    {profile.safeReturnModuleEnabled && (
+                      <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-sky-700">Retorno seguro</span>
                     )}
                   </div>
                </div>
