@@ -55,21 +55,14 @@ export default function CommunityBand() {
         </div>
 
         <div className="relative mt-2 overflow-hidden border-t border-slate-100 bg-[#eef6fd]">
-          <div className="relative aspect-[16/5.2] min-h-[260px] w-full sm:min-h-[330px]">
-            <Image
-              src="/media/community-static.svg"
-              alt="Personas, familias y mascota en un paisaje de montañas"
-              fill
-              sizes="(max-width: 768px) 100vw, 1280px"
-              className="object-cover object-center"
-            />
-          </div>
-
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white/92 to-transparent" />
-
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/80 bg-white/88 px-4 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 shadow-sm backdrop-blur">
-            Pequeños detalles. Gran impacto.
-          </div>
+          <Image
+            src="/media/community-official.webp"
+            alt="Personas, personal de apoyo, familia y mascota caminando entre montañas"
+            width={1400}
+            height={467}
+            sizes="(max-width: 768px) 100vw, 1280px"
+            className="h-auto w-full"
+          />
         </div>
       </div>
     </section>
