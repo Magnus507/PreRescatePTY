@@ -9,7 +9,7 @@ const experiences = [
   {
     title: "Emergencia médica",
     description: "Una identificación visible para conectar QR + NFC con la información pública del perfil de emergencia.",
-    image: "/media/medical-tags.avif",
+    image: "/media/medical-tags.webp",
     icon: HeartPulse,
     href: "/como-funciona",
     accent: "rose",
@@ -60,7 +60,7 @@ export default function EmergencyShowcase() {
         >
           <div className="relative aspect-[16/9] min-h-[270px] overflow-hidden rounded-[1.2rem] border border-white/[0.06] sm:rounded-[1.8rem]">
             <Image
-              src="/media/purchase-kit.avif"
+              src="/media/purchase-kit.webp"
               alt="Contenido de compra PreRescue ID con NFC, sticker, código de activación y empaque"
               fill
               sizes="(max-width: 1280px) 96vw, 1200px"
