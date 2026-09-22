@@ -11,8 +11,7 @@ import {
   UsersRound,
   ChevronRight,
   Settings,
-  LogOut,
-  Home,
+  LogOut
   ShoppingCart,
   Package,
   Loader2,
@@ -76,12 +75,12 @@ function ShellNavLink({
       title={collapsed ? label : undefined}
       aria-label={collapsed ? label : undefined}
       aria-current={active ? "page" : undefined}
-      className={`group flex items-center gap-3 rounded-[1.1rem] border px-3.5 py-3 text-sm font-black transition-all duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ${
+      className={`group relative flex min-h-12 items-center gap-3 overflow-hidden rounded-[1.05rem] border px-3 py-2.5 text-sm font-black transition-[background-color,border-color,color,transform,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ${
         collapsed ? "justify-center" : "justify-between"
       } ${
         active
-          ? "border-[#DA1A21]/20 bg-[linear-gradient(135deg,rgba(218,26,33,0.98)_0%,rgba(185,20,27,0.98)_100%)] text-white shadow-[0_18px_36px_-24px_rgba(218,26,33,0.65)]"
-          : "border-transparent bg-transparent text-slate-520 hover:border-slate-200 hover:bg-white/80 hover:text-slate-950 dark:text-slate-400 dark:hover:border-[#2a3a4f] dark:hover:bg-[#131b27] dark:hover:text-white"
+          ? "border-white/10 bg-[linear-gradient(135deg,#ef222b_0%,#bd1119_100%)] text-white shadow-[0_18px_34px_-24px_rgba(218,26,33,0.78)]"
+          : "border-transparent bg-white/[0.025] text-slate-300 hover:translate-x-0.5 hover:border-white/[0.08] hover:bg-white/[0.065] hover:text-white"
       }`}
     >
       <span className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
@@ -89,35 +88,6 @@ function ShellNavLink({
         {!collapsed && <span className="truncate">{label}</span>}
       </span>
       {!collapsed && active && <ChevronRight className="h-4 w-4 opacity-80 transition-transform group-hover:translate-x-0.5" />}
-    </Link>
-  );
-}
-
-function ShellQuickAction({
-  href,
-  label,
-  icon: Icon,
-  variant,
-}: {
-  href: string;
-  label: string;
-  icon: ElementType;
-  variant: "primary" | "secondary";
-}) {
-  const base =
-    "flex items-center justify-center gap-2 rounded-[1.05rem] border px-3 py-3 text-[10px] font-black uppercase tracking-[0.18em] transition-all duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";
-
-  return (
-    <Link
-      href={href}
-      className={`${base} ${
-        variant === "primary"
-          ? "border-[#DA1A21]/10 bg-[linear-gradient(135deg,rgba(218,26,33,0.98)_0%,rgba(185,20,27,0.98)_100%)] text-white shadow-[0_16px_32px_-24px_rgba(218,26,33,0.7)] hover:shadow-[0_20px_40px_-26px_rgba(218,26,33,0.8)]"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-[#2a3a4f] dark:bg-[#141c29] dark:text-slate-200 dark:hover:bg-[#1a2333]"
-      }`}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      <span>{label}</span>
     </Link>
   );
 }
@@ -222,49 +192,51 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <ScanMonitor />
       <div className="mx-auto flex h-[100dvh] w-full max-w-[1920px] overflow-hidden">
         <aside
-          className={`hidden lg:flex flex-col border-r border-slate-200/70 bg-[linear-gradient(180deg,rgba(250,251,253,0.96)_0%,rgba(243,246,250,0.92)_100%)] p-4 backdrop-blur-xl transition-[width] duration-300 dark:border-[#1a2333]/80 dark:bg-[linear-gradient(180deg,rgba(14,19,29,0.96)_0%,rgba(9,14,24,0.94)_100%)] ${
-            isSidebarCollapsed ? "w-24" : "w-80"
+          className={`client-desktop-sidebar m-3 mr-0 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/[0.075] bg-[#07111d]/95 p-3.5 shadow-[24px_0_70px_-48px_rgba(2,6,23,.95)] backdrop-blur-2xl transition-[width] duration-300 lg:flex ${
+            isSidebarCollapsed ? "w-[5.4rem]" : "w-[17.5rem]"
           }`}
         >
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 px-1 pb-4 dark:border-[#1a2333]">
-            {!isSidebarCollapsed ? (
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-slate-400 dark:text-slate-500">Panel cliente</p>
-                <p className="text-sm font-black tracking-tight text-slate-950 dark:text-white">PreRescatePTY</p>
+          <div className={`flex gap-3 border-b border-white/[0.075] pb-3.5 ${isSidebarCollapsed ? "flex-col items-center" : "items-center"}`}>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[1rem] border border-white/10 bg-white shadow-[0_14px_30px_-22px_rgba(0,0,0,.75)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="PreRescue ID" className="h-8 w-8 object-contain" />
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">PreRescue ID</p>
+                <p className="mt-0.5 truncate text-sm font-black tracking-[-0.02em] text-white">Panel cliente</p>
               </div>
-            ) : (
-              <div className="h-11 w-11 rounded-[1.05rem] border border-slate-200 bg-white/90 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.2)] dark:border-[#2a3a4f] dark:bg-[#141c29]" />
             )}
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed((value) => !value)}
-              className="flex h-11 w-11 items-center justify-center rounded-[1.05rem] border border-slate-200 bg-white/85 text-slate-600 transition-all duration-200 hover:border-[#DA1A21]/20 hover:text-[#DA1A21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent dark:border-[#2a3a4f] dark:bg-[#141c29] dark:text-slate-300 dark:hover:border-[#DA1A21]/25 motion-reduce:transition-none"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[.9rem] border border-white/[0.08] bg-white/[0.045] text-slate-400 transition-all duration-200 hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#DA1A21]/55 motion-reduce:transition-none"
               aria-label={isSidebarCollapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
             >
-              {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+              {isSidebarCollapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-6 pr-1 custom-scrollbar">
-            <div className="space-y-2">
-              {!isSidebarCollapsed && <p className="px-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">Navegación</p>}
+          <div className="flex-1 overflow-y-auto py-5 custom-scrollbar">
+            <div className="space-y-1.5">
+              {!isSidebarCollapsed && <p className="mb-2 px-2 text-[9px] font-black uppercase tracking-[0.24em] text-slate-600">Navegación</p>}
               {consumerNavItems.map((item) => (
                 <ShellNavLink key={item.href} {...item} pathname={pathname} activateMode={activateMode} collapsed={isSidebarCollapsed} />
               ))}
             </div>
           </div>
 
-          <div className="mt-5 space-y-3 border-t border-slate-200/80 pt-5 dark:border-[#1a2333]">
-            <div className={`rounded-[1.35rem] border border-slate-200 bg-white/90 p-4 shadow-[0_18px_36px_-30px_rgba(15,23,42,0.25)] transition-all duration-200 dark:border-[#2a3a4f] dark:bg-[#101826] ${isSidebarCollapsed ? "text-center" : ""}`}>
-              <div className={`flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-3"}`}>
-                <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-slate-200 bg-slate-50 text-sm font-black text-[#DA1A21] shadow-sm dark:border-[#2a3a4f] dark:bg-[#141c29]">
+          <div className="space-y-2.5 border-t border-white/[0.075] pt-3.5">
+            <div className={`rounded-[1.2rem] border border-white/[0.075] bg-white/[0.045] p-2.5 shadow-inner ${isSidebarCollapsed ? "flex justify-center" : ""}`}>
+              <div className={`flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-2.5"}`}>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[.9rem] bg-white text-xs font-black text-[#DA1A21] shadow-sm">
                   {session?.user?.email?.[0]?.toUpperCase() ?? "U"}
                 </div>
                 {!isSidebarCollapsed && (
-                  <div className="min-w-0 overflow-hidden">
-                    <p className="truncate text-xs font-black text-slate-950 dark:text-white">{session?.user?.email}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[11px] font-black text-white">{session?.user?.email}</p>
                     {state && (
-                      <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${state.isInactive ? "text-[#DA1A21]" : "text-emerald-600 dark:text-emerald-400"}`}>
+                      <p className={`mt-0.5 truncate text-[8px] font-black uppercase tracking-[0.14em] ${state.isInactive ? "text-red-300" : "text-emerald-400"}`}>
                         {state.isInactive ? "Cuenta inactiva" : state.isFamily ? "Multi-perfil" : "Protección individual"}
                       </p>
                     )}
@@ -273,26 +245,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             </div>
 
-            <div className={`grid gap-2 ${isSidebarCollapsed ? "grid-cols-1" : "grid-cols-2"}`}>
-              <ShellQuickAction href="/dashboard/pedidos" label="Pedidos" icon={Package} variant="primary" />
-              {!isSidebarCollapsed && <ShellQuickAction href="/dashboard/tienda" label="Tienda" icon={ShoppingCart} variant="secondary" />}
-            </div>
-
-            <div className={`grid gap-2 ${isSidebarCollapsed ? "grid-cols-1" : "grid-cols-2"}`}>
-              <ShellQuickAction href="/" label="Inicio" icon={Home} variant="secondary" />
-              <button
-                disabled={isLoggingOut}
-                onClick={async () => {
-                  setIsLoggingOut(true);
-                  await signOut({ redirect: false });
-                  window.location.href = "/login";
-                }}
-                className="flex items-center justify-center gap-2 rounded-[1.05rem] border border-rose-200 bg-rose-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-rose-600 transition-all duration-200 hover:border-rose-300 hover:bg-rose-100 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20 motion-reduce:transition-none"
-              >
-                {isLoggingOut ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
-                <span>{isLoggingOut ? "Saliendo" : "Salir"}</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={isLoggingOut}
+              onClick={async () => {
+                setIsLoggingOut(true);
+                await signOut({ redirect: false });
+                window.location.href = "/login";
+              }}
+              title={isSidebarCollapsed ? "Salir" : undefined}
+              aria-label={isSidebarCollapsed ? "Salir" : undefined}
+              className={`flex min-h-10 w-full items-center rounded-[1rem] border border-rose-400/15 bg-rose-500/[0.06] px-3 text-[10px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all duration-200 hover:border-rose-400/25 hover:bg-rose-500/[0.11] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/45 disabled:opacity-50 motion-reduce:transition-none ${isSidebarCollapsed ? "justify-center" : "justify-center gap-2"}`}
+            >
+              {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+              {!isSidebarCollapsed && <span>{isLoggingOut ? "Saliendo" : "Salir"}</span>}
+            </button>
           </div>
         </aside>
 
