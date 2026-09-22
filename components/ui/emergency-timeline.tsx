@@ -76,7 +76,7 @@ export default function EmergencyTimeline() {
   const activeStep = steps[activeIndex];
 
   return (
-    <section className="relative overflow-hidden bg-[#f6f8fc] py-16 text-slate-950 sm:py-20 lg:py-24">
+    <section id="recorrido" className="relative overflow-hidden bg-[#f6f8fc] py-16 text-slate-950 sm:py-20 lg:py-24">
       <div
         aria-hidden="true"
         className="absolute -left-24 top-12 h-72 w-72 rounded-full bg-rose-200/45 blur-3xl"
