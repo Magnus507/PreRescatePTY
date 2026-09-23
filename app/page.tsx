@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#fbfcff] font-sans antialiased">
+    <div className="public-home min-h-screen bg-[#fbfcff] font-sans antialiased">
       <PublicNavbar />
       <main id="main-content">
         <HeroSection />
