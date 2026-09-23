@@ -164,3 +164,21 @@ body:has(.admin-control-center) footer {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Public homepage mobile: avoid persistent GPU compositing on iOS Safari. */
+@media (max-width: 767px), (pointer: coarse) {
+  .public-home [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .public-home [class*="animate-ping"],
+  .public-home [class*="animate-pulse"] {
+    animation: none !important;
+  }
+
+  .public-home {
+    scroll-behavior: auto;
+  }
+}
