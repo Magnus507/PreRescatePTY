@@ -1,4 +1,4 @@
-const baseUrl = (process.env.BASE_URL || "https://www.prerescatepty.com").replace(/\/$/, "");
+const baseUrl = (process.argv[2] || "https://www.prerescatepty.com").replace(/\/$/, "");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);

@@ -32,4 +32,4 @@ jobs:
         with:
           node-version: "24"
       - name: Verify production identity boundary
-        run: node scripts/column-vertebral-production-smoke.mjs
+        run: node scripts/column-vertebral-production-smoke.mjs "$BASE_URL"
