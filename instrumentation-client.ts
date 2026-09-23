@@ -36,10 +36,19 @@ export function register() {
   };
 
   if (isStaticPublicPath(window.location.pathname)) {
-    if ("requestIdleCallback" in window) {
-      window.requestIdleCallback(() => void startSentry(), { timeout: 5000 });
+    const idleCallback = (
+      window as Window & {
+        requestIdleCallback?: (
+          callback: IdleRequestCallback,
+          options?: IdleRequestOptions,
+        ) => number;
+      }
+    ).requestIdleCallback;
+
+    if (typeof idleCallback === "function") {
+      idleCallback(() => void startSentry(), { timeout: 5000 });
     } else {
-      window.setTimeout(() => void startSentry(), 3000);
+      globalThis.setTimeout(() => void startSentry(), 3000);
     }
     return;
   }
