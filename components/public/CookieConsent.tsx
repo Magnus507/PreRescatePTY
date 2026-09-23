@@ -199,7 +199,9 @@ export default function CookieConsent() {
                   <h3 className="mb-1 font-bold text-[#EFF4FF]">Cookies de análisis</h3>
                   <p className="text-xs text-[#A0AEC0]">
                     Nos ayudan a entender uso y rendimiento del sitio mediante
-                    Vercel Analytics y Speed Insights.
+                    Vercel Analytics y Speed Insights. Sentry se utiliza
+                    separadamente para diagnóstico técnico y seguridad, no como
+                    analítica opcional.
                   </p>
                 </div>
 
