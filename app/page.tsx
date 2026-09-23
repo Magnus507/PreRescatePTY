@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import PublicNavbar from "@/components/public/PublicNavbar";
 import PublicFooter from "@/components/public/PublicFooter";
-import MobileStickyCTA from "@/components/public/MobileStickyCTA";
 import HeroSection from "@/components/public/sections/HeroSection";
 import BenefitMarquee from "@/components/public/sections/BenefitMarquee";
 import PlansPreview from "@/components/public/sections/PlansPreview";
@@ -51,7 +50,6 @@ export default function Home() {
         <CommunityBand />
       </main>
       <PublicFooter />
-      <MobileStickyCTA />
     </div>
   );
 }
