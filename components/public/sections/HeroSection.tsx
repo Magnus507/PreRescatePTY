@@ -1,8 +1,5 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   Battery,
@@ -35,33 +32,16 @@ function MiniPerson({
   tone,
   flip = false,
   className,
-  delay = 0,
 }: {
   tone: PersonTone;
   flip?: boolean;
   className: string;
-  delay?: number;
 }) {
-  const reducedMotion = useReducedMotion();
   const palette = personColors[tone];
 
   return (
-    <motion.div
+    <div
       aria-hidden="true"
-      animate={
-        reducedMotion
-          ? undefined
-          : {
-              y: [0, -6, 0],
-              rotate: [flip ? 2 : -2, flip ? -1 : 1, flip ? 2 : -2],
-            }
-      }
-      transition={{
-        duration: 3.6,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay,
-      }}
       className={className}
       style={{ transform: flip ? "scaleX(-1)" : undefined }}
     >
@@ -77,19 +57,13 @@ function MiniPerson({
         <path d="M48 113h15" stroke="#11253f" strokeWidth="7" strokeLinecap="round" />
         <rect x="28" y="42" width="17" height="4" rx="2" fill={palette.accent} opacity=".7" />
       </svg>
-    </motion.div>
+    </div>
   );
 }
 
-function MiniPet({ className, delay = 0 }: { className: string; delay?: number }) {
-  const reducedMotion = useReducedMotion();
+function MiniPet({ className }: { className: string; delay?: number }) {
   return (
-    <motion.div
-      aria-hidden="true"
-      animate={reducedMotion ? undefined : { y: [0, -4, 0], rotate: [-2, 1, -2] }}
-      transition={{ duration: 3.1, repeat: Infinity, ease: "easeInOut", delay }}
-      className={className}
-    >
+    <div aria-hidden="true" className={className}>
       <svg viewBox="0 0 100 72" className="h-full w-full drop-shadow-[0_10px_12px_rgba(20,40,80,.16)]">
         <ellipse cx="48" cy="44" rx="28" ry="18" fill="#d99b63" />
         <circle cx="76" cy="32" r="15" fill="#c88752" />
@@ -101,12 +75,11 @@ function MiniPet({ className, delay = 0 }: { className: string; delay?: number }
         <rect x="67" y="41" width="20" height="5" rx="2.5" fill="#df2530" />
         <circle cx="77" cy="46" r="4" fill="#f6c84d" />
       </svg>
-    </motion.div>
+    </div>
   );
 }
 
 function IllustratedWorld() {
-  const reducedMotion = useReducedMotion();
 
   return (
     <div className="relative aspect-square w-full">
@@ -115,20 +88,14 @@ function IllustratedWorld() {
         className="absolute inset-[7%] rounded-full bg-blue-300/30 blur-[55px]"
       />
 
-      <motion.div
-        drag="x"
-        dragConstraints={{ left: -44, right: 44 }}
-        dragElastic={0.08}
-        whileTap={{ scale: 0.995 }}
-        className="absolute inset-[8%] cursor-grab touch-pan-y overflow-hidden rounded-full border-[10px] border-white/85 bg-[radial-gradient(circle_at_36%_23%,#8ee1ff_0%,#32a9e9_28%,#0f76c8_58%,#0b4d95_79%,#0b356f_100%)] shadow-[0_40px_95px_-35px_rgba(15,83,155,.58),inset_-28px_-24px_55px_rgba(6,36,94,.36),inset_18px_16px_32px_rgba(255,255,255,.26)] active:cursor-grabbing"
-        aria-label="Mundo interactivo de PreRescue ID. Puedes arrastrarlo horizontalmente."
+      <div
+        className="absolute inset-[8%] overflow-hidden rounded-full border-[10px] border-white/85 bg-[radial-gradient(circle_at_36%_23%,#8ee1ff_0%,#32a9e9_28%,#0f76c8_58%,#0b4d95_79%,#0b356f_100%)] shadow-[0_40px_95px_-35px_rgba(15,83,155,.58),inset_-28px_-24px_55px_rgba(6,36,94,.36),inset_18px_16px_32px_rgba(255,255,255,.26)]"
+        aria-label="Mundo ilustrado de PreRescue ID."
       >
-        <motion.svg
+        <svg
           aria-hidden="true"
           viewBox="0 0 640 640"
           className="absolute -left-[10%] top-0 h-full w-[120%]"
-          animate={reducedMotion ? undefined : { x: ["0%", "-12%", "0%"], rotate: [0, 1.5, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
         >
           <defs>
             <filter id="landShadow" x="-20%" y="-20%" width="140%" height="140%">
@@ -177,7 +144,7 @@ function IllustratedWorld() {
             <path d="m489 230 11-17 12 17Z" />
             <path d="m552 260 14-18 13 18Z" />
           </g>
-        </motion.svg>
+        </svg>
 
         <div
           aria-hidden="true"
@@ -190,26 +157,24 @@ function IllustratedWorld() {
           <ellipse cx="300" cy="300" rx="294" ry="190" fill="none" stroke="white" strokeWidth="1" />
           <ellipse cx="300" cy="300" rx="138" ry="294" fill="none" stroke="white" strokeWidth="1" />
         </svg>
-      </motion.div>
+      </div>
 
       <MiniPerson tone="red" className="absolute left-[19%] top-[3%] z-30 h-[18%] w-[10%]" />
-      <MiniPerson tone="blue" flip className="absolute left-[39%] top-[1%] z-30 h-[17%] w-[9%]" delay={0.5} />
-      <MiniPerson tone="navy" className="absolute right-[24%] top-[6%] z-30 h-[18%] w-[10%]" delay={0.9} />
-      <MiniPerson tone="coral" flip className="absolute right-[8%] top-[22%] z-30 h-[17%] w-[9%]" delay={0.25} />
-      <MiniPerson tone="sky" className="absolute left-[9%] top-[27%] z-30 h-[17%] w-[9%]" delay={0.75} />
-      <MiniPet className="absolute bottom-[16%] right-[6%] z-30 h-[11%] w-[16%]" delay={0.4} />
+      <MiniPerson tone="blue" flip className="absolute left-[39%] top-[1%] z-30 h-[17%] w-[9%]" />
+      <MiniPerson tone="navy" className="absolute right-[24%] top-[6%] z-30 h-[18%] w-[10%]" />
+      <MiniPerson tone="coral" flip className="absolute right-[8%] top-[22%] z-30 h-[17%] w-[9%]" />
+      <MiniPerson tone="sky" className="absolute left-[9%] top-[27%] z-30 h-[17%] w-[9%]" />
+      <MiniPet className="absolute bottom-[16%] right-[6%] z-30 h-[11%] w-[16%]" />
 
-      <motion.div
+      <div
         aria-hidden="true"
-        animate={reducedMotion ? undefined : { y: [0, -5, 0], rotate: [-2, 1, -2] }}
-        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
         className="absolute bottom-[7%] left-[6%] z-30 rounded-2xl border border-white/90 bg-white/92 px-3 py-2 shadow-[0_18px_45px_-24px_rgba(15,23,42,.38)] backdrop-blur"
       >
         <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#1b66b2]">
           Más información.
         </p>
         <p className="mt-0.5 text-[10px] font-black text-slate-800">Más cerca.</p>
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -244,10 +209,7 @@ export default function HeroSection() {
 
       <div className="mx-auto grid min-h-[100svh] w-full max-w-[1500px] items-center gap-6 px-4 pb-14 pt-28 sm:px-6 sm:pb-16 sm:pt-32 lg:grid-cols-[.86fr_1.14fr] lg:gap-1 lg:px-10 xl:px-14">
         <div className="relative z-20 max-w-3xl">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
+          <div
             className="mb-5 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white/84 px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.19em] text-[#b3131a] shadow-[0_12px_40px_-28px_rgba(218,26,33,.55)] backdrop-blur-xl sm:mb-7 sm:text-[10px]"
           >
             <span className="relative flex h-2 w-2">
@@ -255,35 +217,26 @@ export default function HeroSection() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#DA1A21]" />
             </span>
             Información lista cuando importa
-          </motion.div>
+          </div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.66, delay: 0.04, ease: [0.22, 1, 0.36, 1] }}
+          <h1
             className="max-w-[11.5ch] text-[clamp(3rem,12vw,4.15rem)] font-black leading-[0.87] tracking-[-0.06em] text-[#0a1020] sm:text-[clamp(4.6rem,7vw,7.1rem)]"
           >
             Cuando cada segundo cuenta,
             <span className="mt-2 block bg-gradient-to-r from-[#D91F2A] via-[#ff3d47] to-[#f04b52] bg-clip-text text-transparent">
               tu información debe estar cerca.
             </span>
-          </motion.h1>
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.12 }}
+          <p
             className="mt-6 max-w-2xl text-[15px] font-medium leading-7 text-slate-600 sm:mt-8 sm:text-lg sm:leading-8"
           >
             PreRescue ID conecta una identificación física con QR + NFC a la
             información pública que tú decides mostrar, para facilitar una consulta
             rápida desde cualquier navegador compatible.
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.2 }}
+          <div
             className="mt-7 flex flex-col gap-2.5 sm:mt-9 sm:flex-row"
           >
             <Link
@@ -300,12 +253,9 @@ export default function HeroSection() {
               <HeartPulse className="h-4 w-4 text-[#DA1A21]" />
               Cómo funciona
             </Link>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.3 }}
+          <div
             className="mt-7 grid grid-cols-2 gap-2 border-t border-slate-200/80 pt-5 sm:mt-9 sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-3 sm:pt-6"
           >
             {trustItems.map((item) => (
@@ -323,10 +273,7 @@ export default function HeroSection() {
           </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 18, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+        <div
           className="relative mx-auto flex w-full max-w-[790px] items-center justify-center py-5 sm:py-8 lg:py-0"
         >
           <div className="relative w-full">
@@ -354,7 +301,7 @@ export default function HeroSection() {
 
             <div className="absolute right-[12%] top-[6%] hidden items-center gap-2 rounded-full border border-blue-200/70 bg-white/82 px-3 py-2 text-[9px] font-black uppercase tracking-[0.15em] text-blue-700 shadow-sm backdrop-blur sm:flex">
               <MousePointer2 className="h-3.5 w-3.5" />
-              Arrastra el mundo
+              Vista ilustrada
             </div>
 
             <div className="absolute bottom-[8%] right-[2%] z-30 w-[29%] min-w-[128px] max-w-[205px] rotate-[5deg] overflow-hidden rounded-[1.35rem] border border-white/90 bg-white p-1.5 shadow-[0_24px_70px_-28px_rgba(15,23,42,.46)]">
