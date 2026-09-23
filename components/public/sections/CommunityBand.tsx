@@ -4,7 +4,7 @@ import { ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function CommunityBand() {
   return (
-    <section className="relative overflow-hidden bg-[#fffaf8] px-4 py-14 text-slate-950 [content-visibility:auto] [contain-intrinsic-size:auto_760px] sm:px-6 sm:py-18 lg:px-8 lg:py-20">
+    <section className="relative overflow-hidden bg-[#fffaf8] px-4 py-14 text-slate-950 sm:px-6 sm:py-18 lg:px-8 lg:py-20">
       <div
         aria-hidden="true"
         className="absolute left-[-12%] top-[-25%] h-[34rem] w-[34rem] rounded-full bg-rose-100 blur-[110px]"
