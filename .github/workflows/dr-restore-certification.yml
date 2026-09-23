@@ -172,6 +172,10 @@ jobs:
           DIRECT_URL: ${{ secrets.DR_TARGET_DB_URL }}
         run: npx prisma migrate deploy
 
+      - name: Align isolated Supabase-managed schema
+        shell: bash
+        run: bash scripts/dr/align-isolated-managed-schema.sh
+
       - name: Reset dedicated restore-test data
         shell: bash
         run: bash scripts/dr/reset-isolated-target.sh
