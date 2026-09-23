@@ -1,22 +1,48 @@
-import * as Sentry from "@sentry/nextjs";
 import { getSentryPrivacyConfig } from "./lib/security/telemetry";
 
-export function register() {
-  const hostname =
-    typeof window === "undefined" ? undefined : window.location.hostname;
+const STATIC_PUBLIC_PATHS = new Set([
+  "/",
+  "/como-funciona",
+  "/para-quien-es",
+  "/faq",
+  "/contacto",
+  "/proyecto",
+  "/legal",
+]);
 
-  Sentry.init({
-    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    ...getSentryPrivacyConfig({
-      nodeEnv: process.env.NODE_ENV,
-      vercelEnv: process.env.NEXT_PUBLIC_VERCEL_ENV,
-      hostname,
-    }),
-    debug: false,
-    // Replay is intentionally disabled for the medical-data product surface.
-    replaysOnErrorSampleRate: 0,
-    replaysSessionSampleRate: 0,
-  });
+function isStaticPublicPath(pathname: string) {
+  return (
+    STATIC_PUBLIC_PATHS.has(pathname) ||
+    pathname.startsWith("/legal/")
+  );
 }
 
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+export function register() {
+  if (typeof window === "undefined") return;
+
+  const startSentry = async () => {
+    const Sentry = await import("@sentry/nextjs");
+    Sentry.init({
+      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+      ...getSentryPrivacyConfig({
+        nodeEnv: process.env.NODE_ENV,
+        vercelEnv: process.env.NEXT_PUBLIC_VERCEL_ENV,
+        hostname: window.location.hostname,
+      }),
+      debug: false,
+      replaysOnErrorSampleRate: 0,
+      replaysSessionSampleRate: 0,
+    });
+  };
+
+  if (isStaticPublicPath(window.location.pathname)) {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(() => void startSentry(), { timeout: 5000 });
+    } else {
+      window.setTimeout(() => void startSentry(), 3000);
+    }
+    return;
+  }
+
+  void startSentry();
+}
