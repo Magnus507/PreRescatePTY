@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   HeartPulse,
@@ -63,7 +62,6 @@ export default function PlansPreview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [shouldLoad, setShouldLoad] = useState(false);
-  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -107,7 +105,7 @@ export default function PlansPreview() {
   return (
     <section
       ref={sectionRef}
-      className="relative overflow-hidden bg-[#f9fbff] py-14 text-slate-950 sm:py-18 lg:py-20"
+      className="relative overflow-hidden bg-[#f9fbff] py-14 text-slate-950 [content-visibility:auto] [contain-intrinsic-size:auto_1000px] sm:py-18 lg:py-20"
     >
       <div
         aria-hidden="true"
@@ -161,24 +159,11 @@ export default function PlansPreview() {
             className="pointer-events-none absolute inset-y-0 right-0 z-20 w-20 bg-gradient-to-l from-white via-white/85 to-transparent sm:w-36"
           />
 
-          <motion.div
-            className="flex w-max items-center gap-4 px-4 sm:gap-5 sm:px-6"
-            animate={reducedMotion ? undefined : { x: ["0%", "-50%"] }}
-            transition={{ duration: 32, repeat: Infinity, ease: "linear" }}
-          >
+          <div className="flex w-max snap-x snap-mandatory items-center gap-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:snap-none sm:gap-5 sm:overflow-visible sm:px-6 sm:motion-safe:animate-[marquee_32s_linear_infinite]">
             {movingGallery.map((item, index) => (
-              <motion.div
+              <div
                 key={`${item.label}-${index}`}
-                whileHover={reducedMotion ? undefined : { y: -7, rotateY: index % 2 === 0 ? -2 : 2 }}
-                className="relative h-[210px] w-[292px] shrink-0 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-100 shadow-[0_20px_50px_-35px_rgba(15,23,42,.42)] sm:h-[265px] sm:w-[372px]"
-                style={{
-                  transform:
-                    index % 4 === 0
-                      ? "perspective(1000px) rotateY(4deg)"
-                      : index % 4 === 2
-                        ? "perspective(1000px) rotateY(-4deg)"
-                        : undefined,
-                }}
+                className={`${index >= gallery.length ? "hidden sm:block" : "block"} relative h-[210px] w-[292px] shrink-0 snap-start overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-100 shadow-[0_20px_50px_-35px_rgba(15,23,42,.42)] transition-transform duration-300 sm:h-[265px] sm:w-[372px] sm:snap-none sm:hover:-translate-y-1`}
               >
                 <Image
                   src={item.src}
@@ -194,9 +179,9 @@ export default function PlansPreview() {
                 <div className="absolute bottom-4 left-4 rounded-full border border-white/55 bg-white/88 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.15em] text-slate-800 shadow-sm backdrop-blur">
                   {item.label}
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         </div>
 
         <div className="mt-10 flex items-center justify-between gap-4 sm:mt-12">
@@ -242,17 +227,13 @@ export default function PlansPreview() {
           </div>
         ) : (
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {displayProducts.map((product, index) => {
+            {displayProducts.map((product) => {
               const imageSrc =
                 resolveImageSrc(product.imageUrl, "general") || "/sticker-official.png";
 
               return (
-                <motion.article
+                <article
                   key={product.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ duration: 0.38, delay: index * 0.04 }}
                   className="group overflow-hidden rounded-[1.55rem] border border-slate-200/90 bg-white p-3 shadow-[0_18px_55px_-38px_rgba(15,23,42,.33)] transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_25px_65px_-38px_rgba(29,102,176,.34)]"
                 >
                   <div className="relative aspect-[1.08/1] overflow-hidden rounded-[1.2rem] bg-[linear-gradient(145deg,#f8fbff,#fff5f5)]">
@@ -288,7 +269,7 @@ export default function PlansPreview() {
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
-                </motion.article>
+                </article>
               );
             })}
           </div>
