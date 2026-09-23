@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import "./visual-performance.css";
-import { Providers } from "./providers";
 import { Toaster } from "sonner";
 import CookieConsentProvider from "@/components/public/CookieConsentProvider";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
@@ -76,11 +75,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-      </head>
       <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased`}>
-        <Providers>{children}</Providers>
+        {children}
         <Toaster />
         <CookieConsentProvider />
         <ServiceWorkerRegistrar />

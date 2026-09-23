@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 
 const STORAGE_KEY = "prerescue_cookie_preferences";
 
@@ -140,13 +139,8 @@ export default function CookieConsent() {
   return (
     <>
       {/* Cookie Banner */}
-      <AnimatePresence>
-        {showBanner && !showPreferences && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            transition={{ duration: 0.3 }}
+{showBanner && !showPreferences && (
+          <div
             className="fixed bottom-0 left-0 right-0 z-50 p-4 md:p-6 bg-[#0c1630] border-t border-white/10 shadow-2xl"
             role="region"
             aria-label="Consentimiento de cookies"
@@ -195,17 +189,11 @@ export default function CookieConsent() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
-
-      {/* Preferences Modal */}
-      <AnimatePresence>
-        {showPreferences && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+{/* Preferences Modal */}
+{showPreferences && (
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
             onClick={() => setShowPreferences(false)}
             onKeyDown={handleKeyDown}
@@ -214,10 +202,7 @@ export default function CookieConsent() {
             aria-labelledby="cookie-preferences-title"
             aria-describedby="cookie-preferences-description"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+            <div
               className="bg-[#0c1630] border border-white/10 rounded-2xl p-6 md:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
@@ -310,10 +295,9 @@ export default function CookieConsent() {
                   Cerrar
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
-    </>
+</>
   );
 }

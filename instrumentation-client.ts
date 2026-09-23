@@ -1,9 +1,8 @@
-import * as Sentry from "@sentry/nextjs";
 import { getSentryPrivacyConfig } from "./lib/security/telemetry";
 
-export function register() {
-  const hostname =
-    typeof window === "undefined" ? undefined : window.location.hostname;
+async function startSentry() {
+  const Sentry = await import("@sentry/nextjs");
+  const hostname = typeof window === "undefined" ? undefined : window.location.hostname;
 
   Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -13,10 +12,37 @@ export function register() {
       hostname,
     }),
     debug: false,
-    // Replay is intentionally disabled for the medical-data product surface.
     replaysOnErrorSampleRate: 0,
     replaysSessionSampleRate: 0,
   });
 }
 
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+export function register() {
+  if (typeof window === "undefined") return;
+
+  const pathname = window.location.pathname;
+  const operationalSurface =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/activar") ||
+    pathname.startsWith("/e/");
+
+  if (operationalSurface) {
+    void startSentry();
+    return;
+  }
+
+  const start = () => {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(() => void startSentry(), { timeout: 5000 });
+    } else {
+      setTimeout(() => void startSentry(), 2500);
+    }
+  };
+
+  if (document.readyState === "complete") {
+    start();
+  } else {
+    window.addEventListener("load", start, { once: true });
+  }
+}
