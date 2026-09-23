@@ -194,6 +194,57 @@ describe("production traceable identities", () => {
     expect(mockPrisma.operationProductionEvent.create).not.toHaveBeenCalled();
   });
 
+  it("returns an idempotent replay without adding a duplicate preparation event", async () => {
+    const existingItem = {
+      id: "digital-existing",
+      batchId: "batch-1",
+      productionOrderId: "production-1",
+      internalLabel: "PO-001-0001",
+      sequenceNumber: 1,
+      shortCode: "PUBLIC7NM42",
+      chipId: "chip-1",
+      batch: {
+        id: "batch-1",
+        prefix: "PO-001",
+        startNumber: 1,
+        endNumber: 1,
+        quantity: 1,
+        status: "generated",
+        finishedGoodCode: null,
+      },
+    };
+    mockPrisma.operationProductionOrder.findUnique
+      .mockResolvedValueOnce({
+        id: "production-1",
+        code: "PO-001",
+        outputType: "sticker_nfc_qr",
+        status: "planned",
+        plannedQuantity: 1,
+        digitalItems: [existingItem],
+        events: [],
+      } as never)
+      .mockResolvedValueOnce({ id: "production-1", digitalItems: [existingItem] } as never);
+    mockEnsureTraceableIdentity.mockResolvedValue({
+      ...identityResult(existingItem),
+      chipCreated: false,
+      activationCodeCreated: false,
+    });
+
+    const response = await prepareDigitalItems(
+      new NextRequest("https://prerescatepty.com/api/admin/operations/production-orders/production-1/prepare-digital-items", {
+        method: "POST",
+        body: JSON.stringify({ quantity: 1 }),
+      }),
+      routeParams
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.preparation.idempotent).toBe(true);
+    expect(mockPrisma.operationDigitalBatchItem.create).not.toHaveBeenCalled();
+    expect(mockPrisma.operationProductionEvent.create).not.toHaveBeenCalled();
+  });
+
   it("keeps the exact Chip identity attached to the printed preparation through assembly", async () => {
     const printedItem = {
       id: "digital-1",

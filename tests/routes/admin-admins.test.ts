@@ -27,6 +27,10 @@ vi.mock("bcryptjs", () => ({
   default: { hash: mocks.hash },
 }));
 
+vi.mock("@/lib/password-policy", () => ({
+  validatePasswordPolicy: vi.fn().mockResolvedValue({ ok: true }),
+}));
+
 import { PATCH as patchAdmin, DELETE as deleteAdmin } from "@/app/api/admin/admins/[id]/route";
 import { POST as createAdmin, PATCH as patchAdminLegacy } from "@/app/api/admin/admins/route";
 

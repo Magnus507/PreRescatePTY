@@ -9,7 +9,7 @@ import {
   Heart, Phone, AlertTriangle, Droplets, Pill, 
   Activity, User, MessageCircle, Loader2, Calendar,
   ShieldCheck, Share2, Clock, Crown, ArrowLeft, Lightbulb, MousePointerClick,
-  Brain, Footprints, Baby, Eye, BellRing, Tag, Barcode,
+  Brain, Footprints, Baby, Eye, BellRing, Tag,
   Cat, BriefcaseBusiness, HeartHandshake, KeyRound, MapPin, RotateCcw
 } from "lucide-react";
 import { IndustrialProfileView } from "./_components/IndustrialProfileView";
@@ -1114,7 +1114,6 @@ export default function EmergencyPage() {
   const normalizedSource = source === "nfc" ? "nfc" : "qr";
   const [profile, setProfile] = useState<EmergencyProfile | null>(null);
   const [isUnactivated, setIsUnactivated] = useState(false);
-  const [productionLabel, setProductionLabel] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'unknown' | 'paramedic' | 'citizen' | 'special'>('unknown');
@@ -1181,7 +1180,6 @@ export default function EmergencyPage() {
 
         if (data.status === "unactivated" || data.status === "inactive") {
           setIsUnactivated(true);
-          setProductionLabel(typeof data.internalLabel === "string" ? data.internalLabel : null);
         } else if (!res.ok) {
           setError(data.error || "Perfil no disponible");
         } else {
@@ -1344,29 +1342,13 @@ export default function EmergencyPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 sm:text-[10px]">
-                      Etiqueta interna
+                      Código público
                     </p>
                     <p className="mt-0.5 break-all font-mono text-[13px] font-black tracking-[-0.025em] text-slate-950 sm:text-sm">
                       {shortCode}
                     </p>
                   </div>
                 </div>
-
-                {productionLabel && (
-                  <div className="group flex items-center gap-3 rounded-2xl border border-slate-200/90 bg-white px-3 py-3 shadow-[0_8px_24px_-22px_rgba(15,23,42,0.55)] transition-transform duration-200 hover:-translate-y-0.5 sm:px-4">
-                    <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-[#10203f]">
-                      <Barcode className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 sm:text-[10px]">
-                        Identificador de producción
-                      </p>
-                      <p className="mt-0.5 break-all font-mono text-[13px] font-black tracking-[-0.035em] text-slate-950 sm:text-sm">
-                        {productionLabel}
-                      </p>
-                    </div>
-                  </div>
-                )}
 
                 <div className="flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50/60 px-3 py-3 shadow-[0_8px_24px_-22px_rgba(218,26,33,0.65)] sm:px-4">
                   <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl border border-red-100 bg-white">

@@ -95,6 +95,7 @@ export async function POST(
           existingCount,
           targetQuantity,
           inconsistent: false,
+          idempotent: true,
         };
       }
 
@@ -196,24 +197,30 @@ export async function POST(
         });
       }
 
-      await tx.operationProductionEvent.create({
-        data: {
-          productionOrderId,
-          eventType: "DIGITAL_PREPARATION_CREATED",
-          quantity: missingCount,
-          reason: "Preparacion digital creada",
-          metadataJson: JSON.stringify({
+      const hadCoreMutation = missingCount > 0 || createdIdentities.some(
+        (identity) => identity.chipCreated || identity.activationCodeCreated
+      );
+
+      if (hadCoreMutation) {
+        await tx.operationProductionEvent.create({
+          data: {
             productionOrderId,
-            createdItemIds: createdItems.map((item) => item.id),
-            createdChipIds: createdIdentities
-              .filter((identity) => identity.chipCreated)
-              .map((identity) => identity.chipId),
-            batchId: batch.id,
-            finishedGoodCode,
-          }),
-          createdById,
-        },
-      });
+            eventType: "DIGITAL_PREPARATION_CREATED",
+            quantity: missingCount,
+            reason: "Preparacion digital creada",
+            metadataJson: JSON.stringify({
+              productionOrderId,
+              createdItemIds: createdItems.map((item) => item.id),
+              createdChipIds: createdIdentities
+                .filter((identity) => identity.chipCreated)
+                .map((identity) => identity.chipId),
+              batchId: batch.id,
+              finishedGoodCode,
+            }),
+            createdById,
+          },
+        });
+      }
 
       await tx.operationProductionOrder.update({
         where: { id: productionOrderId },
@@ -238,6 +245,7 @@ export async function POST(
         existingCount,
         targetQuantity,
         inconsistent: existingCount > targetQuantity,
+        idempotent: !hadCoreMutation,
       };
     });
 
@@ -245,7 +253,7 @@ export async function POST(
       return NextResponse.json({ error: "Orden de produccion no encontrada" }, { status: 404 });
     }
 
-    return NextResponse.json({ preparation: result }, { status: 201 });
+    return NextResponse.json({ preparation: result }, { status: result.idempotent ? 200 : 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "TERMINAL_PRODUCTION_ORDER") {
       return NextResponse.json(

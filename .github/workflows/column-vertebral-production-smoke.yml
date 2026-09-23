@@ -1,0 +1,35 @@
+name: Column vertebral production smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Production URL
+        required: false
+        default: https://www.prerescatepty.com
+  deployment_status:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: column-vertebral-smoke-${{ github.event.deployment.id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: ${{ inputs.base_url || github.event.deployment_status.target_url || 'https://www.prerescatepty.com' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Verify production identity boundary
+        run: node scripts/column-vertebral-production-smoke.mjs "$BASE_URL"

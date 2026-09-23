@@ -1,0 +1,9 @@
+/app/api/chips/ @Magnus507
+/app/api/public/ @Magnus507
+/app/api/admin/operations/ @Magnus507
+/lib/operations/ @Magnus507
+/domains/chips/ @Magnus507
+/prisma/schema.prisma @Magnus507
+/prisma/migrations/ @Magnus507
+/supabase/migrations/ @Magnus507
+/.github/workflows/ @Magnus507

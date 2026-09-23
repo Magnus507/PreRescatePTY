@@ -67,6 +67,7 @@ describe("Adversarial PostgreSQL concurrency (isolated, synthetic data)", () => 
       status: "activated",
       accountId: account.id,
       assignedProfileId: profile.id,
+      activatedAt: new Date(),
     } });
     const scan = await db.scanEvent.create({ data: {
       chipId: chip.id,

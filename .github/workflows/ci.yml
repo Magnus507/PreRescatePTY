@@ -126,6 +126,9 @@ jobs:
           --to-schema-datamodel prisma/schema.prisma
           --exit-code
 
+      - name: Audit column vertebral invariants
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/audit-column-vertebral.sql
+
       - name: Lint
         run: npm run lint
 

@@ -36,6 +36,6 @@ export async function GET(req: NextRequest) {
   } catch (err: unknown) {
     const e = err instanceof Error ? err : new Error(String(err));
     logger.error("[QR_GENERATOR] Critical failure", e.message);
-    return new NextResponse(`Internal Server Error: ${e.message}`, { status: 500 });
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
