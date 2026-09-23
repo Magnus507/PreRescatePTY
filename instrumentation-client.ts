@@ -21,28 +21,19 @@ export function register() {
   if (typeof window === "undefined") return;
 
   const pathname = window.location.pathname;
-  const operationalSurface =
+  const monitoredSurface =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/activar") ||
-    pathname.startsWith("/e/");
+    pathname.startsWith("/e/") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/registro") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password");
 
-  if (operationalSurface) {
-    void startSentry();
-    return;
-  }
+  // Marketing and legal pages intentionally do not load the Sentry client bundle.
+  // Server-side observability remains available while the public landing stays light.
+  if (!monitoredSurface) return;
 
-  const start = () => {
-    if ("requestIdleCallback" in window) {
-      window.requestIdleCallback(() => void startSentry(), { timeout: 5000 });
-    } else {
-      setTimeout(() => void startSentry(), 2500);
-    }
-  };
-
-  if (document.readyState === "complete") {
-    start();
-  } else {
-    window.addEventListener("load", start, { once: true });
-  }
+  void startSentry();
 }
