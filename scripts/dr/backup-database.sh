@@ -18,6 +18,8 @@ npx --yes supabase@2.117.0 db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/rol
 npx --yes supabase@2.117.0 db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/schema.sql"
 npx --yes supabase@2.117.0 db dump --db-url "$DR_SOURCE_DB_URL" -f "$OUT_DIR/data.sql" --use-copy --data-only \
   -x "public._prisma_migrations" \
+  -x "storage.buckets" \
+  -x "storage.objects" \
   -x "storage.buckets_vectors" \
   -x "storage.vector_indexes"
 
@@ -41,7 +43,9 @@ cat > "$OUT_DIR/manifest.json" <<JSON
   "gitSha": "${GITHUB_SHA:-unknown}",
   "format": "supabase-cli-logical-sql",
   "files": ["roles.sql", "schema.sql", "data.sql", "dump-summary.json", "SHA256SUMS"],
-  "excludedDataTables": ["public._prisma_migrations", "storage.buckets_vectors", "storage.vector_indexes"],
+  "excludedDataTables": ["public._prisma_migrations", "storage.buckets", "storage.objects", "storage.buckets_vectors", "storage.vector_indexes"],
+  "logicalSchemaScope": ["public", "auth"],
+  "storageTransport": "supabase-storage-api-with-sha256-manifest",
   "storageObjectsIncluded": false
 }
 JSON

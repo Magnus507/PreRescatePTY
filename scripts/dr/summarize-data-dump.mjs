@@ -71,10 +71,9 @@ try {
     SELECT table_schema, table_name, column_name, ordinal_position,
            data_type, udt_name, is_nullable
       FROM information_schema.columns
-     WHERE table_schema IN ('public', 'auth', 'storage')
+     WHERE table_schema IN ('public', 'auth')
        AND NOT (table_schema = 'public' AND table_name = '_prisma_migrations')
        AND NOT (table_schema = 'auth' AND table_name = 'schema_migrations')
-       AND NOT (table_schema = 'storage' AND table_name IN ('migrations', 'buckets_vectors', 'vector_indexes'))
      ORDER BY table_schema, table_name, ordinal_position
   `)
 
@@ -94,7 +93,9 @@ try {
 }
 
 const summary = {
-  version: 1,
+  version: 2,
+  schemaScope: ['public', 'auth'],
+  storageTransport: 'supabase-storage-api-with-sha256-manifest',
   schemaHash,
   dataSqlSha256: createHash('sha256').update(sql).digest('hex'),
   tables,

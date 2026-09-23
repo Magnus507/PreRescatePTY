@@ -47,4 +47,18 @@ describe("column vertebral release contracts", () => {
     expect(route).toContain("idempotent: !hadCoreMutation");
     expect(route).toContain("result.idempotent ? 200 : 201");
   });
+
+  it("restores Supabase Storage through its API without mutating managed schemas", () => {
+    const backup = source("scripts/dr/backup-database.sh");
+    const summarize = source("scripts/dr/summarize-data-dump.mjs");
+    const verify = source("scripts/dr/verify-restore.mjs");
+    const restoreWorkflow = source(".github/workflows/dr-restore-certification.yml");
+
+    expect(backup).toContain('-x "storage.buckets"');
+    expect(backup).toContain('-x "storage.objects"');
+    expect(summarize).toContain("table_schema IN ('public', 'auth')");
+    expect(verify).toContain("supabase-storage-api-with-sha256-manifest");
+    expect(restoreWorkflow).toContain("Restore and checksum Storage");
+    expect(restoreWorkflow).not.toContain("align-isolated-managed-schema.sh");
+  });
 });
