@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - .github/workflows/dr-backup.yml
+      - .github/workflows/dr-restore-certification.yml
   schedule:
     - cron: "17 */6 * * *"
     - cron: "43 4 * * 0"

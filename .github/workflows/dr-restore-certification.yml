@@ -12,11 +12,56 @@ permissions:
   contents: read
 
 jobs:
-  restore-certification:
+  select-backup:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'master'
+    runs-on: ubuntu-latest
+    outputs:
+      should_restore: ${{ steps.select.outputs.should_restore }}
+      artifact_name: ${{ steps.select.outputs.artifact_name }}
+    steps:
+      - name: Select backup artifact for certification
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_EVENT: ${{ github.event.workflow_run.event }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mapfile -t artifact_names < <(
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID/artifacts?per_page=100" \
+              --jq '.artifacts[] | select(.expired == false) | .name'
+          )
+
+          artifact_name=""
+          for candidate in "${artifact_names[@]}"; do
+            if [ "$candidate" = "dr-backup-encrypted-weekly" ]; then
+              artifact_name="$candidate"
+              break
+            fi
+            if { [ "$SOURCE_EVENT" = "push" ] || [ "$SOURCE_EVENT" = "workflow_dispatch" ]; } &&
+              [ "$candidate" = "dr-backup-encrypted-recent" ]; then
+              artifact_name="$candidate"
+            fi
+          done
+
+          if [ -z "$artifact_name" ]; then
+            echo "No eligible backup artifact exists in source run $SOURCE_RUN_ID; certification skipped."
+            echo "should_restore=false" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Selected $artifact_name from source run $SOURCE_RUN_ID."
+          echo "should_restore=true" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
+
+  restore-certification:
+    needs: select-backup
+    if: >-
+      needs.select-backup.outputs.should_restore == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -67,7 +112,7 @@ jobs:
       - name: Download encrypted backup from triggering run
         uses: actions/download-artifact@v7
         with:
-          name: dr-backup-encrypted-recent
+          name: ${{ needs.select-backup.outputs.artifact_name }}
           path: incoming
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
