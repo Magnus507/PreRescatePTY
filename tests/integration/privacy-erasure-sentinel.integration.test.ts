@@ -117,7 +117,7 @@ describe("Block 3 privacy erasure sentinel", () => {
     await db.chip.create({ data: {
       id: ids.chip, shortCode, nfcUrl: `https://ci.test/e/${shortCode}`, qrUrl: `https://ci.test/e/${shortCode}`,
       serialPublic: `${run}-serial`, ownerUserId: ids.user, assignedProfileId: ids.profile,
-      accountId: ids.account, status: "activated", lastScanLocation: mark.location,
+      accountId: ids.account, status: "activated", activatedAt: new Date(), lastScanLocation: mark.location,
     } });
     await db.scanEvent.create({ data: { chipId: ids.chip, profileId: ids.profile, accountId: ids.account, address: mark.address, city: mark.location, rawMetadataJson: JSON.stringify(mark) } });
     await db.notification.create({ data: { chipId: ids.chip, eventId: `${run}-scan`, channel: "email", recipient: mark.email, idempotencyKey: `${run}-notification` } });

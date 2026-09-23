@@ -44,6 +44,9 @@ function publicJson(
   response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
   response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   response.headers.set("Vary", "Origin");
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("X-Content-Type-Options", "nosniff");
   if (allowedOrigin) {
     response.headers.set("Access-Control-Allow-Origin", allowedOrigin);
   }
@@ -111,11 +114,7 @@ export async function GET(
         unsupported_context: { status: 400, body: { error: "Contexto no soportado", status: "unsupported_context" } },
       };
       const mapped = responseMap[resolution.reason];
-      const body =
-        resolution.reason === "chip_not_active" && resolution.chip?.internalLabel
-          ? { ...mapped.body, internalLabel: resolution.chip.internalLabel }
-          : mapped.body;
-      return publicJson(req, body, { status: mapped.status });
+      return publicJson(req, mapped.body, { status: mapped.status });
     }
 
     const { profile } = resolution;

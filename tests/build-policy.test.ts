@@ -21,7 +21,7 @@ const expectedDeniedInstallScripts = {
 describe("build security policy", () => {
   it("keeps the fail-fast typecheck in the Vercel production build", () => {
     expect(packageJson.scripts?.build).toBe(
-      "npm run prisma:generate && npm run typecheck && next build",
+      "npm run prisma:generate && npm run test:column-vertebral && npm run typecheck && next build",
     );
     expect(packageJson.scripts?.typecheck).toBe("tsc --noEmit");
   });

@@ -378,6 +378,7 @@ model Chip {
   finishedGoodUnit    OperationFinishedGoodUnit?
 
   @@index([accountId])
+  @@index([assignedProfileId])
   @@index([ownerUserId])
   @@index([status])
   @@index([serviceEndDate])
@@ -573,8 +574,8 @@ model ChipClaimToken {
   id                  String    @id @default(cuid())
   chipId              String
   activationCode      String    @unique
-  activationCodeHash  String?   @unique
-  activationCodeLast4 String?
+  activationCodeHash  String    @unique
+  activationCodeLast4 String
   expiresAt           DateTime?
   usedAt              DateTime?
   createdAt           DateTime  @default(now())
@@ -584,6 +585,8 @@ model ChipClaimToken {
   order               Order?    @relation(fields: [orderId], references: [id])
 
   @@index([activationCodeLast4])
+  @@index([chipId])
+  @@index([orderId])
 }
 
 model ScanEvent {

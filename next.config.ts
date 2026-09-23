@@ -97,6 +97,8 @@ export default withSentryConfig(nextConfig, {
 
   // Suppresses source map uploading logs during build
   silent: true,
+  // Keep build metadata private; runtime error reporting remains configured.
+  telemetry: false,
   org: "prerescate-pty",
   project: "javascript-nextjs",
   // Upload a larger set of source maps for prettier stack traces (increases build time)
