@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   CheckCircle2,
@@ -72,13 +71,12 @@ const steps = [
 
 export default function EmergencyTimeline() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const reducedMotion = useReducedMotion();
   const activeStep = steps[activeIndex];
 
   return (
     <section
       id="recorrido"
-      className="relative overflow-hidden bg-[#fffdfb] py-14 text-slate-950 sm:py-18 lg:py-20"
+      className="relative overflow-hidden bg-[#fffdfb] py-14 text-slate-950 [content-visibility:auto] [contain-intrinsic-size:auto_850px] sm:py-18 lg:py-20"
     >
       <div
         aria-hidden="true"
@@ -110,12 +108,10 @@ export default function EmergencyTimeline() {
         <div className="mt-10 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-[0_30px_90px_-56px_rgba(15,23,42,.34)] sm:mt-12">
           <div className="relative border-b border-slate-100 px-3 pb-4 pt-5 sm:px-6 sm:pt-6 lg:px-8">
             <div className="absolute left-[12%] right-[12%] top-[34px] hidden h-[2px] bg-slate-200 md:block" />
-            <motion.div
+            <div
               aria-hidden="true"
-              className="absolute left-[12%] top-[34px] hidden h-[2px] origin-left rounded-full bg-gradient-to-r from-[#DA1A21] via-[#ff4b55] to-[#2876c7] md:block"
-              animate={{ scaleX: activeIndex / (steps.length - 1) }}
-              transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 140, damping: 22 }}
-              style={{ width: "76%" }}
+              className="absolute left-[12%] top-[34px] hidden h-[2px] origin-left rounded-full bg-gradient-to-r from-[#DA1A21] via-[#ff4b55] to-[#2876c7] transition-transform duration-300 md:block"
+              style={{ width: "76%", transform: `scaleX(${activeIndex / (steps.length - 1)})` }}
             />
 
             <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-4 md:gap-4 md:overflow-visible">
@@ -133,8 +129,7 @@ export default function EmergencyTimeline() {
                       selected ? "bg-slate-50" : "bg-white"
                     }`}
                   >
-                    <motion.span
-                      layout
+                    <span
                       className={`relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border transition-colors md:mx-auto ${
                         selected
                           ? "border-[#DA1A21]/20 bg-[#DA1A21] text-white shadow-[0_12px_28px_-14px_rgba(218,26,33,.65)]"
@@ -142,7 +137,7 @@ export default function EmergencyTimeline() {
                       }`}
                     >
                       <Icon className="h-5 w-5" />
-                    </motion.span>
+                    </span>
                     <span className="mt-3 block text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
                       {step.eyebrow}
                     </span>
@@ -161,15 +156,7 @@ export default function EmergencyTimeline() {
 
           <div className="grid min-h-[390px] lg:grid-cols-[.94fr_1.06fr]">
             <div className="relative min-h-[270px] overflow-hidden bg-[#eef6ff] lg:min-h-full">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeStep.id}
-                  initial={reducedMotion ? false : { opacity: 0, x: -18, scale: 1.025 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={reducedMotion ? undefined : { opacity: 0, x: 14, scale: 0.99 }}
-                  transition={{ duration: reducedMotion ? 0 : 0.34, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute inset-0"
-                >
+              <div key={activeStep.id} className="absolute inset-0">
                   <Image
                     src={activeStep.image}
                     alt={activeStep.alt}
@@ -181,8 +168,7 @@ export default function EmergencyTimeline() {
                     aria-hidden="true"
                     className="absolute inset-0 bg-gradient-to-t from-white/50 via-transparent to-white/5 lg:bg-gradient-to-r lg:from-transparent lg:to-white/18"
                   />
-                </motion.div>
-              </AnimatePresence>
+              </div>
 
               <div className="absolute bottom-4 left-4 rounded-full border border-white/80 bg-white/86 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.15em] text-[#185b9d] shadow-sm backdrop-blur">
                 {activeStep.label}
@@ -190,14 +176,7 @@ export default function EmergencyTimeline() {
             </div>
 
             <div className="relative flex flex-col justify-center bg-[radial-gradient(circle_at_90%_10%,rgba(219,234,254,.75),transparent_34%),radial-gradient(circle_at_10%_85%,rgba(254,226,226,.7),transparent_34%),#ffffff] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`${activeStep.id}-copy`}
-                  initial={reducedMotion ? false : { opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
-                  transition={{ duration: reducedMotion ? 0 : 0.28 }}
-                >
+              <div key={`${activeStep.id}-copy`}>
                   <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-[#185b9d]">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     {activeStep.detail}
@@ -219,8 +198,7 @@ export default function EmergencyTimeline() {
                     Ver más
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Link>
-                </motion.div>
-              </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
