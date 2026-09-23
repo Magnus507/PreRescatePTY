@@ -74,7 +74,6 @@ jobs:
       DR_ALLOW_TARGET_OBJECTS: "1"
       DR_PRODUCTION_PROJECT_REF: fikidmfquaxhlayxctsa
       DR_TARGET_PROJECT_REF: vgaverzjcdbkdwplsekd
-      DR_SENTINEL_ORDER_NUMBER: PR-2026-000824
 
     steps:
       - name: Checkout certified master

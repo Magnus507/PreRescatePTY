@@ -57,8 +57,12 @@ describe("column vertebral release contracts", () => {
     expect(backup).toContain('-x "storage.buckets"');
     expect(backup).toContain('-x "storage.objects"');
     expect(summarize).toContain("table_schema IN ('public', 'auth')");
+    expect(summarize).toContain("contentSentinels");
+    expect(summarize).toContain("orderNumberValues.sort()");
     expect(verify).toContain("supabase-storage-api-with-sha256-manifest");
+    expect(verify).toContain("contentSentinelVerification: 'PASS'");
     expect(restoreWorkflow).toContain("Restore and checksum Storage");
     expect(restoreWorkflow).not.toContain("align-isolated-managed-schema.sh");
+    expect(restoreWorkflow).not.toContain("DR_SENTINEL_ORDER_NUMBER");
   });
 });

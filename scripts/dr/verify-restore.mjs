@@ -20,12 +20,23 @@ function quoteIdent(value) {
 
 const expected = JSON.parse(await readFile(summaryPath, 'utf8'))
 if (
-  expected.version !== 2 ||
+  expected.version !== 3 ||
   !Array.isArray(expected.tables) ||
+  !Array.isArray(expected.contentSentinels) ||
   JSON.stringify(expected.schemaScope) !== JSON.stringify(['public', 'auth']) ||
   expected.storageTransport !== 'supabase-storage-api-with-sha256-manifest'
 ) {
   throw new Error('Unsupported or invalid dump summary')
+}
+if (
+  expected.contentSentinels.length !== 1 ||
+  expected.contentSentinels[0]?.schema !== 'public' ||
+  expected.contentSentinels[0]?.table !== 'Order' ||
+  expected.contentSentinels[0]?.column !== 'orderNumber' ||
+  !Number.isSafeInteger(expected.contentSentinels[0]?.values) ||
+  !/^[0-9a-f]{64}$/.test(expected.contentSentinels[0]?.sha256)
+) {
+  throw new Error('Unsupported or invalid content sentinel contract')
 }
 
 const target = new Client({
@@ -77,6 +88,31 @@ try {
   if (countMismatches.length > 0) {
     throw new Error(
       `Restored row counts differ from the exact SQL dump: ${JSON.stringify(countMismatches.slice(0, 12))}`,
+    )
+  }
+
+  const sentinelMismatches = []
+  for (const sentinel of expected.contentSentinels) {
+    const qualified = `${quoteIdent(sentinel.schema)}.${quoteIdent(sentinel.table)}`
+    const column = quoteIdent(sentinel.column)
+    const { rows } = await target.query(
+      `SELECT ${column}::text AS value FROM ${qualified} WHERE ${column} IS NOT NULL`,
+    )
+    const values = rows.map((row) => row.value).sort()
+    const sha256 = createHash('sha256').update(JSON.stringify(values)).digest('hex')
+    if (values.length !== sentinel.values || sha256 !== sentinel.sha256) {
+      sentinelMismatches.push({
+        table: `${sentinel.schema}.${sentinel.table}`,
+        column: sentinel.column,
+        expectedValues: sentinel.values,
+        actualValues: values.length,
+      })
+    }
+  }
+
+  if (sentinelMismatches.length > 0) {
+    throw new Error(
+      `Restored content sentinels differ from the exact SQL dump: ${JSON.stringify(sentinelMismatches)}`,
     )
   }
 
@@ -132,23 +168,6 @@ try {
     }
   }
 
-  const sentinels = []
-  const orderNumber = process.env.DR_SENTINEL_ORDER_NUMBER
-  if (orderNumber) {
-    const { rows } = await target.query(
-      'SELECT count(*)::int AS count FROM public."Order" WHERE "orderNumber" = $1',
-      [orderNumber],
-    )
-    if (rows[0].count < 1) {
-      throw new Error('Restore sentinel order is missing from the recovered database')
-    }
-    sentinels.push({
-      sentinel: 'DR_SENTINEL_ORDER_NUMBER',
-      count: rows[0].count,
-      result: 'PASS',
-    })
-  }
-
   console.log(JSON.stringify({
     result: 'PASS',
     schemaHash: actualSchemaHash,
@@ -157,8 +176,8 @@ try {
     summarizedTables: expected.tables.length,
     totalCopiedRows: expected.totalCopiedRows,
     rowCountVerification: 'PASS',
+    contentSentinelVerification: 'PASS',
     relations,
-    sentinels,
   }))
 } finally {
   await target.end()
