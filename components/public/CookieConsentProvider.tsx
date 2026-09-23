@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import CookieConsent from "./CookieConsent";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { sanitizePublicAnalyticsUrl } from "@/lib/security/telemetry";
+
+const Analytics = dynamic(
+  () => import("@vercel/analytics/next").then((module) => module.Analytics),
+  { ssr: false },
+);
+const SpeedInsights = dynamic(
+  () => import("@vercel/speed-insights/next").then((module) => module.SpeedInsights),
+  { ssr: false },
+);
 
 const STORAGE_KEY = "prerescue_cookie_preferences";
 
@@ -20,7 +28,7 @@ export default function CookieConsentProvider() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         const parsed = JSON.parse(stored) as CookiePreferences;
@@ -39,8 +47,10 @@ export default function CookieConsentProvider() {
         setAnalyticsConsent(customEvent.detail.analytics === true);
       }
     };
+
     window.addEventListener("prerescue:cookie-preferences-updated", handleUpdate);
-    return () => window.removeEventListener("prerescue:cookie-preferences-updated", handleUpdate);
+    return () =>
+      window.removeEventListener("prerescue:cookie-preferences-updated", handleUpdate);
   }, []);
 
   return (
