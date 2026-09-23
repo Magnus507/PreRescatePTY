@@ -19,7 +19,12 @@ function quoteIdent(value) {
 }
 
 const expected = JSON.parse(await readFile(summaryPath, 'utf8'))
-if (expected.version !== 1 || !Array.isArray(expected.tables)) {
+if (
+  expected.version !== 2 ||
+  !Array.isArray(expected.tables) ||
+  JSON.stringify(expected.schemaScope) !== JSON.stringify(['public', 'auth']) ||
+  expected.storageTransport !== 'supabase-storage-api-with-sha256-manifest'
+) {
   throw new Error('Unsupported or invalid dump summary')
 }
 
@@ -34,10 +39,9 @@ try {
     SELECT table_schema, table_name, column_name, ordinal_position,
            data_type, udt_name, is_nullable
       FROM information_schema.columns
-     WHERE table_schema IN ('public', 'auth', 'storage')
+     WHERE table_schema IN ('public', 'auth')
        AND NOT (table_schema = 'public' AND table_name = '_prisma_migrations')
        AND NOT (table_schema = 'auth' AND table_name = 'schema_migrations')
-       AND NOT (table_schema = 'storage' AND table_name IN ('migrations', 'buckets_vectors', 'vector_indexes'))
      ORDER BY table_schema, table_name, ordinal_position
   `)
 
@@ -86,8 +90,6 @@ try {
     'public.OperationDispatch',
     'public.SystemConfig',
     'auth.users',
-    'storage.buckets',
-    'storage.objects',
   ]
   const summarized = new Set(expected.tables.map((table) => `${table.schema}.${table.table}`))
   const missingCritical = criticalTables.filter((table) => !summarized.has(table))
@@ -150,6 +152,8 @@ try {
   console.log(JSON.stringify({
     result: 'PASS',
     schemaHash: actualSchemaHash,
+    schemaScope: expected.schemaScope,
+    storageTransport: expected.storageTransport,
     summarizedTables: expected.tables.length,
     totalCopiedRows: expected.totalCopiedRows,
     rowCountVerification: 'PASS',

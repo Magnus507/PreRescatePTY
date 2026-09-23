@@ -172,10 +172,6 @@ jobs:
           DIRECT_URL: ${{ secrets.DR_TARGET_DB_URL }}
         run: npx prisma migrate deploy
 
-      - name: Align isolated Supabase-managed schema
-        shell: bash
-        run: bash scripts/dr/align-isolated-managed-schema.sh
-
       - name: Reset dedicated restore-test data
         shell: bash
         run: bash scripts/dr/reset-isolated-target.sh
@@ -209,7 +205,7 @@ jobs:
         shell: bash
         run: bash scripts/dr/restore-database.sh "$DR_BACKUP_DIR/database"
 
-      - name: Verify database integrity against exact dump
+      - name: Verify logical database integrity against exact dump
         shell: bash
         run: node scripts/dr/verify-restore.mjs "$DR_BACKUP_DIR/database/dump-summary.json" | tee restore-integrity.json
 
