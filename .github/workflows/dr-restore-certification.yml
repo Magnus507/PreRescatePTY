@@ -162,6 +162,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
+      - name: Apply current application migrations to restore target
+        env:
+          DATABASE_URL: ${{ secrets.DR_TARGET_DB_URL }}
+          DIRECT_URL: ${{ secrets.DR_TARGET_DB_URL }}
+        run: npx prisma migrate deploy
+
       - name: Reset dedicated restore-test data
         shell: bash
         run: bash scripts/dr/reset-isolated-target.sh
