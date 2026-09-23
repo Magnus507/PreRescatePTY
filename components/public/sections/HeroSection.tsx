@@ -264,7 +264,7 @@ export default function HeroSection() {
                 <span>{item.label}</span>
               </div>
             ))}
-          </motion.div>
+          </div>
 
           <div className="mt-4 flex items-start gap-2 text-[10px] leading-[18px] text-slate-400 sm:mt-5 sm:text-[11px] sm:leading-5">
             <Wifi className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -317,7 +317,7 @@ export default function HeroSection() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
