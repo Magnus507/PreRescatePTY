@@ -105,7 +105,7 @@ export default function PlansPreview() {
   return (
     <section
       ref={sectionRef}
-      className="relative overflow-hidden bg-[#f9fbff] py-14 text-slate-950 [content-visibility:auto] [contain-intrinsic-size:auto_1000px] sm:py-18 lg:py-20"
+      className="relative overflow-hidden bg-[#f9fbff] py-14 text-slate-950 sm:py-18 lg:py-20"
     >
       <div
         aria-hidden="true"
