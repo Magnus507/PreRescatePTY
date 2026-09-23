@@ -85,7 +85,7 @@ function IllustratedWorld() {
     <div className="relative aspect-square w-full">
       <div
         aria-hidden="true"
-        className="absolute inset-[7%] rounded-full bg-blue-300/30 blur-[55px]"
+        className="absolute inset-[7%] hidden rounded-full bg-blue-300/30 blur-[55px] sm:block"
       />
 
       <div
@@ -168,7 +168,7 @@ function IllustratedWorld() {
 
       <div
         aria-hidden="true"
-        className="absolute bottom-[7%] left-[6%] z-30 rounded-2xl border border-white/90 bg-white/92 px-3 py-2 shadow-[0_18px_45px_-24px_rgba(15,23,42,.38)] backdrop-blur"
+        className="absolute bottom-[7%] left-[6%] z-30 rounded-2xl border border-white/90 bg-white px-3 py-2 shadow-[0_18px_45px_-24px_rgba(15,23,42,.38)] sm:bg-white/92 sm:backdrop-blur"
       >
         <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#1b66b2]">
           Más información.
@@ -181,18 +181,18 @@ function IllustratedWorld() {
 
 export default function HeroSection() {
   return (
-    <section className="relative isolate min-h-[100svh] overflow-hidden bg-[#fffdfb] text-slate-950">
+    <section className="relative isolate overflow-hidden bg-[#fffdfb] text-slate-950 lg:min-h-[100svh]">
       <div
         aria-hidden="true"
-        className="absolute -left-44 top-[13%] -z-20 h-[34rem] w-[34rem] rounded-full bg-rose-200/45 blur-[100px]"
+        className="absolute -left-44 top-[13%] -z-20 hidden h-[34rem] w-[34rem] rounded-full bg-rose-200/45 blur-[100px] md:block"
       />
       <div
         aria-hidden="true"
-        className="absolute -right-48 top-[3%] -z-20 h-[44rem] w-[44rem] rounded-full bg-blue-200/70 blur-[120px]"
+        className="absolute -right-48 top-[3%] -z-20 hidden h-[44rem] w-[44rem] rounded-full bg-blue-200/70 blur-[120px] md:block"
       />
       <div
         aria-hidden="true"
-        className="absolute bottom-[-20rem] left-[28%] -z-20 h-[36rem] w-[36rem] rounded-full bg-cyan-100/75 blur-[115px]"
+        className="absolute bottom-[-20rem] left-[28%] -z-20 hidden h-[36rem] w-[36rem] rounded-full bg-cyan-100/75 blur-[115px] md:block"
       />
 
       <svg
@@ -207,10 +207,10 @@ export default function HeroSection() {
         <path d="M246 237c-83 36-145 94-194 173" fill="none" stroke="#df2530" strokeWidth="2" strokeDasharray="8 12" opacity=".2" />
       </svg>
 
-      <div className="mx-auto grid min-h-[100svh] w-full max-w-[1500px] items-center gap-6 px-4 pb-14 pt-28 sm:px-6 sm:pb-16 sm:pt-32 lg:grid-cols-[.86fr_1.14fr] lg:gap-1 lg:px-10 xl:px-14">
+      <div className="mx-auto grid w-full max-w-[1500px] items-center gap-5 px-4 pb-8 pt-24 sm:px-6 sm:pb-14 sm:pt-28 lg:min-h-[100svh] lg:grid-cols-[.86fr_1.14fr] lg:gap-1 lg:px-10 lg:pb-16 lg:pt-32 xl:px-14">
         <div className="relative z-20 max-w-3xl">
           <div
-            className="mb-5 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white/84 px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.19em] text-[#b3131a] shadow-[0_12px_40px_-28px_rgba(218,26,33,.55)] backdrop-blur-xl sm:mb-7 sm:text-[10px]"
+            className="mb-5 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.19em] text-[#b3131a] shadow-[0_12px_40px_-28px_rgba(218,26,33,.55)] sm:mb-7 sm:bg-white/84 sm:text-[10px] sm:backdrop-blur-xl"
           >
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#DA1A21] opacity-30" />
@@ -248,7 +248,7 @@ export default function HeroSection() {
             </Link>
             <Link
               href="#recorrido"
-              className="group inline-flex min-h-[54px] items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/88 px-6 text-sm font-bold text-slate-800 shadow-sm backdrop-blur-xl transition-all active:bg-slate-50 sm:min-h-14 sm:px-7 sm:hover:-translate-y-0.5 sm:hover:border-blue-200 sm:hover:bg-white"
+              className="group inline-flex min-h-[54px] items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 text-sm font-bold text-slate-800 shadow-sm transition-all active:bg-slate-50 sm:min-h-14 sm:bg-white/88 sm:px-7 sm:backdrop-blur-xl sm:hover:-translate-y-0.5 sm:hover:border-blue-200 sm:hover:bg-white"
             >
               <HeartPulse className="h-4 w-4 text-[#DA1A21]" />
               Cómo funciona
@@ -274,7 +274,7 @@ export default function HeroSection() {
         </div>
 
         <div
-          className="relative mx-auto flex w-full max-w-[790px] items-center justify-center py-5 sm:py-8 lg:py-0"
+          className="relative mx-auto flex w-full max-w-[790px] items-center justify-center py-1 sm:py-6 lg:py-0"
         >
           <div className="relative w-full">
             <div className="absolute left-[2%] top-[23%] hidden -rotate-[8deg] lg:block">
@@ -312,7 +312,6 @@ export default function HeroSection() {
                   fill
                   sizes="205px"
                   className="object-cover"
-                  priority
                 />
               </div>
             </div>
