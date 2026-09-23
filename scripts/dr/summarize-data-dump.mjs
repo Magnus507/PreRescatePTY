@@ -26,9 +26,39 @@ function parseRelation(raw) {
   }
 }
 
+function parseColumns(raw) {
+  return raw.split(',').map((column) => {
+    const trimmed = column.trim()
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+      return trimmed.slice(1, -1).replaceAll('""', '"')
+    }
+    return trimmed
+  })
+}
+
+function decodeCopyText(value) {
+  if (value === '\\N') return null
+
+  const escapes = {
+    b: '\b',
+    f: '\f',
+    n: '\n',
+    r: '\r',
+    t: '\t',
+    v: '\v',
+    '\\': '\\',
+  }
+
+  return value
+    .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
+    .replace(/\\([0-7]{1,3})/g, (_, octal) => String.fromCharCode(Number.parseInt(octal, 8)))
+    .replace(/\\([bfnrtv\\])/g, (_, escaped) => escapes[escaped])
+}
+
 const sql = await readFile(dataSqlPath, 'utf8')
 const lines = sql.split(/\r?\n/)
 const tables = []
+const orderNumberValues = []
 let current = null
 
 for (const line of lines) {
@@ -36,7 +66,7 @@ for (const line of lines) {
     const match = line.match(/^COPY\s+(.+?)\s+\((.*)\)\s+FROM stdin;$/)
     if (!match) continue
     const relation = parseRelation(match[1])
-    current = { ...relation, rows: 0 }
+    current = { ...relation, columns: parseColumns(match[2]), rows: 0 }
     continue
   }
 
@@ -47,11 +77,21 @@ for (const line of lines) {
   }
 
   current.rows += 1
+  if (current.schema === 'public' && current.table === 'Order') {
+    const orderNumberIndex = current.columns.indexOf('orderNumber')
+    if (orderNumberIndex < 0) {
+      throw new Error('public.Order COPY section is missing orderNumber')
+    }
+    const value = decodeCopyText(line.split('\t')[orderNumberIndex])
+    if (value !== null) orderNumberValues.push(value)
+  }
 }
 
 if (current) {
   throw new Error('Unterminated COPY section in data.sql')
 }
+
+for (const table of tables) delete table.columns
 
 tables.sort((a, b) => {
   const left = `${a.schema}.${a.table}`
@@ -93,11 +133,18 @@ try {
 }
 
 const summary = {
-  version: 2,
+  version: 3,
   schemaScope: ['public', 'auth'],
   storageTransport: 'supabase-storage-api-with-sha256-manifest',
   schemaHash,
   dataSqlSha256: createHash('sha256').update(sql).digest('hex'),
+  contentSentinels: [{
+    schema: 'public',
+    table: 'Order',
+    column: 'orderNumber',
+    values: orderNumberValues.length,
+    sha256: createHash('sha256').update(JSON.stringify(orderNumberValues.sort())).digest('hex'),
+  }],
   tables,
   totalCopiedRows: tables.reduce((sum, table) => sum + table.rows, 0),
 }
