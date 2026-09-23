@@ -2,26 +2,34 @@
 
 import { useEffect } from "react";
 
+const LEGACY_CACHE_PREFIXES = ["prerescate-", "workbox-", "next-pwa-"];
+
+/**
+ * One-time cleanup for the legacy PWA/service-worker layer.
+ * The public site no longer registers an offline worker because it caused
+ * Safari to keep stale static assets across deployments.
+ */
 export default function ServiceWorkerRegistrar() {
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
+    const cleanup = async () => {
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+      }
 
-    let reloading = false;
-    const reloadOnControllerChange = () => {
-      if (reloading) return;
-      reloading = true;
-      window.location.reload();
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(
+          keys
+            .filter((key) => LEGACY_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)))
+            .map((key) => caches.delete(key)),
+        );
+      }
     };
 
-    navigator.serviceWorker.addEventListener("controllerchange", reloadOnControllerChange);
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      // Registration failure must not break the application shell. Operational
-      // monitoring captures the browser error separately.
+    cleanup().catch(() => {
+      // Cache cleanup is best-effort and must never block rendering.
     });
-
-    return () => {
-      navigator.serviceWorker.removeEventListener("controllerchange", reloadOnControllerChange);
-    };
   }, []);
 
   return null;
