@@ -76,7 +76,7 @@ export default function EmergencyTimeline() {
   return (
     <section
       id="recorrido"
-      className="relative overflow-hidden bg-[#fffdfb] py-14 text-slate-950 [content-visibility:auto] [contain-intrinsic-size:auto_850px] sm:py-18 lg:py-20"
+      className="relative overflow-hidden bg-[#fffdfb] py-14 text-slate-950 sm:py-18 lg:py-20"
     >
       <div
         aria-hidden="true"
