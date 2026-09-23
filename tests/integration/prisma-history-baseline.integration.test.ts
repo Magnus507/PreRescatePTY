@@ -5,6 +5,18 @@ import { createIntegrationPrismaClient, assertIntegrationDatabaseReady } from ".
 
 const db = createIntegrationPrismaClient();
 const VERIFIED_BASELINE_LAST_MIGRATION = "20260904170000_harden_storage_cleanup_outbox";
+const POST_BASELINE_SCHEMA = `
+  DROP INDEX IF EXISTS public."Chip_assignedProfileId_idx";
+  DROP INDEX IF EXISTS public."ChipClaimToken_chipId_idx";
+  DROP INDEX IF EXISTS public."ChipClaimToken_orderId_idx";
+  DROP INDEX IF EXISTS public."ChipClaimToken_one_open_active_per_chip";
+  ALTER TABLE public."Chip" DROP CONSTRAINT IF EXISTS "Chip_activated_identity_check";
+  ALTER TABLE public."OperationFinishedGoodUnit"
+    DROP CONSTRAINT IF EXISTS "OperationFinishedGoodUnit_activation_check";
+  ALTER TABLE public."ChipClaimToken"
+    ALTER COLUMN "activationCodeHash" DROP NOT NULL,
+    ALTER COLUMN "activationCodeLast4" DROP NOT NULL;
+`;
 
 describe("Verified migration history reconciliation", () => {
   afterAll(async () => db.$disconnect());
@@ -36,6 +48,7 @@ describe("Verified migration history reconciliation", () => {
             DROP COLUMN IF EXISTS "safeReturnModuleEnabled",
             DROP COLUMN IF EXISTS "safeReturnModuleData"
         `);
+        await tx.$executeRawUnsafe(POST_BASELINE_SCHEMA);
 
         await tx.$executeRawUnsafe(sql);
         const actual = await tx.$queryRaw<Array<{ migration_name: string; checksum: string }>>`SELECT migration_name, checksum FROM public._prisma_migrations ORDER BY migration_name`;
@@ -71,6 +84,7 @@ describe("Verified migration history reconciliation", () => {
             DROP COLUMN IF EXISTS "safeReturnModuleEnabled",
             DROP COLUMN IF EXISTS "safeReturnModuleData"
         `);
+        await tx.$executeRawUnsafe(POST_BASELINE_SCHEMA);
         await tx.$executeRawUnsafe(sql);
       })
     ).rejects.toThrow(/already exists/);

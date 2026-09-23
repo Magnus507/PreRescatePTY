@@ -114,7 +114,12 @@ describe("PostgreSQL: activation races and rollback", () => {
 
   it.each(["reserved", "available", "qa_failed", "activated"] as const)("rejects non-activable unit %s without consuming its code", async status => {
     const f = await fixture(`invalid-${status}`, 1);
-    await db.operationFinishedGoodUnit.update({ where: { id: f.chips[0].unit.id }, data: { status } });
+    await db.operationFinishedGoodUnit.update({
+      where: { id: f.chips[0].unit.id },
+      data: status === "activated"
+        ? { status, activationStatus: "activated", activatedAt: new Date() }
+        : { status },
+    });
     expect((await activate(f.chips[0].key)).status).toBe(409);
     expect((await db.chipClaimToken.findUniqueOrThrow({ where: { id: f.chips[0].token.id } })).usedAt).toBeNull();
     expect((await db.chip.findUniqueOrThrow({ where: { id: f.chips[0].chip.id } })).ownerUserId).toBeNull();
