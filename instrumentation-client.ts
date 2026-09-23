@@ -36,7 +36,7 @@ export function register() {
     if ("requestIdleCallback" in window) {
       window.requestIdleCallback(() => void startSentry(), { timeout: 5000 });
     } else {
-      window.setTimeout(() => void startSentry(), 2500);
+      setTimeout(() => void startSentry(), 2500);
     }
   };
 
