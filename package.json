@@ -13,7 +13,7 @@
     "env:verify:test": "tsx scripts/verify-env.ts test",
     "typecheck": "tsc --noEmit",
     "test:run": "vitest run --exclude 'tests/integration/**'",
-    "test:integration": "vitest run tests/integration",
+    "test:integration": "vitest run tests/integration --no-file-parallelism",
     "test:column-vertebral": "vitest run tests/column-vertebral-contract.test.ts tests/routes/production-traceable-identities.test.ts tests/routes/chips-activate.test.ts tests/routes/corporate-chip-activate.test.ts tests/lib/traceable-digital-identity.test.ts",
     "build": "npm run prisma:generate && npm run test:column-vertebral && npm run typecheck && next build",
     "start": "next start",
