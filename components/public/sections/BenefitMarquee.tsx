@@ -1,5 +1,3 @@
-"use client";
-
 import { Battery, CreditCard, Globe, Heart, QrCode, ShieldCheck, Smartphone, Users } from "lucide-react";
 
 const items = [
