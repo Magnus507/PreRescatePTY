@@ -108,6 +108,13 @@ jobs:
             exit 1
           fi
 
+      - name: Start recovery timer
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "DR_RTO_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          echo "DR_RTO_STARTED_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Download encrypted backup from triggering run
         uses: actions/download-artifact@v7
         with:
@@ -175,12 +182,10 @@ jobs:
         shell: bash
         run: bash scripts/dr/reset-isolated-target.sh
 
-      - name: Start RTO timer
+      - name: Record recovery-point age at restore start
         shell: bash
         run: |
           set -Eeuo pipefail
-          RTO_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          RTO_STARTED_EPOCH="$(date +%s)"
           RECOVERY_POINT_AT="$(node --input-type=module -e '
             import { readFileSync } from "node:fs";
             const db = JSON.parse(readFileSync(process.argv[1], "utf8"));
@@ -190,13 +195,11 @@ jobs:
             process.stdout.write(new Date(earliest).toISOString());
           ' "$DR_BACKUP_DIR/database/manifest.json" "$DR_BACKUP_DIR/storage/manifest.json")"
           RECOVERY_POINT_EPOCH="$(date -d "$RECOVERY_POINT_AT" +%s)"
-          RPO_SECONDS="$((RTO_STARTED_EPOCH - RECOVERY_POINT_EPOCH))"
+          RPO_SECONDS="$((DR_RTO_STARTED_EPOCH - RECOVERY_POINT_EPOCH))"
           if [ "$RPO_SECONDS" -lt 0 ]; then
             echo "::error::Backup recovery-point timestamp is in the future."
             exit 1
           fi
-          echo "DR_RTO_STARTED_AT=$RTO_STARTED_AT" >> "$GITHUB_ENV"
-          echo "DR_RTO_STARTED_EPOCH=$RTO_STARTED_EPOCH" >> "$GITHUB_ENV"
           echo "DR_RECOVERY_POINT_AT=$RECOVERY_POINT_AT" >> "$GITHUB_ENV"
           echo "DR_MEASURED_RPO_SECONDS=$RPO_SECONDS" >> "$GITHUB_ENV"
 
@@ -230,9 +233,11 @@ jobs:
             "restoreTargetProjectRef": "$DR_TARGET_PROJECT_REF",
             "recoveryPointAt": "$DR_RECOVERY_POINT_AT",
             "measuredRpoSeconds": $DR_MEASURED_RPO_SECONDS,
+            "rpoMeasurementScope": "recovery-point age at workflow recovery start",
             "startedAt": "$DR_RTO_STARTED_AT",
             "finishedAt": "$FINISHED_AT",
             "measuredRtoSeconds": $RTO_SECONDS,
+            "rtoMeasurementScope": "artifact download through integrity verification; excludes GitHub queue and runner bootstrap",
             "databaseRestore": "PASS",
             "storageRestore": "PASS",
             "integrityVerification": "PASS"
