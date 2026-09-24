@@ -228,9 +228,10 @@ export async function getUserDropsSnapshot(userId: string) {
 export async function assignDropPassToDrop(
   userId: string,
   passId: string,
-  dropId: string
+  dropId: string,
+  transaction?: Prisma.TransactionClient
 ) {
-  return prisma.$transaction(async (tx) => {
+  const execute = async (tx: Prisma.TransactionClient) => {
     const locked = await tx.$queryRaw<
       Array<{ id: string; status: string; targetPasses: number }>
     >`
@@ -283,7 +284,9 @@ export async function assignDropPassToDrop(
       assignedCount: nextCount,
       goalReached: nextCount >= drop.targetPasses,
     };
-  });
+  };
+
+  return transaction ? execute(transaction) : prisma.$transaction(execute);
 }
 
 type DrawEntry = {
