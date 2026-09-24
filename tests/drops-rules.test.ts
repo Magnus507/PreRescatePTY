@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   BONUS_CREDIT_PATTERN,
+  DROP_PASS_GRANT_CODE_PATTERN,
   calculateEarnedDropPasses,
   makeBonusCreditCode,
+  makeDropPassGrantCode,
   normalizeBonusCreditCode,
+  normalizeDropPassGrantCode,
   pickWinnerIndex,
 } from "@/lib/drops/rules";
 
@@ -37,6 +40,12 @@ describe("Pre-Rescate Drops rules", () => {
     const code = makeBonusCreditCode();
     expect(code).toMatch(BONUS_CREDIT_PATTERN);
     expect(normalizeBonusCreditCode(`  ${code.toLowerCase()}  `)).toBe(code);
+  });
+
+  it("genera códigos especiales de Drop Pass de un solo uso con formato legible", () => {
+    const code = makeDropPassGrantCode();
+    expect(code).toMatch(DROP_PASS_GRANT_CODE_PATTERN);
+    expect(normalizeDropPassGrantCode(`  ${code.toLowerCase()}  `)).toBe(code);
   });
 
   it("evita caracteres ambiguos en Bonus Credits", () => {
