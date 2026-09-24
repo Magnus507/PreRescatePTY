@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireFreshSession } from "@/lib/rbac";
 import { redeemBonusCredit } from "@/lib/drops/bonus-credits";
+import { rateLimit } from "@/lib/rateLimit";
+import { getClientIp } from "@/lib/request-ip";
 
 export async function POST(req: NextRequest) {
   const auth = await requireFreshSession();
   if (!auth.authorized) return auth.response;
+
+  const ip = getClientIp(req, `bonus-credit:${auth.session.user.id}`);
+  const limiter = await rateLimit(
+    "bonus-credit-redeem",
+    `${auth.session.user.id}:${ip}`,
+    { limit: 20, windowMs: 15 * 60_000 }
+  );
+  if (!limiter.allowed) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Intenta nuevamente más tarde." },
+      { status: 429 }
+    );
+  }
 
   const body = await req.json().catch(() => ({}));
   const code = typeof body.code === "string" ? body.code : "";
