@@ -1794,8 +1794,9 @@ model Drop {
   updatedAt     DateTime   @updatedAt
   passes        DropPass[]
   bonusEntries  DropBonusEntry[]
-  bonusCredits  DropBonusCredit[]
-  draw          DropDraw?
+  bonusCredits      DropBonusCredit[]
+  draw              DropDraw?
+  communityUnlocks  CommunityUnlock[]
 
   @@index([status, createdAt])
 }
@@ -1850,6 +1851,7 @@ model DropBonusEntry {
   createdAt           DateTime         @default(now())
   drop                Drop             @relation(fields: [dropId], references: [id], onDelete: Restrict)
   sourceBonusCredit   DropBonusCredit? @relation(fields: [sourceBonusCreditId], references: [id], onDelete: Restrict)
+  rewardLedger        RewardCreditLedger?
 
   @@index([dropId, revokedAt])
   @@index([userId, revokedAt])
@@ -1875,6 +1877,93 @@ model DropDraw {
 
   @@index([winnerUserId])
   @@index([drawnAt])
+}
+
+model RewardMission {
+  id              String                    @id @default(cuid())
+  slug            String                    @unique
+  title           String
+  description     String?
+  imageUrl        String?
+  kind            String
+  rewardCredits   Int
+  status          String                    @default("draft")
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdByUserId String
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  completions     RewardMissionCompletion[]
+
+  @@index([status, createdAt])
+  @@index([kind, status])
+}
+
+model RewardMissionCompletion {
+  id          String        @id @default(cuid())
+  missionId   String
+  userId      String
+  completedAt DateTime      @default(now())
+  mission     RewardMission @relation(fields: [missionId], references: [id], onDelete: Restrict)
+
+  @@unique([missionId, userId])
+  @@index([userId, completedAt])
+}
+
+model RewardCreditLedger {
+  id               String          @id @default(cuid())
+  userId           String
+  amount           Int
+  sourceKey        String          @unique
+  sourceType       String
+  sourceId         String?
+  description      String
+  createdByUserId  String?
+  dropBonusEntryId String?         @unique
+  createdAt        DateTime        @default(now())
+  dropBonusEntry   DropBonusEntry? @relation(fields: [dropBonusEntryId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([sourceType, sourceId])
+}
+
+model FoundingMember {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  founderNumber   Int      @unique @default(autoincrement())
+  visible         Boolean  @default(true)
+  note            String?
+  grantedByUserId String
+  grantedAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([founderNumber])
+  @@index([visible, grantedAt])
+}
+
+model CommunityUnlock {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  title             String
+  description       String?
+  metricType        String
+  target            Int
+  unlockType        String
+  rewardTitle       String
+  rewardDescription String?
+  linkedDropId      String?
+  status            String   @default("draft")
+  startsAt          DateTime?
+  endsAt            DateTime?
+  unlockedAt        DateTime?
+  createdByUserId   String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  linkedDrop        Drop?    @relation(fields: [linkedDropId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([metricType, status])
+  @@index([linkedDropId])
 }
 
 model SupportMessage {

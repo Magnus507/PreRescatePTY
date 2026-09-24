@@ -15,6 +15,7 @@ import { AdminsSection } from "./_components/sections/AdminsSection";
 import { SettingsSection } from "./_components/sections/SettingsSection";
 import { SupportMessagesSection } from "./_components/sections/SupportMessagesSection";
 import { DropsSection } from "./_components/sections/DropsSection";
+import { RewardsSection } from "./_components/sections/RewardsSection";
 
 import { ChipDetailView } from "./_components/details/ChipDetail";
 import { UserDetailView } from "./_components/details/UserDetail";
@@ -254,7 +255,10 @@ function AdminDashboard() {
           )}
 
           {admin.tab === "drops" && (
-            <DropsSection searchQuery={admin.search.query} />
+            <div className="space-y-8">
+              <RewardsSection />
+              <DropsSection searchQuery={admin.search.query} />
+            </div>
           )}
 
           {admin.tab === "admins" && (
