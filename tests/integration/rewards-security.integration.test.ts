@@ -102,7 +102,9 @@ describe("Pre-Rescate Rewards PostgreSQL invariants", () => {
     expect(updated.founderNumber).toBe(founder.founderNumber);
     expect(updated.visible).toBe(false);
 
-    await db.foundingMember.delete({ where: { id: founder.id } });
+    await expect(
+      db.foundingMember.delete({ where: { id: founder.id } })
+    ).rejects.toThrow(/permanent once assigned/i);
   });
 
   it("requires a linked Drop for Community Drop unlocks", async () => {
