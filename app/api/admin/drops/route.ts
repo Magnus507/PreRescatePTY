@@ -39,6 +39,20 @@ export async function GET() {
         select: {
           passes: { where: { status: "assigned" } },
           bonusEntries: { where: { revokedAt: null } },
+          bonusCredits: true,
+        },
+      },
+      bonusCredits: {
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        select: {
+          id: true,
+          code: true,
+          campaign: true,
+          claimedByUserId: true,
+          claimedAt: true,
+          revokedAt: true,
+          createdAt: true,
         },
       },
       draw: {
@@ -74,6 +88,8 @@ export async function GET() {
         createdAt: drop.createdAt,
         assignedPurchasePasses: drop._count.passes,
         bonusEntries: drop._count.bonusEntries,
+        bonusCreditCount: drop._count.bonusCredits,
+        bonusCredits: drop.bonusCredits,
         draw: drop.draw,
       })),
     },
