@@ -144,6 +144,57 @@ describe("Pre-Rescate Drops PostgreSQL invariants", () => {
     expect(await db.drop.count({ where: { slug } })).toBe(0);
   });
 
+  it("enforces one Bonus Credit to one Bonus Entry", async () => {
+    const slug = `${run}-bonus-credit-once`;
+
+    await expect(
+      db.$transaction(async (tx) => {
+        const drop = await tx.drop.create({
+          data: {
+            slug,
+            title: "One credit one entry",
+            prizeLabel: "$400",
+            targetPasses: 1,
+            status: "active",
+          },
+        });
+
+        const credit = await tx.dropBonusCredit.create({
+          data: {
+            code: `BC-ONCE-${run}`,
+            dropId: drop.id,
+            campaign: "Once",
+            createdByUserId: `${run}-admin`,
+          },
+        });
+
+        await tx.dropBonusEntry.create({
+          data: {
+            code: `BE-ONCE-A-${run}`,
+            dropId: drop.id,
+            userId: `${run}-user-a`,
+            reason: "Bonus Credit · Once",
+            createdByUserId: `${run}-admin`,
+            sourceBonusCreditId: credit.id,
+          },
+        });
+
+        await tx.dropBonusEntry.create({
+          data: {
+            code: `BE-ONCE-B-${run}`,
+            dropId: drop.id,
+            userId: `${run}-user-b`,
+            reason: "Bonus Credit · Once",
+            createdByUserId: `${run}-admin`,
+            sourceBonusCreditId: credit.id,
+          },
+        });
+      })
+    ).rejects.toThrow();
+
+    expect(await db.drop.count({ where: { slug } })).toBe(0);
+  });
+
   it("denies direct anon access to every Drops table", async () => {
     for (const table of [
       "Drop",
