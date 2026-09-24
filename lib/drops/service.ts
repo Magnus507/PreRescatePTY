@@ -1,9 +1,65 @@
 import { createHash, randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateEarnedDropPasses, pickWinnerIndex } from "@/lib/drops/rules";
 
-function makeCode(prefix: "DP" | "BE") {
-  return `${prefix}-${randomBytes(8).toString("hex").toUpperCase()}`;
+type DropDb = Prisma.TransactionClient | typeof prisma;
+
+
+function makePurchasePassCode(sourceOrderId: string, sourceOrdinal: number) {
+  const digest = createHash("sha256")
+    .update(`${sourceOrderId}:${sourceOrdinal}`)
+    .digest("hex")
+    .slice(0, 16)
+    .toUpperCase();
+  return `DP-${digest}`;
+}
+
+export async function ensurePurchaseDropPassesForOrder(
+  db: DropDb,
+  input: {
+    orderId: string;
+    userId: string | null | undefined;
+    amount: unknown;
+    confirmedAt: Date;
+  }
+) {
+  if (!input.userId) return { expected: 0, created: 0 };
+
+  const firstLaunch = await db.drop.findFirst({
+    where: { opensAt: { not: null } },
+    orderBy: { opensAt: "asc" },
+    select: { opensAt: true },
+  });
+  if (!firstLaunch?.opensAt || input.confirmedAt < firstLaunch.opensAt) {
+    return { expected: 0, created: 0 };
+  }
+
+  const expected = calculateEarnedDropPasses(input.amount);
+  if (expected <= 0) return { expected: 0, created: 0 };
+
+  const existing = await db.dropPass.findMany({
+    where: { sourceOrderId: input.orderId },
+    select: { sourceOrdinal: true },
+  });
+  const ordinals = new Set(existing.map((row) => row.sourceOrdinal));
+  const missing = Array.from({ length: expected }, (_, index) => index + 1).filter(
+    (ordinal) => !ordinals.has(ordinal)
+  );
+  if (missing.length === 0) return { expected, created: 0 };
+
+  const result = await db.dropPass.createMany({
+    data: missing.map((sourceOrdinal) => ({
+      code: makePurchasePassCode(input.orderId, sourceOrdinal),
+      userId: input.userId!,
+      sourceOrderId: input.orderId,
+      sourceOrdinal,
+      earnedAt: input.confirmedAt,
+    })),
+    skipDuplicates: true,
+  });
+
+  return { expected, created: result.count };
 }
 
 export async function syncPurchaseDropPasses(userId: string) {
@@ -36,37 +92,38 @@ export async function syncPurchaseDropPasses(userId: string) {
         },
       ],
     },
-    select: { id: true, amount: true, createdAt: true },
+    select: {
+      id: true,
+      amount: true,
+      createdAt: true,
+      adminReviewedAt: true,
+      paymentAttempts: {
+        where: {
+          status: "succeeded",
+          confirmedAt: { gte: firstLaunch.opensAt },
+        },
+        orderBy: { confirmedAt: "asc" },
+        take: 1,
+        select: { confirmedAt: true },
+      },
+    },
     orderBy: { createdAt: "asc" },
   });
 
   let created = 0;
 
   for (const order of orders) {
-    const expected = calculateEarnedDropPasses(order.amount);
-    if (expected <= 0) continue;
-
-    const existing = await prisma.dropPass.findMany({
-      where: { sourceOrderId: order.id },
-      select: { sourceOrdinal: true },
+    const confirmedAt =
+      order.adminReviewedAt ??
+      order.paymentAttempts[0]?.confirmedAt ??
+      order.createdAt;
+    const result = await ensurePurchaseDropPassesForOrder(prisma, {
+      orderId: order.id,
+      userId,
+      amount: order.amount,
+      confirmedAt,
     });
-    const ordinals = new Set(existing.map((row) => row.sourceOrdinal));
-    const missing = Array.from({ length: expected }, (_, index) => index + 1)
-      .filter((ordinal) => !ordinals.has(ordinal));
-
-    if (missing.length === 0) continue;
-
-    const result = await prisma.dropPass.createMany({
-      data: missing.map((sourceOrdinal) => ({
-        code: makeCode("DP"),
-        userId,
-        sourceOrderId: order.id,
-        sourceOrdinal,
-        earnedAt: order.createdAt,
-      })),
-      skipDuplicates: true,
-    });
-    created += result.count;
+    created += result.created;
   }
 
   return { created };
@@ -75,12 +132,12 @@ export async function syncPurchaseDropPasses(userId: string) {
 export async function getUserDropsSnapshot(userId: string) {
   await syncPurchaseDropPasses(userId);
 
-  const [drops, passes, bonusEntries] = await Promise.all([
+  const [drops, passes, bonusEntries, rewardBalance] = await Promise.all([
     prisma.drop.findMany({
       where: {
         status: { in: ["active", "goal_reached", "closed", "drawn", "finalized"] },
       },
-      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
         slug: true,
@@ -89,6 +146,7 @@ export async function getUserDropsSnapshot(userId: string) {
         prizeLabel: true,
         imageUrl: true,
         targetPasses: true,
+        displayOrder: true,
         status: true,
         opensAt: true,
         goalReachedAt: true,
@@ -131,10 +189,15 @@ export async function getUserDropsSnapshot(userId: string) {
         drop: { select: { id: true, title: true, prizeLabel: true } },
       },
     }),
+    prisma.rewardCreditLedger.aggregate({
+      where: { userId },
+      _sum: { amount: true },
+    }),
   ]);
 
   return {
     availablePassCount: passes.filter((pass) => pass.status === "available").length,
+    bonusCreditBalance: rewardBalance._sum.amount ?? 0,
     drops: drops.map((drop) => ({
       id: drop.id,
       slug: drop.slug,
@@ -143,6 +206,7 @@ export async function getUserDropsSnapshot(userId: string) {
       prizeLabel: drop.prizeLabel,
       imageUrl: drop.imageUrl,
       targetPasses: drop.targetPasses,
+      displayOrder: drop.displayOrder,
       status: drop.status,
       opensAt: drop.opensAt,
       goalReachedAt: drop.goalReachedAt,
@@ -164,9 +228,10 @@ export async function getUserDropsSnapshot(userId: string) {
 export async function assignDropPassToDrop(
   userId: string,
   passId: string,
-  dropId: string
+  dropId: string,
+  transaction?: Prisma.TransactionClient
 ) {
-  return prisma.$transaction(async (tx) => {
+  const execute = async (tx: Prisma.TransactionClient) => {
     const locked = await tx.$queryRaw<
       Array<{ id: string; status: string; targetPasses: number }>
     >`
@@ -219,7 +284,9 @@ export async function assignDropPassToDrop(
       assignedCount: nextCount,
       goalReached: nextCount >= drop.targetPasses,
     };
-  });
+  };
+
+  return transaction ? execute(transaction) : prisma.$transaction(execute);
 }
 
 type DrawEntry = {

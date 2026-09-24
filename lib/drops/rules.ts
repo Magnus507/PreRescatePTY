@@ -22,7 +22,7 @@ export function pickWinnerIndex(randomHex: string, entryCount: number): number {
   return Number(BigInt(`0x${randomHex}`) % BigInt(entryCount));
 }
 
-const BONUS_CREDIT_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+const READABLE_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 export const BONUS_CREDIT_PATTERN =
   /^BC-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/;
 
@@ -34,7 +34,25 @@ export function makeBonusCreditCode() {
   const bytes = randomBytes(12);
   let payload = "";
   for (let index = 0; index < 12; index += 1) {
-    payload += BONUS_CREDIT_ALPHABET[bytes[index] % BONUS_CREDIT_ALPHABET.length];
+    payload += READABLE_CODE_ALPHABET[bytes[index] % READABLE_CODE_ALPHABET.length];
   }
   return `BC-${payload.slice(0, 4)}-${payload.slice(4, 8)}-${payload.slice(8, 12)}`;
+}
+
+
+export const DROP_PASS_GRANT_CODE_PATTERN =
+  /^DPG-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/;
+
+export function normalizeDropPassGrantCode(value: string) {
+  return value.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+export function makeDropPassGrantCode() {
+  const bytes = randomBytes(12);
+  let payload = "";
+  for (let index = 0; index < 12; index += 1) {
+    payload +=
+      READABLE_CODE_ALPHABET[bytes[index] % READABLE_CODE_ALPHABET.length];
+  }
+  return `DPG-${payload.slice(0, 4)}-${payload.slice(4, 8)}-${payload.slice(8, 12)}`;
 }

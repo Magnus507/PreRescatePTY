@@ -10,12 +10,17 @@ const extensionMigration = readFileSync(
   "prisma/migrations/20260924040000_drops_admin_controls_bonus_credits/migration.sql",
   "utf8"
 );
+const walletMigration = readFileSync(
+  "prisma/migrations/20260924060000_drops_wallet_ordering/migration.sql",
+  "utf8"
+);
 
 describe("Pre-Rescate Drops isolation contract", () => {
   it("mantiene Drops separado de la columna vertebral", () => {
     for (const model of [
       "Drop",
       "DropPass",
+      "DropPassGrantCode",
       "DropBonusCredit",
       "DropBonusEntry",
       "DropDraw",
@@ -23,7 +28,7 @@ describe("Pre-Rescate Drops isolation contract", () => {
       expect(schema).toContain(`model ${model}`);
     }
 
-    const combined = `${baseMigration}\n${extensionMigration}`;
+    const combined = `${baseMigration}\n${extensionMigration}\n${walletMigration}`;
     expect(combined).not.toMatch(
       /ALTER TABLE (public\.)?"(Chip|Profile|Account|ChipClaimToken|OperationDigitalBatchItem)"/
     );
@@ -44,6 +49,25 @@ describe("Pre-Rescate Drops isolation contract", () => {
     );
     expect(extensionMigration).toContain(
       'ALTER TABLE public."DropBonusCredit" ENABLE ROW LEVEL SECURITY;'
+    );
+    expect(walletMigration).toContain(
+      'REVOKE ALL PRIVILEGES ON TABLE public."DropPassGrantCode" FROM anon, authenticated;'
+    );
+    expect(walletMigration).toContain(
+      'ALTER TABLE public."DropPassGrantCode" ENABLE ROW LEVEL SECURITY;'
+    );
+  });
+
+  it("persiste el orden de Drops y protege el canje único de códigos especiales", () => {
+    expect(schema).toContain("displayOrder  Int");
+    expect(walletMigration).toContain(
+      'CREATE INDEX "Drop_displayOrder_createdAt_idx"'
+    );
+    expect(walletMigration).toContain(
+      'CONSTRAINT "DropPassGrantCode_claim_state_consistency" CHECK'
+    );
+    expect(walletMigration).toContain(
+      'CREATE UNIQUE INDEX "DropPassGrantCode_redeemedPassId_key"'
     );
   });
 

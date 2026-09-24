@@ -20,6 +20,7 @@ const mockReserveCommercialOrderStock = vi.hoisted(() => vi.fn())
 const mockEnsurePendingInvoice = vi.hoisted(() => vi.fn())
 const mockEnsureCustomerBackorderProduction = vi.hoisted(() => vi.fn())
 const mockSyncRealOrderToOperations = vi.hoisted(() => vi.fn())
+const mockEnsurePurchaseDropPassesForOrder = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/rateLimit', () => ({ rateLimit: mockRateLimit }))
 vi.mock('@/domains/accounts/services/account-state.service', () => ({
@@ -46,6 +47,9 @@ vi.mock('@/lib/operations/sync-real-order-to-operations', () => ({
 }))
 vi.mock('@/domains/invoices/services/invoice.service', () => ({
   InvoiceService: { ensurePendingForPaidOrder: mockEnsurePendingInvoice },
+}))
+vi.mock('@/lib/drops/service', () => ({
+  ensurePurchaseDropPassesForOrder: mockEnsurePurchaseDropPassesForOrder,
 }))
 
 import { POST } from '@/app/api/admin/orders/[id]/approve/route'
@@ -177,6 +181,7 @@ function setupDefaultMocks(orderOverrides: Record<string, unknown> = {}) {
     sourceKey: `checkout:${TEST_ORDER_ID}`,
   })
   mockEnsurePendingInvoice.mockResolvedValue({ id: 'invoice-1' })
+  mockEnsurePurchaseDropPassesForOrder.mockResolvedValue({ expected: 1, created: 1 })
   mockInvalidateCache.mockResolvedValue(undefined)
 
   mockPrisma.order.findUnique.mockResolvedValue(order as never)
@@ -221,6 +226,7 @@ describe('POST /api/admin/orders/[id]/approve', () => {
       mockEnsurePendingInvoice,
       mockEnsureCustomerBackorderProduction,
       mockSyncRealOrderToOperations,
+      mockEnsurePurchaseDropPassesForOrder,
     ]) mock.mockReset()
     setupUserLookup()
   })
@@ -289,6 +295,15 @@ describe('POST /api/admin/orders/[id]/approve', () => {
       data: expect.objectContaining({ packageId: TEST_PACKAGE_ID, maxChipsAllocated: 5, maxProfilesAllocated: 3 }),
     }))
     expect(mockReserveAssignedChipsForOrder).toHaveBeenCalled()
+    expect(mockEnsurePurchaseDropPassesForOrder).toHaveBeenCalledWith(
+      mockPrisma,
+      expect.objectContaining({
+        orderId: TEST_ORDER_ID,
+        userId: TEST_USER_ID,
+        amount: 25,
+        confirmedAt: expect.any(Date),
+      })
+    )
     expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ action: 'order_approved', actorUserId: TEST_ADMIN_ID, entityId: TEST_ORDER_ID }),
     }))

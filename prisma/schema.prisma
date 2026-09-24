@@ -1786,6 +1786,7 @@ model Drop {
   prizeLabel    String
   imageUrl      String?
   targetPasses  Int
+  displayOrder  Int        @default(0)
   status        DropStatus @default(draft)
   opensAt       DateTime?
   goalReachedAt DateTime?
@@ -1799,6 +1800,7 @@ model Drop {
   communityUnlocks  CommunityUnlock[]
 
   @@index([status, createdAt])
+  @@index([displayOrder, createdAt])
 }
 
 model DropPass {
@@ -1815,11 +1817,28 @@ model DropPass {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   drop          Drop?          @relation(fields: [dropId], references: [id], onDelete: Restrict)
+  grantCode     DropPassGrantCode?
 
   @@unique([sourceOrderId, sourceOrdinal])
   @@index([userId, status])
   @@index([dropId, status])
   @@index([sourceOrderId])
+}
+
+model DropPassGrantCode {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  campaign        String
+  createdByUserId String
+  claimedByUserId String?
+  claimedAt       DateTime?
+  redeemedPassId  String?   @unique
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  redeemedPass    DropPass? @relation(fields: [redeemedPassId], references: [id], onDelete: Restrict)
+
+  @@index([claimedAt, revokedAt])
+  @@index([createdAt])
 }
 
 model DropBonusCredit {

@@ -147,8 +147,14 @@ export async function claimMission(userId: string, missionId: string) {
   });
 }
 
-export async function spendRewardCredit(userId: string, dropId: string) {
-  return prisma.$transaction(async (tx) => {
+export async function spendRewardCredit(
+  userId: string,
+  dropId: string,
+  actorUserId: string = userId,
+  reason = "Reward Credit · Misiones",
+  transaction?: Prisma.TransactionClient
+) {
+  const execute = async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`
       SELECT pg_advisory_xact_lock(hashtext(${`reward-credit:${userId}`}))
     `;
@@ -173,8 +179,8 @@ export async function spendRewardCredit(userId: string, dropId: string) {
         code: makeBonusEntryCode(),
         dropId,
         userId,
-        reason: "Reward Credit · Misiones",
-        createdByUserId: userId,
+        reason,
+        createdByUserId: actorUserId,
       },
       select: {
         id: true,
@@ -191,8 +197,8 @@ export async function spendRewardCredit(userId: string, dropId: string) {
         sourceKey: `spend:${entry.id}`,
         sourceType: "spend",
         sourceId: drop.id,
-        description: `Bonus Entry para ${drop.title}`,
-        createdByUserId: userId,
+        description: `Bonus Entry para ${drop.title} · ${reason}`,
+        createdByUserId: actorUserId,
         dropBonusEntryId: entry.id,
       },
     });
@@ -202,7 +208,9 @@ export async function spendRewardCredit(userId: string, dropId: string) {
       drop: { id: drop.id, title: drop.title },
       balance: balance - 1,
     };
-  });
+  };
+
+  return transaction ? execute(transaction) : prisma.$transaction(execute);
 }
 
 export async function getCommunityMetricValue(
@@ -329,7 +337,7 @@ export async function getRewardsSnapshot(userId: string) {
       }),
       prisma.drop.findMany({
         where: { status: "active" },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
         select: { id: true, title: true, prizeLabel: true },
       }),
       getRewardCreditBalance(userId),

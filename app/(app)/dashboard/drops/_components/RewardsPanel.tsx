@@ -61,7 +61,13 @@ function founderNumber(value: number) {
   return `#${String(value).padStart(4, "0")}`;
 }
 
-export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<void> }) {
+export function RewardsPanel({
+  onChanged,
+  balanceOverride,
+}: {
+  onChanged?: () => void | Promise<void>;
+  balanceOverride?: number;
+}) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -146,6 +152,8 @@ export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<v
 
   if (!data) return null;
 
+  const visibleBalance = balanceOverride ?? data.balance;
+
   return (
     <section className="space-y-3 rounded-[1.4rem] border border-violet-200/70 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,.10),transparent_34%),white] p-4 dark:border-violet-500/20 dark:bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,.12),transparent_34%),#0b1421] sm:space-y-4 sm:rounded-[2rem] sm:p-6">
       <div className="flex items-start justify-between gap-3 lg:items-start">
@@ -178,7 +186,7 @@ export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<v
             <Coins className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
             <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] sm:text-[10px] sm:tracking-[0.14em]">Bonus Credits</p>
           </div>
-          <p className="mt-2 text-2xl font-black tracking-tight sm:text-4xl">{data.balance}</p>
+          <p className="mt-2 text-2xl font-black tracking-tight sm:text-4xl">{visibleBalance}</p>
           <p className="mt-1 hidden text-xs text-slate-500 sm:block">1 crédito = 1 Bonus Entry.</p>
         </div>
 
@@ -207,7 +215,7 @@ export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<v
         </div>
       </div>
 
-      {data.balance > 0 && (
+      {visibleBalance > 0 && (
         <div className="rounded-xl border border-violet-200 bg-white p-3.5 dark:border-violet-500/20 dark:bg-white/[0.035] sm:rounded-2xl sm:p-4">
           <div className="flex items-center gap-2">
             <Gift className="h-5 w-5 text-violet-600" />

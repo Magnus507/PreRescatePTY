@@ -11,6 +11,7 @@ import { ORDER_REVIEW_ROLES, requireRole } from "@/lib/rbac";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { InvoiceService } from "@/domains/invoices/services/invoice.service";
+import { ensurePurchaseDropPassesForOrder } from "@/lib/drops/service";
 
 const ApproveSchema = z.object({
   adminReviewNotes: z.string().optional(),
@@ -149,6 +150,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         },
       });
       await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
+      await ensurePurchaseDropPassesForOrder(tx, {
+        orderId: order.id,
+        userId: order.userId,
+        amount: order.amount,
+        confirmedAt: new Date(),
+      });
 
       if (memberIds.length > 0) {
         await tx.organizationMember.updateMany({
@@ -283,6 +290,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           },
         });
         await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
+      await ensurePurchaseDropPassesForOrder(tx, {
+        orderId: order.id,
+        userId: order.userId,
+        amount: order.amount,
+        confirmedAt: new Date(),
+      });
 
         await tx.auditLog.create({
           data: {
@@ -355,6 +368,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           },
         });
         await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
+      await ensurePurchaseDropPassesForOrder(tx, {
+        orderId: order.id,
+        userId: order.userId,
+        amount: order.amount,
+        confirmedAt: new Date(),
+      });
 
         if (reservation && reservation.summary.missingQty > 0) {
           const firstMissing = reservation.missingItems[0];
@@ -459,6 +478,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         }
       });
       await InvoiceService.ensurePendingForPaidOrder(tx, { orderId: id });
+      await ensurePurchaseDropPassesForOrder(tx, {
+        orderId: order.id,
+        userId: order.userId,
+        amount: order.amount,
+        confirmedAt: new Date(),
+      });
 
       if (reservation && reservation.summary.missingQty > 0) {
         const firstMissing = reservation.missingItems[0];
