@@ -55,6 +55,21 @@ enum CommerceOrderSyncOutboxStatus {
   failed
 }
 
+enum DropStatus {
+  draft
+  active
+  goal_reached
+  closed
+  drawn
+  finalized
+}
+
+enum DropPassStatus {
+  available
+  assigned
+  revoked
+}
+
 enum OperationFinishedGoodUnitStatus {
   assembled
   available
@@ -1760,6 +1775,86 @@ model OperationReturnEvent {
   @@index([eventType])
   @@index([createdById])
   @@index([createdAt])
+}
+
+
+model Drop {
+  id            String     @id @default(cuid())
+  slug          String     @unique
+  title         String
+  description   String?
+  prizeLabel    String
+  imageUrl      String?
+  targetPasses  Int
+  status        DropStatus @default(draft)
+  opensAt       DateTime?
+  goalReachedAt DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  passes        DropPass[]
+  bonusEntries  DropBonusEntry[]
+  draw          DropDraw?
+
+  @@index([status, createdAt])
+}
+
+model DropPass {
+  id            String         @id @default(cuid())
+  code          String         @unique
+  userId        String
+  sourceOrderId String
+  sourceOrdinal Int
+  status        DropPassStatus @default(available)
+  dropId        String?
+  earnedAt      DateTime       @default(now())
+  assignedAt    DateTime?
+  revokedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  drop          Drop?          @relation(fields: [dropId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceOrderId, sourceOrdinal])
+  @@index([userId, status])
+  @@index([dropId, status])
+  @@index([sourceOrderId])
+}
+
+model DropBonusEntry {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  dropId          String
+  userId          String
+  reason          String
+  createdByUserId String
+  revokedAt       DateTime?
+  createdAt       DateTime @default(now())
+  drop            Drop     @relation(fields: [dropId], references: [id], onDelete: Restrict)
+
+  @@index([dropId, revokedAt])
+  @@index([userId, revokedAt])
+}
+
+model DropDraw {
+  id                 String   @id @default(cuid())
+  dropId             String   @unique
+  entryCount         Int
+  purchaseEntryCount Int
+  bonusEntryCount    Int
+  manifestHash       String
+  randomHex          String
+  winnerIndex        Int
+  winnerEntryKind    String
+  winnerEntryId      String
+  winnerEntryCode    String
+  winnerUserId       String
+  drawnByUserId      String
+  drawnAt            DateTime @default(now())
+  createdAt          DateTime @default(now())
+  drop               Drop     @relation(fields: [dropId], references: [id], onDelete: Restrict)
+
+  @@index([winnerUserId])
+  @@index([drawnAt])
 }
 
 model SupportMessage {

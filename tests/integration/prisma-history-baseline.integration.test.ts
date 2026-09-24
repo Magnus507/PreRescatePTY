@@ -6,6 +6,15 @@ import { createIntegrationPrismaClient, assertIntegrationDatabaseReady } from ".
 const db = createIntegrationPrismaClient();
 const VERIFIED_BASELINE_LAST_MIGRATION = "20260904170000_harden_storage_cleanup_outbox";
 const POST_BASELINE_SCHEMA = [
+  // Drops was introduced after the verified 2026-09-05 baseline. Remove only
+  // its disposable CI objects so the historical fingerprint is reconstructed
+  // exactly; the enclosing transaction rolls everything back afterward.
+  'DROP TABLE IF EXISTS public."DropDraw"',
+  'DROP TABLE IF EXISTS public."DropBonusEntry"',
+  'DROP TABLE IF EXISTS public."DropPass"',
+  'DROP TABLE IF EXISTS public."Drop"',
+  'DROP TYPE IF EXISTS public."DropPassStatus"',
+  'DROP TYPE IF EXISTS public."DropStatus"',
   'DROP INDEX IF EXISTS public."Chip_assignedProfileId_idx"',
   'DROP INDEX IF EXISTS public."ChipClaimToken_chipId_idx"',
   'DROP INDEX IF EXISTS public."ChipClaimToken_orderId_idx"',

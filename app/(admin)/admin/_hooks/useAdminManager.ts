@@ -12,7 +12,7 @@ import {
   type OperationsTab,
 } from "@/lib/admin/operations-routing";
 
-export type AdminTab = "dashboard" | "chips" | "users" | "empresas" | "admins" | "create" | "inventory" | "support" | "pedidos" | "tienda" | "governance" | "roadmap" | "settings" | "showcase";
+export type AdminTab = "dashboard" | "chips" | "users" | "empresas" | "admins" | "create" | "inventory" | "support" | "drops" | "pedidos" | "tienda" | "governance" | "roadmap" | "settings" | "showcase";
 
 const ADMIN_TABS = new Set<AdminTab>([
   "dashboard",
@@ -23,6 +23,7 @@ const ADMIN_TABS = new Set<AdminTab>([
   "create",
   "inventory",
   "support",
+  "drops",
   "pedidos",
   "tienda",
   "governance",
@@ -133,6 +134,7 @@ export function useAdminManager() {
         break;
       case "inventory":
       case "support":
+      case "drops":
         break;
     }
   }, [tab, loadStats, loadChips, loadUsers, loadOrganizations, loadAdminAccounts]);

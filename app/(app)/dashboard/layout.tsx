@@ -20,6 +20,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ReceiptText,
+  Gift,
 } from "lucide-react";
 import { AccountState } from "@/domains/accounts/account.types";
 import { ScanMonitor } from "./_components/ScanMonitor";
@@ -31,6 +32,7 @@ const consumerNavItems = [
   { href: "/dashboard/perfiles-medicos", label: "Perfiles médicos", icon: UsersRound },
   { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
   { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
+  { href: "/dashboard/drops", label: "Drops", icon: Gift },
   { href: "/dashboard/pedidos", label: "Mis pedidos", icon: ReceiptText },
   { href: "/dashboard/configuracion", label: "Ajustes", icon: Settings },
 ] as const;
@@ -45,6 +47,7 @@ function getMobilePageTitle(pathname: string) {
   if (pathname.startsWith("/dashboard/perfiles-medicos")) return "Perfiles médicos";
   if (pathname.startsWith("/dashboard/chips")) return "Mis dispositivos";
   if (pathname.startsWith("/dashboard/tienda")) return "Tienda";
+  if (pathname.startsWith("/dashboard/drops")) return "Drops";
   if (pathname.startsWith("/dashboard/pedidos")) return "Mis pedidos";
   if (pathname.startsWith("/dashboard/configuracion")) return "Ajustes";
   return "Inicio";
@@ -331,6 +334,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   { href: "/dashboard/perfiles-medicos", label: "Perfiles médicos", icon: UsersRound },
                   { href: "/dashboard/chips", label: "Mis dispositivos", icon: Cpu },
                   { href: "/dashboard/tienda", label: "Tienda", icon: ShoppingCart },
+                  { href: "/dashboard/drops", label: "Pre-Rescate Drops", icon: Gift },
                   { href: "/dashboard/pedidos", label: "Mis pedidos", icon: Package },
                   { href: "/dashboard/configuracion", label: "Ajustes", icon: Settings },
                 ].map((item) => (
