@@ -144,6 +144,25 @@ describe("Pre-Rescate Drops PostgreSQL invariants", () => {
     expect(await db.drop.count({ where: { slug } })).toBe(0);
   });
 
+  it("rejects inconsistent special Drop Pass grant-code claim state", async () => {
+    await expect(
+      db.dropPassGrantCode.create({
+        data: {
+          code: `DPG-STATE-${run}`,
+          campaign: "Support state test",
+          createdByUserId: `${run}-admin`,
+          claimedAt: new Date(),
+        },
+      })
+    ).rejects.toThrow();
+
+    expect(
+      await db.dropPassGrantCode.count({
+        where: { code: `DPG-STATE-${run}` },
+      })
+    ).toBe(0);
+  });
+
   it("enforces one Bonus Credit to one Bonus Entry", async () => {
     const slug = `${run}-bonus-credit-once`;
 
@@ -202,6 +221,7 @@ describe("Pre-Rescate Drops PostgreSQL invariants", () => {
       "DropBonusCredit",
       "DropBonusEntry",
       "DropDraw",
+      "DropPassGrantCode",
     ]) {
       await expect(
         db.$transaction(async (tx) => {
