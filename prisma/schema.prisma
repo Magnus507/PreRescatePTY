@@ -1794,6 +1794,7 @@ model Drop {
   updatedAt     DateTime   @updatedAt
   passes        DropPass[]
   bonusEntries  DropBonusEntry[]
+  bonusCredits  DropBonusCredit[]
   draw          DropDraw?
 
   @@index([status, createdAt])
@@ -1820,16 +1821,35 @@ model DropPass {
   @@index([sourceOrderId])
 }
 
-model DropBonusEntry {
+model DropBonusCredit {
   id              String   @id @default(cuid())
   code            String   @unique
   dropId          String
-  userId          String
-  reason          String
+  campaign        String
   createdByUserId String
+  claimedByUserId String?
+  claimedAt       DateTime?
   revokedAt       DateTime?
   createdAt       DateTime @default(now())
   drop            Drop     @relation(fields: [dropId], references: [id], onDelete: Restrict)
+  bonusEntry      DropBonusEntry?
+
+  @@index([dropId, claimedAt, revokedAt])
+  @@index([createdAt])
+}
+
+model DropBonusEntry {
+  id                  String           @id @default(cuid())
+  code                String           @unique
+  dropId              String
+  userId              String
+  reason              String
+  createdByUserId     String
+  sourceBonusCreditId String?          @unique
+  revokedAt           DateTime?
+  createdAt           DateTime         @default(now())
+  drop                Drop             @relation(fields: [dropId], references: [id], onDelete: Restrict)
+  sourceBonusCredit   DropBonusCredit? @relation(fields: [sourceBonusCreditId], references: [id], onDelete: Restrict)
 
   @@index([dropId, revokedAt])
   @@index([userId, revokedAt])
