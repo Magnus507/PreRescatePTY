@@ -220,7 +220,7 @@ export async function executeDropDraw(dropId: string, drawnByUserId: string) {
 
     const drop = locked[0];
     if (!drop) throw new Error("DROP_NOT_FOUND");
-    if (!["goal_reached", "closed"].includes(drop.status)) {
+    if (drop.status !== "closed") {
       throw new Error("DROP_NOT_READY_FOR_DRAW");
     }
 
