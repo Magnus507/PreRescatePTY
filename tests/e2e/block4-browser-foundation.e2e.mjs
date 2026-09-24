@@ -3,7 +3,6 @@ import { test, expect } from "@playwright/test";
 const E2E_ADMIN_EMAIL = "block4-e2e-admin@example.test";
 const E2E_ADMIN_PASSWORD = "Block4-E2E-Only-Password-2026!";
 const E2E_CUSTOMER_EMAIL = "block4-e2e-customer@example.test";
-const E2E_CUSTOMER_PASSWORD = "Block4-E2E-Customer-Only-2026!";
 
 async function dismissCookieConsent(page) {
   const consent = page.getByRole("region", { name: /Consentimiento de cookies/i });
@@ -46,7 +45,7 @@ test.describe("Block 4 browser foundation", () => {
     await dismissCookieConsent(page);
     await expect(page.locator("form")).toHaveAttribute("data-hydrated", "true");
     await page.getByLabel(/Correo electrónico/i).fill(E2E_CUSTOMER_EMAIL);
-    await page.getByLabel(/Contraseña/i).fill(E2E_CUSTOMER_PASSWORD);
+    await page.getByLabel(/Contraseña/i).fill(E2E_ADMIN_PASSWORD);
     await page.getByRole("button", { name: /Iniciar sesión seguro/i }).click();
     await page.waitForURL(/\/dashboard(?:$|\?)/, { timeout: 45_000 });
 
