@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { DropAdminTools } from "@/app/(admin)/admin/_components/drops/DropAdminTools";
 
 type BonusCredit = {
   id: string;
@@ -470,6 +471,8 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
           </button>
         </div>
       </section>
+
+      <DropAdminTools onChanged={load} />
 
       <form
         onSubmit={createDrop}
