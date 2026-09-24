@@ -35,33 +35,30 @@ export async function POST(req: NextRequest, { params }: Params) {
     );
   }
 
-  const [drop, user] = await Promise.all([
-    prisma.drop.findUnique({
-      where: { id },
-      select: { id: true, status: true, title: true },
-    }),
-    prisma.user.findUnique({
-      where: { email },
-      select: { id: true, email: true },
-    }),
-  ]);
-
-  if (!drop) {
-    return NextResponse.json({ error: "Drop no encontrado." }, { status: 404 });
-  }
-  if (drop.status !== "active") {
-    return NextResponse.json(
-      { error: "Solo se pueden agregar bonus a un Drop activo." },
-      { status: 409 }
-    );
-  }
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true },
+  });
   if (!user) {
     return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
   }
 
   const requestId = getAuditRequestId(req);
-  const created = await prisma.$transaction(async (tx) => {
-    const entries = [];
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<
+        Array<{ id: string; status: string; title: string }>
+      >`
+        SELECT "id", "status"::text AS "status", "title"
+        FROM "Drop"
+        WHERE "id" = ${id}
+        FOR UPDATE
+      `;
+      const drop = rows[0];
+      if (!drop) throw new Error("DROP_NOT_FOUND");
+      if (drop.status !== "active") throw new Error("DROP_NOT_OPEN");
+
+      const entries = [];
     for (let index = 0; index < count; index += 1) {
       entries.push(
         await tx.dropBonusEntry.create({
@@ -86,8 +83,25 @@ export async function POST(req: NextRequest, { params }: Params) {
       after: { userId: user.id, count, reason },
     });
 
-    return entries;
-  });
+      return entries;
+    });
 
-  return NextResponse.json({ count: created.length }, { status: 201 });
+    return NextResponse.json({ count: created.length }, { status: 201 });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (code === "DROP_NOT_FOUND") {
+      return NextResponse.json({ error: "Drop no encontrado." }, { status: 404 });
+    }
+    if (code === "DROP_NOT_OPEN") {
+      return NextResponse.json(
+        { error: "Solo se pueden agregar bonus a un Drop activo." },
+        { status: 409 }
+      );
+    }
+    console.error("DROP_DIRECT_BONUS_FAILED");
+    return NextResponse.json(
+      { error: "No se pudo otorgar el Bonus Entry." },
+      { status: 500 }
+    );
+  }
 }

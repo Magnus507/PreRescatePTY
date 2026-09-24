@@ -6,6 +6,15 @@ import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
+function normalizeImageUrl(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") throw new Error("DROP_IMAGE_INVALID");
+  const trimmed = value.trim().slice(0, 500);
+  if (!trimmed) return null;
+  if (trimmed.startsWith("/") || trimmed.startsWith("https://")) return trimmed;
+  throw new Error("DROP_IMAGE_INVALID");
+}
+
 function slugify(value: string) {
   return value
     .normalize("NFD")
@@ -39,6 +48,20 @@ export async function GET() {
         select: {
           passes: { where: { status: "assigned" } },
           bonusEntries: { where: { revokedAt: null } },
+          bonusCredits: true,
+        },
+      },
+      bonusCredits: {
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        select: {
+          id: true,
+          code: true,
+          campaign: true,
+          claimedByUserId: true,
+          claimedAt: true,
+          revokedAt: true,
+          createdAt: true,
         },
       },
       draw: {
@@ -74,6 +97,8 @@ export async function GET() {
         createdAt: drop.createdAt,
         assignedPurchasePasses: drop._count.passes,
         bonusEntries: drop._count.bonusEntries,
+        bonusCreditCount: drop._count.bonusCredits,
+        bonusCredits: drop.bonusCredits,
         draw: drop.draw,
       })),
     },
@@ -96,8 +121,15 @@ export async function POST(req: NextRequest) {
     typeof body.description === "string"
       ? body.description.trim().slice(0, 1000)
       : null;
-  const imageUrl =
-    typeof body.imageUrl === "string" ? body.imageUrl.trim().slice(0, 500) : null;
+  let imageUrl: string | null;
+  try {
+    imageUrl = normalizeImageUrl(body.imageUrl);
+  } catch {
+    return NextResponse.json(
+      { error: "La imagen debe ser una URL https o una ruta interna." },
+      { status: 400 }
+    );
+  }
   const targetPasses = Number(body.targetPasses);
 
   if (

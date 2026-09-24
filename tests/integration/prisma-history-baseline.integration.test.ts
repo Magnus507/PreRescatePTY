@@ -11,6 +11,7 @@ const POST_BASELINE_SCHEMA = [
   // exactly; the enclosing transaction rolls everything back afterward.
   'DROP TABLE IF EXISTS public."DropDraw"',
   'DROP TABLE IF EXISTS public."DropBonusEntry"',
+  'DROP TABLE IF EXISTS public."DropBonusCredit"',
   'DROP TABLE IF EXISTS public."DropPass"',
   'DROP TABLE IF EXISTS public."Drop"',
   'DROP TYPE IF EXISTS public."DropPassStatus"',
