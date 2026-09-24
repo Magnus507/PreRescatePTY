@@ -26,7 +26,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
-      const current = await tx.drop.findUnique({ where: { id } });
+      const rows = await tx.$queryRaw<
+        Array<{
+          id: string;
+          status: string;
+          opensAt: Date | null;
+          goalReachedAt: Date | null;
+          closedAt: Date | null;
+        }>
+      >`
+        SELECT "id", "status"::text AS "status", "opensAt", "goalReachedAt", "closedAt"
+        FROM "Drop"
+        WHERE "id" = ${id}
+        FOR UPDATE
+      `;
+      const current = rows[0];
       if (!current) throw new Error("DROP_NOT_FOUND");
 
       const next = transitions[current.status]?.[action];
