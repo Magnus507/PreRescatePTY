@@ -10,11 +10,7 @@ function normalizeImageUrl(value: unknown) {
   if (typeof value !== "string") throw new Error("DROP_IMAGE_INVALID");
   const trimmed = value.trim().slice(0, 500);
   if (!trimmed) return null;
-  if (
-    trimmed.startsWith("/") ||
-    trimmed.startsWith("https://") ||
-    trimmed.startsWith("http://")
-  ) {
+  if (trimmed.startsWith("/") || trimmed.startsWith("https://")) {
     return trimmed;
   }
   throw new Error("DROP_IMAGE_INVALID");
@@ -30,6 +26,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
+      const lock = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id"
+        FROM "Drop"
+        WHERE "id" = ${id}
+        FOR UPDATE
+      `;
+      if (!lock[0]) throw new Error("DROP_NOT_FOUND");
+
       const current = await tx.drop.findUnique({
         where: { id },
         include: {
@@ -126,7 +130,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       DROP_NOT_FOUND: ["Drop no encontrado.", 404],
       DROP_EDIT_LOCKED: ["Un Drop sorteado o finalizado ya no puede editarse.", 409],
       DROP_EDIT_INVALID: ["Datos del Drop inválidos.", 400],
-      DROP_IMAGE_INVALID: ["La imagen debe ser una URL http(s) o una ruta interna.", 400],
+      DROP_IMAGE_INVALID: ["La imagen debe ser una URL https o una ruta interna.", 400],
       DROP_COMMERCIAL_FIELDS_LOCKED: [
         "El premio y la meta ya no pueden cambiarse después de existir participación.",
         409,
@@ -147,6 +151,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      const lock = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id"
+        FROM "Drop"
+        WHERE "id" = ${id}
+        FOR UPDATE
+      `;
+      if (!lock[0]) throw new Error("DROP_NOT_FOUND");
+
       const current = await tx.drop.findUnique({
         where: { id },
         include: {
