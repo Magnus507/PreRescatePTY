@@ -14,6 +14,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { toast } from "sonner";
+import { RewardsPanel } from "./_components/RewardsPanel";
 
 type DropStatus =
   | "active"
@@ -258,6 +259,8 @@ export default function DropsPage() {
           </div>
         </div>
       </section>
+
+      <RewardsPanel onChanged={load} />
 
       <section className="rounded-[1.75rem] border border-blue-200/70 bg-blue-50/50 p-5 dark:border-blue-500/20 dark:bg-blue-500/[0.04] sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
