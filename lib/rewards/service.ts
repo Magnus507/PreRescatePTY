@@ -287,7 +287,7 @@ export async function getRewardsSnapshot(userId: string) {
   await refreshCommunityUnlocks();
 
   const now = new Date();
-  const [missions, completions, founder, ledger, unlocks, activeDrops] =
+  const [missions, completions, founder, ledger, unlocks, activeDrops, balance] =
     await Promise.all([
       prisma.rewardMission.findMany({
         where: {
@@ -332,6 +332,7 @@ export async function getRewardsSnapshot(userId: string) {
         orderBy: { createdAt: "desc" },
         select: { id: true, title: true, prizeLabel: true },
       }),
+      getRewardCreditBalance(userId),
     ]);
 
   const completedMap = new Map(
@@ -382,8 +383,6 @@ export async function getRewardsSnapshot(userId: string) {
       unlockedAt: unlock.unlockedAt,
     });
   }
-
-  const balance = ledger.reduce((sum, row) => sum + row.amount, 0);
 
   return {
     balance,
