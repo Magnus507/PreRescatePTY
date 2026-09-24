@@ -225,7 +225,7 @@ export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<v
             </button>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-white/[0.04] lg:hidden">
         {[
@@ -337,7 +337,6 @@ export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<v
             ))}
           </div>
         </div>
-      )}
     </section>
   );
 }
