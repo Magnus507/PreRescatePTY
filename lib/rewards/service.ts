@@ -147,7 +147,12 @@ export async function claimMission(userId: string, missionId: string) {
   });
 }
 
-export async function spendRewardCredit(userId: string, dropId: string) {
+export async function spendRewardCredit(
+  userId: string,
+  dropId: string,
+  actorUserId: string = userId,
+  reason = "Reward Credit · Misiones"
+) {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`
       SELECT pg_advisory_xact_lock(hashtext(${`reward-credit:${userId}`}))
@@ -173,8 +178,8 @@ export async function spendRewardCredit(userId: string, dropId: string) {
         code: makeBonusEntryCode(),
         dropId,
         userId,
-        reason: "Reward Credit · Misiones",
-        createdByUserId: userId,
+        reason,
+        createdByUserId: actorUserId,
       },
       select: {
         id: true,
@@ -191,8 +196,8 @@ export async function spendRewardCredit(userId: string, dropId: string) {
         sourceKey: `spend:${entry.id}`,
         sourceType: "spend",
         sourceId: drop.id,
-        description: `Bonus Entry para ${drop.title}`,
-        createdByUserId: userId,
+        description: `Bonus Entry para ${drop.title} · ${reason}`,
+        createdByUserId: actorUserId,
         dropBonusEntryId: entry.id,
       },
     });
