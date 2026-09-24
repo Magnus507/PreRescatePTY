@@ -30,7 +30,7 @@ export async function GET() {
   if (!auth.authorized) return auth.response;
 
   const drops = await prisma.drop.findMany({
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
       slug: true,
@@ -39,6 +39,7 @@ export async function GET() {
       prizeLabel: true,
       imageUrl: true,
       targetPasses: true,
+      displayOrder: true,
       status: true,
       opensAt: true,
       goalReachedAt: true,
@@ -90,6 +91,7 @@ export async function GET() {
         prizeLabel: drop.prizeLabel,
         imageUrl: drop.imageUrl,
         targetPasses: drop.targetPasses,
+        displayOrder: drop.displayOrder,
         status: drop.status,
         opensAt: drop.opensAt,
         goalReachedAt: drop.goalReachedAt,
@@ -150,6 +152,8 @@ export async function POST(req: NextRequest) {
   const requestId = getAuditRequestId(req);
 
   const drop = await prisma.$transaction(async (tx) => {
+    const maxOrder = await tx.drop.aggregate({ _max: { displayOrder: true } });
+    const displayOrder = (maxOrder._max.displayOrder ?? -10) + 10;
     const created = await tx.drop.create({
       data: {
         slug,
@@ -158,6 +162,7 @@ export async function POST(req: NextRequest) {
         description: description || null,
         imageUrl: imageUrl || null,
         targetPasses,
+        displayOrder,
       },
     });
 
@@ -172,6 +177,7 @@ export async function POST(req: NextRequest) {
         title,
         prizeLabel,
         targetPasses,
+        displayOrder: created.displayOrder,
         status: created.status,
       },
     });
@@ -180,4 +186,62 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ drop }, { status: 201 });
+}
+
+
+export async function PATCH(req: NextRequest) {
+  const auth = await requireRole(GENERAL_ADMIN_ROLES);
+  if (!auth.authorized) return auth.response;
+
+  const body = await req.json().catch(() => ({}));
+  const orderedIds = Array.isArray(body.orderedIds)
+    ? body.orderedIds.filter(
+        (value: unknown): value is string =>
+          typeof value === "string" && Boolean(value.trim())
+      )
+    : [];
+
+  if (
+    orderedIds.length === 0 ||
+    new Set(orderedIds).size !== orderedIds.length
+  ) {
+    return NextResponse.json(
+      { error: "Orden de Drops inválido." },
+      { status: 400 }
+    );
+  }
+
+  const current = await prisma.drop.findMany({ select: { id: true } });
+  const currentIds = new Set(current.map((drop) => drop.id));
+  if (
+    current.length !== orderedIds.length ||
+    orderedIds.some((id: string) => !currentIds.has(id))
+  ) {
+    return NextResponse.json(
+      { error: "El orden debe incluir todos los Drops existentes." },
+      { status: 409 }
+    );
+  }
+
+  const requestId = getAuditRequestId(req);
+  await prisma.$transaction(async (tx) => {
+    for (let index = 0; index < orderedIds.length; index += 1) {
+      await tx.drop.update({
+        where: { id: orderedIds[index] },
+        data: { displayOrder: index * 10 },
+      });
+    }
+
+    await writeAuditLog(tx, {
+      actorUserId: auth.session.user.id,
+      accountId: auth.session.user.accountId ?? null,
+      entityType: "DropOrder",
+      entityId: "global",
+      action: "drop.reorder",
+      requestId,
+      after: { orderedIds },
+    });
+  });
+
+  return NextResponse.json({ success: true, orderedIds });
 }
