@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { GENERAL_ADMIN_ROLES, requireRole } from "@/lib/rbac";
 import { getAuditRequestId, writeAuditLog } from "@/lib/audit";
-import { makeBonusCreditCode } from "@/lib/drops/bonus-credits";
+import { makeBonusCreditCode } from "@/lib/drops/rules";
 
 type Params = { params: Promise<{ id: string }> };
 
