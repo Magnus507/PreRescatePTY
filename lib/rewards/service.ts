@@ -334,7 +334,7 @@ export async function getRewardsSnapshot(userId: string) {
       }),
       prisma.drop.findMany({
         where: { status: "active" },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
         select: { id: true, title: true, prizeLabel: true },
       }),
       getRewardCreditBalance(userId),
