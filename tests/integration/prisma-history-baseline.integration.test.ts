@@ -6,9 +6,15 @@ import { createIntegrationPrismaClient, assertIntegrationDatabaseReady } from ".
 const db = createIntegrationPrismaClient();
 const VERIFIED_BASELINE_LAST_MIGRATION = "20260904170000_harden_storage_cleanup_outbox";
 const POST_BASELINE_SCHEMA = [
-  // Drops was introduced after the verified 2026-09-05 baseline. Remove only
-  // its disposable CI objects so the historical fingerprint is reconstructed
-  // exactly; the enclosing transaction rolls everything back afterward.
+  // Rewards and Drops were introduced after the verified 2026-09-05 baseline.
+  // Remove only their disposable CI objects in dependency order so the
+  // historical fingerprint is reconstructed exactly; the enclosing
+  // transaction rolls everything back afterward.
+  'DROP TABLE IF EXISTS public."CommunityUnlock"',
+  'DROP TABLE IF EXISTS public."RewardCreditLedger"',
+  'DROP TABLE IF EXISTS public."RewardMissionCompletion"',
+  'DROP TABLE IF EXISTS public."RewardMission"',
+  'DROP TABLE IF EXISTS public."FoundingMember"',
   'DROP TABLE IF EXISTS public."DropDraw"',
   'DROP TABLE IF EXISTS public."DropBonusEntry"',
   'DROP TABLE IF EXISTS public."DropBonusCredit"',
