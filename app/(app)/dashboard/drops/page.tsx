@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Award,
   CheckCircle2,
+  Coins,
   Gift,
   KeyRound,
   Loader2,
@@ -68,6 +69,7 @@ type BonusEntry = {
 
 type Snapshot = {
   availablePassCount: number;
+  bonusCreditBalance: number;
   drops: DropItem[];
   passes: DropPass[];
   bonusEntries: BonusEntry[];
@@ -75,6 +77,7 @@ type Snapshot = {
 
 const EMPTY: Snapshot = {
   availablePassCount: 0,
+  bonusCreditBalance: 0,
   drops: [],
   passes: [],
   bonusEntries: [],
@@ -103,8 +106,11 @@ export default function DropsPage() {
   const [data, setData] = useState<Snapshot>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [assigningDropId, setAssigningDropId] = useState<string | null>(null);
+  const [assigningCreditDropId, setAssigningCreditDropId] = useState<string | null>(null);
   const [bonusCreditCode, setBonusCreditCode] = useState("");
   const [redeemingCredit, setRedeemingCredit] = useState(false);
+  const [passGrantCode, setPassGrantCode] = useState("");
+  const [redeemingPass, setRedeemingPass] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -178,6 +184,68 @@ export default function DropsPage() {
     }
   }
 
+  async function redeemPassCode() {
+    const code = passGrantCode.trim();
+    if (!code) {
+      toast.error("Ingresa tu código especial de Drop Pass.");
+      return;
+    }
+
+    setRedeemingPass(true);
+    try {
+      const response = await fetch("/api/drops/pass-codes/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || "No se pudo reclamar el Drop Pass.");
+      }
+
+      toast.success(`Drop Pass ${body.pass.code} agregado a tu saldo.`);
+      setPassGrantCode("");
+      await load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "No se pudo reclamar el Drop Pass."
+      );
+    } finally {
+      setRedeemingPass(false);
+    }
+  }
+
+  async function assignCredit(dropId: string) {
+    if (data.bonusCreditBalance < 1) {
+      toast.error("No tienes Bonus Credits disponibles.");
+      return;
+    }
+
+    setAssigningCreditDropId(dropId);
+    try {
+      const response = await fetch("/api/rewards/credits/spend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dropId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || "No se pudo asignar el Bonus Credit.");
+      }
+
+      toast.success(
+        `Bonus Credit asignado. Entrada ${body.entry.code} creada para ${body.drop.title}.`
+      );
+      await load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "No se pudo asignar el Bonus Credit."
+      );
+    } finally {
+      setAssigningCreditDropId(null);
+    }
+  }
+
   async function assignPass(dropId: string) {
     if (!availablePass) {
       toast.error("No tienes Drop Pass disponibles.");
@@ -246,15 +314,28 @@ export default function DropsPage() {
             </p>
           </div>
 
-          <div className="min-w-[220px] rounded-[1.5rem] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
-            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
-              Pases disponibles
-            </p>
-            <div className="mt-2 flex items-end gap-3">
-              <span className="text-5xl font-black tracking-[-0.06em] text-slate-950 dark:text-white">
-                {data.availablePassCount}
-              </span>
-              <Ticket className="mb-1 h-7 w-7 text-[#DA1A21]" />
+          <div className="grid min-w-[220px] gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="rounded-[1.5rem] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
+                Drop Pass disponibles
+              </p>
+              <div className="mt-2 flex items-end gap-3">
+                <span className="text-5xl font-black tracking-[-0.06em] text-slate-950 dark:text-white">
+                  {data.availablePassCount}
+                </span>
+                <Ticket className="mb-1 h-7 w-7 text-[#DA1A21]" />
+              </div>
+            </div>
+            <div className="rounded-[1.5rem] border border-violet-200/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-violet-500/20 dark:bg-white/[0.04]">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-violet-500">
+                Bonus Credits disponibles
+              </p>
+              <div className="mt-2 flex items-end gap-3">
+                <span className="text-5xl font-black tracking-[-0.06em] text-slate-950 dark:text-white">
+                  {data.bonusCreditBalance}
+                </span>
+                <Coins className="mb-1 h-7 w-7 text-violet-600" />
+              </div>
             </div>
           </div>
         </div>
@@ -306,6 +387,46 @@ export default function DropsPage() {
                 <KeyRound className="h-4 w-4" />
               )}
               Reclamar Bonus
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[1.75rem] border border-rose-200/70 bg-rose-50/40 p-5 dark:border-rose-500/20 dark:bg-rose-500/[0.04] sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Ticket className="h-5 w-5 text-[#DA1A21]" />
+              <h2 className="font-black text-slate-950 dark:text-white">
+                ¿Tienes un código especial de Drop Pass?
+              </h2>
+            </div>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
+              Los códigos DPG son para soporte o correcciones. Cada código válido se usa una sola vez y agrega 1 Drop Pass disponible a tu cuenta.
+            </p>
+          </div>
+          <div className="flex w-full max-w-xl flex-col gap-2 sm:flex-row">
+            <input
+              value={passGrantCode}
+              onChange={(event) => setPassGrantCode(event.target.value.toUpperCase())}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void redeemPassCode();
+                }
+              }}
+              placeholder="DPG-XXXX-XXXX-XXXX"
+              autoComplete="off"
+              className="h-12 flex-1 rounded-2xl border border-rose-200 bg-white px-4 font-mono text-sm font-black uppercase tracking-wide text-slate-800 outline-none focus:border-[#DA1A21] dark:border-rose-500/20 dark:bg-[#0b1421] dark:text-white"
+            />
+            <button
+              type="button"
+              disabled={redeemingPass || !passGrantCode.trim()}
+              onClick={() => void redeemPassCode()}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-5 text-sm font-black text-white disabled:opacity-45"
+            >
+              {redeemingPass ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />}
+              Reclamar Pass
             </button>
           </div>
         </div>
@@ -435,29 +556,56 @@ export default function DropsPage() {
                       </div>
                     )}
 
-                    <button
-                      type="button"
-                      disabled={
-                        !isOpen ||
-                        !availablePass ||
-                        assigningDropId !== null
-                      }
-                      onClick={() => void assignPass(drop.id)}
-                      className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#ef222b,#bd1119)] px-4 text-sm font-black text-white shadow-[0_16px_28px_-18px_rgba(218,26,33,.8)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
-                    >
-                      {assigningDropId === drop.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isOpen ? (
-                        <Ticket className="h-4 w-4" />
-                      ) : (
-                        <LockKeyhole className="h-4 w-4" />
-                      )}
-                      {isOpen
-                        ? availablePass
-                          ? "Asignar 1 Drop Pass"
-                          : "Sin pases disponibles"
-                        : "Asignación cerrada"}
-                    </button>
+                    <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        disabled={
+                          !isOpen ||
+                          !availablePass ||
+                          assigningDropId !== null ||
+                          assigningCreditDropId !== null
+                        }
+                        onClick={() => void assignPass(drop.id)}
+                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#ef222b,#bd1119)] px-4 text-sm font-black text-white shadow-[0_16px_28px_-18px_rgba(218,26,33,.8)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        {assigningDropId === drop.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : isOpen ? (
+                          <Ticket className="h-4 w-4" />
+                        ) : (
+                          <LockKeyhole className="h-4 w-4" />
+                        )}
+                        {isOpen
+                          ? availablePass
+                            ? "Asignar 1 Drop Pass"
+                            : "Sin Pass disponibles"
+                          : "Asignación cerrada"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          !isOpen ||
+                          data.bonusCreditBalance < 1 ||
+                          assigningCreditDropId !== null ||
+                          assigningDropId !== null
+                        }
+                        onClick={() => void assignCredit(drop.id)}
+                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 px-4 text-sm font-black text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        {assigningCreditDropId === drop.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : isOpen ? (
+                          <Coins className="h-4 w-4" />
+                        ) : (
+                          <LockKeyhole className="h-4 w-4" />
+                        )}
+                        {isOpen
+                          ? data.bonusCreditBalance > 0
+                            ? "Asignar 1 Bonus Credit"
+                            : "Sin Bonus Credits"
+                          : "Asignación cerrada"}
+                      </button>
+                    </div>
                   </div>
                 </article>
               );
