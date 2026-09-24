@@ -16,6 +16,24 @@ export async function redeemBonusCredit(userId: string, rawCode: string) {
   }
 
   return prisma.$transaction(async (tx) => {
+    const candidate = await tx.dropBonusCredit.findUnique({
+      where: { code },
+      select: { id: true, dropId: true },
+    });
+    if (!candidate) throw new Error("BONUS_CREDIT_NOT_FOUND");
+
+    const drops = await tx.$queryRaw<
+      Array<{ id: string; status: string; title: string }>
+    >`
+      SELECT "id", "status"::text AS "status", "title"
+      FROM "Drop"
+      WHERE "id" = ${candidate.dropId}
+      FOR UPDATE
+    `;
+    const drop = drops[0];
+    if (!drop) throw new Error("DROP_NOT_FOUND");
+    if (drop.status !== "active") throw new Error("BONUS_CREDIT_DROP_CLOSED");
+
     const rows = await tx.$queryRaw<Array<{
       id: string;
       dropId: string;
@@ -28,7 +46,7 @@ export async function redeemBonusCredit(userId: string, rawCode: string) {
       SELECT "id", "dropId", "campaign", "createdByUserId",
              "claimedByUserId", "claimedAt", "revokedAt"
       FROM "DropBonusCredit"
-      WHERE "code" = ${code}
+      WHERE "id" = ${candidate.id}
       FOR UPDATE
     `;
 
@@ -36,13 +54,6 @@ export async function redeemBonusCredit(userId: string, rawCode: string) {
     if (!credit) throw new Error("BONUS_CREDIT_NOT_FOUND");
     if (credit.revokedAt) throw new Error("BONUS_CREDIT_REVOKED");
     if (credit.claimedAt) throw new Error("BONUS_CREDIT_ALREADY_CLAIMED");
-
-    const drop = await tx.drop.findUnique({
-      where: { id: credit.dropId },
-      select: { id: true, status: true, title: true },
-    });
-    if (!drop) throw new Error("DROP_NOT_FOUND");
-    if (drop.status !== "active") throw new Error("BONUS_CREDIT_DROP_CLOSED");
 
     const entry = await tx.dropBonusEntry.create({
       data: {
