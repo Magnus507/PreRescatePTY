@@ -7,12 +7,34 @@ function makeCode(prefix: "DP" | "BE") {
 }
 
 export async function syncPurchaseDropPasses(userId: string) {
+  const firstLaunch = await prisma.drop.findFirst({
+    where: { opensAt: { not: null } },
+    orderBy: { opensAt: "asc" },
+    select: { opensAt: true },
+  });
+
+  if (!firstLaunch?.opensAt) return { created: 0 };
+
   const orders = await prisma.order.findMany({
     where: {
       userId,
       paymentStatus: "paid",
       orderStatus: { not: "cancelled" },
-      OR: [{ provider: "yappy" }, { adminReviewStatus: "approved" }],
+      OR: [
+        {
+          provider: "yappy",
+          paymentAttempts: {
+            some: {
+              status: "succeeded",
+              confirmedAt: { gte: firstLaunch.opensAt },
+            },
+          },
+        },
+        {
+          adminReviewStatus: "approved",
+          adminReviewedAt: { gte: firstLaunch.opensAt },
+        },
+      ],
     },
     select: { id: true, amount: true, createdAt: true },
     orderBy: { createdAt: "asc" },
