@@ -48,6 +48,12 @@ describe("Pre-Rescate Rewards isolation contract", () => {
     expect(migration).toContain(
       "Founding Member identity is immutable once assigned"
     );
+    expect(migration).toContain(
+      "Founding Member identity is permanent once assigned"
+    );
+    expect(migration).toContain(
+      'BEFORE UPDATE OR DELETE ON public."FoundingMember"'
+    );
   });
 
   it("separa saldo de Bonus Credits de la meta pagada del Drop", () => {
