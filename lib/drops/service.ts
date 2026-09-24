@@ -98,7 +98,10 @@ export async function syncPurchaseDropPasses(userId: string) {
       createdAt: true,
       adminReviewedAt: true,
       paymentAttempts: {
-        where: { status: "succeeded", confirmedAt: { not: null } },
+        where: {
+          status: "succeeded",
+          confirmedAt: { gte: firstLaunch.opensAt },
+        },
         orderBy: { confirmedAt: "asc" },
         take: 1,
         select: { confirmedAt: true },
