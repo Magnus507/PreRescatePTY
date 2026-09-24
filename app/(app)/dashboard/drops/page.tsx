@@ -5,6 +5,7 @@ import {
   Award,
   CheckCircle2,
   Gift,
+  KeyRound,
   Loader2,
   LockKeyhole,
   RefreshCw,
@@ -101,6 +102,8 @@ export default function DropsPage() {
   const [data, setData] = useState<Snapshot>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [assigningDropId, setAssigningDropId] = useState<string | null>(null);
+  const [bonusCreditCode, setBonusCreditCode] = useState("");
+  const [redeemingCredit, setRedeemingCredit] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -138,6 +141,41 @@ export default function DropsPage() {
       ]),
     [data.bonusEntries, data.passes]
   );
+
+  async function redeemCredit() {
+    const code = bonusCreditCode.trim();
+    if (!code) {
+      toast.error("Ingresa tu Bonus Credit.");
+      return;
+    }
+
+    setRedeemingCredit(true);
+    try {
+      const response = await fetch("/api/drops/bonus-credits/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || "No se pudo reclamar el Bonus Credit.");
+      }
+
+      toast.success(
+        `Bonus Credit reclamado. Recibiste la entrada ${body.entry.code} para ${body.drop.title}.`
+      );
+      setBonusCreditCode("");
+      await load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se pudo reclamar el Bonus Credit."
+      );
+    } finally {
+      setRedeemingCredit(false);
+    }
+  }
 
   async function assignPass(dropId: string) {
     if (!availablePass) {
@@ -217,6 +255,55 @@ export default function DropsPage() {
               </span>
               <Ticket className="mb-1 h-7 w-7 text-[#DA1A21]" />
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[1.75rem] border border-blue-200/70 bg-blue-50/50 p-5 dark:border-blue-500/20 dark:bg-blue-500/[0.04] sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-blue-600" />
+              <h2 className="font-black text-slate-950 dark:text-white">
+                ¿Tienes un Bonus Credit?
+              </h2>
+            </div>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
+              Ingresa el código que recibiste. Cada Bonus Credit válido se puede
+              reclamar una sola vez y genera exactamente 1 Bonus Entry para el
+              Drop asociado. No suma a la meta pagada.
+            </p>
+          </div>
+
+          <div className="flex w-full max-w-xl flex-col gap-2 sm:flex-row">
+            <input
+              value={bonusCreditCode}
+              onChange={(event) =>
+                setBonusCreditCode(event.target.value.toUpperCase())
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void redeemCredit();
+                }
+              }}
+              placeholder="BC-XXXX-XXXX-XXXX"
+              autoComplete="off"
+              className="h-12 flex-1 rounded-2xl border border-blue-200 bg-white px-4 font-mono text-sm font-black uppercase tracking-wide text-slate-800 outline-none focus:border-blue-500 dark:border-blue-500/20 dark:bg-[#0b1421] dark:text-white"
+            />
+            <button
+              type="button"
+              disabled={redeemingCredit || !bonusCreditCode.trim()}
+              onClick={() => void redeemCredit()}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-black text-white disabled:opacity-45"
+            >
+              {redeemingCredit ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <KeyRound className="h-4 w-4" />
+              )}
+              Reclamar Bonus
+            </button>
           </div>
         </div>
       </section>
