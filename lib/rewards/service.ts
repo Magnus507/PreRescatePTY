@@ -151,9 +151,10 @@ export async function spendRewardCredit(
   userId: string,
   dropId: string,
   actorUserId: string = userId,
-  reason = "Reward Credit · Misiones"
+  reason = "Reward Credit · Misiones",
+  transaction?: Prisma.TransactionClient
 ) {
-  return prisma.$transaction(async (tx) => {
+  const execute = async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`
       SELECT pg_advisory_xact_lock(hashtext(${`reward-credit:${userId}`}))
     `;
@@ -207,7 +208,9 @@ export async function spendRewardCredit(
       drop: { id: drop.id, title: drop.title },
       balance: balance - 1,
     };
-  });
+  };
+
+  return transaction ? execute(transaction) : prisma.$transaction(execute);
 }
 
 export async function getCommunityMetricValue(
