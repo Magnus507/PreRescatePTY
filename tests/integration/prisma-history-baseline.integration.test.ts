@@ -18,6 +18,7 @@ const POST_BASELINE_SCHEMA = [
   'DROP TABLE IF EXISTS public."DropDraw"',
   'DROP TABLE IF EXISTS public."DropBonusEntry"',
   'DROP TABLE IF EXISTS public."DropBonusCredit"',
+  'DROP TABLE IF EXISTS public."DropPassGrantCode"',
   'DROP TABLE IF EXISTS public."DropPass"',
   'DROP TABLE IF EXISTS public."Drop"',
   'DROP TYPE IF EXISTS public."DropPassStatus"',
