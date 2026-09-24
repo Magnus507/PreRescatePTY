@@ -247,15 +247,23 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const result = await assignDropPassToDrop(user.id, pass.id, dropId);
-      await writeAuditLog(prisma, {
-        actorUserId: auth.session.user.id,
-        accountId: user.accountId,
-        entityType: "DropPass",
-        entityId: pass.id,
-        action: "drop.pass_admin_assign",
-        requestId,
-        after: { userId: user.id, dropId, code: pass.code },
+      const result = await prisma.$transaction(async (tx) => {
+        const assigned = await assignDropPassToDrop(
+          user.id,
+          pass.id,
+          dropId,
+          tx
+        );
+        await writeAuditLog(tx, {
+          actorUserId: auth.session.user.id,
+          accountId: user.accountId,
+          entityType: "DropPass",
+          entityId: pass.id,
+          action: "drop.pass_admin_assign",
+          requestId,
+          after: { userId: user.id, dropId, code: pass.code },
+        });
+        return assigned;
       });
       return NextResponse.json({ action, pass, result });
     } catch (error) {
@@ -277,26 +285,30 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const result = await spendRewardCredit(
-        user.id,
-        dropId,
-        auth.session.user.id,
-        `Asignación administrativa · ${reason}`
-      );
-      await writeAuditLog(prisma, {
-        actorUserId: auth.session.user.id,
-        accountId: user.accountId,
-        entityType: "RewardCreditLedger",
-        entityId: result.entry.id,
-        action: "drop.bonus_credit_admin_assign",
-        requestId,
-        after: {
-          userId: user.id,
+      const result = await prisma.$transaction(async (tx) => {
+        const spent = await spendRewardCredit(
+          user.id,
           dropId,
-          entryCode: result.entry.code,
-          balance: result.balance,
-          reason,
-        },
+          auth.session.user.id,
+          `Asignación administrativa · ${reason}`,
+          tx
+        );
+        await writeAuditLog(tx, {
+          actorUserId: auth.session.user.id,
+          accountId: user.accountId,
+          entityType: "RewardCreditLedger",
+          entityId: spent.entry.id,
+          action: "drop.bonus_credit_admin_assign",
+          requestId,
+          after: {
+            userId: user.id,
+            dropId,
+            entryCode: spent.entry.code,
+            balance: spent.balance,
+            reason,
+          },
+        });
+        return spent;
       });
       return NextResponse.json({ action, ...result });
     } catch (error) {
