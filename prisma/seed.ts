@@ -30,6 +30,38 @@ async function main() {
     console.log('✅ Admin user synced (from env).');
   }
 
+  // Browser E2E customer. This only exists in the isolated browser workflow,
+  // identified by its dedicated E2E admin environment marker.
+  if (process.env.E2E_ADMIN_EMAIL === 'block4-e2e-admin@example.test') {
+    const e2eCustomerEmail = 'block4-e2e-customer@example.test';
+    const e2eCustomerPasswordHash = await bcrypt.hash(
+      'Block4-E2E-Customer-Only-2026!',
+      10
+    );
+
+    await prisma.user.upsert({
+      where: { email: e2eCustomerEmail },
+      update: {
+        passwordHash: e2eCustomerPasswordHash,
+        role: 'owner',
+        isAdmin: false,
+        adminRole: null,
+        status: 'active',
+        deletedAt: null,
+      },
+      create: {
+        email: e2eCustomerEmail,
+        passwordHash: e2eCustomerPasswordHash,
+        role: 'owner',
+        isAdmin: false,
+        adminRole: null,
+        status: 'active',
+      },
+    });
+
+    console.log('✅ Browser E2E customer synced.');
+  }
+
   // 2. Official Sales Packages (Paquetes de Venta) 
   // We use "Plan" in the name as it's the commercial term, but they behave as cumulative packs.
   const packages = [
