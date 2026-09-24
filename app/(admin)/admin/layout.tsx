@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   LayoutDashboard, Users, Shield,
   LogOut, Settings, Package, Activity, ChevronRight, Search, Menu, X, Store, Crown,
-  PanelLeftClose, PanelLeftOpen, MessageSquareText
+  PanelLeftClose, PanelLeftOpen, MessageSquareText, Gift
 } from "lucide-react";
 
 import type { Session } from "next-auth";
@@ -53,6 +53,7 @@ function AdminSidebar({
     { label: "Usuarios", id: "users", icon: Users },
     { label: "Centro de Operaciones", id: "inventory", icon: Package },
     { label: "Mensajes de soporte", id: "support", icon: MessageSquareText },
+    { label: "Pre-Rescate Drops", id: "drops", icon: Gift },
     { label: "Ajustes Sistema", id: "settings", icon: Settings },
     { label: "Administradores", id: "admins", icon: Shield },
   ].filter(item => !isPrintRole || item.id === 'inventory');
