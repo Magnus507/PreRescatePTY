@@ -152,6 +152,9 @@ export async function POST(req: NextRequest) {
   const requestId = getAuditRequestId(req);
 
   const drop = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtext('drop-display-order'))
+    `;
     const maxOrder = await tx.drop.aggregate({ _max: { displayOrder: true } });
     const displayOrder = (maxOrder._max.displayOrder ?? -10) + 10;
     const created = await tx.drop.create({
@@ -225,6 +228,9 @@ export async function PATCH(req: NextRequest) {
 
   const requestId = getAuditRequestId(req);
   await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtext('drop-display-order'))
+    `;
     for (let index = 0; index < orderedIds.length; index += 1) {
       await tx.drop.update({
         where: { id: orderedIds[index] },
