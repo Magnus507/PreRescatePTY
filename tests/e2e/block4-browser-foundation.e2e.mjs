@@ -37,6 +37,39 @@ test.describe("Block 4 browser foundation", () => {
     await expect(page.getByLabel(/Correo electrónico/i)).toBeVisible();
   });
 
+  test("mobile Drops page is organized into touch-friendly sections", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-mobile", "Mobile-only Drops layout check.");
+
+    await page.goto("/login");
+    await dismissCookieConsent(page);
+    await expect(page.locator("form")).toHaveAttribute("data-hydrated", "true");
+    await page.getByLabel(/Correo electrónico/i).fill(E2E_ADMIN_EMAIL);
+    await page.getByLabel(/Contraseña/i).fill(E2E_ADMIN_PASSWORD);
+    await page.getByRole("button", { name: /Iniciar sesión seguro/i }).click();
+    await page.waitForURL(/\/admin(?:$|\?)/, { timeout: 45_000 });
+
+    await page.goto("/dashboard/drops");
+    await expect(page.getByText("Pre-Rescate Drops").first()).toBeVisible();
+
+    const sectionNav = page.getByRole("navigation", { name: "Secciones de Drops" });
+    await expect(sectionNav).toBeVisible();
+    await expect(sectionNav.getByRole("button", { name: "Drops" })).toBeVisible();
+    await expect(sectionNav.getByRole("button", { name: "Rewards" })).toBeVisible();
+    await expect(sectionNav.getByRole("button", { name: "Actividad" })).toBeVisible();
+
+    await sectionNav.getByRole("button", { name: "Rewards" }).click();
+    await expect(page.getByRole("heading", { name: /Tu progreso dentro de la comunidad/i })).toBeVisible();
+
+    await sectionNav.getByRole("button", { name: "Actividad" }).click();
+    await expect(page.getByRole("heading", { name: /Historial de Drop Passes/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Bonus Entries/i })).toBeVisible();
+
+    await page.screenshot({
+      path: testInfo.outputPath("mobile-drops-organized.png"),
+      fullPage: true,
+    });
+  });
+
   test("seeded superadmin signs in through the UI and reaches admin dashboard", async ({ page }, testInfo) => {
     await page.goto("/login");
     await dismissCookieConsent(page);
