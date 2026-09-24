@@ -140,6 +140,10 @@ LANGUAGE plpgsql
 SET search_path = pg_catalog, public, private
 AS $$
 BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Founding Member identity is permanent once assigned';
+  END IF;
+
   IF NEW."userId" IS DISTINCT FROM OLD."userId"
      OR NEW."founderNumber" IS DISTINCT FROM OLD."founderNumber"
      OR NEW."grantedAt" IS DISTINCT FROM OLD."grantedAt" THEN
@@ -152,6 +156,6 @@ $$;
 REVOKE ALL ON FUNCTION private.prevent_founding_member_identity_mutation() FROM PUBLIC;
 
 CREATE TRIGGER "FoundingMember_identity_immutable"
-BEFORE UPDATE ON public."FoundingMember"
+BEFORE UPDATE OR DELETE ON public."FoundingMember"
 FOR EACH ROW
 EXECUTE FUNCTION private.prevent_founding_member_identity_mutation();
