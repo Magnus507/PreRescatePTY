@@ -61,7 +61,13 @@ function founderNumber(value: number) {
   return `#${String(value).padStart(4, "0")}`;
 }
 
-export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<void> }) {
+export function RewardsPanel({
+  onChanged,
+  balanceOverride,
+}: {
+  onChanged?: () => void | Promise<void>;
+  balanceOverride?: number;
+}) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -143,6 +149,8 @@ export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<v
 
   if (!data) return null;
 
+  const visibleBalance = balanceOverride ?? data.balance;
+
   return (
     <section className="space-y-4 rounded-[2rem] border border-violet-200/70 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,.10),transparent_34%),white] p-5 dark:border-violet-500/20 dark:bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,.12),transparent_34%),#0b1421] sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -170,7 +178,7 @@ export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<v
             <Coins className="h-5 w-5" />
             <p className="text-[10px] font-black uppercase tracking-[0.14em]">Bonus Credits</p>
           </div>
-          <p className="mt-2 text-4xl font-black tracking-tight">{data.balance}</p>
+          <p className="mt-2 text-4xl font-black tracking-tight">{visibleBalance}</p>
           <p className="mt-1 text-xs text-slate-500">1 crédito = 1 Bonus Entry.</p>
         </div>
 
@@ -199,7 +207,7 @@ export function RewardsPanel({ onChanged }: { onChanged?: () => void | Promise<v
         </div>
       </div>
 
-      {data.balance > 0 && (
+      {visibleBalance > 0 && (
         <div className="rounded-2xl border border-violet-200 bg-white p-4 dark:border-violet-500/20 dark:bg-white/[0.035]">
           <div className="flex items-center gap-2">
             <Gift className="h-5 w-5 text-violet-600" />
