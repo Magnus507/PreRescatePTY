@@ -20,6 +20,7 @@ import {
   Ticket,
   Trash2,
   Trophy,
+  Upload,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -134,6 +135,7 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
   const [creditCampaign, setCreditCampaign] = useState("");
   const [creditCount, setCreditCount] = useState("1");
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
+  const [uploadingImageFor, setUploadingImageFor] = useState<"create" | "edit" | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -157,6 +159,46 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function uploadDropImage(
+    file: File,
+    target: "create" | "edit"
+  ) {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen no puede superar 5MB.");
+      return;
+    }
+
+    setUploadingImageFor(target);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("type", "drop");
+      form.append("bucket", "general");
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: form,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.url) {
+        throw new Error(body.error || "No se pudo subir la imagen.");
+      }
+
+      if (target === "create") {
+        setDraft((value) => ({ ...value, imageUrl: body.url }));
+      } else {
+        setEditDraft((value) => ({ ...value, imageUrl: body.url }));
+      }
+      toast.success("Imagen subida.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "No se pudo subir la imagen."
+      );
+    } finally {
+      setUploadingImageFor(null);
+    }
+  }
 
   async function createDrop(event: FormEvent) {
     event.preventDefault();
@@ -490,7 +532,7 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
 
           <label className="space-y-2">
             <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-              Imagen URL
+              Imagen
             </span>
             <div className="relative">
               <ImageIcon className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -499,10 +541,29 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
                 onChange={(e) =>
                   setDraft((value) => ({ ...value, imageUrl: e.target.value }))
                 }
-                placeholder="Opcional"
+                placeholder="URL o sube una imagen"
                 className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-bold outline-none focus:border-primary/40 dark:border-slate-700 dark:bg-slate-900"
               />
             </div>
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+              {uploadingImageFor === "create" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              Subir JPG/PNG/WebP
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                disabled={uploadingImageFor !== null}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void uploadDropImage(file, "create");
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
           </label>
         </div>
 
@@ -864,17 +925,38 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
                           placeholder="Meta"
                           className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold outline-none dark:border-slate-700 dark:bg-slate-950"
                         />
-                        <input
-                          value={editDraft.imageUrl}
-                          onChange={(e) =>
-                            setEditDraft((value) => ({
-                              ...value,
-                              imageUrl: e.target.value,
-                            }))
-                          }
-                          placeholder="URL de imagen o /ruta-interna"
-                          className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold outline-none dark:border-slate-700 dark:bg-slate-950"
-                        />
+                        <div className="space-y-2">
+                          <input
+                            value={editDraft.imageUrl}
+                            onChange={(e) =>
+                              setEditDraft((value) => ({
+                                ...value,
+                                imageUrl: e.target.value,
+                              }))
+                            }
+                            placeholder="URL de imagen o /ruta-interna"
+                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold outline-none dark:border-slate-700 dark:bg-slate-950"
+                          />
+                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[9px] font-black text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                            {uploadingImageFor === "edit" ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Upload className="h-3.5 w-3.5" />
+                            )}
+                            Cambiar imagen
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              disabled={uploadingImageFor !== null}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (file) void uploadDropImage(file, "edit");
+                                event.currentTarget.value = "";
+                              }}
+                            />
+                          </label>
+                        </div>
                       </div>
 
                       <textarea
