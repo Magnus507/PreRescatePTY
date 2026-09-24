@@ -30,14 +30,14 @@ async function main() {
     console.log('✅ Admin user synced (from env).');
   }
 
-  // Browser E2E customer. This only exists in the isolated browser workflow,
-  // identified by its dedicated E2E admin environment marker.
-  if (process.env.E2E_ADMIN_EMAIL === 'block4-e2e-admin@example.test') {
+  // Browser E2E customer. This only exists when the isolated browser workflow
+  // invokes the seed with its dedicated admin marker.
+  if (
+    adminEmail === 'block4-e2e-admin@example.test' &&
+    adminPassword
+  ) {
     const e2eCustomerEmail = 'block4-e2e-customer@example.test';
-    const e2eCustomerPasswordHash = await bcrypt.hash(
-      'Block4-E2E-Customer-Only-2026!',
-      10
-    );
+    const e2eCustomerPasswordHash = await bcrypt.hash(adminPassword, 10);
 
     await prisma.user.upsert({
       where: { email: e2eCustomerEmail },
