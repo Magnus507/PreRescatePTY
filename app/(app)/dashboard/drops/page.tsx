@@ -6,7 +6,9 @@ import {
   CheckCircle2,
   Coins,
   Gift,
+  History,
   KeyRound,
+  Layers3,
   Loader2,
   LockKeyhole,
   RefreshCw,
@@ -111,6 +113,9 @@ export default function DropsPage() {
   const [redeemingCredit, setRedeemingCredit] = useState(false);
   const [passGrantCode, setPassGrantCode] = useState("");
   const [redeemingPass, setRedeemingPass] = useState(false);
+  const [mobileSection, setMobileSection] = useState<
+    "drops" | "rewards" | "activity"
+  >("drops");
 
   const load = useCallback(async () => {
     try {
@@ -202,7 +207,6 @@ export default function DropsPage() {
       if (!response.ok) {
         throw new Error(body.error || "No se pudo reclamar el Drop Pass.");
       }
-
       toast.success(`Drop Pass ${body.pass.code} agregado a tu saldo.`);
       setPassGrantCode("");
       await load();
@@ -232,7 +236,6 @@ export default function DropsPage() {
       if (!response.ok) {
         throw new Error(body.error || "No se pudo asignar el Bonus Credit.");
       }
-
       toast.success(
         `Bonus Credit asignado. Entrada ${body.entry.code} creada para ${body.drop.title}.`
       );
@@ -297,54 +300,131 @@ export default function DropsPage() {
   }
 
   return (
-    <div className="space-y-7 pb-10">
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-[radial-gradient(circle_at_top_right,rgba(218,26,33,.14),transparent_34%),linear-gradient(135deg,#ffffff_0%,#f8fafc_100%)] p-5 shadow-[0_24px_70px_-46px_rgba(15,23,42,.3)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_right,rgba(218,26,33,.16),transparent_34%),linear-gradient(135deg,#0c1422_0%,#07111d_100%)] sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-4 pb-4 sm:space-y-7 sm:pb-10">
+      <section className="overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-[radial-gradient(circle_at_top_right,rgba(218,26,33,.14),transparent_34%),linear-gradient(135deg,#ffffff_0%,#f8fafc_100%)] p-4 shadow-[0_24px_70px_-46px_rgba(15,23,42,.3)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_right,rgba(218,26,33,.16),transparent_34%),linear-gradient(135deg,#0c1422_0%,#07111d_100%)] sm:rounded-[2rem] sm:p-8">
+        <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#DA1A21]/15 bg-[#DA1A21]/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-[#DA1A21]">
               <Sparkles className="h-3.5 w-3.5" />
               Pre-Rescate Drops
             </div>
-            <h1 className="mt-4 text-3xl font-black tracking-[-0.04em] text-slate-950 dark:text-white sm:text-5xl">
+            <h1 className="mt-3 text-[1.72rem] font-black leading-[1.04] tracking-[-0.045em] text-slate-950 dark:text-white sm:mt-4 sm:text-5xl">
               Tus compras ahora pueden abrir nuevas oportunidades.
             </h1>
-            <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
+            <p className="mt-2 max-w-xl text-[13px] font-medium leading-5 text-slate-500 dark:text-slate-400 sm:mt-3 sm:text-sm sm:leading-6">
               Cada $25 de compras elegibles genera 1 Drop Pass. Tú decides a
               cuál Drop asignarlo. Una vez asignado, el pase queda fijo.
             </p>
           </div>
 
-          <div className="grid min-w-[220px] gap-3 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="rounded-[1.5rem] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[220px] lg:grid-cols-1">
+            <div className="flex items-center justify-between rounded-[1.15rem] border border-white/80 bg-white/85 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.04] sm:block sm:rounded-[1.5rem] sm:p-5">
               <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
                 Drop Pass disponibles
               </p>
-              <div className="mt-2 flex items-end gap-3">
-                <span className="text-5xl font-black tracking-[-0.06em] text-slate-950 dark:text-white">
+              <div className="flex items-end gap-2 sm:mt-2 sm:gap-3">
+                <span className="text-3xl font-black tracking-[-0.06em] text-slate-950 dark:text-white sm:text-5xl">
                   {data.availablePassCount}
                 </span>
-                <Ticket className="mb-1 h-7 w-7 text-[#DA1A21]" />
+                <Ticket className="mb-0.5 h-5 w-5 text-[#DA1A21] sm:mb-1 sm:h-7 sm:w-7" />
               </div>
             </div>
-            <div className="rounded-[1.5rem] border border-violet-200/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-violet-500/20 dark:bg-white/[0.04]">
+            <div className="flex items-center justify-between rounded-[1.15rem] border border-violet-200/80 bg-white/85 px-4 py-3 shadow-sm backdrop-blur dark:border-violet-500/20 dark:bg-white/[0.04] sm:block sm:rounded-[1.5rem] sm:p-5">
               <p className="text-[9px] font-black uppercase tracking-[0.22em] text-violet-500">
                 Bonus Credits disponibles
               </p>
-              <div className="mt-2 flex items-end gap-3">
-                <span className="text-5xl font-black tracking-[-0.06em] text-slate-950 dark:text-white">
+              <div className="flex items-end gap-2 sm:mt-2 sm:gap-3">
+                <span className="text-3xl font-black tracking-[-0.06em] text-slate-950 dark:text-white sm:text-5xl">
                   {data.bonusCreditBalance}
                 </span>
-                <Coins className="mb-1 h-7 w-7 text-violet-600" />
+                <Coins className="mb-0.5 h-5 w-5 text-violet-600 sm:mb-1 sm:h-7 sm:w-7" />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <RewardsPanel onChanged={load} balanceOverride={data.bonusCreditBalance} />
+      <nav
+        aria-label="Secciones de Drops"
+        className="grid grid-cols-3 gap-1 rounded-[1.15rem] border border-slate-200 bg-white/90 p-1.5 shadow-sm dark:border-white/10 dark:bg-[#0b1421] lg:hidden"
+      >
+        {[
+          { id: "drops" as const, label: "Drops", icon: Layers3 },
+          { id: "rewards" as const, label: "Rewards", icon: Sparkles },
+          { id: "activity" as const, label: "Actividad", icon: History },
+        ].map((item) => {
+          const active = mobileSection === item.id;
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setMobileSection(item.id)}
+              aria-pressed={active}
+              className={
+                "flex min-h-12 items-center justify-center gap-1.5 rounded-[.9rem] px-2 text-[11px] font-black transition " +
+                (active
+                  ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
+                  : "text-slate-500 dark:text-slate-400")
+              }
+            >
+              <Icon className="h-4 w-4" />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
-      <section className="rounded-[1.75rem] border border-blue-200/70 bg-blue-50/50 p-5 dark:border-blue-500/20 dark:bg-blue-500/[0.04] sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div
+        className={
+          "space-y-4 lg:block lg:space-y-7 " +
+          (mobileSection === "rewards" ? "block" : "hidden")
+        }
+      >
+        <RewardsPanel onChanged={load} balanceOverride={data.bonusCreditBalance} />
+
+      <section className="rounded-[1.35rem] border border-rose-200/70 bg-rose-50/40 p-4 dark:border-rose-500/20 dark:bg-rose-500/[0.04] sm:rounded-[1.75rem] sm:p-6">
+        <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Ticket className="h-5 w-5 text-[#DA1A21]" />
+              <h2 className="font-black text-slate-950 dark:text-white">
+                ¿Tienes un código especial de Drop Pass?
+              </h2>
+            </div>
+            <p className="mt-1.5 max-w-2xl text-[11px] leading-[1.15rem] text-slate-500 sm:mt-2 sm:text-xs sm:leading-5">
+              Los códigos DPG son para soporte o correcciones. Cada código válido se usa una sola vez y agrega 1 Drop Pass disponible a tu cuenta.
+            </p>
+          </div>
+          <div className="flex w-full max-w-xl flex-col gap-2 sm:flex-row">
+            <input
+              value={passGrantCode}
+              onChange={(event) => setPassGrantCode(event.target.value.toUpperCase())}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void redeemPassCode();
+                }
+              }}
+              placeholder="DPG-XXXX-XXXX-XXXX"
+              autoComplete="off"
+              className="h-12 min-w-0 flex-1 rounded-xl border border-rose-200 bg-white px-3 font-mono text-[13px] font-black uppercase tracking-wide text-slate-800 outline-none focus:border-[#DA1A21] dark:border-rose-500/20 dark:bg-[#0b1421] dark:text-white sm:rounded-2xl sm:px-4 sm:text-sm"
+            />
+            <button
+              type="button"
+              disabled={redeemingPass || !passGrantCode.trim()}
+              onClick={() => void redeemPassCode()}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#DA1A21] px-4 text-[13px] font-black text-white disabled:opacity-45 sm:rounded-2xl sm:px-5 sm:text-sm"
+            >
+              {redeemingPass ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />}
+              Reclamar Pass
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-blue-200/70 bg-blue-50/50 p-4 dark:border-blue-500/20 dark:bg-blue-500/[0.04] sm:rounded-[1.75rem] sm:p-6">
+        <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-blue-600" />
@@ -352,7 +432,7 @@ export default function DropsPage() {
                 ¿Tienes un Bonus Credit?
               </h2>
             </div>
-            <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
+            <p className="mt-1.5 max-w-2xl text-[11px] leading-[1.15rem] text-slate-500 sm:mt-2 sm:text-xs sm:leading-5">
               Ingresa el código que recibiste. Cada Bonus Credit válido se puede
               reclamar una sola vez y genera exactamente 1 Bonus Entry para el
               Drop asociado. No suma a la meta pagada.
@@ -373,13 +453,13 @@ export default function DropsPage() {
               }}
               placeholder="BC-XXXX-XXXX-XXXX"
               autoComplete="off"
-              className="h-12 flex-1 rounded-2xl border border-blue-200 bg-white px-4 font-mono text-sm font-black uppercase tracking-wide text-slate-800 outline-none focus:border-blue-500 dark:border-blue-500/20 dark:bg-[#0b1421] dark:text-white"
+              className="h-12 min-w-0 flex-1 rounded-xl border border-blue-200 bg-white px-3 font-mono text-[13px] font-black uppercase tracking-wide text-slate-800 outline-none focus:border-blue-500 dark:border-blue-500/20 dark:bg-[#0b1421] dark:text-white sm:rounded-2xl sm:px-4 sm:text-sm"
             />
             <button
               type="button"
               disabled={redeemingCredit || !bonusCreditCode.trim()}
               onClick={() => void redeemCredit()}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-black text-white disabled:opacity-45"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-[13px] font-black text-white disabled:opacity-45 sm:rounded-2xl sm:px-5 sm:text-sm"
             >
               {redeemingCredit ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -392,68 +472,35 @@ export default function DropsPage() {
         </div>
       </section>
 
-      <section className="rounded-[1.75rem] border border-rose-200/70 bg-rose-50/40 p-5 dark:border-rose-500/20 dark:bg-rose-500/[0.04] sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Ticket className="h-5 w-5 text-[#DA1A21]" />
-              <h2 className="font-black text-slate-950 dark:text-white">
-                ¿Tienes un código especial de Drop Pass?
-              </h2>
-            </div>
-            <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
-              Los códigos DPG son para soporte o correcciones. Cada código válido se usa una sola vez y agrega 1 Drop Pass disponible a tu cuenta.
-            </p>
-          </div>
-          <div className="flex w-full max-w-xl flex-col gap-2 sm:flex-row">
-            <input
-              value={passGrantCode}
-              onChange={(event) => setPassGrantCode(event.target.value.toUpperCase())}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void redeemPassCode();
-                }
-              }}
-              placeholder="DPG-XXXX-XXXX-XXXX"
-              autoComplete="off"
-              className="h-12 flex-1 rounded-2xl border border-rose-200 bg-white px-4 font-mono text-sm font-black uppercase tracking-wide text-slate-800 outline-none focus:border-[#DA1A21] dark:border-rose-500/20 dark:bg-[#0b1421] dark:text-white"
-            />
-            <button
-              type="button"
-              disabled={redeemingPass || !passGrantCode.trim()}
-              onClick={() => void redeemPassCode()}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#DA1A21] px-5 text-sm font-black text-white disabled:opacity-45"
-            >
-              {redeemingPass ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />}
-              Reclamar Pass
-            </button>
-          </div>
-        </div>
-      </section>
+      </div>
 
-      <section>
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <section
+        className={
+          (mobileSection === "drops" ? "block" : "hidden") + " lg:block"
+        }
+      >
+        <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#DA1A21]">
               Drops
             </p>
-            <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+            <h2 className="mt-0.5 text-xl font-black tracking-tight text-slate-950 dark:text-white sm:mt-1 sm:text-2xl">
               Elige dónde participar
             </h2>
           </div>
           <button
             type="button"
             onClick={() => void load()}
-            className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:border-[#DA1A21]/25 hover:text-[#DA1A21] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300"
+            aria-label="Actualizar Drops"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-[#DA1A21]/25 hover:text-[#DA1A21] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 sm:h-11 sm:w-auto sm:gap-2 sm:rounded-2xl sm:px-4 sm:text-xs sm:font-black"
           >
             <RefreshCw className="h-4 w-4" />
-            Actualizar
+            <span className="hidden sm:inline">Actualizar</span>
           </button>
         </div>
 
         {data.drops.length === 0 ? (
-          <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-10 text-center dark:border-white/15 dark:bg-white/[0.03]">
+          <div className="rounded-[1.35rem] border border-dashed border-slate-300 bg-white p-7 text-center sm:rounded-[2rem] sm:p-10 dark:border-white/15 dark:bg-white/[0.03]">
             <Gift className="mx-auto h-10 w-10 text-slate-300" />
             <p className="mt-4 font-black text-slate-700 dark:text-slate-200">
               Todavía no hay Drops publicados.
@@ -474,39 +521,39 @@ export default function DropsPage() {
               return (
                 <article
                   key={drop.id}
-                  className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1421]"
+                  className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1421] sm:rounded-[1.75rem]"
                 >
                   {drop.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={drop.imageUrl}
                       alt=""
-                      className="h-44 w-full object-cover"
+                      className="h-40 w-full object-cover sm:h-44"
                     />
                   ) : (
-                    <div className="flex h-28 items-center justify-center bg-[radial-gradient(circle_at_center,rgba(218,26,33,.15),transparent_55%),linear-gradient(135deg,#0d1725,#07111d)]">
+                    <div className="flex h-24 items-center justify-center bg-[radial-gradient(circle_at_center,rgba(218,26,33,.15),transparent_55%),linear-gradient(135deg,#0d1725,#07111d)]">
                       <Gift className="h-12 w-12 text-white/80" />
                     </div>
                   )}
 
-                  <div className="p-5 sm:p-6">
+                  <div className="p-4 sm:p-6">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500 dark:bg-white/5 dark:text-slate-300">
                           {statusLabel(drop.status)}
                         </span>
-                        <h3 className="mt-3 text-xl font-black tracking-tight text-slate-950 dark:text-white">
+                        <h3 className="mt-2 text-lg font-black tracking-tight text-slate-950 dark:text-white sm:mt-3 sm:text-xl">
                           {drop.title}
                         </h3>
                         <p className="mt-1 text-sm font-black text-[#DA1A21]">
                           {drop.prizeLabel}
                         </p>
                       </div>
-                      <Trophy className="h-7 w-7 text-amber-500" />
+                      <Trophy className="h-6 w-6 shrink-0 text-amber-500 sm:h-7 sm:w-7" />
                     </div>
 
                     {drop.description && (
-                      <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      <p className="mt-3 text-[13px] leading-[1.35rem] text-slate-500 dark:text-slate-400 sm:mt-4 sm:text-sm sm:leading-6">
                         {drop.description}
                       </p>
                     )}
@@ -524,10 +571,27 @@ export default function DropsPage() {
                           style={{ width: `${drop.progressPercent}%` }}
                         />
                       </div>
-                      <div className="mt-2 flex items-center justify-between gap-3 text-[11px] font-bold text-slate-400">
-                        <span>{drop.progressPercent}% completado</span>
-                        <span>{drop.bonusEntries} bonus · no suman a la meta</span>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/[0.035]">
+                          <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+                            {drop.progressPercent}%
+                          </p>
+                          <p className="text-[9px] font-bold uppercase tracking-[0.09em] text-slate-400">
+                            completado
+                          </p>
+                        </div>
+                        <div className="rounded-xl bg-amber-50 px-3 py-2 dark:bg-amber-500/[0.05]">
+                          <p className="text-sm font-black text-amber-700 dark:text-amber-300">
+                            {drop.bonusEntries}
+                          </p>
+                          <p className="text-[9px] font-bold uppercase tracking-[0.09em] text-slate-400">
+                            Bonus Entries
+                          </p>
+                        </div>
                       </div>
+                      <p className="mt-2 text-[10px] leading-4 text-slate-400">
+                        Los Bonus Entries aumentan tus oportunidades, pero no cuentan para completar la meta.
+                      </p>
                     </div>
 
                     {drop.draw && (
@@ -556,7 +620,7 @@ export default function DropsPage() {
                       </div>
                     )}
 
-                    <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                    <div className="mt-4 grid gap-2 sm:mt-5 sm:grid-cols-2">
                       <button
                         type="button"
                         disabled={
@@ -566,7 +630,7 @@ export default function DropsPage() {
                           assigningCreditDropId !== null
                         }
                         onClick={() => void assignPass(drop.id)}
-                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#ef222b,#bd1119)] px-4 text-sm font-black text-white shadow-[0_16px_28px_-18px_rgba(218,26,33,.8)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-[linear-gradient(135deg,#ef222b,#bd1119)] px-4 text-sm font-black text-white shadow-[0_16px_28px_-18px_rgba(218,26,33,.8)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         {assigningDropId === drop.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -590,7 +654,7 @@ export default function DropsPage() {
                           assigningDropId !== null
                         }
                         onClick={() => void assignCredit(drop.id)}
-                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 px-4 text-sm font-black text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 text-sm font-black text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 sm:rounded-2xl"
                       >
                         {assigningCreditDropId === drop.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -614,15 +678,20 @@ export default function DropsPage() {
         )}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-[#0b1421] sm:p-6">
+      <section
+        className={
+          (mobileSection === "activity" ? "grid" : "hidden") +
+          " gap-3 sm:gap-4 lg:grid lg:grid-cols-2"
+        }
+      >
+        <div className="rounded-[1.35rem] border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#0b1421] sm:rounded-[1.75rem] sm:p-6">
           <div className="flex items-center gap-2">
             <Ticket className="h-5 w-5 text-[#DA1A21]" />
             <h2 className="font-black text-slate-950 dark:text-white">
               Historial de Drop Passes
             </h2>
           </div>
-          <div className="mt-4 space-y-2">
+          <div className="mt-3 max-h-[26rem] space-y-2 overflow-y-auto pr-0.5 sm:mt-4 sm:max-h-none sm:overflow-visible sm:pr-0">
             {data.passes.length === 0 ? (
               <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 dark:bg-white/[0.03]">
                 Aún no tienes pases. Se generan automáticamente desde compras
@@ -659,7 +728,7 @@ export default function DropsPage() {
           </div>
         </div>
 
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-[#0b1421] sm:p-6">
+        <div className="rounded-[1.35rem] border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#0b1421] sm:rounded-[1.75rem] sm:p-6">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-amber-500" />
             <h2 className="font-black text-slate-950 dark:text-white">
@@ -670,7 +739,7 @@ export default function DropsPage() {
             Son entradas promocionales adicionales. Aumentan tus oportunidades,
             pero nunca cuentan para completar la meta pagada del Drop.
           </p>
-          <div className="mt-4 space-y-2">
+          <div className="mt-3 max-h-[26rem] space-y-2 overflow-y-auto pr-0.5 sm:mt-4 sm:max-h-none sm:overflow-visible sm:pr-0">
             {data.bonusEntries.length === 0 ? (
               <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 dark:bg-white/[0.03]">
                 No tienes Bonus Entries activos.
