@@ -14,6 +14,10 @@ const walletMigration = readFileSync(
   "prisma/migrations/20260924060000_drops_wallet_ordering/migration.sql",
   "utf8"
 );
+const archiveGeneralBonusMigration = readFileSync(
+  "prisma/migrations/20260925010000_drops_archive_general_bonus_codes/migration.sql",
+  "utf8"
+);
 
 describe("Pre-Rescate Drops isolation contract", () => {
   it("mantiene Drops separado de la columna vertebral", () => {
@@ -28,7 +32,7 @@ describe("Pre-Rescate Drops isolation contract", () => {
       expect(schema).toContain(`model ${model}`);
     }
 
-    const combined = `${baseMigration}\n${extensionMigration}\n${walletMigration}`;
+    const combined = `${baseMigration}\n${extensionMigration}\n${walletMigration}\n${archiveGeneralBonusMigration}`;
     expect(combined).not.toMatch(
       /ALTER TABLE (public\.)?"(Chip|Profile|Account|ChipClaimToken|OperationDigitalBatchItem)"/
     );
@@ -68,6 +72,26 @@ describe("Pre-Rescate Drops isolation contract", () => {
     );
     expect(walletMigration).toContain(
       'CREATE UNIQUE INDEX "DropPassGrantCode_redeemedPassId_key"'
+    );
+  });
+
+  it("archiva Drops sin borrar el resultado y permite Bonus Credits generales", () => {
+    expect(schema).toContain("archivedAt    DateTime?");
+    expect(schema).toContain("archivedByUserId String?");
+    expect(schema).toContain("dropId          String?");
+    expect(schema).toContain("creditAmount    Int");
+
+    expect(archiveGeneralBonusMigration).toContain(
+      'ADD COLUMN "archivedAt" TIMESTAMP(3)'
+    );
+    expect(archiveGeneralBonusMigration).toContain(
+      'ALTER COLUMN "dropId" DROP NOT NULL'
+    );
+    expect(archiveGeneralBonusMigration).toContain(
+      'CONSTRAINT "DropBonusCredit_creditAmount_check"'
+    );
+    expect(archiveGeneralBonusMigration).not.toMatch(
+      /ALTER TABLE (public\.)?"(Chip|Profile|Account|ChipClaimToken|OperationDigitalBatchItem)"/
     );
   });
 
