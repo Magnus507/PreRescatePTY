@@ -160,16 +160,19 @@ export async function spendRewardCredit(
     `;
 
     const rows = await tx.$queryRaw<
-      Array<{ id: string; status: string; title: string }>
+      Array<{
+        id: string;
+        status: string;
+        title: string;
+        archivedAt: Date | null;
+      }>
     >`
       SELECT "id", "status"::text AS "status", "title", "archivedAt"
       FROM "Drop"
       WHERE "id" = ${dropId}
       FOR UPDATE
     `;
-    const drop = rows[0] as
-      | { id: string; status: string; title: string; archivedAt: Date | null }
-      | undefined;
+    const drop = rows[0];
     if (!drop) throw new Error("DROP_NOT_FOUND");
     if (drop.status !== "active" || drop.archivedAt) throw new Error("DROP_NOT_OPEN");
 
