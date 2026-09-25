@@ -193,7 +193,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(218,26,33,0.04),transparent_24%),linear-gradient(180deg,#ffffff_0%,#f7f9fc_100%)] selection:bg-[#DA1A21] selection:text-white dark:bg-[radial-gradient(circle_at_top,rgba(218,26,33,0.08),transparent_18%),linear-gradient(180deg,#050812_0%,#0a1120_100%)]">
       <ScanMonitor />
-      <div className="mx-auto flex h-[100dvh] w-full max-w-[1920px] overflow-hidden">
+      <div className="flex h-[100dvh] w-full overflow-hidden">
         <aside
           className={`client-desktop-sidebar m-3 mr-0 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/[0.075] bg-[#07111d]/95 p-3.5 shadow-[24px_0_70px_-48px_rgba(2,6,23,.95)] backdrop-blur-2xl transition-[width] duration-300 lg:flex ${
             isSidebarCollapsed ? "w-[5.4rem]" : "w-[17.5rem]"
