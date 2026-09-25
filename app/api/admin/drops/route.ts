@@ -25,11 +25,13 @@ function slugify(value: string) {
     .slice(0, 60);
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const auth = await requireRole(GENERAL_ADMIN_ROLES);
   if (!auth.authorized) return auth.response;
 
+  const includeArchived = req.nextUrl.searchParams.get("includeArchived") === "1";
   const drops = await prisma.drop.findMany({
+    where: includeArchived ? undefined : { archivedAt: null },
     orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
@@ -44,6 +46,8 @@ export async function GET() {
       opensAt: true,
       goalReachedAt: true,
       closedAt: true,
+      archivedAt: true,
+      archivedByUserId: true,
       createdAt: true,
       _count: {
         select: {
@@ -96,6 +100,8 @@ export async function GET() {
         opensAt: drop.opensAt,
         goalReachedAt: drop.goalReachedAt,
         closedAt: drop.closedAt,
+        archivedAt: drop.archivedAt,
+        archivedByUserId: drop.archivedByUserId,
         createdAt: drop.createdAt,
         assignedPurchasePasses: drop._count.passes,
         bonusEntries: drop._count.bonusEntries,
@@ -155,7 +161,10 @@ export async function POST(req: NextRequest) {
     await tx.$executeRaw`
       SELECT pg_advisory_xact_lock(hashtext('drop-display-order'))
     `;
-    const maxOrder = await tx.drop.aggregate({ _max: { displayOrder: true } });
+    const maxOrder = await tx.drop.aggregate({
+      where: { archivedAt: null },
+      _max: { displayOrder: true },
+    });
     const displayOrder = (maxOrder._max.displayOrder ?? -10) + 10;
     const created = await tx.drop.create({
       data: {
@@ -214,7 +223,10 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  const current = await prisma.drop.findMany({ select: { id: true } });
+  const current = await prisma.drop.findMany({
+    where: { archivedAt: null },
+    select: { id: true },
+  });
   const currentIds = new Set(current.map((drop) => drop.id));
   if (
     current.length !== orderedIds.length ||

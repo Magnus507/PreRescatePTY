@@ -64,6 +64,13 @@ export function DropAdminTools({
   const [codeCount, setCodeCount] = useState("1");
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
 
+  const [generalCreditCampaign, setGeneralCreditCampaign] = useState("Promoción general");
+  const [generalCreditCodeCount, setGeneralCreditCodeCount] = useState("1");
+  const [generalCreditAmount, setGeneralCreditAmount] = useState("1");
+  const [generatedGeneralCreditCodes, setGeneratedGeneralCreditCodes] = useState<
+    Array<{ code: string; creditAmount: number }>
+  >([]);
+
   const loadDrops = useCallback(async () => {
     try {
       const response = await fetch(`/api/admin/drops?_t=${Date.now()}`, {
@@ -215,6 +222,57 @@ export function DropAdminTools({
     try {
       await navigator.clipboard.writeText(generatedCodes.join("\n"));
       toast.success("Códigos copiados.");
+    } catch {
+      toast.error("No se pudieron copiar los códigos.");
+    }
+  }
+
+  async function generateGeneralCreditCodes(event: FormEvent) {
+    event.preventDefault();
+    setBusy("general-credit-codes");
+    try {
+      const response = await fetch("/api/admin/drops/bonus-credit-codes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaign: generalCreditCampaign,
+          count: Number(generalCreditCodeCount),
+          creditAmount: Number(generalCreditAmount),
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || "No se pudieron generar los Bonus Credits generales.");
+      }
+      const credits = (body.credits || []).map(
+        (row: { code: string; creditAmount: number }) => ({
+          code: row.code,
+          creditAmount: row.creditAmount,
+        })
+      );
+      setGeneratedGeneralCreditCodes(credits);
+      toast.success(
+        `${credits.length} código${credits.length === 1 ? "" : "s"} de Bonus Credit general generado${credits.length === 1 ? "" : "s"}.`
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se pudieron generar los Bonus Credits generales."
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function copyGeneralCreditCodes() {
+    try {
+      await navigator.clipboard.writeText(
+        generatedGeneralCreditCodes
+          .map((item) => `${item.code} · +${item.creditAmount} Credit${item.creditAmount === 1 ? "" : "s"}`)
+          .join("\n")
+      );
+      toast.success("Bonus Credits generales copiados.");
     } catch {
       toast.error("No se pudieron copiar los códigos.");
     }
@@ -477,6 +535,94 @@ export function DropAdminTools({
               {generatedCodes.map((code) => (
                 <code key={code} className="rounded-lg bg-slate-50 px-2 py-1.5 text-[11px] font-black dark:bg-white/[0.04]">
                   {code}
+                </code>
+              ))}
+            </div>
+          </div>
+        )}
+      </form>
+
+      <form
+        onSubmit={generateGeneralCreditCodes}
+        className="rounded-2xl border border-violet-200/70 bg-violet-50/30 p-4 dark:border-violet-500/20 dark:bg-violet-500/[0.03]"
+      >
+        <div className="flex items-center gap-2">
+          <Coins className="h-4 w-4 text-violet-600" />
+          <div>
+            <p className="text-sm font-black">Códigos generales de Bonus Credit</p>
+            <p className="text-[11px] text-slate-500">
+              No pertenecen a un Drop específico. Al reclamarlos, el saldo queda en la wallet del cliente y luego puede asignarse al Drop activo que elija.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_100px_120px_auto]">
+          <input
+            required
+            value={generalCreditCampaign}
+            onChange={(event) => setGeneralCreditCampaign(event.target.value)}
+            placeholder="Motivo / campaña"
+            className="h-10 rounded-xl border border-violet-200 bg-white px-3 text-xs font-bold dark:border-violet-500/20 dark:bg-slate-950"
+          />
+          <input
+            required
+            type="number"
+            min={1}
+            max={100}
+            value={generalCreditCodeCount}
+            onChange={(event) => setGeneralCreditCodeCount(event.target.value)}
+            aria-label="Cantidad de códigos"
+            className="h-10 rounded-xl border border-violet-200 bg-white px-3 text-sm font-bold dark:border-violet-500/20 dark:bg-slate-950"
+          />
+          <input
+            required
+            type="number"
+            min={1}
+            max={100}
+            value={generalCreditAmount}
+            onChange={(event) => setGeneralCreditAmount(event.target.value)}
+            aria-label="Credits por código"
+            className="h-10 rounded-xl border border-violet-200 bg-white px-3 text-sm font-bold dark:border-violet-500/20 dark:bg-slate-950"
+          />
+          <button
+            disabled={busy === "general-credit-codes"}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-black text-white disabled:opacity-50"
+          >
+            {busy === "general-credit-codes" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Coins className="h-4 w-4" />
+            )}
+            Generar
+          </button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-slate-500">
+          <span>2.º campo: cantidad de códigos.</span>
+          <span>3.º campo: Bonus Credits que entrega cada código.</span>
+        </div>
+
+        {generatedGeneralCreditCodes.length > 0 && (
+          <div className="mt-3 rounded-xl bg-white p-3 dark:bg-slate-950">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                Bonus Credits generales recién generados
+              </p>
+              <button
+                type="button"
+                onClick={() => void copyGeneralCreditCodes()}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-2 text-[10px] font-black dark:border-slate-700"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copiar
+              </button>
+            </div>
+            <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+              {generatedGeneralCreditCodes.map((item) => (
+                <code
+                  key={item.code}
+                  className="rounded-lg bg-slate-50 px-2 py-1.5 text-[11px] font-black dark:bg-white/[0.04]"
+                >
+                  {item.code} · +{item.creditAmount}
                 </code>
               ))}
             </div>

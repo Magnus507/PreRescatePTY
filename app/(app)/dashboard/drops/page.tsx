@@ -173,9 +173,15 @@ export default function DropsPage() {
         throw new Error(body.error || "No se pudo reclamar el Bonus Credit.");
       }
 
-      toast.success(
-        `Bonus Credit reclamado. Recibiste la entrada ${body.entry.code} para ${body.drop.title}.`
-      );
+      if (body.kind === "wallet_credit") {
+        toast.success(
+          `Bonus Credit general reclamado. +${body.creditAmount} a tu saldo. Disponible: ${body.balance}.`
+        );
+      } else {
+        toast.success(
+          `Bonus Credit reclamado. Recibiste la entrada ${body.entry.code} para ${body.drop.title}.`
+        );
+      }
       setBonusCreditCode("");
       await load();
     } catch (error) {
@@ -300,7 +306,7 @@ export default function DropsPage() {
   }
 
   return (
-    <div className="space-y-4 pb-4 sm:space-y-7 sm:pb-10">
+    <div className="space-y-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] sm:space-y-7 sm:pb-10">
       <section className="overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-[radial-gradient(circle_at_top_right,rgba(218,26,33,.14),transparent_34%),linear-gradient(135deg,#ffffff_0%,#f8fafc_100%)] p-4 shadow-[0_24px_70px_-46px_rgba(15,23,42,.3)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_right,rgba(218,26,33,.16),transparent_34%),linear-gradient(135deg,#0c1422_0%,#07111d_100%)] sm:rounded-[2rem] sm:p-8">
         <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
@@ -433,9 +439,9 @@ export default function DropsPage() {
               </h2>
             </div>
             <p className="mt-1.5 max-w-2xl text-[11px] leading-[1.15rem] text-slate-500 sm:mt-2 sm:text-xs sm:leading-5">
-              Ingresa el código que recibiste. Cada Bonus Credit válido se puede
-              reclamar una sola vez y genera exactamente 1 Bonus Entry para el
-              Drop asociado. No suma a la meta pagada.
+              Ingresa el código que recibiste. Si el código es general, suma
+              Bonus Credits a tu saldo para que luego elijas el Drop. Si está
+              asociado a un Drop, crea su Bonus Entry directamente.
             </p>
           </div>
 
@@ -521,14 +527,14 @@ export default function DropsPage() {
               return (
                 <article
                   key={drop.id}
-                  className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1421] sm:rounded-[1.75rem]"
+                  className="overflow-hidden rounded-[1.15rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1421] sm:rounded-[1.75rem]"
                 >
                   {drop.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={drop.imageUrl}
                       alt=""
-                      className="h-40 w-full object-cover sm:h-44"
+                      className="h-28 w-full object-cover min-[390px]:h-32 sm:h-44"
                     />
                   ) : (
                     <div className="flex h-24 items-center justify-center bg-[radial-gradient(circle_at_center,rgba(218,26,33,.15),transparent_55%),linear-gradient(135deg,#0d1725,#07111d)]">
@@ -536,29 +542,29 @@ export default function DropsPage() {
                     </div>
                   )}
 
-                  <div className="p-4 sm:p-6">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="p-3.5 sm:p-6">
+                    <div className="flex items-start justify-between gap-2.5 sm:gap-3">
                       <div>
                         <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500 dark:bg-white/5 dark:text-slate-300">
                           {statusLabel(drop.status)}
                         </span>
-                        <h3 className="mt-2 text-lg font-black tracking-tight text-slate-950 dark:text-white sm:mt-3 sm:text-xl">
+                        <h3 className="mt-1.5 text-[1.05rem] font-black tracking-tight text-slate-950 dark:text-white sm:mt-3 sm:text-xl">
                           {drop.title}
                         </h3>
                         <p className="mt-1 text-sm font-black text-[#DA1A21]">
                           {drop.prizeLabel}
                         </p>
                       </div>
-                      <Trophy className="h-6 w-6 shrink-0 text-amber-500 sm:h-7 sm:w-7" />
+                      <Trophy className="mt-1 h-5 w-5 shrink-0 text-amber-500 sm:h-7 sm:w-7" />
                     </div>
 
                     {drop.description && (
-                      <p className="mt-3 text-[13px] leading-[1.35rem] text-slate-500 dark:text-slate-400 sm:mt-4 sm:text-sm sm:leading-6">
+                      <p className="mt-2 line-clamp-2 text-[12px] leading-[1.15rem] text-slate-500 dark:text-slate-400 sm:mt-4 sm:line-clamp-none sm:text-sm sm:leading-6">
                         {drop.description}
                       </p>
                     )}
 
-                    <div className="mt-5">
+                    <div className="mt-4 sm:mt-5">
                       <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.12em]">
                         <span className="text-slate-400">Meta pagada</span>
                         <span className="text-slate-700 dark:text-slate-200">
@@ -571,7 +577,7 @@ export default function DropsPage() {
                           style={{ width: `${drop.progressPercent}%` }}
                         />
                       </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="mt-2.5 grid grid-cols-2 gap-2 sm:mt-3">
                         <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/[0.035]">
                           <p className="text-sm font-black text-slate-800 dark:text-slate-100">
                             {drop.progressPercent}%
@@ -596,7 +602,7 @@ export default function DropsPage() {
 
                     {drop.draw && (
                       <div
-                        className={`mt-5 rounded-2xl border p-4 ${
+                        className={`mt-4 rounded-xl border p-3 sm:mt-5 sm:rounded-2xl sm:p-4 ${
                           isWinner
                             ? "border-emerald-300 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10"
                             : "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]"
@@ -620,7 +626,8 @@ export default function DropsPage() {
                       </div>
                     )}
 
-                    <div className="mt-4 grid gap-2 sm:mt-5 sm:grid-cols-2">
+                    {isOpen ? (
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-5">
                       <button
                         type="button"
                         disabled={
@@ -630,7 +637,7 @@ export default function DropsPage() {
                           assigningCreditDropId !== null
                         }
                         onClick={() => void assignPass(drop.id)}
-                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-[linear-gradient(135deg,#ef222b,#bd1119)] px-4 text-sm font-black text-white shadow-[0_16px_28px_-18px_rgba(218,26,33,.8)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+                        className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl sm:rounded-2xl bg-[linear-gradient(135deg,#ef222b,#bd1119)] px-2.5 text-[11px] font-black sm:px-4 sm:text-sm text-white shadow-[0_16px_28px_-18px_rgba(218,26,33,.8)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         {assigningDropId === drop.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -654,7 +661,7 @@ export default function DropsPage() {
                           assigningDropId !== null
                         }
                         onClick={() => void assignCredit(drop.id)}
-                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 text-sm font-black text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 sm:rounded-2xl"
+                        className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-2.5 text-[11px] font-black sm:px-4 sm:text-sm text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 sm:rounded-2xl"
                       >
                         {assigningCreditDropId === drop.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -669,7 +676,13 @@ export default function DropsPage() {
                             : "Sin Bonus Credits"
                           : "Asignación cerrada"}
                       </button>
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[11px] font-black text-slate-500 dark:border-white/10 dark:bg-white/[0.03] sm:mt-5">
+                        <LockKeyhole className="h-4 w-4" />
+                        Participación cerrada
+                      </div>
+                    )}
                   </div>
                 </article>
               );

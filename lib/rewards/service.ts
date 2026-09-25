@@ -160,16 +160,21 @@ export async function spendRewardCredit(
     `;
 
     const rows = await tx.$queryRaw<
-      Array<{ id: string; status: string; title: string }>
+      Array<{
+        id: string;
+        status: string;
+        title: string;
+        archivedAt: Date | null;
+      }>
     >`
-      SELECT "id", "status"::text AS "status", "title"
+      SELECT "id", "status"::text AS "status", "title", "archivedAt"
       FROM "Drop"
       WHERE "id" = ${dropId}
       FOR UPDATE
     `;
     const drop = rows[0];
     if (!drop) throw new Error("DROP_NOT_FOUND");
-    if (drop.status !== "active") throw new Error("DROP_NOT_OPEN");
+    if (drop.status !== "active" || drop.archivedAt) throw new Error("DROP_NOT_OPEN");
 
     const balance = await getRewardCreditBalance(userId, tx);
     if (balance < 1) throw new Error("REWARD_CREDIT_INSUFFICIENT");
@@ -336,7 +341,7 @@ export async function getRewardsSnapshot(userId: string) {
         orderBy: { createdAt: "desc" },
       }),
       prisma.drop.findMany({
-        where: { status: "active" },
+        where: { status: "active", archivedAt: null },
         orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
         select: { id: true, title: true, prizeLabel: true },
       }),

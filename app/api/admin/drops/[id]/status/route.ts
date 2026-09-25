@@ -33,15 +33,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           opensAt: Date | null;
           goalReachedAt: Date | null;
           closedAt: Date | null;
+          archivedAt: Date | null;
         }>
       >`
-        SELECT "id", "status"::text AS "status", "opensAt", "goalReachedAt", "closedAt"
+        SELECT "id", "status"::text AS "status", "opensAt", "goalReachedAt", "closedAt", "archivedAt"
         FROM "Drop"
         WHERE "id" = ${id}
         FOR UPDATE
       `;
       const current = rows[0];
       if (!current) throw new Error("DROP_NOT_FOUND");
+      if (current.archivedAt) throw new Error("DROP_ARCHIVED");
 
       const next = transitions[current.status]?.[action];
       if (!next) throw new Error("DROP_TRANSITION_INVALID");
@@ -124,6 +126,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const code = error instanceof Error ? error.message : "";
     if (code === "DROP_NOT_FOUND") {
       return NextResponse.json({ error: "Drop no encontrado." }, { status: 404 });
+    }
+    if (code === "DROP_ARCHIVED") {
+      return NextResponse.json(
+        { error: "Restaura el Drop archivado antes de cambiar su estado." },
+        { status: 409 }
+      );
     }
     if (code === "DROP_TRANSITION_INVALID") {
       return NextResponse.json(

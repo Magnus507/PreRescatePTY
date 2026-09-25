@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
 
   const drops = await prisma.drop.findMany({
     where: {
+      archivedAt: null,
       status: { in: ["active", "goal_reached", "closed", "drawn", "finalized"] },
     },
     orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
@@ -87,6 +88,7 @@ export async function GET(req: NextRequest) {
       },
     }),
     prisma.drop.findMany({
+      where: { archivedAt: null },
       orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
@@ -203,7 +205,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           amount: count,
           sourceKey: `admin-grant:${randomUUID()}`,
-          sourceType: "admin_grant",
+          sourceType: "admin",
           description: reason,
           createdByUserId: auth.session.user.id,
         },

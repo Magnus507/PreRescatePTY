@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import {
+  Archive,
   Award,
   CheckCircle2,
   Copy,
@@ -15,6 +16,7 @@ import {
   Play,
   Plus,
   RefreshCw,
+  RotateCcw,
   Save,
   Sparkles,
   Ticket,
@@ -52,6 +54,8 @@ type AdminDrop = {
   opensAt: string | null;
   goalReachedAt: string | null;
   closedAt: string | null;
+  archivedAt: string | null;
+  archivedByUserId: string | null;
   createdAt: string;
   draw: {
     entryCount: number;
@@ -122,6 +126,7 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [draft, setDraft] = useState<DropDraft>(EMPTY_DRAFT);
 
   const [editDropId, setEditDropId] = useState<string | null>(null);
@@ -140,9 +145,10 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch(`/api/admin/drops?_t=${Date.now()}`, {
-        cache: "no-store",
-      });
+      const response = await fetch(
+        `/api/admin/drops?includeArchived=${showArchived ? "1" : "0"}&_t=${Date.now()}`,
+        { cache: "no-store" }
+      );
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(body.error || "No se pudieron cargar los Drops.");
@@ -155,7 +161,7 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showArchived]);
 
   useEffect(() => {
     void load();
@@ -326,6 +332,44 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
     }
   }
 
+  async function updateArchive(drop: AdminDrop, action: "archive" | "restore") {
+    const label = action === "archive" ? "archivar" : "restaurar";
+    const message =
+      action === "archive"
+        ? `¿Archivar “${drop.title}”? Desaparecerá del panel cliente y de la vista normal del admin, pero el sorteo y todo su historial se conservarán.`
+        : `¿Restaurar “${drop.title}” a la vista normal?`;
+
+    if (!confirm(message)) return;
+
+    setActionId(drop.id);
+    try {
+      const response = await fetch(`/api/admin/drops/${drop.id}/archive`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || `No se pudo ${label} el Drop.`);
+      }
+      toast.success(
+        action === "archive"
+          ? "Drop archivado. El resultado y el historial permanecen intactos."
+          : "Drop restaurado."
+      );
+      setEditDropId(null);
+      setCreditDropId(null);
+      setBonusDropId(null);
+      await load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : `No se pudo ${label} el Drop.`
+      );
+    } finally {
+      setActionId(null);
+    }
+  }
+
   async function draw(drop: AdminDrop) {
     if (
       !confirm(
@@ -461,14 +505,24 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
               nunca incrementan el progreso comercial.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:border-primary/30 hover:text-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Actualizar
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setShowArchived((value) => !value)}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:border-amber-300 hover:text-amber-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            >
+              {showArchived ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+              {showArchived ? "Ocultar archivados" : "Mostrar archivados"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:border-primary/30 hover:text-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Actualizar
+            </button>
+          </div>
         </div>
       </section>
 
@@ -618,13 +672,19 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
               Math.round((drop.assignedPurchasePasses / drop.targetPasses) * 100)
             );
             const busy = actionId === drop.id;
-            const editable = !["drawn", "finalized"].includes(drop.status);
-            const canGenerateCredits = ["draft", "active"].includes(drop.status);
+            const editable =
+              !drop.archivedAt && !["drawn", "finalized"].includes(drop.status);
+            const canGenerateCredits =
+              !drop.archivedAt && ["draft", "active"].includes(drop.status);
 
             return (
               <article
                 key={drop.id}
-                className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950"
+                className={`overflow-hidden rounded-[2rem] border bg-white shadow-sm dark:bg-slate-950 ${
+                  drop.archivedAt
+                    ? "border-amber-300/80 dark:border-amber-500/30"
+                    : "border-slate-200 dark:border-slate-800"
+                }`}
               >
                 {drop.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -640,7 +700,7 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-900">
-                          {statusLabel(drop.status)}
+                          {drop.archivedAt ? "Archivado" : statusLabel(drop.status)}
                         </span>
                         <span className="font-mono text-[10px] text-slate-400">
                           {drop.slug}
@@ -857,7 +917,32 @@ export function DropsSection({ searchQuery = "" }: { searchQuery?: string }) {
                       </button>
                     )}
 
-                    {drop.status === "drawn" && (
+                    {!drop.archivedAt &&
+                      ["drawn", "finalized"].includes(drop.status) && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void updateArchive(drop, "archive")}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs font-black text-amber-800 disabled:opacity-50 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300"
+                        >
+                          <Archive className="h-4 w-4" />
+                          Archivar
+                        </button>
+                      )}
+
+                    {drop.archivedAt && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void updateArchive(drop, "restore")}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs font-black text-emerald-700 disabled:opacity-50 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Restaurar
+                      </button>
+                    )}
+
+                    {!drop.archivedAt && drop.status === "drawn" && (
                       <button
                         type="button"
                         disabled={busy}
