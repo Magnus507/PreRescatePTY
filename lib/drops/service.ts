@@ -135,6 +135,7 @@ export async function getUserDropsSnapshot(userId: string) {
   const [drops, passes, bonusEntries, rewardBalance] = await Promise.all([
     prisma.drop.findMany({
       where: {
+        archivedAt: null,
         status: { in: ["active", "goal_reached", "closed", "drawn", "finalized"] },
       },
       orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
