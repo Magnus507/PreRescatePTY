@@ -234,16 +234,21 @@ export async function assignDropPassToDrop(
 ) {
   const execute = async (tx: Prisma.TransactionClient) => {
     const locked = await tx.$queryRaw<
-      Array<{ id: string; status: string; targetPasses: number }>
+      Array<{
+        id: string;
+        status: string;
+        targetPasses: number;
+        archivedAt: Date | null;
+      }>
     >`
-      SELECT "id", "status"::text AS "status", "targetPasses"
+      SELECT "id", "status"::text AS "status", "targetPasses", "archivedAt"
       FROM "Drop"
       WHERE "id" = ${dropId}
       FOR UPDATE
     `;
     const drop = locked[0];
     if (!drop) throw new Error("DROP_NOT_FOUND");
-    if (drop.status !== "active") throw new Error("DROP_NOT_OPEN");
+    if (drop.status !== "active" || drop.archivedAt) throw new Error("DROP_NOT_OPEN");
 
     const assignedCount = await tx.dropPass.count({
       where: { dropId, status: "assigned" },
