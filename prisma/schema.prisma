@@ -1803,6 +1803,7 @@ model Drop {
 
   @@index([status, createdAt])
   @@index([displayOrder, createdAt])
+  @@index([archivedAt, displayOrder, createdAt])
 }
 
 model DropPass {
