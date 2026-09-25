@@ -1791,6 +1791,8 @@ model Drop {
   opensAt       DateTime?
   goalReachedAt DateTime?
   closedAt      DateTime?
+  archivedAt    DateTime?
+  archivedByUserId String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   passes        DropPass[]
@@ -1844,14 +1846,15 @@ model DropPassGrantCode {
 model DropBonusCredit {
   id              String   @id @default(cuid())
   code            String   @unique
-  dropId          String
+  dropId          String?
   campaign        String
+  creditAmount    Int      @default(1)
   createdByUserId String
   claimedByUserId String?
   claimedAt       DateTime?
   revokedAt       DateTime?
   createdAt       DateTime @default(now())
-  drop            Drop     @relation(fields: [dropId], references: [id], onDelete: Restrict)
+  drop            Drop?    @relation(fields: [dropId], references: [id], onDelete: Restrict)
   bonusEntry      DropBonusEntry?
 
   @@index([dropId, claimedAt, revokedAt])
