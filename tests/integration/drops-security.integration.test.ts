@@ -214,6 +214,33 @@ describe("Pre-Rescate Drops PostgreSQL invariants", () => {
     expect(await db.drop.count({ where: { slug } })).toBe(0);
   });
 
+  it("allows a general Bonus Credit code without a Drop and enforces positive value", async () => {
+    const credit = await db.dropBonusCredit.create({
+      data: {
+        code: `BC-GENERAL-${run}`,
+        dropId: null,
+        campaign: "General wallet test",
+        creditAmount: 3,
+        createdByUserId: `${run}-admin-general`,
+      },
+    });
+
+    expect(credit.dropId).toBeNull();
+    expect(credit.creditAmount).toBe(3);
+
+    await expect(
+      db.dropBonusCredit.create({
+        data: {
+          code: `BC-GENERAL-INVALID-${run}`,
+          dropId: null,
+          campaign: "Invalid general wallet test",
+          creditAmount: 0,
+          createdByUserId: `${run}-admin-general`,
+        },
+      })
+    ).rejects.toThrow();
+  });
+
   it("denies direct anon access to every Drops table", async () => {
     for (const table of [
       "Drop",
