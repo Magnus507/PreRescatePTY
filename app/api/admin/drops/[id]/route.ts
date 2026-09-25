@@ -48,6 +48,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         },
       });
       if (!current) throw new Error("DROP_NOT_FOUND");
+      if (current.archivedAt) throw new Error("DROP_ARCHIVED");
       if (["drawn", "finalized"].includes(current.status)) {
         throw new Error("DROP_EDIT_LOCKED");
       }
@@ -128,6 +129,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const code = error instanceof Error ? error.message : "";
     const map: Record<string, [string, number]> = {
       DROP_NOT_FOUND: ["Drop no encontrado.", 404],
+      DROP_ARCHIVED: ["Restaura el Drop archivado antes de editarlo.", 409],
       DROP_EDIT_LOCKED: ["Un Drop sorteado o finalizado ya no puede editarse.", 409],
       DROP_EDIT_INVALID: ["Datos del Drop inválidos.", 400],
       DROP_IMAGE_INVALID: ["La imagen debe ser una URL https o una ruta interna.", 400],
